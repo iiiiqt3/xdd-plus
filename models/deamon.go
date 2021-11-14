@@ -21,7 +21,7 @@ func Daemon() {
 
 		execArgs = append(execArgs, args[i])
 	}
-	exec.Command("chmod 777 xdd")
+	exec.Command("sudo chmod 777 xdd")
 	proc := exec.Command(os.Args[0], execArgs...)
 	err := proc.Start()
 	if err != nil {
