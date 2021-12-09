@@ -102,13 +102,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 		}
 	}
-	switch msg {
-	default:
-		{
-			if Config.VIP {
+	if Config.VIP {
+		switch msg {
+		default:
+			{
 				regex := "^\\d{6}$"
 				reg := regexp.MustCompile(regex)
-				logs.Info(msg)
 				if reg.MatchString(msg) {
 					logs.Info("进入验证码阶段")
 					addr := Config.Jdcurl
@@ -180,69 +179,67 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							}
 						}
 					}
-
 				}
 			}
-		}
-		{
-			if Config.VIP {
-				regular := `^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$`
-				reg := regexp.MustCompile(regular)
-				if reg.MatchString(msg) {
-					addr := Config.Jdcurl
-					req := httplib.Post(addr + "/api/SendSMS")
-					req.Header("content-type", "application/json")
-					data, _ := req.Body(`{"Phone":"` + msg + `","qlkey":0}`).Bytes()
-					message, _ := jsonparser.GetString(data, "message")
-					success, _ := jsonparser.GetBoolean(data, "success")
-					status, _ := jsonparser.GetInt(data, "data", "status")
-					if message != "" && status != 666 {
-						sender.Reply(message)
-					}
-					i := 1
-					if !success && status == 666 && i < 5 {
-
-						sender.Reply("正在进行滑块验证...")
-						for {
-							req = httplib.Post(addr + "/api/AutoCaptcha")
-							req.Header("content-type", "application/json")
-							data, _ := req.Body(`{"Phone":"` + msg + `"}`).Bytes()
-							message, _ := jsonparser.GetString(data, "message")
-							success, _ := jsonparser.GetBoolean(data, "success")
-							status, _ := jsonparser.GetInt(data, "data", "status")
-							if !success {
-								//s.Reply("滑块验证失败：" + string(data))
-							}
-							if i > 5 {
-								sender.Reply("滑块验证失败,请联系管理员或者手动登录")
-								break
-							}
-							if status == 666 {
-								i++
-								sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
-								continue
-							}
-							if success {
-								pcodes[string(sender.UserID)] = msg
-								sender.Reply("请输入6位验证码：")
-								break
-							}
-							if strings.Contains(message, "上限") {
-								i = 6
-								sender.Reply(message)
-							}
-							//sender.Reply(message)
+			{
+				ist := findMapKey3(string(sender.UserID), pcodes)
+				if strings.EqualFold(ist, "true") {
+					regular := `^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$`
+					reg := regexp.MustCompile(regular)
+					if reg.MatchString(msg) {
+						addr := Config.Jdcurl
+						req := httplib.Post(addr + "/api/SendSMS")
+						req.Header("content-type", "application/json")
+						data, _ := req.Body(`{"Phone":"` + msg + `","qlkey":0}`).Bytes()
+						message, _ := jsonparser.GetString(data, "message")
+						success, _ := jsonparser.GetBoolean(data, "success")
+						status, _ := jsonparser.GetInt(data, "data", "status")
+						if message != "" && status != 666 {
+							sender.Reply(message)
 						}
-					} else {
-						sender.Reply("滑块失败，请网页登录")
-					}
+						i := 1
+						if !success && status == 666 && i < 5 {
 
+							sender.Reply("正在进行滑块验证...")
+							for {
+								req = httplib.Post(addr + "/api/AutoCaptcha")
+								req.Header("content-type", "application/json")
+								data, _ := req.Body(`{"Phone":"` + msg + `"}`).Bytes()
+								message, _ := jsonparser.GetString(data, "message")
+								success, _ := jsonparser.GetBoolean(data, "success")
+								status, _ := jsonparser.GetInt(data, "data", "status")
+								if !success {
+									//s.Reply("滑块验证失败：" + string(data))
+								}
+								if i > 5 {
+									sender.Reply("滑块验证失败,请联系管理员或者手动登录")
+									break
+								}
+								if status == 666 {
+									i++
+									sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
+									continue
+								}
+								if success {
+									pcodes[string(sender.UserID)] = msg
+									sender.Reply("请输入6位验证码：")
+									break
+								}
+								if strings.Contains(message, "上限") {
+									i = 6
+									sender.Reply(message)
+								}
+								//sender.Reply(message)
+							}
+						} else {
+							sender.Reply("滑块失败，请网页登录")
+						}
+
+					}
 				}
 			}
-		}
-		//识别登录
-		{
-			if Config.VIP {
+			//识别登录
+			{
 				if strings.Contains(msg, "登录") || strings.Contains(msg, "登陆") {
 					var tabcount int64
 					addr := Config.Jdcurl
@@ -254,33 +251,37 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						data, _ := httplib.Get(addr + "/api/Config").Bytes()
 						tabcount, _ = jsonparser.GetInt(data, "data", "tabcount")
 						if tabcount != 0 {
-
+							pcodes[string(sender.UserID)] = "true"
+							sender.Reply("若兰为您服务，请输入11位手机号：")
 						} else {
 							sender.Reply("服务忙，请稍后再试。")
 						}
 					}
 
-					sender.Reply("若兰为您服务，请输入11位手机号：")
-
 				}
 			}
-		}
-		{ //沃邮箱
-			ss := regexp.MustCompile(`https://nyan.mail.*3D`).FindStringSubmatch(msg)
-			if len(ss) > 0 {
-				var u User
-				if db.Where("number = ?", sender.UserID).First(&u).Error != nil {
-					return 0
+			{
+				//发财挖宝
+				//dyj
+				inviterId := regexp.MustCompile(`inviterId=(\S+)(&|&amp;)inviterCode`).FindStringSubmatch(msg)
+				inviterCode := regexp.MustCompile(`inviterCode=(\S+)(&|&amp;)utm_user`).FindStringSubmatch(msg)
+				if len(inviterCode) == 0 {
+					inviterCode = regexp.MustCompile(`inviterCode=(\S+)(&|&amp;)utm_source`).FindStringSubmatch(msg)
 				}
-				db.Model(u).Updates(map[string]interface{}{
-					"womail": ss[0],
-				})
-				sender.Reply(fmt.Sprintf("沃邮箱提交成功!"))
-				return nil
+				if len(inviterId) > 0 && len(inviterCode) > 0 {
+					if !sender.IsAdmin {
+						sender.Reply("仅管理员可用")
+					} else {
+						sender.Reply(fmt.Sprintf("发财挖宝开始，管理员通道"))
+						num, num1, f := startfcwb(inviterId[1], inviterCode[1])
+						if f {
+							sender.Reply(fmt.Sprintf("助力完成，助力成功：%d个,无效助力账号:%d个", num, num1))
+						}
+					}
+					return nil
+				}
 			}
-		}
-		{
-			if Config.VIP {
+			{
 				if strings.Contains(msg, "口令") {
 					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
 					rsp.Param("url", msg)
@@ -299,13 +300,37 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					}
 				}
 			}
+
+		}
+	}
+
+	switch msg {
+	default:
+
+		{ //沃邮箱
+			ss := regexp.MustCompile(`https://nyan.mail.*3D`).FindStringSubmatch(msg)
+			if len(ss) > 0 {
+				var u User
+				if db.Where("number = ?", sender.UserID).First(&u).Error != nil {
+					return 0
+				}
+				db.Model(u).Updates(map[string]interface{}{
+					"womail": ss[0],
+				})
+				sender.Reply(fmt.Sprintf("沃邮箱提交成功!"))
+				return nil
+			}
 		}
 		{
-			ss := regexp.MustCompile(`pin=([^;=\s]+);wskey=([^;=\s]+)`).FindAllStringSubmatch(msg, -1)
-			if len(ss) > 0 {
-				for _, s := range ss {
-					wkey := "pin=" + s[1] + ";wskey=" + s[2] + ";"
-					//rsp := cmd(fmt.Sprintf(`python3 test.py "%s"`, wkey), &Sender{})
+			if strings.Contains(msg, "wskey=") {
+				logs.Info(msg + "开始WSKEY登录")
+				wsKey := FetchJdCookieValue("wskey", msg)
+				ptPin := FetchJdCookieValue("pt_pin", msg)
+				if len(ptPin) == 0 {
+					ptPin = FetchJdCookieValue("pin", msg)
+				}
+				if len(wsKey) > 0 && len(ptPin) > 0 {
+					wkey := "pin=" + ptPin + ";wskey=" + wsKey + ";"
 					rsp, err := getKey(wkey)
 					if err != nil {
 						logs.Error(err)
@@ -319,7 +344,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						ck := JdCookie{
 							PtPin: ptPin,
 							PtKey: ptKey,
-							WsKey: s[2],
+							WsKey: wsKey,
 						}
 						if CookieOK(&ck) {
 
@@ -377,6 +402,82 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					}
 				}
 			}
+			//ss := regexp.MustCompile(`pin=([^;=\s]+);wskey=([^;=\s]+)`).FindAllStringSubmatch(msg, -1)
+			//if len(ss) > 0 {
+			//	for _, s := range ss {
+			//		wkey := "pin=" + s[1] + ";wskey=" + s[2] + ";"
+			//		//rsp := cmd(fmt.Sprintf(`python3 test.py "%s"`, wkey), &Sender{})
+			//		rsp, err := getKey(wkey)
+			//		if err != nil {
+			//			logs.Error(err)
+			//		}
+			//		if strings.Contains(rsp, "fake_") {
+			//			logs.Error("wskey错误")
+			//			sender.Reply(fmt.Sprintf("wskey错误 除京东APP皆不可用"))
+			//		} else {
+			//			ptKey := FetchJdCookieValue("pt_key", rsp)
+			//			ptPin := FetchJdCookieValue("pt_pin", rsp)
+			//			ck := JdCookie{
+			//				PtPin: ptPin,
+			//				PtKey: ptKey,
+			//				WsKey: s[2],
+			//			}
+			//			if CookieOK(&ck) {
+			//
+			//				if sender.IsQQ() {
+			//					ck.QQ = sender.UserID
+			//				} else if sender.IsTG() {
+			//					ck.Telegram = sender.UserID
+			//				}
+			//				if nck, err := GetJdCookie(ck.PtPin); err == nil {
+			//					nck.InPool(ck.PtKey)
+			//					if nck.WsKey == "" || len(nck.WsKey) == 0 {
+			//						if sender.IsQQ() {
+			//							ck.Update(QQ, ck.QQ)
+			//						}
+			//						nck.Update(WsKey, ck.WsKey)
+			//						msg := fmt.Sprintf("写入WsKey，并更新账号%s", ck.PtPin)
+			//						sender.Reply(fmt.Sprintf(msg))
+			//						(&JdCookie{}).Push(msg)
+			//						logs.Info(msg)
+			//					} else {
+			//						if nck.WsKey == ck.WsKey {
+			//							msg := fmt.Sprintf("重复写入")
+			//							sender.Reply(fmt.Sprintf(msg))
+			//							(&JdCookie{}).Push(msg)
+			//							logs.Info(msg)
+			//						} else {
+			//							nck.Updates(JdCookie{
+			//								WsKey: ck.WsKey,
+			//							})
+			//							msg := fmt.Sprintf("更新WsKey，并更新账号%s", ck.PtPin)
+			//							sender.Reply(fmt.Sprintf(msg))
+			//							(&JdCookie{}).Push(msg)
+			//							logs.Info(msg)
+			//						}
+			//					}
+			//
+			//				} else {
+			//					NewJdCookie(&ck)
+			//
+			//					msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+			//
+			//					if sender.IsQQ() {
+			//						ck.Update(QQ, ck.QQ)
+			//					}
+			//
+			//					sender.Reply(fmt.Sprintf(msg))
+			//					sender.Reply(ck.Query())
+			//					(&JdCookie{}).Push(msg)
+			//				}
+			//			}
+			//			go func() {
+			//				Save <- &JdCookie{}
+			//			}()
+			//			return nil
+			//		}
+			//	}
+			//}
 		}
 		//{ //
 		//	ss := regexp.MustCompile(`pt_key=([^;=\s]+);pt_pin=([^;=\s]+)`).FindAllStringSubmatch(msg, -1)
@@ -486,6 +587,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		}
 		{
 			if strings.Contains(msg, "pt_key") {
+				logs.Info(msg + "开始CK登录")
 				ptKey := FetchJdCookieValue("pt_key", msg)
 				ptPin := FetchJdCookieValue("pt_pin", msg)
 				if len(ptPin) > 0 && len(ptKey) > 0 {
@@ -606,6 +708,49 @@ func startdyj(ine string, red string, type1 int) (num int, num1 int, f bool, f1 
 		}
 	}
 	return k, n, true, false
+}
+
+func startfcwb(ine string, red string) (num int, num1 int, f bool) {
+	logs.Info("开始发财挖宝")
+	k := 0
+	n := 0
+	cks := GetJdCookies()
+	for i := len(cks); i > 0; i-- {
+		if k > 125 {
+			return k, n, true
+		}
+		time.Sleep(time.Second * time.Duration(3))
+		cookie := "pt_key=" + cks[i-1].PtKey + ";pt_pin=" + cks[i-1].PtPin + ";"
+		//https://api.m.jd.com/?functionId=happyDigHelp&body={"linkId":"pTTvJeSTrpthgk9ASBVGsw","inviter":"-ftyyGV7YwjPJ63tnKLwjw","inviteCode":"7476e3bed5d74f74b0a547b7e4d1e07225061636959196596"}&t=1635561607124&appid=activities_platform&client=H5&clientVersion=1.0.0
+		sprintf := fmt.Sprintf(`https://api.m.jd.com/?functionId=happyDigHelp&body={"linkId":"pTTvJeSTrpthgk9ASBVGsw","inviter":"%s","inviteCode":"%s"}&t=1635561607124&appid=activities_platform&client=H5&clientVersion=1.0.0`, ine, red)
+		logs.Info(sprintf)
+		req := httplib.Get(sprintf)
+		random := browser.Random()
+		req.Header("User-Agent", random)
+		//req.Header("Host", "api.m.jd.com")
+		req.Header("Accept", "application/json, text/plain, */*")
+		req.Header("Connection", "keep-alive")
+		req.Header("Accept-Language", "zh-cn")
+		req.Header("Accept-Encoding", "gzip, deflate, br")
+		req.Header("Origin", "https://api.m.jd.com")
+		req.Header("Cookie", cookie)
+
+		data, _ := req.String()
+		logs.Info(data)
+		if strings.Contains(data, "true") {
+			logs.Info("助力成功")
+			k++
+		} else if strings.Contains(data, "已经邀请过") {
+			logs.Info("已经邀请过")
+		} else if strings.Contains(data, "火爆") {
+			logs.Info("火爆了")
+			n++
+		} else {
+			logs.Info("要么助力过了，要么没登录,要么火爆")
+		}
+	}
+
+	return k, n, true
 }
 
 func FetchJdCookieValue(key string, cookies string) string {
