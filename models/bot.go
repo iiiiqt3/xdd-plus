@@ -672,6 +672,44 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	return nil
 }
 
+func starttyt(red string) (num int, f bool) {
+	k := 0
+	n := 0
+	cks := GetJdCookies()
+	for i := range cks {
+		time.Sleep(time.Second * time.Duration(5))
+		cookie := "pt_key=" + cks[i].PtKey + ";pt_pin=" + cks[i].PtPin + ";"
+		sprintf := fmt.Sprintf(`https://api.m.jd.com/?functionId=helpCoinDozer&appid=station-soa-h5&client=H5&clientVersion=1.0.0&t=1623120183787&body={"actId":"d5a8c7198ee54de093d2adb04089d3ec","channel":"coin_dozer","referer":"-1","frontendInitStatus":"s","packetId":"%s","helperStatus":"0"}`, red)
+		req := httplib.Get(sprintf)
+		random := browser.Random()
+		req.Header("User-Agent", random)
+		req.Header("Host", "api.m.jd.com")
+		req.Header("Accept", "application/json, text/plain, */*")
+		req.Header("Connection", "keep-alive")
+		req.Header("Accept-Language", "zh-cn")
+		req.Header("Accept-Encoding", "gzip, deflate, br")
+		req.Header("Origin", "https://api.m.jd.com")
+		req.Header("Cookie", cookie)
+		data, _ := req.String()
+		if strings.Contains(data, "助力成功") {
+			logs.Info("助力成功")
+			k++
+		} else if strings.Contains(data, "火爆") {
+			logs.Info("火爆了")
+			n++
+		} else if strings.EqualFold(data, "") {
+			return k, false
+		} else if strings.Contains(data, "今日帮好友拆红包次数已达上限") {
+			logs.Info("助力上限")
+		} else if strings.Contains(data, "已完成砍价") {
+			return k, true
+		} else {
+			logs.Info("要么助力过了，要么没登录")
+		}
+	}
+	return k, false
+}
+
 func startdyj(ine string, red string, type1 int) (num int, num1 int, f bool, f1 bool) {
 	k := 0
 	n := 0
@@ -698,11 +736,11 @@ func startdyj(ine string, red string, type1 int) (num int, num1 int, f bool, f1 
 			logs.Info("火爆了")
 			n++
 		} else if strings.EqualFold(data, "") {
-			return i, n, false, false
+			return k, n, false, false
 		} else if strings.Contains(data, "今日帮好友拆红包次数已达上限") {
 			logs.Info("助力上限")
 		} else if strings.Contains(data, "已成功提现") {
-			return i, n, true, true
+			return k, n, true, true
 		} else {
 			logs.Info("要么助力过了，要么没登录")
 		}
