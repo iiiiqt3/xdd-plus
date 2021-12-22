@@ -56,10 +56,15 @@ func DailyAssetsPush() {
 	for _, ck := range GetJdCookies() {
 		if (ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil) || ck.PushPlus != "" {
 			msg := ck.Query()
-			if ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
+			isPush := true
+			//iiiiqt的需求，农场或者萌宠完成才推送
+			if Config.DailyCompletePush {
+				isPush = strings.Contains(msg, "已可领取")
+			}
+			if isPush && ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
 				SendQQ(int64(ck.QQ), msg)
 			}
-			if ck.PushPlus != "" {
+			if isPush && ck.PushPlus != "" {
 				pushPlus(ck.PushPlus, msg)
 			}
 		}

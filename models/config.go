@@ -56,7 +56,9 @@ type Yaml struct {
 	NoAdmin             bool   `yaml:"no_admin"`
 	QbotConfigFile      string `yaml:"qbot_config_file"`
 	Repos               []Repo
-	HttpProxyServerPort int `yaml:"http_proxy_server_port"`
+	HttpProxyServerPort int  `yaml:"http_proxy_server_port"`
+	Priority            int  `yaml:"Priority"`
+	DailyCompletePush   bool `yaml:"daily_complete_push"`
 }
 
 var Balance = "balance"
