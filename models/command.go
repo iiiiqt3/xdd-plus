@@ -410,6 +410,7 @@ var codeSignals = []CodeSignal{
 				sender.Contents = sender.Contents[0:1]
 				if sender.handleJdCookies(func(ck *JdCookie) {
 					ck.Push(rt)
+					time.Sleep(500)
 				}) == nil {
 					return "操作成功"
 				}
@@ -425,6 +426,7 @@ var codeSignals = []CodeSignal{
 			for _, ck := range cks {
 				rt := fmt.Sprintf("你的账号【%s】已过期，无法自动做任务，请到http://nolan.xyvan.cn重新登录", ck.Nickname)
 				ck.Push(rt)
+				time.Sleep(500)
 			}
 			return nil
 		},
