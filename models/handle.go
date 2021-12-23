@@ -263,8 +263,7 @@ module.exports = cookies`, cookies))
 						Save <- &JdCookie{
 							Pool: "s",
 						}
-
-						time.Sleep(time.Minute * 5)
+						time.Sleep(time.Minute * time.Duration(Config.RefreshTime))
 						// time.Sleep(time.Second * 1)
 					}
 				}()

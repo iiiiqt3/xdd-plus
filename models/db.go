@@ -165,6 +165,13 @@ func Date() string {
 	return time.Now().Local().Format("2006-01-02")
 }
 
+func GetAvailableAccount() []JdCookie {
+	cks := []JdCookie{}
+	tb := db
+	tb.Where(Available+" = ? and qq != 0", "false").Find(&cks)
+	return cks
+}
+
 func GetJdCookies(sbs ...func(sb *gorm.DB) *gorm.DB) []JdCookie {
 	cks := []JdCookie{}
 	tb := db

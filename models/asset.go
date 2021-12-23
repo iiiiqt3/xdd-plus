@@ -67,6 +67,7 @@ func DailyAssetsPush() {
 			if isPush && ck.PushPlus != "" {
 				pushPlus(ck.PushPlus, msg)
 			}
+			time.Sleep(time.Second * 1)
 		}
 	}
 }
