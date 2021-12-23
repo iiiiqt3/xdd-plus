@@ -6,6 +6,7 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -412,6 +413,18 @@ var codeSignals = []CodeSignal{
 				}) == nil {
 					return "操作成功"
 				}
+			}
+			return nil
+		},
+	},
+	{
+		Command: []string{"通知过期账号"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			cks := GetAvailableAccount()
+			for _, ck := range cks {
+				rt := fmt.Sprintf("你的账号【%s】已过期，无法自动做任务，请到http://nolan.xyvan.cn重新登录", ck.Nickname)
+				ck.Push(rt)
 			}
 			return nil
 		},
@@ -907,12 +920,20 @@ var codeSignals = []CodeSignal{
 	},
 	{
 		Command: []string{"删除", "clean"},
-		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			sender.handleJdCookies(func(ck *JdCookie) {
-				ck.Removes(ck)
-				ck.OutPool()
-				sender.Reply(fmt.Sprintf("已删除账号%s", ck.Nickname))
+				pt_pin, _ := url.Parse(sender.Contents[0])
+				s := pt_pin.String()
+				if ck.PtPin == s || ck.Nickname == sender.Contents[0] {
+					if ck.PtKey != "" {
+						ck.Update(QQ, 0)
+						sender.Reply(fmt.Sprintf("删除账号%s", ck.Nickname))
+					} else {
+						ck.Removes(ck)
+						ck.OutPool()
+						sender.Reply(fmt.Sprintf("已删除账号%s", ck.Nickname))
+					}
+				}
 			})
 			return nil
 		},
