@@ -418,19 +418,19 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-	{
-		Command: []string{"通知过期账号"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			cks := GetAvailableAccount()
-			for _, ck := range cks {
-				rt := fmt.Sprintf("你的账号【%s】已过期，无法自动做任务，请到http://nolan.xyvan.cn重新登录", ck.Nickname)
-				ck.Push(rt)
-				time.Sleep(500)
-			}
-			return nil
-		},
-	},
+	//{
+	//	Command: []string{"通知过期账号"},
+	//	Admin:   true,
+	//	Handle: func(sender *Sender) interface{} {
+	//		cks := GetAvailableAccount()
+	//		for _, ck := range cks {
+	//			rt := fmt.Sprintf("你的账号【%s】已过期，无法自动做任务，请到http://nolan.xyvan.cn重新登录", ck.Nickname)
+	//			ck.Push(rt)
+	//			time.Sleep(500)
+	//		}
+	//		return nil
+	//	},
+	//},
 	{
 		Command: []string{"设置管理员"},
 		Admin:   true,
