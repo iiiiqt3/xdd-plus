@@ -56,18 +56,12 @@ func DailyAssetsPush() {
 	for _, ck := range GetJdCookies() {
 		if (ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil) || ck.PushPlus != "" {
 			msg := ck.Query()
-			isPush := true
-			//iiiiqt的需求，农场或者萌宠完成才推送
-			if Config.DailyCompletePush {
-				isPush = strings.Contains(msg, "已可领取")
-			}
-			if isPush && ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
+			if ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
 				SendQQ(int64(ck.QQ), msg)
 			}
-			if isPush && ck.PushPlus != "" {
+			if ck.PushPlus != "" {
 				pushPlus(ck.PushPlus, msg)
 			}
-			time.Sleep(time.Second * 60)
 		}
 	}
 }
@@ -157,7 +151,8 @@ func (ck *JdCookie) Query() string {
 			}
 			page++
 		}
-		msgs = append(msgs, fmt.Sprintf("当前京豆：%v京豆", ck.BeanNum))
+		//logs.Info(ck.BeanNum)
+		msgs = append(msgs, fmt.Sprintf("当前京豆：%s京豆", ck.BeanNum))
 		ysd := int(time.Now().Add(24 * time.Hour).Unix())
 		if rps := <-rpc; len(rps) != 0 {
 			for _, rp := range rps {
@@ -199,7 +194,7 @@ func (ck *JdCookie) Query() string {
 			msgs = append(msgs, []string{
 				fmt.Sprintf("所有红包：%.2f%s元🧧", asset.RedPacket.Total, e(asset.RedPacket.ToExpire)),
 				fmt.Sprintf("京喜红包：%.2f%s元", asset.RedPacket.Jx, e(asset.RedPacket.ToExpireJx)),
-				//fmt.Sprintf("极速红包：%.2f%s元", asset.RedPacket.Js, e(asset.RedPacket.ToExpireJs)),
+				fmt.Sprintf("极速红包：%.2f%s元", asset.RedPacket.Js, e(asset.RedPacket.ToExpireJs)),
 				//fmt.Sprintf("健康红包：%.2f%s元", asset.RedPacket.Jk, e(asset.RedPacket.ToExpireJk)),
 				fmt.Sprintf("京东红包：%.2f%s元", asset.RedPacket.Jd, e(asset.RedPacket.ToExpireJd)),
 			}...)
@@ -222,7 +217,7 @@ func (ck *JdCookie) Query() string {
 		} else {
 			msgs = append(msgs, fmt.Sprintf("京东秒杀：暂无数据"))
 		}
-		//msgs = append(msgs, fmt.Sprintf("推一推券：%s", <-tyt))
+		msgs = append(msgs, fmt.Sprintf("推一推券：%s", <-tyt))
 		msgs = append(msgs, fmt.Sprintf("惊喜牧场：%d枚鸡蛋🥚", <-egg))
 
 	} else {

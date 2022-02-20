@@ -11,8 +11,8 @@ import (
 )
 
 type Yaml struct {
-	Containers []Container
-	// Tasks              []Task
+	Containers          []Container
+	Tasks               []Task
 	Qrcode              string
 	Master              string
 	Mode                string
@@ -64,6 +64,7 @@ type Yaml struct {
 
 var Balance = "balance"
 var Parallel = "parallel"
+var Vip = "vip"
 var GhProxy = "https://ghproxy.com/"
 var Cdle = false
 
@@ -113,7 +114,7 @@ func initConfig() {
 	if Config.CTime == "" {
 		Config.CTime = "10"
 	}
-	if Config.Mode != Parallel {
+	if Config.Mode != Parallel && Config.Mode != Vip {
 		Config.Mode = Balance
 	}
 	if Config.Qrcode != "" {

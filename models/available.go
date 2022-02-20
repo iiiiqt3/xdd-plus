@@ -6,6 +6,8 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
+	"gorm.io/gorm"
+	"math/rand"
 	"net/url"
 	"strings"
 	"time"
@@ -174,13 +176,18 @@ func cleanWck() {
 }
 
 func updateCookie() {
-	cks := GetJdCookies()
+	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+		return sb.Where(fmt.Sprintf("%s != ?", WsKey), "")
+	})
 	xx := 0
 	yy := 0
 	(&JdCookie{}).Push("开始定时更新转换Wskey")
 	for i := range cks {
+		if i == len(cks)/2 {
+			(&JdCookie{}).Push("Wskey已更新二分一")
+		}
 		if len(cks[i].WsKey) > 0 {
-			time.Sleep(10 * time.Second)
+			time.Sleep(time.Duration(rand.Int63n(5)) * time.Second)
 			ck := cks[i]
 			//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
@@ -201,16 +208,17 @@ func updateCookie() {
 						xx++
 						nck.InPool(ck1.PtKey)
 						nck.Update(Available, True)
-						//msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
+						msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
 						////不再发送成功提醒
 						//(&JdCookie{}).Push(msg)
-						//logs.Info(msg)
+						logs.Info(msg)
 					} else {
 						yy++
 						ck1.Update(Available, False)
 						(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", ck.PtPin))
 					}
 				} else {
+
 					yy++
 					(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
 				}

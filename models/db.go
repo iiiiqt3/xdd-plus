@@ -45,6 +45,7 @@ func initDB() {
 		&Token{},
 		&UserAdmin{},
 		&Limit{},
+		&Cache{},
 	)
 	keys = make(map[string]bool)
 	pins = make(map[string]bool)
@@ -105,6 +106,8 @@ type JdCookie struct {
 	Sgmh         string `gorm:"column:Sgmh"`
 	Cfd          string `gorm:"column:Cfd"`
 	Cash         string `gorm:"column:Cash"`
+	Tyt          string `gorm:"column:Tyt;default:true" validate:"oneof=true false"`
+	Dig          string `gorm:"column:Dig;default:true" validate:"oneof=true false"`
 	Help         string `gorm:"column:Help;default:false" validate:"oneof=true false"`
 	Pool         string `gorm:"-"`
 	Hack         string `gorm:"column:Hack"  validate:"oneof=true false"`
@@ -145,6 +148,8 @@ var Save chan *JdCookie
 var ExecPath string
 var Telegram = "Telegram"
 var Hack = "Hack"
+var Tyt = "Tyt"
+var Dig = "Dig"
 
 const (
 	Fruit        = "Fruit"
@@ -163,13 +168,6 @@ const (
 
 func Date() string {
 	return time.Now().Local().Format("2006-01-02")
-}
-
-func GetAvailableAccount() []JdCookie {
-	cks := []JdCookie{}
-	tb := db
-	tb.Where(Available+" = ? and qq != 0", "false").Find(&cks)
-	return cks
 }
 
 func GetJdCookies(sbs ...func(sb *gorm.DB) *gorm.DB) []JdCookie {

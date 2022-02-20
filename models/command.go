@@ -6,7 +6,6 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -410,23 +409,9 @@ var codeSignals = []CodeSignal{
 				sender.Contents = sender.Contents[0:1]
 				if sender.handleJdCookies(func(ck *JdCookie) {
 					ck.Push(rt)
-					time.Sleep(500)
 				}) == nil {
 					return "操作成功"
 				}
-			}
-			return nil
-		},
-	},
-	{
-		Command: []string{"通知过期账号"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			cks := GetAvailableAccount()
-			for _, ck := range cks {
-				rt := fmt.Sprintf("你的账号【%s】已过期，无法自动做任务，请重新登录", ck.Nickname)
-				ck.Push(rt)
-				time.Sleep(time.Second * 3)
 			}
 			return nil
 		},
@@ -895,6 +880,9 @@ var codeSignals = []CodeSignal{
 						logs.Error(err)
 					}
 					if len(rsp) > 0 {
+						if strings.Contains(rsp, "fake") {
+							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
+						}
 						ptKey := FetchJdCookieValue("pt_key", rsp)
 						ptPin := FetchJdCookieValue("pt_pin", rsp)
 						ck := JdCookie{
@@ -910,7 +898,8 @@ var codeSignals = []CodeSignal{
 							sender.Reply("转换失败")
 						}
 					} else {
-						sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
+						sender.Reply("转换失败")
+						//sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
 					}
 				} else {
 					sender.Reply(fmt.Sprintf("Wskey为空，%s", ck.Nickname))
@@ -922,20 +911,12 @@ var codeSignals = []CodeSignal{
 	},
 	{
 		Command: []string{"删除", "clean"},
+		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			sender.handleJdCookies(func(ck *JdCookie) {
-				pt_pin, _ := url.Parse(sender.Contents[0])
-				s := pt_pin.String()
-				if ck.PtPin == s || ck.Nickname == sender.Contents[0] {
-					if ck.PtKey != "" {
-						ck.Update(QQ, 0)
-						sender.Reply(fmt.Sprintf("删除账号%s", ck.Nickname))
-					} else {
-						ck.Removes(ck)
-						ck.OutPool()
-						sender.Reply(fmt.Sprintf("已删除账号%s", ck.Nickname))
-					}
-				}
+				ck.Removes(ck)
+				ck.OutPool()
+				sender.Reply(fmt.Sprintf("已删除账号%s", ck.Nickname))
 			})
 			return nil
 		},

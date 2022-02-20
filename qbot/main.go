@@ -18,7 +18,6 @@ import (
 
 	"github.com/Mrs4s/go-cqhttp/coolq"
 	"github.com/Mrs4s/go-cqhttp/global"
-
 	//"github.com/Mrs4s/go-cqhttp/global/config"
 	"github.com/cdle/xdd/models"
 
@@ -66,7 +65,11 @@ func Main() {
 		switch msg.(type) {
 		case string:
 			if bot != nil {
-				bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
+				if strings.Contains(msg.(string), "data:image") {
+					bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{File: "./output.jpg"}}})
+				} else {
+					bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
+				}
 			}
 		case *http.Response:
 			data, _ := ioutil.ReadAll(msg.(*http.Response).Body)
@@ -81,7 +84,12 @@ func Main() {
 		switch msg.(type) {
 		case string:
 			if bot != nil {
-				bot.SendGroupMessage(gid, &message.SendingMessage{Elements: []message.IMessageElement{&message.AtElement{Target: uid}, &message.TextElement{Content: msg.(string)}}})
+				if strings.Contains(msg.(string), "data:image") {
+					bot.SendGroupMessage(gid, &message.SendingMessage{Elements: []message.IMessageElement{&message.AtElement{Target: uid}, &coolq.LocalImageElement{File: "./output.jpg"}}})
+				} else {
+					bot.SendGroupMessage(gid, &message.SendingMessage{Elements: []message.IMessageElement{&message.AtElement{Target: uid}, &message.TextElement{Content: msg.(string)}}})
+				}
+
 			}
 		case *http.Response:
 			data, _ := ioutil.ReadAll(msg.(*http.Response).Body)
@@ -286,6 +294,7 @@ func Main() {
 		return "未知"
 	}())
 	cli = newClient()
+
 	//global.Proxy = conf.Message.ProxyRewrite
 	isQRCodeLogin := (conf.Account.Uin == 0 || len(conf.Account.Password) == 0) && !conf.Account.Encrypt
 	isTokenLogin := false
@@ -344,7 +353,7 @@ func Main() {
 		reLoginLock.Lock()
 		defer reLoginLock.Unlock()
 		times = 1
-		if cli.Online {
+		if cli.Online.Load() {
 			return
 		}
 		log.Warnf("Bot已离线: %v", e.Message)
@@ -426,51 +435,54 @@ func Main() {
 	//coolq.SkipMimeScan = conf.Message.SkipMimeScan
 	//加载WS地址
 
-	//for _, m := range conf.Servers {
-	//	if h, ok := m["http"]; ok {
-	//		hc := new(config.Server)
-	//
-	//		if err := h.Decode(hc); err != nil {
-	//			log.Warn("读取http配置失败 :", err)
-	//		} else {
-	//			config.AddServer(hc)
-	//		}
-	//	}
-	//if s, ok := m["ws"]; ok {
-	//	sc := new()
-	//	if err := s.Decode(sc); err != nil {
-	//		log.Warn("读取正向Websocket配置失败 :", err)
-	//	} else {
-	//
-	//		config.AddServer(sc)
-	//		go server.RunWebSocketServer(bot, sc)
-	//	}
-	//}
-	//if c, ok := m["ws-reverse"]; ok {
-	//	rc := new(config.WebsocketReverse)
-	//	if err := c.Decode(rc); err != nil {
-	//		log.Warn("读取反向Websocket配置失败 :", err)
-	//	} else {
-	//		go server.RunWebSocketClient(bot, rc)
-	//	}
-	//}
-	//if p, ok := m["pprof"]; ok {
-	//	pc := new(config.PprofServer)
-	//	if err := p.Decode(pc); err != nil {
-	//		log.Warn("读取pprof配置失败 :", err)
-	//	} else {
-	//		go server.RunPprofServer(pc)
-	//	}
-	//}
-	//if p, ok := m["lambda"]; ok {
-	//	lc := new(config.LambdaServer)
-	//	if err := p.Decode(lc); err != nil {
-	//		log.Warn("读取pprof配置失败 :", err)
-	//	} else {
-	//		go server.RunLambdaClient(bot, lc)
-	//	}
-	//}
-	//}
+	for _, m := range conf.Servers {
+		//if h, ok := m["http"]; ok {
+		//	hc := new(config.Server)
+		//
+		//	if err := h.Decode(hc); err != nil {
+		//		log.Warn("读取http配置失败 :", err)
+		//	} else {
+		//		go runHTTP(bot, m)
+		//	}
+		//}
+		if s, ok := m["ws"]; ok {
+			sc := new(WebsocketServer)
+			if err := s.Decode(sc); err != nil {
+				log.Warn("读取正向Websocket配置失败 :", err)
+			} else {
+
+				//config.AddServer(sc)
+				go runWSServer(bot, s)
+			}
+		}
+		if c, ok := m["ws-reverse"]; ok {
+			rc := new(WebsocketReverse)
+			if err := c.Decode(rc); err != nil {
+				log.Warn("读取反向Websocket配置失败 :", err)
+			} else {
+				go runWSClient(bot, c)
+			}
+		}
+		//if p, ok := m["pprof"]; ok {
+		//	pc := new(config.PprofServer)
+		//	if err := p.Decode(pc); err != nil {
+		//		log.Warn("读取pprof配置失败 :", err)
+		//	} else {
+		//		go server.RunPprofServer(pc)
+		//	}
+		//}
+		//if p, ok := m["lambda"]; ok {
+		//	lc := new(config.LambdaServer)
+		//	if err := p.Decode(lc); err != nil {
+		//		log.Warn("读取pprof配置失败 :", err)
+		//	} else {
+		//		go server.RunLambdaClient(bot, lc)
+		//	}
+		//}
+	}
+
+	//config.Server{}
+	//servers.Run(coolq.NewQQBot(cli))
 
 	log.Info("资源初始化完成, 开始处理信息.")
 	log.Info("アトリは、高性能ですから!")
