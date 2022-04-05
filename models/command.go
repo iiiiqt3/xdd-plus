@@ -356,6 +356,7 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			wb = true
+			sender.Reply("开启wb")
 			return nil
 		},
 	},
@@ -364,6 +365,7 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			wb = false
+			sender.Reply("关闭wb")
 			return nil
 		},
 	},
@@ -401,6 +403,7 @@ var codeSignals = []CodeSignal{
 			for _, ck := range cks {
 				ck.Update(Tyt, True)
 			}
+			sender.Reply("重置推一推")
 			return nil
 		},
 	},
