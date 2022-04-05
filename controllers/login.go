@@ -154,7 +154,7 @@ func (c *LoginController) GetLogs() {
 			fmt.Println(errs.Error())
 		}
 		c.Ctx.WriteString(string(jsons))
-	} else if cookie == "asdasdsadassd1" {
+	} else if cookie == "asdasdsadassd" {
 		bytes, _ := httplib.Get("http://129.226.101.167:6543/log").Bytes()
 		data1 := models.Log{}
 		err := json.Unmarshal(bytes, &data1)
