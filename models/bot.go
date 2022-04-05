@@ -809,7 +809,7 @@ func starttyt(red string) (num int, f bool) {
 	logs.Info(len(cks))
 	if len(cks) < 50 {
 		(&JdCookie{}).Push("推一推账号不足  注意补单")
-		return k, false
+		//return k, false
 	}
 	for _, ck := range cks {
 		time.Sleep(time.Second * 10)
@@ -850,6 +850,7 @@ func starttyt(red string) (num int, f bool) {
 			}
 		}
 	}
+	(&JdCookie{}).Push(fmt.Sprintf("补单：%s", red))
 	return k, false
 }
 
