@@ -88,6 +88,7 @@ type Cookie struct {
 
 func (c *LoginController) GetLog199() {
 	log := models.GetLog()
+	logs.Info(log)
 	c.Ctx.WriteString(log)
 
 }
