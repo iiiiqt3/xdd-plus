@@ -24,11 +24,12 @@ func getConn() net.Conn {
 		return conn
 	}
 
-	return nil
+	return conn
 }
 
 func GetLog() string {
-	conn.Write([]byte("getLog"))
+	n := getConn()
+	n.Write([]byte("getLog"))
 	buf := make([]byte, 1024)
 	c, err := conn.Read(buf)
 	if err != nil {
