@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/buger/jsonparser"
 	"io/ioutil"
-	"net"
 	"os"
 	"regexp"
 	"strconv"
@@ -52,7 +51,6 @@ type Result struct {
 
 var JdCookieRunners sync.Map
 var jdua = models.GetUserAgent
-var flag = false
 
 func (c *LoginController) GetUserInfo() {
 
@@ -88,34 +86,11 @@ type Cookie struct {
 	ck string
 }
 
-const (
-	addr = "192.168.195.44:19730"
-)
-
-func Client(conn net.Conn, msg []byte) string {
-	conn.Write(msg)
-	buf := make([]byte, 1024)
-	c, err := conn.Read(buf)
-	if err != nil {
-		fmt.Println("读取服务器数据异常:", err.Error())
-	}
-	fmt.Println(string(buf[0:c]))
-	return string(buf[0:c])
+func (c *LoginController) GetLog199() {
+	log := models.GetLog()
+	c.Ctx.WriteString(log)
 
 }
-
-//func (c *LoginController) GetLogs199() {
-//	if flag {
-//		conn, err := net.Dial("tcp", addr)
-//		if err != nil {
-//			fmt.Println("连接服务端失败:", err.Error())
-//			return
-//		}
-//		fmt.Println("已连接服务器")
-//		flag = true
-//	}
-//
-//}
 
 func (c *LoginController) GetLogs() {
 	cookie := c.Ctx.Input.Header("logs")
@@ -136,10 +111,6 @@ func (c *LoginController) GetLogs() {
 		}
 		rondom := data1.Random
 		log := data1.Log
-		//models.SaveLogs(models.Log{
-		//	Random: rondom,
-		//	Log:    log,
-		//})
 		if err != nil {
 			c.Ctx.WriteString("错误请求")
 			return
@@ -164,11 +135,7 @@ func (c *LoginController) GetLogs() {
 		}
 		rondom := data1.Random
 		log := data1.Log
-		//logs.Info(rondom)
-		//models.SaveLogs(models.Log{
-		//	Random: rondom,
-		//	Log:    log,
-		//})
+
 		if err != nil {
 			c.Ctx.WriteString("错误请求")
 			return
@@ -184,24 +151,6 @@ func (c *LoginController) GetLogs() {
 		}
 		c.Ctx.WriteString(string(jsons))
 
-		//data1 := models.GetLo()
-		//rondom := data1.Random
-		//log := aseD(data1.Log)
-		//models.SaveLogs(models.Log{
-		//	Random: rondom,
-		//	Log:    log,
-		//})
-		//
-		//result := Result{
-		//	Data:    log,
-		//	Code:    0,
-		//	Message: strconv.Itoa(rondom),
-		//}
-		//jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
-		//if errs != nil {
-		//	fmt.Println(errs.Error())
-		//}
-		//c.Ctx.WriteString(string(jsons))
 	} else {
 		c.Ctx.WriteString("错误请求")
 	}
