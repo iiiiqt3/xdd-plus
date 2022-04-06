@@ -1,16 +1,13 @@
 package models
 
-import (
-	"fmt"
-	"net"
-)
-
 const (
 	addr = "192.168.195.44:19730"
 )
 
-var flag = false
-var conn = getConn()
+//
+//var flag = false
+//var conn = getConn()
+
 //
 //func getConn() net.Conn {
 //	if flag {
