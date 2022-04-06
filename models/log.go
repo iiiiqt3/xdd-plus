@@ -36,5 +36,6 @@ func GetLog() string {
 		fmt.Println("读取服务器数据异常:", err.Error())
 	}
 	fmt.Println(string(buf[0:c]))
+	conn.Close()
 	return string(buf[0:c])
 }

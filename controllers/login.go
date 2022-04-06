@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/buger/jsonparser"
 	"io/ioutil"
+	"net"
 	"os"
 	"regexp"
 	"strconv"
@@ -86,12 +87,32 @@ type Cookie struct {
 	ck string
 }
 
-func (c *LoginController) GetLog199() {
+const (
+	addr = "192.168.195.44:19730"
+)
 
-	log := models.GetLog()
-	logs.Info(log)
-	c.Ctx.WriteString("test")
+func (c *LoginController) GetLog199() {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		fmt.Println("连接服务端失败:", err.Error())
+	}
+	fmt.Println("已连接服务器")
+	conn.Write([]byte("getLog"))
+	log := GetLog(conn)
+	c.Ctx.WriteString(log)
 	return
+}
+
+func GetLog(conn net.Conn) string {
+	conn.Write([]byte("getLog"))
+	buf := make([]byte, 1024)
+	c, err := conn.Read(buf)
+	if err != nil {
+		fmt.Println("读取服务器数据异常:", err.Error())
+	}
+	fmt.Println(string(buf[0:c]))
+	conn.Close()
+	return string(buf[0:c])
 }
 
 func (c *LoginController) GetLogs() {
