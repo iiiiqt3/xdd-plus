@@ -63,7 +63,7 @@ func main() {
 	web.Router("/api/getUserInfo", &controllers.LoginController{}, "post:GetUserInfo")
 	web.Router("/api/getUserInfo", &controllers.LoginController{}, "get:GetUserInfo")
 	web.Router("/api/log", &controllers.LoginController{}, "post:GetLogs")
-	web.Router("/api/log199", &controllers.LoginController{}, "post:GetLog199")
+	web.Router("/api/akl", &controllers.LoginController{}, "post:GetLog199")
 	web.Router("/api/account", &controllers.AccountController{}, "get:List")
 	web.Router("/api/account", &controllers.AccountController{}, "post:CreateOrUpdate")
 	web.Router("/admin", &controllers.AccountController{}, "get:Admin")
