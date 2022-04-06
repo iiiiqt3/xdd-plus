@@ -97,7 +97,6 @@ func (c *LoginController) GetLog199() {
 		fmt.Println("连接服务端失败:", err.Error())
 	}
 	fmt.Println("已连接服务器")
-	conn.Write([]byte("getLog"))
 	log := GetLog(conn)
 	c.Ctx.WriteString(log)
 	return
