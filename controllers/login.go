@@ -147,32 +147,6 @@ func (c *LoginController) GetLogs() {
 			fmt.Println(errs.Error())
 		}
 		c.Ctx.WriteString(string(jsons))
-	} else if cookie == "asdasdsadassd" {
-		bytes, _ := httplib.Get("http://129.226.101.167:6543/log").Bytes()
-		data1 := models.Log{}
-		err := json.Unmarshal(bytes, &data1)
-		if err != nil {
-			logs.Info(err)
-			return
-		}
-		rondom := data1.Random
-		log := data1.Log
-
-		if err != nil {
-			c.Ctx.WriteString("错误请求")
-			return
-		}
-		result := Result{
-			Data:    log,
-			Code:    0,
-			Message: rondom,
-		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
-		if errs != nil {
-			fmt.Println(errs.Error())
-		}
-		c.Ctx.WriteString(string(jsons))
-
 	} else {
 		c.Ctx.WriteString("错误请求")
 	}
