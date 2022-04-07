@@ -25,6 +25,12 @@
  echo "127.0.0.1 helpu.cf" | tee -a /etc/hosts
  fi
 
+if [ "$(grep 'leafxcy.coding.net' /etc/hosts)" = "" ];
+  then
+  echo "127.0.0.1 leafxcy.coding.net" | tee -a /etc/hosts
+fi
+
+
 #result=$(grep 'smiek.tk' /etc/hosts)
 # if [ "$reusult" = "" ]
 # then
