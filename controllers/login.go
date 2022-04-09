@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/buger/jsonparser"
 	"io/ioutil"
 	"net"
@@ -52,6 +53,11 @@ type Result struct {
 
 var JdCookieRunners sync.Map
 var jdua = models.GetUserAgent
+
+func (c *LoginController) GetUS() {
+	random := browser.Android()
+	c.Ctx.WriteString(random)
+}
 
 func (c *LoginController) GetUserInfo() {
 
