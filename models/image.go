@@ -81,7 +81,7 @@ func strtoimg(str string) []byte {
 	}
 	//_, err = c.DrawString(text, pt)
 
-	fileName := fmt.Sprintf("/img/%daaa.png", time.Now().Unix())
+	fileName := fmt.Sprintf("%daaa.png", time.Now().Unix())
 	outFile, err := os.Create(fileName)
 	if err != nil {
 		log.Println(err)
