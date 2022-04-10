@@ -419,9 +419,10 @@ var codeSignals = []CodeSignal{
 			if len(sender.Contents) > 0 {
 				no := tytno
 				tytno += 1
-				tytlist[sender.Contents[0]] = no
-				go runtyt(sender, sender.Contents[1])
-				logs.Info(sender.Contents[0])
+				code := sender.JoinContens()
+				tytlist[code] = no
+				go runtyt(sender, code)
+				logs.Info(code)
 				sender.Reply("重置推一推")
 			}
 			return nil
