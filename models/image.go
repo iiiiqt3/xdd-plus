@@ -18,10 +18,10 @@ import (
 )
 
 var (
-	dpi      = flag.Float64("dpi", 72, "screen resolution in Dots Per Inch")
+	dpi      = flag.Float64("dpi", 100, "screen resolution in Dots Per Inch")
 	fontfile = flag.String("fontfile", "simsunb.ttf", "filename of the ttf font")
 	hinting  = flag.String("hinting", "full", "none | full")
-	size     = flag.Float64("size", 15, "font size in points")
+	size     = flag.Float64("size", 16, "font size in points")
 	spacing  = flag.Float64("spacing", 1.5, "line spacing (e.g. 2 means double spaced)")
 	wonb     = flag.Bool("whiteonblack", false, "white text on a black background")
 )
@@ -81,7 +81,7 @@ func strtoimg(str string) []byte {
 	}
 	//_, err = c.DrawString(text, pt)
 
-	fileName := fmt.Sprintf("%daaa.png", time.Now().Unix())
+	fileName := fmt.Sprintf("/img/%daaa.png", time.Now().Unix())
 	outFile, err := os.Create(fileName)
 	if err != nil {
 		log.Println(err)
