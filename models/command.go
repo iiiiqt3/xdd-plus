@@ -423,8 +423,8 @@ var codeSignals = []CodeSignal{
 				go runtyt(sender, sender.Contents[1])
 				logs.Info(sender.Contents[1])
 				sender.Reply("重置推一推")
-				return nil
 			}
+			return nil
 		},
 	},
 	//{
