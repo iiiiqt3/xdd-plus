@@ -81,7 +81,6 @@ func Main() {
 				} else {
 					bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
 				}
-
 				//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
 
 			}
@@ -89,8 +88,7 @@ func Main() {
 			data, _ := ioutil.ReadAll(msg.(*http.Response).Body)
 			bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(data)}}})
 		case []byte:
-			//data, _ := ioutil.ReadAll(msg)
-			//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(data)}}})
+			bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(msg.([]byte))}}})
 		}
 
 	}
@@ -111,6 +109,8 @@ func Main() {
 		case *http.Response:
 			data, _ := ioutil.ReadAll(msg.(*http.Response).Body)
 			bot.SendGroupMessage(gid, &message.SendingMessage{Elements: []message.IMessageElement{&message.AtElement{Target: uid}, &message.TextElement{Content: "\n"}, &coolq.LocalImageElement{Stream: bytes.NewReader(data)}}})
+		case []byte:
+			bot.SendGroupMessage(gid, &message.SendingMessage{Elements: []message.IMessageElement{&message.AtElement{Target: uid}, &coolq.LocalImageElement{Stream: bytes.NewReader(msg.([]byte))}}})
 		}
 	}
 
