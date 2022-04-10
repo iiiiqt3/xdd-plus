@@ -380,7 +380,6 @@ var codeSignals = []CodeSignal{
 				sender.Reply("项目未开启，如有需求请联系群主。")
 				return nil
 			}
-
 			f, err := os.OpenFile(ExecPath+"/wb.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 			if err != nil {
 				logs.Warn("wb.txt失败，", err)
