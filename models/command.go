@@ -416,7 +416,7 @@ var codeSignals = []CodeSignal{
 		Command: []string{"推一推"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
-			if len(sender.Contents) > 1 {
+			if len(sender.Contents) > 0 {
 				no := tytno
 				tytno += 1
 				tytlist[sender.Contents[1]] = no
