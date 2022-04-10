@@ -411,6 +411,20 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	{
+		Command: []string{"推一推"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			no := tytno
+			tytno += 1
+			tytlist[sender.Contents[1]] = no
+			go runtyt(sender, sender.Contents[1])
+			logs.Info(sender.Contents[1])
+			sender.Reply("重置推一推")
+			return nil
+		},
+	},
 	//{
 	//	Command: []string{"挖宝1"},
 	//	Handle: func(sender *Sender) interface{} {
