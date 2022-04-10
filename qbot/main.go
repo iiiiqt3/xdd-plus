@@ -76,6 +76,7 @@ func Main() {
 					log.Info("开始发送图片")
 					wd, _ := os.Getwd()
 					file, _ := ioutil.ReadFile(wd + "/output.jpg")
+
 					bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(file)}}})
 				} else {
 					bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})

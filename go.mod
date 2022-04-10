@@ -14,9 +14,9 @@ require (
 	github.com/Mrs4s/MiraiGo v0.0.0-20211208080234-25c67a3ee1c1
 	//github.com/Mrs4s/MiraiGo v0.0.0-20210726103104-1d68826cef0e
 	github.com/Mrs4s/go-cqhttp v1.0.0-beta8-fix2
+	github.com/OvenVan/chitchat v1.0.2
 	github.com/PuerkitoBio/goquery v1.8.0 // indirect
 	github.com/beego/beego/v2 v2.0.1
-	github.com/OvenVan/chitchat v1.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-playground/locales v0.13.0
@@ -60,6 +60,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/protobuf v1.5.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
@@ -89,6 +90,7 @@ require (
 	github.com/shiena/ansicolor v0.0.0-20151119151921-a422bbe96644 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
+	golang.org/x/image v0.0.0-20220321031419-a8550c1d254a // indirect
 	golang.org/x/mod v0.3.0 // indirect
 	golang.org/x/net v0.0.0-20211123203042-d83791d6bcd9 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
