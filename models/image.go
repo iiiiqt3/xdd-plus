@@ -13,6 +13,7 @@ import (
 	"image/png"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -25,9 +26,9 @@ var (
 	wonb     = flag.Bool("whiteonblack", false, "white text on a black background")
 )
 
-func strtoimg(text string) []byte {
+func strtoimg(str string) []byte {
 	log.Info("开始转换图片")
-	log.Info(text)
+	text := strings.Split(str, "\n")
 	fontBytes, err := ioutil.ReadFile(*fontfile)
 	if err != nil {
 		log.Println(err)
@@ -70,15 +71,15 @@ func strtoimg(text string) []byte {
 
 	// Draw the text.
 	pt := freetype.Pt(10, 10+int(c.PointToFixed(*size)>>6))
-	//for _, s := range text {
-	//	_, err = c.DrawString(s, pt)
-	//	if err != nil {
-	//		log.Println(err)
-	//		return nil
-	//	}
-	//	pt.Y += c.PointToFixed(*size * *spacing)
-	//}
-	_, err = c.DrawString(text, pt)
+	for _, s := range text {
+		_, err = c.DrawString(s, pt)
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		pt.Y += c.PointToFixed(*size * *spacing)
+	}
+	//_, err = c.DrawString(text, pt)
 
 	fileName := fmt.Sprintf("%daaa.png", time.Now().Unix())
 	outFile, err := os.Create(fileName)
