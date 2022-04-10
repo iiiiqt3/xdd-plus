@@ -27,6 +27,7 @@ var (
 
 func strtoimg(text string) []byte {
 	log.Info("开始转换图片")
+	log.Info(text)
 	fontBytes, err := ioutil.ReadFile(*fontfile)
 	if err != nil {
 		log.Println(err)
