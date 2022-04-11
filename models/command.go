@@ -284,7 +284,9 @@ var codeSignals = []CodeSignal{
 		Command: []string{"推一推状态"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
-			return fmt.Sprintf("推一推正在运行线程:%d,闲置线程:%d", tytnum, 3-tytnum)
+			cks := []JdCookie{}
+			db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Order("RAND()").Find(&cks)
+			return fmt.Sprintf("推一推正在运行线程:%d,闲置线程:%d,剩余推一推个数:%d", tytnum, 3-tytnum, len(cks))
 		},
 	},
 
