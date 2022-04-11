@@ -424,7 +424,7 @@ var codeSignals = []CodeSignal{
 				tytlist[code] = no
 				go runtyt(sender, code)
 				logs.Info(code)
-				sender.Reply(fmt.Sprintf("开始Code：%s",code))
+				sender.Reply(fmt.Sprintf("开始Code：%s", code))
 			}
 			return nil
 		},

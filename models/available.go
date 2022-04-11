@@ -342,11 +342,11 @@ func CookieOK(ck *JdCookie) bool {
 						}
 
 					} else {
-						ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录", ck.Nickname, Config.Invalid))
+						ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录,安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
 						JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
 					}
 				} else {
-					ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录", ck.Nickname, Config.Invalid))
+					ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录，安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
 					JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
 				}
 
