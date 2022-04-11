@@ -236,8 +236,8 @@ func updateCookie() {
 			rsp, _ := getKey(pinky)
 			if strings.Contains(rsp, "fake") {
 				yy++
-				ck.Push(fmt.Sprintf("Wskey失效账号，%s", ck.PtPin))
-				(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，%s", ck.PtPin))
+				ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
+				(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
 			} else {
 				ptKey := FetchJdCookieValue("pt_key", rsp)
 				ptPin := FetchJdCookieValue("pt_pin", rsp)
@@ -342,11 +342,11 @@ func CookieOK(ck *JdCookie) bool {
 						}
 
 					} else {
-						ck.Push(fmt.Sprintf("失效账号，%s \n %s", ck.Nickname, Config.Invalid))
+						ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录", ck.Nickname, Config.Invalid))
 						JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
 					}
 				} else {
-					ck.Push(fmt.Sprintf("失效账号，%s \n %s", ck.Nickname, Config.Invalid))
+					ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录", ck.Nickname, Config.Invalid))
 					JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
 				}
 
