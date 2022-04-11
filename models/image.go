@@ -100,6 +100,7 @@ func strtoimg(str string) []byte {
 		os.Exit(1)
 	}
 	file, _ := os.ReadFile(fileName)
+	os.Remove(fileName)
 	return file
 
 }
