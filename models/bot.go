@@ -654,7 +654,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 		{ //tyt
 			if strings.Contains(msg, "49f40d2f40b3470e8d6c39aa4866c7ff") {
-				return "暂停项目"
 				no := tytno
 				tytno += 1
 				split := strings.Split(msg, "&amp;")
