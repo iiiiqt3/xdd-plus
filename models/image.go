@@ -22,7 +22,7 @@ var (
 	fontfile = flag.String("fontfile", "simsunb.ttf", "filename of the ttf font")
 	hinting  = flag.String("hinting", "full", "none | full")
 	size     = flag.Float64("size", 20, "font size in points")
-	spacing  = flag.Float64("spacing", 1.5, "line spacing (e.g. 2 means double spaced)")
+	spacing  = flag.Float64("spacing", 1, "line spacing (e.g. 2 means double spaced)")
 	wonb     = flag.Bool("whiteonblack", false, "white text on a black background")
 )
 
@@ -47,7 +47,7 @@ func strtoimg(str string) []byte {
 		fg, bg = image.White, image.Black
 		ruler = color.RGBA{0x22, 0x22, 0x22, 0xff}
 	}
-	rgba := image.NewRGBA(image.Rect(0, 0, 640, 480))
+	rgba := image.NewRGBA(image.Rect(0, 0, 520, 700))
 	draw.Draw(rgba, rgba.Bounds(), bg, image.Point{}, draw.Src)
 	c := freetype.NewContext()
 	c.SetDPI(*dpi)
