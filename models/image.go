@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/image/font"
 	"image"
-	"image/color"
 	"image/draw"
 	"image/png"
 	"io/ioutil"
@@ -42,10 +41,10 @@ func strtoimg(str string) []byte {
 
 	// Initialize the context.
 	fg, bg := image.Black, image.White
-	ruler := color.RGBA{0xdd, 0xdd, 0xdd, 0xff}
+	//ruler := color.RGBA{0xdd, 0xdd, 0xdd, 0xff}
 	if *wonb {
 		fg, bg = image.White, image.Black
-		ruler = color.RGBA{0x22, 0x22, 0x22, 0xff}
+		//ruler = color.RGBA{0x22, 0x22, 0x22, 0xff}
 	}
 	rgba := image.NewRGBA(image.Rect(0, 0, 520, 900))
 	draw.Draw(rgba, rgba.Bounds(), bg, image.Point{}, draw.Src)
@@ -63,11 +62,11 @@ func strtoimg(str string) []byte {
 		c.SetHinting(font.HintingFull)
 	}
 
-	// Draw the guidelines.
-	for i := 0; i < 200; i++ {
-		rgba.Set(10, 10+i, ruler)
-		rgba.Set(10+i, 10, ruler)
-	}
+	//// Draw the guidelines.
+	//for i := 0; i < 200; i++ {
+	//	rgba.Set(10, 10+i, ruler)
+	//	rgba.Set(10+i, 10, ruler)
+	//}
 
 	// Draw the text.
 	pt := freetype.Pt(10, 10+int(c.PointToFixed(*size)>>6))
