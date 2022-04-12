@@ -844,6 +844,9 @@ func starttyt(red string) (num int, f bool) {
 				ck.Update(Tyt, "need verity")
 			} else if strings.Contains(data, "未登录") {
 				CookieOK(&ck)
+				go func() {
+					Save <- &JdCookie{}
+				}()
 			} else {
 				getString, _ := jsonparser.GetString([]byte(data), "msg")
 				ck.Update(Tyt, getString)
