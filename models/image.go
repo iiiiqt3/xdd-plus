@@ -21,7 +21,7 @@ var (
 	fontfile = flag.String("fontfile", "simsunb.ttf", "filename of the ttf font")
 	hinting  = flag.String("hinting", "full", "none | full")
 	size     = flag.Float64("size", 20, "font size in points")
-	spacing  = flag.Float64("spacing", 1, "line spacing (e.g. 2 means double spaced)")
+	spacing  = flag.Float64("spacing", 1.2, "line spacing (e.g. 2 means double spaced)")
 	wonb     = flag.Bool("whiteonblack", false, "white text on a black background")
 )
 
