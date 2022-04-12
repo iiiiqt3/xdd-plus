@@ -47,7 +47,7 @@ func strtoimg(str string) []byte {
 		fg, bg = image.White, image.Black
 		ruler = color.RGBA{0x22, 0x22, 0x22, 0xff}
 	}
-	rgba := image.NewRGBA(image.Rect(0, 0, 520, 700))
+	rgba := image.NewRGBA(image.Rect(0, 0, 520, 900))
 	draw.Draw(rgba, rgba.Bounds(), bg, image.Point{}, draw.Src)
 	c := freetype.NewContext()
 	c.SetDPI(*dpi)
