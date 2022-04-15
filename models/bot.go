@@ -143,6 +143,28 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					return useKey(msg, sender.UserID)
 				}
 			}
+
+			{
+				//dyj
+				inviterId := regexp.MustCompile(`inviterId=(\S+)(&|&amp;)helpType`).FindStringSubmatch(msg)
+				redEnvelopeId := regexp.MustCompile(`redEnvelopeId=(\S+)(&|&amp;)inviterId`).FindStringSubmatch(msg)
+				if len(inviterId) > 0 && len(redEnvelopeId) > 0 {
+					if !sender.IsAdmin {
+						sender.Reply("仅管理员可用")
+					} else {
+						sender.Reply(fmt.Sprintf("大赢家开始，管理员通道"))
+						num, num1, f, _ := startdyj(inviterId[1], redEnvelopeId[1], 1)
+						if f {
+							sender.Reply(fmt.Sprintf("助力完成，助力成功：%d个,火爆账号:%d个", num, num1))
+						} else {
+							sender.Reply(fmt.Sprintf("你已经黑IP拉！，助力成功：%d个,火爆账号:%d个", num, num1))
+						}
+
+					}
+					return nil
+				}
+			}
+
 			//挖宝统计
 			//{
 			//	if strings.Contains(msg, "https://bnzf.jd.com/") {
@@ -608,34 +630,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		//		return nil
 		//	}
 		//}
-		//{
-		//	//dyj
-		//	inviterId := regexp.MustCompile(`inviterId=(\S+)(&|&amp;)helpType`).FindStringSubmatch(msg)
-		//	redEnvelopeId := regexp.MustCompile(`redEnvelopeId=(\S+)(&|&amp;)inviterId`).FindStringSubmatch(msg)
-		//	if len(inviterId) > 0 && len(redEnvelopeId) > 0 {
-		//		if !sender.IsAdmin {
-		//			sender.Reply("仅管理员可用")
-		//		} else {
-		//			sender.Reply(fmt.Sprintf("大赢家开始，管理员通道"))
-		//			num, num1, f, f1 := startdyj(inviterId[1], redEnvelopeId[1], 1)
-		//			if f {
-		//				sender.Reply(fmt.Sprintf("助力完成，助力成功：%d个,火爆账号:%d个", num, num1))
-		//				if f1 {
-		//					sender.Reply("满足提现条件，开始自动提现助力")
-		//					n, i, _, f12 := startdyj(inviterId[1], redEnvelopeId[1], 2)
-		//					if f12 {
-		//						sender.Reply(fmt.Sprintf("提现助力完成，助力成功：%d个,火爆账号:%d个", n, i))
-		//					}
-		//				}
-		//			} else {
-		//				sender.Reply(fmt.Sprintf("你已经黑IP拉！，助力成功：%d个,火爆账号:%d个", num, num1))
-		//			}
-		//
-		//		}
-		//		return nil
-		//	}
-		//
-		//}
+
 		//{
 		//	//k1k
 		//	ss := regexp.MustCompile(`launchid=(\S+)(&|&amp;)ptag`).FindStringSubmatch(msg)
@@ -797,6 +792,49 @@ func runtyt(sender *Sender, code string) {
 			return
 		}
 	}
+}
+
+func startdyj(ine string, red string, type1 int) (num int, num1 int, f bool, f1 bool) {
+	k := 0
+	n := 0
+	cks := []JdCookie{}
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
+	i := 0
+	for _, ck := range cks {
+		i++
+		time.Sleep(time.Second * time.Duration(5))
+		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
+		sprintf := fmt.Sprintf(`https://api.m.jd.com/client.action?functionId=openRedEnvelopeInteract&body={"linkId":"u_2EYfsxu0skdtZ6gbRjBQ","redEnvelopeId":"%s","inviter":"%s","helpType":"%d"}&t=1649985233172&appid=activities_platform&client=H5&clientVersion=1.0.0`, red, ine, type1)
+		req := httplib.Get(sprintf)
+		random := browser.Random()
+		req.Header("User-Agent", random)
+		req.Header("Host", "api.m.jd.com")
+		req.Header("Accept", "application/json, text/plain, */*")
+		req.Header("Connection", "keep-alive")
+		req.Header("Accept-Language", "zh-cn")
+		req.Header("Accept-Encoding", "gzip, deflate, br")
+		req.Header("Origin", "https://618redpacket.jd.com")
+		req.Header("Cookie", cookie)
+		data, _ := req.String()
+		if strings.Contains(data, "助力成功") {
+			logs.Info("助力成功")
+			k++
+		} else if strings.Contains(data, "火爆") {
+			logs.Info("火爆了")
+			ck.Update(Dig, False)
+			n++
+		} else if strings.EqualFold(data, "") {
+			return i, n, false, false
+		} else if strings.Contains(data, "今日帮好友拆红包次数已达上限") {
+			ck.Update(Dig, False)
+			logs.Info("助力上限")
+		} else if strings.Contains(data, "已成功提现") {
+			return i, n, true, true
+		} else {
+			logs.Info("要么助力过了，要么没登录")
+		}
+	}
+	return k, n, true, false
 }
 
 func starttyt(red string) (num int, f bool) {
