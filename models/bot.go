@@ -824,13 +824,19 @@ func startdyj(ine string, red string, type1 int) (num int, num1 int, f bool, f1 
 			ck.Update(Dig, False)
 			n++
 		} else if strings.EqualFold(data, "") {
+			logs.Info("黑IP")
 			return i, n, false, false
 		} else if strings.Contains(data, "今日帮好友拆红包次数已达上限") {
-			ck.Update(Dig, False)
 			logs.Info("助力上限")
 		} else if strings.Contains(data, "已成功提现") {
 			return i, n, true, true
+		}else if strings.Contains(data,"未登录") {
+			CookieOK(&ck)
+			go func() {
+				Save <- &JdCookie{}
+			}()
 		} else {
+			logs.Info(data)
 			logs.Info("要么助力过了，要么没登录")
 		}
 	}
