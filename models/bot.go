@@ -830,7 +830,7 @@ func startdyj(ine string, red string, type1 int) (num int, num1 int, f bool, f1 
 			logs.Info("助力上限")
 		} else if strings.Contains(data, "已成功提现") {
 			return i, n, true, true
-		}else if strings.Contains(data,"未登录") {
+		} else if strings.Contains(data, "未登录") {
 			CookieOK(&ck)
 			go func() {
 				Save <- &JdCookie{}

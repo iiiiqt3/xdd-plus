@@ -291,6 +291,16 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"大赢家状态"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			cks := []JdCookie{}
+			db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
+			return fmt.Sprintf("推一推正在运行线程:%d,闲置线程:%d,剩余大赢家个数:%d", tytnum, 3-tytnum, len(cks))
+		},
+	},
+
+	{
 		Command: []string{"开始检测"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
