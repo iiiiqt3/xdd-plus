@@ -148,12 +148,14 @@ func (ck *JdCookie) Query() string {
 		//msgs = append(msgs, fmt.Sprintf("等级名称：%v", ck.LevelName))
 
 		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
-		if !strings.Contains(cookie, "open") {
-			if ck.UpdateAt != "" {
-				parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
-				f := t.Sub(parse1).Hours() / 24
-				i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
+		if ck.UpdateAt != "" {
+			parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
+			f := t.Sub(parse1).Hours() / 24
+			i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
+			if !strings.Contains(cookie, "app_open") {
 				msgs = append(msgs, fmt.Sprintf("您距离失效还有：%d天", 28-i))
+			} else {
+				msgs = append(msgs, fmt.Sprintf("尊贵的年费用户，您距离失效还有：%d天", 365-i))
 			}
 		}
 		var rpc = make(chan []RedList)
