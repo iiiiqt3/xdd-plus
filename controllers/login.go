@@ -94,7 +94,7 @@ type Cookie struct {
 }
 
 const (
-	addr = "192.168.195.44:19730"
+	addr = "1.14.6.34:19730"
 )
 
 func (c *LoginController) GetLog199() {
