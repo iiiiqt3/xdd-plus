@@ -146,6 +146,13 @@ func (ck *JdCookie) Query() string {
 		//msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
 		//msgs = append(msgs, fmt.Sprintf("用户等级：%v", ck.UserLevel))
 		//msgs = append(msgs, fmt.Sprintf("等级名称：%v", ck.LevelName))
+		if ck.Priority > 9 {
+			msgs = append(msgs, fmt.Sprintf("用户等级：%s", "VIP用户"))
+		} else if strings.Contains(ck.PtKey, "app_open") {
+			msgs = append(msgs, fmt.Sprintf("用户等级：%s", "年费用户"))
+		} else {
+			msgs = append(msgs, fmt.Sprintf("用户等级：%s", "普通用户"))
+		}
 
 		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
 		if ck.UpdateAt != "" {
