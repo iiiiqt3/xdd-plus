@@ -111,9 +111,11 @@ const (
 
 func (c *LoginController) GetLog199() {
 	bytes, _ := httplib.Get("http://jd.txmmp.cn/api/log").Bytes()
+	logs.Info(string(bytes))
 	data1 := models.Log{}
 	err := json.Unmarshal(bytes, &data1)
 	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 	rondom := data1.Random
