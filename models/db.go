@@ -94,7 +94,7 @@ type Log struct {
 	Result int    `json:"result"`
 	Status int    `json:"status"`
 	Log    string `json:"log"`
-	Random string `json:"random"`
+	Random int    `json:"random"`
 	Ck     string `json:"ck"`
 }
 
