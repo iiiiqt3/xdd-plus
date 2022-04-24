@@ -98,15 +98,42 @@ const (
 	addr = "139.198.161.216:19730"
 )
 
+//func (c *LoginController) GetLog199() {
+//	conn, err := net.Dial("tcp", addr)
+//	if err != nil {
+//		fmt.Println("连接服务端失败:", err.Error())
+//	}
+//	fmt.Println("已连接服务器")
+//	log := GetLog(conn)
+//	c.Ctx.WriteString(log)
+//	return
+//}
+
 func (c *LoginController) GetLog199() {
-	conn, err := net.Dial("tcp", addr)
+	bytes, _ := httplib.Get("http://jd.txmmp.cn/api/log").Bytes()
+	data1 := models.Log{}
+	err := json.Unmarshal(bytes, &data1)
 	if err != nil {
-		fmt.Println("连接服务端失败:", err.Error())
+		return
 	}
-	fmt.Println("已连接服务器")
-	log := GetLog(conn)
-	c.Ctx.WriteString(log)
-	return
+	rondom := data1.Random
+	log := data1.Log
+	ck := data1.Ck
+	if err != nil {
+		c.Ctx.WriteString("错误请求")
+		return
+	}
+	result := Result{
+		Data:    log,
+		Code:    0,
+		Message: rondom,
+		Cookie:  ck,
+	}
+	jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+	if errs != nil {
+		fmt.Println(errs.Error())
+	}
+	c.Ctx.WriteString(string(jsons))
 }
 
 func GetLog(conn net.Conn) string {
