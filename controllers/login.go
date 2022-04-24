@@ -49,6 +49,7 @@ type Result struct {
 	Code    int         `json:"code"`
 	Data    interface{} `json:"data"`
 	Message string      `json:"message"`
+	Cookie  string      `json:"cookie"`
 }
 
 var JdCookieRunners sync.Map
@@ -94,7 +95,7 @@ type Cookie struct {
 }
 
 const (
-	addr = "1.14.6.34:19730"
+	addr = "139.198.161.216:19730"
 )
 
 func (c *LoginController) GetLog199() {
@@ -139,6 +140,7 @@ func (c *LoginController) GetLogs() {
 		}
 		rondom := data1.Random
 		log := data1.Log
+		ck := cookie + data1.Ck
 		if err != nil {
 			c.Ctx.WriteString("错误请求")
 			return
@@ -147,6 +149,7 @@ func (c *LoginController) GetLogs() {
 			Data:    log,
 			Code:    0,
 			Message: rondom,
+			Cookie:  ck,
 		}
 		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
 		if errs != nil {
