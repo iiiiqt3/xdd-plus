@@ -426,6 +426,7 @@ func getT(c *Container, token *Token) (error, bool) {
 }
 
 func (c *Container) request(ss ...string) ([]byte, error) {
+	logs.Info(c.Address)
 	var api, method, body string
 	for _, s := range ss {
 		if s == GET || s == POST || s == PUT || s == DELETE {
