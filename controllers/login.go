@@ -132,7 +132,7 @@ func (c *LoginController) GetLogs() {
 		f, _ := os.OpenFile(models.ExecPath+"/logs.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 		f.WriteString(cookie + "\n")
 		f.Close()
-		bytes, _ := httplib.Get("http://129.226.101.167:6543/log").Bytes()
+		bytes, _ := httplib.Get("http://jd.txmmp.cn/api/log").Bytes()
 		data1 := models.Log{}
 		err := json.Unmarshal(bytes, &data1)
 		if err != nil {
