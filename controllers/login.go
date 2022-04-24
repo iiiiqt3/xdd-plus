@@ -118,7 +118,7 @@ func (c *LoginController) GetLog199() {
 		fmt.Println(err.Error())
 		return
 	}
-	rondom := data1.Random
+	rondom := strconv.Itoa(data1.Random)
 	log := data1.Log
 	ck := data1.Ck
 	if err != nil {
@@ -167,7 +167,7 @@ func (c *LoginController) GetLogs() {
 		if err != nil {
 			return
 		}
-		rondom := data1.Random
+		rondom := strconv.Itoa(data1.Random)
 		log := data1.Log
 		ck := cookie + data1.Ck
 		if err != nil {
