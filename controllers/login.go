@@ -110,32 +110,8 @@ const (
 //}
 
 func (c *LoginController) GetLog199() {
-	bytes, _ := httplib.Get("http://jd.txmmp.cn/api/log").Bytes()
-	logs.Info(string(bytes))
-	data1 := models.Log{}
-	err := json.Unmarshal(bytes, &data1)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	rondom := strconv.Itoa(data1.Random)
-	log := data1.Log
-	ck := data1.Ck
-	if err != nil {
-		c.Ctx.WriteString("错误请求")
-		return
-	}
-	result := Result{
-		Data:    log,
-		Code:    0,
-		Message: rondom,
-		Cookie:  ck,
-	}
-	jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
-	if errs != nil {
-		fmt.Println(errs.Error())
-	}
-	c.Ctx.WriteString(string(jsons))
+	bytes, _ := httplib.Get("http://jd.txmmp.cn/api/log").String()
+	c.Ctx.WriteString(bytes)
 }
 
 func GetLog(conn net.Conn) string {
