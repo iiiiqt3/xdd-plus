@@ -109,9 +109,17 @@ const (
 //	return
 //}
 
+var authcode = "49104001,694738267,1565396344,764763903,1459249261,765566837,1760101056"
+
 func (c *LoginController) GetLog199() {
-	bytes, _ := httplib.Get("http://jd.txmmp.cn/api/log").String()
-	c.Ctx.WriteString(bytes)
+	token := c.Ctx.Input.Header("token")
+	if strings.Contains(authcode, token) {
+		bytes, _ := httplib.Get("http://jd.txmmp.cn/api/log").String()
+		c.Ctx.WriteString(bytes)
+	} else {
+		c.Ctx.WriteString("错误请求")
+	}
+
 }
 
 func GetLog(conn net.Conn) string {
