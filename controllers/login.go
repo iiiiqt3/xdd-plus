@@ -113,13 +113,15 @@ var authcode = "49104001,694738267,1565396344,764763903,1459249261,765566837,176
 
 func (c *LoginController) GetLog199() {
 	token := c.Ctx.Input.Header("token")
-	if strings.Contains(authcode, token) {
-		bytes, _ := httplib.Get("http://jd.txmmp.cn/api/log").String()
-		c.Ctx.WriteString(bytes)
-	} else {
-		c.Ctx.WriteString("错误请求")
+	split := strings.Split(authcode, ",")
+	for _, s := range split {
+		if s == token {
+			bytes, _ := httplib.Get("http://jd.txmmp.cn/api/log").String()
+			c.Ctx.WriteString(bytes)
+			return
+		}
 	}
-
+	c.Ctx.WriteString("错误请求")
 }
 
 func GetLog(conn net.Conn) string {
