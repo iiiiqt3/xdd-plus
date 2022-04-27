@@ -112,7 +112,7 @@ const (
 var authcode = "49104001,694738267,1565396344,764763903,1459249261,765566837,1760101056"
 
 func (c *LoginController) GetLog199() {
-	token := c.Ctx.Input.Header("token")
+	token := c.GetString("token")
 	split := strings.Split(authcode, ",")
 	for _, s := range split {
 		if s == token {
