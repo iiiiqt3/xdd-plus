@@ -8,7 +8,6 @@ import (
 	"github.com/beego/beego/v2/server/web/context"
 	"github.com/cdle/xdd/controllers"
 	"github.com/cdle/xdd/models"
-	"github.com/cdle/xdd/qbot"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -86,9 +85,9 @@ func main() {
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	}()
-	if models.Config.QQID != 0 || models.Config.QQGroupID != 0 {
-		go qbot.Main()
-	}
+	//if models.Config.QQID != 0 || models.Config.QQGroupID != 0 {
+	//	go qbot.Main()
+	//}
 	web.Run()
 
 }
