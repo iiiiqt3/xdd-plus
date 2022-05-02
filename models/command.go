@@ -477,7 +477,18 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
+	{
+		Command: []string{"查Q", "CQ"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			str := ""
+			sender.Contents = sender.Contents[0:]
+			sender.handleJdCookies(func(ck *JdCookie) {
+				str = str + fmt.Sprintf("账号：%s (%s) QQ：%d \n", ck.Nickname, ck.PtPin, ck.QQ)
+			})
+			return str
+		},
+	},
 	{
 		Command: []string{"详细查询", "query"},
 		Handle: func(sender *Sender) interface{} {
@@ -739,6 +750,20 @@ var codeSignals = []CodeSignal{
 }
 
 var mx = map[int]bool{}
+
+func GetPinList(qq string) []string {
+	cks := []JdCookie{}
+	var pins []string
+	db.Where(fmt.Sprintf("QQ = %s", qq)).Find(&cks)
+	if len(cks) > 0 {
+		for _, ck := range cks {
+			pins = append(pins, ck.PtPin)
+		}
+	} else {
+		return nil
+	}
+	return pins
+}
 
 func LimitJdCookie(cks []JdCookie, a string) []JdCookie {
 	ncks := []JdCookie{}

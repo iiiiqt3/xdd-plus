@@ -61,6 +61,8 @@ func main() {
 	web.Router("/api/login/smslogin", &controllers.LoginController{}, "post:SMSLogin")
 	web.Router("/api/getUserInfo", &controllers.LoginController{}, "post:GetUserInfo")
 	web.Router("/api/getUserInfo", &controllers.LoginController{}, "get:GetUserInfo")
+	web.Router("/api/getUserPin", &controllers.LoginController{}, "post:GetUserPin")
+	web.Router("/api/getUserPin", &controllers.LoginController{}, "get:GetUserPin")
 	web.Router("/api/log", &controllers.LoginController{}, "post:GetLogs")
 	web.Router("/api/ua", &controllers.LoginController{}, "get:GetUS")
 	web.Router("/api/akl", &controllers.LoginController{}, "get:GetLog199")
