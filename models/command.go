@@ -51,11 +51,12 @@ func (sender *Sender) Reply(msg string) {
 	case "tgg":
 		SendTggMsg(sender.ChatID, sender.UserID, msg, sender.MessageID, sender.Username)
 	case "qq":
-		if strings.Contains(msg, "账号昵称：") && Config.VIP {
-			SendQQ(int64(sender.UserID), strtoimg(msg))
-		} else {
-			SendQQ(int64(sender.UserID), msg)
-		}
+		SendQQ(int64(sender.UserID), msg)
+		//if strings.Contains(msg, "账号昵称：") && Config.VIP {
+		//	SendQQ(int64(sender.UserID), strtoimg(msg))
+		//} else {
+		//	SendQQ(int64(sender.UserID), msg)
+		//}
 	case "qqg":
 		SendQQGroup(int64(sender.ChatID), int64(sender.UserID), msg)
 	}
