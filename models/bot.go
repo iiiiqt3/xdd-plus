@@ -467,7 +467,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 										ck.Update(QQ, ck.QQ)
 									}
 									nck.Update(WsKey, ck.WsKey)
-									msg := fmt.Sprintf("写入WsKey，并更新账号%s", ck.PtPin)
+									msg := fmt.Sprintf("年费新增成功，账号%s", ck.PtPin)
 									sender.Reply(fmt.Sprintf(msg))
 									(&JdCookie{}).Push(msg)
 									logs.Info(msg)
@@ -481,7 +481,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 										nck.Updates(JdCookie{
 											WsKey: ck.WsKey,
 										})
-										msg := fmt.Sprintf("更新WsKey，并更新账号%s", ck.PtPin)
+										msg := fmt.Sprintf("年费更新成功，账号%s", ck.PtPin)
 										sender.Reply(fmt.Sprintf(msg))
 										(&JdCookie{}).Push(msg)
 										logs.Info(msg)
