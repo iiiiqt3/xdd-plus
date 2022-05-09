@@ -64,12 +64,24 @@ func (c *LoginController) GetUserInfo() {
 
 	pin := c.GetString("pin")
 	cookie, err := models.GetJdCookie(pin)
+	ok := models.CookieOK(cookie)
 	if err != nil {
 		logs.Error(err)
 		result := Result{
 			Data:    "null",
 			Code:    1,
 			Message: "查无匹配的pin",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
+	} else if !ok {
+		result := Result{
+			Data:    "账号过期",
+			Code:    0,
+			Message: "账号过期",
 		}
 		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
 		if errs != nil {
