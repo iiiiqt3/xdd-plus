@@ -410,7 +410,30 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
+	{
+		Command: []string{"qj"},
+		Handle: func(sender *Sender) interface{} {
+			if wb != true {
+				sender.Reply("项目未开启，如有需求请联系群主。")
+				return nil
+			}
+			f, err := os.OpenFile(ExecPath+"/qj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+			if err != nil {
+				logs.Warn("qj.txt失败，", err)
+			}
+			sender.handleJdCookies(func(ck *JdCookie) {
+				if GetCoin(sender.UserID) > 9 {
+					f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
+					RemCoin(sender.UserID, 10)
+					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分10，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+				} else {
+					sender.Reply("积分不足")
+				}
+			})
+			f.Close()
+			return nil
+		},
+	},
 	{
 		Command: []string{"重置推一推"},
 		Admin:   true,
@@ -467,7 +490,7 @@ var codeSignals = []CodeSignal{
 			//else {
 			//	if getLimit(sender.UserID, 1) {
 			//		sender.handleJdCookies(func(ck *JdCookie) {
-			//			time.Sleep(time.Second * time.Duration(Config.Later))
+			//			time.Sleep(timew.Second * time.Duration(Config.Later))
 			//			sender.Reply(ck.Query())
 			//		})
 			//	} else {
