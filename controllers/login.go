@@ -56,7 +56,7 @@ var JdCookieRunners sync.Map
 var jdua = models.GetUserAgent
 
 func (c *LoginController) GetUS() {
-	random := browser.Android()
+	random := browser.Chrome()
 	c.Ctx.WriteString(random)
 }
 
