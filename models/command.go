@@ -836,13 +836,13 @@ func getUserNameList(qq string) []string {
 					f := t.Sub(parse1).Hours() / 24
 					i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
 					if !strings.Contains(ck.PtKey, "app_open") {
-						names = append(names, fmt.Sprintf("%s距离失效还有：%d天\n", ck.Nickname, 28-i))
+						names = append(names, fmt.Sprintf("%s\n距离失效还有：%d天\n", ck.Nickname, 28-i))
 					} else {
-						names = append(names, fmt.Sprintf("%s尊贵的年费用户，您距离失效还有：%d天 \n", ck.Nickname, 365-i))
+						names = append(names, fmt.Sprintf("%s\n尊贵的年费用户，您距离失效还有：%d天 \n", ck.Nickname, 365-i))
 					}
 				}
 			} else {
-				names = append(names, fmt.Sprintf("%s账号已过期\n", ck.Nickname))
+				names = append(names, fmt.Sprintf("%s\n账号已过期\n", ck.Nickname))
 			}
 
 		}
