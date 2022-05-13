@@ -830,16 +830,21 @@ func getUserNameList(qq string) []string {
 	t, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
 	if len(cks) > 0 {
 		for _, ck := range cks {
-			if ck.UpdateAt != "" {
-				parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
-				f := t.Sub(parse1).Hours() / 24
-				i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
-				if !strings.Contains(ck.PtKey, "app_open") {
-					names = append(names, fmt.Sprintf("%s距离失效还有：%d天\n", ck.Nickname, 28-i))
-				} else {
-					names = append(names, fmt.Sprintf("%s尊贵的年费用户，您距离失效还有：%d天 \n", ck.Nickname, 365-i))
+			if CookieOK(&ck) {
+				if ck.UpdateAt != "" {
+					parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
+					f := t.Sub(parse1).Hours() / 24
+					i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
+					if !strings.Contains(ck.PtKey, "app_open") {
+						names = append(names, fmt.Sprintf("%s距离失效还有：%d天\n", ck.Nickname, 28-i))
+					} else {
+						names = append(names, fmt.Sprintf("%s尊贵的年费用户，您距离失效还有：%d天 \n", ck.Nickname, 365-i))
+					}
 				}
+			} else {
+				names = append(names, fmt.Sprintf("%s账号已过期\n", ck.Nickname))
 			}
+
 		}
 	} else {
 		return nil
