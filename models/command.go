@@ -507,6 +507,12 @@ var codeSignals = []CodeSignal{
 					sender.Reply(ck.Query())
 				})
 			} else {
+				list := GetPinList(strconv.Itoa(sender.UserID))
+				str := "在线账号:\n"
+				for _, s := range list {
+					str = str + fmt.Sprintf("账号：%s  \n", s)
+				}
+				sender.Reply(str)
 				url := "http://h5img.smxy.xyz/qrcode.png"
 				rsp, err := httplib.Get(url).Response()
 				if err != nil {
@@ -815,6 +821,20 @@ func GetPinList(qq string) []string {
 		return nil
 	}
 	return pins
+}
+
+func getUserNameList(qq string) []string {
+	cks := []JdCookie{}
+	var names []string
+	db.Where(fmt.Sprintf("QQ = %s", qq)).Find(&cks)
+	if len(cks) > 0 {
+		for _, ck := range cks {
+			names = append(names, ck.Nickname)
+		}
+	} else {
+		return nil
+	}
+	return names
 }
 
 func LimitJdCookie(cks []JdCookie, a string) []JdCookie {
