@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"gorm.io/gorm"
 	"os"
@@ -464,21 +465,25 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"查询", "query"},
 		Handle: func(sender *Sender) interface{} {
-			sender.Reply("如果您有多个账号，将依次为您展示查询结果：")
+			sender.Reply("请扫码完成网页查询")
 			if sender.IsAdmin {
 				sender.handleJdCookies(func(ck *JdCookie) {
 					time.Sleep(time.Second * time.Duration(Config.Later))
 					sender.Reply(ck.Query())
 				})
 			} else {
-				if getLimit(sender.UserID, 1) {
-					sender.handleJdCookies(func(ck *JdCookie) {
-						time.Sleep(time.Second * time.Duration(Config.Later))
-						sender.Reply(ck.Query())
-					})
-				} else {
-					sender.Reply(fmt.Sprintf("鉴于东哥对接口限流，为了不影响大家的任务正常运行，即日起每日限流%d次，已超过今日限制", Config.Lim))
+				list := getUserNameList(strconv.Itoa(sender.UserID))
+				str := "在线账号:\n"
+				for _, s := range list {
+					str = str + fmt.Sprintf("账号：%s  \n", s)
 				}
+				sender.Reply(str)
+				url := "http://h5img.smxy.xyz/qrcode.png"
+				rsp, err := httplib.Get(url).Response()
+				if err != nil {
+					return nil
+				}
+				return rsp
 			}
 			//sender.Reply("今日查询接口维护，请明日再来")
 
