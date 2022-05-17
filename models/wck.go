@@ -146,6 +146,7 @@ func getZooToken() string {
 
 func getTokenKey(WSCK string) (string, error) {
 	s := getZooToken()
+	logs.Info(s)
 	str := `https://api.m.jd.com/client.action?` + s + "&functionId=genToken"
 	req := httplib.Post(str)
 	req.Header("cookie", WSCK)
