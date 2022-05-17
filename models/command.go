@@ -223,22 +223,22 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-    {
+	{
 		Command: []string{"自动挖宝"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			cost := sender.Contents[0]
-			url_help :=sender.Contents[1]
+			url_help := sender.Contents[1]
 			if len(sender.Contents) >= 3 {
 				sender.Contents = sender.Contents[2:]
 				sender.handleJdCookies(func(ck *JdCookie) {
-				ptk := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey,ck.PtPin)
-				sender.Reply(fmt.Sprintf("已配置从第%s个账号开始自动挖宝",cost))
-				rsp := cmd(fmt.Sprintf(`python3 ./auto_wabao.py "%s" "%s" "%s"`, ptk,cost,url_help), &Sender{})
-				sender.Reply(rsp)
-			})
-			}else{
-			sender.Reply("请配置开始信息")
+					ptk := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
+					sender.Reply(fmt.Sprintf("已配置从第%s个账号开始自动挖宝", cost))
+					rsp := cmd(fmt.Sprintf(`python3 ./auto_wabao.py "%s" "%s" "%s"`, ptk, cost, url_help), &Sender{})
+					sender.Reply(rsp)
+				})
+			} else {
+				sender.Reply("请配置开始信息")
 			}
 			return nil
 		},
@@ -248,17 +248,17 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			cost := sender.Contents[0]
-			url_help :=sender.Contents[1]
+			url_help := sender.Contents[1]
 			if len(sender.Contents) >= 3 {
 				sender.Contents = sender.Contents[2:]
 				sender.handleJdCookies(func(ck *JdCookie) {
-				ptk := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey,ck.PtPin)
-				sender.Reply(fmt.Sprintf("已配置从第%s个账号开始自动挖宝",cost))
-				rsp := cmd(fmt.Sprintf(`python3 ./wabao.py "%s" "%s" "%s"`, ptk,cost,url_help), &Sender{})
-				sender.Reply(rsp)
-			})
-			}else{
-			sender.Reply("请配置开始信息")
+					ptk := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
+					sender.Reply(fmt.Sprintf("已配置从第%s个账号开始自动挖宝", cost))
+					rsp := cmd(fmt.Sprintf(`python3 ./wabao.py "%s" "%s" "%s"`, ptk, cost, url_help), &Sender{})
+					sender.Reply(rsp)
+				})
+			} else {
+				sender.Reply("请配置开始信息")
 			}
 			return nil
 		},
@@ -271,13 +271,13 @@ var codeSignals = []CodeSignal{
 			if len(sender.Contents) >= 2 {
 				sender.Contents = sender.Contents[1:]
 				sender.handleJdCookies(func(ck *JdCookie) {
-				ptk := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey,ck.PtPin)
-				sender.Reply(fmt.Sprintf("已配置从第%s个账号开始自动挖宝",cost))
-				rsp := cmd(fmt.Sprintf(`python3 ./auto_wabao1.py "%s" "%s"`, ptk,cost), &Sender{})
-				sender.Reply(rsp)
-			})
-			}else{
-			sender.Reply("请配置开始信息")
+					ptk := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
+					sender.Reply(fmt.Sprintf("已配置从第%s个账号开始自动挖宝", cost))
+					rsp := cmd(fmt.Sprintf(`python3 ./auto_wabao1.py "%s" "%s"`, ptk, cost), &Sender{})
+					sender.Reply(rsp)
+				})
+			} else {
+				sender.Reply("请配置开始信息")
 			}
 			return nil
 		},
@@ -287,15 +287,15 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			cost := sender.Contents[0]
-			url_help :=sender.Contents[1]
+			url_help := sender.Contents[1]
 			sender.Reply(url_help)
 			if len(sender.Contents) >= 2 {
 				//sender.Contents = sender.Contents[1:]
-				sender.Reply(fmt.Sprintf("已配置从第%s个账号开始自动挖宝",cost))
-				rsp := cmd(fmt.Sprintf(`python3 ./help_wabao.py "%s" "%s"`, url_help,cost), &Sender{})
+				sender.Reply(fmt.Sprintf("已配置从第%s个账号开始自动挖宝", cost))
+				rsp := cmd(fmt.Sprintf(`python3 ./help_wabao.py "%s" "%s"`, url_help, cost), &Sender{})
 				sender.Reply(rsp)
-			}else{
-			sender.Reply("请配置开始信息")
+			} else {
+				sender.Reply("请配置开始信息")
 			}
 			return nil
 		},
@@ -425,25 +425,25 @@ var codeSignals = []CodeSignal{
 			return str
 		},
 	},
-    {
-			Command: []string{"备注", "bz"},
-			Handle: func(sender *Sender) interface{} {
-				if len(sender.Contents) > 1 {
-					note := sender.Contents[0]
-					sender.Contents = sender.Contents[1:]
-					str := sender.Contents[0]
-					number, err := strconv.Atoi(str)
-					count := 0
-					sender.handleJdCookies(func(ck *JdCookie) {
-						count++
-						if (err == nil && number == count) || ck.PtPin == str || sender.IsAdmin {
-							ck.Update("Note", note)
-							sender.Reply(fmt.Sprintf("已设置账号%s(%s)的备注为%s。", ck.PtPin, ck.Nickname, note))
-						}
-					})
-				}
-				return nil
-			},
+	{
+		Command: []string{"备注", "bz"},
+		Handle: func(sender *Sender) interface{} {
+			if len(sender.Contents) > 1 {
+				note := sender.Contents[0]
+				sender.Contents = sender.Contents[1:]
+				str := sender.Contents[0]
+				number, err := strconv.Atoi(str)
+				count := 0
+				sender.handleJdCookies(func(ck *JdCookie) {
+					count++
+					if (err == nil && number == count) || ck.PtPin == str || sender.IsAdmin {
+						ck.Update("Note", note)
+						sender.Reply(fmt.Sprintf("已设置账号%s(%s)的备注为%s。", ck.PtPin, ck.Nickname, note))
+					}
+				})
+			}
+			return nil
+		},
 	},
 	{
 		Command: []string{"通知过期账号", "通知失效账号"},
@@ -1194,6 +1194,49 @@ var codeSignals = []CodeSignal{
 
 var mx = map[int]bool{}
 
+func GetPinList(qq string) []string {
+	cks := []JdCookie{}
+	var pins []string
+	db.Where(fmt.Sprintf("QQ = %s", qq)).Find(&cks)
+	if len(cks) > 0 {
+		for _, ck := range cks {
+			pins = append(pins, ck.PtPin)
+		}
+	} else {
+		return nil
+	}
+	return pins
+}
+
+func getUserNameList(qq string) []string {
+	cks := []JdCookie{}
+	var names []string
+	db.Where(fmt.Sprintf("QQ = %s", qq)).Find(&cks)
+	t, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
+	if len(cks) > 0 {
+		for _, ck := range cks {
+			if CookieOK(&ck) {
+				if ck.UpdateAt != "" {
+					parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
+					f := t.Sub(parse1).Hours() / 24
+					i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
+					if !strings.Contains(ck.PtKey, "app_open") {
+						names = append(names, fmt.Sprintf("%s\n距离失效还有：%d天\n", ck.Nickname, 28-i))
+					} else {
+						names = append(names, fmt.Sprintf("%s\n尊贵的年费用户，您距离失效还有：%d天 \n", ck.Nickname, 365-i))
+					}
+				}
+			} else {
+				names = append(names, fmt.Sprintf("%s\n账号已过期\n", ck.Nickname))
+			}
+
+		}
+	} else {
+		return nil
+	}
+	return names
+}
+
 func LimitJdCookie(cks []JdCookie, a string) []JdCookie {
 	ncks := []JdCookie{}
 	if s := strings.Split(a, "-"); len(s) == 2 {
@@ -1208,8 +1251,8 @@ func LimitJdCookie(cks []JdCookie, a string) []JdCookie {
 			for _, x := range xx {
 				if fmt.Sprint(i+1) == x[1] {
 					ncks = append(ncks, cks[i])
-					} else if strconv.Itoa(cks[i].QQ) == x[1] {
-						ncks = append(ncks, cks[i])
+				} else if strconv.Itoa(cks[i].QQ) == x[1] {
+					ncks = append(ncks, cks[i])
 				}
 			}
 
