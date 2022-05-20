@@ -56,7 +56,7 @@ var JdCookieRunners sync.Map
 var jdua = models.GetUserAgent
 
 func (c *LoginController) GetUS() {
-	random := browser.Android()
+	random := browser.Chrome()
 	c.Ctx.WriteString(random)
 }
 
@@ -64,6 +64,7 @@ func (c *LoginController) GetUserInfo() {
 
 	pin := c.GetString("pin")
 	cookie, err := models.GetJdCookie(pin)
+	ok := models.CookieOK(cookie)
 	if err != nil {
 		logs.Error(err)
 		result := Result{
@@ -76,9 +77,48 @@ func (c *LoginController) GetUserInfo() {
 			fmt.Println(errs.Error())
 		}
 		c.Ctx.WriteString(string(jsons))
+	} else if !ok {
+		result := Result{
+			Data:    "账号过期",
+			Code:    0,
+			Message: "账号过期",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
 	} else {
 		result := Result{
 			Data:    cookie.Query(),
+			Code:    0,
+			Message: "查询成功",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
+	}
+}
+
+func (c *LoginController) GetUserPin() {
+	qq := c.GetString("QQ")
+	pins := models.GetPinList(qq)
+	if pins == nil {
+		result := Result{
+			Data:    "null",
+			Code:    1,
+			Message: "查无匹配的pin",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
+	} else {
+		result := Result{
+			Data:    pins,
 			Code:    0,
 			Message: "查询成功",
 		}

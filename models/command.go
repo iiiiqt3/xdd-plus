@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"gorm.io/gorm"
 	"os"
@@ -51,11 +52,12 @@ func (sender *Sender) Reply(msg string) {
 	case "tgg":
 		SendTggMsg(sender.ChatID, sender.UserID, msg, sender.MessageID, sender.Username)
 	case "qq":
-		if strings.Contains(msg, "账号昵称：") && Config.VIP {
-			SendQQ(int64(sender.UserID), strtoimg(msg))
-		} else {
-			SendQQ(int64(sender.UserID), msg)
-		}
+		SendQQ(int64(sender.UserID), msg)
+		//if strings.Contains(msg, "账号昵称：") && Config.VIP {
+		//	SendQQ(int64(sender.UserID), strtoimg(msg))
+		//} else {
+		//	SendQQ(int64(sender.UserID), msg)
+		//}
 	case "qqg":
 		SendQQGroup(int64(sender.ChatID), int64(sender.UserID), msg)
 	}
@@ -74,6 +76,7 @@ func (sender *Sender) IsTG() bool {
 }
 
 var wb = false
+var qj = false
 
 func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 	cks := GetJdCookies()
@@ -386,6 +389,24 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
+		Command: []string{"开启qj"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			qj = true
+			sender.Reply("开启qj")
+			return nil
+		},
+	},
+	{
+		Command: []string{"关闭qj"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			qj = false
+			sender.Reply("关闭qj")
+			return nil
+		},
+	},
+	{
 		Command: []string{"微博", "wb"},
 		Handle: func(sender *Sender) interface{} {
 			if wb != true {
@@ -397,10 +418,10 @@ var codeSignals = []CodeSignal{
 				logs.Warn("wb.txt失败，", err)
 			}
 			sender.handleJdCookies(func(ck *JdCookie) {
-				if GetCoin(sender.UserID) > 39 {
+				if GetCoin(sender.UserID) > 31 {
 					f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
-					RemCoin(sender.UserID, 40)
-					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分40，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+					RemCoin(sender.UserID, 32)
+					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分32，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
 				} else {
 					sender.Reply("积分不足")
 				}
@@ -409,7 +430,30 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
+	{
+		Command: []string{"qj"},
+		Handle: func(sender *Sender) interface{} {
+			if qj != true {
+				sender.Reply("项目未开启，如有需求请联系群主。")
+				return nil
+			}
+			f, err := os.OpenFile(ExecPath+"/qj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+			if err != nil {
+				logs.Warn("qj.txt失败，", err)
+			}
+			sender.handleJdCookies(func(ck *JdCookie) {
+				if GetCoin(sender.UserID) > 4 {
+					f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
+					RemCoin(sender.UserID, 5)
+					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分5，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+				} else {
+					sender.Reply("积分不足")
+				}
+			})
+			f.Close()
+			return nil
+		},
+	},
 	{
 		Command: []string{"重置推一推"},
 		Admin:   true,
@@ -456,28 +500,53 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"查询", "query"},
 		Handle: func(sender *Sender) interface{} {
-			sender.Reply("如果您有多个账号，将依次为您展示查询结果：")
+			sender.Reply("请扫码完成网页查询")
 			if sender.IsAdmin {
 				sender.handleJdCookies(func(ck *JdCookie) {
 					time.Sleep(time.Second * time.Duration(Config.Later))
 					sender.Reply(ck.Query())
 				})
 			} else {
-				if getLimit(sender.UserID, 1) {
-					sender.handleJdCookies(func(ck *JdCookie) {
-						time.Sleep(time.Second * time.Duration(Config.Later))
-						sender.Reply(ck.Query())
-					})
-				} else {
-					sender.Reply(fmt.Sprintf("鉴于东哥对接口限流，为了不影响大家的任务正常运行，即日起每日限流%d次，已超过今日限制", Config.Lim))
+				list := getUserNameList(strconv.Itoa(sender.UserID))
+				str := "在线账号:\n"
+				for _, s := range list {
+					str = str + fmt.Sprintf("账号：%s  \n", s)
 				}
+				sender.Reply(str)
+				url := "http://h5img.smxy.xyz/qrcode.png"
+				rsp, err := httplib.Get(url).Response()
+				if err != nil {
+					return nil
+				}
+				return rsp
 			}
+			//else {
+			//	if getLimit(sender.UserID, 1) {
+			//		sender.handleJdCookies(func(ck *JdCookie) {
+			//			time.Sleep(timew.Second * time.Duration(Config.Later))
+			//			sender.Reply(ck.Query())
+			//		})
+			//	} else {
+			//		sender.Reply(fmt.Sprintf("鉴于东哥对接口限流，为了不影响大家的任务正常运行，即日起每日限流%d次，已超过今日限制", Config.Lim))
+			//	}
+			//}
 			//sender.Reply("今日查询接口维护，请明日再来")
 
 			return nil
 		},
 	},
-
+	{
+		Command: []string{"查Q", "CQ"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			str := ""
+			sender.Contents = sender.Contents[0:]
+			sender.handleJdCookies(func(ck *JdCookie) {
+				str = str + fmt.Sprintf("账号：%s (%s) QQ：%d \n", ck.Nickname, ck.PtPin, ck.QQ)
+			})
+			return str
+		},
+	},
 	{
 		Command: []string{"详细查询", "query"},
 		Handle: func(sender *Sender) interface{} {
@@ -739,6 +808,49 @@ var codeSignals = []CodeSignal{
 }
 
 var mx = map[int]bool{}
+
+func GetPinList(qq string) []string {
+	cks := []JdCookie{}
+	var pins []string
+	db.Where(fmt.Sprintf("QQ = %s", qq)).Find(&cks)
+	if len(cks) > 0 {
+		for _, ck := range cks {
+			pins = append(pins, ck.PtPin)
+		}
+	} else {
+		return nil
+	}
+	return pins
+}
+
+func getUserNameList(qq string) []string {
+	cks := []JdCookie{}
+	var names []string
+	db.Where(fmt.Sprintf("QQ = %s", qq)).Find(&cks)
+	t, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
+	if len(cks) > 0 {
+		for _, ck := range cks {
+			if CookieOK(&ck) {
+				if ck.UpdateAt != "" {
+					parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
+					f := t.Sub(parse1).Hours() / 24
+					i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
+					if !strings.Contains(ck.PtKey, "app_open") {
+						names = append(names, fmt.Sprintf("%s\n距离失效还有：%d天\n", ck.Nickname, 28-i))
+					} else {
+						names = append(names, fmt.Sprintf("%s\n尊贵的年费用户，您距离失效还有：%d天 \n", ck.Nickname, 365-i))
+					}
+				}
+			} else {
+				names = append(names, fmt.Sprintf("%s\n账号已过期\n", ck.Nickname))
+			}
+
+		}
+	} else {
+		return nil
+	}
+	return names
+}
 
 func LimitJdCookie(cks []JdCookie, a string) []JdCookie {
 	ncks := []JdCookie{}

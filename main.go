@@ -6,6 +6,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
+	"github.com/beego/beego/v2/server/web/filter/cors"
 	"github.com/cdle/xdd/controllers"
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/qbot"
@@ -61,6 +62,8 @@ func main() {
 	web.Router("/api/login/smslogin", &controllers.LoginController{}, "post:SMSLogin")
 	web.Router("/api/getUserInfo", &controllers.LoginController{}, "post:GetUserInfo")
 	web.Router("/api/getUserInfo", &controllers.LoginController{}, "get:GetUserInfo")
+	web.Router("/api/getUserPin", &controllers.LoginController{}, "post:GetUserPin")
+	web.Router("/api/getUserPin", &controllers.LoginController{}, "get:GetUserPin")
 	web.Router("/api/log", &controllers.LoginController{}, "post:GetLogs")
 	web.Router("/api/ua", &controllers.LoginController{}, "get:GetUS")
 	web.Router("/api/akl", &controllers.LoginController{}, "get:GetLog199")
@@ -81,6 +84,19 @@ func main() {
 	web.BConfig.WebConfig.Session.SessionOn = true
 	web.BConfig.WebConfig.Session.SessionGCMaxLifetime = 3600
 	web.BConfig.WebConfig.Session.SessionName = models.AppName
+	web.InsertFilter("*", web.BeforeRouter, cors.Allow(&cors.Options{
+		//允许访问所有源
+		AllowAllOrigins: true,
+		//可选参数"GET", "POST", "PUT", "DELETE", "OPTIONS" (*为所有)
+		//其中Options跨域复杂请求预检
+		AllowMethods: []string{"*"},
+		//指的是允许的Header的种类
+		AllowHeaders: []string{"*"},
+		//公开的HTTP标头列表
+		ExposeHeaders: []string{"Content-Length"},
+		//如果设置，则允许共享身份验证凭据，例如cookie
+		AllowCredentials: true,
+	}))
 	go func() {
 		time.Sleep(time.Second * 4)
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
