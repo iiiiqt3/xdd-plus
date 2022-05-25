@@ -827,7 +827,6 @@ func getScKey(ck string) (key string) {
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Header("Cookie", ck)
 	data, _ := req.String()
-	logs.Info(data)
 	if strings.Contains(data, "secretp") {
 		index := strings.Index(data, "\"secretp\":") + 11
 		i := strings.Index(data, "shareMiniprogramSwitch") - 3
@@ -884,6 +883,7 @@ func startpz(invited string) (num int, flag bool) {
 			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
 			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
 
+			logs.Info(s)
 			if bizCode == 0 {
 				k++
 				logs.Info("助力成功")
