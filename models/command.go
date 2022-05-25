@@ -418,10 +418,10 @@ var codeSignals = []CodeSignal{
 				logs.Warn("wb.txt失败，", err)
 			}
 			sender.handleJdCookies(func(ck *JdCookie) {
-				if GetCoin(sender.UserID) > 44 {
+				if GetCoin(sender.UserID) > 34 {
 					f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
-					RemCoin(sender.UserID, 45)
-					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分45，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+					RemCoin(sender.UserID, 35)
+					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分35，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
 				} else {
 					sender.Reply("积分不足")
 				}
