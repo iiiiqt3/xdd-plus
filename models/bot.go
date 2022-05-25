@@ -874,7 +874,7 @@ func startpz(invited string) (num int, flag bool) {
 		sc := getScKey(cookie)
 		if sc != "" {
 			url := "https://api.m.jd.com/client.action?functionId=promote_pk_collectPkExpandScore"
-			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"RAhomePageh5\"},\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, randStr(8), invited)
+			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"RAhomePageh5\"},\"confirmFlag\":\"1\",\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, randStr(8), invited)
 			req := httplib.Post(url)
 			random := browser.Random()
 			req.Param("clientVersion", "-1")
