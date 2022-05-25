@@ -910,7 +910,7 @@ func startpz(invited string) (num int, flag bool) {
 					return k, true
 				} else if strings.Contains(bizMsg, "火爆") {
 					ck.Update(Dig, False)
-				} else if strings.Contains(bizMsg, "已过期") {
+				} else if strings.Contains(bizMsg, "已结束") {
 					return k, false
 				} else if strings.Contains(bizMsg, "次数") {
 					ck.Update(Dig, False)
