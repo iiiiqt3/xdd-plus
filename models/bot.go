@@ -885,6 +885,7 @@ func startpz(invited string) (num int, flag bool) {
 			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
 
 			logs.Info(s)
+			logs.Info(bizCode)
 			if bizCode == 0 {
 				k++
 				logs.Info("助力成功")
