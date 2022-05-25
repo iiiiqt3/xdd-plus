@@ -813,9 +813,10 @@ func getScKey(ck string) (key string) {
 	url := "https://api.m.jd.com/client.action?functionId=promote_getHomeData"
 	req := httplib.Get(url)
 	random := browser.Random()
-	req.Param("clientVersion", "1.0.0")
-	req.Param("client", "signed_wh5")
+	req.Param("clientVersion", "-1")
+	req.Param("client", "m")
 	req.Param("functionId", "promote_getHomeData")
+	req.Param("appid", "signed_wh5")
 	req.Header("User-Agent", random)
 	req.Header("Host", "api.m.jd.com")
 	req.Header("Accept", "application/json, text/plain, */*")
