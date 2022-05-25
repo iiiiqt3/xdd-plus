@@ -906,7 +906,7 @@ func startpz(invited string) (num int, flag bool) {
 				logs.Info("助力成功")
 			} else {
 				logs.Info(s)
-				if strings.Contains(bizMsg, "好友人气爆棚") {
+				if strings.Contains(bizMsg, "TA已经获得足够的助力了") {
 					return k, true
 				} else if strings.Contains(bizMsg, "火爆") {
 					ck.Update(Dig, False)
