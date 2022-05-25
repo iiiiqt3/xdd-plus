@@ -825,6 +825,7 @@ func getScKey(ck string) (key string) {
 	req.Header("Origin", "https://api.m.jd.com")
 	req.Header("Cookie", ck)
 	data, _ := req.String()
+	logs.Info(data)
 	if strings.Contains(data, "secretp") {
 		index := strings.Index(data, "\"secretp\":") + 11
 		i := strings.Index(data, "shareMiniprogramSwitch") - 3
