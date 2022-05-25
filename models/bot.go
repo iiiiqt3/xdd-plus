@@ -76,8 +76,11 @@ var replies = map[string]string{}
 var riskcodes = make(map[int]string)
 var riskcodes1 = make(map[string]ViVoData)
 var tytlist = make(map[string]int)
+var pzlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
+var pz = 0
+var pzno = 0
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -145,29 +148,36 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			{
-				if sender.IsAdmin {
-					if strings.Contains(msg, "膨胀") {
-						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-						rsp.Param("url", msg)
-						rsp.Param("type", "hy")
-						data, err := rsp.Response()
+				if strings.Contains(msg, "膨胀") {
+					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+					rsp.Param("url", msg)
+					rsp.Param("type", "hy")
+					data, err := rsp.Response()
 
-						if err != nil {
-							return "口令转换失败"
-						}
-						body, _ := ioutil.ReadAll(data.Body)
-						if strings.Contains(string(body), "口令转换失败") {
-							return "口令转换失败"
-						} else {
-							if strings.Contains(string(body), "shareType=expandHelp") {
-								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-								k, flag := startpz(inviterCode[1])
-								if flag {
-									return fmt.Sprintf("助力完成，一共助力%d账号", k)
+					if err != nil {
+						return "口令转换失败"
+					}
+					body, _ := ioutil.ReadAll(data.Body)
+					if strings.Contains(string(body), "口令转换失败") {
+						return "口令转换失败"
+					} else {
+						if strings.Contains(string(body), "shareType=expandHelp") {
+							inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+							if sender.IsAdmin {
+								sender.Reply("开始膨胀，管理员")
+								go runpz(sender, inviterCode[1])
+							} else {
+								if GetCoin(sender.UserID) > 24 {
+									no := tytno
+									tytno += 1
+									RemCoin(sender.UserID, 25)
+									sender.Reply(fmt.Sprintf("膨胀即将开始，已扣除25个积分,订单编号:%d，剩余%d", no, GetCoin(sender.UserID)))
+									go runpz(sender, inviterCode[1])
 								} else {
-									return fmt.Sprintf("助力失败，一共助力%d账号", k)
+									sender.Reply("积分不足")
 								}
 							}
+
 						}
 					}
 				}
@@ -800,12 +810,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 }
 
 func getScKey(ck string) (key string) {
-	url := "https://api.m.jd.com/client.action?functionId=tigernian_getHomeData"
+	url := "https://api.m.jd.com/client.action?functionId=promote_getHomeData"
 	req := httplib.Get(url)
 	random := browser.Random()
 	req.Param("clientVersion", "1.0.0")
 	req.Param("client", "wh5")
-	req.Param("functionId", "tigernian_getHomeData")
+	req.Param("functionId", "promote_getHomeData")
 	req.Header("User-Agent", random)
 	req.Header("Host", "api.m.jd.com")
 	req.Header("Accept", "application/json, text/plain, */*")
@@ -824,22 +834,41 @@ func getScKey(ck string) (key string) {
 	return ""
 }
 
+func runpz(sender *Sender, code string) {
+	for {
+		time.Sleep(time.Duration(rand.Intn(60)))
+		if pz < 3 {
+			pz++
+			num, f := startpz(code)
+			no := pzlist[code]
+			if f {
+				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀结束共用:%d个账号", no, num))
+			} else {
+				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀异常，请联系群主，或自行检查", no))
+			}
+			pz--
+			return
+		}
+	}
+}
+
 func startpz(invited string) (num int, flag bool) {
 	logs.Info("开始膨胀助力")
 	k := 0
-	cks := GetJdCookies()
-	for i := len(cks); i > 0; i-- {
+	cks := []JdCookie{}
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
+	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(3))
-		cookie := "pt_key=" + cks[i-1].PtKey + ";pt_pin=" + cks[i-1].PtPin + ";"
+		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
 		sc := getScKey(cookie)
 		if sc != "" {
-			url := "https://api.m.jd.com/client.action?functionId=tigernian_pk_collectPkExpandScore"
-			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"HYGJZYh5\"},\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, rand.Intn(99999999), invited)
+			url := "https://api.m.jd.com/client.action?functionId=promote_pk_collectPkExpandScore"
+			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"RAhomePageh5\"},\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, rand.Intn(99999999), invited)
 			req := httplib.Post(url)
 			random := browser.Random()
 			req.Param("clientVersion", "1.0.0")
 			req.Param("client", "wh5")
-			req.Param("functionId", "tigernian_pk_collectPkExpandScore")
+			req.Param("functionId", "promote_pk_collectPkExpandScore")
 			req.Param("body", body)
 			req.Header("User-Agent", random)
 			req.Header("Accept", "application/json, text/plain, */*")
@@ -855,12 +884,18 @@ func startpz(invited string) (num int, flag bool) {
 			if bizCode == 0 {
 				k++
 				logs.Info("助力成功")
-
 			} else {
-				logs.Info("助力失败")
 				logs.Info(s)
 				if strings.Contains(bizMsg, "好友人气爆棚") {
 					return k, true
+				} else if strings.Contains(bizMsg, "火爆") {
+					ck.Update(Dig, False)
+				} else if strings.Contains(bizMsg, "已过期") {
+					return k, false
+				} else if strings.Contains(bizMsg, "次数") {
+					ck.Update(Dig, False)
+				} else {
+					ck.Update(Dig, bizMsg)
 				}
 			}
 		}
