@@ -873,8 +873,10 @@ func startpz(invited string) (num int, flag bool) {
 		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
 		sc := getScKey(cookie)
 		if sc != "" {
+			logs.Info(randStr(8))
+			logs.Info(invited)
 			url := "https://api.m.jd.com/client.action?functionId=promote_pk_collectPkExpandScore"
-			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"RAhomePageh5\"},\"confirmFlag\":\"1\",\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, randStr(8), invited)
+			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"RAhomePageh5\"},\"confirmFlag\":\"1\",\"secretp\":\"%s\",\"random\":\"%s\"}","inviteId":"%s"}`, sc, randStr(8), invited)
 			req := httplib.Post(url)
 			random := browser.Random()
 			req.Param("clientVersion", "-1")
