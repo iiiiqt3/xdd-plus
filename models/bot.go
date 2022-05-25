@@ -163,13 +163,14 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					} else {
 						if strings.Contains(string(body), "shareType=expandHelp") {
 							inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+							no := tytno
+							tytno += 1
+							tytlist[inviterCode[1]] = no
 							if sender.IsAdmin {
 								sender.Reply("开始膨胀，管理员")
 								go runpz(sender, inviterCode[1])
 							} else {
 								if GetCoin(sender.UserID) > 24 {
-									no := tytno
-									tytno += 1
 									RemCoin(sender.UserID, 25)
 									sender.Reply(fmt.Sprintf("膨胀即将开始，已扣除25个积分,订单编号:%d，剩余%d", no, GetCoin(sender.UserID)))
 									go runpz(sender, inviterCode[1])
