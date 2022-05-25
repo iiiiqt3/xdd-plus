@@ -899,6 +899,8 @@ func startpz(invited string) (num int, flag bool) {
 					ck.Update(Dig, bizMsg)
 				}
 			}
+		} else {
+			logs.Info("账号错误")
 		}
 	}
 	return k, false
