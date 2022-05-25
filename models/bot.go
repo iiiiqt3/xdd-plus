@@ -881,7 +881,10 @@ func startpz(invited string) (num int, flag bool) {
 			req.Header("Origin", "https://wbbny.m.jd.com")
 			req.Header("Cookie", cookie)
 			s, _ := req.String()
-			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
+			bizCode, err := jsonparser.GetInt([]byte(s), "data", "bizCode")
+			if err!=nil {
+				return k,false
+			}
 			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
 
 			logs.Info(s)
