@@ -871,7 +871,7 @@ func startpz(invited string) (num int, flag bool) {
 	cks := []JdCookie{}
 	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
 	for _, ck := range cks {
-		time.Sleep(time.Second * time.Duration(3))
+		time.Sleep(time.Second * time.Duration(1))
 		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
 		sc := getScKey(cookie)
 		if sc != "" {
