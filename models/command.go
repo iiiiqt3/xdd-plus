@@ -419,9 +419,17 @@ var codeSignals = []CodeSignal{
 			}
 			sender.handleJdCookies(func(ck *JdCookie) {
 				if GetCoin(sender.UserID) > 29 {
-					f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
-					RemCoin(sender.UserID, 30)
-					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分30，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+					if ck.WsKey != "" {
+						f.WriteString(fmt.Sprintf("wskey=%s;pt_pin=%s;\n", ck.WsKey, ck.PtPin))
+						RemCoin(sender.UserID, 30)
+						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分30，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+
+					} else {
+						f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
+						RemCoin(sender.UserID, 30)
+						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分30，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+
+					}
 				} else {
 					sender.Reply("积分不足")
 				}
