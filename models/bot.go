@@ -165,7 +165,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
 							no := tytno
 							tytno += 1
-							tytlist[inviterCode[1]] = no
+							pzlist[inviterCode[1]] = no
 							if sender.IsAdmin {
 								sender.Reply("开始膨胀，管理员")
 								go runpz(sender, inviterCode[1])
