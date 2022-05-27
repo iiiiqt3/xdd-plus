@@ -161,7 +161,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					if strings.Contains(string(body), "口令转换失败") {
 						return "口令转换失败"
 					} else {
-						if strings.Contains(string(body), "shareType=expandHelp") {
+						if strings.Contains(string(body), "shareType=team") {
 							inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
 							no := tytno
 							tytno += 1
