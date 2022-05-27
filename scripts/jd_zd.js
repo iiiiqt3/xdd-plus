@@ -93,6 +93,7 @@ const JD_API_HOST = 'https://api.m.jd.com/client.action';
         if (secretp) $.secretp = secretp
       }
       if($.isstop){
+        console.log("您的队伍已满啦")
         return
       }else{
         // console.log(`正在去加入他的队伍...`)
