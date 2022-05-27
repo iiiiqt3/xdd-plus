@@ -258,7 +258,7 @@ async function doApi(functionId, prepend = {}, append = {}, needSs = false, getL
           }
         }
       } catch (e) {
-        console.log(formatErr(functionId, e.toString(), toCurl(option)))
+        // console.log(formatErr(functionId, e.toString(), toCurl(option)))
       } finally {
         resolve(res)
       }
