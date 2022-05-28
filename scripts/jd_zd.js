@@ -251,7 +251,9 @@ async function doApi(functionId, prepend = {}, append = {}, needSs = false, getL
                 if (/加入.*?会员.*?获得/.test(data?.data?.bizMsg)) {
                   // console.log(data?.data?.bizMsg + `（${data?.data?.bizCode}）`)
                   $.stopCard = true
-                } else console.log(formatErr(functionId, data?.data?.bizMsg + `（${data?.data?.bizCode}）`, toCurl(option)))
+                } else {
+                  // console.log(formatErr(functionId, data?.data?.bizMsg + `（${data?.data?.bizCode}）`, toCurl(option)))
+                }
               } else {
                 res = data?.data?.result || {}
               }
@@ -324,7 +326,7 @@ function safeGet(data) {
       return true;
     }
   } catch (e) {
-    console.log(e);
+    // console.log(e);
     console.log(`京东服务器访问数据为空，请检查自身设备网络情况`);
     return false;
   }
