@@ -7,7 +7,7 @@
 
 const CryptoJS = require("crypto-js");
 const $ = new Env("热爱奇旅-组队");
-let groupJoinInviteId = '';
+let groupJoinInviteId = '-HE-pbNob0skF-uyp132FdlI8aLtievch-QheBwtqikHkP-c_wcOwE5fQnAP';
 if (process.env.groupJoinInviteId) {
   groupJoinInviteId = process.env.groupJoinInviteId;
 }
@@ -134,7 +134,7 @@ async function joinTeam(groupJoinInviteId) {
   } else {
     // console.log(bizMsg)
     if (bizMsg=="来晚了|该团队已经满员了"){
-    // if (bizMsg=="你已经有团队了|无法加入其他团队哦"){
+      // if (bizMsg=="你已经有团队了|无法加入其他团队哦"){
       $.isstop = true
     }
     formatErr("pk_joinGroup", `${bizMsg}（${bizCode}）`, $.curlCmd)
@@ -265,7 +265,7 @@ async function doApi(functionId, prepend = {}, append = {}, needSs = false, getL
       } catch (e) {
         // console.log(formatErr(functionId, e.toString(), toCurl(option)))
       } finally {
-        // resolve(res)
+        resolve(res)
       }
     })
   })
