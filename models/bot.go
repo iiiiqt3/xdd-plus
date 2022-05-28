@@ -148,7 +148,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			{
-				if strings.Contains(msg, "加入")||strings.Contains(msg,"咖叺") {
+				if strings.Contains(msg, "加入") || strings.Contains(msg, "咖叺") {
 					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
 					rsp.Param("url", msg)
 					rsp.Param("type", "hy")
