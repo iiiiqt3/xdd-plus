@@ -184,43 +184,44 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								//} else {
 								//	sender.Reply("积分不足")
 								//}
-							//}
+								//}
 
+							}
 						}
 					}
 				}
-			}
 
-			{
-				if strings.Contains(msg, "膨胀") {
-					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-					rsp.Param("url", msg)
-					rsp.Param("type", "hy")
-					data, err := rsp.Response()
+				{
+					if strings.Contains(msg, "膨胀") {
+						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+						rsp.Param("url", msg)
+						rsp.Param("type", "hy")
+						data, err := rsp.Response()
 
-					if err != nil {
-						return "口令转换失败"
-					}
-					body, _ := ioutil.ReadAll(data.Body)
-					if strings.Contains(string(body), "口令转换失败") {
-						return "口令转换失败"
-					} else {
-						if strings.Contains(string(body), "shareType=expandHelp") {
-							inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-							no := pzno
-							pzno += 1
-							pzlist[inviterCode[1]] = no
-							if sender.IsAdmin {
-								sender.Reply("开始膨胀，管理员")
-								go runpz(sender, inviterCode[1])
-							} else {
-								return "项目暂停"
-								//if GetCoin(sender.UserID) > 24 {
-								//	RemCoin(sender.UserID, 25)
-								//	sender.Reply(fmt.Sprintf("膨胀即将开始，已扣除25个积分,订单编号:%d，剩余%d", no, GetCoin(sender.UserID)))
-								//	go runpz(sender, inviterCode[1])
-								//} else {
-								//	sender.Reply("积分不足")
+						if err != nil {
+							return "口令转换失败"
+						}
+						body, _ := ioutil.ReadAll(data.Body)
+						if strings.Contains(string(body), "口令转换失败") {
+							return "口令转换失败"
+						} else {
+							if strings.Contains(string(body), "shareType=expandHelp") {
+								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+								no := pzno
+								pzno += 1
+								pzlist[inviterCode[1]] = no
+								if sender.IsAdmin {
+									sender.Reply("开始膨胀，管理员")
+									go runpz(sender, inviterCode[1])
+								} else {
+									//return "项目暂停"
+									if GetCoin(sender.UserID) > 24 {
+										RemCoin(sender.UserID, 25)
+										sender.Reply(fmt.Sprintf("膨胀即将开始，已扣除25个积分,订单编号:%d，剩余%d", no, GetCoin(sender.UserID)))
+										go runpz(sender, inviterCode[1])
+									} else {
+										sender.Reply("积分不足")
+									}
 								}
 							}
 
