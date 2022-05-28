@@ -66,10 +66,10 @@ const JD_API_HOST = 'https://api.m.jd.com/client.action';
       await TotalBean();
       // console.log(`\n******开始【京东账号${$.index}】${$.nickName || $.UserName}*********\n`);
       if (!$.isLogin) {
-        $.msg($.name, `【提示】cookie已失效`, `京东账号${$.index} ${$.nickName || $.UserName}\n请重新登录获取\nhttps://bean.m.jd.com/bean/signIndex.action`, { "open-url": "https://bean.m.jd.com/bean/signIndex.action" });
-        if ($.isNode()) {
-          await notify.sendNotify(`${$.name}cookie已失效 - ${$.UserName}`, `京东账号${$.index} ${$.UserName}\n请重新登录获取cookie`);
-        }
+        // $.msg($.name, `【提示】cookie已失效`, `京东账号${$.index} ${$.nickName || $.UserName}\n请重新登录获取\nhttps://bean.m.jd.com/bean/signIndex.action`, { "open-url": "https://bean.m.jd.com/bean/signIndex.action" });
+        // if ($.isNode()) {
+        //   await notify.sendNotify(`${$.name}cookie已失效 - ${$.UserName}`, `京东账号${$.index} ${$.UserName}\n请重新登录获取cookie`);
+        // }
         continue
       }
       $.UA = getUA()
@@ -235,7 +235,9 @@ async function doApi(functionId, prepend = {}, append = {}, needSs = false, getL
     $.post(option, (err, resp, data) => {
       let res = null
       try {
-        if (err) console.log(formatErr(functionId, err, toCurl(option)))
+        if (err) {
+          // console.log(formatErr(functionId, err, toCurl(option)))
+        }
         else {
           if (safeGet(data)) {
             data = JSON.parse(data)
@@ -247,7 +249,7 @@ async function doApi(functionId, prepend = {}, append = {}, needSs = false, getL
             } else {
               if (data?.data?.bizCode !== 0) {
                 if (/加入.*?会员.*?获得/.test(data?.data?.bizMsg)) {
-                  console.log(data?.data?.bizMsg + `（${data?.data?.bizCode}）`)
+                  // console.log(data?.data?.bizMsg + `（${data?.data?.bizCode}）`)
                   $.stopCard = true
                 } else console.log(formatErr(functionId, data?.data?.bizMsg + `（${data?.data?.bizCode}）`, toCurl(option)))
               } else {
@@ -255,110 +257,11 @@ async function doApi(functionId, prepend = {}, append = {}, needSs = false, getL
               }
             }
           } else {
-            console.log(formatErr(functionId, data, toCurl(option)))
+            // console.log(formatErr(functionId, data, toCurl(option)))
           }
         }
       } catch (e) {
         // console.log(formatErr(functionId, e.toString(), toCurl(option)))
-      } finally {
-        resolve(res)
-      }
-    })
-  })
-}
-
-async function doJrPostApi(functionId, prepend = {}, append = {}, needEid = false) {
-  const url = "https://ms.jr.jd.com/gw/generic/uc/h5/m/" + functionId
-  const bodyMain = `reqData=${encodeURIComponent(JSON.stringify({
-    ...prepend,
-    ...needEid ? {
-      eid: $.eid || "",
-      sdkToken: $.sdkToken || "",
-    } : {},
-    ...append
-  }))}`
-  const option = {
-    url,
-    body: bodyMain,
-    headers: {
-      'Cookie': cookie,
-      'Host': 'ms.jr.jd.com',
-      'Origin': 'https://wbbny.m.jd.com',
-      'Referer': 'https://wbbny.m.jd.com/babelDiy/Zeus/2vVU4E7JLH9gKYfLQ5EVW6eN2P7B/index.html?babelChannel=1111zhuhuichangfuceng&conf=jr',
-      'Connection': 'keep-alive',
-      'Content-Type': 'application/x-www-form-urlencoded',
-      "User-Agent": $.JrUA,
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'zh-cn',
-      'Accept-Encoding': 'gzip, deflate, br',
-    }
-  }
-  return new Promise(resolve => {
-    $.post(option, (err, resp, data) => {
-      let res = null
-      try {
-        if (err) console.log(formatErr(functionId, err, toCurl(option)))
-        else {
-          if (safeGet(data)) {
-            data = JSON.parse(data)
-            if (data?.resultData?.code !== 0) {
-              console.log(formatErr(functionId, data?.resultData?.msg + `（${data?.resultData?.code}）`, toCurl(option)))
-            } else {
-              res = data?.resultData?.data || {}
-            }
-          } else {
-            console.log(formatErr(functionId, data, toCurl(option)))
-          }
-        }
-      } catch (e) {
-        console.log(formatErr(functionId, e.toString(), toCurl(option)))
-      } finally {
-        resolve(res)
-      }
-    })
-  })
-}
-
-async function doJrGetApi(functionId, prepend = {}, append = {}, needEid = false) {
-  const url = "https://ms.jr.jd.com/gw/generic/mission/h5/m/" + functionId
-  const bodyMain = `reqData=${encodeURIComponent(JSON.stringify({
-    ...prepend,
-    ...needEid ? {
-      eid: $.eid || "",
-      sdkToken: $.sdkToken || "",
-    } : {},
-    ...append
-  }))}`
-  const option = {
-    url: `${url}?${bodyMain}`,
-    headers: {
-      'Cookie': cookie,
-      'Host': 'ms.jr.jd.com',
-      'Origin': 'https://wbbny.m.jd.com',
-      'Referer': 'https://wbbny.m.jd.com/babelDiy/Zeus/2vVU4E7JLH9gKYfLQ5EVW6eN2P7B/index.html?babelChannel=1111shouyefuceng&conf=jr',
-      'Connection': 'keep-alive',
-      'Content-Type': 'application/x-www-form-urlencoded',
-      "User-Agent": $.JrUA,
-      'Accept': '*/*',
-      'Accept-Language': 'zh-cn',
-      'Accept-Encoding': 'gzip, deflate, br',
-    }
-  }
-  return new Promise(resolve => {
-    $.get(option, (err, resp, data) => {
-      let res = null
-      try {
-        if (err) console.log(formatErr(functionId, err, toCurl(option)))
-        else {
-          if (safeGet(data)) {
-            data = JSON.parse(data)
-            res = data?.resultData || {}
-          } else {
-            console.log(formatErr(functionId, data, toCurl(option)))
-          }
-        }
-      } catch (e) {
-        console.log(formatErr(functionId, e.toString(), toCurl(option)))
       } finally {
         resolve(res)
       }
@@ -393,13 +296,13 @@ function getToken(appname = appid, platform = "1") {
     }, (err, resp, data) => {
       try {
         if (err) {
-          console.log(err)
+          // console.log(err)
           resolve()
         }
         const { joyytoken } = JSON.parse(data)
         resolve(joyytoken)
       } catch (e) {
-        console.log(e)
+        // console.log(e)
         resolve()
       } finally {
       }
