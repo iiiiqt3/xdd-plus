@@ -148,7 +148,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			{
-				if strings.Contains(msg, "加入") {
+				if strings.Contains(msg, "加入")||strings.Contains(msg,"咖叺") {
 					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
 					rsp.Param("url", msg)
 					rsp.Param("type", "hy")
@@ -173,9 +173,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								}}, sender)
 							} else {
 								//return "项目暂停"
-								if GetCoin(sender.UserID) > 24 {
-									RemCoin(sender.UserID, 25)
-									sender.Reply(fmt.Sprintf("开始组队，已扣除25个积分,订单编号:%d，剩余%d", no, GetCoin(sender.UserID)))
+								if GetCoin(sender.UserID) > 4 {
+									RemCoin(sender.UserID, 5)
+									sender.Reply(fmt.Sprintf("开始组队，已扣除5个积分,订单编号:%d，剩余%d", no, GetCoin(sender.UserID)))
 									runTask(&Task{Path: "jd_zd.js", Envs: []Env{
 										{Name: "groupJoinInviteId", Value: inviterCode[1]},
 									}}, sender)
