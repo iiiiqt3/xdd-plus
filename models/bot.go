@@ -171,7 +171,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								runTask(&Task{Path: "jd_zd.js", Envs: []Env{
 									{Name: "groupJoinInviteId", Value: inviterCode[1]},
 								}}, sender)
-								sender.Reply("组队结束")
+								//sender.Reply("组队结束")
 							} else {
 								//return "项目暂停"
 								if GetCoin(sender.UserID) > 4 {
@@ -180,7 +180,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									runTask(&Task{Path: "jd_zd.js", Envs: []Env{
 										{Name: "groupJoinInviteId", Value: inviterCode[1]},
 									}}, sender)
-									sender.Reply("组队结束")
+									//sender.Reply("组队结束")
 								} else {
 									sender.Reply("积分不足")
 								}
