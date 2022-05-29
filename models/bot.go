@@ -953,8 +953,8 @@ func stratDig(url string) bool {
 		help := happyDigHelp(cookie, url)
 		if help {
 			i++
-		}else{
-			ck.Update(Dig,False)
+		} else {
+			ck.Update(Dig, False)
 		}
 	}
 	return false
