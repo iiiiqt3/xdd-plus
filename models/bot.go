@@ -259,7 +259,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				if strings.Contains(msg, "https://bnzf.jd.com/") {
 
 					if GetCoin(sender.UserID) > 24 {
-
+						no := digno
+						digno += 1
 						split := strings.Split(msg, "&amp;")
 						inviterCode := ""
 						inviterId := ""
@@ -274,9 +275,11 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							}
 						}
 						if inviterId != "" && inviterCode != "" {
+							diglist[inviterCode] = no
 							RemCoin(sender.UserID, 25)
-							sender.Reply(fmt.Sprintf("已提交订单，扣除积分25，剩余积分：%d", GetCoin(sender.UserID)))
+							sender.Reply(fmt.Sprintf("已提交订单,订单编号：%d，扣除积分25，剩余积分：%d", GetCoin(sender.UserID)))
 							url := get_happyDigHelp_url(inviterId, inviterCode)
+							diglist[url] = no
 							go runDig(sender, url)
 						} else {
 							return "链接错误"
