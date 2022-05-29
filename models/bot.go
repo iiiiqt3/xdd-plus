@@ -261,7 +261,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					if GetCoin(sender.UserID) > 24 {
 
 						split := strings.Split(msg, "&amp;")
-						inviterCode :=""
+						inviterCode := ""
 						inviterId := ""
 						for i := range split {
 							if strings.Contains(split[i], "inviterId=") {
@@ -273,12 +273,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								inviterCode = env[1]
 							}
 						}
-						if inviterId!=""&& inviterCode!=""{
+						if inviterId != "" && inviterCode != "" {
 							RemCoin(sender.UserID, 25)
 							sender.Reply(fmt.Sprintf("已提交订单，扣除积分25，剩余积分：%d", GetCoin(sender.UserID)))
 							url := get_happyDigHelp_url(inviterId, inviterCode)
 							go runDig(sender, url)
-						}else{
+						} else {
 							return "链接错误"
 						}
 					} else {
@@ -953,6 +953,8 @@ func stratDig(url string) bool {
 		help := happyDigHelp(cookie, url)
 		if help {
 			i++
+		}else{
+			ck.Update(Dig,False)
 		}
 	}
 	return false
