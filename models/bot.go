@@ -907,7 +907,7 @@ func getScKey(ck string) (key string) {
 func runpz(sender *Sender, code string) {
 	for {
 		time.Sleep(time.Duration(rand.Intn(60)))
-		if pz < 3 {
+		if pz < 5 {
 			pz++
 			num, f := startpz(code)
 			no := pzlist[code]
