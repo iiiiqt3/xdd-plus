@@ -1060,6 +1060,7 @@ func startpz(invited string) (num int, flag bool) {
 				}
 			}
 		} else {
+			ck.Update(Dig, "账号错误")
 			logs.Info("账号错误")
 		}
 	}
