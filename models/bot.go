@@ -76,11 +76,14 @@ var replies = map[string]string{}
 var riskcodes = make(map[int]string)
 var riskcodes1 = make(map[string]ViVoData)
 var tytlist = make(map[string]int)
-var pzlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
+var pzlist = make(map[string]int)
 var pz = 0
 var pzno = 0
+var diglist = make(map[string]int)
+var dig = 0
+var digno = 0
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -251,23 +254,38 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				}
 			}
 
-			//挖宝统计
-			//{
-			//	if strings.Contains(msg, "https://bnzf.jd.com/") {
-			//		f, err := os.OpenFile(ExecPath+"/wblj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-			//		if err != nil {
-			//			logs.Warn("wb.txt失败，", err)
-			//		}
-			//		if GetCoin(sender.UserID) > 25 {
-			//			f.WriteString(msg + "\n")
-			//			RemCoin(sender.UserID, 25)
-			//			sender.Reply(fmt.Sprintf("已提交转订单，扣除积分25，剩余积分：%d", GetCoin(sender.UserID)))
-			//		} else {
-			//			sender.Reply("积分不足")
-			//		}
-			//		f.Close()
-			//	}
-			//}
+			//挖宝
+			{
+				if strings.Contains(msg, "https://bnzf.jd.com/") {
+
+					if GetCoin(sender.UserID) > 24 {
+
+						split := strings.Split(msg, "&amp;")
+						inviterCode :=""
+						inviterId := ""
+						for i := range split {
+							if strings.Contains(split[i], "inviterId=") {
+								env := strings.Split(split[i], "=")
+								inviterId = env[1]
+							}
+							if strings.Contains(split[i], "inviterCode=") {
+								env := strings.Split(split[i], "=")
+								inviterCode = env[1]
+							}
+						}
+						if inviterId!=""&& inviterCode!=""{
+							RemCoin(sender.UserID, 25)
+							sender.Reply(fmt.Sprintf("已提交订单，扣除积分25，剩余积分：%d", GetCoin(sender.UserID)))
+							url := get_happyDigHelp_url(inviterId, inviterCode)
+							go runDig(sender, url)
+						}else{
+							return "链接错误"
+						}
+					} else {
+						sender.Reply("积分不足")
+					}
+				}
+			}
 			//转码
 			{
 				if strings.Contains(msg, "https://kpl.m.jd.com/product") {
@@ -902,6 +920,77 @@ func runpz(sender *Sender, code string) {
 }
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func runDig(sender *Sender, code string) {
+	for {
+		time.Sleep(time.Duration(rand.Intn(60)))
+		if dig < 3 {
+			dig++
+			f := stratDig(code)
+			no := diglist[code]
+			if f {
+				sender.Reply(fmt.Sprintf("订单编号：%d,结束", no))
+			} else {
+				sender.Reply(fmt.Sprintf("订单编号：%d,异常，请联系群主，或自行检查", no))
+			}
+			dig--
+			return
+		}
+	}
+}
+
+func stratDig(url string) bool {
+
+	cks := []JdCookie{}
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
+	i := 0
+	for _, ck := range cks {
+		if i == 30 {
+			return true
+		}
+		time.Sleep(time.Second * time.Duration(3))
+		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
+		help := happyDigHelp(cookie, url)
+		if help {
+			i++
+		}
+	}
+	return false
+}
+
+//http://jd.txmmp.cn/api/wb?inviteCode=inviteCode&inviter=inviter
+func get_happyDigHelp_url(inviter string, inviteCode string) string {
+	url := fmt.Sprintf("http://jd.txmmp.cn/api/wb?inviteCode=%s&inviter=%s", inviteCode, inviter)
+	req := httplib.Get(url)
+	bytes, _ := req.Bytes()
+	getString, _ := jsonparser.GetString(bytes, "helpUrl")
+	return getString
+}
+
+func happyDigHelp(cookie string, url string) bool {
+
+	req := httplib.Get(url)
+	req.Header("accept", "application/json, text/plain, */*")
+	req.Header("origin", "https://bnzf.jd.com")
+	req.Header("user-agent", "")
+	req.Header("sec-fetch-mode", "cors")
+	req.Header("x-requested-with", "com.jd.jdlite")
+	req.Header("sec-fetch-site", "same-site")
+	req.Header("referer", "https://bnzf.jd.com/")
+	req.Header("accept-encoding", "gzip, deflate, br")
+	req.Header("accept-language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7")
+	req.Header("cookie", cookie)
+	bytes, _ := req.Bytes()
+	boolean, _ := jsonparser.GetBoolean(bytes, "success")
+	if boolean {
+		logs.Info("助力成功")
+		return true
+	} else {
+		logs.Info(string(bytes))
+		return false
+	}
+	return false
+}
 
 func randStr(n int) string {
 	b := make([]rune, n)
