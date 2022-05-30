@@ -951,7 +951,7 @@ func stratDig(url string) bool {
 		if i == 30 {
 			return true
 		}
-		time.Sleep(time.Second * time.Duration(5))
+		time.Sleep(time.Second * time.Duration(20))
 		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
 		help := happyDigHelp(cookie, url)
 		if help {
