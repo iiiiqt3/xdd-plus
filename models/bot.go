@@ -694,49 +694,49 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//}
 		}
 
-		{ //
-			ss := regexp.MustCompile(`pt_key=([^;=\s]+);pt_pin=([^;=\s]+)`).FindAllStringSubmatch(msg, -1)
-
-			if len(ss) > 0 {
-
-				xyb := 0
-				for _, s := range ss {
-					ck := JdCookie{
-						PtKey: s[1],
-						PtPin: s[2],
-					}
-					xyb++
-					if sender.IsQQ() {
-						ck.QQ = sender.UserID
-					} else if sender.IsTG() {
-						ck.Telegram = sender.UserID
-					}
-					if HasKey(ck.PtKey) {
-						sender.Reply(fmt.Sprintf("重复提交"))
-					} else {
-						if nck, err := GetJdCookie(ck.PtPin); err == nil {
-							nck.InPool(ck.PtKey)
-							msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-							(&JdCookie{}).Push(msg)
-							logs.Info(msg)
-						} else {
-							if Cdle {
-								ck.Hack = True
-							}
-							NewJdCookie(&ck)
-							msg := fmt.Sprintf("添加账号，%s", ck.PtPin)
-							sender.Reply(fmt.Sprintf("很棒，许愿币+1，余额%d", AddCoin(sender.UserID)))
-							logs.Info(msg)
-						}
-					}
-
-				}
-				go func() {
-					Save <- &JdCookie{}
-				}()
-				return nil
-			}
-		}
+		//{ //
+		//	ss := regexp.MustCompile(`pt_key=([^;=\s]+);pt_pin=([^;=\s]+)`).FindAllStringSubmatch(msg, -1)
+		//
+		//	if len(ss) > 0 {
+		//
+		//		xyb := 0
+		//		for _, s := range ss {
+		//			ck := JdCookie{
+		//				PtKey: s[1],
+		//				PtPin: s[2],
+		//			}
+		//			xyb++
+		//			if sender.IsQQ() {
+		//				ck.QQ = sender.UserID
+		//			} else if sender.IsTG() {
+		//				ck.Telegram = sender.UserID
+		//			}
+		//			if HasKey(ck.PtKey) {
+		//				sender.Reply(fmt.Sprintf("重复提交"))
+		//			} else {
+		//				if nck, err := GetJdCookie(ck.PtPin); err == nil {
+		//					nck.InPool(ck.PtKey)
+		//					msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
+		//					(&JdCookie{}).Push(msg)
+		//					logs.Info(msg)
+		//				} else {
+		//					if Cdle {
+		//						ck.Hack = True
+		//					}
+		//					NewJdCookie(&ck)
+		//					msg := fmt.Sprintf("添加账号，%s", ck.PtPin)
+		//					sender.Reply(fmt.Sprintf("很棒，许愿币+1，余额%d", AddCoin(sender.UserID)))
+		//					logs.Info(msg)
+		//				}
+		//			}
+		//
+		//		}
+		//		go func() {
+		//			Save <- &JdCookie{}
+		//		}()
+		//		return nil
+		//	}
+		//}
 
 		//{
 		//	//k1k
@@ -794,59 +794,59 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 		}
 
-		//{
-		//	if strings.Contains(msg, "pt_key") {
-		//		logs.Info(msg + "开始CK登录")
-		//		ptKey := FetchJdCookieValue("pt_key", msg)
-		//		ptPin := FetchJdCookieValue("pt_pin", msg)
-		//		if len(ptPin) > 0 && len(ptKey) > 0 {
-		//			ck := JdCookie{
-		//				PtKey: ptKey,
-		//				PtPin: ptPin,
-		//			}
-		//			if CookieOK(&ck) {
-		//				if sender.IsQQ() {
-		//					ck.QQ = sender.UserID
-		//				} else if sender.IsTG() {
-		//					ck.Telegram = sender.UserID
-		//				}
-		//				if HasKey(ck.PtKey) {
-		//					sender.Reply(fmt.Sprintf("重复提交"))
-		//				} else {
-		//					if nck, err := GetJdCookie(ck.PtPin); err == nil {
-		//						nck.InPool(ck.PtKey)
-		//						msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-		//						if sender.IsQQ() {
-		//							ck.Update(QQ, ck.QQ)
-		//						}
-		//						sender.Reply(fmt.Sprintf(msg))
-		//						(&JdCookie{}).Push(msg)
-		//						logs.Info(msg)
-		//					} else {
-		//						if Cdle {
-		//							ck.Hack = True
-		//						}
-		//						NewJdCookie(&ck)
-		//						msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-		//						if sender.IsQQ() {
-		//							ck.Update(QQ, ck.QQ)
-		//						}
-		//						sender.Reply(fmt.Sprintf(msg))
-		//						sender.Reply(ck.Query())
-		//						(&JdCookie{}).Push(msg)
-		//						logs.Info(msg)
-		//					}
-		//				}
-		//			} else {
-		//				sender.Reply(fmt.Sprintf("无效"))
-		//			}
-		//		}
-		//		go func() {
-		//			Save <- &JdCookie{}
-		//		}()
-		//		return nil
-		//	}
-		//}
+		{
+			if strings.Contains(msg, "pt_key") {
+				logs.Info(msg + "开始CK登录")
+				ptKey := FetchJdCookieValue("pt_key", msg)
+				ptPin := FetchJdCookieValue("pt_pin", msg)
+				if len(ptPin) > 0 && len(ptKey) > 0 {
+					ck := JdCookie{
+						PtKey: ptKey,
+						PtPin: ptPin,
+					}
+					if CookieOK(&ck) {
+						if sender.IsQQ() {
+							ck.QQ = sender.UserID
+						} else if sender.IsTG() {
+							ck.Telegram = sender.UserID
+						}
+						if HasKey(ck.PtKey) {
+							sender.Reply(fmt.Sprintf("重复提交"))
+						} else {
+							if nck, err := GetJdCookie(ck.PtPin); err == nil {
+								nck.InPool(ck.PtKey)
+								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
+								if sender.IsQQ() {
+									ck.Update(QQ, ck.QQ)
+								}
+								sender.Reply(fmt.Sprintf(msg))
+								(&JdCookie{}).Push(msg)
+								logs.Info(msg)
+							} else {
+								if Cdle {
+									ck.Hack = True
+								}
+								NewJdCookie(&ck)
+								msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+								if sender.IsQQ() {
+									ck.Update(QQ, ck.QQ)
+								}
+								sender.Reply(fmt.Sprintf(msg))
+								sender.Reply(ck.Query())
+								(&JdCookie{}).Push(msg)
+								logs.Info(msg)
+							}
+						}
+					} else {
+						sender.Reply(fmt.Sprintf("无效"))
+					}
+				}
+				go func() {
+					Save <- &JdCookie{}
+				}()
+				return nil
+			}
+		}
 
 		for k, v := range replies {
 			if regexp.MustCompile(k).FindString(msg) != "" {
