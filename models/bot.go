@@ -255,40 +255,40 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			//挖宝
-			{
-				if strings.Contains(msg, "https://bnzf.jd.com/") {
-
-					if GetCoin(sender.UserID) > 19 {
-						no := digno
-						digno += 1
-						split := strings.Split(msg, "&amp;")
-						inviterCode := ""
-						inviterId := ""
-						for i := range split {
-							if strings.Contains(split[i], "inviterId=") {
-								env := strings.Split(split[i], "=")
-								inviterId = env[1]
-							}
-							if strings.Contains(split[i], "inviterCode=") {
-								env := strings.Split(split[i], "=")
-								inviterCode = env[1]
-							}
-						}
-						if inviterId != "" && inviterCode != "" {
-							diglist[inviterCode] = no
-							RemCoin(sender.UserID, 20)
-							sender.Reply(fmt.Sprintf("已提交订单,订单编号：%d，扣除积分20，剩余积分：%d", no, GetCoin(sender.UserID)))
-							url := get_happyDigHelp_url(inviterId, inviterCode)
-							diglist[url] = no
-							go runDig(sender, url)
-						} else {
-							return "链接错误"
-						}
-					} else {
-						sender.Reply("积分不足")
-					}
-				}
-			}
+			//{
+			//	if strings.Contains(msg, "https://bnzf.jd.com/") {
+			//
+			//		if GetCoin(sender.UserID) > 19 {
+			//			no := digno
+			//			digno += 1
+			//			split := strings.Split(msg, "&amp;")
+			//			inviterCode := ""
+			//			inviterId := ""
+			//			for i := range split {
+			//				if strings.Contains(split[i], "inviterId=") {
+			//					env := strings.Split(split[i], "=")
+			//					inviterId = env[1]
+			//				}
+			//				if strings.Contains(split[i], "inviterCode=") {
+			//					env := strings.Split(split[i], "=")
+			//					inviterCode = env[1]
+			//				}
+			//			}
+			//			if inviterId != "" && inviterCode != "" {
+			//				diglist[inviterCode] = no
+			//				RemCoin(sender.UserID, 20)
+			//				sender.Reply(fmt.Sprintf("已提交订单,订单编号：%d，扣除积分20，剩余积分：%d", no, GetCoin(sender.UserID)))
+			//				url := get_happyDigHelp_url(inviterId, inviterCode)
+			//				diglist[url] = no
+			//				go runDig(sender, url)
+			//			} else {
+			//				return "链接错误"
+			//			}
+			//		} else {
+			//			sender.Reply("积分不足")
+			//		}
+			//	}
+			//}
 			//转码
 			{
 				if strings.Contains(msg, "https://kpl.m.jd.com/product") {
