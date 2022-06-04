@@ -450,9 +450,9 @@ var codeSignals = []CodeSignal{
 				logs.Warn("qj.txt失败，", err)
 			}
 			sender.handleJdCookies(func(ck *JdCookie) {
-				if GetCoin(sender.UserID) > 4 {
+				if GetCoin(sender.UserID) > 1 {
 					f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
-					RemCoin(sender.UserID, 5)
+					//RemCoin(sender.UserID, 5)
 					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分5，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
 				} else {
 					sender.Reply("积分不足")
