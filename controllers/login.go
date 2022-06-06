@@ -745,6 +745,94 @@ func (c *LoginController) SMSLogin() {
 
 }
 
+func (c *LoginController) WskeyLogin() {
+	cookie := c.GetString("wskey")
+	qq := c.GetString("qq")
+
+	Wskey := FetchJdCookieValue("wskey", cookie)
+	ptPin := FetchJdCookieValue("pin", cookie)
+	ck := &models.JdCookie{
+		WsKey: Wskey,
+		PtPin: ptPin,
+		Hack:  models.False,
+		QQ:    0,
+	}
+	if qq != "" {
+		ck.QQ, _ = strconv.Atoi(qq)
+	}
+
+	if Wskey != "" && ptPin != "" {
+		if models.CookieOK(ck) {
+			(&models.JdCookie{}).Push(cookie)
+			if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
+				if qq != "" && len(qq) > 6 {
+					//ck.Update(models.QQ, qq)
+					atoi, _ := strconv.Atoi(qq)
+					ck.Updates(models.JdCookie{
+						QQ:       atoi,
+						UpdateAt: time.Now().Local().Format("2006-01-02"),
+					})
+				}
+
+				msg := fmt.Sprintf("来自短信的更新,账号：%s,QQ: %v", nck.PtPin, qq)
+				ck.Push(ck.Query())
+				(&models.JdCookie{}).Push(msg)
+
+			} else {
+
+				models.NewJdCookie(ck)
+				if qq != "" {
+					msg := fmt.Sprintf("来自短信的添加,账号：%s,QQ: %v", ck.PtPin, qq)
+					(&models.JdCookie{}).Push(msg)
+				} else {
+					msg := fmt.Sprintf("来自短信的添加,账号：%s", ck.PtPin)
+					(&models.JdCookie{}).Push(msg)
+				}
+				ck.Push(ck.Query())
+
+			}
+
+			result := Result{
+				Data:    "null",
+				Code:    200,
+				Message: "添加成功",
+			}
+			jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+			if errs != nil {
+				fmt.Println(errs.Error())
+			}
+			c.Ctx.WriteString(string(jsons))
+
+		} else {
+			result := Result{
+				Data:    "null",
+				Code:    300,
+				Message: "CK过期",
+			}
+			jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+			if errs != nil {
+				fmt.Println(errs.Error())
+			}
+			msg := fmt.Sprintf("传入过期CK，请小心攻击，账号：%s", ck.PtPin)
+			(&models.JdCookie{}).Push(msg)
+			c.Ctx.WriteString(string(jsons))
+		}
+	} else {
+		result := Result{
+			Data:    "null",
+			Code:    300,
+			Message: "CK错误",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		msg := fmt.Sprintf("传入错误Wskey，请小心攻击，账号：%s", ck.PtPin)
+		(&models.JdCookie{}).Push(msg)
+		c.Ctx.WriteString(string(jsons))
+	}
+}
+
 func (c *LoginController) Cookie() {
 	cookies := c.Ctx.Input.Header("Set-Cookie")
 	pt_key := FetchJdCookieValue("pt_key", cookies)
