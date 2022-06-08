@@ -376,7 +376,7 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			var msgs []string
 			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-				return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ? and WsKey IS not NULL", Priority, Hack, Available), 0, True, True)
+				return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ? and WsKey != '' ", Priority, Hack, Available), 0, True, True)
 			})
 			for _, ck := range cks {
 				msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
