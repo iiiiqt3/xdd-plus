@@ -371,6 +371,30 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"导出所有W账号"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			var msgs []string
+			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+				return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ? and WsKey IS not NULL", Priority, Hack, Available), 0, True, True)
+			})
+			for _, ck := range cks {
+				msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
+			}
+			sender.Reply("导出所有账号")
+			logs.Info("导出所有账号")
+			f, err := os.OpenFile(ExecPath+"/jdCookie.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+			if err != nil {
+				logs.Warn("创建jdCookie.txt失败，", err)
+			}
+			join := strings.Join(msgs, "\n")
+			f.WriteString(join)
+			f.Close()
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"开启wb"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
