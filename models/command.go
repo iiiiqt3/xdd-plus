@@ -387,7 +387,7 @@ var codeSignals = []CodeSignal{
 			if err != nil {
 				logs.Warn("创建jdCookie.txt失败，", err)
 			}
-			join := strings.Join(msgs, "&")
+			join := strings.Join(msgs, "\n")
 			f.WriteString(join)
 			f.Close()
 			return nil
