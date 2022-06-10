@@ -442,16 +442,16 @@ var codeSignals = []CodeSignal{
 				logs.Warn("wb.txt失败，", err)
 			}
 			sender.handleJdCookies(func(ck *JdCookie) {
-				if GetCoin(sender.UserID) > 16 {
+				if GetCoin(sender.UserID) > 14 {
 					if ck.WsKey != "" {
 						f.WriteString(fmt.Sprintf("wskey=%s;pin=%s;\n", ck.WsKey, ck.PtPin))
-						RemCoin(sender.UserID, 17)
-						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分17，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+						RemCoin(sender.UserID, 15)
+						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分15，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
 
 					} else {
 						f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
-						RemCoin(sender.UserID, 17)
-						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分17，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+						RemCoin(sender.UserID, 15)
+						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分15，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
 
 					}
 				} else {
