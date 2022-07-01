@@ -3,8 +3,8 @@ package models
 import (
 	"errors"
 	"fmt"
-	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 	"os"
 	"regexp"
@@ -478,12 +478,11 @@ var codeSignals = []CodeSignal{
 					str = str + fmt.Sprintf("账号：%s  \n", s)
 				}
 				sender.Reply(str)
+
 				if Config.CXURL != "" {
-					rsp, err := httplib.Get(Config.CXURL).Response()
-					if err != nil {
-						return nil
-					}
-					return rsp
+					var png []byte
+					png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
+					SendQQ(int64(sender.UserID), png)
 				}
 
 			}
