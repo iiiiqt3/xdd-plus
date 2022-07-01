@@ -444,7 +444,7 @@ var codeSignals = []CodeSignal{
 			sender.handleJdCookies(func(ck *JdCookie) {
 				if GetCoin(sender.UserID) > 34 {
 					if ck.WsKey != "" {
-						f.WriteString(fmt.Sprintf("wskey=%s;pin=%s;\n", ck.PtKey, ck.PtPin))
+						f.WriteString(fmt.Sprintf("wskey=%s;pin=%s;\n", ck.WsKey, ck.PtPin))
 						RemCoin(sender.UserID, 35)
 						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分35，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
 
