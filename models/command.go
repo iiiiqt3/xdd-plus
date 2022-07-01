@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"gorm.io/gorm"
 	"os"
@@ -477,12 +478,14 @@ var codeSignals = []CodeSignal{
 					str = str + fmt.Sprintf("账号：%s  \n", s)
 				}
 				sender.Reply(str)
-				//url := "http://h5img.smxy.xyz/qrcode.png"
-				//rsp, err := httplib.Get(url).Response()
-				//if err != nil {
-				//	return nil
-				//}
-				//return rsp
+				if Config.CXURL != "" {
+					rsp, err := httplib.Get(Config.CXURL).Response()
+					if err != nil {
+						return nil
+					}
+					return rsp
+				}
+
 			}
 			//sender.Reply("今日查询接口维护，请明日再来")
 

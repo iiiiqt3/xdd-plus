@@ -42,6 +42,7 @@ type Yaml struct {
 	Query1              string `yaml:"Query1"`
 	Wskey               bool   `yaml:"Wskey"`
 	TGURL               string `yaml:"TGURL"`
+	CXURL               string `yaml:"CXURL"`
 	SMSAddress          string `yaml:"SMSAddress"`
 	IsAddFriend         bool   `yaml:"IsAddFriend"`
 	Lim                 int    `yaml:"Lim"`

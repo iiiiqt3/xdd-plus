@@ -35,6 +35,7 @@ user_agent:
 telegram_bot_token:
 telegram_user_id:
 TGURL: #填写TG代理地址参考https://www.kejiwanjia.com/server/5221.html#3worker
+CXURL: #填写查询地址二维码
 qquid:
 qqgid:
 qbot_public_mode: true
