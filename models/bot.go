@@ -112,9 +112,13 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	head := args[0]
 	contents := args[1:]
 	sender := &Sender{
-		UserID:   msgs[2].(int),
+		UserID:   0,
 		Type:     msgs[1].(string),
 		Contents: contents,
+	}
+	if msgs[1].(string) == "wx" {
+	} else {
+		sender.UserID = msgs[2].(int)
 	}
 	if len(msgs) >= 4 {
 		sender.ChatID = msgs[3].(int)
