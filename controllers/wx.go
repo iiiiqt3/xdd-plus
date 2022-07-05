@@ -64,7 +64,6 @@ func (c *WxController) HandleMessage() {
 	req.Body(string(marshal))
 	s, _ := req.String()
 	logs.Info(s)
-	logs.Info(u2s("\\u0047\\u0045\\u0054\\u67E5\\u8BE2\\u5B57\\u7B26\\u4E32\\u4E3A\\u7A7A"))
 
 }
 
