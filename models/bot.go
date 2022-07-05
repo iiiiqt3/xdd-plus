@@ -61,6 +61,10 @@ var ListenQQTempPrivateMessage = func(uid int64, msg string) {
 	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
 }
 
+var ListenWXTempPrivateMessage = func(uid int64, msg string) {
+	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
+}
+
 var ListenQQGroupMessage = func(gid int64, uid int64, msg string) {
 	if gid == Config.QQGroupID {
 		if Config.QbotPublicMode {
@@ -113,6 +117,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	}
 	if len(msgs) >= 4 {
 		sender.ChatID = msgs[3].(int)
+	}
+	if sender.Type == "wx" {
+		sender.WxId = msgs[2].(string)
 	}
 	if sender.Type == "tgg" {
 		sender.MessageID = msgs[4].(int)

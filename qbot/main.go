@@ -61,9 +61,11 @@ var bot *coolq.CQBot
 func Main() {
 
 	models.SendQQ = func(uid int64, msg interface{}) {
+
 		if bot == nil {
 			return
 		}
+
 		if uid == 0 {
 			return
 		}
