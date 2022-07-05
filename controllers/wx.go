@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/cdle/xdd/models"
 	"strings"
 )
 
@@ -37,6 +38,7 @@ func (c *WxController) HandleMessage() {
 	logs.Info(err)
 	logs.Info(string(data))
 	logs.Info("接收到信息" + ag.Content.Msg)
+	models.ListenWXTempPrivateMessage(ag.Content.FromWxid,ag.Content.Msg)
 
 }
 
