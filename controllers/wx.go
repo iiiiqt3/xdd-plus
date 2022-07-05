@@ -55,8 +55,8 @@ func (c *WxController) HandleMessage() {
 	random := browser.Random()
 	req.Header("User-Agent", random)
 	marshal, _ := json.Marshal(reply)
-	logs.Info(marshal)
-	req.Body(marshal)
+	logs.Info(string(marshal))
+	req.Body(string(marshal))
 	s, _ := req.String()
 	logs.Info(s)
 
