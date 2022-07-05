@@ -61,8 +61,9 @@ var ListenQQTempPrivateMessage = func(uid int64, msg string) {
 	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
 }
 
-var ListenWXTempPrivateMessage = func(uid int64, msg string) {
-	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
+var ListenWXTempPrivateMessage = func(uid string, msg string) {
+	message := handleMessage(msg, "wx", uid)
+	SendWxMsg(uid, message.(string))
 }
 
 var ListenQQGroupMessage = func(gid int64, uid int64, msg string) {
