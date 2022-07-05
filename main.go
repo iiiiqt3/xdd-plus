@@ -73,6 +73,7 @@ func main() {
 	web.Router("/admin", &controllers.AccountController{}, "post:Admin")
 	web.Router("/userCenter", &controllers.AccountController{}, "get:UserCenter")
 	web.Router("/userCenter", &controllers.AccountController{}, "post:UserCenter")
+	web.Router("/wx/receive", &controllers.WxController{}, "post:HandleMessage")
 
 	if models.Config.Static == "" {
 		models.Config.Static = "./static"
