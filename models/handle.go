@@ -99,13 +99,22 @@ module.exports = cookies`, cookies))
 							}
 						}
 					}
-
+					var ck1 []JdCookie
+					var ck2 []JdCookie
 					if cl != 0 {
+
 						for i := range cks {
+							if i%2==0 {
+								ck1 = append(ck1, cks[i])
+							}else{
+								ck2 = append(ck2, cks[i])
+							}
 							j := i % cl
 							Config.Containers[j].cks = append(Config.Containers[j].cks, cks[i])
+
 						}
 					}
+
 
 					for i := range Config.Containers {
 						if Config.Containers[i].Available {
@@ -113,10 +122,9 @@ module.exports = cookies`, cookies))
 								(&Config.Containers[i]).write(Config.Containers[i].cks)
 							} else {
 								if Config.Containers[i].Limit == 1 {
-									(&Config.Containers[i]).write(cks[0:950])
+									(&Config.Containers[i]).write(ck1)
 								} else if Config.Containers[i].Limit == 2 {
-									(&Config.Containers[i]).write(cks[0:50])
-									(&Config.Containers[i]).write(cks[950:1900])
+									(&Config.Containers[i]).write(ck2)
 								} else {
 									(&Config.Containers[i]).write(cks)
 								}
