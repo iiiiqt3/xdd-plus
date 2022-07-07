@@ -112,7 +112,7 @@ module.exports = cookies`, cookies))
 							if Config.Containers[i].Mode != Parallel {
 								(&Config.Containers[i]).write(Config.Containers[i].cks)
 							} else {
-								(&Config.Containers[i]).write(cks[1:800])
+								(&Config.Containers[i]).write(cks[0:800])
 							}
 						}
 					}
