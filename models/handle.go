@@ -104,9 +104,9 @@ module.exports = cookies`, cookies))
 					if cl != 0 {
 
 						for i := range cks {
-							if i%2==0 {
+							if i%2 == 0 {
 								ck1 = append(ck1, cks[i])
-							}else{
+							} else {
 								ck2 = append(ck2, cks[i])
 							}
 							j := i % cl
@@ -114,7 +114,6 @@ module.exports = cookies`, cookies))
 
 						}
 					}
-
 
 					for i := range Config.Containers {
 						if Config.Containers[i].Available {
