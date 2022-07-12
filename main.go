@@ -103,7 +103,6 @@ func main() {
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	}()
-	go qbot.Main()
 	if models.Config.QQID != 0 || models.Config.QQGroupID != 0 {
 		go qbot.Main()
 	}
