@@ -884,7 +884,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						data, _ := ioutil.ReadAll(rsp.Body)
 						return string(data)
 					}
-					return rsp
+					data, _ := ioutil.ReadAll(rsp.Body)
+					return data
 				}
 				return v
 			}
