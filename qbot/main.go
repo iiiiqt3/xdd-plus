@@ -194,7 +194,7 @@ func Main() {
 	cache.Init()
 	var png []byte
 	png, _ = qrcode.Encode("https://www.baidu.com", qrcode.Medium, 256)
-	cache.Image.Insert([]byte("sadasdsa"), png)
+	cache.Image.Insert([]byte("sadness"), png)
 
 	db.Init()
 	if err := db.Open(); err != nil {
