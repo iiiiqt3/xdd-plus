@@ -60,6 +60,16 @@ var ListenQQTempPrivateMessage = func(uid int64, msg string) {
 	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
 }
 
+var ListenWXTempPrivateMessage = func(uid string, msg string) {
+
+	rt := handleMessage(msg, "wx", uid)
+
+	switch rt.(type) {
+	case string:
+		SendWxMsg(uid, rt.(string))
+	}
+}
+
 var ListenQQGroupMessage = func(gid int64, uid int64, msg string) {
 	if gid == Config.QQGroupID {
 		if Config.QbotPublicMode {
@@ -100,12 +110,19 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	head := args[0]
 	contents := args[1:]
 	sender := &Sender{
-		UserID:   msgs[2].(int),
+		UserID:   0,
 		Type:     msgs[1].(string),
 		Contents: contents,
 	}
+	if msgs[1].(string) == "wx" {
+	} else {
+		sender.UserID = msgs[2].(int)
+	}
 	if len(msgs) >= 4 {
 		sender.ChatID = msgs[3].(int)
+	}
+	if sender.Type == "wx" {
+		sender.WxId = msgs[2].(string)
 	}
 	if sender.Type == "tgg" {
 		sender.MessageID = msgs[4].(int)
@@ -209,12 +226,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				reg := regexp.MustCompile(regex)
 				if reg.MatchString(msg) {
 					logs.Info("进入验证码阶段")
-					var addr string
-					if len(Config.Jdcurl) > 0 {
-						addr = Config.Jdcurl
-					} else if len(Config.Madurl) > 0 {
-						addr = Config.Madurl
-					}
+					addr := Config.Jdcurl
 					phone := pcodes[sender.UserID]
 					if len(addr) > 0 {
 						//若兰登录
@@ -247,7 +259,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								data, _ := req.Body(`{"Phone":"` + phone + `","QQ":"` + strconv.Itoa(sender.UserID) + `","qlkey":0,"Code":"` + msg + `"}`).Bytes()
 								var arkRes ArkRes
 								json.Unmarshal(data, &arkRes)
-								if arkRes.Data.Status == 555 {
+								if !arkRes.Success && arkRes.Data.Status == 555 {
 									//验证
 									sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
 									//做个标记
@@ -419,32 +431,29 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//识别登录
 			{
 				if strings.Contains(msg, "登录") || strings.Contains(msg, "登陆") {
-					var tabcount string
-					var addr string
+
 					if len(Config.Jdcurl) > 0 {
-						addr = Config.Jdcurl
-					} else if len(Config.Madurl) > 0 {
-						addr = Config.Madurl
-					}
-					if addr == "" {
-						return "暂未对接机器人登录"
-					}
-					logs.Info(addr + "/api/Config")
-					if addr != "" {
-						data, _ := httplib.Get(addr + "/api/Config").Bytes()
-						logs.Info(string(data) + "返回数据")
-						tabcount, _ = jsonparser.GetString(data, "data", "autocount")
-						if tabcount != "0" {
-							pcodes[sender.UserID] = "true"
-							riskcodes[sender.UserID] = "false"
-							if len(Config.Jdcurl) > 0 {
-								sender.Reply("若兰为您服务，请输入11位手机号：")
-							} else if len(Config.Madurl) > 0 {
-								sender.Reply("疯兔为您服务，请输入11位手机号：")
-							}
-						} else {
-							sender.Reply("服务忙，请稍后再试。")
+						var tabcount int64
+						addr := Config.Jdcurl
+						if addr == "" {
+							return "若兰很忙，请稍后再试。"
 						}
+						logs.Info(addr + "/api/Config")
+						if addr != "" {
+							data, _ := httplib.Get(addr + "/api/Config").Bytes()
+							logs.Info(string(data) + "返回数据")
+							tabcount, _ = jsonparser.GetInt(data, "data", "autocount")
+							if tabcount != 0 {
+								pcodes[sender.UserID] = "true"
+								riskcodes[sender.UserID] = "false"
+								sender.Reply("若兰为您服务，请输入11位手机号：")
+							} else {
+								sender.Reply("服务忙，请稍后再试。")
+							}
+						}
+					} else {
+						//pcodes[sender.UserID] = "true"
+						//sender.Reply("小滴滴")
 					}
 
 					//sender.Reply("服务升级中，目前登录请私聊群主谢谢")
@@ -697,17 +706,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				split := strings.Split(msg, "&amp;")
 				for i := range split {
 					if strings.Contains(split[i], "packetId=") {
-						//f, err := os.OpenFile(ExecPath+"/tytlj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-						//if err != nil {
-						//	logs.Warn("tytlj.txt失败，", err)
-						//}
-						//logs.Info(split[i])
 						env := strings.Split(split[i], "=")
 						if strings.Contains(env[1], "微信") {
 							sender.Reply("微信渠道暂时无法识别")
 						}
-						//f.WriteString(env[1] + "\n")
-						//f.Close()
 						if !sender.IsAdmin {
 							coin := GetCoin(sender.UserID)
 							if coin < Config.Tyt {

@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"github.com/Mrs4s/go-cqhttp/global/terminal"
 	"github.com/Mrs4s/go-cqhttp/modules/servers"
 	"github.com/cdle/xdd/qbot/internal/base"
@@ -61,9 +62,11 @@ var bot *coolq.CQBot
 func Main() {
 
 	models.SendQQ = func(uid int64, msg interface{}) {
+
 		if bot == nil {
 			return
 		}
+
 		if uid == 0 {
 			return
 		}
@@ -360,11 +363,11 @@ func Main() {
 	}
 	var times uint = 3 // 重试次数
 	var reLoginLock sync.Mutex
-	cli.OnDisconnected(func(q *client.QQClient, e *client.ClientDisconnectedEvent) {
+	cli.DisconnectedEvent.Subscribe(func(q *client.QQClient, e *client.ClientDisconnectedEvent) {
 		reLoginLock.Lock()
 		defer reLoginLock.Unlock()
 		times = 1
-		if cli.Online {
+		if cli.Online.Load() {
 			return
 		}
 		log.Warnf("Bot已离线: %v", e.Message)
@@ -384,7 +387,7 @@ func Main() {
 			} else {
 				time.Sleep(time.Second)
 			}
-			if cli.Online {
+			if cli.Online.Load() {
 				log.Infof("登录已完成")
 				break
 			}
@@ -423,11 +426,12 @@ func Main() {
 	cli.SetOnlineStatus(allowStatus[base.Account.Status])
 	bot = coolq.NewQQBot(cli)
 
-	if models.Config.IsAddFriend {
-		bot.Client.OnNewFriendRequest(func(_ *client.QQClient, a *client.NewFriendRequest) {
-			a.Accept()
-		})
-	}
+	//if models.Config.IsAddFriend {
+	//	event := bot.Client.NewFriendRequestEvent(func(_ *client.QQClient, a *client.NewFriendRequest) {
+	//		a.Accept()
+	//	})
+	//	bot.Client.
+	//}
 
 	//加载WS地址
 
@@ -669,6 +673,7 @@ func resetWorkDir(wd string) {
 
 func newClient() *client.QQClient {
 	c := client.NewClientEmpty()
+	c.UseFragmentMessage = base.ForceFragmented
 	c.OnServerUpdated(func(bot *client.QQClient, e *client.ServerUpdatedEvent) bool {
 		if !base.UseSSOAddress {
 			log.Infof("收到服务器地址更新通知, 根据配置文件已忽略.")
@@ -685,15 +690,36 @@ func newClient() *client.QQClient {
 		}
 		log.Infof("读取到 %v 个自定义地址.", len(addr))
 	}
-	c.OnLog(func(c *client.QQClient, e *client.LogEvent) {
-		switch e.Type {
-		case "INFO":
-			log.Info("Protocol -> " + e.Message)
-		case "ERROR":
-			log.Error("Protocol -> " + e.Message)
-		case "DEBUG":
-			log.Debug("Protocol -> " + e.Message)
-		}
-	})
+	c.SetLogger(protocolLogger{})
 	return c
+}
+
+type protocolLogger struct{}
+
+const fromProtocol = "Protocol -> "
+
+func (p protocolLogger) Info(format string, arg ...any) {
+	log.Infof(fromProtocol+format, arg...)
+}
+
+func (p protocolLogger) Warning(format string, arg ...any) {
+	log.Warnf(fromProtocol+format, arg...)
+}
+
+func (p protocolLogger) Debug(format string, arg ...any) {
+	log.Debugf(fromProtocol+format, arg...)
+}
+
+func (p protocolLogger) Error(format string, arg ...any) {
+	log.Errorf(fromProtocol+format, arg...)
+}
+
+func (p protocolLogger) Dump(data []byte, format string, arg ...any) {
+	if !global.PathExists(global.DumpsPath) {
+		_ = os.MkdirAll(global.DumpsPath, 0o755)
+	}
+	dumpFile := path.Join(global.DumpsPath, fmt.Sprintf("%v.dump", time.Now().Unix()))
+	message := fmt.Sprintf(format, arg...)
+	log.Errorf("出现错误 %v. 详细信息已转储至文件 %v 请连同日志提交给开发者处理", message, dumpFile)
+	_ = os.WriteFile(dumpFile, data, 0o644)
 }
