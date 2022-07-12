@@ -11,6 +11,7 @@ import (
 	"github.com/Mrs4s/go-cqhttp/modules/servers"
 	"github.com/cdle/xdd/qbot/internal/base"
 	"github.com/cdle/xdd/qbot/internal/cache"
+	"github.com/skip2/go-qrcode"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -86,6 +87,8 @@ func Main() {
 				//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
 			}
 		case []byte:
+			i := msg.([]byte)
+			reader := bytes.NewReader(msg.([]byte))
 			bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(msg.([]byte))}}})
 		case *http.Response:
 			data, _ := ioutil.ReadAll(msg.(*http.Response).Body)
@@ -191,6 +194,9 @@ func Main() {
 	mkCacheDir(global.CachePath, "发送图片")
 	mkCacheDir(path.Join(global.ImagePath, "guild-images"), "频道图片缓存")
 	cache.Init()
+	var png []byte
+	png, _ = qrcode.Encode("https://www.baidu.com", qrcode.Medium, 256)
+	cache.Image.Insert([]byte("sadasdsa"), png)
 
 	db.Init()
 	if err := db.Open(); err != nil {
