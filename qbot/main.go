@@ -192,9 +192,11 @@ func Main() {
 	mkCacheDir(global.CachePath, "发送图片")
 	mkCacheDir(path.Join(global.ImagePath, "guild-images"), "频道图片缓存")
 	cache.Init()
+
 	var png []byte
 	png, _ = qrcode.Encode("https://www.baidu.com", qrcode.Medium, 256)
 	cache.Image.Insert([]byte("sadness"), png)
+	models.SendQQ(764763903, png)
 
 	db.Init()
 	if err := db.Open(); err != nil {

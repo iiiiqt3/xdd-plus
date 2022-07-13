@@ -17,13 +17,10 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.0 // indirect
 	github.com/beego/beego/v2 v2.0.1
 	github.com/buger/jsonparser v1.1.1
-	github.com/dustin/go-humanize v1.0.0
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/gorilla/websocket v1.5.0
-	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
-	github.com/klauspost/compress v1.13.6
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/lib/pq v1.7.0 // indirect
