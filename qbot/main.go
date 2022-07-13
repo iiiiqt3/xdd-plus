@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/Mrs4s/go-cqhttp/global/terminal"
 	"github.com/Mrs4s/go-cqhttp/modules/servers"
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/qbot/internal/base"
 	"github.com/cdle/xdd/qbot/internal/cache"
 	"github.com/skip2/go-qrcode"
@@ -196,6 +197,7 @@ func Main() {
 	var png []byte
 	png, _ = qrcode.Encode("https://www.baidu.com", qrcode.Medium, 256)
 	cache.Image.Insert([]byte("sadness"), png)
+	logs.Info("发送图片")
 	models.SendQQ(764763903, png)
 
 	db.Init()
