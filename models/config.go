@@ -51,6 +51,7 @@ type Yaml struct {
 	Jdcurl              string `yaml:"Jdcurl"`
 	GAMEOPEN            bool   `yaml:"GameOpen"`
 	Note                string `yaml:"Note"`
+	Rotation            bool   `yaml:"Rotation"`
 	VIP                 bool
 	Node                string
 	Npm                 string
