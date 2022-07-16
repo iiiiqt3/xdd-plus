@@ -110,6 +110,7 @@ module.exports = cookies`, cookies))
 
 					var ck1 []JdCookie
 					var ck2 []JdCookie
+
 					if cl != 0 {
 						for i := range cks {
 							if i%2 == 0 {
@@ -120,6 +121,7 @@ module.exports = cookies`, cookies))
 							j := i % cl
 							Config.Containers[j].cks = append(Config.Containers[j].cks, cks[i])
 						}
+
 						for i := range cks1 {
 							if i%2 == 0 {
 								ck1 = append(ck1, cks[i])
