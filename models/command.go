@@ -462,38 +462,38 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-	{
-		Command: []string{"微博", "wb"},
-		Handle: func(sender *Sender) interface{} {
-			if wb != true {
-				sender.Reply("项目未开启，如有需求请联系群主。")
-				return nil
-			}
-			f, err := os.OpenFile(ExecPath+"/wb.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-			if err != nil {
-				logs.Warn("wb.txt失败，", err)
-			}
-			sender.handleJdCookies(func(ck *JdCookie) {
-				if GetCoin(sender.UserID) > 34 {
-					if ck.WsKey != "" {
-						f.WriteString(fmt.Sprintf("wskey=%s;pin=%s;\n", ck.WsKey, ck.PtPin))
-						RemCoin(sender.UserID, 35)
-						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分35，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
-
-					} else {
-						f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
-						RemCoin(sender.UserID, 35)
-						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分35，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
-
-					}
-				} else {
-					sender.Reply("积分不足")
-				}
-			})
-			f.Close()
-			return nil
-		},
-	},
+	//{
+	//	Command: []string{"微博", "wb"},
+	//	Handle: func(sender *Sender) interface{} {
+	//		if wb != true {
+	//			sender.Reply("项目未开启，如有需求请联系群主。")
+	//			return nil
+	//		}
+	//		f, err := os.OpenFile(ExecPath+"/wb.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	//		if err != nil {
+	//			logs.Warn("wb.txt失败，", err)
+	//		}
+	//		sender.handleJdCookies(func(ck *JdCookie) {
+	//			if GetCoin(sender.UserID) > 34 {
+	//				if ck.WsKey != "" {
+	//					f.WriteString(fmt.Sprintf("wskey=%s;pin=%s;\n", ck.WsKey, ck.PtPin))
+	//					RemCoin(sender.UserID, 35)
+	//					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分35，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+	//
+	//				} else {
+	//					f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
+	//					RemCoin(sender.UserID, 35)
+	//					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分35，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+	//
+	//				}
+	//			} else {
+	//				sender.Reply("积分不足")
+	//			}
+	//		})
+	//		f.Close()
+	//		return nil
+	//	},
+	//},
 	{
 		Command: []string{"wb1"},
 		Handle: func(sender *Sender) interface{} {
