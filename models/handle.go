@@ -91,6 +91,17 @@ module.exports = cookies`, cookies))
 				if Config.VIP {
 					cl := 0
 					logs.Info("进入VIP模式")
+					var ck1 []JdCookie
+					var ck2 []JdCookie
+
+					for i := range cks {
+						if i%2 == 0 {
+							ck1 = append(ck1, cks[i])
+						} else {
+							ck2 = append(ck2, cks[i])
+						}
+					}
+
 					cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 						return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 10, True, True)
 					})
@@ -108,26 +119,14 @@ module.exports = cookies`, cookies))
 						}
 					}
 
-					var ck1 []JdCookie
-					var ck2 []JdCookie
-
 					if cl != 0 {
+
 						for i := range cks {
-							if i%2 == 0 {
-								ck1 = append(ck1, cks[i])
-							} else {
-								ck2 = append(ck2, cks[i])
-							}
 							j := i % cl
 							Config.Containers[j].cks = append(Config.Containers[j].cks, cks[i])
 						}
 
 						for i := range cks1 {
-							if i%2 == 0 {
-								ck1 = append(ck1, cks1[i])
-							} else {
-								ck2 = append(ck2, cks1[i])
-							}
 							j := i % cl
 							Config.Containers[j].cks = append(Config.Containers[j].cks, cks1[i])
 						}
