@@ -281,7 +281,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					}
 					if GetCoin(sender.UserID) > 39 {
 						f.WriteString(msg + "\n")
-						RemCoin(sender.UserID, 39)
+						RemCoin(sender.UserID, 40)
 						sender.Reply(fmt.Sprintf("已提交转订单，扣除积分39，剩余积分：%d", GetCoin(sender.UserID)))
 					} else {
 						sender.Reply("积分不足")
