@@ -506,15 +506,15 @@ var codeSignals = []CodeSignal{
 				logs.Warn("wb1.txt失败，", err)
 			}
 			sender.handleJdCookies(func(ck *JdCookie) {
-				if GetCoin(sender.UserID) > 19 {
+				if GetCoin(sender.UserID) > 9 {
 					if ck.WsKey != "" {
 						f.WriteString(fmt.Sprintf("wskey=%s;pin=%s;\n", ck.WsKey, ck.PtPin))
-						RemCoin(sender.UserID, 20)
-						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分20，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+						RemCoin(sender.UserID, 10)
+						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分10，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
 
 					} else {
 						f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
-						RemCoin(sender.UserID, 20)
+						RemCoin(sender.UserID, 10)
 						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分10，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
 
 					}
