@@ -272,24 +272,25 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			//挖宝统计
-			//{
-			//	if strings.Contains(msg, "https://bnzf.jd.com/") {
-			//
-			//		f, err := os.OpenFile(ExecPath+"/wblj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-			//		if err != nil {
-			//			logs.Warn("wb.txt失败，", err)
-			//		}
-			//		if GetCoin(sender.UserID) > 39 {
-			//			f.WriteString(msg + "\n")
-			//			RemCoin(sender.UserID, 40)
-			//			sender.Reply(fmt.Sprintf("已提交转订单，扣除积分39，剩余积分：%d", GetCoin(sender.UserID)))
-			//		} else {
-			//			sender.Reply("积分不足")
-			//		}
-			//		f.Close()
-			//	}
-			//}
+			{
+				if strings.Contains(msg, "https://bnzf.jd.com/") {
+					msg = strings.ReplaceAll(msg, "&amp;", "&")
+					f, err := os.OpenFile(ExecPath+"/wblj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+					if err != nil {
+						logs.Warn("wb.txt失败，", err)
+					}
+					if GetCoin(sender.UserID) > 39 {
+						f.WriteString(msg + "\n")
+						RemCoin(sender.UserID, 40)
+						sender.Reply(fmt.Sprintf("已提交转订单，扣除积分39，剩余积分：%d", GetCoin(sender.UserID)))
+					} else {
+						sender.Reply("积分不足")
+					}
+					f.Close()
+				}
+			}
 			//挖宝
+
 			//{
 			//	if strings.Contains(msg, "https://bnzf.jd.com/") {
 			//
