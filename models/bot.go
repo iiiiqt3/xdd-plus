@@ -279,10 +279,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					if err != nil {
 						logs.Warn("wb.txt失败，", err)
 					}
-					if GetCoin(sender.UserID) > 39 {
+					if GetCoin(sender.UserID) > 19 {
 						f.WriteString(msg + "\n")
-						RemCoin(sender.UserID, 40)
-						sender.Reply(fmt.Sprintf("已提交转订单，扣除积分39，剩余积分：%d", GetCoin(sender.UserID)))
+						RemCoin(sender.UserID, 20)
+						sender.Reply(fmt.Sprintf("已提交转订单，扣除积分20，剩余积分：%d", GetCoin(sender.UserID)))
 					} else {
 						sender.Reply("积分不足")
 					}
