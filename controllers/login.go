@@ -104,6 +104,9 @@ func (c *LoginController) GetUserInfo() {
 
 func (c *LoginController) GetUserPin() {
 	qq := c.GetString("QQ")
+	if strings.EqualFold(qq, strconv.FormatInt(models.Config.QQID, 10)) {
+		return
+	}
 	pins := models.GetPinList(qq)
 	if pins == nil {
 		result := Result{
