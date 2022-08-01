@@ -105,6 +105,16 @@ func (c *LoginController) GetUserInfo() {
 func (c *LoginController) GetUserPin() {
 	qq := c.GetString("QQ")
 	if strings.EqualFold(qq, strconv.FormatInt(models.Config.QQID, 10)) {
+		result := Result{
+			Data:    "null",
+			Code:    1,
+			Message: "禁止查询他人ID",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
 		return
 	}
 	pins := models.GetPinList(qq)
