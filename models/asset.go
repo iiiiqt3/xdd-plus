@@ -184,7 +184,7 @@ func (ck *JdCookie) Query() string {
 		go tytCoupon(cookie, tyt)
 		go mmCoin(cookie, mmc)
 		go jdzz(cookie, zjb)
-		go jxgc(cookie, xgc)
+		//go jxgc(cookie, xgc)
 		go jdsy(cookie, dsy)
 		go jingxiangzhi(cookie, jxzz)
 		msgs = append(msgs, fmt.Sprintf("京享值：%s", <-jxzz))
