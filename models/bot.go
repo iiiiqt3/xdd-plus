@@ -376,7 +376,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								RemCoin(sender.UserID, 25)
 								sender.Reply(fmt.Sprintf("已提交，扣除积分25，剩余积分：%d", GetCoin(sender.UserID)))
 								jl++
-								JdCookie{}.Push(split[1])
+								JdCookie{}.Push(split[1] + "\r\n" + "锦鲤")
 							} else {
 								return "非锦鲤口令"
 							}
