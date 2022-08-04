@@ -374,6 +374,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							if strings.Contains(s, "3ugedFa7yA6NhxLN5gw2L3PF9sQC") {
 								split := strings.Split(s, "index.html?asid=")
 								RemCoin(sender.UserID, 25)
+								sender.Reply(fmt.Sprintf("已提交，扣除积分25，剩余积分：%d", GetCoin(sender.UserID)))
 								jl++
 								JdCookie{}.Push(split[1])
 							} else {
