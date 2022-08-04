@@ -562,7 +562,15 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
+	{
+		Command: []string{"重置锦鲤"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			jl = 0
+			sender.Reply("重置锦鲤")
+			return nil
+		},
+	},
 	{
 		Command: []string{"推一推"},
 		Admin:   true,

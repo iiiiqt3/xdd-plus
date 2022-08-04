@@ -94,6 +94,7 @@ var pzno = 0
 var diglist = make(map[string]int)
 var dig = 0
 var digno = 0
+var jl = 0
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -251,6 +252,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//}
 
 			{
+
+			}
+
+			{
 				//dyj
 				inviterId := regexp.MustCompile(`inviterId=(\S+)(&|&amp;)helpType`).FindStringSubmatch(msg)
 				redEnvelopeId := regexp.MustCompile(`redEnvelopeId=(\S+)(&|&amp;)inviterId`).FindStringSubmatch(msg)
@@ -346,6 +351,38 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						logs.Error(err2)
 					}
 					return "data:image/png;base64," + base64.StdEncoding.EncodeToString(data)
+				}
+			}
+
+			{
+				if strings.Contains(msg, "红包") && jl < 11 {
+					if GetCoin(sender.UserID) > 24 {
+						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+						rsp.Param("url", msg)
+						rsp.Param("type", "hy")
+						//rsp.Body(fmt.Sprintf(`url=%s&type=hy`, msg))
+						data, err := rsp.Response()
+
+						if err != nil {
+							return "口令转换失败"
+						}
+						body, _ := ioutil.ReadAll(data.Body)
+						if strings.Contains(string(body), "口令转换失败") {
+							return "口令转换失败"
+						} else {
+							s := string(body)
+							if strings.Contains(s, "3ugedFa7yA6NhxLN5gw2L3PF9sQC") {
+								split := strings.Split(s, "index.html?asid=")
+								RemCoin(sender.UserID, 25)
+								jl++
+								JdCookie{}.Push(split[1])
+							} else {
+								return "非锦鲤口令"
+							}
+						}
+					} else {
+						return "积分不足"
+					}
 				}
 			}
 
