@@ -95,7 +95,7 @@ module.exports = cookies`, cookies))
 					var ck2 []JdCookie
 
 					for i := range cks {
-						if i%2 == 0 {
+						if i < 1050 {
 							ck1 = append(ck1, cks[i])
 						} else {
 							ck2 = append(ck2, cks[i])
