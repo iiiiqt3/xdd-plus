@@ -188,72 +188,72 @@ func (ck *JdCookie) Query() string {
 		go jdsy(cookie, dsy)
 		go jingxiangzhi(cookie, jxzz)
 		msgs = append(msgs, fmt.Sprintf("京享值：%s", <-jxzz))
-		today := time.Now().Local().Format("2006-01-02")
-		yestoday := time.Now().Local().Add(-time.Hour * 24).Format("2006-01-02")
-		today1 := time.Now().Local().Format("2006/01/02")
-		yestoday1 := time.Now().Local().Add(-time.Hour * 24).Format("2006/01/02")
-		page := 1
-		end := false
+		//today := time.Now().Local().Format("2006-01-02")
+		//yestoday := time.Now().Local().Add(-time.Hour * 24).Format("2006-01-02")
+		//today1 := time.Now().Local().Format("2006/01/02")
+		//yestoday1 := time.Now().Local().Add(-time.Hour * 24).Format("2006/01/02")
+		//page := 1
+		//end := false
 		jds := getJingXiBeanDeatil(cookie)
 		if jds == nil {
 			msgs = append(msgs, "喜豆加载中，请耐心等待")
 		}
-		for _, jd := range jds {
-			amount := jd.Amount
-			if strings.Contains(jd.Createdate, today1) {
-				if amount > 0 {
-					asset.Bean.XDTodayIn += amount
-				} else {
-					asset.Bean.XDTodayOut += -amount
-				}
-			} else if strings.Contains(jd.Createdate, yestoday1) {
-				if amount > 0 {
-					asset.Bean.XDYestodayIn += amount
-				} else {
-					asset.Bean.XDYestodayOut += -amount
-				}
-			}
-		}
-		for {
-			if end {
-				msgs = append(msgs, []string{
-					fmt.Sprintf("昨日收入：%d京豆,%d喜豆", asset.Bean.YestodayIn, asset.Bean.XDYestodayIn),
-					//fmt.Sprintf("昨日支出：%d京豆", asset.Bean.YestodayOut),
-					fmt.Sprintf("今日收入：%d京豆,%d喜豆", asset.Bean.TodayIn, asset.Bean.XDTodayIn),
-					//fmt.Sprintf("今日支出：%d京豆", asset.Bean.TodayOut),
-				}...)
-				break
-			}
-			bds := getJingBeanBalanceDetail(page, cookie)
-			if bds == nil {
-				end = true
-				msgs = append(msgs, "京豆加载中，请耐心等待")
-				break
-			}
-			for _, bd := range bds {
-				amount := Int(bd.Amount)
-				if strings.Contains(bd.Date, today) {
-					if amount > 0 {
-						asset.Bean.TodayIn += amount
-					} else {
-						asset.Bean.TodayOut += -amount
-					}
-				} else if strings.Contains(bd.Date, yestoday) {
-					if amount > 0 {
-						asset.Bean.YestodayIn += amount
-					} else {
-						asset.Bean.YestodayOut += -amount
-					}
-				} else {
-					end = true
-					break
-				}
-			}
-			page++
-		}
+		//for _, jd := range jds {
+		//	amount := jd.Amount
+		//	if strings.Contains(jd.Createdate, today1) {
+		//		if amount > 0 {
+		//			asset.Bean.XDTodayIn += amount
+		//		} else {
+		//			asset.Bean.XDTodayOut += -amount
+		//		}
+		//	} else if strings.Contains(jd.Createdate, yestoday1) {
+		//		if amount > 0 {
+		//			asset.Bean.XDYestodayIn += amount
+		//		} else {
+		//			asset.Bean.XDYestodayOut += -amount
+		//		}
+		//	}
+		//}
+		//for {
+		//	if end {
+		//		msgs = append(msgs, []string{
+		//			fmt.Sprintf("昨日收入：%d京豆,%d喜豆", asset.Bean.YestodayIn, asset.Bean.XDYestodayIn),
+		//			//fmt.Sprintf("昨日支出：%d京豆", asset.Bean.YestodayOut),
+		//			fmt.Sprintf("今日收入：%d京豆,%d喜豆", asset.Bean.TodayIn, asset.Bean.XDTodayIn),
+		//			//fmt.Sprintf("今日支出：%d京豆", asset.Bean.TodayOut),
+		//		}...)
+		//		break
+		//	}
+		//	bds := getJingBeanBalanceDetail(page, cookie)
+		//	if bds == nil {
+		//		end = true
+		//		msgs = append(msgs, "京豆加载中，请耐心等待")
+		//		break
+		//	}
+		//	for _, bd := range bds {
+		//		amount := Int(bd.Amount)
+		//		if strings.Contains(bd.Date, today) {
+		//			if amount > 0 {
+		//				asset.Bean.TodayIn += amount
+		//			} else {
+		//				asset.Bean.TodayOut += -amount
+		//			}
+		//		} else if strings.Contains(bd.Date, yestoday) {
+		//			if amount > 0 {
+		//				asset.Bean.YestodayIn += amount
+		//			} else {
+		//				asset.Bean.YestodayOut += -amount
+		//			}
+		//		} else {
+		//			end = true
+		//			break
+		//		}
+		//	}
+		//	page++
+		//}
 		//logs.Info(ck.BeanNum)
-		xd, s := getXd(cookie)
-		msgs = append(msgs, fmt.Sprintf("当前京豆：%s京豆,%s喜豆", s, xd))
+		//xd, s := getXd(cookie)
+		//msgs = append(msgs, fmt.Sprintf("当前京豆：%s京豆,%s喜豆", s, xd))
 		ysd := int(time.Now().Add(24 * time.Hour).Unix())
 		if rps := <-rpc; len(rps) != 0 {
 			for _, rp := range rps {
