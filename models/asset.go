@@ -177,7 +177,7 @@ func (ck *JdCookie) Query() string {
 		var dsy = make(chan string)
 		var jxzz = make(chan string)
 		go redPacket(cookie, rpc)
-		go initFarm(cookie, fruit)
+		//go initFarm(cookie, fruit)
 		go initPetTown(cookie, pet)
 		go jsGold(cookie, gold)
 		go jxncEgg(cookie, egg)
