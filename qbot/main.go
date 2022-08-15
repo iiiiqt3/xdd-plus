@@ -78,8 +78,8 @@ func Main() {
 			}
 		case []byte:
 			if bot != nil {
-				//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(msg.([]byte))}}})
-				bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.FriendImageElement{Url: "https://qn.smxy.xyz/2022/08/75df9ce017ed4f0ba2bbe68c7c0bc15a.jpg"}}})
+				bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(msg.([]byte))}}})
+				//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.FriendImageElement{Url: "https://qn.smxy.xyz/2022/08/75df9ce017ed4f0ba2bbe68c7c0bc15a.jpg"}}})
 			}
 			//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{File: "./output.jpg"}}})
 			//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{URL: "https://qn.smxy.xyz/2022/08/75df9ce017ed4f0ba2bbe68c7c0bc15a.jpg"}}})
