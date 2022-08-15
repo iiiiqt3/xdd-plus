@@ -187,7 +187,7 @@ func Main() {
 	var png []byte
 	png, _ = qrcode.Encode("https://www.baidu.com", qrcode.Medium, 256)
 	logs.Info("发送图片")
-	models.SendQQ(764763903, png)
+	models.SendQQ(int64(764763903), png)
 
 	db.Init()
 	if err := db.Open(); err != nil {
