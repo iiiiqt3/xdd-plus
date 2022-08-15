@@ -466,21 +466,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	switch msg {
 	default:
 
-		{ //沃邮箱
-			ss := regexp.MustCompile(`https://nyan.mail.*3D`).FindStringSubmatch(msg)
-			if len(ss) > 0 {
-				var u User
-				if db.Where("number = ?", sender.UserID).First(&u).Error != nil {
-					return 0
-				}
-				db.Model(u).Updates(map[string]interface{}{
-					"womail": ss[0],
-				})
-				sender.Reply(fmt.Sprintf("沃邮箱提交成功!"))
-				return nil
-			}
-		}
-
 		{
 			if strings.Contains(msg, "wskey=") {
 				logs.Info(msg + "开始WSKEY登录")
@@ -639,65 +624,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//	}
 			//}
 		}
-
-		//{ //
-		//	ss := regexp.MustCompile(`pt_key=([^;=\s]+);pt_pin=([^;=\s]+)`).FindAllStringSubmatch(msg, -1)
-		//
-		//	if len(ss) > 0 {
-		//
-		//		xyb := 0
-		//		for _, s := range ss {
-		//			ck := JdCookie{
-		//				PtKey: s[1],
-		//				PtPin: s[2],
-		//			}
-		//			xyb++
-		//			if sender.IsQQ() {
-		//				ck.QQ = sender.UserID
-		//			} else if sender.IsTG() {
-		//				ck.Telegram = sender.UserID
-		//			}
-		//			if HasKey(ck.PtKey) {
-		//				sender.Reply(fmt.Sprintf("重复提交"))
-		//			} else {
-		//				if nck, err := GetJdCookie(ck.PtPin); err == nil {
-		//					nck.InPool(ck.PtKey)
-		//					msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-		//					(&JdCookie{}).Push(msg)
-		//					logs.Info(msg)
-		//				} else {
-		//					if Cdle {
-		//						ck.Hack = True
-		//					}
-		//					NewJdCookie(&ck)
-		//					msg := fmt.Sprintf("添加账号，%s", ck.PtPin)
-		//					sender.Reply(fmt.Sprintf("很棒，许愿币+1，余额%d", AddCoin(sender.UserID)))
-		//					logs.Info(msg)
-		//				}
-		//			}
-		//
-		//		}
-		//		go func() {
-		//			Save <- &JdCookie{}
-		//		}()
-		//		return nil
-		//	}
-		//}
-		//{
-		//	//k1k
-		//	ss := regexp.MustCompile(`launchid=(\S+)(&|&amp;)ptag`).FindStringSubmatch(msg)
-		//	if len(ss) > 0 {
-		//		if !sender.IsAdmin {
-		//			sender.Reply("仅管理员可用")
-		//		} else {
-		//			sender.Reply(fmt.Sprintf("砍价开始，管理员通道"))
-		//			runTask(&Task{Path: "jd_kanjia.js", Envs: []Env{
-		//				{Name: "launchid", Value: ss[1]},
-		//			}}, sender)
-		//		}
-		//		return nil
-		//	}
-		//}
 
 		{ //tyt
 			if strings.Contains(msg, "3075b6eab065464dad1c4042d345ac97") {
