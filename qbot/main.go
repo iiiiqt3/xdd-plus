@@ -11,6 +11,7 @@ import (
 	"github.com/Mrs4s/go-cqhttp/modules/servers"
 	"github.com/cdle/xdd/qbot/internal/base"
 	"github.com/cdle/xdd/qbot/internal/cache"
+	"github.com/skip2/go-qrcode"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -459,6 +460,10 @@ func Main() {
 	servers.Run(bot)
 	log.Info("资源初始化完成, 开始处理信息.")
 	log.Info("アトリは、高性能ですから!")
+
+	var png []byte
+	png, _ = qrcode.Encode("http://www.baidu.com", qrcode.Medium, 256)
+	models.SendQQ(int64(764763903), png)
 
 	// <-global.SetupMainSignalHandler()
 }
