@@ -462,6 +462,7 @@ func Main() {
 	log.Info("アトリは、高性能ですから!")
 
 	var png []byte
+	log.Info("测试图片")
 	png, _ = qrcode.Encode("http://www.baidu.com", qrcode.Medium, 256)
 	models.SendQQ(int64(764763903), png)
 
