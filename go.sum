@@ -1,5 +1,7 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
+github.com/764763903a/go-cqhttp v1.1.8 h1:55ju88xTyP4nSYCUIhGDgEbmmSOHlb4d4DZ9NHfIdXY=
+github.com/764763903a/go-cqhttp v1.1.8/go.mod h1:MZGzwuK7jNh3ihcIi3aJ6z+B6o6j47it2l85e4MaKKk=
 github.com/Baozisoftware/qrcode-terminal-go v0.0.0-20170407111555-c0650d8dff0f h1:2dk3eOnYllh+wUOuDhOoC2vUVoJF/5z478ryJ+wzEII=
 github.com/Baozisoftware/qrcode-terminal-go v0.0.0-20170407111555-c0650d8dff0f/go.mod h1:4a58ifQTEe2uwwsaqbh3i2un5/CBPg+At/qHpt18Tmk=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
@@ -13,8 +15,6 @@ github.com/Microsoft/go-winio v0.5.1 h1:aPJp2QD7OOrhO5tQXqQoGSJc+DjDtWTGLOmNyAm6
 github.com/Microsoft/go-winio v0.5.1/go.mod h1:JPGBdM1cNvN/6ISo+n8V5iA4v8pBzdOpzfwIujj1a84=
 github.com/Mrs4s/MiraiGo v0.0.0-20220621083050-ae8c187aa59d h1:Cq8HMtyL3PRpvOynuwi9WSdek2+5UTOd0zJ+JTq5hPM=
 github.com/Mrs4s/MiraiGo v0.0.0-20220621083050-ae8c187aa59d/go.mod h1:mZp8Lt7uqLCUwSLouB2yuiP467Cwl4mnG9IMAaXUKA0=
-github.com/Mrs4s/go-cqhttp v1.0.0-rc3 h1:rq4sSi7gfng3bZxisRZNz6bNyfVLCWUUnHffyyq5Jis=
-github.com/Mrs4s/go-cqhttp v1.0.0-rc3/go.mod h1:MZGzwuK7jNh3ihcIi3aJ6z+B6o6j47it2l85e4MaKKk=
 github.com/PuerkitoBio/goquery v1.8.0 h1:PJTF7AmFCFKk1N6V6jmKfrNH9tV5pNE6lZMkG0gta/U=
 github.com/PuerkitoBio/goquery v1.8.0/go.mod h1:ypIiRMtY7COPGk+I/YbZLbxsxn9g5ejnI2HSMtkjZvI=
 github.com/RomiChan/protobuf v0.1.1-0.20220624030127-3310cba9dbc0 h1:+UGPBYVjssFsdahLJIiNPwpmmwgl/OaVdv1oc5NonC0=

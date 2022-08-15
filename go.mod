@@ -7,6 +7,7 @@ replace github.com/willf/bitset v1.2.0 => github.com/bits-and-blooms/bitset v1.2
 //replace github.com/Mrs4s/go-cqhttp v1.0.0-beta5 => github.com/cdle/go-cqhttp v1.1.2
 
 replace github.com/Mrs4s/go-cqhttp v1.0.0-beta8-fix2 => github.com/764763903a/go-cqhttp v1.1.8
+
 //replace github.com/Mrs4s/go-cqhttp v1.0.0-beta8-fix2 => github.com/Mrs4s/go-cqhttp v1.0.0-rc3
 
 require (
