@@ -9,10 +9,8 @@ import (
 	"fmt"
 	"github.com/Mrs4s/go-cqhttp/global/terminal"
 	"github.com/Mrs4s/go-cqhttp/modules/servers"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/qbot/internal/base"
 	"github.com/cdle/xdd/qbot/internal/cache"
-	"github.com/skip2/go-qrcode"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -183,11 +181,6 @@ func Main() {
 	mkCacheDir(global.CachePath, "发送图片")
 	mkCacheDir(path.Join(global.ImagePath, "guild-images"), "频道图片缓存")
 	cache.Init()
-
-	var png []byte
-	png, _ = qrcode.Encode("https://www.baidu.com", qrcode.Medium, 256)
-	logs.Info("发送图片")
-	models.SendQQ(int64(764763903), png)
 
 	db.Init()
 	if err := db.Open(); err != nil {
