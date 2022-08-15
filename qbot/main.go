@@ -76,16 +76,7 @@ func Main() {
 		switch msg.(type) {
 		case string:
 			if bot != nil {
-				if strings.Contains(msg.(string), "data:image") {
-					//bot.UploadLocalImageAsPrivate(uid, &coolq.LocalImageElement{File: "./output.jpg"})
-					log.Info("开始发送图片")
-					wd, _ := os.Getwd()
-					file, _ := ioutil.ReadFile(wd + "/output.jpg")
-					bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(file)}}})
-				} else {
-					bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
-				}
-				//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
+				bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
 			}
 		case []byte:
 			bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(msg.([]byte))}}})
@@ -195,7 +186,6 @@ func Main() {
 
 	var png []byte
 	png, _ = qrcode.Encode("https://www.baidu.com", qrcode.Medium, 256)
-	cache.Image.Insert([]byte("sadness"), png)
 	logs.Info("发送图片")
 	models.SendQQ(764763903, png)
 
