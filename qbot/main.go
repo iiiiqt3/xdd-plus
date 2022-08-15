@@ -110,8 +110,8 @@ func Main() {
 		}
 	}
 
-	//coolq.PrivateMessageEventCallback = models.ListenQQPrivateMessage
-	//coolq.GroupMessageEventCallback = models.ListenQQGroupMessage
+	coolq.PrivateMessageEventCallback = models.ListenQQPrivateMessage
+	coolq.GroupMessageEventCallback = models.ListenQQGroupMessage
 
 	base.Parse()
 
