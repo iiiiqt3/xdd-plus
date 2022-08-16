@@ -26,9 +26,12 @@ func main() {
 	web.Get("/count", func(ctx *context.Context) {
 		ctx.WriteString(models.Count())
 	})
+	if models.Config.VIP {
+
+	}
 	web.Get("/", func(ctx *context.Context) {
 		if models.Config.Theme == "" {
-			models.Config.Theme = models.GhProxy + "https://ghproxy.com/https://raw.githubusercontent.com/764763903a/xdd-plus/main/theme/admin.html"
+			models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
 		}
 		if theme != "" {
 			ctx.WriteString(theme)
