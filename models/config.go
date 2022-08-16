@@ -160,5 +160,4 @@ func initConfig() {
 	} else {
 		Config.OpenFan = true
 	}
-
 }

@@ -9,10 +9,8 @@ import (
 	"fmt"
 	"github.com/Mrs4s/go-cqhttp/global/terminal"
 	"github.com/Mrs4s/go-cqhttp/modules/servers"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/qbot/internal/base"
 	"github.com/cdle/xdd/qbot/internal/cache"
-	"github.com/skip2/go-qrcode"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -76,19 +74,15 @@ func Main() {
 		switch msg.(type) {
 		case string:
 			if bot != nil {
-				if strings.Contains(msg.(string), "data:image") {
-					//bot.UploadLocalImageAsPrivate(uid, &coolq.LocalImageElement{File: "./output.jpg"})
-					log.Info("开始发送图片")
-					wd, _ := os.Getwd()
-					file, _ := ioutil.ReadFile(wd + "/output.jpg")
-					bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(file)}}})
-				} else {
-					bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
-				}
-				//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
+				bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
 			}
 		case []byte:
-			bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(msg.([]byte))}}})
+			if bot != nil {
+				bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(msg.([]byte))}}})
+				//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.FriendImageElement{Url: "https://qn.smxy.xyz/2022/08/75df9ce017ed4f0ba2bbe68c7c0bc15a.jpg"}}})
+			}
+			//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{File: "./output.jpg"}}})
+			//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{URL: "https://qn.smxy.xyz/2022/08/75df9ce017ed4f0ba2bbe68c7c0bc15a.jpg"}}})
 		case *http.Response:
 			data, _ := ioutil.ReadAll(msg.(*http.Response).Body)
 			bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(data)}}})
@@ -192,12 +186,6 @@ func Main() {
 	mkCacheDir(global.CachePath, "发送图片")
 	mkCacheDir(path.Join(global.ImagePath, "guild-images"), "频道图片缓存")
 	cache.Init()
-
-	var png []byte
-	png, _ = qrcode.Encode("https://www.baidu.com", qrcode.Medium, 256)
-	cache.Image.Insert([]byte("sadness"), png)
-	logs.Info("发送图片")
-	models.SendQQ(764763903, png)
 
 	db.Init()
 	if err := db.Open(); err != nil {
