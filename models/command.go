@@ -56,7 +56,7 @@ func (sender *Sender) Reply(msg string) {
 	case "tgg":
 		SendTggMsg(sender.ChatID, sender.UserID, msg, sender.MessageID, sender.Username)
 	case "qq":
-		if strings.Contains(msg, "账号昵称：") && Config.VIP {
+		if strings.Contains(msg, "账号昵称：") && Config.VIP && Config.Img {
 			SendQQ(int64(sender.UserID), strtoimg(msg))
 		} else {
 			SendQQ(int64(sender.UserID), msg)

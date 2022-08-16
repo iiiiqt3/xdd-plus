@@ -40,6 +40,7 @@ type Yaml struct {
 	Invalid             string `yaml:"Invalid"`
 	Query               string `yaml:"Query"`
 	Query1              string `yaml:"Query1"`
+	Img                 bool   `yaml:"img"`
 	Wskey               bool   `yaml:"Wskey"`
 	TGURL               string `yaml:"TGURL"`
 	CXURL               string `yaml:"CXURL"`
