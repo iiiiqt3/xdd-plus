@@ -435,7 +435,11 @@ var codeSignals = []CodeSignal{
 				if Config.CXURL != "" {
 					var png []byte
 					png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
-					SendQQ(int64(sender.UserID), png)
+					if sender.Type == "qqg" {
+						SendQQGroup(int64(sender.UserID), Config.QQGroupID, png)
+					} else {
+						SendQQ(int64(sender.UserID), png)
+					}
 				}
 
 			}
