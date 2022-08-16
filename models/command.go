@@ -441,7 +441,6 @@ var codeSignals = []CodeSignal{
 						SendQQ(int64(sender.UserID), png)
 					}
 				}
-
 			}
 			//sender.Reply("今日查询接口维护，请明日再来")
 
