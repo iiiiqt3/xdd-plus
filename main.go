@@ -36,14 +36,14 @@ func main() {
 				ctx.WriteString(theme)
 				return
 			}
-			logs.Info("下载最新主题")
+			logs.Info("下载最新网页查询版本")
 			s, _ := httplib.Get("https://git.smxy.xyz/jia_yuan/xdd-html/raw/branch/xdd/version/index.html").String()
 			if s != "" {
 				query = s
 				ctx.WriteString(s)
 				return
 			}
-			logs.Warn("主题下载失败，使用默认主题")
+			logs.Warn("主题下载失败，请注意查看网络环境")
 		})
 	}
 
