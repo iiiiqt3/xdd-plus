@@ -19,16 +19,34 @@ import (
 
 var theme = ""
 
+var query = ""
+
 func main() {
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
+
 	web.Get("/count", func(ctx *context.Context) {
 		ctx.WriteString(models.Count())
 	})
-	if models.Config.VIP {
 
+	if models.Config.VIP {
+		web.Get("/query", func(ctx *context.Context) {
+			if query != "" {
+				ctx.WriteString(theme)
+				return
+			}
+			logs.Info("下载最新主题")
+			s, _ := httplib.Get("https://git.smxy.xyz/jia_yuan/xdd-html/raw/branch/xdd/version/index.html").String()
+			if s != "" {
+				query = s
+				ctx.WriteString(s)
+				return
+			}
+			logs.Warn("主题下载失败，使用默认主题")
+		})
 	}
+
 	web.Get("/", func(ctx *context.Context) {
 		if models.Config.Theme == "" {
 			models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
@@ -72,8 +90,6 @@ func main() {
 	web.Router("/api/account", &controllers.AccountController{}, "post:CreateOrUpdate")
 	web.Router("/admin", &controllers.AccountController{}, "get:Admin")
 	web.Router("/admin", &controllers.AccountController{}, "post:Admin")
-	web.Router("/userCenter", &controllers.AccountController{}, "get:UserCenter")
-	web.Router("/userCenter", &controllers.AccountController{}, "post:UserCenter")
 	web.Router("/wx/receive", &controllers.WxController{}, "post:HandleMessage")
 
 	if models.Config.Static == "" {
