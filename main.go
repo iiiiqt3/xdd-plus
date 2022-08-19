@@ -33,7 +33,7 @@ func main() {
 	if models.Config.VIP {
 		web.Get("/query", func(ctx *context.Context) {
 			if query != "" {
-				ctx.WriteString(theme)
+				ctx.WriteString(query)
 				return
 			}
 			logs.Info("下载最新网页查询版本")
