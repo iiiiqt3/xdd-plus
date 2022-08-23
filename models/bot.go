@@ -355,7 +355,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			{
-				if strings.Contains(msg, "红包") && jl < 11 {
+				if strings.Contains(msg, "红包") && jl < 100 {
 					if GetCoin(sender.UserID) > 24 {
 						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
 						rsp.Param("url", msg)
@@ -374,9 +374,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							if strings.Contains(s, "3ugedFa7yA6NhxLN5gw2L3PF9sQC") {
 								split := strings.Split(s, "index.html?asid=")
 								RemCoin(sender.UserID, 25)
-								sender.Reply(fmt.Sprintf("已提交，扣除积分25，剩余积分：%d", GetCoin(sender.UserID)))
+								sender.Reply("已提交")
 								jl++
-								JdCookie{}.Push(split[1] + "\r\n" + "锦鲤")
+								JdCookie{}.Push(split[1] + "\r\n" + "jl")
 							} else {
 								return "非锦鲤口令"
 							}
