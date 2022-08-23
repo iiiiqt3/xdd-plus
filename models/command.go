@@ -615,12 +615,12 @@ var codeSignals = []CodeSignal{
 					sender.Reply(ck.Query())
 				})
 			} else {
-				list := getUserNameList(strconv.Itoa(sender.UserID))
-				str := "在线账号:\n"
-				for _, s := range list {
-					str = str + fmt.Sprintf("账号：%s  \n", s)
-				}
-				sender.Reply(str)
+				//list := getUserNameList(strconv.Itoa(sender.UserID))
+				//str := "在线账号:\n"
+				//for _, s := range list {
+				//	str = str + fmt.Sprintf("账号：%s  \n", s)
+				//}
+				//sender.Reply(str)
 
 				if Config.CXURL != "" {
 					var png []byte
