@@ -236,8 +236,8 @@ func updateCookie() {
 			rsp, _ := getKey(pinky)
 			if strings.Contains(rsp, "fake") {
 				yy++
-				ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
-				(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
+				//ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
+				//(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
 			} else {
 				ptKey := FetchJdCookieValue("pt_key", rsp)
 				ptPin := FetchJdCookieValue("pt_pin", rsp)
