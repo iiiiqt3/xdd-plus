@@ -608,7 +608,7 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"查询", "query"},
 		Handle: func(sender *Sender) interface{} {
-			sender.Reply("请扫码完成网页查询")
+			sender.Reply("请使用网页")
 			if sender.IsAdmin {
 				sender.handleJdCookies(func(ck *JdCookie) {
 					time.Sleep(time.Second * time.Duration(Config.Later))

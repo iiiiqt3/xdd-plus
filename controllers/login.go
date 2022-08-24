@@ -673,7 +673,7 @@ func (c *LoginController) SMSLogin() {
 
 		if ptKey != "" && ptPin != "" {
 			if models.CookieOK(ck) {
-				(&models.JdCookie{}).Push(cookie)
+				//(&models.JdCookie{}).Push(cookie)
 				if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
 					nck.InPool(ptKey)
 					if qq != "" && len(qq) > 6 {
@@ -684,7 +684,7 @@ func (c *LoginController) SMSLogin() {
 							UpdateAt: time.Now().Local().Format("2006-01-02"),
 						})
 					}
-					msg := fmt.Sprintf("来自短信的更新,账号：%s,QQ: %v", nck.PtPin, qq)
+					msg := fmt.Sprintf("来自短信的更新,%s,QQ: %v", nck.PtPin, qq)
 					ck.Push(ck.Query())
 					(&models.JdCookie{}).Push(msg)
 
@@ -692,10 +692,10 @@ func (c *LoginController) SMSLogin() {
 
 					models.NewJdCookie(ck)
 					if qq != "" {
-						msg := fmt.Sprintf("来自短信的添加,账号：%s,QQ: %v", ck.PtPin, qq)
+						msg := fmt.Sprintf("来自短信的添加,：%s,QQ: %v", ck.PtPin, qq)
 						(&models.JdCookie{}).Push(msg)
 					} else {
-						msg := fmt.Sprintf("来自短信的添加,账号：%s", ck.PtPin)
+						msg := fmt.Sprintf("来自短信的添加,：%s", ck.PtPin)
 						(&models.JdCookie{}).Push(msg)
 					}
 					ck.Push(ck.Query())
@@ -723,7 +723,7 @@ func (c *LoginController) SMSLogin() {
 				if errs != nil {
 					fmt.Println(errs.Error())
 				}
-				msg := fmt.Sprintf("传入过期CK，请小心攻击，账号：%s", ck.PtPin)
+				msg := fmt.Sprintf("传入过期CK，请小心攻击，：%s", ck.PtPin)
 				(&models.JdCookie{}).Push(msg)
 				c.Ctx.WriteString(string(jsons))
 			}
@@ -737,7 +737,7 @@ func (c *LoginController) SMSLogin() {
 			if errs != nil {
 				fmt.Println(errs.Error())
 			}
-			msg := fmt.Sprintf("传入错误CK，请小心攻击，账号：%s", ck.PtPin)
+			msg := fmt.Sprintf("传入错误CK，请小心攻击，：%s", ck.PtPin)
 			(&models.JdCookie{}).Push(msg)
 			c.Ctx.WriteString(string(jsons))
 		}
