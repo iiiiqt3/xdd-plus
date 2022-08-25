@@ -147,7 +147,6 @@ func main() {
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	}()
-	web.Run()
 	overseer.Run(overseer.Config{
 		Program: prog,
 		Fetcher: &fetcher.HTTP{
@@ -156,4 +155,5 @@ func main() {
 		},
 		Debug: true, //display log of overseer actions
 	})
+	web.Run()
 }
