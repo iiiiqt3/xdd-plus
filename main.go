@@ -3,8 +3,12 @@ package main
 import (
 	"fmt"
 	"github.com/beego/beego/v2/server/web"
+	"github.com/jpillora/overseer"
+	"github.com/jpillora/overseer/fetcher"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -21,7 +25,32 @@ var theme = ""
 
 var query = ""
 
+// BuildID is compile-time variable
+var BuildID = "0"
+
+//convert your 'main()' into a 'prog(state)'
+//'prog()' is run in a child process
+func prog(state overseer.State) {
+	fmt.Printf("app#%s (%s) listening...\n", BuildID, state.ID)
+	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		d, _ := time.ParseDuration(r.URL.Query().Get("d"))
+		time.Sleep(d)
+		fmt.Fprintf(w, "app#%s (%s) says hello\n", BuildID, state.ID)
+	}))
+	http.Serve(state.Listener, nil)
+	fmt.Printf("app#%s (%s) exiting...\n", BuildID, state.ID)
+}
 func main() {
+
+	overseer.Run(overseer.Config{
+		Program: prog,
+		Fetcher: &fetcher.HTTP{
+			URL: "http://xdd.smxy.xyz/xdd/xdd-" + runtime.GOOS + "-" + runtime.GOARCH,
+			//e.g.http://localhost:4000/binaries/app-linux-amd64
+		},
+		Debug: false, //display log of overseer actions
+	})
+
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
@@ -115,15 +144,16 @@ func main() {
 		//如果设置，则允许共享身份验证凭据，例如cookie
 		AllowCredentials: true,
 	}))
-	go func() {
-		time.Sleep(time.Second * 4)
-		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
-	}()
 	if models.Config.QQID != 0 && models.Config.OpenQQ == "" {
 		go qbot.Main()
 	} else {
 		logs.Info("不启动QQ")
 	}
+	go func() {
+		time.Sleep(time.Second * 4)
+		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
+
+	}()
 	web.Run()
 }
