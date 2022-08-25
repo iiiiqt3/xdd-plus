@@ -143,7 +143,8 @@ func main() {
 	overseer.Run(overseer.Config{
 		Program: prog,
 		Fetcher: &fetcher.HTTP{
-			URL:      "http://xdd.smxy.xyz/xdd/xdd-" + runtime.GOOS + "-" + runtime.GOARCH,
+			URL: "http://xdd.smxy.xyz/xdd/xdd-linux-amd64",
+			//URL:      "http://xdd.smxy.xyz/xdd/xdd-" + runtime.GOOS + "-" + runtime.GOARCH,
 			Interval: 100 * time.Second,
 			//e.g.http://localhost:4000/binaries/app-linux-amd64
 		},
