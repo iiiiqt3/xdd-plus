@@ -144,6 +144,8 @@ func main() {
 	go func() {
 		time.Sleep(time.Second * 4)
 		logs.Info(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
+		logs.Info(runtime.GOOS)
+		logs.Info(runtime.GOARCH)
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	}()
