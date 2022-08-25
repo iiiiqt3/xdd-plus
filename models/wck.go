@@ -3,10 +3,10 @@ package models
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
-	"github.com/skip2/go-qrcode"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -51,11 +51,8 @@ func getKey(WSCK string) (string, error) {
 	//	}
 	//}
 }
-func Test(uid int) {
-	var png []byte
-	logs.Info("测试图片")
-	png, _ = qrcode.Encode("http://www.baidu.com", qrcode.Medium, 256)
-	SendQQ(int64(764763903), png)
+func Version(uid int64) {
+	SendQQ(uid, fmt.Sprintf("小滴滴已启动，版本号:%s", Config.Version))
 	return
 }
 
