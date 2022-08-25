@@ -5,7 +5,7 @@ import (
 	"regexp"
 )
 
-var version = "v5.2"
+var version = "v5.3"
 var describe = "网页查询版"
 var AppName = "xdd"
 var pname = regexp.MustCompile(`/([^/\s]+)`).FindStringSubmatch(os.Args[0])[1]
