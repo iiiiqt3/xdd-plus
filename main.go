@@ -154,6 +154,6 @@ func main() {
 			URL: "http://xdd.smxy.xyz/xdd/xdd-" + runtime.GOOS + "-" + runtime.GOARCH,
 			//e.g.http://localhost:4000/binaries/app-linux-amd64
 		},
-		Debug: false, //display log of overseer actions
+		Debug: true, //display log of overseer actions
 	})
 }
