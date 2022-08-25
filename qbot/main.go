@@ -462,7 +462,7 @@ func Main() {
 	servers.Run(bot)
 	log.Info("资源初始化完成, 开始处理信息.")
 	log.Info("アトリは、高性能ですから!")
-	models.Test(764763903)
+	(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	// <-global.SetupMainSignalHandler()
 }
