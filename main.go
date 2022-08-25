@@ -42,15 +42,6 @@ func prog(state overseer.State) {
 }
 func main() {
 
-	overseer.Run(overseer.Config{
-		Program: prog,
-		Fetcher: &fetcher.HTTP{
-			URL: "http://xdd.smxy.xyz/xdd/xdd-" + runtime.GOOS + "-" + runtime.GOARCH,
-			//e.g.http://localhost:4000/binaries/app-linux-amd64
-		},
-		Debug: false, //display log of overseer actions
-	})
-
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
@@ -157,4 +148,12 @@ func main() {
 
 	}()
 	web.Run()
+	overseer.Run(overseer.Config{
+		Program: prog,
+		Fetcher: &fetcher.HTTP{
+			URL: "http://xdd.smxy.xyz/xdd/xdd-" + runtime.GOOS + "-" + runtime.GOARCH,
+			//e.g.http://localhost:4000/binaries/app-linux-amd64
+		},
+		Debug: false, //display log of overseer actions
+	})
 }
