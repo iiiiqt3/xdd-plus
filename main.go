@@ -6,7 +6,6 @@ import (
 	"github.com/jpillora/overseer"
 	"github.com/jpillora/overseer/fetcher"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -31,17 +30,6 @@ var BuildID = "0"
 //convert your 'main()' into a 'prog(state)'
 //'prog()' is run in a child process
 func prog(state overseer.State) {
-	fmt.Printf("app#%s (%s) listening...\n", BuildID, state.ID)
-	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		d, _ := time.ParseDuration(r.URL.Query().Get("d"))
-		time.Sleep(d)
-		fmt.Fprintf(w, "app#%s (%s) says hello\n", BuildID, state.ID)
-	}))
-	http.Serve(state.Listener, nil)
-	fmt.Printf("app#%s (%s) exiting...\n", BuildID, state.ID)
-}
-func main() {
-
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
@@ -149,9 +137,11 @@ func main() {
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	}()
+	web.Run()
+}
+func main() {
 	overseer.Run(overseer.Config{
-		Program:   prog,
-		NoRestart: true,
+		Program: prog,
 		Fetcher: &fetcher.HTTP{
 			URL:      "http://xdd.smxy.xyz/xdd/xdd-" + runtime.GOOS + "-" + runtime.GOARCH,
 			Interval: 100 * time.Second,
@@ -159,5 +149,4 @@ func main() {
 		},
 		Debug: true, //display log of overseer actions
 	})
-	web.Run()
 }
