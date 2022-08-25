@@ -98,14 +98,15 @@ func main() {
 		//如果设置，则允许共享身份验证凭据，例如cookie
 		AllowCredentials: true,
 	}))
+
+	if models.Config.QQID != 0 || models.Config.QQGroupID != 0 {
+		go qbot.Main()
+	}
 	go func() {
 		time.Sleep(time.Second * 4)
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	}()
-	if models.Config.QQID != 0 || models.Config.QQGroupID != 0 {
-		go qbot.Main()
-	}
 	web.Run()
 
 }
