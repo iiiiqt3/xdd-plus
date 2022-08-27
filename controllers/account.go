@@ -77,5 +77,5 @@ func (c *AccountController) Admin() {
 }
 
 func (c *AccountController) UserCenter() {
-	c.Ctx.WriteString(models.UserCenter)
+	models.InitSky()
 }

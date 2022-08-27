@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-func intiSky() {
+func InitSky() {
 	c := cron.New(cron.WithSeconds()) //精确到秒
 
 	//定时任务
