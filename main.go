@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -19,16 +20,37 @@ import (
 
 var theme = ""
 
+type Result struct {
+	Code    int         `json:"code"`
+	Data    interface{} `json:"data"`
+	Message string      `json:"message"`
+}
+
 func main() {
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
+
 	web.Get("/count", func(ctx *context.Context) {
 		ctx.WriteString(models.Count())
 	})
+
+	web.Get("/announcement", func(ctx *context.Context) {
+		result := Result{
+			Data:    models.Config.Title,
+			Code:    0,
+			Message: "查询成功",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		ctx.WriteString(string(jsons))
+	})
+
 	web.Get("/", func(ctx *context.Context) {
 		if models.Config.Theme == "" {
-			models.Config.Theme = models.GhProxy + "https://ghproxy.com/https://raw.githubusercontent.com/764763903a/xdd-plus/main/theme/admin.html"
+			models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
 		}
 		if theme != "" {
 			ctx.WriteString(theme)
