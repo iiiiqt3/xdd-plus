@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/server/web"
 	"io/ioutil"
@@ -21,6 +22,12 @@ var theme = ""
 
 var query = ""
 
+type Result struct {
+	Code    int         `json:"code"`
+	Data    interface{} `json:"data"`
+	Message string      `json:"message"`
+}
+
 func main() {
 	go func() {
 		models.Save <- &models.JdCookie{}
@@ -28,6 +35,19 @@ func main() {
 
 	web.Get("/count", func(ctx *context.Context) {
 		ctx.WriteString(models.Count())
+	})
+
+	web.Get("/announcement", func(ctx *context.Context) {
+		result := Result{
+			Data:    models.Config.Title,
+			Code:    0,
+			Message: "查询成功",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		ctx.WriteString(string(jsons))
 	})
 
 	if models.Config.VIP {
