@@ -66,6 +66,7 @@ type Yaml struct {
 	Priority            int    `yaml:"Priority"`
 	DailyCompletePush   string `yaml:"daily_complete_push"`
 	RefreshTime         int    `yaml:"refresh_time"`
+	Title               string
 }
 
 var Balance = "balance"
@@ -86,7 +87,7 @@ func initConfig() {
 		os.MkdirAll(botDir, os.ModePerm)
 	}
 
-	for _, name := range []string{"app.conf", "config.yaml", "reply.php"} {
+	for _, name := range []string{"app.conf", "config.yaml", "reply.php", "title.conf"} {
 		f, err := os.OpenFile(ExecPath+"/conf/"+name, os.O_RDWR|os.O_CREATE, 0777)
 		if err != nil {
 			logs.Warn(err)
@@ -101,6 +102,9 @@ func initConfig() {
 		}
 		f.Close()
 	}
+	title, _ := ioutil.ReadFile(ExecPath + "/conf/title.conf")
+	Config.Title = string(title)
+
 	content, err := ioutil.ReadFile(ExecPath + "/conf/config.yaml")
 	if err != nil {
 		logs.Warn("解析config.yaml读取错误: %v", err)

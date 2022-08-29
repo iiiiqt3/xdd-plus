@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
@@ -18,16 +19,56 @@ import (
 
 var theme = ""
 
+var query = ""
+
+type Result struct {
+	Code    int         `json:"code"`
+	Data    interface{} `json:"data"`
+	Message string      `json:"message"`
+}
+
 func main() {
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
+
 	web.Get("/count", func(ctx *context.Context) {
 		ctx.WriteString(models.Count())
 	})
+
+	web.Get("/announcement", func(ctx *context.Context) {
+		result := Result{
+			Data:    models.Config.Title,
+			Code:    0,
+			Message: "查询成功",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		ctx.WriteString(string(jsons))
+	})
+
+	if models.Config.VIP {
+		web.Get("/query", func(ctx *context.Context) {
+			if query != "" {
+				ctx.WriteString(query)
+				return
+			}
+			logs.Info("下载最新网页查询版本")
+			s, _ := httplib.Get("https://git.smxy.xyz/jia_yuan/xdd-html/raw/branch/xdd/version/index.html").String()
+			if s != "" {
+				query = s
+				ctx.WriteString(s)
+				return
+			}
+			logs.Warn("主题下载失败，请注意查看网络环境")
+		})
+	}
+
 	web.Get("/", func(ctx *context.Context) {
 		if models.Config.Theme == "" {
-			models.Config.Theme = models.GhProxy + "https://ghproxy.com/https://raw.githubusercontent.com/764763903a/xdd-plus/main/theme/admin.html"
+			models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
 		}
 		if theme != "" {
 			ctx.WriteString(theme)
