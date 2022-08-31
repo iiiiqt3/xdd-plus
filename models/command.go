@@ -221,97 +221,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	//{
-	//	Command: []string{"sign", "打卡", "签到"},
-	//	Handle: func(sender *Sender) interface{} {
-	//		//if sender.Type == "tgg" {
-	//		//	sender.Type = "tg"
-	//		//}
-	//		//if sender.Type == "qqg" {
-	//		//	sender.Type = "qq"
-	//		//}
-	//		zero, _ := time.ParseInLocation("2006-01-02", time.Now().Local().Format("2006-01-02"), time.Local)
-	//		var u User
-	//		var ntime = time.Now()
-	//		var first = false
-	//		total := []int{}
-	//		err := db.Where("number = ?", sender.UserID).First(&u).Error
-	//		if err != nil {
-	//			first = true
-	//			u = User{
-	//				Class:    sender.Type,
-	//				Number:   sender.UserID,
-	//				Coin:     1,
-	//				ActiveAt: ntime,
-	//				Womail:   "",
-	//			}
-	//			if err := db.Create(&u).Error; err != nil {
-	//				return err.Error()
-	//			}
-	//		} else {
-	//			if zero.Unix() > u.ActiveAt.Unix() {
-	//				first = true
-	//			} else {
-	//				return fmt.Sprintf("你打过卡了，积分余额%d。", u.Coin)
-	//			}
-	//		}
-	//		if first {
-	//			db.Model(User{}).Select("count(id) as total").Where("active_at > ?", zero).Pluck("total", &total)
-	//			coin := 1
-	//			if total[0]%3 == 0 {
-	//				coin = 2
-	//			}
-	//			if total[0]%13 == 0 {
-	//				coin = 8
-	//			}
-	//			db.Model(&u).Updates(map[string]interface{}{
-	//				"active_at": ntime,
-	//				"coin":      gorm.Expr(fmt.Sprintf("coin+%d", coin)),
-	//			})
-	//			u.Coin += coin
-	//			if u.Womail != "" {
-	//				rsp := cmd(fmt.Sprintf(`python3 womail.py "%s"`, u.Womail), &Sender{})
-	//				sender.Reply(fmt.Sprintf("%s", rsp))
-	//			}
-	//			sender.Reply(fmt.Sprintf("你是打卡第%d人，奖励%d个积分，积分余额%d。", total[0]+1, coin, u.Coin))
-	//			ReturnCoin(sender)
-	//			return ""
-	//		}
-	//		return nil
-	//	},
-	//},
-
-	{
-		Command: []string{"清零"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				ck.Update(Priority, 1)
-
-			})
-			sender.Reply("优先级已清零")
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"更新优先级", "更新车位"},
-		Handle: func(sender *Sender) interface{} {
-			coin := GetCoin(sender.UserID)
-			t := time.Now()
-			if t.Weekday().String() == "Monday" && int(t.Hour()) <= 10 {
-				sender.handleJdCookies(func(ck *JdCookie) {
-					ck.Update(Priority, coin)
-				})
-				sender.Reply("优先级已更新")
-				ClearCoin(sender.UserID)
-			} else {
-				sender.Reply("你错过时间了呆瓜,下周一10点前再来吧.")
-			}
-			return nil
-		},
-	},
-
 	{
 		Command: []string{"coin", "积分"},
 		Handle: func(sender *Sender) interface{} {
@@ -334,16 +243,6 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			sender.Reply("DXWX" + getMd5String1(strconv.Itoa(sender.UserID)))
 			return "请复制发送给Wx机器人"
-		},
-	},
-
-	{
-		Command: []string{"大赢家状态"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			cks := []JdCookie{}
-			db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
-			return fmt.Sprintf("推一推正在运行线程:%d,闲置线程:%d,剩余大赢家个数:%d", tytnum, 3-tytnum, len(cks))
 		},
 	},
 
@@ -439,130 +338,6 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-		Command: []string{"开启wb"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			wb = true
-			sender.Reply("开启wb")
-			return nil
-		},
-	},
-	{
-		Command: []string{"关闭wb"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			wb = false
-			sender.Reply("关闭wb")
-			return nil
-		},
-	},
-	{
-		Command: []string{"开启qj"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			qj = true
-			sender.Reply("开启qj")
-			return nil
-		},
-	},
-	{
-		Command: []string{"关闭qj"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			qj = false
-			sender.Reply("关闭qj")
-			return nil
-		},
-	},
-	//{
-	//	Command: []string{"微博", "wb"},
-	//	Handle: func(sender *Sender) interface{} {
-	//		if wb != true {
-	//			sender.Reply("项目未开启，如有需求请联系群主。")
-	//			return nil
-	//		}
-	//		f, err := os.OpenFile(ExecPath+"/wb.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	//		if err != nil {
-	//			logs.Warn("wb.txt失败，", err)
-	//		}
-	//		sender.handleJdCookies(func(ck *JdCookie) {
-	//			if GetCoin(sender.UserID) > 34 {
-	//				if ck.WsKey != "" {
-	//					f.WriteString(fmt.Sprintf("wskey=%s;pin=%s;\n", ck.WsKey, ck.PtPin))
-	//					RemCoin(sender.UserID, 35)
-	//					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分35，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
-	//
-	//				} else {
-	//					f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
-	//					RemCoin(sender.UserID, 35)
-	//					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分35，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
-	//
-	//				}
-	//			} else {
-	//				sender.Reply("积分不足")
-	//			}
-	//		})
-	//		f.Close()
-	//		return nil
-	//	},
-	//},
-	{
-		Command: []string{"wb1"},
-		Handle: func(sender *Sender) interface{} {
-			if wb != true {
-				sender.Reply("项目未开启，如有需求请联系群主。")
-				return nil
-			}
-			f, err := os.OpenFile(ExecPath+"/wb1.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-			if err != nil {
-				logs.Warn("wb1.txt失败，", err)
-			}
-			sender.handleJdCookies(func(ck *JdCookie) {
-				if GetCoin(sender.UserID) > 9 {
-					if ck.WsKey != "" {
-						f.WriteString(fmt.Sprintf("wskey=%s;pin=%s;\n", ck.WsKey, ck.PtPin))
-						RemCoin(sender.UserID, 10)
-						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分10，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
-
-					} else {
-						f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
-						RemCoin(sender.UserID, 10)
-						sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分10，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
-
-					}
-				} else {
-					sender.Reply("积分不足")
-				}
-			})
-			f.Close()
-			return nil
-		},
-	},
-	{
-		Command: []string{"qj"},
-		Handle: func(sender *Sender) interface{} {
-			if qj != true {
-				sender.Reply("项目未开启，如有需求请联系群主。")
-				return nil
-			}
-			f, err := os.OpenFile(ExecPath+"/qj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-			if err != nil {
-				logs.Warn("qj.txt失败，", err)
-			}
-			sender.handleJdCookies(func(ck *JdCookie) {
-				if GetCoin(sender.UserID) > 1 {
-					f.WriteString(fmt.Sprintf("pt_key=%s;pt_pin=%s;\n", ck.PtKey, ck.PtPin))
-					//RemCoin(sender.UserID, 5)
-					sender.Reply(fmt.Sprintf("已提交订单：账号：%s，扣除积分5，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
-				} else {
-					sender.Reply("积分不足")
-				}
-			})
-			f.Close()
-			return nil
-		},
-	},
-	{
 		Command: []string{"重置推一推"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -574,45 +349,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-	{
-		Command: []string{"重置锦鲤"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			jl = 0
-			sender.Reply("重置锦鲤")
-			return nil
-		},
-	},
-	{
-		Command: []string{"推一推"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			if len(sender.Contents) > 0 {
-				no := tytno
-				tytno += 1
-				code := sender.JoinContens()
-				tytlist[code] = no
-				go runtyt(sender, code)
-				logs.Info(code)
-				sender.Reply(fmt.Sprintf("开始Code：%s", code))
-			}
-			return nil
-		},
-	},
-	//{
-	//	Command: []string{"挖宝1"},
-	//	Handle: func(sender *Sender) interface{} {
-	//		f, err := os.OpenFile(ExecPath+"/wb1.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	//		if err != nil {
-	//			logs.Warn("wb.txt失败，", err)
-	//		}
-	//		sender.handleJdCookies(func(ck *JdCookie) {
-	//			sender.Reply(fmt.Sprintf("已记录账号：账号：%s", ck.PtPin))
-	//		})
-	//		f.Close()
-	//		return nil
-	//	},
-	//},
+
 	{
 		Command: []string{"查询", "query"},
 		Handle: func(sender *Sender) interface{} {
@@ -652,6 +389,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	{
 		Command: []string{"查Q", "CQ"},
 		Admin:   true,
@@ -662,28 +400,6 @@ var codeSignals = []CodeSignal{
 				str = str + fmt.Sprintf("账号：%s (%s) QQ：%d \n", ck.Nickname, ck.PtPin, ck.QQ)
 			})
 			return str
-		},
-	},
-	{
-		Command: []string{"详细查询", "query"},
-		Handle: func(sender *Sender) interface{} {
-			if sender.IsAdmin {
-				sender.handleJdCookies(func(ck *JdCookie) {
-					time.Sleep(time.Second * time.Duration(Config.Later))
-					sender.Reply(ck.Query1())
-				})
-			} else {
-				if getLimit(sender.UserID, 1) {
-					time.Sleep(time.Second * time.Duration(Config.Later))
-					sender.handleJdCookies(func(ck *JdCookie) {
-						sender.Reply(ck.Query1())
-					})
-				} else {
-					sender.Reply(fmt.Sprintf("鉴于东哥对接口限流，为了不影响大家的任务正常运行，即日起每日限流%d次，已超过今日限制", Config.Lim))
-				}
-			}
-
-			return nil
 		},
 	},
 
@@ -770,21 +486,6 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-		Command: []string{"绑定"},
-		Handle: func(sender *Sender) interface{} {
-			qq := Int(sender.Contents[0])
-			if len(sender.Contents) > 1 {
-				sender.Contents = sender.Contents[1:]
-				sender.handleJdCookies(func(ck *JdCookie) {
-					ck.Update(QQ, qq)
-					sender.Reply(fmt.Sprintf("已设置账号%s的QQ为%v。", ck.Nickname, ck.QQ))
-				})
-			}
-			return nil
-		},
-	},
-
-	{
 		Command: []string{"cmd", "command", "命令"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -807,18 +508,6 @@ var codeSignals = []CodeSignal{
 				return "操作失败"
 			}
 			return "操作成功"
-		},
-	},
-
-	{
-		Command: []string{"屏蔽", "hack"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				ck.Update(Priority, -1)
-				sender.Reply(fmt.Sprintf("已屏蔽账号%s", ck.Nickname))
-			})
-			return nil
 		},
 	},
 
