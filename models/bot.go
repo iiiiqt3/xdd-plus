@@ -8,6 +8,7 @@ import (
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/buger/jsonparser"
 	"github.com/skip2/go-qrcode"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -160,6 +161,13 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	if Config.VIP {
 		switch msg {
 		default:
+
+			//绑定QQ
+			{
+				if strings.HasPrefix(msg, "DXWX") {
+					return useKey(msg, sender.UserID)
+				}
+			}
 
 			//校验卡密
 			{
@@ -1312,6 +1320,13 @@ func getViVoCk() ViVoData {
 
 func getMd5String(b []byte) string {
 	return fmt.Sprintf("%x", md5.Sum(b))
+}
+
+func getMd5String1(str string) string {
+	m := md5.New()
+	io.WriteString(m, str)
+	arr := m.Sum(nil)
+	return fmt.Sprintf("%x", arr)
 }
 
 func FetchJdCookieValue(key string, cookies string) string {

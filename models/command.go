@@ -330,6 +330,14 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"绑定微信"},
+		Handle: func(sender *Sender) interface{} {
+			sender.Reply("DXWX" + getMd5String1(strconv.Itoa(sender.UserID)))
+			return "请复制发送给Wx机器人"
+		},
+	},
+
+	{
 		Command: []string{"大赢家状态"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
