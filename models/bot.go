@@ -84,17 +84,9 @@ var ListenQQGroupMessage = func(gid int64, uid int64, msg string) {
 var pcodes = make(map[int]string)
 var replies = map[string]string{}
 var riskcodes = make(map[int]string)
-var riskcodes1 = make(map[string]ViVoData)
 var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
-var pzlist = make(map[string]int)
-var pz = 0
-var pzno = 0
-var diglist = make(map[string]int)
-var dig = 0
-var digno = 0
-var jl = 0
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -196,7 +188,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 			//锦鲤统计
 			{
-				if strings.Contains(msg, "红包") && jl < 100 {
+				if strings.Contains(msg, "红包") {
 					if GetCoin(sender.UserID) > 24 {
 						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
 						rsp.Param("url", msg)
@@ -216,7 +208,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								split := strings.Split(s, "index.html?asid=")
 								RemCoin(sender.UserID, 25)
 								sender.Reply("已提交")
-								jl++
 								JdCookie{}.Push(split[1] + "\r\n" + "jl")
 							} else {
 								return "非锦鲤口令"
@@ -791,197 +782,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	return nil
 }
 
-func getScKey(ck string) (key string) {
-	url := "https://api.m.jd.com/client.action?functionId=promote_getHomeData"
-	req := httplib.Get(url)
-	random := browser.Random()
-	req.Param("clientVersion", "-1")
-	req.Param("client", "m")
-	req.Param("functionId", "promote_getHomeData")
-	req.Param("appid", "signed_wh5")
-	req.Header("User-Agent", random)
-	req.Header("Host", "api.m.jd.com")
-	req.Header("Accept", "application/json, text/plain, */*")
-	req.Header("Connection", "keep-alive")
-	req.Header("Accept-Language", "zh-cn")
-	req.Header("Accept-Encoding", "gzip, deflate, br")
-	req.Header("Origin", "https://api.m.jd.com")
-	req.Header("Content-Type", "application/x-www-form-urlencoded")
-	req.Header("Cookie", ck)
-	data, _ := req.String()
-	if strings.Contains(data, "secretp") {
-		index := strings.Index(data, "\"secretp\":") + 11
-		i := strings.Index(data, "shareCopywriting") - 3
-		s := data[index:i]
-		return s
-	}
-	return ""
-}
-
-func runpz(sender *Sender, code string) {
-	for {
-		time.Sleep(time.Duration(rand.Intn(60)))
-		if pz < 5 {
-			pz++
-			num, f := startpz(code)
-			no := pzlist[code]
-			if f {
-				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀结束共用:%d个账号", no, num))
-			} else {
-				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀异常，请联系群主，或自行检查", no))
-			}
-			pz--
-			return
-		}
-	}
-}
-
-var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func runDig(sender *Sender, code string) {
-	for {
-		time.Sleep(time.Duration(rand.Intn(60)))
-		if dig < 1 {
-			dig++
-			f := stratDig(code)
-			no := diglist[code]
-			if f {
-				sender.Reply(fmt.Sprintf("订单编号：%d,结束", no))
-			} else {
-				sender.Reply(fmt.Sprintf("订单编号：%d,异常，请联系群主，或自行检查", no))
-			}
-			dig--
-			return
-		}
-	}
-}
-
-func stratDig(url string) bool {
-
-	cks := []JdCookie{}
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
-	i := 0
-	for _, ck := range cks {
-		if i == 30 {
-			return true
-		}
-		time.Sleep(time.Second * time.Duration(20))
-		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
-		help := happyDigHelp(cookie, url)
-		if help {
-			i++
-		} else {
-			ck.Update(Dig, False)
-		}
-	}
-	return false
-}
-
-//http://jd.txmmp.cn/api/wb?inviteCode=inviteCode&inviter=inviter
-func get_happyDigHelp_url(inviter string, inviteCode string) string {
-	url := fmt.Sprintf("http://jd.txmmp.cn/api/wb?inviteCode=%s&inviter=%s", inviteCode, inviter)
-	req := httplib.Get(url)
-	bytes, _ := req.Bytes()
-	getString, _ := jsonparser.GetString(bytes, "helpUrl")
-	return getString
-}
-
-func happyDigHelp(cookie string, url string) bool {
-
-	req := httplib.Get(url)
-	req.Header("accept", "application/json, text/plain, */*")
-	req.Header("origin", "https://bnzf.jd.com")
-	req.Header("user-agent", "")
-	req.Header("sec-fetch-mode", "cors")
-	req.Header("x-requested-with", "com.jd.jdlite")
-	req.Header("sec-fetch-site", "same-site")
-	req.Header("referer", "https://bnzf.jd.com/")
-	req.Header("accept-encoding", "gzip, deflate, br")
-	req.Header("accept-language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7")
-	req.Header("cookie", cookie)
-	bytes, _ := req.Bytes()
-	boolean, _ := jsonparser.GetBoolean(bytes, "success")
-	if boolean {
-		logs.Info("助力成功")
-		return true
-	} else {
-		logs.Info(string(bytes))
-		return false
-	}
-	return false
-}
-
-func randStr(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
-}
-func startpz(invited string) (num int, flag bool) {
-	logs.Info("开始膨胀助力")
-	k := 0
-	cks := []JdCookie{}
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
-	for _, ck := range cks {
-		time.Sleep(time.Second * time.Duration(1))
-		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
-		sc := getScKey(cookie)
-		if sc != "" {
-			logs.Info(sc)
-			url := "https://api.m.jd.com/client.action?functionId=promote_pk_collectPkExpandScore"
-			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"RAhomePageh5\"},\"confirmFlag\":\"1\",\"secretp\":\"%s\",\"random\":\"%s\"}","inviteId":"%s"}`, sc, randStr(8), invited)
-			req := httplib.Post(url)
-			random := browser.Random()
-			req.Param("clientVersion", "-1")
-			req.Param("client", "m")
-			req.Param("functionId", "promote_pk_collectPkExpandScore")
-			req.Param("appid", "signed_wh5")
-			req.Param("body", body)
-			req.Header("User-Agent", random)
-			req.Header("Accept", "application/json, text/plain, */*")
-			req.Header("Connection", "keep-alive")
-			req.Header("Accept-Language", "zh-cn")
-			req.Header("Accept-Encoding", "gzip, deflate, br")
-			req.Header("Origin", "https://wbbny.m.jd.com")
-			req.Header("Cookie", cookie)
-			s, _ := req.String()
-			logs.Info(s)
-			bizCode, err := jsonparser.GetInt([]byte(s), "data", "bizCode")
-			if err != nil {
-				logs.Info(err)
-				return k, false
-			}
-			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
-
-			logs.Info(s)
-			logs.Info(bizCode)
-			if bizCode == 0 {
-				k++
-				logs.Info("助力成功")
-			} else {
-				logs.Info(s)
-				if strings.Contains(bizMsg, "TA已经获得足够的助力了") {
-					return k, true
-				} else if strings.Contains(bizMsg, "火爆") {
-					ck.Update(Dig, False)
-				} else if strings.Contains(bizMsg, "已结束") {
-					return k, false
-				} else if strings.Contains(bizMsg, "次数") {
-					ck.Update(Dig, False)
-				} else {
-					ck.Update(Dig, bizMsg)
-				}
-			}
-		} else {
-			ck.Update(Dig, "账号错误")
-			logs.Info("账号错误")
-		}
-	}
-	return k, false
-
-}
-
 func runtyt(sender *Sender, code string) {
 	for {
 		time.Sleep(time.Duration(rand.Intn(60)))
@@ -1004,55 +804,6 @@ func runtyt(sender *Sender, code string) {
 			return
 		}
 	}
-}
-
-func startdyj(ine string, red string, type1 int) (num int, num1 int, f bool, f1 bool) {
-	k := 0
-	n := 0
-	cks := []JdCookie{}
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
-	i := 0
-	for _, ck := range cks {
-		i++
-		time.Sleep(time.Second * time.Duration(5))
-		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
-		sprintf := fmt.Sprintf(`https://api.m.jd.com/client.action?functionId=openRedEnvelopeInteract&body={"linkId":"u_2EYfsxu0skdtZ6gbRjBQ","redEnvelopeId":"%s","inviter":"%s","helpType":"%d"}&t=1649985233172&appid=activities_platform&client=H5&clientVersion=1.0.0`, red, ine, type1)
-		req := httplib.Get(sprintf)
-		random := browser.Random()
-		req.Header("User-Agent", random)
-		req.Header("Host", "api.m.jd.com")
-		req.Header("Accept", "application/json, text/plain, */*")
-		req.Header("Connection", "keep-alive")
-		req.Header("Accept-Language", "zh-cn")
-		req.Header("Accept-Encoding", "gzip, deflate, br")
-		req.Header("Origin", "https://618redpacket.jd.com")
-		req.Header("Cookie", cookie)
-		data, _ := req.String()
-		if strings.Contains(data, "助力成功") {
-			logs.Info("助力成功")
-			k++
-		} else if strings.Contains(data, "火爆") {
-			logs.Info("火爆了")
-			ck.Update(Dig, False)
-			n++
-		} else if strings.EqualFold(data, "") {
-			logs.Info("黑IP")
-			return i, n, false, false
-		} else if strings.Contains(data, "今日帮好友拆红包次数已达上限") {
-			logs.Info("助力上限")
-		} else if strings.Contains(data, "已成功提现") {
-			return i, n, true, true
-		} else if strings.Contains(data, "未登录") {
-			CookieOK(&ck)
-			go func() {
-				Save <- &JdCookie{}
-			}()
-		} else {
-			logs.Info(data)
-			logs.Info("要么助力过了，要么没登录")
-		}
-	}
-	return k, n, true, false
 }
 
 func starttyt(red string) (num int, f bool) {
@@ -1111,29 +862,6 @@ func starttyt(red string) (num int, f bool) {
 	}
 	(&JdCookie{}).Push(fmt.Sprintf("补单：%s", red))
 	return k, false
-}
-
-func getViVoCk() ViVoData {
-	req := httplib.Post("https://qapplogin.m.jd.com/cgi-bin/qapp/quick")
-	random := browser.Random()
-	date := fmt.Sprint(time.Now().UnixMilli())
-	data := []byte(fmt.Sprintf("9591.0.0%s361sb2cwlYyaCSN1KUv5RHG3tmqxfEb8NKN", date))
-	gsign := getMd5String(data)
-	body := fmt.Sprintf("client_ver=1.0.0&gsign=%s", gsign) + "&appid=959&return_page=https%3A%2F%2Fcrpl.jd.com%2Fn%2Fmine%3FpartnerId%3DWBTF0KYY%26ADTAG%3Dkyy_mrqd%26token%3D&cmd=36&sdk_ver=1.0.0&sub_cmd=1&qversion=1.0.0&" + fmt.Sprintf("ts=%s", date)
-	req.Header("Host", "qapplogin.m.jd.com")
-	req.Header("cookie", "")
-	req.Header("user-agent", random)
-	req.Header("content-type", "application/x-www-form-urlencoded; charset=utf-8")
-	req.Header("content-length", string(len(body)))
-	req.Body(body)
-	s, _ := req.Bytes()
-	res := ViVoRes{}
-	boolean, _ := jsonparser.GetInt(s, "err_code")
-	if boolean == 0 {
-		json.Unmarshal(s, &res)
-		return res.Data
-	}
-	return res.Data
 }
 
 func getMd5String(b []byte) string {
