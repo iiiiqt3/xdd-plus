@@ -93,11 +93,6 @@ func main() {
 		}
 	})
 
-	web.Router("/api/login/qrcode", &controllers.LoginController{}, "get:GetQrcode")
-	web.Router("/api/login/qrcode.png", &controllers.LoginController{}, "get:GetQrcode")
-	web.Router("/api/login/qrcode1", &controllers.LoginController{}, "get:GetQrcode1")
-	web.Router("/api/login/query", &controllers.LoginController{}, "get:Query")
-	web.Router("/api/login/cookie", &controllers.LoginController{}, "get:Cookie")
 	web.Router("/api/login/admin", &controllers.LoginController{}, "post:IsAdmin")
 	web.Router("/api/login/cklogin", &controllers.LoginController{}, "post:CkLogin")
 	web.Router("/api/login/smslogin", &controllers.LoginController{}, "post:SMSLogin")
@@ -105,9 +100,6 @@ func main() {
 	web.Router("/api/getUserInfo", &controllers.LoginController{}, "get:GetUserInfo")
 	web.Router("/api/getUserPin", &controllers.LoginController{}, "post:GetUserPin")
 	web.Router("/api/getUserPin", &controllers.LoginController{}, "get:GetUserPin")
-	web.Router("/api/log", &controllers.LoginController{}, "post:GetLogs")
-	web.Router("/api/ua", &controllers.LoginController{}, "get:GetUS")
-	web.Router("/api/akl", &controllers.LoginController{}, "get:GetLog199")
 	web.Router("/api/account", &controllers.AccountController{}, "get:List")
 	web.Router("/api/account", &controllers.AccountController{}, "post:CreateOrUpdate")
 	web.Router("/admin", &controllers.AccountController{}, "get:Admin")
