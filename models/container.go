@@ -23,6 +23,12 @@ const (
 	LI = "li"
 )
 
+type Token struct {
+	Expiration time.Time
+	Token      string
+	Address    string
+}
+
 type Container struct {
 	Type      string
 	Name      string

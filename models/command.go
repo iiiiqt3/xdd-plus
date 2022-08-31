@@ -111,9 +111,6 @@ func (sender *Sender) IsTG() bool {
 	return strings.Contains(sender.Type, "tg")
 }
 
-var wb = false
-var qj = false
-
 func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 	cks := GetJdCookies()
 	a := sender.JoinContens()

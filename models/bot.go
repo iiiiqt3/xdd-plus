@@ -81,6 +81,8 @@ var ListenQQGroupMessage = func(gid int64, uid int64, msg string) {
 	}
 }
 
+var ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 SP-engine/2.14.0 main%2F1.0 baiduboxapp/11.18.0.16 (Baidu; P2 13.3.1) NABar/0.0"
+
 var pcodes = make(map[int]string)
 var replies = map[string]string{}
 var riskcodes = make(map[int]string)
