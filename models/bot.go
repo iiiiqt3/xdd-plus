@@ -187,9 +187,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							inviterCode = env[1]
 						}
 					}
-					f, err := os.OpenFile(ExecPath+"/wblj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+					f, err := os.OpenFile(ExecPath+"/table.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 					if err != nil {
-						logs.Warn("tytlj.txt失败，", err)
+						logs.Warn("table.txt失败，", err)
 					}
 					str := fmt.Sprintf("https://bnzf.jd.com/?activityId=pTTvJeSTrpthgk9ASBVGsw&inviterId=%s&inviterCode=%s&utm_user=plusmember&ad_od=share&utm_source=androidapp&utm_medium=appshare&utm_campaign=t_335139774&utm_term=Wxfriends", inviterId, inviterCode)
 					sender.Reply("已提交")
