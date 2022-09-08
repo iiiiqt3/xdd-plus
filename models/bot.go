@@ -170,23 +170,47 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			//挖宝统计
-			//{
-			//	if strings.Contains(msg, "https://bnzf.jd.com/") {
-			//		msg = strings.ReplaceAll(msg, "&amp;", "&")
-			//		f, err := os.OpenFile(ExecPath+"/wblj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-			//		if err != nil {
-			//			logs.Warn("wb.txt失败，", err)
-			//		}
-			//		if GetCoin(sender.UserID) > 19 {
-			//			f.WriteString(msg + "\n")
-			//			RemCoin(sender.UserID, 20)
-			//			sender.Reply(fmt.Sprintf("已提交转订单，扣除积分20，剩余积分：%d", GetCoin(sender.UserID)))
-			//		} else {
-			//			sender.Reply("积分不足")
-			//		}
-			//		f.Close()
-			//	}
-			//}
+			{
+				if sender.IsAdmin {
+					if strings.Contains(msg, "https://bnzf.jd.com/") {
+
+						split := strings.Split(msg, "&amp;")
+						inviterId := ""
+						inviterCode := ""
+						for i := range split {
+							if strings.Contains(split[i], "inviterId=") {
+								env := strings.Split(split[i], "=")
+								inviterId = env[1]
+							}
+							if strings.Contains(split[i], "inviterCode=") {
+								env := strings.Split(split[i], "=")
+								inviterCode = env[1]
+							}
+						}
+						f, err := os.OpenFile(ExecPath+"/wblj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+						if err != nil {
+							logs.Warn("tytlj.txt失败，", err)
+						}
+						str := fmt.Sprintf("https://bnzf.jd.com/?activityId=pTTvJeSTrpthgk9ASBVGsw&inviterId=%d&inviterCode=%d&utm_user=plusmember&ad_od=share&utm_source=androidapp&utm_medium=appshare&utm_campaign=t_335139774&utm_term=Wxfriends", inviterId, inviterCode)
+						f.WriteString(str + "\n")
+						f.Close()
+
+						//msg = strings.ReplaceAll(msg, "&amp;", "&")
+						//f, err := os.OpenFile(ExecPath+"/wblj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+						//if err != nil {
+						//	logs.Warn("wb.txt失败，", err)
+						//}
+						//if GetCoin(sender.UserID) > 19 {
+						//	f.WriteString(msg + "\n")
+						//	RemCoin(sender.UserID, 20)
+						//	sender.Reply(fmt.Sprintf("已提交转订单，扣除积分20，剩余积分：%d", GetCoin(sender.UserID)))
+						//} else {
+						//	sender.Reply("积分不足")
+						//}
+						//f.Close()
+					}
+				}
+			}
 
 			//锦鲤统计
 			{
@@ -208,9 +232,13 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							s := string(body)
 							if strings.Contains(s, "3ugedFa7yA6NhxLN5gw2L3PF9sQC") {
 								split := strings.Split(s, "index.html?asid=")
+								f, err := os.OpenFile(ExecPath+"/jl.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+								if err != nil {
+									logs.Warn("wb.txt失败，", err)
+								}
+								f.WriteString(split[1] + "&")
 								RemCoin(sender.UserID, 25)
 								sender.Reply("已提交")
-								JdCookie{}.Push(split[1] + "\r\n" + "jl")
 							} else {
 								return "非锦鲤口令"
 							}
