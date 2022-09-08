@@ -191,7 +191,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					if err != nil {
 						logs.Warn("tytlj.txt失败，", err)
 					}
-					str := fmt.Sprintf("https://bnzf.jd.com/?activityId=pTTvJeSTrpthgk9ASBVGsw&inviterId=%d&inviterCode=%d&utm_user=plusmember&ad_od=share&utm_source=androidapp&utm_medium=appshare&utm_campaign=t_335139774&utm_term=Wxfriends", inviterId, inviterCode)
+					str := fmt.Sprintf("https://bnzf.jd.com/?activityId=pTTvJeSTrpthgk9ASBVGsw&inviterId=%s&inviterCode=%s&utm_user=plusmember&ad_od=share&utm_source=androidapp&utm_medium=appshare&utm_campaign=t_335139774&utm_term=Wxfriends", inviterId, inviterCode)
 					sender.Reply("已提交")
 					f.WriteString(str + "\n")
 					f.Close()
