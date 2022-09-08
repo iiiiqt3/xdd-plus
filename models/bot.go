@@ -174,7 +174,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			{
 				if strings.Contains(msg, "https://bnzf.jd.com/") {
 
-					split := strings.Split(msg, "&amp;")
+					split := strings.Split(msg, "&")
 					inviterId := ""
 					inviterCode := ""
 					for i := range split {
