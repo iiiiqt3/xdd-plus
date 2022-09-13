@@ -7,6 +7,7 @@ import (
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/buger/jsonparser"
 	"github.com/skip2/go-qrcode"
+	"github.com/tinyhubs/tinydom"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -103,6 +104,12 @@ func InitReplies() {
 	}
 }
 
+type msg struct {
+	State   string `xml:"state"`
+	Message string `xml:"message"`
+	Data    string `xml:"data"`
+}
+
 var handleMessage = func(msgs ...interface{}) interface{} {
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
 	msg := msgs[0].(string)
@@ -171,6 +178,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//挖宝统计
 			{
 				if strings.Contains(msg, "https://bnzf.jd.com/") {
+					if strings.Contains(msg, "xml version=") {
+						doc, _ := tinydom.LoadDocument(strings.NewReader(msg))
+						talk := doc.FirstChildElement("msg").FirstChildElement("url").Text()
+						fmt.Print(talk)
+						msg = talk
+					}
 
 					split := strings.Split(msg, "&")
 					inviterId := ""
