@@ -180,7 +180,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				if strings.Contains(msg, "https://bnzf.jd.com/") {
 					if strings.Contains(msg, "xml version=") {
 						doc, _ := tinydom.LoadDocument(strings.NewReader(msg))
-						talk := doc.FirstChildElement("msg").FirstChildElement("url").Text()
+						talk := doc.FirstChildElement("msg").FirstChildElement("appmsg").FirstChildElement("url").Text()
 						fmt.Print(talk)
 						msg = talk
 					}
