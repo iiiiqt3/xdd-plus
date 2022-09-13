@@ -122,7 +122,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		Contents: contents,
 	}
 	if msgs[1].(string) == "wx" {
-		sender.UserID = 764763903
+		sender.UserID = getWxId(msgs[2].(string))
 	} else {
 		sender.UserID = msgs[2].(int)
 	}
@@ -164,7 +164,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//绑定QQ
 			{
 				if strings.HasPrefix(msg, "DXWX") {
-					return useKey(msg, sender.UserID)
+					return setWxId(msg, sender.WxId)
 				}
 			}
 
