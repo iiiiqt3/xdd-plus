@@ -14,6 +14,7 @@ type User struct {
 	ActiveAt time.Time
 	Coin     int
 	Womail   string
+	Wxid     string
 }
 
 func ClearCoin(uid int) int {
@@ -64,4 +65,10 @@ func GetCoin(uid int) int {
 	var u User
 	db.Where("number = ?", uid).First(&u)
 	return u.Coin
+}
+
+func getWxId(uid string) int {
+	var u User
+	db.Where("wxid = ?", uid).First(&u)
+	return u.Number
 }

@@ -115,6 +115,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		Contents: contents,
 	}
 	if msgs[1].(string) == "wx" {
+		sender.UserID = getWxId(msgs[2].(string))
 	} else {
 		sender.UserID = msgs[2].(int)
 	}
@@ -152,6 +153,13 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	if Config.VIP {
 		switch msg {
 		default:
+
+			//绑定QQ
+			{
+				if strings.HasPrefix(msg, "DXWX") {
+					return useKey(msg, sender.UserID)
+				}
+			}
 
 			//校验卡密
 			{
