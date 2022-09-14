@@ -11,8 +11,8 @@ import (
 )
 
 type W struct {
-	url     string
-	robotId string
+	Url     string
+	Robotid string
 }
 
 type Yaml struct {
