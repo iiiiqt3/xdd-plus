@@ -47,6 +47,9 @@ daily_asset_push_cron:
 repos:
   - git: https://github.com/shufflewzc/faker2.git
 fanli:
-  - appid:
-  - appkey:
-  - union_id:
+  appid:
+  appkey:
+  union_id:
+wx:
+  url:
+  robotid:
