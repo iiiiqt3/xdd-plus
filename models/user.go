@@ -97,15 +97,22 @@ func setWxId(uid string, wxid string) string {
 	}
 }
 
-func makeWxId(uid int, wxid string) {
+func makeWxId(uid int, wxid string) string {
 
 	var u User
 	if db.Where("number = ?", uid).First(&u).Error != nil {
-
+		db.Create(&User{
+			Class:    "qq",
+			Number:   uid,
+			Coin:     0,
+			ActiveAt: time.Now(),
+			Wxid:     wxid,
+		})
 	} else {
 		db.Model(u).Updates(map[string]interface{}{
 			"wxid": wxid,
 		})
 	}
+	return wxid
 
 }
