@@ -10,9 +10,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Wx struct {
-	url     string
-	robotId string
+type W struct {
+	Url     string
+	Robotid string
 }
 
 type Yaml struct {
@@ -69,7 +69,7 @@ type Yaml struct {
 	QbotConfigFile      string `yaml:"qbot_config_file"`
 	Repos               []Repo
 	FanLis              FanLi
-	Wx                  Wx
+	Wx                  W
 	HttpProxyServerPort int    `yaml:"http_proxy_server_port"`
 	Priority            int    `yaml:"Priority"`
 	DailyCompletePush   string `yaml:"daily_complete_push"`

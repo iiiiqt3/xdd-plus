@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"gorm.io/gorm"
@@ -69,6 +70,42 @@ func GetCoin(uid int) int {
 
 func getWxId(uid string) int {
 	var u User
-	db.Where("wxid = ?", uid).First(&u)
-	return u.Number
+	if db.Where("wxid = ?", uid).First(&u).Error != nil {
+		tt := rand.Int()
+		db.Create(&User{
+			Class:    "wx",
+			Number:   tt,
+			Coin:     0,
+			ActiveAt: time.Now(),
+			Wxid:     uid,
+		})
+		return tt
+	} else {
+		return u.Number
+	}
+}
+
+func setWxId(uid string, wxid string) string {
+	var u User
+	if db.Where("wxid = ?", uid).First(&u).Error != nil {
+		return "绑定失败"
+	} else {
+		db.Model(u).Updates(map[string]interface{}{
+			"wxid": wxid,
+		})
+		return "绑定成功"
+	}
+}
+
+func makeWxId(uid int, wxid string) {
+
+	var u User
+	if db.Where("number = ?", uid).First(&u).Error != nil {
+
+	} else {
+		db.Model(u).Updates(map[string]interface{}{
+			"wxid": wxid,
+		})
+	}
+
 }
