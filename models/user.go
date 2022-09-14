@@ -70,17 +70,17 @@ func GetCoin(uid int) int {
 
 func getWxId(uid string) int {
 	var u User
-	if db.Where("wxid = ?", uid).First(&u).Error!=nil{
+	if db.Where("wxid = ?", uid).First(&u).Error != nil {
 		tt := rand.Int()
 		db.Create(&User{
 			Class:    "wx",
 			Number:   tt,
 			Coin:     0,
 			ActiveAt: time.Now(),
-			Wxid:   uid,
+			Wxid:     uid,
 		})
 		return tt
-	}else{
+	} else {
 		return u.Number
 	}
 }
