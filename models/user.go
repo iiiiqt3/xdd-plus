@@ -87,6 +87,7 @@ func getWxId(uid string) int {
 
 func setWxId(uid string, wxid string) string {
 	var u User
+	db.Where("wxid = ?", wxid).Delete(&u)
 	if db.Where("wxid = ?", uid).First(&u).Error != nil {
 		return "绑定失败"
 	} else {
