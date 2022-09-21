@@ -140,6 +140,5 @@ func main() {
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	}()
-	web.Run()
-
+	go web.Run()
 }
