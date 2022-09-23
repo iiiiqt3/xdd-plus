@@ -357,7 +357,7 @@ var codeSignals = []CodeSignal{
 		Command: []string{"查询", "query"},
 		Handle: func(sender *Sender) interface{} {
 			if sender.Type == "qq" {
-				sender.Reply("请使用网页")
+				return "请使用网页"
 			}
 			//sender.Reply("请使用网页")
 			if sender.IsAdmin {
