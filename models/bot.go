@@ -6,7 +6,6 @@ import (
 	"fmt"
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/buger/jsonparser"
-	"github.com/skip2/go-qrcode"
 	"github.com/tinyhubs/tinydom"
 	"io"
 	"io/ioutil"
@@ -466,17 +465,17 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			//临时识别登录
-			{
-				if strings.Contains(msg, "登录") || strings.Contains(msg, "登陆") {
-					sender.Reply("请使用网页")
-					if Config.CXURL != "" {
-						var png []byte
-						png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
-						sender.SendImg(png)
-					}
-
-				}
-			}
+			//{
+			//	if strings.Contains(msg, "登录") || strings.Contains(msg, "登陆") {
+			//		sender.Reply("请使用网页")
+			//		if Config.CXURL != "" {
+			//			var png []byte
+			//			png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
+			//			sender.SendImg(png)
+			//		}
+			//
+			//	}
+			//}
 
 		}
 	}
