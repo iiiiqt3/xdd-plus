@@ -71,7 +71,10 @@ func (sender *Sender) Reply(msg string) {
 }
 
 func (sender *Sender) SendImg(msg []byte) {
-	SendQQ(int64(sender.UserID), msg)
+	switch sender.Type {
+	case "qq":
+		SendQQ(int64(sender.UserID), msg)
+	}
 }
 
 func SendWxMsg(uid string, msg string) {
@@ -353,7 +356,10 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"查询", "query"},
 		Handle: func(sender *Sender) interface{} {
-			sender.Reply("请使用网页")
+			if sender.Type == "qq" {
+				sender.Reply("请使用网页")
+			}
+			//sender.Reply("请使用网页")
 			if sender.IsAdmin {
 				sender.handleJdCookies(func(ck *JdCookie) {
 					time.Sleep(time.Second * time.Duration(Config.Later))
