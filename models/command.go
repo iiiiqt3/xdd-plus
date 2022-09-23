@@ -56,7 +56,10 @@ func (sender *Sender) Reply(msg string) {
 	case "tgg":
 		SendTggMsg(sender.ChatID, sender.UserID, msg, sender.MessageID, sender.Username)
 	case "qq":
-		SendQQ(int64(sender.UserID), msg)
+		if msg == "绑定微信" {
+			SendQQ(int64(sender.UserID), msg)
+		}
+		//SendQQ(int64(sender.UserID), msg)
 		//if strings.Contains(msg, "账号昵称：") && Config.VIP {
 		//	SendQQ(int64(sender.UserID), strtoimg(msg))
 		//} else {
