@@ -56,6 +56,7 @@ func (sender *Sender) Reply(msg string) {
 	case "tgg":
 		SendTggMsg(sender.ChatID, sender.UserID, msg, sender.MessageID, sender.Username)
 	case "qq":
+		logs.Info(msg)
 		if msg == "绑定微信" {
 			SendQQ(int64(sender.UserID), msg)
 		}
