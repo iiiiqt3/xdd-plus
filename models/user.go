@@ -87,6 +87,7 @@ func getWxId(uid string) int {
 
 func setWxId(uid string, wxid string) string {
 	var u User
+	db.Where("wxid = ? and class = ?", wxid, "wx").Delete(&u)
 	if db.Where("wxid = ?", uid).First(&u).Error != nil {
 		return "绑定失败"
 	} else {
@@ -97,15 +98,22 @@ func setWxId(uid string, wxid string) string {
 	}
 }
 
-func makeWxId(uid int, wxid string) {
+func makeWxId(uid int, wxid string) string {
 
 	var u User
 	if db.Where("number = ?", uid).First(&u).Error != nil {
-
+		db.Create(&User{
+			Class:    "qq",
+			Number:   uid,
+			Coin:     0,
+			ActiveAt: time.Now(),
+			Wxid:     wxid,
+		})
 	} else {
 		db.Model(u).Updates(map[string]interface{}{
 			"wxid": wxid,
 		})
 	}
+	return wxid
 
 }
