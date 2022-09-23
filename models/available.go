@@ -236,6 +236,7 @@ func updateCookie() {
 			rsp, _ := getKey(pinky)
 			if strings.Contains(rsp, "fake") {
 				yy++
+				ck.Update(Available, False)
 				//ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
 				//(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
 			} else {
@@ -260,7 +261,6 @@ func updateCookie() {
 						(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", ck.PtPin))
 					}
 				} else {
-
 					yy++
 					(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
 				}
