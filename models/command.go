@@ -120,7 +120,7 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 	ok := false
 	if !sender.IsAdmin && a == "" {
 		for i := range cks {
-			if strings.Contains(sender.Type, "qq") {
+			if strings.Contains(sender.Type, "qq") || strings.Contains(sender.Type, "wx") {
 				if cks[i].QQ == sender.UserID {
 					if !ok {
 						ok = true
