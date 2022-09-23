@@ -55,7 +55,9 @@ type ViVoRes struct {
 }
 
 var ListenQQPrivateMessage = func(uid int64, msg string) {
-	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
+	if strings.Contains(msg, "绑定微信") {
+		SendQQ(uid, handleMessage(msg, "qq", int(uid)))
+	}
 }
 
 var ListenQQTempPrivateMessage = func(uid int64, msg string) {
