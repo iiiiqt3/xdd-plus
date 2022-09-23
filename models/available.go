@@ -131,7 +131,6 @@ func initCookie() {
 	for i := range cks {
 		time.Sleep(time.Second * time.Duration(Config.Later))
 		if cks[i].Available == True && !CookieOK(&cks[i]) {
-			logs.Info("开始禁用")
 			cks[i].OutPool()
 		}
 	}
@@ -367,22 +366,22 @@ func CookieOK(ck *JdCookie) bool {
 							}
 							if nck, err := GetJdCookie(ptPin); err == nil {
 								nck.InPool(ck.PtKey)
-								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
+								//msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 								(&JdCookie{}).Push(msg)
 								logs.Info(msg)
 							} else {
 								//nck.Update(Available, False)
-								(&JdCookie{}).Push(fmt.Sprintf("过期转换失败，%s", ck.PtPin))
+								//(&JdCookie{}).Push(fmt.Sprintf("过期转换失败，%s", ck.PtPin))
 							}
 						}
 
 					} else {
-						ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录,安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
-						JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
+						//ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录,安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
+						//JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
 					}
 				} else {
-					ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录，安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
-					JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
+					//ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录，安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
+					//JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
 				}
 
 			}
