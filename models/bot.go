@@ -949,7 +949,7 @@ func getScKey(ck string) (key string) {
 	random := browser.Random()
 	req.Param("clientVersion", "1.0.0")
 	req.Param("client", "wh5")
-	req.Param("functionId", "promote_getHomeData")
+	req.Param("functionId", "promote_pk_getHomeData")
 	req.Header("User-Agent", random)
 	req.Header("Host", "api.m.jd.com")
 	req.Header("Accept", "application/json, text/plain, */*")
