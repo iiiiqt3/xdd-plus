@@ -181,6 +181,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							return "口令转换失败"
 						} else {
 							if strings.Contains(string(body), "shareType=expandHelp") {
+								sender.Reply("开始助力")
 								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
 								k, flag := startpz(inviterCode[1])
 								if flag {
