@@ -964,7 +964,6 @@ func getScKey(ck string) (key string) {
 		index := strings.Index(data, "\"secretp\":") + 11
 		i := strings.Index(data, "shareMiniprogramSwitch") - 3
 		s := data[index:i]
-		logs.Info(s)
 		return s
 	}
 	return ""
