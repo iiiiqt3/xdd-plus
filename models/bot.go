@@ -1009,7 +1009,7 @@ func startpz(invited string) (num int, flag bool) {
 			} else {
 				logs.Info("助力失败")
 				logs.Info(s)
-				if strings.Contains(bizMsg, "好友人气爆棚") {
+				if strings.Contains(bizMsg, "TA已经获得足够的助力了") {
 					return k, true
 				}
 			}
