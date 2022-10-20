@@ -92,6 +92,9 @@ var riskcodes = make(map[int]string)
 var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
+var pzlist = make(map[string]int)
+var pz = 0
+var pzno = 0
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -183,12 +186,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							if strings.Contains(string(body), "shareType=expandHelp") {
 								sender.Reply("开始助力")
 								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-								k, flag := startpz(inviterCode[1])
-								if flag {
-									return fmt.Sprintf("助力完成，一共助力%d账号", k)
-								} else {
-									return fmt.Sprintf("助力失败，一共助力%d账号", k)
-								}
+								runpz(sender, inviterCode[1])
 							}
 						}
 					}
@@ -967,6 +965,24 @@ func getScKey(ck string) (key string) {
 		return s
 	}
 	return ""
+}
+
+func runpz(sender *Sender, code string) {
+	for {
+		time.Sleep(time.Duration(rand.Intn(60)))
+		if pz < 5 {
+			pz++
+			num, f := startpz(code)
+			no := pzlist[code]
+			if f {
+				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀结束共用:%d个账号", no, num))
+			} else {
+				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀异常，请联系群主，或自行检查", no))
+			}
+			pz--
+			return
+		}
+	}
 }
 
 func startpz(invited string) (num int, flag bool) {
