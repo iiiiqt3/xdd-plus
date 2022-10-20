@@ -186,7 +186,11 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							if strings.Contains(string(body), "shareType=expandHelp") {
 								sender.Reply("开始助力")
 								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-								runpz(sender, inviterCode[1])
+								no := tytno
+								tytno += 1
+								pzlist[inviterCode[1]] = no
+								sender.Reply("开始膨胀，管理员")
+								go runpz(sender, inviterCode[1])
 							}
 						}
 					}
@@ -970,7 +974,7 @@ func getScKey(ck string) (key string) {
 func runpz(sender *Sender, code string) {
 	for {
 		time.Sleep(time.Duration(rand.Intn(60)))
-		if pz < 5 {
+		if pz < 3 {
 			pz++
 			num, f := startpz(code)
 			no := pzlist[code]
@@ -1017,12 +1021,6 @@ func startpz(invited string) (num int, flag bool) {
 			s, _ := req.String()
 			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
 			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
-			if s == "" {
-				CookieOK(&ck)
-				go func() {
-					Save <- &JdCookie{}
-				}()
-			}
 			if bizCode == 0 {
 				k++
 				logs.Info("助力成功")
@@ -1038,6 +1036,11 @@ func startpz(invited string) (num int, flag bool) {
 					ck.Update(Tyt, False)
 				}
 			}
+		} else {
+			CookieOK(&ck)
+			go func() {
+				Save <- &JdCookie{}
+			}()
 		}
 	}
 	return k, false
