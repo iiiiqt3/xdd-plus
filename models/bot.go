@@ -976,6 +976,7 @@ func startpz(invited string) (num int, flag bool) {
 	logs.Info("开始膨胀助力")
 	k := 0
 	cks := GetJdCookies()
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Order("RAND()").Find(&cks)
 	for i := len(cks); i > 0; i-- {
 		time.Sleep(time.Second * time.Duration(3))
 		cookie := "pt_key=" + cks[i-1].PtKey + ";pt_pin=" + cks[i-1].PtPin + ";"
