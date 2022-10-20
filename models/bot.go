@@ -966,8 +966,6 @@ func getScKey(ck string) (key string) {
 		s := data[index:i]
 		logs.Info(s)
 		return s
-	} else {
-		logs.Info(req.String())
 	}
 	return ""
 }
@@ -1003,7 +1001,7 @@ func startpz(invited string) (num int, flag bool) {
 			s, _ := req.String()
 			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
 			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
-
+			logs.Info(s)
 			if bizCode == 0 {
 				k++
 				logs.Info("助力成功")
