@@ -1013,7 +1013,6 @@ func startpz(invited string) (num int, flag bool) {
 				}
 			}
 		}
-		return k, false
 	}
 	return k, false
 
