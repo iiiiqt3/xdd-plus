@@ -164,6 +164,36 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		switch msg {
 		default:
 
+			{
+				if sender.IsAdmin {
+					if strings.Contains(msg, "膨胀") {
+						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+						rsp.Param("url", msg)
+						rsp.Param("type", "hy")
+						data, err := rsp.Response()
+
+						if err != nil {
+							return "口令转换失败"
+						}
+						body, _ := ioutil.ReadAll(data.Body)
+						if strings.Contains(string(body), "口令转换失败") {
+							return "口令转换失败"
+						} else {
+							if strings.Contains(string(body), "shareType=expandHelp") {
+								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+								k, flag := startpz(inviterCode[1])
+								if flag {
+									return fmt.Sprintf("助力完成，一共助力%d账号", k)
+								} else {
+									return fmt.Sprintf("助力失败，一共助力%d账号", k)
+								}
+							}
+						}
+					}
+				}
+
+			}
+
 			//绑定QQ
 			{
 				if strings.HasPrefix(msg, "DXWX") {
@@ -910,6 +940,81 @@ func starttyt(red string) (num int, f bool) {
 
 func getMd5String(b []byte) string {
 	return fmt.Sprintf("%x", md5.Sum(b))
+}
+
+func getScKey(ck string) (key string) {
+	url := "https://api.m.jd.com/client.action?functionId=promote_getHomeData"
+	req := httplib.Get(url)
+	random := browser.Random()
+	req.Param("clientVersion", "1.0.0")
+	req.Param("client", "wh5")
+	req.Param("functionId", "promote_getHomeData")
+	req.Header("User-Agent", random)
+	req.Header("Host", "api.m.jd.com")
+	req.Header("Accept", "application/json, text/plain, */*")
+	req.Header("Connection", "keep-alive")
+	req.Header("Accept-Language", "zh-cn")
+	req.Header("Accept-Encoding", "gzip, deflate, br")
+	req.Header("Origin", "https://api.m.jd.com")
+	req.Header("Cookie", ck)
+	data, _ := req.String()
+	if strings.Contains(data, "secretp") {
+		index := strings.Index(data, "\"secretp\":") + 11
+		i := strings.Index(data, "shareMiniprogramSwitch") - 3
+		s := data[index:i]
+		logs.Info(s)
+		return s
+	} else {
+		logs.Info(req.String())
+	}
+	return ""
+}
+
+func startpz(invited string) (num int, flag bool) {
+	logs.Info("开始膨胀助力")
+	k := 0
+	cks := GetJdCookies()
+	for i := len(cks); i > 0; i-- {
+		time.Sleep(time.Second * time.Duration(3))
+		cookie := "pt_key=" + cks[i-1].PtKey + ";pt_pin=" + cks[i-1].PtPin + ";"
+		sc := getScKey(cookie)
+		if sc != "" {
+			//https://wbbny.m.jd.com/pb/013349910/3rFiv8Sdkn7BPhk8Pw8xrgMWH6mT/index.html?babelChannel=shouyefuceng&shareType=expandHelp&inviteId=PKASTT0225KkcRkpP9VPQdhz9lf9cJgCTdXn4aRzTQjeQOc&mpin=RnFtkWRRYTOMmdRP--txCYtZA7-VliccLeHN&from=sc
+			url := "https://api.m.jd.com/client.action?functionId=promote_pk_collectPkExpandScore"
+			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"HYGJZYh5\"},\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, rand.Intn(99999999), invited)
+			req := httplib.Post(url)
+			random := browser.Random()
+			req.Param("clientVersion", "1.0.0")
+			req.Param("client", "wh5")
+			req.Param("functionId", "promote_pk_collectPkExpandScore")
+			req.Param("body", body)
+			req.Header("User-Agent", random)
+			req.Header("Accept", "application/json, text/plain, */*")
+			req.Header("Connection", "keep-alive")
+			req.Header("Accept-Language", "zh-cn")
+			req.Header("Accept-Encoding", "gzip, deflate, br")
+			req.Header("Origin", "https://wbbny.m.jd.com")
+			req.Header("Cookie", cookie)
+			s, _ := req.String()
+			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
+			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
+
+			if bizCode == 0 {
+				k++
+				logs.Info("助力成功")
+
+			} else {
+				logs.Info("助力失败")
+				logs.Info(s)
+				if strings.Contains(bizMsg, "好友人气爆棚") {
+					return k, true
+				}
+			}
+		}
+		return k, false
+	}
+	return k, false
+
 }
 
 func getMd5String1(str string) string {
