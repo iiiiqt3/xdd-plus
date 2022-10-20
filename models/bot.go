@@ -980,6 +980,8 @@ func startpz(invited string) (num int, flag bool) {
 		time.Sleep(time.Second * time.Duration(3))
 		cookie := "pt_key=" + cks[i-1].PtKey + ";pt_pin=" + cks[i-1].PtPin + ";"
 		sc := getScKey(cookie)
+		logs.Info(cookie)
+		logs.Info(sc)
 		if sc != "" {
 			//https://wbbny.m.jd.com/pb/013349910/3rFiv8Sdkn7BPhk8Pw8xrgMWH6mT/index.html?babelChannel=shouyefuceng&shareType=expandHelp&inviteId=PKASTT0225KkcRkpP9VPQdhz9lf9cJgCTdXn4aRzTQjeQOc&mpin=RnFtkWRRYTOMmdRP--txCYtZA7-VliccLeHN&from=sc
 			url := "https://api.m.jd.com/client.action?functionId=promote_pk_collectPkExpandScore"
