@@ -974,9 +974,9 @@ func startpz(invited string) (num int, flag bool) {
 	k := 0
 	cks := GetJdCookies()
 	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Order("RAND()").Find(&cks)
-	for i := len(cks); i > 0; i-- {
+	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(3))
-		cookie := "pt_key=" + cks[i-1].PtKey + ";pt_pin=" + cks[i-1].PtPin + ";"
+		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
 		sc := getScKey(cookie)
 		logs.Info(cookie)
 		logs.Info(sc)
@@ -1001,16 +1001,25 @@ func startpz(invited string) (num int, flag bool) {
 			s, _ := req.String()
 			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
 			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
-			logs.Info(s)
+			if s == "" {
+				CookieOK(&ck)
+				go func() {
+					Save <- &JdCookie{}
+				}()
+			}
 			if bizCode == 0 {
 				k++
 				logs.Info("助力成功")
 
 			} else {
 				logs.Info("助力失败")
-				logs.Info(s)
 				if strings.Contains(bizMsg, "TA已经获得足够的助力了") {
+					logs.Info("返回完成")
 					return k, true
+				} else if strings.Contains(bizMsg, "您今天的助力次数已用完") {
+					ck.Update(Tyt, False)
+				} else if strings.Contains(bizMsg, "活动太火爆了") {
+					ck.Update(Tyt, False)
 				}
 			}
 		}
