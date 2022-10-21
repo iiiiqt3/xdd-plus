@@ -202,7 +202,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//金币助力
 			{
 				if sender.IsAdmin {
-					if strings.Contains(msg, "京东热爱穿行记") {
+					if strings.Contains(msg, "组队") {
 						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
 						rsp.Param("url", msg)
 						rsp.Param("type", "hy")
