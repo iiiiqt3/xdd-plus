@@ -89,6 +89,12 @@ var riskcodes1 = make(map[string]ViVoData)
 var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
+var pzlist = make(map[string]int)
+var pz = 0
+var pzno = 0
+var zdlist = make(map[string]int)
+var zd = 0
+var zdno = 0
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -155,6 +161,100 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	if Config.VIP {
 		switch msg {
 		default:
+
+			//膨胀
+			{
+				if sender.IsAdmin {
+					if strings.Contains(msg, "膨胀") {
+						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+						rsp.Param("url", msg)
+						rsp.Param("type", "hy")
+						data, err := rsp.Response()
+
+						if err != nil {
+							return "口令转换失败"
+						}
+						body, _ := ioutil.ReadAll(data.Body)
+						if strings.Contains(string(body), "口令转换失败") {
+							return "口令转换失败"
+						} else {
+							if strings.Contains(string(body), "shareType=expandHelp") {
+								sender.Reply("开始助力")
+								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+								no := tytno
+								tytno += 1
+								pzlist[inviterCode[1]] = no
+								sender.Reply("开始膨胀，管理员")
+								go runpz(sender, inviterCode[1])
+							}
+						}
+					}
+				}
+
+			}
+
+			//金币助力
+			{
+				if sender.IsAdmin {
+					if strings.Contains(msg, "助力") {
+						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+						rsp.Param("url", msg)
+						rsp.Param("type", "hy")
+						data, err := rsp.Response()
+
+						if err != nil {
+							return "口令转换失败"
+						}
+						body, _ := ioutil.ReadAll(data.Body)
+						if strings.Contains(string(body), "口令转换失败") {
+							return "口令转换失败"
+						} else {
+							if strings.Contains(string(body), "shareType=taskHelp") {
+								sender.Reply("开始助力")
+								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+								flag := nianhelp(inviterCode[1])
+								if flag {
+									return "助力完成"
+								} else {
+									return "助力失败"
+								}
+							}
+						}
+					}
+				}
+			}
+
+			//组队
+			{
+				if sender.IsAdmin {
+					if strings.Contains(msg, "加入") || strings.Contains(msg, "咖叺") {
+						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+						rsp.Param("url", msg)
+						rsp.Param("type", "hy")
+						data, err := rsp.Response()
+
+						if err != nil {
+							return "口令转换失败"
+						}
+						body, _ := ioutil.ReadAll(data.Body)
+						if strings.Contains(string(body), "口令转换失败") {
+							return "口令转换失败"
+						} else {
+							if strings.Contains(string(body), "shareType=team") {
+								sender.Reply("开始组队")
+								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+
+								flag := zdhelp(inviterCode[1])
+								if flag {
+									return "助力完成"
+								} else {
+									return "助力失败"
+								}
+							}
+						}
+					}
+				}
+			}
 
 			//绑定QQ
 			{
@@ -760,6 +860,106 @@ func randShuffle(slice []JdCookie) {
 	})
 }
 
+func nianhelp(invited string) (flag bool) {
+	logs.Info("开始金币助力")
+	k := 0
+	cks := GetJdCookies()
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Order("RAND()").Find(&cks)
+	for _, ck := range cks {
+		time.Sleep(time.Second * time.Duration(3))
+		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
+		sc := getScKey(cookie)
+		if sc != "" {
+			url := "https://api.m.jd.com/client.action?functionId=promote_collectScore"
+			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"HYGJZYh5\"},\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, rand.Intn(99999999), invited)
+			req := httplib.Post(url)
+			random := browser.Random()
+			req.Param("clientVersion", "-1")
+			req.Param("appid", "signed_wh5")
+			req.Param("functionId", "promote_collectScore")
+			req.Param("body", body)
+			req.Header("User-Agent", random)
+			req.Header("Accept", "application/json, text/plain, */*")
+			req.Header("Connection", "keep-alive")
+			req.Header("Accept-Language", "zh-cn")
+			req.Header("Accept-Encoding", "gzip, deflate, br")
+			req.Header("Origin", "https://bunearth.m.jd.com")
+			req.Header("Cookie", cookie)
+			s, _ := req.String()
+			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
+			if bizCode == 0 {
+				k++
+				logs.Info("助力成功")
+
+			} else {
+				logs.Info("助力失败")
+				logs.Info(s)
+				if strings.Contains(s, "好友人气爆棚") {
+					return true
+				} else if strings.Contains(s, "火爆") {
+					ck.Update(Tyt, False)
+				} else {
+					ck.Update(Tyt, s)
+				}
+			}
+		}
+	}
+	return false
+}
+
+func zdhelp(invited string) (flag bool) {
+	logs.Info("开始组队")
+	k := 0
+	cks := GetJdCookies()
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
+	for _, ck := range cks {
+		time.Sleep(time.Second * time.Duration(3))
+		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
+		sc := getScKey(cookie)
+		if sc != "" {
+			url := "https://api.m.jd.com/client.action?functionId=promote_pk_joinGroup"
+			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"HYGJZYh5\"},\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, rand.Intn(99999999), invited)
+			req := httplib.Post(url)
+			random := browser.Random()
+			req.Param("clientVersion", "-1")
+			req.Param("appid", "signed_wh5")
+			req.Param("functionId", "promote_pk_joinGroup")
+			req.Param("body", body)
+			req.Header("User-Agent", random)
+			req.Header("Accept", "application/json, text/plain, */*")
+			req.Header("Connection", "keep-alive")
+			req.Header("Accept-Language", "zh-cn")
+			req.Header("Accept-Encoding", "gzip, deflate, br")
+			req.Header("Origin", "https://bunearth.m.jd.com")
+			req.Header("Cookie", cookie)
+			s, _ := req.String()
+			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
+			if bizCode == 0 {
+				k++
+				logs.Info("助力成功")
+				ck.Update(Dig, False)
+
+			} else {
+				logs.Info("助力失败")
+				logs.Info(s)
+				//你已经有团队了
+				if strings.Contains(s, "该团队已经满员了") {
+					return true
+				} else if strings.Contains(s, "火爆") {
+					ck.Update(Dig, False)
+				} else if strings.Contains(s, "已结束") {
+					return false
+				} else if strings.Contains(s, "你已经有团队了") {
+					ck.Update(Dig, False)
+				} else {
+					ck.Update(Dig, s)
+				}
+			}
+		}
+	}
+	return false
+}
+
 func starttyt(red string) (num int, f bool) {
 	k := 0
 	//cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
@@ -817,6 +1017,111 @@ func starttyt(red string) (num int, f bool) {
 
 func getMd5String(b []byte) string {
 	return fmt.Sprintf("%x", md5.Sum(b))
+}
+
+func getScKey(ck string) (key string) {
+	url := "https://api.m.jd.com/client.action?functionId=promote_getHomeData"
+	req := httplib.Get(url)
+	random := browser.Random()
+	req.Param("clientVersion", "-1")
+	req.Param("functionId", "promote_pk_getHomeData")
+	req.Param("appid", "signed_wh5")
+	req.Header("User-Agent", random)
+	req.Header("Host", "api.m.jd.com")
+	req.Header("Accept", "application/json, text/plain, */*")
+	req.Header("Connection", "keep-alive")
+	req.Header("Accept-Language", "zh-cn")
+	req.Header("Accept-Encoding", "gzip, deflate, br")
+	req.Header("Origin", "https://bunearth.m.jd.com")
+	req.Header("Cookie", ck)
+	data, _ := req.String()
+	if strings.Contains(data, "secretp") {
+		index := strings.Index(data, "\"secretp\":") + 11
+		i := strings.Index(data, "shareCopywriting") - 3
+		s := data[index:i]
+		return s
+	}
+	return ""
+}
+
+func runpz(sender *Sender, code string) {
+	for {
+		time.Sleep(time.Duration(rand.Intn(60)))
+		if pz < 3 {
+			pz++
+			num, f := startpz(code)
+			no := pzlist[code]
+			if f {
+				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀结束共用:%d个账号", no, num))
+			} else {
+				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀异常，请联系群主，或自行检查", no))
+			}
+			pz--
+			return
+		}
+	}
+}
+
+func startpz(invited string) (num int, flag bool) {
+	logs.Info("开始膨胀助力")
+	k := 0
+	cks := GetJdCookies()
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
+	for _, ck := range cks {
+		time.Sleep(time.Second * time.Duration(3))
+		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
+		sc := getScKey(cookie)
+		logs.Info(cookie)
+		logs.Info(sc)
+		if sc != "" {
+			//https://wbbny.m.jd.com/pb/013349910/3rFiv8Sdkn7BPhk8Pw8xrgMWH6mT/index.html?babelChannel=shouyefuceng&shareType=expandHelp&inviteId=PKASTT0225KkcRkpP9VPQdhz9lf9cJgCTdXn4aRzTQjeQOc&mpin=RnFtkWRRYTOMmdRP--txCYtZA7-VliccLeHN&from=sc
+			url := "https://api.m.jd.com/client.action?functionId=promote_pk_collectPkExpandScore"
+			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"HYGJZYh5\"},\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, rand.Intn(99999999), invited)
+			req := httplib.Post(url)
+			random := browser.Random()
+			req.Param("clientVersion", "-1")
+			//req.Param("functionId", "promote_pk_getHomeData")
+			req.Param("appid", "signed_wh5")
+			req.Param("functionId", "promote_pk_collectPkExpandScore")
+			req.Param("body", body)
+			req.Header("User-Agent", random)
+			req.Header("Accept", "application/json, text/plain, */*")
+			req.Header("Connection", "keep-alive")
+			req.Header("Accept-Language", "zh-cn")
+			req.Header("Accept-Encoding", "gzip, deflate, br")
+			req.Header("Origin", "https://wbbny.m.jd.com")
+			req.Header("Cookie", cookie)
+			s, _ := req.String()
+			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
+			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
+			if bizCode == 0 {
+				k++
+				logs.Info("助力成功")
+
+			} else {
+				logs.Info("助力失败")
+				logs.Info(s)
+				if strings.Contains(bizMsg, "TA已经获得足够的助力了") {
+					return k, true
+				} else if strings.Contains(bizMsg, "火爆") {
+					ck.Update(Dig, False)
+				} else if strings.Contains(bizMsg, "已结束") {
+					return k, false
+				} else if strings.Contains(bizMsg, "次数") {
+					ck.Update(Dig, False)
+				} else {
+					ck.Update(Dig, bizMsg)
+				}
+			}
+		} else {
+			CookieOK(&ck)
+			go func() {
+				Save <- &JdCookie{}
+			}()
+		}
+	}
+	return k, false
+
 }
 
 func getMd5String1(str string) string {
