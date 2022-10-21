@@ -921,10 +921,6 @@ func nianhelp(invited string) (flag bool) {
 	cks := GetJdCookies()
 	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Order("RAND()").Find(&cks)
 	for _, ck := range cks {
-		if k > 8 {
-			//todo 结束
-			return true
-		}
 		time.Sleep(time.Second * time.Duration(3))
 		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
 		sc := getScKey(cookie)
