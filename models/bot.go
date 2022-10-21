@@ -989,7 +989,7 @@ func nianhelp(invited string) (flag bool) {
 					return true
 				} else if strings.Contains(s, "火爆") {
 					ck.Update(Tyt, False)
-				}else{
+				} else {
 					ck.Update(Tyt, s)
 				}
 			}
@@ -1028,6 +1028,7 @@ func zdhelp(invited string) (flag bool) {
 			if bizCode == 0 {
 				k++
 				logs.Info("助力成功")
+				ck.Update(Dig, False)
 
 			} else {
 				logs.Info("助力失败")
