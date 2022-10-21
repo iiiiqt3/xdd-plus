@@ -95,6 +95,9 @@ var tytnum = 0
 var pzlist = make(map[string]int)
 var pz = 0
 var pzno = 0
+var zdlist = make(map[string]int)
+var zd = 0
+var zdno = 0
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -984,6 +987,10 @@ func nianhelp(invited string) (flag bool) {
 				logs.Info(s)
 				if strings.Contains(s, "好友人气爆棚") {
 					return true
+				} else if strings.Contains(s, "火爆") {
+					ck.Update(Tyt, False)
+				}else{
+					ck.Update(Tyt, s)
 				}
 			}
 		}
@@ -995,7 +1002,7 @@ func zdhelp(invited string) (flag bool) {
 	logs.Info("开始组队")
 	k := 0
 	cks := GetJdCookies()
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Order("RAND()").Find(&cks)
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
 	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(3))
 		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
@@ -1025,8 +1032,17 @@ func zdhelp(invited string) (flag bool) {
 			} else {
 				logs.Info("助力失败")
 				logs.Info(s)
-				if strings.Contains(s, "好友人气爆棚") {
+				//你已经有团队了
+				if strings.Contains(s, "该团队已经满员了") {
 					return true
+				} else if strings.Contains(s, "火爆") {
+					ck.Update(Dig, False)
+				} else if strings.Contains(s, "已结束") {
+					return false
+				} else if strings.Contains(s, "你已经有团队了") {
+					ck.Update(Dig, False)
+				} else {
+					ck.Update(Dig, s)
 				}
 			}
 		}
@@ -1143,7 +1159,7 @@ func startpz(invited string) (num int, flag bool) {
 	logs.Info("开始膨胀助力")
 	k := 0
 	cks := GetJdCookies()
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Order("RAND()").Find(&cks)
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
 	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(3))
 		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
