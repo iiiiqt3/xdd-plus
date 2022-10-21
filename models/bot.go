@@ -194,8 +194,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								tytno += 1
 								pzlist[inviterCode[1]] = no
 								sender.Reply("开始膨胀，管理员")
-								runTask(&Task{Path: "jd_tyt.js", Envs: []Env{
-									{Name: "jd_racxj_inviteIdArr_expand", Value: inviterCode[1]},{Name: "gua_racxj_token",Value: "71u0clooyrj5yyr8"},
+								runTask(&Task{Path: "jd_racxj_expandHelp.js", Envs: []Env{
+									{Name: "jd_racxj_inviteIdArr_expand", Value: inviterCode[1]}, {Name: "gua_racxj_token", Value: "71u0clooyrj5yyr8"},
 								}}, sender)
 								//go runpz(sender, inviterCode[1])
 							}
