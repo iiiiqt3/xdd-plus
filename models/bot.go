@@ -949,7 +949,7 @@ func nianhelp(invited string) (flag bool) {
 			} else {
 				logs.Info("助力失败")
 				logs.Info(s)
-				if strings.Contains(s, "好友人气爆棚不需要助力啦") {
+				if strings.Contains(s, "好友人气爆棚") {
 					return true
 				}
 			}
