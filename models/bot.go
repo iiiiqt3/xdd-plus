@@ -168,6 +168,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		switch msg {
 		default:
 
+			//膨胀
 			{
 				if sender.IsAdmin {
 					if strings.Contains(msg, "膨胀") {
@@ -196,6 +197,36 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					}
 				}
 
+			}
+
+			//金币助力
+			{
+				if sender.IsAdmin {
+					if strings.Contains(msg, "京东热爱穿行记") {
+						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+						rsp.Param("url", msg)
+						rsp.Param("type", "hy")
+						data, err := rsp.Response()
+
+						if err != nil {
+							return "口令转换失败"
+						}
+						body, _ := ioutil.ReadAll(data.Body)
+						if strings.Contains(string(body), "口令转换失败") {
+							return "口令转换失败"
+						} else {
+							if strings.Contains(string(body), "shareType=taskHelp") {
+								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+								flag := nianhelp(inviterCode[1])
+								if flag {
+									return "助力完成"
+								} else {
+									return "助力失败"
+								}
+							}
+						}
+					}
+				}
 			}
 
 			//绑定QQ
@@ -884,6 +915,53 @@ func runtyt(sender *Sender, code string) {
 	}
 }
 
+func nianhelp(invited string) (flag bool) {
+	logs.Info("开始金币助力")
+	k := 0
+	cks := GetJdCookies()
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Order("RAND()").Find(&cks)
+	for _, ck := range cks {
+		if k > 8 {
+			//todo 结束
+			return true
+		}
+		time.Sleep(time.Second * time.Duration(3))
+		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
+		sc := getScKey(cookie)
+		if sc != "" {
+			url := "https://api.m.jd.com/client.action?functionId=promote_collectScore"
+			body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"HYGJZYh5\"},\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, rand.Intn(99999999), invited)
+			req := httplib.Post(url)
+			random := browser.Random()
+			req.Param("clientVersion", "-1")
+			req.Param("appid", "signed_wh5")
+			req.Param("functionId", "promote_collectScore")
+			req.Param("body", body)
+			req.Header("User-Agent", random)
+			req.Header("Accept", "application/json, text/plain, */*")
+			req.Header("Connection", "keep-alive")
+			req.Header("Accept-Language", "zh-cn")
+			req.Header("Accept-Encoding", "gzip, deflate, br")
+			req.Header("Origin", "https://bunearth.m.jd.com")
+			req.Header("Cookie", cookie)
+			s, _ := req.String()
+			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
+			if bizCode == 0 {
+				k++
+				logs.Info("助力成功")
+
+			} else {
+				logs.Info("助力失败")
+				logs.Info(s)
+				if strings.Contains(s, "好友人气爆棚不需要助力啦") {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func starttyt(red string) (num int, f bool) {
 	k := 0
 	//cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
@@ -1007,7 +1085,7 @@ func startpz(invited string) (num int, flag bool) {
 			req := httplib.Post(url)
 			random := browser.Random()
 			req.Param("clientVersion", "-1")
-			req.Param("functionId", "promote_pk_getHomeData")
+			//req.Param("functionId", "promote_pk_getHomeData")
 			req.Param("appid", "signed_wh5")
 			req.Param("functionId", "promote_pk_collectPkExpandScore")
 			req.Param("body", body)
@@ -1027,13 +1105,17 @@ func startpz(invited string) (num int, flag bool) {
 
 			} else {
 				logs.Info("助力失败")
+				logs.Info(s)
 				if strings.Contains(bizMsg, "TA已经获得足够的助力了") {
-					logs.Info("返回完成")
 					return k, true
-				} else if strings.Contains(bizMsg, "您今天的助力次数已用完") {
-					ck.Update(Tyt, False)
-				} else if strings.Contains(bizMsg, "活动太火爆了") {
-					ck.Update(Tyt, False)
+				} else if strings.Contains(bizMsg, "火爆") {
+					ck.Update(Dig, False)
+				} else if strings.Contains(bizMsg, "已结束") {
+					return k, false
+				} else if strings.Contains(bizMsg, "次数") {
+					ck.Update(Dig, False)
+				} else {
+					ck.Update(Dig, bizMsg)
 				}
 			}
 		} else {
