@@ -1191,7 +1191,7 @@ func startpz(invited string) (num int, flag bool) {
 			if bizCode == 0 {
 				k++
 				logs.Info("助力成功")
-
+				logs.Info(bizMsg)
 			} else {
 				logs.Info("助力失败")
 				logs.Info(s)
