@@ -938,7 +938,7 @@ func zdhelp(invited string) (flag bool) {
 				k++
 				logs.Info("助力成功")
 				ck.Update(Dig, False)
-
+				logs.Info(s)
 			} else {
 				logs.Info("助力失败")
 				logs.Info(s)
@@ -949,7 +949,7 @@ func zdhelp(invited string) (flag bool) {
 					ck.Update(Dig, False)
 				} else if strings.Contains(s, "已结束") {
 					return false
-				} else if strings.Contains(s, "你已经有团队了") {
+				} else if strings.Contains(s, "你已经有团队了") || strings.Contains(s, "你已经有队伍了") {
 					ck.Update(Dig, False)
 				} else {
 					ck.Update(Dig, s)
