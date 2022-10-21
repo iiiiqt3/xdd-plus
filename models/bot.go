@@ -1029,7 +1029,7 @@ func zdhelp(invited string) (flag bool) {
 				k++
 				logs.Info("助力成功")
 				ck.Update(Dig, False)
-
+				logs.Info(s)
 			} else {
 				logs.Info("助力失败")
 				logs.Info(s)
