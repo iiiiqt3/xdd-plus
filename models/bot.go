@@ -863,8 +863,9 @@ func randShuffle(slice []JdCookie) {
 func nianhelp(invited string) (flag bool) {
 	logs.Info("开始金币助力")
 	k := 0
-	cks := GetJdCookies()
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Order("RAND()").Find(&cks)
+	var cks []JdCookie
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Find(&cks)
+	randShuffle(cks)
 	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(3))
 		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
@@ -911,8 +912,9 @@ func nianhelp(invited string) (flag bool) {
 func zdhelp(invited string) (flag bool) {
 	logs.Info("开始组队")
 	k := 0
-	cks := GetJdCookies()
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
+	var cks []JdCookie
+	db.Where(fmt.Sprintf("%s = 'true'", Available)).Find(&cks)
+	randShuffle(cks)
 	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(3))
 		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
@@ -939,22 +941,18 @@ func zdhelp(invited string) (flag bool) {
 			if bizCode == 0 {
 				k++
 				logs.Info("助力成功")
-				ck.Update(Dig, False)
-				logs.Info(s)
 			} else {
 				logs.Info("助力失败")
-				logs.Info(s)
-				//你已经有团队了
 				if strings.Contains(s, "该团队已经满员了") {
 					return true
 				} else if strings.Contains(s, "火爆") {
-					ck.Update(Dig, False)
+					//ck.Update(Dig, False)
 				} else if strings.Contains(s, "已结束") {
 					return false
 				} else if strings.Contains(s, "你已经有团队了") || strings.Contains(s, "你已经有队伍了") {
-					ck.Update(Dig, False)
+					//ck.Update(Dig, False)
 				} else {
-					ck.Update(Dig, s)
+					//ck.Update(Dig, s)
 				}
 			}
 		}
@@ -964,9 +962,6 @@ func zdhelp(invited string) (flag bool) {
 
 func starttyt(red string) (num int, f bool) {
 	k := 0
-	//cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-	//	return sb.Where(fmt.Sprintf("%s != ? and %s = ? ORDER BY RAND()", Tyt, Available), False, True)
-	//})
 	var cks []JdCookie
 	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Find(&cks)
 	randShuffle(cks)
@@ -1067,7 +1062,9 @@ func runpz(sender *Sender, code string) {
 func startpz(invited string) (num int, flag bool) {
 	logs.Info("开始膨胀助力")
 	k := 0
-	cks := GetJdCookies()
+	var cks []JdCookie
+	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Find(&cks)
+	randShuffle(cks)
 	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
 	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(3))

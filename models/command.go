@@ -897,6 +897,17 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
+		Command: []string{"重置膨胀"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			cks := GetJdCookies()
+			for _, ck := range cks {
+				ck.Update(Dig, True)
+			}
+			return nil
+		},
+	},
+	{
 		Command: []string{"unset-env", "ue", "unexport", "de"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
