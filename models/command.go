@@ -7,7 +7,6 @@ import (
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 	"os"
 	"regexp"
@@ -64,7 +63,7 @@ func (sender *Sender) Reply(msg string) {
 	case "qqg":
 		SendQQGroup(int64(sender.ChatID), int64(sender.UserID), msg)
 	case "wx":
-		SendWxMsg(sender.WxId, msg)
+		//SendWxMsg(sender.WxId, msg)
 	}
 }
 
@@ -446,6 +445,11 @@ var codeSignals = []CodeSignal{
 						sender.Reply(ck.Query())
 					})
 				} else {
+
+					sender.handleJdCookies(func(ck *JdCookie) {
+						time.Sleep(time.Second * time.Duration(Config.Later))
+						sender.Reply(ck.Query())
+					})
 					//list := getUserNameList(strconv.Itoa(sender.UserID))
 					//str := "在线账号:\n"
 					//for _, s := range list {
@@ -453,15 +457,15 @@ var codeSignals = []CodeSignal{
 					//}
 					//sender.Reply(str)
 
-					if Config.CXURL != "" {
-						var png []byte
-						png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
-						if sender.Type == "qqg" {
-							SendQQGroup(int64(sender.UserID), Config.QQGroupID, png)
-						} else {
-							SendQQ(int64(sender.UserID), png)
-						}
-					}
+					//if Config.CXURL != "" {
+					//	var png []byte
+					//	png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
+					//	if sender.Type == "qqg" {
+					//		SendQQGroup(int64(sender.UserID), Config.QQGroupID, png)
+					//	} else {
+					//		SendQQ(int64(sender.UserID), png)
+					//	}
+					//}
 				}
 				//sender.Reply("今日查询接口维护，请明日再来")
 			}
