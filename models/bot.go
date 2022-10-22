@@ -331,41 +331,41 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			//锦鲤统计
-			//{
-			//	if strings.Contains(msg, "红包") {
-			//		if GetCoin(sender.UserID) > 24 {
-			//			rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-			//			rsp.Param("url", msg)
-			//			rsp.Param("type", "hy")
-			//			//rsp.Body(fmt.Sprintf(`url=%s&type=hy`, msg))
-			//			data, err := rsp.Response()
-			//
-			//			if err != nil {
-			//				return "口令转换失败"
-			//			}
-			//			body, _ := ioutil.ReadAll(data.Body)
-			//			if strings.Contains(string(body), "口令转换失败") {
-			//				return "口令转换失败"
-			//			} else {
-			//				s := string(body)
-			//				if strings.Contains(s, "3ugedFa7yA6NhxLN5gw2L3PF9sQC") {
-			//					split := strings.Split(s, "index.html?asid=")
-			//					f, err := os.OpenFile(ExecPath+"/jl.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-			//					if err != nil {
-			//						logs.Warn("wb.txt失败，", err)
-			//					}
-			//					f.WriteString(split[1] + "&")
-			//					RemCoin(sender.UserID, 25)
-			//					sender.Reply("已提交")
-			//				} else {
-			//					return "非锦鲤口令"
-			//				}
-			//			}
-			//		} else {
-			//			return "积分不足"
-			//		}
-			//	}
-			//}
+			{
+				if strings.Contains(msg, "红包") {
+					if GetCoin(sender.UserID) > 24 {
+						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+						rsp.Param("url", msg)
+						rsp.Param("type", "hy")
+						//rsp.Body(fmt.Sprintf(`url=%s&type=hy`, msg))
+						data, err := rsp.Response()
+
+						if err != nil {
+							return "口令转换失败"
+						}
+						body, _ := ioutil.ReadAll(data.Body)
+						if strings.Contains(string(body), "口令转换失败") {
+							return "口令转换失败"
+						} else {
+							s := string(body)
+							if strings.Contains(s, "3ugedFa7yA6NhxLN5gw2L3PF9sQC") {
+								split := strings.Split(s, "index.html?asid=")
+								f, err := os.OpenFile(ExecPath+"/jl.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+								if err != nil {
+									logs.Warn("wb.txt失败，", err)
+								}
+								f.WriteString(split[1] + "&")
+								RemCoin(sender.UserID, 25)
+								sender.Reply("已提交")
+							} else {
+								return "非锦鲤口令"
+							}
+						}
+					} else {
+						return "积分不足"
+					}
+				}
+			}
 
 			{
 				if strings.Contains(msg, "口令") {
