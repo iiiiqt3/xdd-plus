@@ -103,6 +103,10 @@ func (sender *Sender) IsQQ() bool {
 	return strings.Contains(sender.Type, "qq")
 }
 
+func (sender *Sender) isWX() bool {
+	return strings.Contains(sender.Type, "wx")
+}
+
 func (sender *Sender) IsTG() bool {
 	return strings.Contains(sender.Type, "tg")
 }
@@ -110,8 +114,11 @@ func (sender *Sender) IsTG() bool {
 func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 	cks := GetJdCookies()
 	a := sender.JoinContens()
+	if sender.isWX() {
+		a=""
+	}
 	ok := false
-	if !sender.IsAdmin && a == "" {
+	if !sender.IsAdmin || a == "" {
 		for i := range cks {
 			if strings.Contains(sender.Type, "qq") || strings.Contains(sender.Type, "wx") {
 				if cks[i].QQ == sender.UserID {
