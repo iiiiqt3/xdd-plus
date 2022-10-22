@@ -164,47 +164,46 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 			//膨胀
 			{
-					if strings.Contains(msg, "膨胀") {
-						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-						rsp.Param("url", msg)
-						rsp.Param("type", "hy")
-						data, err := rsp.Response()
+				if strings.Contains(msg, "膨胀") {
+					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+					rsp.Param("url", msg)
+					rsp.Param("type", "hy")
+					data, err := rsp.Response()
 
-						if err != nil {
-							return "口令转换失败"
-						}
-						body, _ := ioutil.ReadAll(data.Body)
-						if strings.Contains(string(body), "口令转换失败") {
-							return "口令转换失败"
-						} else {
-							if strings.Contains(string(body), "shareType=expandHelp") {
+					if err != nil {
+						return "口令转换失败"
+					}
+					body, _ := ioutil.ReadAll(data.Body)
+					if strings.Contains(string(body), "口令转换失败") {
+						return "口令转换失败"
+					} else {
+						if strings.Contains(string(body), "shareType=expandHelp") {
 
-								if sender.IsAdmin {
-									sender.Reply("开始膨胀助力管理员")
-								}else{
-									value := GetEnv("pz")
-									if value == "" {
-										return "未开启膨胀助力"
-									} else {
-										coin := GetCoin(sender.UserID)
-										jbcoin, _ := strconv.Atoi(value)
-										if coin < jbcoin {
-											return fmt.Sprintf("膨胀助力需要%d个积分", jbcoin)
-										}
-										RemCoin(sender.UserID, jbcoin)
+							if sender.IsAdmin {
+								sender.Reply("开始膨胀助力管理员")
+							} else {
+								value := GetEnv("pz")
+								if value == "" {
+									return "未开启膨胀助力"
+								} else {
+									coin := GetCoin(sender.UserID)
+									jbcoin, _ := strconv.Atoi(value)
+									if coin < jbcoin {
+										return fmt.Sprintf("膨胀助力需要%d个积分", jbcoin)
 									}
+									RemCoin(sender.UserID, jbcoin)
 								}
-
-
-								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-								no := pzno
-								pzno += 1
-								pzlist[inviterCode[1]] = no
-								sender.Reply(fmt.Sprintf("膨胀助力即将开始，已扣除%d个积分，订单编号:%d,剩余%d", no, GetCoin(sender.UserID)))
-								go runpz(sender, inviterCode[1])
 							}
+
+							inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+							no := pzno
+							pzno += 1
+							pzlist[inviterCode[1]] = no
+							sender.Reply(fmt.Sprintf("膨胀助力即将开始，已扣除%d个积分，订单编号:%d,剩余%d", no, GetCoin(sender.UserID)))
+							go runpz(sender, inviterCode[1])
 						}
 					}
+				}
 
 			}
 
