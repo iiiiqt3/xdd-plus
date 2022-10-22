@@ -443,7 +443,7 @@ var codeSignals = []CodeSignal{
 					time.Sleep(time.Second * time.Duration(Config.Later))
 					sender.Reply(ck.Query())
 				})
-			}else{
+			} else {
 				sender.handleJdCookies(func(ck *JdCookie) {
 					time.Sleep(time.Second * time.Duration(Config.Later))
 					sender.Reply(ck.Query())
