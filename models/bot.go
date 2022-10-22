@@ -195,29 +195,42 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 			//金币助力
 			{
-				if sender.IsAdmin {
-					if strings.Contains(msg, "助力") {
-						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-						rsp.Param("url", msg)
-						rsp.Param("type", "hy")
-						data, err := rsp.Response()
+				if strings.Contains(msg, "助力") {
+					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+					rsp.Param("url", msg)
+					rsp.Param("type", "hy")
+					data, err := rsp.Response()
 
-						if err != nil {
-							return "口令转换失败"
-						}
-						body, _ := ioutil.ReadAll(data.Body)
-						if strings.Contains(string(body), "口令转换失败") {
-							return "口令转换失败"
-						} else {
-							if strings.Contains(string(body), "shareType=taskHelp") {
-								sender.Reply("开始助力")
-								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-								flag := nianhelp(inviterCode[1])
-								if flag {
-									return "助力完成"
+					if err != nil {
+						return "口令转换失败"
+					}
+					body, _ := ioutil.ReadAll(data.Body)
+					if strings.Contains(string(body), "口令转换失败") {
+						return "口令转换失败"
+					} else {
+						if strings.Contains(string(body), "shareType=taskHelp") {
+							if sender.IsAdmin {
+								sender.Reply("开始金币助力管理员")
+							} else {
+								value := GetEnv("jbzl")
+								if value == "" {
+									return "未开启金币助力"
 								} else {
-									return "助力失败"
+									coin := GetCoin(sender.UserID)
+									jbcoin, _ := strconv.Atoi(value)
+									if coin < jbcoin {
+										return fmt.Sprintf("金币助力需要%d个积分", jbcoin)
+									}
+									RemCoin(sender.UserID, jbcoin)
+									sender.Reply(fmt.Sprintf("金币助力即将开始，已扣除%d个积分，剩余%d", jbcoin, GetCoin(sender.UserID)))
 								}
+							}
+							inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+							flag := nianhelp(inviterCode[1])
+							if flag {
+								return "助力完成"
+							} else {
+								return "助力失败"
 							}
 						}
 					}
