@@ -164,7 +164,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 			//膨胀
 			{
-				if sender.IsAdmin {
 					if strings.Contains(msg, "膨胀") {
 						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
 						rsp.Param("url", msg)
@@ -179,17 +178,33 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							return "口令转换失败"
 						} else {
 							if strings.Contains(string(body), "shareType=expandHelp") {
-								sender.Reply("开始助力")
+
+								if sender.IsAdmin {
+									sender.Reply("开始膨胀助力管理员")
+								}else{
+									value := GetEnv("pz")
+									if value == "" {
+										return "未开启膨胀助力"
+									} else {
+										coin := GetCoin(sender.UserID)
+										jbcoin, _ := strconv.Atoi(value)
+										if coin < jbcoin {
+											return fmt.Sprintf("膨胀助力需要%d个积分", jbcoin)
+										}
+										RemCoin(sender.UserID, jbcoin)
+									}
+								}
+
+
 								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-								no := tytno
-								tytno += 1
+								no := pzno
+								pzno += 1
 								pzlist[inviterCode[1]] = no
-								sender.Reply("开始膨胀，管理员")
+								sender.Reply(fmt.Sprintf("膨胀助力即将开始，已扣除%d个积分，订单编号:%d,剩余%d", no, GetCoin(sender.UserID)))
 								go runpz(sender, inviterCode[1])
 							}
 						}
 					}
-				}
 
 			}
 
