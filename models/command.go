@@ -115,7 +115,7 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 	cks := GetJdCookies()
 	a := sender.JoinContens()
 	if sender.isWX() {
-		a=""
+		a = ""
 	}
 	ok := false
 	if !sender.IsAdmin || a == "" {
@@ -443,39 +443,43 @@ var codeSignals = []CodeSignal{
 					time.Sleep(time.Second * time.Duration(Config.Later))
 					sender.Reply(ck.Query())
 				})
+			}else{
+				sender.handleJdCookies(func(ck *JdCookie) {
+					time.Sleep(time.Second * time.Duration(Config.Later))
+					sender.Reply(ck.Query())
+				})
 			}
-			if sender.Type == "qq" {
-				sender.Reply("请使用网页")
-				if sender.IsAdmin {
-					sender.handleJdCookies(func(ck *JdCookie) {
-						time.Sleep(time.Second * time.Duration(Config.Later))
-						sender.Reply(ck.Query())
-					})
-				} else {
-
-					sender.handleJdCookies(func(ck *JdCookie) {
-						time.Sleep(time.Second * time.Duration(Config.Later))
-						sender.Reply(ck.Query())
-					})
-					//list := getUserNameList(strconv.Itoa(sender.UserID))
-					//str := "在线账号:\n"
-					//for _, s := range list {
-					//	str = str + fmt.Sprintf("账号：%s  \n", s)
-					//}
-					//sender.Reply(str)
-
-					//if Config.CXURL != "" {
-					//	var png []byte
-					//	png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
-					//	if sender.Type == "qqg" {
-					//		SendQQGroup(int64(sender.UserID), Config.QQGroupID, png)
-					//	} else {
-					//		SendQQ(int64(sender.UserID), png)
-					//	}
-					//}
-				}
-				//sender.Reply("今日查询接口维护，请明日再来")
-			}
+			//if sender.Type == "qq" {
+			//	//sender.Reply("请使用网页")
+			//	if sender.IsAdmin {
+			//		sender.handleJdCookies(func(ck *JdCookie) {
+			//			time.Sleep(time.Second * time.Duration(Config.Later))
+			//			sender.Reply(ck.Query())
+			//		})
+			//	} else {
+			//		sender.handleJdCookies(func(ck *JdCookie) {
+			//			time.Sleep(time.Second * time.Duration(Config.Later))
+			//			sender.Reply(ck.Query())
+			//		})
+			//		//list := getUserNameList(strconv.Itoa(sender.UserID))
+			//		//str := "在线账号:\n"
+			//		//for _, s := range list {
+			//		//	str = str + fmt.Sprintf("账号：%s  \n", s)
+			//		//}
+			//		//sender.Reply(str)
+			//
+			//		//if Config.CXURL != "" {
+			//		//	var png []byte
+			//		//	png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
+			//		//	if sender.Type == "qqg" {
+			//		//		SendQQGroup(int64(sender.UserID), Config.QQGroupID, png)
+			//		//	} else {
+			//		//		SendQQ(int64(sender.UserID), png)
+			//		//	}
+			//		//}
+			//	}
+			//	//sender.Reply("今日查询接口维护，请明日再来")
+			//}
 			return nil
 		},
 	},
