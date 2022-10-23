@@ -912,7 +912,7 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
-		Command: []string{"重置膨胀"},
+		Command: []string{"重置活动"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			cks := GetJdCookies()
