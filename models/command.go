@@ -897,6 +897,11 @@ var codeSignals = []CodeSignal{
 				return "???"
 			}
 			ExportEnv(env)
+			if strings.EqualFold(env.Name, "jd_zdjr_activityId") {
+				runTask(&Task{Path: "jd_zdjr_activityId.js", Envs: []Env{
+					{Name: "jd_zdjr_activityId", Value: env.Value},
+				}}, sender)
+			}
 			return "操作成功"
 		},
 	},
