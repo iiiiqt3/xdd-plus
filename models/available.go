@@ -272,15 +272,12 @@ func updateCookie() {
 	(&JdCookie{}).Push(fmt.Sprintf("所有CK转换完成，共%d个,转换失败个数共%d个", xx, yy))
 }
 
-func CheckWskeyOK(ck *JdCookie) bool {
+func CheckWskeyOK(ck *JdCookie) (bool, string) {
 	if len(ck.WsKey) > 0 {
-		time.Sleep(time.Duration(rand.Int63n(5)) * time.Second)
-		//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
 		rsp, _ := getKey(pinky)
 		if strings.Contains(rsp, "fake") {
-			(&JdCookie{}).Push(fmt.Sprintf("传入失效账号，%s", ck.PtPin))
-			return false
+			return false, "失效账号"
 		} else {
 			ptKey := FetchJdCookieValue("pt_key", rsp)
 			ptPin := FetchJdCookieValue("pt_pin", rsp)
@@ -289,22 +286,14 @@ func CheckWskeyOK(ck *JdCookie) bool {
 				PtPin: ptPin,
 			}
 			if ptPin != "" || ptKey != "" {
-				if nck, err := GetJdCookie(ck1.PtPin); err == nil {
-					nck.InPool(ck1.PtKey)
-					nck.Update(Available, True)
-					msg := fmt.Sprintf("传入账号更新，%s", ck.PtPin)
-					logs.Info(msg)
-				} else {
-					ck1.Update(Available, False)
-					(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", ck.PtPin))
-				}
+				return CookieOK(&ck1), "转换成功"
 			} else {
-
 				(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
+				return false, "转换超时，请稍后再试或者联系管理员"
 			}
 		}
 	}
-	return false
+	return false, "帐号不含wskey"
 }
 
 func CookieOK(ck *JdCookie) bool {

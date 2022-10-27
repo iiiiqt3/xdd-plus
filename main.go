@@ -96,6 +96,7 @@ func main() {
 	web.Router("/api/login/admin", &controllers.LoginController{}, "post:IsAdmin")
 	web.Router("/api/login/cklogin", &controllers.LoginController{}, "post:CkLogin")
 	web.Router("/api/login/smslogin", &controllers.LoginController{}, "post:SMSLogin")
+	web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
 	web.Router("/api/getUserInfo", &controllers.LoginController{}, "post:GetUserInfo")
 	web.Router("/api/getUserInfo", &controllers.LoginController{}, "get:GetUserInfo")
 	web.Router("/api/getUserPin", &controllers.LoginController{}, "post:GetUserPin")
