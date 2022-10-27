@@ -29,7 +29,7 @@ func getKey(WSCK string) (string, error) {
 	var ptKey = ""
 	sign := GetEnv("sign")
 	logs.Info(sign)
-	if sign != "" {
+	if sign == "" {
 		ptKey, _ = GetWsKey(WSCK)
 	} else {
 		ptKey, _ = getTokenKey(WSCK)
@@ -155,7 +155,8 @@ func getKey(WSCK string) (string, error) {
 */
 
 func getZooToken() string {
-	req := httplib.Post("https://sign.smxy.xyz/jd/sign")
+	sign := GetEnv("sign")
+	req := httplib.Post(sign)
 	req.Param("body", "{}")
 	req.Param("functionId", "genToken")
 	data, _ := req.Bytes()
