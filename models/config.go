@@ -40,7 +40,6 @@ type Yaml struct {
 	IsHelp              bool   `yaml:"IsHelp"`
 	IsOldV4             bool   `yaml:"IsOldV4"`
 	ApiToken            string `yaml:"ApiToken"`
-	WsToken             string `yaml:"WsToken"`
 	Invalid             string `yaml:"Invalid"`
 	Query               string `yaml:"Query"`
 	Query1              string `yaml:"Query1"`
