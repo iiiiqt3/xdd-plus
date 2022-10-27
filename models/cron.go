@@ -40,7 +40,7 @@ func InitSky() {
 	//定时任务
 	spec := "0 " + strconv.Itoa(rand.Intn(59)) + " " + Config.CTime + "/12 * * ?" //cron表达式，每秒一次
 
-	if Config.Wskey {
+	if isOpenWskey() {
 		c.AddFunc(spec, func() {
 			fmt.Println("开始wskey转换")
 			updateCookie()

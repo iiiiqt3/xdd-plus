@@ -30,3 +30,12 @@ func GetEnv(name string) string {
 	db.Where("name = ?", name).First(env)
 	return env.Value
 }
+
+func isOpenWskey() bool {
+	env := &Env{}
+	db.Where("name = ?", "CloseWskey").First(env)
+	if env.Value == "" {
+		return true
+	}
+	return false
+}
