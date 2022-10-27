@@ -227,7 +227,6 @@ func checkCloud() string {
 		req := httplib.Get(string(decodeString))
 		req.Header("User-Agent", "python-requests/2.25.1")
 		s, err := req.String()
-		logs.Info(s, err)
 		if strings.Contains(s, "200") && err == nil {
 			return string(decodeString)
 		}
