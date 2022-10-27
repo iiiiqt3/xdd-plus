@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -317,8 +318,10 @@ func (c *LoginController) SMSLogin() {
 
 func (c *LoginController) WskeyLogin() {
 	cookie := c.GetString("wskey")
+
 	Wskey := FetchJdCookieValue("wskey", cookie)
 	ptPin := FetchJdCookieValue("pin", cookie)
+	ptPin = url.QueryEscape(ptPin)
 	ck := &models.JdCookie{
 		WsKey: Wskey,
 		PtPin: ptPin,
