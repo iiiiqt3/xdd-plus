@@ -511,7 +511,57 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
+	{
+		Command: []string{"环境变量", "environments", "envs"},
+		Admin:   true,
+		Handle: func(_ *Sender) interface{} {
+			rt := []string{}
+			envs := GetEnvs()
+			if len(envs) == 0 {
+				return "未设置任何环境变量"
+			}
+			for _, env := range envs {
+				rt = append(rt, fmt.Sprintf(`%s="%s"`, env.Name, env.Value))
+			}
+			return strings.Join(rt, "\n")
+		},
+	},
+	{
+		Command: []string{"get-env", "env", "e"},
+		Handle: func(sender *Sender) interface{} {
+			ct := sender.JoinContens()
+			if ct == "" {
+				return "未指定变量名"
+			}
+			value := GetEnv(ct)
+			if value == "" {
+				return "未设置环境变量"
+			}
+			return fmt.Sprintf("环境变量的值为：" + value)
+		},
+	},
+	{
+		Command: []string{"set-env", "se", "export"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			env := &Env{}
+			if len(sender.Contents) >= 2 {
+				env.Name = sender.Contents[0]
+				env.Value = strings.Join(sender.Contents[1:], " ")
+			} else if len(sender.Contents) == 1 {
+				ss := regexp.MustCompile(`^([^'"=]+)=['"]?([^=]+?)['"]?$`).FindStringSubmatch(sender.Contents[0])
+				if len(ss) != 3 {
+					return "无法解析"
+				}
+				env.Name = ss[1]
+				env.Value = ss[2]
+			} else {
+				return "???"
+			}
+			ExportEnv(env)
+			return "操作成功"
+		},
+	},
 	{
 		Command: []string{"reply", "回复"},
 		Admin:   true,
