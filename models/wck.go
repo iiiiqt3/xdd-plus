@@ -153,8 +153,10 @@ func getKey(WSCK string) (string, error) {
 */
 
 func getZooToken() string {
-	data, _ := httplib.Post("https://sign.smxy.xyz/jd/sign").Body("body:\"{}\"\nfunctionId:\"genToken\"").Bytes()
-
+	req := httplib.Post("https://sign.smxy.xyz/jd/sign")
+	req.Param("body", "{}")
+	req.Param("functionId", "genToken")
+	data, _ := req.Bytes()
 	logs.Info(string(data))
 	getString, _ := jsonparser.GetString(data, "data", "convertUrl")
 	return getString
