@@ -318,7 +318,7 @@ func (c *LoginController) SMSLogin() {
 
 func (c *LoginController) WskeyLogin() {
 	cookie := c.GetString("wskey")
-
+	logs.Info(cookie)
 	Wskey := FetchJdCookieValue("wskey", cookie)
 	ptPin := FetchJdCookieValue("pin", cookie)
 	ptPin = url.QueryEscape(ptPin)
