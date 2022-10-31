@@ -37,7 +37,7 @@ func getKey(WSCK string) (string, error) {
 
 	//ptKey, _ = getTokenKey(WSCK)
 
-	time.Sleep(time.Duration(rand.Int63n(10)) * time.Second)
+	time.Sleep(time.Duration(rand.Int63n(1)) * time.Second)
 	return ptKey, nil
 
 	//var count = 0
