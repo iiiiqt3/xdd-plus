@@ -171,10 +171,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		switch msg {
 		default:
 
-			//膨胀
+			//赚钱大赢家
 			{
 				if sender.IsAdmin {
-					if strings.Contains(msg, "膨胀") {
+					if strings.Contains(msg, "赚钱大赢家") {
 						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
 						rsp.Param("url", msg)
 						rsp.Param("type", "hy")
@@ -187,97 +187,135 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						if strings.Contains(string(body), "口令转换失败") {
 							return "口令转换失败"
 						} else {
-							if strings.Contains(string(body), "shareType=expandHelp") {
-								sender.Reply("开始助力")
-								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-								no := tytno
-								tytno += 1
-								pzlist[inviterCode[1]] = no
-								sender.Reply("开始膨胀，管理员")
-								runTask(&Task{Path: "jd_racxj_expandHelp.js", Envs: []Env{
-									{Name: "jd_racxj_inviteIdArr_expand", Value: inviterCode[1]}, {Name: "gua_racxj_token", Value: GetEnv("token")},
-								}}, sender)
-								//go runpz(sender, inviterCode[1])
+							split := strings.Split(string(body), "【链接】")
+							f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+							if err != nil {
+								logs.Warn("zqdyj.txt失败，", err)
 							}
+							sender.Reply("已提交")
+							f.WriteString(split[1] + "\n")
+							f.Close()
 						}
+					} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
+						f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+						if err != nil {
+							logs.Warn("zqdyj.txt失败，", err)
+						}
+						sender.Reply("已提交")
+						f.WriteString(msg + "\n")
+						f.Close()
 					}
 				}
 
 			}
+
+			//膨胀
+			//{
+			//	if sender.IsAdmin {
+			//		if strings.Contains(msg, "膨胀") {
+			//			rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+			//			rsp.Param("url", msg)
+			//			rsp.Param("type", "hy")
+			//			data, err := rsp.Response()
+			//
+			//			if err != nil {
+			//				return "口令转换失败"
+			//			}
+			//			body, _ := ioutil.ReadAll(data.Body)
+			//			if strings.Contains(string(body), "口令转换失败") {
+			//				return "口令转换失败"
+			//			} else {
+			//				if strings.Contains(string(body), "shareType=expandHelp") {
+			//					sender.Reply("开始助力")
+			//					inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+			//					no := tytno
+			//					tytno += 1
+			//					pzlist[inviterCode[1]] = no
+			//					sender.Reply("开始膨胀，管理员")
+			//					runTask(&Task{Path: "jd_racxj_expandHelp.js", Envs: []Env{
+			//						{Name: "jd_racxj_inviteIdArr_expand", Value: inviterCode[1]}, {Name: "gua_racxj_token", Value: GetEnv("token")},
+			//					}}, sender)
+			//					//go runpz(sender, inviterCode[1])
+			//				}
+			//			}
+			//		}
+			//	}
+			//
+			//}
 
 			//金币助力
-			{
-				if sender.IsAdmin {
-					if strings.Contains(msg, "助力") {
-						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-						rsp.Param("url", msg)
-						rsp.Param("type", "hy")
-						data, err := rsp.Response()
-
-						if err != nil {
-							return "口令转换失败"
-						}
-						body, _ := ioutil.ReadAll(data.Body)
-						if strings.Contains(string(body), "口令转换失败") {
-							return "口令转换失败"
-						} else {
-							if strings.Contains(string(body), "shareType=taskHelp") {
-								sender.Reply("开始助力")
-								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-								sender.Reply("开始助力，管理员")
-
-								runTask(&Task{Path: "jd_racxj_taskHelp.js", Envs: []Env{
-									{Name: "jd_racxj_inviteIdArr", Value: inviterCode[1]}, {Name: "gua_racxj_token", Value: GetEnv("token")},
-								}}, sender)
-								//flag := nianhelp(inviterCode[1])
-								//if flag {
-								//	return "助力完成"
-								//} else {
-								//	return "助力失败"
-								//}
-							}
-						}
-					}
-				}
-			}
+			//{
+			//	if sender.IsAdmin {
+			//		if strings.Contains(msg, "助力") {
+			//			rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+			//			rsp.Param("url", msg)
+			//			rsp.Param("type", "hy")
+			//			data, err := rsp.Response()
+			//
+			//			if err != nil {
+			//				return "口令转换失败"
+			//			}
+			//			body, _ := ioutil.ReadAll(data.Body)
+			//			if strings.Contains(string(body), "口令转换失败") {
+			//				return "口令转换失败"
+			//			} else {
+			//				if strings.Contains(string(body), "shareType=taskHelp") {
+			//					sender.Reply("开始助力")
+			//					inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+			//					sender.Reply("开始助力，管理员")
+			//
+			//					runTask(&Task{Path: "jd_racxj_taskHelp.js", Envs: []Env{
+			//						{Name: "jd_racxj_inviteIdArr", Value: inviterCode[1]}, {Name: "gua_racxj_token", Value: GetEnv("token")},
+			//					}}, sender)
+			//					//flag := nianhelp(inviterCode[1])
+			//					//if flag {
+			//					//	return "助力完成"
+			//					//} else {
+			//					//	return "助力失败"
+			//					//}
+			//				}
+			//			}
+			//		}
+			//	}
+			//}
 
 			//组队
-			{
-				if sender.IsAdmin {
-					if strings.Contains(msg, "加入") || strings.Contains(msg, "咖叺") {
-						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-						rsp.Param("url", msg)
-						rsp.Param("type", "hy")
-						data, err := rsp.Response()
-
-						if err != nil {
-							return "口令转换失败"
-						}
-						body, _ := ioutil.ReadAll(data.Body)
-						if strings.Contains(string(body), "口令转换失败") {
-							return "口令转换失败"
-						} else {
-							if strings.Contains(string(body), "shareType=team") {
-								sender.Reply("已提交")
-								f, err := os.OpenFile(ExecPath+"/zdzl.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-								if err != nil {
-									logs.Warn("zdzl.txt失败，", err)
-								}
-								f.WriteString(string(body) + "\n")
-								f.Close()
-								//inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-								//
-								//flag := zdhelp(inviterCode[1])
-								//if flag {
-								//	return "助力完成"
-								//} else {
-								//	return "助力失败"
-								//}
-							}
-						}
-					}
-				}
-			}
+			//{
+			//	if sender.IsAdmin {
+			//		if strings.Contains(msg, "加入") || strings.Contains(msg, "咖叺") {
+			//			rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+			//			rsp.Param("url", msg)
+			//			rsp.Param("type", "hy")
+			//			data, err := rsp.Response()
+			//
+			//			if err != nil {
+			//				return "口令转换失败"
+			//			}
+			//			body, _ := ioutil.ReadAll(data.Body)
+			//			if strings.Contains(string(body), "口令转换失败") {
+			//				return "口令转换失败"
+			//			} else {
+			//				if strings.Contains(string(body), "shareType=team") {
+			//					sender.Reply("已提交")
+			//					f, err := os.OpenFile(ExecPath+"/zdzl.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+			//					if err != nil {
+			//						logs.Warn("zdzl.txt失败，", err)
+			//					}
+			//					f.WriteString(string(body) + "\n")
+			//					f.Close()
+			//					//inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+			//					//
+			//					//flag := zdhelp(inviterCode[1])
+			//					//if flag {
+			//					//	return "助力完成"
+			//					//} else {
+			//					//	return "助力失败"
+			//					//}
+			//				}
+			//			}
+			//		}
+			//	}
+			//}
 
 			//绑定QQ
 			{
