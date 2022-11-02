@@ -193,7 +193,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								logs.Warn("zqdyj.txt失败，", err)
 							}
 							sender.Reply("已提交")
-							f.WriteString(split[1] + "\n")
+							f.WriteString(split[1])
 							f.Close()
 						}
 					} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
