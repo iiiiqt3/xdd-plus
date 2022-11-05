@@ -190,13 +190,12 @@ var codeSignals = []CodeSignal{
 				sender.handleJdCookies(func(ck *JdCookie) {
 					time.Sleep(time.Second * time.Duration(Config.Later))
 					if ck.Priority > 9 {
-						cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
+						cookie := fmt.Sprintf("  - pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
 						if strings.Contains(cookie, "app_open") {
 							f, err := os.OpenFile(ExecPath+"/zdpj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 							if err != nil {
 								logs.Warn("zdpj.txt失败，", err)
 							}
-							sender.Reply("已提交")
 							f.WriteString(cookie + "\r\n")
 							f.Close()
 							sender.Reply(ck.Nickname + "已加入队列")
