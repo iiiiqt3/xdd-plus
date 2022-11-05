@@ -1211,12 +1211,12 @@ func rundyj(sender *Sender, code string) {
 			val, _ := jsonparser.GetString(s, "msg")
 			getInt, _ := jsonparser.GetInt(s, "code")
 			if getInt == 200 {
+				logs.Info(val)
 				if val == "完成" {
-					sender.Reply(fmt.Sprintf("订单编号：%d,邀请码:%s个账号", no, code))
+					sender.Reply(fmt.Sprintf("订单编号：%d,邀请码:%s已完成", no, code))
 				} else {
 					sender.Reply(val)
 				}
-				sender.Reply(fmt.Sprintf("订单编号：%d,邀请码:%s个账号", no, code))
 			} else {
 				sender.Reply(fmt.Sprintf("订单编号：%d,邀请异常，%s,请联系管理员", no, code))
 			}
