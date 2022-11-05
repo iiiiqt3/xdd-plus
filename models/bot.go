@@ -192,6 +192,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							no := pzno
 							pzno += 1
 							pzlist[inviterCode[1]] = no
+							sender.Reply(fmt.Sprintf("订单编号：%d,已进入队列", no))
 							go rundyj(sender, inviterCode[1])
 
 							//split := strings.Split(string(body), "【链接】")
@@ -210,6 +211,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						no := pzno
 						pzno += 1
 						pzlist[inviterCode[1]] = no
+						sender.Reply(fmt.Sprintf("订单编号：%d,已进入队列", no))
 						go rundyj(sender, inviterCode[1])
 						//f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 						//if err != nil {
