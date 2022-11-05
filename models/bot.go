@@ -187,24 +187,32 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						if strings.Contains(string(body), "口令转换失败") {
 							return "口令转换失败"
 						} else {
-							split := strings.Split(string(body), "【链接】")
-							f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-							if err != nil {
-								logs.Warn("zqdyj.txt失败，", err)
-							}
-							sender.Reply("已提交")
-							f.WriteString(split[1])
-							f.Close()
+							inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(string(body))
+							logs.Info(inviterCode)
+							no := pzno
+							pzno += 1
+							pzlist[inviterCode[1]] = no
+							go rundyj(sender,inviterCode[1])
+
+							//split := strings.Split(string(body), "【链接】")
+							//f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+							//if err != nil {
+							//	logs.Warn("zqdyj.txt失败，", err)
+							//}
+							//sender.Reply("已提交")
+							//f.WriteString(split[1])
+							//f.Close()
 						}
-					} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
-						f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-						if err != nil {
-							logs.Warn("zqdyj.txt失败，", err)
-						}
-						sender.Reply("已提交")
-						f.WriteString(msg + "\n")
-						f.Close()
 					}
+					//} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
+					//	f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+					//	if err != nil {
+					//		logs.Warn("zqdyj.txt失败，", err)
+					//	}
+					//	sender.Reply("已提交")
+					//	f.WriteString(msg + "\n")
+					//	f.Close()
+					//}
 				}
 
 			}
@@ -1192,6 +1200,32 @@ func getScKey(ck string) (key string) {
 	return ""
 }
 
+func rundyj(sender *Sender, code string) {
+	for {
+		time.Sleep(time.Duration(rand.Intn(40)))
+		if pz < 1 {
+			pz++
+			no := pzlist[code]
+			get := httplib.Get(fmt.Sprintf("http://127.0.0.1:8066/api/dyj?shareId=%s", code))
+			s, _ := get.Bytes()
+			val, _ := jsonparser.GetString(s, "msg")
+			getInt, _ := jsonparser.GetInt(s, "code")
+			if getInt == 200 {
+				if val == "完成" {
+					sender.Reply(fmt.Sprintf("订单编号：%d,邀请码:%s个账号", no, code))
+				} else {
+					sender.Reply(val)
+				}
+				sender.Reply(fmt.Sprintf("订单编号：%d,邀请码:%s个账号", no, code))
+			} else {
+				sender.Reply(fmt.Sprintf("订单编号：%d,邀请异常，%s,请联系管理员", no, code))
+			}
+			pz--
+			return
+		}
+	}
+}
+
 func runpz(sender *Sender, code string) {
 	for {
 		time.Sleep(time.Duration(rand.Intn(60)))
@@ -1199,6 +1233,7 @@ func runpz(sender *Sender, code string) {
 			pz++
 			num, f := startpz(code)
 			no := pzlist[code]
+
 			if f {
 				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀结束共用:%d个账号", no, num))
 			} else {
