@@ -192,7 +192,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							no := pzno
 							pzno += 1
 							pzlist[inviterCode[1]] = no
-							go rundyj(sender,inviterCode[1])
+							go rundyj(sender, inviterCode[1])
 
 							//split := strings.Split(string(body), "【链接】")
 							//f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
@@ -1206,7 +1206,7 @@ func rundyj(sender *Sender, code string) {
 		if pz < 1 {
 			pz++
 			no := pzlist[code]
-			get := httplib.Get(fmt.Sprintf("http://127.0.0.1:8066/api/dyj?shareId=%s", code))
+			get := httplib.Get(fmt.Sprintf("http://192.168.195.40:8066/api/dyj?shareId=%s", code))
 			s, _ := get.Bytes()
 			val, _ := jsonparser.GetString(s, "msg")
 			getInt, _ := jsonparser.GetInt(s, "code")
