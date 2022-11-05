@@ -203,16 +203,22 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							//f.WriteString(split[1])
 							//f.Close()
 						}
-					}
-					//} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
-					//	f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-					//	if err != nil {
-					//		logs.Warn("zqdyj.txt失败，", err)
-					//	}
-					//	sender.Reply("已提交")
-					//	f.WriteString(msg + "\n")
-					//	f.Close()
 					//}
+					} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
+						inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
+						logs.Info(inviterCode)
+						no := pzno
+						pzno += 1
+						pzlist[inviterCode[1]] = no
+						go rundyj(sender, inviterCode[1])
+						//f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+						//if err != nil {
+						//	logs.Warn("zqdyj.txt失败，", err)
+						//}
+						//sender.Reply("已提交")
+						//f.WriteString(msg + "\n")
+						//f.Close()
+					}
 				}
 
 			}
