@@ -203,7 +203,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							//f.WriteString(split[1])
 							//f.Close()
 						}
-					//}
+						//}
 					} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
 						inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
 						logs.Info(inviterCode)
@@ -1218,12 +1218,9 @@ func rundyj(sender *Sender, code string) {
 			val, _ := jsonparser.GetString(s, "msg")
 			getInt, _ := jsonparser.GetInt(s, "code")
 			if getInt == 200 {
-				logs.Info(val)
-				if val == "完成" {
-					sender.Reply(fmt.Sprintf("订单编号：%d,邀请码:%s已完成", no, code))
-				} else {
-					sender.Reply(val)
-				}
+				sender.Reply(fmt.Sprintf("订单编号：%d,邀请码:%s已完成", no, code))
+			} else if getInt == 100 {
+				sender.Reply(val)
 			} else {
 				sender.Reply(fmt.Sprintf("订单编号：%d,邀请异常，%s,请联系管理员", no, code))
 			}
