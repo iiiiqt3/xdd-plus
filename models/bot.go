@@ -1217,12 +1217,11 @@ func rundyj(sender *Sender, code string) {
 			get := httplib.Get(fmt.Sprintf("http://192.168.195.40:8066/api/dyj?shareId=%s", code))
 			s, _ := get.Bytes()
 			logs.Info(string(s))
-			val, _ := jsonparser.GetString(s, "msg")
 			getInt, _ := jsonparser.GetInt(s, "code")
 			if getInt == 200 {
 				sender.Reply(fmt.Sprintf("订单编号：%d,邀请码:%s已完成", no, code))
 			} else if getInt == 100 {
-				sender.Reply(val)
+				sender.Reply(fmt.Sprintf("订单编号：%d,等待管理员通知重发,邀请码:%s", no, code))
 			} else {
 				sender.Reply(fmt.Sprintf("订单编号：%d,邀请异常，%s,请联系管理员", no, code))
 			}
