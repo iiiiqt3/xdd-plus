@@ -91,7 +91,7 @@ func Update(sender *Sender) error {
 			}
 			sender.Reply("更新完成，立即重启")
 			logs.Info("更新成功")
-			Daemon()
+			//Daemon()
 		}
 
 		return nil
