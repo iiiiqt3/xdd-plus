@@ -1,8 +1,16 @@
 package models
 
 import (
+	"errors"
+	"github.com/beego/beego/v2/client/httplib"
+	"github.com/beego/beego/v2/core/logs"
+	"github.com/buger/jsonparser"
 	"os"
 	"regexp"
+	"runtime"
+	"strings"
+	"syscall"
+	"time"
 )
 
 var version = "v6.0"
@@ -12,28 +20,18 @@ var pname = regexp.MustCompile(`/([^/\s]+)`).FindStringSubmatch(os.Args[0])[1]
 
 func initVersion() {
 	Config.Version = version
-	//logs.Info("检查更新" + version)
-	//value, err := httplib.Get(GhProxy + "https://raw.githubusercontent.com/764763903a/xdd-plus/main/models/version.go").String()
-	//if err != nil {
-	//	logs.Info("更新版本的失败")
-	//} else {
-	//	// name := AppName + "_" + runtime.GOOS + "_" + runtime.GOARCH
-	//	if match := regexp.MustCompile(`var version = "(\d{10})"`).FindStringSubmatch(value); len(match) != 0 {
-	//		des := regexp.MustCompile(`var describe = "([^"]+)"`).FindStringSubmatch(value)
-	//		if len(des) != 0 {
-	//			describe = des[1]
-	//		}
-	//		if match[1] > version {
-	//			err := Update(&Sender{})
-	//			if err != nil {
-	//				logs.Warn("更新失败,", err)
-	//				return
-	//			}
-	//			(&JdCookie{}).Push("小滴滴更新：" + describe)
-	//			Daemon()
-	//		}
-	//	}
-	//}
+	logs.Info("检查更新" + version)
+	value, err := httplib.Get("https://update.smxy.xyz/xdd.txt").Bytes()
+	if err != nil {
+		logs.Info("更新版本的失败")
+	} else {
+		// name := AppName + "_" + runtime.GOOS + "_" + runtime.GOARCH
+		val, _ := jsonparser.GetString(value, "VersionName")
+		logs.Info(val)
+		if val != version {
+			(&JdCookie{}).Push("小滴滴检测到新版本：" + val)
+		}
+	}
 }
 
 func Exists(path string) bool {
@@ -56,19 +54,42 @@ func Exists(path string) bool {
 
 }
 
-//func Update(sender *Sender) error {
-//	logs.Info("检查更新" + version)
-//	sender.Reply("小滴滴开始检查更新")
-//	value, err := httplib.Get("http://xdd.smxy.xyz/version").String()
-//	if err != nil {
-//		return errors.New("获取版本号失败")
-//	} else {
-//		if strings.Contains(Config.Version, value) {
-//			return errors.New("小滴滴已是最新版啦")
-//		} else {
-//			sender.Reply("小滴滴开始更新程序")
-//
-//		}
-//		return nil
-//	}
-//}
+func Update(sender *Sender) error {
+	logs.Info("检查更新" + version)
+	sender.Reply("小滴滴开始检查更新")
+	value, err := httplib.Get("http://xdd.smxy.xyz/version").String()
+	if err != nil {
+		return errors.New("获取版本号失败")
+	} else {
+		if strings.Contains(version, value) {
+			return errors.New("小滴滴已是最新版啦")
+		} else {
+
+			sender.Reply("小滴滴开始更新程序")
+			req := httplib.Get("https://update.smxy.xyz/xdd_linux_" + runtime.GOARCH)
+			req.SetTimeout(time.Minute*5, time.Minute*5)
+			data, err := req.Bytes()
+
+			filename := ExecPath + "/" + AppName
+			if err = os.RemoveAll(filename); err != nil {
+				return errors.New("删除旧程序错误")
+			}
+			if f, err := os.OpenFile(filename, syscall.O_CREAT, 0777); err != nil {
+				return errors.New("创建程序错误")
+			} else {
+				_, err := f.Write(data)
+				f.Close()
+				if err != nil {
+					des := err.Error()
+					if err = os.WriteFile(filename, data, 777); err != nil {
+						return errors.New("写入程序错误" + des)
+					}
+				}
+			}
+			sender.Reply("更新完成，立即重启")
+			Daemon()
+		}
+
+		return nil
+	}
+}
