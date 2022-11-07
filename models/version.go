@@ -67,6 +67,7 @@ func Update(sender *Sender) error {
 		} else {
 			logs.Info("开始更新")
 			sender.Reply("小滴滴开始更新程序")
+			logs.Info("https://update.smxy.xyz/xdd_linux_" + runtime.GOARCH)
 			req := httplib.Get("https://update.smxy.xyz/xdd_linux_" + runtime.GOARCH)
 			req.SetTimeout(time.Minute*5, time.Minute*5)
 			data, err := req.Bytes()
