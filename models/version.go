@@ -34,7 +34,6 @@ func initVersion() {
 		logs.Info(version)
 		if value != version {
 			logs.Info("小滴滴检测到新版本：" + value)
-			Update(&Sender{UserID: pzno})
 			(&JdCookie{}).Push("小滴滴检测到新版本：" + value)
 		}
 	}
