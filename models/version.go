@@ -25,8 +25,10 @@ func initVersion() {
 		logs.Info("更新版本的失败")
 	} else {
 		// name := AppName + "_" + runtime.GOOS + "_" + runtime.GOARCH
+		logs.Info(value)
+		logs.Info(version)
 		if value != version {
-			logs.Info("\"小滴滴检测到新版本：\" + value")
+			logs.Info("小滴滴检测到新版本：" + value)
 			(&JdCookie{}).Push("小滴滴检测到新版本：" + value)
 		}
 	}
