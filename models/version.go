@@ -72,6 +72,7 @@ func Update(sender *Sender) error {
 			data, err := req.Bytes()
 
 			filename := ExecPath + "/" + AppName
+			logs.Info(filename)
 			if err = os.RemoveAll(filename); err != nil {
 				return errors.New("删除旧程序错误")
 			}
