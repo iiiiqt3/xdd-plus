@@ -65,7 +65,7 @@ func Update(sender *Sender) error {
 		if strings.Contains(version, value) {
 			return errors.New("小滴滴已是最新版啦")
 		} else {
-
+			logs.Info("开始更新")
 			sender.Reply("小滴滴开始更新程序")
 			req := httplib.Get("https://update.smxy.xyz/xdd_linux_" + runtime.GOARCH)
 			req.SetTimeout(time.Minute*5, time.Minute*5)
@@ -88,6 +88,7 @@ func Update(sender *Sender) error {
 				}
 			}
 			sender.Reply("更新完成，立即重启")
+			logs.Info("更新成功")
 			Daemon()
 		}
 
