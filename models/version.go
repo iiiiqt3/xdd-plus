@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/buger/jsonparser"
 	"os"
 	"regexp"
 	"runtime"
@@ -21,15 +20,13 @@ var pname = regexp.MustCompile(`/([^/\s]+)`).FindStringSubmatch(os.Args[0])[1]
 func initVersion() {
 	Config.Version = version
 	logs.Info("检查更新" + version)
-	value, err := httplib.Get("https://update.smxy.xyz/xdd.txt").Bytes()
+	value, err := httplib.Get("http://xdd.smxy.xyz/version").String()
 	if err != nil {
 		logs.Info("更新版本的失败")
 	} else {
 		// name := AppName + "_" + runtime.GOOS + "_" + runtime.GOARCH
-		val, _ := jsonparser.GetString(value, "VersionName")
-		logs.Info(val)
-		if val != version {
-			(&JdCookie{}).Push("小滴滴检测到新版本：" + val)
+		if value != version {
+			(&JdCookie{}).Push("小滴滴检测到新版本：" + value)
 		}
 	}
 }
