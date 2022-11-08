@@ -132,6 +132,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		Contents: contents,
 	}
 	logs.Info(msgs[1])
+	logs.Info(msgs[2].(string))
 	if msgs[1].(string) == "wx" {
 		sender.UserID = getWxId(msgs[2].(string))
 	} else {
