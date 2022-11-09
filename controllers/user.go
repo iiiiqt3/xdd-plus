@@ -13,7 +13,7 @@ type UserController struct {
 	BaseController
 }
 
-func (c *LoginController) GetUserInfo() {
+func (c *UserController) GetUserInfo() {
 
 	pin := c.GetString("pin")
 	cookie, err := models.GetJdCookie(pin)
@@ -55,7 +55,7 @@ func (c *LoginController) GetUserInfo() {
 	}
 }
 
-func (c *LoginController) GetUserPin() {
+func (c *UserController) GetUserPin() {
 	qq := c.GetString("QQ")
 	if strings.EqualFold(qq, strconv.FormatInt(models.Config.QQID, 10)) {
 		result := Result{
