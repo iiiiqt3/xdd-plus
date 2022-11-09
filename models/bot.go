@@ -230,38 +230,42 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			//膨胀
-			//{
-			//	if sender.IsAdmin {
-			//		if strings.Contains(msg, "膨胀") {
-			//			rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-			//			rsp.Param("url", msg)
-			//			rsp.Param("type", "hy")
-			//			data, err := rsp.Response()
-			//
-			//			if err != nil {
-			//				return "口令转换失败"
-			//			}
-			//			body, _ := ioutil.ReadAll(data.Body)
-			//			if strings.Contains(string(body), "口令转换失败") {
-			//				return "口令转换失败"
-			//			} else {
-			//				if strings.Contains(string(body), "shareType=expandHelp") {
-			//					sender.Reply("开始助力")
-			//					inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-			//					no := tytno
-			//					tytno += 1
-			//					pzlist[inviterCode[1]] = no
-			//					sender.Reply("开始膨胀，管理员")
-			//					runTask(&Task{Path: "jd_racxj_expandHelp.js", Envs: []Env{
-			//						{Name: "jd_racxj_inviteIdArr_expand", Value: inviterCode[1]}, {Name: "gua_racxj_token", Value: GetEnv("token")},
-			//					}}, sender)
-			//					//go runpz(sender, inviterCode[1])
-			//				}
-			//			}
-			//		}
-			//	}
-			//
-			//}
+			{
+				if sender.IsAdmin {
+					if strings.Contains(msg, "膨胀") {
+						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+						rsp.Param("url", msg)
+						rsp.Param("type", "hy")
+						data, err := rsp.Response()
+
+						if err != nil {
+							return "口令转换失败"
+						}
+						body, _ := ioutil.ReadAll(data.Body)
+						if strings.Contains(string(body), "口令转换失败") {
+							return "口令转换失败"
+						} else {
+							if strings.Contains(string(body), "shareType=expandHelp") {
+								sender.Reply("开始助力")
+								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
+								f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+								if err != nil {
+									logs.Warn("zqdyj.txt失败，", err)
+								}
+								sender.Reply("已提交")
+								f.WriteString(inviterCode[1] + "&")
+								f.Close()
+
+								//runTask(&Task{Path: "jd_racxj_expandHelp.js", Envs: []Env{
+								//	{Name: "jd_racxj_inviteIdArr_expand", Value: inviterCode[1]}, {Name: "gua_racxj_token", Value: GetEnv("token")},
+								//}}, sender)
+								//go runpz(sender, inviterCode[1])
+							}
+						}
+					}
+				}
+
+			}
 
 			//金币助力
 			//{
