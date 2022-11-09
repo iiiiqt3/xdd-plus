@@ -547,12 +547,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 							if success {
 								pcodes[sender.UserID] = msg
-								logs.Info(string(sender.UserID))
+								logs.Info(strconv.Itoa(sender.UserID))
 								sender.Reply("请输入6位验证码：")
 								break
 							}
 							//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
-							if !success && status == 666 && i < 5 && captcha == 2 {
+							if !success && status == 666 && captcha == 2 {
 
 								sender.Reply("正在进行验证...")
 								for {

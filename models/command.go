@@ -145,7 +145,7 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 				return errors.New(Config.Query)
 			} else {
 				if sender.Type == "wx" {
-					sender.Reply("你尚未绑定🐶东账号，请对QQ机器人发送绑定微信获取Code绑定QQ数据，或者是新用户请直接发送登录。")
+					sender.Reply("你尚未绑定🐶东账号，请对QQ机器人发送绑定QQ绑定QQ数据，或者是新用户请直接发送登录。")
 				} else {
 					sender.Reply("你尚未绑定🐶东账号，请发送教程获取最新上车方法。")
 				}
