@@ -63,7 +63,7 @@ type AgreeFriend struct {
 	API       string `json:"api"`        // API名
 	RobotWxid string `json:"robot_wxid"` // 机器人ID
 	Token     string `json:"token"`      // 验证密钥
-	Type      int  `json:"type"`       // 收到好友验证消息中（json）的type属性
+	Type      int    `json:"type"`       // 收到好友验证消息中（json）的type属性
 	V1        string `json:"v1"`         // 收到好友验证消息中（json）的v1属性
 	V2        string `json:"v2"`         // 收到好友验证消息中（json）的v2属性
 
@@ -77,7 +77,7 @@ func (c *WxController) HandleMessage() {
 		ag := &FriendVerifyMsg{}
 		err := json.Unmarshal(data, ag)
 		logs.Info(err)
-		AgreeFriendVerify(ag.Content.Type,ag.Content.V1,ag.Content.V2)
+		AgreeFriendVerify(ag.Content.Type, ag.Content.V1, ag.Content.V2)
 	case "EventPrivateChat":
 		ag := &WxMessage{}
 		err := json.Unmarshal(data, ag)
