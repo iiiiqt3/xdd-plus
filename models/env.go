@@ -31,6 +31,15 @@ func GetEnv(name string) string {
 	return env.Value
 }
 
+func IsAutoAgreeFriendVerify() bool {
+	env := &Env{}
+	db.Where("name = ?", "AutoAgree").First(env)
+	if env.Value == "" {
+		return false
+	}
+	return true
+}
+
 func isOpenWskey() bool {
 	env := &Env{}
 	db.Where("name = ?", "CloseWskey").First(env)

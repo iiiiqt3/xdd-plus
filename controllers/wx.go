@@ -77,7 +77,11 @@ func (c *WxController) HandleMessage() {
 		ag := &FriendVerifyMsg{}
 		err := json.Unmarshal(data, ag)
 		logs.Info(err)
-		AgreeFriendVerify(ag.Content.Type, ag.Content.V1, ag.Content.V2, ag.Content.JSONMsg.Content, ag.Content.FromWxid)
+		auto := models.IsAutoAgreeFriendVerify()
+		if auto {
+			AgreeFriendVerify(ag.Content.Type, ag.Content.V1, ag.Content.V2, ag.Content.JSONMsg.Content, ag.Content.FromWxid)
+		}
+
 	case "EventPrivateChat":
 		ag := &WxMessage{}
 		err := json.Unmarshal(data, ag)
@@ -103,6 +107,7 @@ func AgreeFriendVerify(type1 int, v1 string, v2 string, content string, uid stri
 	req.Header("User-Agent", random)
 	marshal, _ := json.Marshal(agree)
 	logs.Info(string(marshal))
+
 	req.Body(string(marshal))
 	s, _ := req.Bytes()
 	val, _ := jsonparser.GetString(s, "Result")
