@@ -128,7 +128,6 @@ func nolanLogin(key string, pin string, qq int, bz string, push string, c *Login
 	}
 }
 
-
 func (c *LoginController) SMSLogin() {
 	cookie := c.GetString("ck")
 	qq := c.GetString("qq")
@@ -234,7 +233,6 @@ func (c *LoginController) SMSLogin() {
 	}
 
 }
-
 
 func (c *LoginController) WskeyLogin() {
 	cookie := c.GetString("wskey")

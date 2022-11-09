@@ -13,7 +13,6 @@ type UserController struct {
 	BaseController
 }
 
-
 func (c *LoginController) GetUserInfo() {
 
 	pin := c.GetString("pin")
