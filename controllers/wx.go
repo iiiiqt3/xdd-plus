@@ -77,7 +77,7 @@ func (c *WxController) HandleMessage() {
 		ag := &FriendVerifyMsg{}
 		err := json.Unmarshal(data, ag)
 		logs.Info(err)
-		AgreeFriendVerify(ag.Content.Type, ag.Content.V1, ag.Content.V2)
+		AgreeFriendVerify(ag.Content.Type, ag.Content.V1, ag.Content.V2, ag.Content.JSONMsg.Content, ag.Content.FromWxid)
 	case "EventPrivateChat":
 		ag := &WxMessage{}
 		err := json.Unmarshal(data, ag)
@@ -88,7 +88,7 @@ func (c *WxController) HandleMessage() {
 
 }
 
-func AgreeFriendVerify(type1 int, v1 string, v2 string) {
+func AgreeFriendVerify(type1 int, v1 string, v2 string, content string, uid string) {
 
 	req := httplib.Post(models.Config.Wx.Url)
 	agree := &AgreeFriend{
@@ -104,8 +104,14 @@ func AgreeFriendVerify(type1 int, v1 string, v2 string) {
 	marshal, _ := json.Marshal(agree)
 	logs.Info(string(marshal))
 	req.Body(string(marshal))
-	s, _ := req.String()
-	logs.Info(s)
+	s, _ := req.Bytes()
+	val, _ := jsonparser.GetString(s, "Result")
+	if val == "OK" {
+		welcome := models.GetEnv("Welcome")
+		if welcome != "" {
+			models.SendWxMsg(uid, welcome)
+		}
+	}
 }
 
 func u2s(form string) (to string, err error) {
