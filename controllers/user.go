@@ -13,10 +13,7 @@ type UserController struct {
 	BaseController
 }
 
-// @Title GetUserInfo
-// @Description 获取用户信息
-// @Success 200 {string} success
-// @router /getUserInfo [get,post]
+
 func (c *LoginController) GetUserInfo() {
 
 	pin := c.GetString("pin")
@@ -59,10 +56,6 @@ func (c *LoginController) GetUserInfo() {
 	}
 }
 
-// @Title GetUserInfo
-// @Description 获取用户列表
-// @Success 200 {string} success
-// @router /getUserPin [get,post]
 func (c *LoginController) GetUserPin() {
 	qq := c.GetString("QQ")
 	if strings.EqualFold(qq, strconv.FormatInt(models.Config.QQID, 10)) {

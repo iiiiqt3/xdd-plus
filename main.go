@@ -93,24 +93,16 @@ func main() {
 		}
 	})
 
-	namespace := web.NewNamespace("/api",
-		web.NSNamespace("/login", web.NSInclude(&controllers.LoginController{})),
-		web.NSNamespace("/user", web.NSInclude(&controllers.UserController{})),
-	)
-	web.AddNamespace(namespace)
-
-	web.Include(&controllers.LoginController{})
-	web.Include(&controllers.UserController{})
 	//web.Router("/api/login/admin", &controllers.LoginController{}, "post:IsAdmin")
-	//web.Router("/api/login/cklogin", &controllers.LoginController{}, "post:CkLogin")
-	//web.Router("/api/login/smslogin", &controllers.LoginController{}, "post:SMSLogin")
-	//web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
-	//web.Router("/api/getUserInfo", &controllers.UserController{}, "post:GetUserInfo")
-	//web.Router("/api/getUserInfo", &controllers.UserController{}, "get:GetUserInfo")
-	//web.Router("/api/getUserPin", &controllers.UserController{}, "post:GetUserPin")
-	//web.Router("/api/getUserPin", &controllers.UserController{}, "get:GetUserPin")
-	//web.Router("/api/account", &controllers.AccountController{}, "get:List")
-	//web.Router("/api/account", &controllers.AccountController{}, "post:CreateOrUpdate")
+	web.Router("/api/login/cklogin", &controllers.LoginController{}, "post:CkLogin")
+	web.Router("/api/login/smslogin", &controllers.LoginController{}, "post:SMSLogin")
+	web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
+	web.Router("/api/getUserInfo", &controllers.UserController{}, "post:GetUserInfo")
+	web.Router("/api/getUserInfo", &controllers.UserController{}, "get:GetUserInfo")
+	web.Router("/api/getUserPin", &controllers.UserController{}, "post:GetUserPin")
+	web.Router("/api/getUserPin", &controllers.UserController{}, "get:GetUserPin")
+	web.Router("/api/account", &controllers.AccountController{}, "get:List")
+	web.Router("/api/account", &controllers.AccountController{}, "post:CreateOrUpdate")
 	web.Router("/admin", &controllers.AccountController{}, "get:Admin")
 	web.Router("/wx/receive", &controllers.WxController{}, "get,post:HandleMessage")
 

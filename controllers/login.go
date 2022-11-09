@@ -46,10 +46,6 @@ func (c *LoginController) IsAdmin() {
 	}
 }
 
-// @Title CkLogin
-// @Description CK登录
-// @Success 200 {string} logout success
-// @router /cklogin [post]
 func (c *LoginController) CkLogin() {
 	pin := c.GetString("pin")
 	key := c.GetString("key")
@@ -132,10 +128,7 @@ func nolanLogin(key string, pin string, qq int, bz string, push string, c *Login
 	}
 }
 
-// SMSLogin @Title SMSLogin
-// @Description 短信登录
-// @Success 200 {string} logout success
-// @router /smslogin [post]
+
 func (c *LoginController) SMSLogin() {
 	cookie := c.GetString("ck")
 	qq := c.GetString("qq")
@@ -242,10 +235,7 @@ func (c *LoginController) SMSLogin() {
 
 }
 
-// WskeyLogin @Title WskeyLogin
-// @Description Wskey登录
-// @Success 200 {string} logout success
-// @router /wskeylogin [post]
+
 func (c *LoginController) WskeyLogin() {
 	cookie := c.GetString("wskey")
 	logs.Info(cookie)
