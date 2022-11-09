@@ -68,6 +68,7 @@ var ListenQQTempPrivateMessage = func(uid int64, msg string) {
 
 var ListenWXTempPrivateMessage = func(uid string, msg string) {
 	rt := handleMessage(msg, "wx", uid)
+
 	switch rt.(type) {
 	case string:
 		SendWxMsg(uid, rt.(string))
@@ -122,6 +123,7 @@ type msg struct {
 
 var handleMessage = func(msgs ...interface{}) interface{} {
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+	logs.Info(msgs)
 	msg := msgs[0].(string)
 	args := strings.Split(msg, " ")
 	head := args[0]
