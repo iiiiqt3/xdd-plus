@@ -46,7 +46,7 @@ func (c *LoginController) IsAdmin() {
 	}
 }
 
-// CkLogin @Title CkLogin
+// @Title CkLogin
 // @Description CK登录
 // @Success 200 {string} logout success
 // @router /cklogin [post]

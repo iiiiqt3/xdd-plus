@@ -98,6 +98,9 @@ func main() {
 		web.NSNamespace("/user", web.NSInclude(&controllers.UserController{})),
 	)
 	web.AddNamespace(namespace)
+
+	web.Include(&controllers.LoginController{})
+	web.Include(&controllers.UserController{})
 	//web.Router("/api/login/admin", &controllers.LoginController{}, "post:IsAdmin")
 	//web.Router("/api/login/cklogin", &controllers.LoginController{}, "post:CkLogin")
 	//web.Router("/api/login/smslogin", &controllers.LoginController{}, "post:SMSLogin")
