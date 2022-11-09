@@ -46,7 +46,7 @@ func (c *LoginController) IsAdmin() {
 	}
 }
 
-// @Title CkLogin
+// CkLogin @Title CkLogin
 // @Description CK登录
 // @Success 200 {string} logout success
 // @router /cklogin [post]
@@ -132,7 +132,7 @@ func nolanLogin(key string, pin string, qq int, bz string, push string, c *Login
 	}
 }
 
-// @Title SMSLogin
+// SMSLogin @Title SMSLogin
 // @Description 短信登录
 // @Success 200 {string} logout success
 // @router /smslogin [post]
@@ -242,7 +242,7 @@ func (c *LoginController) SMSLogin() {
 
 }
 
-// @Title WskeyLogin
+// WskeyLogin @Title WskeyLogin
 // @Description Wskey登录
 // @Success 200 {string} logout success
 // @router /wskeylogin [post]
