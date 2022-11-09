@@ -24,89 +24,6 @@ type Result struct {
 	Cookie  string      `json:"cookie"`
 }
 
-func (c *LoginController) GetUserInfo() {
-
-	pin := c.GetString("pin")
-	cookie, err := models.GetJdCookie(pin)
-	ok := models.CookieOK(cookie)
-	if err != nil {
-		logs.Error(err)
-		result := Result{
-			Data:    "null",
-			Code:    1,
-			Message: "查无匹配的pin",
-		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
-		if errs != nil {
-			fmt.Println(errs.Error())
-		}
-		c.Ctx.WriteString(string(jsons))
-	} else if !ok {
-		result := Result{
-			Data:    "账号过期",
-			Code:    0,
-			Message: "账号过期",
-		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
-		if errs != nil {
-			fmt.Println(errs.Error())
-		}
-		c.Ctx.WriteString(string(jsons))
-	} else {
-		result := Result{
-			Data:    cookie.Query(),
-			Code:    0,
-			Message: "查询成功",
-		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
-		if errs != nil {
-			fmt.Println(errs.Error())
-		}
-		c.Ctx.WriteString(string(jsons))
-	}
-}
-
-func (c *LoginController) GetUserPin() {
-	qq := c.GetString("QQ")
-	if strings.EqualFold(qq, strconv.FormatInt(models.Config.QQID, 10)) {
-		result := Result{
-			Data:    "null",
-			Code:    1,
-			Message: "禁止查询他人ID",
-		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
-		if errs != nil {
-			fmt.Println(errs.Error())
-		}
-		c.Ctx.WriteString(string(jsons))
-		return
-	}
-	pins := models.GetPinList(qq)
-	if pins == nil {
-		result := Result{
-			Data:    "null",
-			Code:    1,
-			Message: "查无匹配的pin",
-		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
-		if errs != nil {
-			fmt.Println(errs.Error())
-		}
-		c.Ctx.WriteString(string(jsons))
-	} else {
-		result := Result{
-			Data:    pins,
-			Code:    0,
-			Message: "查询成功",
-		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
-		if errs != nil {
-			fmt.Println(errs.Error())
-		}
-		c.Ctx.WriteString(string(jsons))
-	}
-}
-
 func FetchJdCookieValue(key string, cookies string) string {
 	match := regexp.MustCompile(key + `=([^;]*);{0,1}`).FindStringSubmatch(cookies)
 	if len(match) == 2 {
@@ -129,10 +46,10 @@ func (c *LoginController) IsAdmin() {
 	}
 }
 
-//@Title CkLogin
-//@Description CK登录
-//@Success 200 {string} logout success
-//@router /cklogin [post]
+// @Title CkLogin
+// @Description CK登录
+// @Success 200 {string} logout success
+// @router /cklogin [post]
 func (c *LoginController) CkLogin() {
 	pin := c.GetString("pin")
 	key := c.GetString("key")
@@ -143,9 +60,9 @@ func (c *LoginController) CkLogin() {
 
 	if key != "" && pin != "" {
 		nolanLogin(key, pin, qq, bz, push, c)
-	}else if ck!=""{
+	} else if ck != "" {
 
-	}else{
+	} else {
 		result := Result{
 			Data:    "null",
 			Code:    2,
@@ -215,6 +132,10 @@ func nolanLogin(key string, pin string, qq int, bz string, push string, c *Login
 	}
 }
 
+// @Title SMSLogin
+// @Description 短信登录
+// @Success 200 {string} logout success
+// @router /smslogin [post]
 func (c *LoginController) SMSLogin() {
 	cookie := c.GetString("ck")
 	qq := c.GetString("qq")
@@ -321,6 +242,10 @@ func (c *LoginController) SMSLogin() {
 
 }
 
+// @Title WskeyLogin
+// @Description Wskey登录
+// @Success 200 {string} logout success
+// @router /wskeylogin [post]
 func (c *LoginController) WskeyLogin() {
 	cookie := c.GetString("wskey")
 	logs.Info(cookie)

@@ -1,0 +1,105 @@
+package controllers
+
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/beego/beego/v2/core/logs"
+	"github.com/cdle/xdd/models"
+	"strconv"
+	"strings"
+)
+
+type UserController struct {
+	BaseController
+}
+
+// @Title GetUserInfo
+// @Description 获取用户信息
+// @Success 200 {string} success
+// @router /getUserInfo [get,post]
+func (c *LoginController) GetUserInfo() {
+
+	pin := c.GetString("pin")
+	cookie, err := models.GetJdCookie(pin)
+	ok := models.CookieOK(cookie)
+	if err != nil {
+		logs.Error(err)
+		result := Result{
+			Data:    "null",
+			Code:    1,
+			Message: "查无匹配的pin",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
+	} else if !ok {
+		result := Result{
+			Data:    "账号过期",
+			Code:    0,
+			Message: "账号过期",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
+	} else {
+		result := Result{
+			Data:    cookie.Query(),
+			Code:    0,
+			Message: "查询成功",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
+	}
+}
+
+// @Title GetUserInfo
+// @Description 获取用户列表
+// @Success 200 {string} success
+// @router /getUserPin [get,post]
+func (c *LoginController) GetUserPin() {
+	qq := c.GetString("QQ")
+	if strings.EqualFold(qq, strconv.FormatInt(models.Config.QQID, 10)) {
+		result := Result{
+			Data:    "null",
+			Code:    1,
+			Message: "禁止查询他人ID",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
+		return
+	}
+	pins := models.GetPinList(qq)
+	if pins == nil {
+		result := Result{
+			Data:    "null",
+			Code:    1,
+			Message: "查无匹配的pin",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
+	} else {
+		result := Result{
+			Data:    pins,
+			Code:    0,
+			Message: "查询成功",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
+	}
+}
