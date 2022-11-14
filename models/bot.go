@@ -191,28 +191,22 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						if strings.Contains(string(body), "口令转换失败") {
 							return "口令转换失败"
 						} else {
-							inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(string(body))
-							inviter := ""
-							logs.Info(len(inviterCode))
-							if len(inviterCode) < 1 {
-								split := strings.Split(msg, "&")
-								for i := range split {
-									if strings.Contains(split[i], "shareId=") {
-										logs.Info(split[i])
-										env := strings.Split(split[i], "=")
-										logs.Info(env[1])
-										inviter = env[1]
-
-									}
+							//inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(string(body))
+							inviterCode := ""
+							split := strings.Split(msg, "&")
+							for i := range split {
+								if strings.Contains(split[i], "shareId=") {
+									logs.Info(split[i])
+									env := strings.Split(split[i], "=")
+									logs.Info(env[1])
+									inviterCode = env[1]
 								}
-							} else {
-								inviter = inviterCode[1]
 							}
 							no := pzno
 							pzno += 1
-							pzlist[inviter] = no
+							pzlist[inviterCode] = no
 							sender.Reply(fmt.Sprintf("订单编号：%d,已进入队列", no))
-							go rundyj(sender, inviter)
+							go rundyj(sender, inviterCode)
 
 							//split := strings.Split(string(body), "【链接】")
 							//f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
@@ -225,25 +219,22 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						}
 						//}
 					} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
-						inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
-						inviter := ""
-						logs.Info(inviterCode)
-						if len(inviterCode) < 1 {
-							split := strings.Split(msg, "&")
-							for i := range split {
-								if strings.Contains(split[i], "shareId=") {
-									env := strings.Split(split[i], "=")
-									inviter = env[1]
-								}
+						//inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
+						inviterCode := ""
+						split := strings.Split(msg, "&")
+						for i := range split {
+							if strings.Contains(split[i], "shareId=") {
+								logs.Info(split[i])
+								env := strings.Split(split[i], "=")
+								logs.Info(env[1])
+								inviterCode = env[1]
 							}
-						} else {
-							inviter = inviterCode[1]
 						}
 						no := pzno
 						pzno += 1
-						pzlist[inviter] = no
+						pzlist[inviterCode] = no
 						sender.Reply(fmt.Sprintf("订单编号：%d,已进入队列", no))
-						go rundyj(sender, inviter)
+						go rundyj(sender, inviterCode)
 						//f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 						//if err != nil {
 						//	logs.Warn("zqdyj.txt失败，", err)
