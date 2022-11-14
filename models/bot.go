@@ -192,8 +192,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							return "口令转换失败"
 						} else {
 							inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(string(body))
-							logs.Info(inviterCode)
-							if inviterCode[1] == "" {
+							logs.Info(len(inviterCode))
+							if len(inviterCode)<2 {
 								split := strings.Split(msg, "&")
 								for i := range split {
 									if strings.Contains(split[i], "shareId=") {
@@ -222,7 +222,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
 
 						logs.Info(inviterCode)
-						if inviterCode[1] == "" {
+						if len(inviterCode)<2 {
 							split := strings.Split(msg, "&")
 							for i := range split {
 								if strings.Contains(split[i], "shareId=") {
