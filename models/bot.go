@@ -202,8 +202,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 										inviter = env[1]
 									}
 								}
-							}else{
-								inviter := inviterCode[1]
+							} else {
+								inviter = inviterCode[1]
 							}
 							no := pzno
 							pzno += 1
@@ -233,8 +233,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									inviter = env[1]
 								}
 							}
-						}else{
-							inviter := inviterCode[1]
+						} else {
+							inviter = inviterCode[1]
 						}
 						no := pzno
 						pzno += 1
