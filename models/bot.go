@@ -193,7 +193,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						} else {
 							//inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(string(body))
 							inviterCode := ""
-							split := strings.Split(msg, "&")
+							split := strings.Split(string(body), "&")
 							for i := range split {
 								if strings.Contains(split[i], "shareId=") {
 									logs.Info(split[i])
@@ -222,6 +222,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						//inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
 						inviterCode := ""
 						split := strings.Split(msg, "&")
+						logs.Info(msg)
 						for i := range split {
 							if strings.Contains(split[i], "shareId=") {
 								logs.Info(split[i])
