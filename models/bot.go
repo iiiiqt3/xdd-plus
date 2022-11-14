@@ -192,7 +192,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							return "口令转换失败"
 						} else {
 							inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(string(body))
-							inviter := inviterCode[1]
+							inviter := ""
 							logs.Info(len(inviterCode))
 							if len(inviterCode) < 1 {
 								split := strings.Split(msg, "&")
@@ -202,6 +202,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 										inviter = env[1]
 									}
 								}
+							}else{
+								inviter := inviterCode[1]
 							}
 							no := pzno
 							pzno += 1
@@ -221,7 +223,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						//}
 					} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
 						inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
-						inviter := inviterCode[1]
+						inviter := ""
 						logs.Info(inviterCode)
 						if len(inviterCode) < 1 {
 							split := strings.Split(msg, "&")
@@ -231,6 +233,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									inviter = env[1]
 								}
 							}
+						}else{
+							inviter := inviterCode[1]
 						}
 						no := pzno
 						pzno += 1
