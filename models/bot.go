@@ -200,11 +200,13 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									if strings.Contains(split[i], "shareId=") {
 										env := strings.Split(split[i], "=")
 										inviter = env[1]
+
 									}
 								}
 							} else {
 								inviter = inviterCode[1]
 							}
+							logs.Info(inviter)
 							no := pzno
 							pzno += 1
 							pzlist[inviter] = no
