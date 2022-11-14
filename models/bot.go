@@ -211,7 +211,17 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						//}
 					} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
 						inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
+
 						logs.Info(inviterCode)
+						if inviterCode[1] == "" {
+							split := strings.Split(msg, "&")
+							for i := range split {
+								if strings.Contains(split[i], "shareId=") {
+									env := strings.Split(split[i], "=")
+									inviterCode[1] = env[1]
+								}
+							}
+						}
 						no := pzno
 						pzno += 1
 						pzlist[inviterCode[1]] = no
