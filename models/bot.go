@@ -192,21 +192,22 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							return "口令转换失败"
 						} else {
 							inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(string(body))
+							inviter := inviterCode[1]
 							logs.Info(len(inviterCode))
-							if len(inviterCode)<2 {
+							if len(inviterCode) < 1 {
 								split := strings.Split(msg, "&")
 								for i := range split {
 									if strings.Contains(split[i], "shareId=") {
 										env := strings.Split(split[i], "=")
-										inviterCode[1] = env[1]
+										inviter = env[1]
 									}
 								}
 							}
 							no := pzno
 							pzno += 1
-							pzlist[inviterCode[1]] = no
+							pzlist[inviter] = no
 							sender.Reply(fmt.Sprintf("订单编号：%d,已进入队列", no))
-							go rundyj(sender, inviterCode[1])
+							go rundyj(sender, inviter)
 
 							//split := strings.Split(string(body), "【链接】")
 							//f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
@@ -220,22 +221,22 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						//}
 					} else if strings.Contains(msg, "https://wqs.jd.com/sns/") {
 						inviterCode := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
-
+						inviter := inviterCode[1]
 						logs.Info(inviterCode)
-						if len(inviterCode)<2 {
+						if len(inviterCode) < 1 {
 							split := strings.Split(msg, "&")
 							for i := range split {
 								if strings.Contains(split[i], "shareId=") {
 									env := strings.Split(split[i], "=")
-									inviterCode[1] = env[1]
+									inviter = env[1]
 								}
 							}
 						}
 						no := pzno
 						pzno += 1
-						pzlist[inviterCode[1]] = no
+						pzlist[inviter] = no
 						sender.Reply(fmt.Sprintf("订单编号：%d,已进入队列", no))
-						go rundyj(sender, inviterCode[1])
+						go rundyj(sender, inviter)
 						//f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 						//if err != nil {
 						//	logs.Warn("zqdyj.txt失败，", err)
