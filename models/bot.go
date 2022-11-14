@@ -198,7 +198,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								split := strings.Split(msg, "&")
 								for i := range split {
 									if strings.Contains(split[i], "shareId=") {
+										logs.Info(split[i])
 										env := strings.Split(split[i], "=")
+										logs.Info(env[1])
 										inviter = env[1]
 
 									}
@@ -206,7 +208,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							} else {
 								inviter = inviterCode[1]
 							}
-							logs.Info(inviter)
 							no := pzno
 							pzno += 1
 							pzlist[inviter] = no
