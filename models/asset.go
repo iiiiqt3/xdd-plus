@@ -58,14 +58,18 @@ var Float64 = func(s string) float64 {
 	i, _ := strconv.ParseFloat(s, 64)
 	return i
 }
-var proxy = ""
+var proxy func(req *http.Request) (*url.URL, error)
 
 func initProxy() {
 	value := GetEnv("proxy")
 	if value != "" {
-		proxy = value
+		proxy = func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(value)
+			return u, nil
+		}
 	}
 }
+
 
 func DailyAssetsPush() {
 	for _, ck := range GetJdCookies() {
@@ -729,13 +733,7 @@ func initFarm(cookie string, state chan string) {
 	req.Header("User-Agent", ua)
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Body(`body={"version":4}&appid=wh5&clientVersion=9.1.0`)
-	if proxy != "" {
-		logs.Info(proxy)
-		req.SetProxy(func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI(proxy)
-			return u, nil
-		})
-	}
+	req.SetProxy(proxy)
 	data, _ := req.Bytes()
 	json.Unmarshal(data, &a)
 	logs.Info(string(data))
