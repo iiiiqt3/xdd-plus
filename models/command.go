@@ -455,18 +455,27 @@ var codeSignals = []CodeSignal{
 					})
 				} else {
 					list := getUserNameList(strconv.Itoa(sender.UserID))
-					str := "在线账号:\n"
-					for _, s := range list {
-						str = str + fmt.Sprintf("账号：%s  \n", s)
+					if list == nil {
+						if Config.Query != "" {
+							return Config.Query
+						} else {
+							return "你尚未绑定🐶东账号，请发送教程获取最新上车方法。"
+						}
+					} else {
+						str := "在线账号:\n"
+						for _, s := range list {
+							str = str + fmt.Sprintf("账号：%s  \n", s)
+						}
+						sender.Reply(str)
+						query := GetEnv("query")
+						if query != "" {
+							sender.Reply("请扫描二维码查看")
+							var png []byte
+							png, _ = qrcode.Encode(query, qrcode.Medium, 256)
+							SendQQ(int64(sender.UserID), png)
+						}
 					}
-					sender.Reply(str)
-					query := GetEnv("query")
-					if query != "" {
-						sender.Reply("请扫描二维码查看")
-						var png []byte
-						png, _ = qrcode.Encode(query, qrcode.Medium, 256)
-						SendQQ(int64(sender.UserID), png)
-					}
+
 				}
 			case "qqg":
 				value := GetEnv("qqg")
@@ -477,17 +486,25 @@ var codeSignals = []CodeSignal{
 					})
 				} else {
 					list := getUserNameList(strconv.Itoa(sender.UserID))
-					str := "在线账号:\n"
-					for _, s := range list {
-						str = str + fmt.Sprintf("账号：%s  \n", s)
-					}
-					sender.Reply(str)
-					query := GetEnv("query")
-					if query != "" {
-						var png []byte
-						png, _ = qrcode.Encode(query, qrcode.Medium, 256)
-						logs.Info(Config.QQGroupID)
-						SendQQGroup(int64(Config.QQGroupID), int64(sender.UserID), png)
+					if list == nil {
+						if Config.Query != "" {
+							return Config.Query
+						} else {
+							return "你尚未绑定🐶东账号，请发送教程获取最新上车方法。"
+						}
+					} else {
+						str := "在线账号:\n"
+						for _, s := range list {
+							str = str + fmt.Sprintf("账号：%s  \n", s)
+						}
+						sender.Reply(str)
+						query := GetEnv("query")
+						if query != "" {
+							var png []byte
+							png, _ = qrcode.Encode(query, qrcode.Medium, 256)
+							logs.Info(Config.QQGroupID)
+							SendQQGroup(int64(Config.QQGroupID), int64(sender.UserID), png)
+						}
 					}
 				}
 
@@ -1249,7 +1266,7 @@ func getUserNameList(qq string) []string {
 					if !strings.Contains(ck.PtKey, "app_open") {
 						names = append(names, fmt.Sprintf("%s\n距离失效还有：%d天\n", ck.Nickname, 28-i))
 					} else {
-						names = append(names, fmt.Sprintf("%s\n尊贵的年费用户，您距离失效还有：%d天 \n", ck.Nickname, 365-i))
+						names = append(names, fmt.Sprintf("%s\n尊贵的年费用户，您距离失效还有：%d天 \n", ck.Nickname, 90-i))
 					}
 				}
 			} else {
