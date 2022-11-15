@@ -465,7 +465,7 @@ var codeSignals = []CodeSignal{
 						sender.Reply("请扫描二维码查看")
 						var png []byte
 						png, _ = qrcode.Encode(query, qrcode.Medium, 256)
-						SendQQGroup(int64(sender.UserID), Config.QQGroupID, png)
+						SendQQ(int64(sender.UserID), png)
 					}
 				}
 			case "qqg":
@@ -486,7 +486,8 @@ var codeSignals = []CodeSignal{
 					if query != "" {
 						var png []byte
 						png, _ = qrcode.Encode(query, qrcode.Medium, 256)
-						SendQQGroup(Config.QQGroupID, int64(sender.UserID), png)
+						logs.Info(Config.QQGroupID)
+						SendQQGroup(int64(Config.QQGroupID), int64(sender.UserID), png)
 					}
 				}
 
