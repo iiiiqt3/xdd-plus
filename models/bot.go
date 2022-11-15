@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
@@ -1235,10 +1236,13 @@ func getScKey(ck string) (key string) {
 	return ""
 }
 
+var mu sync.Mutex
+
 func rundyj(sender *Sender, code string) {
 	for {
 		time.Sleep(time.Duration(rand.Intn(40)))
-		if pz < 1 {
+		if mu.TryLock() {
+			mu.Lock()
 			pz++
 			no := pzlist[code]
 			get := httplib.Get(fmt.Sprintf("http://zhangjiayuan.3322.org:8066/api/dyj?shareId=%s", code))
@@ -1253,6 +1257,7 @@ func rundyj(sender *Sender, code string) {
 				sender.Reply(fmt.Sprintf("订单编号：%d,邀请异常，%s,请联系管理员", no, code))
 			}
 			pz--
+			mu.Unlock()
 			return
 		}
 	}
