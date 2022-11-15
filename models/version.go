@@ -39,26 +39,6 @@ func initVersion() {
 	}
 }
 
-func Exists(path string) bool {
-
-	_, err := os.Stat(path) //os.Stat获取文件信息
-
-	if err != nil {
-
-		if os.IsExist(err) {
-
-			return true
-
-		}
-
-		return false
-
-	}
-
-	return true
-
-}
-
 func Update(sender *Sender) error {
 	logs.Info("检查更新" + version)
 	sender.Reply("小滴滴开始检查更新")
@@ -93,11 +73,10 @@ func Update(sender *Sender) error {
 					}
 				}
 			}
-			sender.Reply("更新完成，立即重启")
+			sender.Reply("更新完成，马上重启")
 			logs.Info("更新成功")
-			//Daemon()
+			Daemon()
 		}
-
 		return nil
 	}
 }

@@ -330,18 +330,18 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	//{
-	//	Command: []string{"升级", "更新", "update", "upgrade"},
-	//	Admin:   true,
-	//	Handle: func(sender *Sender) interface{} {
-	//		if err := Update(sender); err != nil {
-	//			return err.Error()
-	//		}
-	//		sender.Reply("重启程序")
-	//		Daemon()
-	//		return nil
-	//	},
-	//},
+	{
+		Command: []string{"升级", "更新", "update", "upgrade"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			if err := Update(sender); err != nil {
+				return err.Error()
+			}
+			sender.Reply("重启程序")
+			Daemon()
+			return nil
+		},
+	},
 
 	{
 		Command: []string{"重启", "reload", "restart", "reboot"},
@@ -354,7 +354,7 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-		Command: []string{"更新账号", "Whiskey更新", "给老子更新"},
+		Command: []string{"更新账号"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			sender.Reply("更新所有账号")

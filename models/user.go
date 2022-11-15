@@ -68,16 +68,16 @@ func GetCoin(uid int) int {
 	return u.Coin
 }
 
-func getWxId(uid string) int {
+func getWxId(wxid string) int {
 	var u User
-	if db.Where("wxid = ?", uid).First(&u).Error != nil {
+	if db.Where("wxid = ?", wxid).First(&u).Error != nil {
 		tt := rand.Int()
 		db.Create(&User{
 			Class:    "wx",
 			Number:   tt,
 			Coin:     0,
 			ActiveAt: time.Now(),
-			Wxid:     uid,
+			Wxid:     wxid,
 		})
 		return tt
 	} else {
@@ -116,13 +116,4 @@ func makeWxId(uid int, wxid string) string {
 	}
 	return wxid
 
-}
-
-func getUserId(origin string, uid int, wxid string) string {
-	//switch origin {
-	//case "wx":
-	//	return getWxId()
-	//}
-	//return ""
-	return wxid
 }
