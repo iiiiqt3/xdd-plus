@@ -7,6 +7,7 @@ import (
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 	"os"
 	"regexp"
@@ -438,48 +439,58 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"查询", "query"},
 		Handle: func(sender *Sender) interface{} {
-			if sender.Type == "wx" {
+
+			switch sender.Type {
+			case "wx":
 				sender.handleJdCookies(func(ck *JdCookie) {
 					time.Sleep(time.Second * time.Duration(Config.Later))
 					sender.Reply(ck.Query())
 				})
-			} else {
-				sender.handleJdCookies(func(ck *JdCookie) {
-					time.Sleep(time.Second * time.Duration(Config.Later))
-					sender.Reply(ck.Query())
-				})
+			case "qq":
+				value := GetEnv("qq")
+				if value == "" {
+					sender.handleJdCookies(func(ck *JdCookie) {
+						time.Sleep(time.Second * time.Duration(Config.Later))
+						sender.Reply(ck.Query())
+					})
+				} else {
+					list := getUserNameList(strconv.Itoa(sender.UserID))
+					str := "在线账号:\n"
+					for _, s := range list {
+						str = str + fmt.Sprintf("账号：%s  \n", s)
+					}
+					sender.Reply(str)
+					query := GetEnv("query")
+					if query != "" {
+						sender.Reply("请扫描二维码查看")
+						var png []byte
+						png, _ = qrcode.Encode(query, qrcode.Medium, 256)
+						SendQQGroup(int64(sender.UserID), Config.QQGroupID, png)
+					}
+				}
+			case "qqg":
+				value := GetEnv("qqg")
+				if value == "" {
+					sender.handleJdCookies(func(ck *JdCookie) {
+						time.Sleep(time.Second * time.Duration(Config.Later))
+						sender.Reply(ck.Query())
+					})
+				} else {
+					list := getUserNameList(strconv.Itoa(sender.UserID))
+					str := "在线账号:\n"
+					for _, s := range list {
+						str = str + fmt.Sprintf("账号：%s  \n", s)
+					}
+					sender.Reply(str)
+					query := GetEnv("query")
+					if query != "" {
+						var png []byte
+						png, _ = qrcode.Encode(query, qrcode.Medium, 256)
+						SendQQGroup(int64(sender.UserID), Config.QQGroupID, png)
+					}
+				}
+
 			}
-			//if sender.Type == "qq" {
-			//	//sender.Reply("请使用网页")
-			//	if sender.IsAdmin {
-			//		sender.handleJdCookies(func(ck *JdCookie) {
-			//			time.Sleep(time.Second * time.Duration(Config.Later))
-			//			sender.Reply(ck.Query())
-			//		})
-			//	} else {
-			//		sender.handleJdCookies(func(ck *JdCookie) {
-			//			time.Sleep(time.Second * time.Duration(Config.Later))
-			//			sender.Reply(ck.Query())
-			//		})
-			//		//list := getUserNameList(strconv.Itoa(sender.UserID))
-			//		//str := "在线账号:\n"
-			//		//for _, s := range list {
-			//		//	str = str + fmt.Sprintf("账号：%s  \n", s)
-			//		//}
-			//		//sender.Reply(str)
-			//
-			//		//if Config.CXURL != "" {
-			//		//	var png []byte
-			//		//	png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
-			//		//	if sender.Type == "qqg" {
-			//		//		SendQQGroup(int64(sender.UserID), Config.QQGroupID, png)
-			//		//	} else {
-			//		//		SendQQ(int64(sender.UserID), png)
-			//		//	}
-			//		//}
-			//	}
-			//	//sender.Reply("今日查询接口维护，请明日再来")
-			//}
 			return nil
 		},
 	},

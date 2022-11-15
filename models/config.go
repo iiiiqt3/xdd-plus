@@ -48,7 +48,6 @@ type Yaml struct {
 	Img                 bool   `yaml:"img"`
 	Wskey               bool   `yaml:"Wskey"`
 	TGURL               string `yaml:"TGURL"`
-	CXURL               string `yaml:"CXURL"`
 	SMSAddress          string `yaml:"SMSAddress"`
 	IsAddFriend         bool   `yaml:"IsAddFriend"`
 	Lim                 int    `yaml:"Lim"`
