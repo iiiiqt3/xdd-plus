@@ -64,7 +64,8 @@ func initProxy() {
 	value := GetEnv("proxy")
 	if value != "" {
 		proxy = func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI("http://192.168.195.54:8080")
+			//u, _ := url.ParseRequestURI("http://192.168.195.54:8080")
+			u, _ := url.ParseRequestURI(value)
 			return u, nil
 		}
 	}
