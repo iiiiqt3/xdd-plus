@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -55,6 +56,14 @@ var Int = func(s string) int {
 var Float64 = func(s string) float64 {
 	i, _ := strconv.ParseFloat(s, 64)
 	return i
+}
+var proxy = ""
+
+func initProxy() {
+	value := GetEnv("proxy")
+	if value != "" {
+		proxy = value
+	}
 }
 
 func DailyAssetsPush() {
@@ -345,6 +354,12 @@ func getXd(cookie string) (string, string) {
 	req.Header("Accept-Language", "zh-CN,zh-Hans;q=0.9")
 	req.Header("Referer", "https://st.jingxi.com/")
 	req.Header("Cookie", cookie)
+	if proxy != "" {
+		req.SetProxy(func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(proxy)
+			return u, nil
+		})
+	}
 	resp, _ := req.Bytes()
 	xibean, err := jsonparser.GetInt(resp, "data", "xibean")
 	if err != nil {
@@ -563,6 +578,12 @@ func redPacket(cookie string, rpc chan []RedList) {
 	req.Header("Accept-Encoding", "gzip, deflate, br")
 	req.Header("Referer", "https://st.jingxi.com/my/redpacket.shtml?newPg=App")
 	req.Header("Cookie", cookie)
+	if proxy != "" {
+		req.SetProxy(func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(proxy)
+			return u, nil
+		})
+	}
 	data, _ := req.Bytes()
 	json.Unmarshal(data, &a)
 	rpc <- a.Data.UseRedInfo.RedList
@@ -719,6 +740,12 @@ func initFarm(cookie string, state chan string) {
 	req.Header("User-Agent", ua)
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Body(`body={"version":4}&appid=wh5&clientVersion=9.1.0`)
+	if proxy != "" {
+		req.SetProxy(func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(proxy)
+			return u, nil
+		})
+	}
 	data, _ := req.Bytes()
 	json.Unmarshal(data, &a)
 
@@ -815,6 +842,12 @@ func initPetTown(cookie string, state chan string) {
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Body(`body={}&appid=wh5&loginWQBiz=pet-town&clientVersion=9.0.4`)
 	data, _ := req.Bytes()
+	if proxy != "" {
+		req.SetProxy(func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(proxy)
+			return u, nil
+		})
+	}
 	json.Unmarshal(data, &a)
 	rt := ""
 	if a.Code == "0" && a.ResultCode == "0" && a.Message == "success" {
@@ -830,7 +863,7 @@ func initPetTown(cookie string, state chan string) {
 			rt = a.Result.GoodsInfo.GoodsName + fmt.Sprintf("领养中，进度%.2f%%，勋章%d/%d🐶", a.Result.MedalPercent, a.Result.MedalNum, a.Result.GoodsInfo.ExchangeMedalNum)
 		}
 	} else {
-		rt = "数据异常"
+		rt = "加载中"
 	}
 	state <- rt
 }

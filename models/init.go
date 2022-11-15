@@ -24,6 +24,7 @@ func init() {
 	ExecPath, _ = filepath.Abs(filepath.Dir(os.Args[0]))
 	logs.Info("当前%s", ExecPath)
 	initConfig()
+	initProxy()
 	initDB()
 	go initVersion()
 	//go initUserAgent()
