@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/beego/beego/v2/core/logs"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
@@ -748,8 +749,9 @@ func initFarm(cookie string, state chan string) {
 	}
 	data, _ := req.Bytes()
 	json.Unmarshal(data, &a)
-
+	logs.Info(string(data))
 	rt := a.FarmUserPro.Name
+
 	if rt == "" {
 		rt = "数据异常"
 	} else {
