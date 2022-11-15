@@ -355,12 +355,6 @@ func getXd(cookie string) (string, string) {
 	req.Header("Accept-Language", "zh-CN,zh-Hans;q=0.9")
 	req.Header("Referer", "https://st.jingxi.com/")
 	req.Header("Cookie", cookie)
-	if proxy != "" {
-		req.SetProxy(func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI(proxy)
-			return u, nil
-		})
-	}
 	resp, _ := req.Bytes()
 	xibean, err := jsonparser.GetInt(resp, "data", "xibean")
 	if err != nil {
@@ -579,12 +573,6 @@ func redPacket(cookie string, rpc chan []RedList) {
 	req.Header("Accept-Encoding", "gzip, deflate, br")
 	req.Header("Referer", "https://st.jingxi.com/my/redpacket.shtml?newPg=App")
 	req.Header("Cookie", cookie)
-	if proxy != "" {
-		req.SetProxy(func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI(proxy)
-			return u, nil
-		})
-	}
 	data, _ := req.Bytes()
 	json.Unmarshal(data, &a)
 	rpc <- a.Data.UseRedInfo.RedList
@@ -845,12 +833,6 @@ func initPetTown(cookie string, state chan string) {
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Body(`body={}&appid=wh5&loginWQBiz=pet-town&clientVersion=9.0.4`)
 	data, _ := req.Bytes()
-	if proxy != "" {
-		req.SetProxy(func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI(proxy)
-			return u, nil
-		})
-	}
 	json.Unmarshal(data, &a)
 	rt := ""
 	if a.Code == "0" && a.ResultCode == "0" && a.Message == "success" {
