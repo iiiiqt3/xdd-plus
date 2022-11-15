@@ -30,3 +30,30 @@ func GetEnv(name string) string {
 	db.Where("name = ?", name).First(env)
 	return env.Value
 }
+
+func IsAutoAgreeFriendVerify() bool {
+	env := &Env{}
+	db.Where("name = ?", "AutoAgree").First(env)
+	if env.Value == "" {
+		return false
+	}
+	return true
+}
+
+func isOpenWskey() bool {
+	env := &Env{}
+	db.Where("name = ?", "CloseWskey").First(env)
+	if env.Value == "" {
+		return true
+	}
+	return false
+}
+
+func isOpenImg() bool {
+	env := &Env{}
+	db.Where("name = ?", "img").First(env)
+	if env.Value == "" {
+		return false
+	}
+	return true
+}

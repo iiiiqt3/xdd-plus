@@ -33,7 +33,6 @@ type Yaml struct {
 	QQID                int64  `yaml:"qquid"`
 	QQGroupID           int64  `yaml:"qqgid"`
 	DefaultPriority     int    `yaml:"default_priority"`
-	NoGhproxy           bool   `yaml:"no_ghproxy"`
 	QbotPublicMode      bool   `yaml:"qbot_public_mode"`
 	DailyAssetPushCron  string `yaml:"daily_asset_push_cron"`
 	Version             string `yaml:"version"`
@@ -41,12 +40,9 @@ type Yaml struct {
 	IsHelp              bool   `yaml:"IsHelp"`
 	IsOldV4             bool   `yaml:"IsOldV4"`
 	ApiToken            string `yaml:"ApiToken"`
-	WsToken             string `yaml:"WsToken"`
 	Invalid             string `yaml:"Invalid"`
 	Query               string `yaml:"Query"`
 	Query1              string `yaml:"Query1"`
-	Img                 bool   `yaml:"img"`
-	Wskey               bool   `yaml:"Wskey"`
 	TGURL               string `yaml:"TGURL"`
 	SMSAddress          string `yaml:"SMSAddress"`
 	IsAddFriend         bool   `yaml:"IsAddFriend"`
@@ -136,9 +132,6 @@ func initConfig() {
 	}
 	if Config.Qrcode != "" {
 		Config.Theme = Config.Qrcode
-	}
-	if Config.NoGhproxy {
-		GhProxy = ""
 	}
 	if Config.Tyt == 0 {
 		Config.Tyt = 8
