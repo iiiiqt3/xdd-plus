@@ -64,7 +64,6 @@ func initProxy() {
 	value := GetEnv("proxy")
 	if value != "" {
 		proxy = func(req *http.Request) (*url.URL, error) {
-			//u, _ := url.ParseRequestURI("http://192.168.195.54:8080")
 			u, _ := url.ParseRequestURI(value)
 			return u, nil
 		}
@@ -740,7 +739,7 @@ func initFarm(cookie string, state chan string) {
 	rt := a.FarmUserPro.Name
 
 	if rt == "" {
-		rt = "数据异常"
+		rt = "数据加载中"
 	} else {
 		if a.TreeState == 2 || a.TreeState == 3 {
 			rt += "已可领取⏰"
