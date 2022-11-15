@@ -486,7 +486,7 @@ var codeSignals = []CodeSignal{
 					if query != "" {
 						var png []byte
 						png, _ = qrcode.Encode(query, qrcode.Medium, 256)
-						SendQQGroup(int64(sender.UserID), Config.QQGroupID, png)
+						SendQQGroup(Config.QQGroupID,int64(sender.UserID), png)
 					}
 				}
 
