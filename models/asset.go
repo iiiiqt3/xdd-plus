@@ -742,6 +742,7 @@ func initFarm(cookie string, state chan string) {
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Body(`body={"version":4}&appid=wh5&clientVersion=9.1.0`)
 	if proxy != "" {
+		logs.Info(proxy)
 		req.SetProxy(func(req *http.Request) (*url.URL, error) {
 			u, _ := url.ParseRequestURI(proxy)
 			return u, nil
