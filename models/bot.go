@@ -1241,8 +1241,7 @@ var mu sync.Mutex
 func rundyj(sender *Sender, code string) {
 	for {
 		time.Sleep(time.Duration(rand.Intn(40)))
-		if !mu.TryLock() {
-			mu.Lock()
+		for mu.TryLock() {
 			pz++
 			no := pzlist[code]
 			get := httplib.Get(fmt.Sprintf("http://zhangjiayuan.3322.org:8066/api/dyj?shareId=%s", code))
