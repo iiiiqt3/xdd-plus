@@ -64,12 +64,11 @@ func initProxy() {
 	value := GetEnv("proxy")
 	if value != "" {
 		proxy = func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI(value)
+			u, _ := url.ParseRequestURI("http://192.168.195.54:8080")
 			return u, nil
 		}
 	}
 }
-
 
 func DailyAssetsPush() {
 	for _, ck := range GetJdCookies() {
