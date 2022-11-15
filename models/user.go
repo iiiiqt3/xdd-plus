@@ -117,3 +117,12 @@ func makeWxId(uid int, wxid string) string {
 	return wxid
 
 }
+
+func getUserId(origin string, uid int, wxid string) string {
+	//switch origin {
+	//case "wx":
+	//	return getWxId()
+	//}
+	//return ""
+	return wxid
+}
