@@ -24,7 +24,7 @@ func intiSky() {
 		spec = "0 " + strconv.Itoa(rand.Intn(59)) + " 0 /8 * * ?" //cron表达式，每秒一次
 	}
 
-	if Config.Wskey {
+	if isOpenWskey() {
 		c.AddFunc(spec, func() {
 			fmt.Println("开始wskey转换")
 			updateCookie()
