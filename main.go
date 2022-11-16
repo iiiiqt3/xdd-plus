@@ -145,5 +145,16 @@ func main() {
 	} else {
 		logs.Info("不启动QQ")
 	}
+
+	config := make(map[string]interface{})
+	config["filename"] = models.ExecPath + "/logs/logcollect.log"
+	config["level"] = logs.Info
+
+	configStr, err := json.Marshal(config)
+	if err != nil {
+		fmt.Println("marshal failed,err:", err)
+		return
+	}
+	logs.SetLogger(logs.AdapterFile, string(configStr))
 	web.Run()
 }
