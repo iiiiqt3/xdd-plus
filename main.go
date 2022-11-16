@@ -138,5 +138,16 @@ func main() {
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	}()
+
+	config := make(map[string]interface{})
+	config["filename"] = models.ExecPath + "/logs/logcollect.log"
+	config["level"] = logs.Info
+
+	configStr, err := json.Marshal(config)
+	if err != nil {
+		fmt.Println("marshal failed,err:", err)
+		return
+	}
+	logs.SetLogger(logs.AdapterFile, string(configStr))
 	web.Run()
 }
