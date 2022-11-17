@@ -29,7 +29,6 @@ func intiSky() {
 			fmt.Println("开始wskey转换")
 			updateCookie()
 		})
-
 		c.Start()
 	}
 
