@@ -51,8 +51,8 @@ func Update(sender *Sender) error {
 		} else {
 			logs.Info("开始更新")
 			sender.Reply("小滴滴开始更新程序")
-			logs.Info(UpdateUrl + "/xdd-linux-" + runtime.GOARCH)
-			req := httplib.Get(UpdateUrl + "/xdd-linux-" + runtime.GOARCH)
+			logs.Info(UpdateUrl + "/github.com/cdle/xdd-linux-" + runtime.GOARCH)
+			req := httplib.Get(UpdateUrl + "/github.com/cdle/xdd-linux-" + runtime.GOARCH)
 			req.SetTimeout(time.Minute*5, time.Minute*5)
 			data, err := req.Bytes()
 
