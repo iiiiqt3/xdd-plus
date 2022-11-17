@@ -144,7 +144,6 @@ func main() {
 		go qbot.Main()
 	} else {
 		logs.Info("不启动QQ")
-		logs.Info("test")
 	}
 
 	config := make(map[string]interface{})
