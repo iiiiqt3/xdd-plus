@@ -75,7 +75,6 @@ func Update(sender *Sender) error {
 			}
 			sender.Reply("更新完成，马上重启")
 			logs.Info("更新成功")
-			Daemon()
 		}
 		return nil
 	}
