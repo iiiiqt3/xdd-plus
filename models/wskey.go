@@ -21,7 +21,7 @@ func intiSky() {
 
 	spec := GetEnv("cron")
 	if spec == "" {
-		spec = "0 " + strconv.Itoa(rand.Intn(59)) + " 0 /8 * * ?" //cron表达式，每秒一次
+		spec = "0 " + strconv.Itoa(rand.Intn(59)) + " 0/8 * * ?" //cron表达式，每秒一次
 	}
 
 	if isOpenWskey() {
