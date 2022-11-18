@@ -115,9 +115,6 @@ func (sender *Sender) IsTG() bool {
 func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 	cks := GetJdCookies()
 	a := sender.JoinContens()
-	if sender.isWX() {
-		a = ""
-	}
 	ok := false
 	if !sender.IsAdmin || a == "" {
 		for i := range cks {
