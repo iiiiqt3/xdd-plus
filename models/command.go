@@ -64,7 +64,7 @@ func (sender *Sender) Reply(msg string) {
 	case "qqg":
 		SendQQGroup(int64(sender.ChatID), int64(sender.UserID), msg)
 	case "wx":
-		//SendWxMsg(sender.WxId, msg)
+		SendWxMsg(sender.WxId, msg)
 	}
 }
 
@@ -1222,7 +1222,53 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+	{
+		Command: []string{"关闭私聊查询"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			env := &Env{
+				Name:  "qq",
+				Value: "1",
+			}
+			ExportEnv(env)
+			return nil
+		},
+	},
+	{
+		Command: []string{"开启私聊查询"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			UnExportEnv(&Env{
+				Name: "qq",
+			})
+			return nil
+		},
+	},
 
+	{
+		Command: []string{"关闭群聊查询"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			env := &Env{
+				Name:  "qqg",
+				Value: "1",
+			}
+			ExportEnv(env)
+			return nil
+		},
+	},
+	{
+		Command: []string{"开启群聊查询"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			env := &Env{
+				Name:  "qq",
+				Value: "1",
+			}
+			ExportEnv(env)
+			return nil
+		},
+	},
 	{
 		Command: []string{"导出wskey"},
 		Admin:   true,
