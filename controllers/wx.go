@@ -98,6 +98,7 @@ func (c *WxController) HandleMessage() {
 	logs.Info(string(data))
 	event, err := jsonparser.GetString(data, "Event")
 	if err != nil {
+		logs.Info("进入测试")
 		event, _ = jsonparser.GetString(data, "event")
 	}
 	logs.Info(event)
