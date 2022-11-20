@@ -94,10 +94,10 @@ func SendWxMsg(uid string, msg string) {
 		} `json:"data"`
 	}
 
-	logs.Info(Config.Wx.Url)
+	logs.Info(Config.Wx.Url + "/DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
 	logs.Info(Config.Wx.Robotid)
 
-	req := httplib.Post(Config.Wx.Url+"/DaenWxHook/httpapi/?wxid="+Config.Wx.Robotid)
+	req := httplib.Post(Config.Wx.Url + "/DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
 	reply := &QXMessage{
 		Type: "Q0001",
 		Data: struct {
