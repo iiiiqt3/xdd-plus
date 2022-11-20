@@ -19,27 +19,31 @@ type WxController struct {
 }
 
 type QXMessage struct {
-	Type string `json:"type"`
-	Des  string `json:"des"`
-	Data struct {
-		TimeStamp     string        `json:"timeStamp"`
-		FromType      int           `json:"fromType"`
-		MsgType       int           `json:"msgType"`
-		MsgSource     int           `json:"msgSource"`
-		FromWxid      string        `json:"fromWxid"`
-		FinalFromWxid string        `json:"finalFromWxid"`
-		AtWxidList    []interface{} `json:"atWxidList"`
-		Silence       int           `json:"silence"`
-		Membercount   int           `json:"membercount"`
-		Signature     string        `json:"signature"`
-		Msg           string        `json:"msg"`
-		MsgBase64     string        `json:"msgBase64"`
+	Event int    `json:"event"`
+	Wxid  string `json:"wxid"`
+	Data  struct {
+		Type string `json:"type"`
+		Des  string `json:"des"`
+		Data struct {
+			TimeStamp     string        `json:"timeStamp"`
+			FromType      int           `json:"fromType"`
+			MsgType       int           `json:"msgType"`
+			MsgSource     int           `json:"msgSource"`
+			FromWxid      string        `json:"fromWxid"`
+			FinalFromWxid string        `json:"finalFromWxid"`
+			AtWxidList    []interface{} `json:"atWxidList"`
+			Silence       int           `json:"silence"`
+			Membercount   int           `json:"membercount"`
+			Signature     string        `json:"signature"`
+			Msg           string        `json:"msg"`
+			MsgBase64     string        `json:"msgBase64"`
+		} `json:"data"`
+		Timestamp string `json:"timestamp"`
+		Wxid      string `json:"wxid"`
+		Port      int    `json:"port"`
+		Pid       int    `json:"pid"`
+		Flag      string `json:"flag"`
 	} `json:"data"`
-	Timestamp string `json:"timestamp"`
-	Wxid      string `json:"wxid"`
-	Port      int    `json:"port"`
-	Pid       int    `json:"pid"`
-	Flag      string `json:"flag"`
 }
 
 type FriendVerifyMsg struct {
@@ -102,7 +106,7 @@ func (c *WxController) HandleMessage() {
 		logs.Info("进入测试")
 		ev, _ := jsonparser.GetInt(data, "event")
 		logs.Info(ev)
-		event = strconv.FormatInt(ev,10)
+		event = strconv.FormatInt(ev, 10)
 	}
 	logs.Info(event)
 	switch event {
@@ -126,8 +130,8 @@ func (c *WxController) HandleMessage() {
 		ag := &QXMessage{}
 		err := json.Unmarshal(data, ag)
 		logs.Info(err)
-		logs.Info("接收到信息" + ag.Data.Msg)
-		models.ListenWXTempPrivateMessage(ag.Data.FromWxid, ag.Data.Msg)
+		logs.Info("接收到信息" + ag.Data.Data.Msg)
+		models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
 
 	}
 
