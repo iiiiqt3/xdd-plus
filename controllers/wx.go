@@ -71,6 +71,7 @@ type AgreeFriend struct {
 
 func (c *WxController) HandleMessage() {
 	data := c.Ctx.Input.RequestBody
+	logs.Info("收到消息")
 	event, _ := jsonparser.GetString(data, "Event")
 	switch event {
 	case "EventFrieneVerify":
