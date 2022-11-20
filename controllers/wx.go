@@ -103,12 +103,9 @@ func (c *WxController) HandleMessage() {
 	logs.Info(string(data))
 	event, err := jsonparser.GetString(data, "Event")
 	if err != nil {
-		logs.Info("进入测试")
 		ev, _ := jsonparser.GetInt(data, "event")
-		logs.Info(ev)
 		event = strconv.FormatInt(ev, 10)
 	}
-	logs.Info(event)
 	switch event {
 	case "EventFrieneVerify":
 		ag := &FriendVerifyMsg{}
