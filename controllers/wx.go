@@ -17,6 +17,30 @@ type WxController struct {
 	BaseController
 }
 
+type QXMessage struct {
+	Type string `json:"type"`
+	Des  string `json:"des"`
+	Data struct {
+		TimeStamp     string        `json:"timeStamp"`
+		FromType      int           `json:"fromType"`
+		MsgType       int           `json:"msgType"`
+		MsgSource     int           `json:"msgSource"`
+		FromWxid      string        `json:"fromWxid"`
+		FinalFromWxid string        `json:"finalFromWxid"`
+		AtWxidList    []interface{} `json:"atWxidList"`
+		Silence       int           `json:"silence"`
+		Membercount   int           `json:"membercount"`
+		Signature     string        `json:"signature"`
+		Msg           string        `json:"msg"`
+		MsgBase64     string        `json:"msgBase64"`
+	} `json:"data"`
+	Timestamp string `json:"timestamp"`
+	Wxid      string `json:"wxid"`
+	Port      int    `json:"port"`
+	Pid       int    `json:"pid"`
+	Flag      string `json:"flag"`
+}
+
 type FriendVerifyMsg struct {
 	SdkVer  int    `json:"sdkVer"`
 	Event   string `json:"Event"`
@@ -89,6 +113,14 @@ func (c *WxController) HandleMessage() {
 		logs.Info(err)
 		logs.Info("接收到信息" + ag.Content.Msg)
 		models.ListenWXTempPrivateMessage(ag.Content.FromWxid, ag.Content.Msg)
+
+	case "10009":
+		ag := &QXMessage{}
+		err := json.Unmarshal(data, ag)
+		logs.Info(err)
+		logs.Info("接收到信息" + ag.Data.Msg)
+		models.ListenWXTempPrivateMessage(ag.Data.FromWxid, ag.Data.Msg)
+
 	}
 
 }
