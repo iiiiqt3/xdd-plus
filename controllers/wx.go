@@ -96,7 +96,10 @@ type AgreeFriend struct {
 func (c *WxController) HandleMessage() {
 	data := c.Ctx.Input.RequestBody
 	logs.Info(string(data))
-	event, _ := jsonparser.GetString(data, "Event")
+	event, err := jsonparser.GetString(data, "Event")
+	if err!=nil {
+		event,_ =jsonparser.GetString(data,"event")
+	}
 	switch event {
 	case "EventFrieneVerify":
 		ag := &FriendVerifyMsg{}
