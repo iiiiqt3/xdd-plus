@@ -10,6 +10,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/cdle/xdd/models"
+	"strconv"
 	"strings"
 )
 
@@ -99,7 +100,9 @@ func (c *WxController) HandleMessage() {
 	event, err := jsonparser.GetString(data, "Event")
 	if err != nil {
 		logs.Info("进入测试")
-		event, _ = jsonparser.GetString(data, "event")
+		ev, _ := jsonparser.GetInt(data, "event")
+		logs.Info(ev)
+		event = strconv.FormatInt(ev,10)
 	}
 	logs.Info(event)
 	switch event {
