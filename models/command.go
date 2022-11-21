@@ -1259,6 +1259,7 @@ var codeSignals = []CodeSignal{
 				Value: "1",
 			}
 			ExportEnv(env)
+			sender.Reply("操作成功")
 			return nil
 		},
 	},
@@ -1269,6 +1270,7 @@ var codeSignals = []CodeSignal{
 			UnExportEnv(&Env{
 				Name: "qq",
 			})
+			sender.Reply("操作成功")
 			return nil
 		},
 	},
@@ -1282,18 +1284,131 @@ var codeSignals = []CodeSignal{
 				Value: "1",
 			}
 			ExportEnv(env)
+			sender.Reply("操作成功")
 			return nil
 		},
 	},
 	{
-		Command: []string{"开启群聊查询"},
+		Command: []string{"开启私聊查询"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			UnExportEnv(&Env{
+				Name: "qqg",
+			})
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"开启微信自动好友"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			env := &Env{
-				Name:  "qq",
+				Name:  "AutoAgree",
 				Value: "1",
 			}
 			ExportEnv(env)
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"关闭微信自动好友"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			UnExportEnv(&Env{
+				Name: "AutoAgree",
+			})
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"设置微信口令"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			ctt := sender.JoinContens()
+			env := &Env{
+				Name:  "AgreeMsg",
+				Value: ctt,
+			}
+			ExportEnv(env)
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"关闭微信口令"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			UnExportEnv(&Env{
+				Name: "AgreeMsg",
+			})
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"设置欢迎语"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			ctt := sender.JoinContens()
+			env := &Env{
+				Name:  "Welcome",
+				Value: ctt,
+			}
+			ExportEnv(env)
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"取消欢迎语"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			UnExportEnv(&Env{
+				Name: "Welcome",
+			})
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"设置signUrl"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			ctt := sender.JoinContens()
+			env := &Env{
+				Name:  "sign",
+				Value: ctt,
+			}
+			ExportEnv(env)
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"取消signUrl"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			UnExportEnv(&Env{
+				Name: "sign",
+			})
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"设置代理"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			ctt := sender.JoinContens()
+			env := &Env{
+				Name:  "sign",
+				Value: ctt,
+			}
+			ExportEnv(env)
+			sender.Reply("代理设置成功")
 			return nil
 		},
 	},
