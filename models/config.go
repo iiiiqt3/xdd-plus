@@ -38,7 +38,6 @@ type Yaml struct {
 	QbotPublicMode      bool   `yaml:"qbot_public_mode"`
 	DailyAssetPushCron  string `yaml:"daily_asset_push_cron"`
 	Version             string `yaml:"version"`
-	CTime               string `yaml:"AtTime"`
 	IsHelp              bool   `yaml:"IsHelp"`
 	IsOldV4             bool   `yaml:"IsOldV4"`
 	ApiToken            string `yaml:"ApiToken"`
@@ -47,7 +46,6 @@ type Yaml struct {
 	Query1              string `yaml:"Query1"`
 	TGURL               string `yaml:"TGURL"`
 	SMSAddress          string `yaml:"SMSAddress"`
-	IsAddFriend         bool   `yaml:"IsAddFriend"`
 	Lim                 int    `yaml:"Lim"`
 	Tyt                 int    `yaml:"Tyt"`
 	IFC                 bool   `yaml:"IFC"`
@@ -125,9 +123,6 @@ func initConfig() {
 	}
 	if Config.Master == "" {
 		Config.Master = "xxxx"
-	}
-	if Config.CTime == "" {
-		Config.CTime = "10"
 	}
 	if Config.Mode != Parallel && Config.Mode != Vip {
 		Config.Mode = Balance

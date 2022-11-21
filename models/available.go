@@ -273,6 +273,30 @@ func updateCookie() {
 	(&JdCookie{}).Push(fmt.Sprintf("所有CK转换完成，共%d个,转换失败个数共%d个", xx, yy))
 }
 
+func CheckWskeyOK(ck *JdCookie) (bool, string) {
+	if len(ck.WsKey) > 0 {
+		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
+		rsp, _ := getKey(pinky)
+		if strings.Contains(rsp, "fake") {
+			return false, "失效账号"
+		} else {
+			ptKey := FetchJdCookieValue("pt_key", rsp)
+			ptPin := FetchJdCookieValue("pt_pin", rsp)
+			ck1 := JdCookie{
+				PtKey: ptKey,
+				PtPin: ptPin,
+			}
+			if ptPin != "" || ptKey != "" {
+				return CookieOK(&ck1), "转换成功"
+			} else {
+				(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
+				return false, "转换超时，请稍后再试或者联系管理员"
+			}
+		}
+	}
+	return false, "帐号不含wskey"
+}
+
 func CookieOK(ck *JdCookie) bool {
 	cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
 	// fmt.Println(cookie)

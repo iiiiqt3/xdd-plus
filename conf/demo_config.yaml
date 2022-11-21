@@ -8,23 +8,17 @@ containers:
     weigth:  
     mode: parallel
     limit: 9999
-AtTime:  #填写1-12之间的数  填错自负默认为10  10点容易出现高峰超时。
 IsHelp:   #填写true或者false  false
-IsOldV4: #填写true或者false  false是否新版或者旧版V4
-Wskey: # 填空默认禁用wskey转换 需要的填true
-IsAddFriend: #填写true或者false  false
 Lim: #填写1-N 代表限制次数
 Tyt: #填写1-N 代表推一推需要的积分，默认为8
 Later: #延时防止黑IP自己设置 默认60 不怕黑的改为1即可 单位是秒
 ApiToken: #短信接入token参数
-WsToken: #可不填写
 GameOpen: #自定义是否开启游戏比如搏一把功能。
 Note: #填写pin或者note  填写pin青龙的备注会是pin填写note就是xdd的备注同步到青龙
 Jdcurl: http://127.0.0.1:5801
 Invalid: #自定义失效回复放空默认
 Query: #自定义查询空回复，放空默认
 Query1: #自定义下方自定义，放空默认
-img: #默认文字回复
 theme:  
 static: ./static
 master: 
@@ -51,5 +45,7 @@ fanli:
   appkey:
   union_id:
 wx:
+  model: # qx或者my
   url:
   robotid:
+  token:  #我的框架token

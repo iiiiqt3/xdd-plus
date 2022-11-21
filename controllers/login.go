@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -643,6 +644,65 @@ func (c *LoginController) SMSLogin() {
 		c.Ctx.WriteString(string(jsons))
 	}
 
+}
+
+func (c *LoginController) WskeyLogin() {
+	cookie := string(c.Ctx.Input.RequestBody)
+	logs.Info(cookie)
+	Wskey := FetchJdCookieValue("wskey", cookie)
+	ptPin := FetchJdCookieValue("pin", cookie)
+	ptPin = url.QueryEscape(ptPin)
+	ck := &models.JdCookie{
+		WsKey: Wskey,
+		PtPin: ptPin,
+		Hack:  models.False,
+		QQ:    0,
+	}
+	if Wskey != "" && ptPin != "" {
+		ok, s := models.CheckWskeyOK(ck)
+		if ok {
+			if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
+				msg := fmt.Sprintf("Wskey账号更新,账号：%s", nck.PtPin)
+				(&models.JdCookie{}).Push(msg)
+			} else {
+				models.NewJdCookie(ck)
+				msg := fmt.Sprintf("添加新的Wskey账号,账号：%s", ck.PtPin)
+				(&models.JdCookie{}).Push(msg)
+			}
+			result := Result{
+				Data:    "null",
+				Code:    200,
+				Message: "添加成功",
+			}
+			jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+			if errs != nil {
+				fmt.Println(errs.Error())
+			}
+			c.Ctx.WriteString(string(jsons))
+		} else {
+			result := Result{
+				Data:    "null",
+				Code:    0,
+				Message: s,
+			}
+			jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+			if errs != nil {
+				fmt.Println(errs.Error())
+			}
+			c.Ctx.WriteString(string(jsons))
+		}
+	} else {
+		result := Result{
+			Data:    "null",
+			Code:    0,
+			Message: "CK错误",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		c.Ctx.WriteString(string(jsons))
+	}
 }
 
 func (c *LoginController) Cookie() {
