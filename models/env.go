@@ -40,6 +40,15 @@ func IsAutoAgreeFriendVerify() bool {
 	return true
 }
 
+func UseAgreeMsg() bool {
+	env := &Env{}
+	db.Where("name = ?", "AgreeMsg").First(env)
+	if env.Value == "" {
+		return false
+	}
+	return true
+}
+
 func isOpenWskey() bool {
 	env := &Env{}
 	db.Where("name = ?", "CloseWskey").First(env)

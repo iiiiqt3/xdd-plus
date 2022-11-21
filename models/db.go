@@ -96,6 +96,12 @@ type Log struct {
 	Random string `json:"random"`
 }
 
+type Token struct {
+	Expiration time.Time
+	Token      string
+	Address    string
+}
+
 type JdCookie struct {
 	ID           int    `gorm:"column:ID;primaryKey"`
 	Priority     int    `gorm:"column:Priority;default:1"`
