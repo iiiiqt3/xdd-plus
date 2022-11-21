@@ -10,9 +10,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type W struct {
+type WxConfig struct {
+	Model   string
 	Url     string
 	Robotid string
+	Token   string
 }
 
 type Yaml struct {
@@ -65,7 +67,7 @@ type Yaml struct {
 	QbotConfigFile      string `yaml:"qbot_config_file"`
 	Repos               []Repo
 	FanLis              FanLi
-	Wx                  W
+	Wx                  WxConfig
 	HttpProxyServerPort int    `yaml:"http_proxy_server_port"`
 	Priority            int    `yaml:"Priority"`
 	DailyCompletePush   string `yaml:"daily_complete_push"`
@@ -139,6 +141,10 @@ func initConfig() {
 	}
 	if Config.Tyt == 0 {
 		Config.Tyt = 8
+	}
+
+	if Config.Wx.Model == "" {
+		Config.Wx.Model = "my"
 	}
 	if Config.Database == "" {
 		Config.Database = ExecPath + "/.xdd.db"

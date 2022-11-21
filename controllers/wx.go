@@ -46,7 +46,7 @@ type QXMessage struct {
 	} `json:"data"`
 }
 
-type FriendVerifyMsg struct {
+type MyFriendVerifyMsg struct {
 	SdkVer  int    `json:"sdkVer"`
 	Event   string `json:"Event"`
 	Content struct {
@@ -72,6 +72,38 @@ type FriendVerifyMsg struct {
 	} `json:"content"`
 }
 
+type QxFriendVerifyMsg struct {
+	Event int    `json:"event"`
+	Wxid  string `json:"wxid"`
+	Data  struct {
+		Type string `json:"type"`
+		Des  string `json:"des"`
+		Data struct {
+			Wxid         string `json:"wxid"`
+			WxNum        string `json:"wxNum"`
+			Nick         string `json:"nick"`
+			NickBrief    string `json:"nickBrief"`
+			NickWhole    string `json:"nickWhole"`
+			V3           string `json:"v3"`
+			V4           string `json:"v4"`
+			Sign         string `json:"sign"`
+			Country      string `json:"country"`
+			Province     string `json:"province"`
+			City         string `json:"city"`
+			AvatarMinURL string `json:"avatarMinUrl"`
+			AvatarMaxURL string `json:"avatarMaxUrl"`
+			Sex          string `json:"sex"`
+			Content      string `json:"content"`
+			Scene        string `json:"scene"`
+		} `json:"data"`
+		Timestamp string `json:"timestamp"`
+		Wxid      string `json:"wxid"`
+		Port      int    `json:"port"`
+		Pid       int    `json:"pid"`
+		Flag      string `json:"flag"`
+	} `json:"data"`
+}
+
 type WxMessage struct {
 	SdkVer  int    `json:"sdkVer"`
 	Event   string `json:"Event"`
@@ -88,7 +120,7 @@ type WxMessage struct {
 	} `json:"content"`
 }
 
-type AgreeFriend struct {
+type MyAgreeFriend struct {
 	API       string `json:"api"`        // API名
 	RobotWxid string `json:"robot_wxid"` // 机器人ID
 	Token     string `json:"token"`      // 验证密钥
@@ -98,65 +130,139 @@ type AgreeFriend struct {
 
 }
 
-func (c *WxController) HandleMessage() {
-	data := c.Ctx.Input.RequestBody
-	logs.Info(string(data))
-	event, err := jsonparser.GetString(data, "Event")
-	if err != nil {
-		ev, _ := jsonparser.GetInt(data, "event")
-		event = strconv.FormatInt(ev, 10)
-	}
-	switch event {
-	case "EventFrieneVerify":
-		ag := &FriendVerifyMsg{}
-		err := json.Unmarshal(data, ag)
-		logs.Info(err)
-		auto := models.IsAutoAgreeFriendVerify()
-		if auto {
-			AgreeFriendVerify(ag.Content.Type, ag.Content.V1, ag.Content.V2, ag.Content.JSONMsg.Content, ag.Content.FromWxid)
-		}
-
-	case "EventPrivateChat":
-		ag := &WxMessage{}
-		err := json.Unmarshal(data, ag)
-		logs.Info(err)
-		logs.Info("接收到信息" + ag.Content.Msg)
-		models.ListenWXTempPrivateMessage(ag.Content.FromWxid, ag.Content.Msg)
-
-	case "10009":
-		ag := &QXMessage{}
-		err := json.Unmarshal(data, ag)
-		logs.Info(err)
-		logs.Info("接收到信息" + ag.Data.Data.Msg)
-		models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
-
-	}
-
+type QxAgreeFriend struct {
+	Type string `json:"type"`
+	Data struct {
+		Scene string `json:"scene"`
+		V3    string `json:"v3"`
+		V4    string `json:"v4"`
+	} `json:"data"`
 }
 
-func AgreeFriendVerify(type1 int, v1 string, v2 string, content string, uid string) {
+func (c *WxController) HandleMessage() {
+	data := c.Ctx.Input.RequestBody
 
-	req := httplib.Post(models.Config.Wx.Url)
-	agree := &AgreeFriend{
-		Token:     "1",
-		API:       "AgreeFriendVerify",
-		RobotWxid: models.Config.Wx.Robotid,
-		Type:      type1,
-		V1:        v1,
-		V2:        v2,
+	if models.Config.Wx.Model == "qx" {
+		event, _ := jsonparser.GetInt(data, "event")
+		switch event {
+		case 10009:
+			ag := &QXMessage{}
+			err := json.Unmarshal(data, ag)
+			logs.Info(err)
+			logs.Info("接收到信息" + ag.Data.Data.Msg)
+			models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
+
+		case 10011:
+			ag := &QxFriendVerifyMsg{}
+			err := json.Unmarshal(data, ag)
+			logs.Info(err)
+			auto := models.IsAutoAgreeFriendVerify()
+			if auto {
+				if models.UseAgreeMsg() {
+					AgreeMsg := models.GetEnv("AgreeMsg")
+					if !strings.Contains(ag.Data.Data.Content, AgreeMsg) {
+						return
+					}
+				}
+				args := make(map[string]string)
+				args["model"] = "qx"
+				args["v3"] = ag.Data.Data.V3
+				args["v4"] = ag.Data.Data.V4
+				args["content"] = ag.Data.Data.Content
+				args["uid"] = ag.Data.Data.Wxid
+				AgreeFriendVerify(args)
+			}
+		}
+
+	} else {
+		event, _ := jsonparser.GetString(data, "Event")
+		switch event {
+		case "EventFrieneVerify":
+			ag := &MyFriendVerifyMsg{}
+			err := json.Unmarshal(data, ag)
+			logs.Info(err)
+			auto := models.IsAutoAgreeFriendVerify()
+			if auto {
+				if models.UseAgreeMsg() {
+					AgreeMsg := models.GetEnv("AgreeMsg")
+					if !strings.Contains(ag.Content.JSONMsg.Content, AgreeMsg) {
+						return
+					}
+				}
+				args := make(map[string]string)
+				args["model"] = "my"
+				args["type"] = strconv.Itoa(ag.Content.Type)
+				args["v1"] = ag.Content.V1
+				args["v2"] = ag.Content.V2
+				args["content"] = ag.Content.JSONMsg.Content
+				args["uid"] = ag.Content.FromWxid
+				AgreeFriendVerify(args)
+			}
+
+		case "EventPrivateChat":
+			ag := &WxMessage{}
+			err := json.Unmarshal(data, ag)
+			logs.Info(err)
+			logs.Info("接收到信息" + ag.Content.Msg)
+			models.ListenWXTempPrivateMessage(ag.Content.FromWxid, ag.Content.Msg)
+
+		}
 	}
-	random := browser.Random()
-	req.Header("User-Agent", random)
-	marshal, _ := json.Marshal(agree)
-	logs.Info(string(marshal))
+}
 
-	req.Body(string(marshal))
-	s, _ := req.Bytes()
-	val, _ := jsonparser.GetString(s, "Result")
-	if val == "OK" {
-		welcome := models.GetEnv("Welcome")
-		if welcome != "" {
-			models.SendWxMsg(uid, welcome)
+func AgreeFriendVerify(args interface{}) {
+
+	arg := args.(map[string]string)
+	model := arg["model"]
+	switch model {
+	case "my":
+		req := httplib.Post(models.Config.Wx.Url)
+		type1, _ := strconv.Atoi(arg["type"])
+		agree := &MyAgreeFriend{
+			Token:     "1",
+			API:       "AgreeFriendVerify",
+			RobotWxid: models.Config.Wx.Robotid,
+			Type:      type1,
+			V1:        arg["v1"],
+			V2:        arg["v2"],
+		}
+		random := browser.Random()
+		req.Header("User-Agent", random)
+		marshal, _ := json.Marshal(agree)
+		req.Body(string(marshal))
+		s, _ := req.Bytes()
+		val, _ := jsonparser.GetString(s, "Result")
+		if val == "OK" {
+			welcome := models.GetEnv("Welcome")
+			if welcome != "" {
+				models.SendWxMsg(arg["uid"], welcome)
+			}
+		}
+	case "qx":
+		req := httplib.Post(models.Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + models.Config.Wx.Robotid)
+		agree := &QxAgreeFriend{
+			Type: "Q0017",
+			Data: struct {
+				Scene string `json:"scene"`
+				V3    string `json:"v3"`
+				V4    string `json:"v4"`
+			}{
+				Scene: arg["scene"],
+				V3:    arg["v3"],
+				V4:    arg["v4"],
+			},
+		}
+		random := browser.Random()
+		req.Header("User-Agent", random)
+		marshal, _ := json.Marshal(agree)
+		req.Body(string(marshal))
+		s, _ := req.Bytes()
+		val, _ := jsonparser.GetString(s, "msg")
+		if val == "操作成功" {
+			welcome := models.GetEnv("Welcome")
+			if welcome != "" {
+				models.SendWxMsg(arg["uid"], welcome)
+			}
 		}
 	}
 }
