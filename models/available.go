@@ -7,7 +7,6 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"gorm.io/gorm"
-	"math/rand"
 	"net/url"
 	"strconv"
 	"strings"
@@ -229,7 +228,6 @@ func updateCookie() {
 			(&JdCookie{}).Push("Wskey已更新二分一")
 		}
 		if len(cks[i].WsKey) > 0 {
-			time.Sleep(time.Duration(rand.Int63n(5)) * time.Second)
 			ck := cks[i]
 			//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)

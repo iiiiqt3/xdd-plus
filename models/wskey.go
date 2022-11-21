@@ -38,11 +38,11 @@ func getKey(WSCK string) (string, error) {
 	var ptKey = ""
 	sign := GetEnv("sign")
 	if sign == "" {
+		time.Sleep(time.Duration(rand.Int63n(5)) * time.Second)
 		ptKey, _ = GetZKToken(WSCK)
 	} else {
 		ptKey, _ = getTokenKey(WSCK)
 	}
-	time.Sleep(time.Duration(rand.Int63n(3)) * time.Second)
 	return ptKey, nil
 }
 
