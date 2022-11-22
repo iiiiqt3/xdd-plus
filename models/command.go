@@ -410,17 +410,19 @@ var codeSignals = []CodeSignal{
 						sender.Reply(ck.Query())
 					})
 				} else {
-					//list := getUserNameList(strconv.Itoa(sender.UserID))
-					//str := "在线账号:\n"
-					//for _, s := range list {
-					//	str = str + fmt.Sprintf("账号：%s  \n", s)
-					//}
-					//sender.Reply(str)
-
-					if Config.CXURL != "" {
+					list := getUserNameList(strconv.Itoa(sender.UserID))
+					if list == nil {
+						return "你尚未绑定🐶东账号，请发送教程获取最新上车方法。"
+					} else {
+						str := "在线账号:\n"
+						for _, s := range list {
+							str = str + fmt.Sprintf("账号：%s  \n", s)
+						}
+						sender.Reply(str)
+						url := fmt.Sprintf("%s/?id=%d", "https://qladmin.smxy.xyz", sender.UserID)
 						var png []byte
-						png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
-						sender.SendImg(png)
+						png, _ = qrcode.Encode(url, qrcode.Medium, 256)
+						SendQQ(int64(sender.UserID), png)
 					}
 
 				}
