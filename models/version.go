@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v6.6.1"
-var describe = "千寻框架"
+var version = "v6.6.6"
+var describe = "安全升级"
 var AppName = "xdd"
 var pname = regexp.MustCompile(`/([^/\s]+)`).FindStringSubmatch(os.Args[0])[1]
 var UpdateUrl = "https://update.smxy.xyz"
