@@ -341,6 +341,26 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				}
 			}
 
+			{
+				if strings.Contains(msg, "运行") {
+					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+					rsp.Param("url", msg)
+					rsp.Param("type", "hy")
+					//rsp.Body(fmt.Sprintf(`url=%s&type=hy`, msg))
+					data, err := rsp.Response()
+
+					if err != nil {
+						return "口令转换失败"
+					}
+					body, _ := ioutil.ReadAll(data.Body)
+					if strings.Contains(string(body), "口令转换失败") {
+						return "口令转换失败"
+					} else {
+						msg = string(body)
+					}
+				}
+			}
+
 			//验证码
 			{
 				regex := "^\\d{5}(\\d|X|x)$"
@@ -775,6 +795,27 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						go runtyt(sender, env[1])
 						//return fmt.Sprintf("订单编号：%d,推一推结束", no)
 					}
+				}
+			}
+		}
+
+		{ //赚钱大赢家
+			ss := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
+			if len(ss) > 0 {
+				if !sender.IsAdmin {
+					coin := GetCoin(sender.UserID)
+					if coin < Config.Zqdyj {
+						return fmt.Sprintf("赚钱大赢家需要%d个互助值", Config.Zqdyj)
+					}
+					RemCoin(sender.UserID, Config.Zqdyj)
+					sender.Reply(fmt.Sprintf("赚钱大赢家即将开始，已扣除%d个互助值", Config.Zqdyj))
+				} else {
+					sender.Reply(fmt.Sprintf("赚钱大赢家即将开始，已扣除%d个互助值，管理员通道", Config.Zqdyj))
+					runTask(&Task{Path: "bigwinner_ccc.py", Envs: []Env{
+						{Name: "dyjid", Value: ss[1]},
+					}}, sender)
+
+					return "赚钱大赢家助力结束"
 				}
 			}
 		}
