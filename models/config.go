@@ -48,6 +48,7 @@ type Yaml struct {
 	SMSAddress          string `yaml:"SMSAddress"`
 	Lim                 int    `yaml:"Lim"`
 	Tyt                 int    `yaml:"Tyt"`
+	Zqdyj                 int    `yaml:"Zqdyj"`
 	IFC                 bool   `yaml:"IFC"`
 	Later               int    `yaml:"Later"`
 	Jdcurl              string `yaml:"Jdcurl"`
@@ -132,6 +133,9 @@ func initConfig() {
 	}
 	if Config.Tyt == 0 {
 		Config.Tyt = 8
+	}
+	if Config.Zqdyj == 0 {
+		Config.Zqdyj = 500
 	}
 
 	if Config.Wx.Model == "" {
