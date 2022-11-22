@@ -840,7 +840,7 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
-		Command: []string{"run", "执行", "运行"},
+		Command: []string{"run", "执行"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			name := sender.Contents[0]
