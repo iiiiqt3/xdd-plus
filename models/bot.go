@@ -614,7 +614,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						}
 						if CookieOK(&ck) {
 
-							if sender.IsQQ() {
+							if sender.IsQQ() || sender.isWX() {
 								ck.QQ = sender.UserID
 							} else if sender.IsTG() {
 								ck.Telegram = sender.UserID
@@ -790,7 +790,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						PtPin: ptPin,
 					}
 					if CookieOK(&ck) {
-						if sender.IsQQ() {
+						if sender.IsQQ() || sender.isWX() {
 							ck.QQ = sender.UserID
 						} else if sender.IsTG() {
 							ck.Telegram = sender.UserID
