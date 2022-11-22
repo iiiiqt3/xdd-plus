@@ -112,7 +112,6 @@ func (ck *JdCookie) Query1() string {
 	msg := runTask(&Task{Path: name, Envs: envs}, &Sender{})
 	//log.Info(msg)
 	if !strings.Contains(msg, "cookies") {
-		msg = regexp.MustCompile(`^(.+\s+){3}|\s*.+\s*$|.*东东工厂.*\s*`).ReplaceAllString(msg, "")
 		msg = fmt.Sprintf("账号昵称：%s\n绑定QQ: %v\n用户等级：%v\n等级名称：%v\n优先级: %v\n%s", ck.Nickname, ck.QQ, ck.UserLevel, ck.LevelName, ck.Priority, msg)
 	} else if CookieOK(ck) {
 		msg = fmt.Sprintf("查询失败\n账号: %s\n备注: %s\n%s", ck.PtPin, ck.Note, msg)
@@ -260,7 +259,7 @@ func (ck *JdCookie) Query() string {
 						asset.RedPacket.ToExpireJx += b
 						asset.RedPacket.ToExpire += b
 					}
-				} else if strings.Contains(rp.ActivityName, "极速版") {
+				} else if strings.Contains(rp.ActivityName, "特价版") {
 					asset.RedPacket.Js += b
 					if ysd >= rp.EndTime {
 						asset.RedPacket.ToExpireJs += b
