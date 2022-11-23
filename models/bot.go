@@ -1240,7 +1240,6 @@ var mu sync.Mutex
 
 func rundyj(sender *Sender, code string) {
 	for {
-		time.Sleep(time.Duration(rand.Intn(40)))
 		for mu.TryLock() {
 			pz++
 			no := pzlist[code]
