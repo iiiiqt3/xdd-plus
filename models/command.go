@@ -491,7 +491,8 @@ var codeSignals = []CodeSignal{
 						}
 						sender.Reply(str)
 						query := GetEnv("query")
-						url := fmt.Sprintf("%s/?id=%d", query, sender.UserID)
+						//https://qladmin.smxy.xyz/query#/?id=1095916117
+						url := fmt.Sprintf("%squery#/?id=%d", query, sender.UserID)
 						if query != "" {
 							sender.Reply("请扫描二维码查看")
 							var png []byte
@@ -523,7 +524,7 @@ var codeSignals = []CodeSignal{
 						}
 						sender.Reply(str)
 						query := GetEnv("query")
-						url := fmt.Sprintf("%s/?id=%d", query, sender.UserID)
+						url := fmt.Sprintf("%squery#/?id=%d", query, sender.UserID)
 						if query != "" {
 							sender.Reply("请扫描二维码查看")
 							var png []byte

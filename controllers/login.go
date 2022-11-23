@@ -648,6 +648,7 @@ func (c *LoginController) SMSLogin() {
 
 func (c *LoginController) WskeyLogin() {
 	cookie := string(c.Ctx.Input.RequestBody)
+	cookie, _ = url.QueryUnescape(cookie)
 	logs.Info(cookie)
 	Wskey := FetchJdCookieValue("wskey", cookie)
 	ptPin := FetchJdCookieValue("pin", cookie)
