@@ -1353,6 +1353,12 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
+		Command: []string{"用户信息"},
+		Handle: func(sender *Sender) interface{} {
+			return fmt.Sprintf("用户ID：%d", sender.UserID)
+		},
+	},
+	{
 		Command: []string{"设置欢迎语"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -1408,7 +1414,7 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			ctt := sender.JoinContens()
 			env := &Env{
-				Name:  "sign",
+				Name:  "proxy",
 				Value: ctt,
 			}
 			ExportEnv(env)
