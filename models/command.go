@@ -401,7 +401,7 @@ var codeSignals = []CodeSignal{
 			}
 			sender.Reply("导出所有账号")
 			logs.Info("导出所有账号")
-			f, err := os.OpenFile(ExecPath+"/jdCookie.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+			f, err := os.OpenFile(ExecPath+"/scripts/jdCookie.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 			if err != nil {
 				logs.Warn("创建jdCookie.txt失败，", err)
 			}
