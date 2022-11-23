@@ -420,7 +420,7 @@ var codeSignals = []CodeSignal{
 						}
 						sender.Reply(str)
 						//https://qladmin.smxy.xyz/query#/?id=1095916117
-						url := fmt.Sprintf("%s/?id=%d", "http://test.smxy.xyz/query#/", sender.UserID)
+						url := fmt.Sprintf("http://test.smxy.xyz/query#/?id=%d", sender.UserID)
 						var png []byte
 						png, _ = qrcode.Encode(url, qrcode.Medium, 256)
 						SendQQ(int64(sender.UserID), png)
