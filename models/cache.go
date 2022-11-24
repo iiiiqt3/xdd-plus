@@ -1,18 +1,26 @@
 package models
 
-import "github.com/beego/beego/v2/core/logs"
+import (
+	"github.com/beego/beego/v2/core/logs"
+	"time"
+)
 
 type Cache struct {
 	key      string `gorm:"column:Key;primaryKey"`
 	Type     string
 	value    string
-	ActiveAt string
+	ActiveAt int64
+}
+
+func Dtime() {
+
 }
 
 func getCache(key string) (value string) {
 	u := &Cache{}
 	//format := "2006-01-02 15:04:05"
-	err := db.Where("key = ? and active_at < ?", key, Date()).First(&u).Error
+
+	err := db.Where("key = ? and active_at > ?", key, time.Now().UnixMilli()).First(&u).Error
 	if err == nil {
 		return u.value
 	} else {
@@ -22,16 +30,17 @@ func getCache(key string) (value string) {
 
 func saveCache(key string, value string) (flag bool) {
 	u := &Cache{}
-	err := db.Where("key = ? and active_at = ?", key, Date()).First(&u).Error
+	err := db.Where("key = ?", key).First(&u).Error
 	if err == nil {
 		logs.Info("为空不报错")
 		if u.value != "" {
-			db.Where("ID = ?", u.key).Updates(&Cache{
-				value: value,
+			db.Where("key = ?", u.key).Updates(&Cache{
+				value:    value,
+				ActiveAt: time.Now().UnixMilli() + 3600,
 			})
 			return true
 		} else {
-			u.ActiveAt = Date()
+			u.ActiveAt = time.Now().UnixMilli() + 3600
 			u.key = key
 			u.value = value
 			begin := db.Begin()

@@ -45,7 +45,6 @@ func initDB() {
 		&UserAdmin{},
 		&Cache{},
 		&Key{},
-		&Log{},
 	)
 
 	keys = make(map[string]bool)
@@ -80,19 +79,6 @@ func HasWsKey(key string) bool {
 	}
 	keys[key] = true
 	return false
-}
-
-type Logs []struct {
-	Random int    `json:"random"`
-	Log    string `json:"log"`
-}
-
-type Log struct {
-	Result int    `json:"result"`
-	Status int    `json:"status"`
-	Log    string `json:"log"`
-	Random int    `json:"random"`
-	Ck     string `json:"ck"`
 }
 
 type JdCookie struct {
@@ -186,15 +172,6 @@ func Date() string {
 	return time.Now().Local().Format("2006-01-02")
 }
 
-func SaveLogs(log Log) {
-	var log1 = &Log{}
-	err := db.Where("Log = ?", log.Log).First(&log1).Error
-	if err != nil {
-		db.Create(&Log{Log: log.Log, Random: log.Random})
-	}
-
-}
-
 func GetJdCookies(sbs ...func(sb *gorm.DB) *gorm.DB) []JdCookie {
 	cks := []JdCookie{}
 	tb := db
@@ -235,12 +212,6 @@ func (ck *JdCookie) Removes(values interface{}) {
 	if ck.PtPin != "" {
 		db.Model(ck).Where(PtPin+" = ?", ck.PtPin).Delete(values)
 	}
-}
-
-func GetLo() Log {
-	data1 := Log{}
-	db.Order("RAND()").Limit(1).Find(&data1)
-	return data1
 }
 
 func (ck *JdCookie) InPool(pt_key string) error {
