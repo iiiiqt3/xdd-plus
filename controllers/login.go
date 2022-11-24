@@ -41,7 +41,7 @@ func (c *LoginController) IsAdmin() {
 		value := models.GetCache("AdminToken")
 		if value != "" && pin == value {
 			c.SetSession("token", value)
-			logs.Info("登录成功:"+pin)
+			logs.Info("登录成功:" + pin)
 			c.Ctx.WriteString("登录")
 		} else {
 			c.Ctx.Redirect(302, "/")
