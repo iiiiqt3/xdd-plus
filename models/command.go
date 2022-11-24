@@ -622,7 +622,7 @@ var codeSignals = []CodeSignal{
 			u := uuid.New()
 			s := u.String()
 			SaveCache("AdminToken", s)
-			return "登录授权码为："+s
+			return "登录授权码为：" + s
 		},
 	},
 
