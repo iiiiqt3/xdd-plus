@@ -16,9 +16,9 @@ func GetCache(key string) (value string) {
 	u := &Cache{}
 	//format := "2006-01-02 15:04:05"
 
-	err := db.Where("key = ? and active_at > ?", key, time.Now().UnixMilli()).First(&u).Error
+	err := db.Where("ckey = ? and active_at > ?", key, time.Now().UnixMilli()).First(&u).Error
 	if err == nil {
-		return u.value
+		return u.Cvalue
 	} else {
 		return ""
 	}
@@ -26,19 +26,19 @@ func GetCache(key string) (value string) {
 
 func SaveCache(key string, value string) (flag bool) {
 	u := &Cache{}
-	err := db.Where("key = ?", key).First(&u).Error
+	err := db.Where("ckey = ?", key).First(&u).Error
 	if err == nil {
 		logs.Info("为空不报错")
-		if u.value != "" {
-			db.Where("key = ?", u.key).Updates(&Cache{
-				value:    value,
+		if u.Cvalue != "" {
+			db.Where("key = ?", u.Ckey).Updates(&Cache{
+				Cvalue:    value,
 				ActiveAt: time.Now().UnixMilli() + 3600,
 			})
 			return true
 		} else {
 			u.ActiveAt = time.Now().UnixMilli() + 3600
-			u.key = key
-			u.value = value
+			u.Ckey = key
+			u.Cvalue = value
 			begin := db.Begin()
 			begin.Create(u)
 			begin.Commit()
