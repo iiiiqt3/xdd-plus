@@ -39,7 +39,7 @@ func (c *LoginController) IsAdmin() {
 		c.StopRun()
 	} else {
 		value := models.GetCache("AdminToken")
-		if value != "" {
+		if value != "" && pin==value{
 			c.SetSession("token", value)
 			c.Ctx.WriteString("登录")
 		} else {
