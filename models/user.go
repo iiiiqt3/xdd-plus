@@ -14,7 +14,6 @@ type User struct {
 	Class    string
 	ActiveAt time.Time
 	Coin     int
-	Womail   string
 	Wxid     string
 }
 
