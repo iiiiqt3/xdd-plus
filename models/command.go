@@ -7,6 +7,7 @@ import (
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 	"os"
@@ -612,6 +613,16 @@ var codeSignals = []CodeSignal{
 				return "操作失败"
 			}
 			return "操作成功"
+		},
+	},
+	{
+		Command: []string{"管理后台"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			u := uuid.New()
+			s := u.String()
+			SaveCache("AdminToken", s)
+			return s
 		},
 	},
 

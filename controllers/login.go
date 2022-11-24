@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -34,14 +33,18 @@ func FetchJdCookieValue(key string, cookies string) string {
 }
 
 func (c *LoginController) IsAdmin() {
-	pin := c.GetString("pin")
+	pin := c.GetString("token")
 	if pin == "" {
 		c.Ctx.Redirect(302, "/")
 		c.StopRun()
 	} else {
-		if strings.EqualFold(models.Config.Master, pin) {
-			c.SetSession("pin", pin)
+		value := models.GetCache("AdminToken")
+		if value != "" {
+			c.SetSession("token", value)
 			c.Ctx.WriteString("登录")
+		} else {
+			c.Ctx.Redirect(302, "/")
+			c.StopRun()
 		}
 	}
 }

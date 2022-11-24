@@ -12,11 +12,7 @@ type Cache struct {
 	ActiveAt int64
 }
 
-func Dtime() {
-
-}
-
-func getCache(key string) (value string) {
+func GetCache(key string) (value string) {
 	u := &Cache{}
 	//format := "2006-01-02 15:04:05"
 
@@ -28,7 +24,7 @@ func getCache(key string) (value string) {
 	}
 }
 
-func saveCache(key string, value string) (flag bool) {
+func SaveCache(key string, value string) (flag bool) {
 	u := &Cache{}
 	err := db.Where("key = ?", key).First(&u).Error
 	if err == nil {
