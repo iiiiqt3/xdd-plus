@@ -31,7 +31,7 @@ func SaveCache(key string, value string) (flag bool) {
 		logs.Info("为空不报错")
 		if u.Cvalue != "" {
 			db.Where("key = ?", u.Ckey).Updates(&Cache{
-				Cvalue:    value,
+				Cvalue:   value,
 				ActiveAt: time.Now().UnixMilli() + 3600,
 			})
 			return true
@@ -45,7 +45,13 @@ func SaveCache(key string, value string) (flag bool) {
 			return true
 		}
 	} else {
-		return false
+		u.ActiveAt = time.Now().UnixMilli() + 3600
+		u.Ckey = key
+		u.Cvalue = value
+		begin := db.Begin()
+		begin.Create(u)
+		begin.Commit()
+		return true
 	}
 
 }
