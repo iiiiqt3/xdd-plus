@@ -704,7 +704,12 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
+	{
+		Command: []string{"用户信息"},
+		Handle: func(sender *Sender) interface{} {
+			return fmt.Sprintf("用户ID：%d", sender.UserID)
+		},
+	},
 	{
 		Command: []string{"导出wskey"},
 		Admin:   true,
