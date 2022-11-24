@@ -16,7 +16,7 @@ func GetCache(key string) (value string) {
 	u := &Cache{}
 	//format := "2006-01-02 15:04:05"
 
-	err := db.Where("ckey = ? and active_at > ?", key, time.Now().UnixMilli()).First(&u).Error
+	err := db.Where("ckey = ? and active_at < ?", key, time.Now().UnixMilli()).First(&u).Error
 	if err == nil {
 		return u.Cvalue
 	} else {
