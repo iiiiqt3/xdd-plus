@@ -3,7 +3,6 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/beego/beego/v2/core/logs"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
@@ -57,19 +56,6 @@ var Int = func(s string) int {
 var Float64 = func(s string) float64 {
 	i, _ := strconv.ParseFloat(s, 64)
 	return i
-}
-var proxy func(req *http.Request) (*url.URL, error)
-var proxyf bool
-
-func initProxy() {
-	value := GetEnv("proxy")
-	if value != "" {
-		proxyf = true
-		proxy = func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI(value)
-			return u, nil
-		}
-	}
 }
 
 func DailyAssetsPush() {
@@ -141,7 +127,10 @@ func (ck *JdCookie) Query() string {
 	msgs := []string{
 		fmt.Sprintf("账号昵称：%s", ck.Nickname),
 	}
-	parse, _ := time.Parse("2006-01-02", ck.CreateAt)
+	parse, err := time.Parse("2006-01-02", ck.CreateAt)
+	if err != nil {
+		parse, _ = time.Parse("2006/01/02", ck.CreateAt)
+	}
 	t, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
 	f := t.Sub(parse).Hours() / 24
 	i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
@@ -175,9 +164,9 @@ func (ck *JdCookie) Query() string {
 			f := t.Sub(parse1).Hours() / 24
 			i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
 			if !strings.Contains(cookie, "app_open") {
-				msgs = append(msgs, fmt.Sprintf("您距离失效还有：%d天", 28-i))
+				msgs = append(msgs, fmt.Sprintf("您距离登录失效还有：%d天,仅供参考", 28-i))
 			} else {
-				msgs = append(msgs, fmt.Sprintf("尊贵的年费用户，您距离失效还有：%d天", 365-i))
+				msgs = append(msgs, fmt.Sprintf("尊贵的年费用户，您距离失效还有：%d天,仅供参考", 365-i))
 			}
 		}
 		var rpc = make(chan []RedList)
@@ -280,7 +269,7 @@ func (ck *JdCookie) Query() string {
 						asset.RedPacket.ToExpireJx += b
 						asset.RedPacket.ToExpire += b
 					}
-				} else if strings.Contains(rp.ActivityName, "极速版") {
+				} else if strings.Contains(rp.ActivityName, "特价版") {
 					asset.RedPacket.Js += b
 					if ysd >= rp.EndTime {
 						asset.RedPacket.ToExpireJs += b
@@ -360,6 +349,14 @@ func getXd(cookie string) (string, string) {
 	req.Header("Accept-Language", "zh-CN,zh-Hans;q=0.9")
 	req.Header("Referer", "https://st.jingxi.com/")
 	req.Header("Cookie", cookie)
+	value := GetEnv("proxy")
+	if value != "" {
+		proxy := func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(value)
+			return u, nil
+		}
+		req.SetProxy(proxy)
+	}
 	resp, _ := req.Bytes()
 	xibean, err := jsonparser.GetInt(resp, "data", "xibean")
 	if err != nil {
@@ -441,7 +438,12 @@ func jdsy(cookie string, desc chan string) {
 		// req.Header("Accept-Language", "zh-cn")
 		req.Body(`appid=newtry&functionId=try_MyTrials&uuid=3345ad3d16ab2153c69f8ca91cd3e931b06a3bb8&clientVersion=10.2.7&client=wh5&osVersion=14.7.1&area=12_939_23683_56184&networkType=wifi&body=%7B%22geo%22%3A%7B%22lng%22%3A121.15326252577907%2C%22lat%22%3A34.295611038697575%7D%2C%22page%22%3A1%2C%22selected%22%3A2%2C%22previewTime%22%3A%22%22%7D`)
 		//appid=newtry&functionId=try_MyTrials&uuid=3345ad3d16ab2153c69f8ca91cd3e931b06a3bb8&clientVersion=10.2.7&client=wh5&osVersion=14.7.1&area=12_939_23683_56184&networkType=wifi&body=%7B%22geo%22%3A%7B%22lng%22%3A121.15326252577907%2C%22lat%22%3A34.295611038697575%7D%2C%22page%22%3A1%2C%22selected%22%3A1%2C%22previewTime%22%3A%22%22%7D
-		if proxyf {
+		value := GetEnv("proxy")
+		if value != "" {
+			proxy := func(req *http.Request) (*url.URL, error) {
+				u, _ := url.ParseRequestURI(value)
+				return u, nil
+			}
 			req.SetProxy(proxy)
 		}
 		data, _ := req.Bytes()
@@ -505,6 +507,14 @@ func getJingBeanBalanceDetail(page int, cookie string) []BeanDetail {
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Header("Cookie", cookie)
 	req.Body(fmt.Sprintf(`body={"pageSize": "20", "page": "%d"}&appid=ld`, page))
+	value := GetEnv("proxy")
+	if value != "" {
+		proxy := func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(value)
+			return u, nil
+		}
+		req.SetProxy(proxy)
+	}
 	data, err := req.Bytes()
 	if err != nil {
 		return nil
@@ -534,6 +544,14 @@ func getJingXiBeanDeatil(cookie string) []JingXiDetail {
 	req.Header("Accept-Language", "zh-CN,zh-Hans;q=0.9")
 	req.Header("Referer", "https://st.jingxi.com/")
 	req.Header("Cookie", cookie)
+	value := GetEnv("proxy")
+	if value != "" {
+		proxy := func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(value)
+			return u, nil
+		}
+		req.SetProxy(proxy)
+	}
 	resp, _ := req.Bytes()
 	a := JingXiBeanDetails{}
 	json.Unmarshal(resp, &a)
@@ -737,14 +755,18 @@ func initFarm(cookie string, state chan string) {
 	req.Header("User-Agent", ua)
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Body(`body={"version":4}&appid=wh5&clientVersion=9.1.0`)
-	if proxyf {
+	value := GetEnv("proxy")
+	if value != "" {
+		proxy := func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(value)
+			return u, nil
+		}
 		req.SetProxy(proxy)
 	}
 	data, _ := req.Bytes()
 	json.Unmarshal(data, &a)
-	logs.Info(string(data))
-	rt := a.FarmUserPro.Name
 
+	rt := a.FarmUserPro.Name
 	if rt == "" {
 		rt = "数据加载中"
 	} else {
@@ -836,6 +858,14 @@ func initPetTown(cookie string, state chan string) {
 	req.Header("cookie", cookie)
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Body(`body={}&appid=wh5&loginWQBiz=pet-town&clientVersion=9.0.4`)
+	value := GetEnv("proxy")
+	if value != "" {
+		proxy := func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(value)
+			return u, nil
+		}
+		req.SetProxy(proxy)
+	}
 	data, _ := req.Bytes()
 	json.Unmarshal(data, &a)
 	rt := ""
