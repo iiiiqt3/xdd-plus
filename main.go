@@ -70,11 +70,11 @@ func main() {
 		//if models.Config.Theme == "" {
 		//	models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
 		//}
-		//if theme != "" {
-		//	ctx.WriteString(theme)
-		//	return
-		//}
 		models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
+		if theme != "" {
+			ctx.WriteString(theme)
+			return
+		}
 		if strings.Contains(models.Config.Theme, "http") {
 			logs.Info("下载最新主题")
 			s, _ := httplib.Get(models.Config.Theme).String()
