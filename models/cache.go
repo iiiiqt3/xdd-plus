@@ -6,7 +6,7 @@ import (
 )
 
 type Cache struct {
-	Ckey     string `gorm:"column:Key;primaryKey"`
+	Ckey     string `gorm:"column:CKey;primaryKey"`
 	Type     string
 	Cvalue   string
 	ActiveAt int64
