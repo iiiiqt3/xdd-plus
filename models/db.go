@@ -177,9 +177,11 @@ func GetJdCookie(pin string) (*JdCookie, error) {
 func (ck *JdCookie) Updates(values interface{}) {
 	if ck.ID != 0 {
 		db.Model(ck).Updates(values)
+		return
 	}
 	if ck.PtPin != "" {
 		db.Model(ck).Where(PtPin+" = ?", ck.PtPin).Updates(values)
+		return
 	}
 }
 
