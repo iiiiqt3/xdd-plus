@@ -34,8 +34,8 @@ func getKey(WSCK string) (string, error) {
 	} else {
 		ptKey, _ = getTokenKey(WSCK)
 	}
-	if !strings.Contains(ptKey,"app_open") {
-		return "Wskey错误",nil
+	if !strings.Contains(ptKey, "app_open") {
+		return "Wskey错误", nil
 	}
 
 	time.Sleep(time.Duration(rand.Int63n(1)) * time.Second)

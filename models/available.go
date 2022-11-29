@@ -339,22 +339,20 @@ func CookieOK(ck *JdCookie) bool {
 						if err != nil {
 							logs.Error(err)
 						}
-						//JdCookie{}.Push(fmt.Sprintf("自动转换wskey---%s", msg))
+						JdCookie{}.Push(fmt.Sprintf("自动转换wskey---%s", msg))
 						//缺少错误判断
 						if strings.Contains(msg, "错误") {
 							ck.Push(fmt.Sprintf("Wskey失效账号，%s", ck.PtPin))
+							ck.Updates(JdCookie{Available: False})
 							(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，%s", ck.PtPin))
 						} else {
 							ptKey := FetchJdCookieValue("pt_key", msg)
 							ptPin := FetchJdCookieValue("pt_pin", msg)
 							if nck, err := GetJdCookie(ptPin); err == nil {
 								nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-								(&JdCookie{}).Push(msg)
-								logs.Info(msg)
 							} else {
-								//nck.Update(Available, False)
-								//(&JdCookie{}).Push(fmt.Sprintf("过期转换失败，%s", ck.PtPin))
+								nck.Updates(JdCookie{Available: False})
+								(&JdCookie{}).Push(fmt.Sprintf("过期转换失败，%s", ck.PtPin))
 							}
 						}
 					} else {
