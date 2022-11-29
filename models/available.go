@@ -347,10 +347,9 @@ func CookieOK(ck *JdCookie) bool {
 						} else {
 							ptKey := FetchJdCookieValue("pt_key", msg)
 							ptPin := FetchJdCookieValue("pt_pin", msg)
-							logs.Info(ptPin)
 							if nck, err := GetJdCookie(ptPin); err == nil {
 								nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-								//msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
+								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 								(&JdCookie{}).Push(msg)
 								logs.Info(msg)
 							} else {
@@ -358,7 +357,6 @@ func CookieOK(ck *JdCookie) bool {
 								//(&JdCookie{}).Push(fmt.Sprintf("过期转换失败，%s", ck.PtPin))
 							}
 						}
-
 					} else {
 						//ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录,安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
 						//JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))

@@ -311,7 +311,7 @@ func UpdateCookie(ck *JdCookie) error {
 }
 
 func CheckIn(pin, key string) int {
-	if !strings.Contains(key,"app_open") {
+	if !strings.Contains(key, "app_open") {
 		if !HasPin(pin) {
 			NewJdCookie(&JdCookie{
 				PtKey: key,
