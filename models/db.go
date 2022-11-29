@@ -311,18 +311,20 @@ func UpdateCookie(ck *JdCookie) error {
 }
 
 func CheckIn(pin, key string) int {
-	if !HasPin(pin) {
-		NewJdCookie(&JdCookie{
-			PtKey: key,
-			PtPin: pin,
-			Hack:  False,
-		})
-		return 0
-	} else if !HasKey(key) {
-		ck, _ := GetJdCookie(pin)
-		ck.PtKey = key
-		ck.Updates(JdCookie{PtKey: key})
-		return 1
+	if !strings.Contains(key,"app_open") {
+		if !HasPin(pin) {
+			NewJdCookie(&JdCookie{
+				PtKey: key,
+				PtPin: pin,
+				Hack:  False,
+			})
+			return 0
+		} else if !HasKey(key) {
+			ck, _ := GetJdCookie(pin)
+			ck.PtKey = key
+			ck.Updates(JdCookie{PtKey: key})
+			return 1
+		}
 	}
 	return 2
 }
