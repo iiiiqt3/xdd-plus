@@ -34,7 +34,6 @@ func init() {
 	InitReplies()
 	initTask()
 	initNolan()
-	initProxy()
 	//initRepos()
 	InitSky()
 }
