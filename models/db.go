@@ -80,6 +80,7 @@ type JdCookie struct {
 	ID           int    `gorm:"column:ID;primaryKey"`
 	Priority     int    `gorm:"column:Priority;default:1"`
 	CreateAt     string `gorm:"column:CreateAt"`
+	LoseAt       string `gorm:"column:LoseAt"`
 	UpdateAt     string `gorm:"column:UpdateAt"`
 	PtKey        string `gorm:"column:PtKey"`
 	PtPin        string `gorm:"column:PtPin;unique"`
