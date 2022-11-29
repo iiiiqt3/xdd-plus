@@ -29,7 +29,8 @@ var SendQQGroup = func(a int64, b int64, c interface{}) {
 }
 
 type ArkResData struct {
-	Status uint `json:"status"`
+	Status uint   `json:"status"`
+	Mode   string `json:"mode"`
 }
 
 type ArkRes struct {
@@ -520,6 +521,20 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								var arkRes ArkRes
 								json.Unmarshal(data, &arkRes)
 								if !arkRes.Success && arkRes.Data.Status == 555 {
+
+									switch arkRes.Data.Mode {
+									case "USER_ID":
+										//验证
+										sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
+										//做个标记
+										riskcodes[sender.UserID] = "true"
+										if arkRes.Message != "" {
+											sender.Reply(arkRes.Message)
+										}
+									case "HISTORY_DEVICE":
+										sender.Reply("新设备登录需要验证，前往京东APP-我的-设置-账户与安全-新设备登录确认中确认，好了对我说:000000")
+										riskcodes[sender.UserID] = "true"
+									}
 									//验证
 									sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
 									//做个标记

@@ -297,8 +297,6 @@ func CheckWskeyOK(ck *JdCookie) (bool, string) {
 
 func CookieOK(ck *JdCookie) bool {
 	cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
-	// fmt.Println(cookie)
-	// jdzz(cookie, make(chan int64))
 	if ck == nil {
 		return true
 	}
@@ -316,17 +314,8 @@ func CookieOK(ck *JdCookie) bool {
 	}
 	ui := &UserInfoResult{}
 	if nil != json.Unmarshal(data, ui) {
-		//if !Config.IFC {
-		//	(&JdCookie{}).Push("第一个接口失效，切换到第二个接口，可能黑IP，会导致NickName获取失败，可能会自行恢复。")
-		//	Config.IFC = true
-		//}
-
 		return av2(ck)
 	}
-	//if Config.IFC {
-	//	(&JdCookie{}).Push("第一个接口恢复，切换回第一接口，恭喜你IP洗白白了")
-	//	Config.IFC = false
-	//}
 	switch ui.Retcode {
 	case "1001": //ck.BeanNum
 		if ui.Msg == "not login" {
@@ -355,15 +344,11 @@ func CookieOK(ck *JdCookie) bool {
 								(&JdCookie{}).Push(fmt.Sprintf("过期转换失败，%s", ck.PtPin))
 							}
 						}
-					} else {
-						//ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录,安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
-						//JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
 					}
 				} else {
 					//ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录，安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
 					//JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
 				}
-
 			}
 			return false
 		}
