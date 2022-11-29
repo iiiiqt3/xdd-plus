@@ -131,7 +131,7 @@ func initCookie() {
 	for i := range cks {
 		time.Sleep(time.Second * time.Duration(Config.Later))
 		if cks[i].Available == True && !CookieOK(&cks[i]) {
-			cks[i].OutPool()
+			cks[i].Updates(JdCookie{Available: False})
 		}
 	}
 	(&JdCookie{}).Push("账号检测结束")
@@ -248,8 +248,7 @@ func updateCookie() {
 				if ptPin != "" || ptKey != "" {
 					if nck, err := GetJdCookie(ck1.PtPin); err == nil {
 						xx++
-						nck.InPool(ck1.PtKey)
-						nck.Update(Available, True)
+						nck.Updates(JdCookie{PtKey: ptKey, Available: True})
 						msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
 						////不再发送成功提醒
 						//(&JdCookie{}).Push(msg)
@@ -349,12 +348,8 @@ func CookieOK(ck *JdCookie) bool {
 							ptKey := FetchJdCookieValue("pt_key", msg)
 							ptPin := FetchJdCookieValue("pt_pin", msg)
 							logs.Info(ptPin)
-							ck := JdCookie{
-								PtKey: ptKey,
-								PtPin: ptPin,
-							}
 							if nck, err := GetJdCookie(ptPin); err == nil {
-								nck.InPool(ck.PtKey)
+								nck.Updates(JdCookie{PtKey: ptKey, Available: True})
 								//msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 								(&JdCookie{}).Push(msg)
 								logs.Info(msg)

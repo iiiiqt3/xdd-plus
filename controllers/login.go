@@ -103,7 +103,9 @@ func nolanLogin(key string, pin string, qq int, bz string, push string, c *Login
 				c.Ctx.WriteString(string(jsons))
 			} else if !models.HasKey(key) {
 				ck, _ := models.GetJdCookie(pin)
-				ck.InPool(key)
+
+				//更新CK
+				models.UpdateCookie(ck)
 				result.Message = fmt.Sprintf("更新成功")
 				jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
 				if errs != nil {
@@ -155,7 +157,7 @@ func (c *LoginController) SMSLogin() {
 			if models.CookieOK(ck) {
 				//(&models.JdCookie{}).Push(cookie)
 				if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
-					nck.InPool(ptKey)
+					models.UpdateCookie(ck)
 					if qq != "" && len(qq) > 6 {
 						//ck.Update(models.QQ, qq)
 						atoi, _ := strconv.Atoi(qq)
@@ -169,7 +171,6 @@ func (c *LoginController) SMSLogin() {
 					(&models.JdCookie{}).Push(msg)
 
 				} else {
-
 					models.NewJdCookie(ck)
 					if qq != "" {
 						msg := fmt.Sprintf("来自短信的添加,：%s,QQ: %v", ck.PtPin, qq)
@@ -256,6 +257,7 @@ func (c *LoginController) WskeyLogin() {
 		if ok {
 			if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
 				msg := fmt.Sprintf("Wskey账号更新,账号：%s", nck.PtPin)
+				models.UpdateCookie(ck)
 				(&models.JdCookie{}).Push(msg)
 			} else {
 				models.NewJdCookie(ck)

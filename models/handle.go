@@ -29,7 +29,7 @@ func initHandle() {
 			})
 
 			logs.Info(fmt.Sprintf("总共%d个号", len(cks)))
-			tmp := []JdCookie{}
+			var tmp []JdCookie
 			for _, ck := range cks {
 				if ck.Priority >= 0 && ck.Hack != True {
 					tmp = append(tmp, ck)
@@ -37,7 +37,7 @@ func initHandle() {
 			}
 			cks = tmp
 			cookies := "{"
-			hh := []string{}
+			var hh []string
 			for i, ck := range cks {
 				hh = append(hh,
 					fmt.Sprintf("CookieJD%d:'pt_key=%s;pt_pin=%s;'", i+1, ck.PtKey, ck.PtPin),
@@ -151,7 +151,7 @@ module.exports = cookies`, cookies))
 				}
 
 			} else {
-				resident := []JdCookie{}
+				var resident []JdCookie
 
 				//不影响原本的设置车头逻辑,在容器内单独配置车头，并且可以覆盖全局的车头
 				var containerResident []string
@@ -188,9 +188,9 @@ module.exports = cookies`, cookies))
 					Resident  []JdCookie
 					Should    int
 				}
-				availables := []Container{}
-				parallels := []Container{}
-				bs := []balance{}
+				var availables []Container
+				var parallels []Container
+				var bs []balance
 				for i := range Config.Containers {
 					(&Config.Containers[i]).read()
 					if Config.Containers[i].Available {
@@ -284,12 +284,7 @@ module.exports = cookies`, cookies))
 						} else {
 							//必须配置了main的数量，并且main的数量要小于总数
 							s := 0
-							if bs[i].Container.Zhu != 0 {
-								s = zhuCks + bs[i].Container.Zhu
-							} else {
-								s = int(math.Ceil(float64(len(ups) / len(bs))))
-							}
-
+							s = int(math.Ceil(float64(len(ups) / len(bs))))
 							if s > len(ups) {
 								s = len(ups)
 							}
@@ -297,12 +292,7 @@ module.exports = cookies`, cookies))
 							zhuCks += s
 
 							s = 0
-							if bs[i].Container.Ci != 0 {
-								s = ciCks + bs[i].Container.Ci
-							} else {
-								s = int(math.Ceil(float64(len(downs) / len(bs))))
-							}
-
+							s = int(math.Ceil(float64(len(downs) / len(bs))))
 							if s > len(downs) {
 								s = len(downs)
 							}

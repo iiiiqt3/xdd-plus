@@ -49,8 +49,6 @@ type Container struct {
 	Config    string
 	Limit     int
 	cks       []JdCookie
-	Zhu       int
-	Ci        int
 	Resident  string
 }
 
@@ -68,16 +66,13 @@ func initContainer() {
 			} else {
 				logs.Warn("%s地址错误", Config.Containers[i].Type)
 			}
-			version, err := GetQlVersion(Config.Containers[i].Address)
+			err := Config.Containers[i].getToken()
 			if err == nil {
-				if Config.Containers[i].getToken() == nil {
-					logs.Info("青龙" + version + "通道登录成功")
-					ql++
-				} else {
-					logs.Warn("青龙" + version + "通道登录失败")
-				}
+				logs.Info("青龙" + version + "通道登录成功")
+				ql++
 				Config.Containers[i].Type = "ql"
-				Config.Containers[i].Version = version
+				Config.Containers[i].Version = "version"
+
 			} else {
 				if err := Config.Containers[i].getSession(); err == nil {
 					logs.Info("v系登录成功")
@@ -98,10 +93,6 @@ func initContainer() {
 					if err != nil || io.EOF == err {
 						break
 					}
-					if pt := regexp.MustCompile(`^pt_key=`).FindString(line); pt != "" {
-						Config.Containers[i].Type = "li"
-						break
-					}
 					if pt := regexp.MustCompile(`^Cookie\d+`).FindString(line); pt != "" {
 						Config.Containers[i].Type = "v4"
 						break
@@ -114,9 +105,6 @@ func initContainer() {
 						Config.Containers[i].Type = "v4"
 						break
 					}
-				}
-				if Config.Containers[i].Type == "" {
-					Config.Containers[i].Type = "li"
 				}
 				f.Close()
 				logs.Info(Config.Containers[i].Type + "配置文件正确")
@@ -223,41 +211,6 @@ func (c *Container) write(cks []JdCookie) error {
 			config = fmt.Sprintf(`TempBlockCookie="%s"`, TempBlockCookie) + "\n" + cookies + getVhelpRule(len(cks)) + config
 			return config
 		})
-	case "li":
-		config := ""
-		f, err := os.OpenFile(c.Path, os.O_RDWR|os.O_CREATE, 0777) //打开文件 |os.O_RDWR
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		rd := bufio.NewReader(f)
-		for {
-			line, err := rd.ReadString('\n') //以'\n'为结束符读入一行
-			if err != nil || io.EOF == err {
-				break
-			}
-			if pt := regexp.MustCompile(`^pt_key=(.*);pt_pin=([^'";\s]+);?`).FindStringSubmatch(line); len(pt) != 0 {
-				continue
-			}
-			if pt := regexp.MustCompile(`^pt_key=(.*)`).FindStringSubmatch(line); len(pt) != 0 {
-				continue
-			}
-			config += line
-		}
-		for _, ck := range cks {
-			if ck.PtPin == "" || ck.PtKey == "" {
-				continue
-			}
-			if ck.Available == True {
-				config += fmt.Sprintf("pt_key=%s;pt_pin=%s\n", ck.PtKey, ck.PtPin)
-			}
-		}
-		f.Truncate(0)
-		f.Seek(0, 0)
-		if _, err := io.WriteString(f, config); err != nil {
-			return err
-		}
-		return nil
 	}
 	return nil
 }
@@ -361,74 +314,30 @@ func (c *Container) read() error {
 			}
 			return config
 		})
-	case "li":
-		f, err := os.OpenFile(c.Path, os.O_RDWR|os.O_CREATE, 0777) //打开文件 |os.O_RDWR
-		if err != nil {
-			c.Available = false
-			return err
-		}
-		defer f.Close()
-		rd := bufio.NewReader(f)
-		for {
-			line, err := rd.ReadString('\n') //以'\n'为结束符读入一行
-			if err != nil || io.EOF == err {
-				break
-			}
-			if pt := regexp.MustCompile(`^pt_key=(.+);pt_pin=([^'";\s]+);?`).FindStringSubmatch(line); len(pt) != 0 {
-				CheckIn(pt[2], pt[1])
-				continue
-			}
-		}
 	}
 	return nil
 }
 
 func (c *Container) getToken() error {
-	version, _ := GetQlVersion(c.Address)
-	if version == "openapi" {
-		token := &Token{}
-		err, b2 := getT(c, token)
-		if b2 {
-			c.Token = token.Token
-		}
-		return err
-	} else {
-		req := httplib.Post(c.Address + "/api/login")
-		req.Header("Content-Type", "application/json;charset=UTF-8")
-		req.Body(fmt.Sprintf(`{"username":"%s","password":"%s"}`, c.Username, c.Password))
-		if rsp, err := req.Response(); err == nil {
-			data, err := ioutil.ReadAll(rsp.Body)
-			if err != nil {
-				return err
-			}
-			c.Token, _ = jsonparser.GetString(data, "token")
-			if c.Token == "" {
-				c.Token, _ = jsonparser.GetString(data, "data", "token")
-			}
-		} else {
-			return err
-		}
-	}
-	return nil
-}
-
-func getT(c *Container, token *Token) (error, bool) {
+	token := &Token{}
 	req := httplib.Get(c.Address + fmt.Sprintf(`/open/auth/token?client_id=%s&client_secret=%s`, c.Cid, c.Secret))
 	req.Header("Content-Type", "application/json;charset=UTF-8")
 	if rsp, err := req.Response(); err == nil {
 		data, err := ioutil.ReadAll(rsp.Body)
 		if err != nil {
-			return err, true
+			return err
 		}
 		c.Token, _ = jsonparser.GetString(data, "data", "token")
 		token.Token, _ = jsonparser.GetString(data, "data", "token")
 		zero, _ := time.ParseInLocation("2006-01-02", time.Now().Local().Format("2006-01-02"), time.Local)
 		token.Expiration = zero
 		token.Address = c.Address
+		c.Token = token.Token
 	} else {
-		return err, true
+		return err
 	}
-	return nil, false
+	return nil
+
 }
 
 func (c *Container) request(ss ...string) ([]byte, error) {
@@ -480,29 +389,6 @@ func (c *Container) request(ss ...string) ([]byte, error) {
 		}
 	}
 	return []byte{}, nil
-}
-
-func GetQlVersion(address string) (string, error) {
-	data, err := httplib.Get(address).String()
-	if err != nil {
-		return "", err
-	}
-	js := regexp.MustCompile(`/umi\.\w+\.js`).FindString(data)
-	if js == "" {
-		return "", errors.New("好像不是青龙面板")
-	}
-	data, err = httplib.Get(address + js).String()
-	if err != nil {
-		return "", err
-	}
-	v := ""
-	//logs.Info(data)
-	if strings.Contains(data, "v2.2") {
-		v = "api"
-	} else {
-		v = "openapi"
-	}
-	return v, nil
 }
 
 const (

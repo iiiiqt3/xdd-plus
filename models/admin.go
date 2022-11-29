@@ -376,15 +376,16 @@ func Count() string {
 			tc++
 		}
 	}
-	jps := []JdCookiePool{}
+	var jps []JdCookie
 	db.Find(&jps)
 	for _, jp := range jps {
 		if jp.CreateAt == dt {
 			ts++
 		}
-		if jp.LoseAt == dt {
-			tl++
-		}
+		//todo 修复失效个数
+		//if jp.LoseAt == dt {
+		//	tl++
+		//}
 	}
 	return fmt.Sprintf("总数%d,有效%d,无效%d,今日失效%d,今日扫码%d,今日新增%d", zs, yx, wx, tl, ts, tc)
 }
