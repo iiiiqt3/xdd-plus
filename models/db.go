@@ -188,9 +188,11 @@ func (ck *JdCookie) Updates(values interface{}) {
 func (ck *JdCookie) Update(column string, value interface{}) {
 	if ck.ID != 0 {
 		db.Model(ck).Update(column, value)
+		return
 	}
 	if ck.PtPin != "" {
 		db.Model(JdCookie{}).Where(PtPin+" = ?", ck.PtPin).Update(column, value)
+		return
 	}
 }
 
