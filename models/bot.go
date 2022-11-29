@@ -713,7 +713,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								ck.Telegram = sender.UserID
 							}
 							if nck, err := GetJdCookie(ck.PtPin); err == nil {
-								nck.InPool(ck.PtKey)
+								nck.Updates(JdCookie{PtKey: ptKey})
 								if nck.WsKey == "" || len(nck.WsKey) == 0 {
 									if sender.IsQQ() {
 										ck.Update(QQ, ck.QQ)
@@ -959,7 +959,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							sender.Reply(fmt.Sprintf("重复提交"))
 						} else {
 							if nck, err := GetJdCookie(ck.PtPin); err == nil {
-								nck.InPool(ck.PtKey)
+								nck.Updates(JdCookie{PtKey: ptKey})
 								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 								if sender.IsQQ() {
 									ck.Update(QQ, ck.QQ)
