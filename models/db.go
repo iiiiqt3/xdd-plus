@@ -316,7 +316,7 @@ func CheckIn(pin, key string) int {
 	} else if !HasKey(key) {
 		ck, _ := GetJdCookie(pin)
 		ck.PtKey = key
-		UpdateCookie(ck)
+		ck.Updates(JdCookie{PtKey: key})
 		return 1
 	}
 	return 2
