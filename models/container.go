@@ -71,7 +71,7 @@ func initContainer() {
 				logs.Info("青龙" + version + "通道登录成功")
 				ql++
 				Config.Containers[i].Type = "ql"
-				Config.Containers[i].Version = "version"
+				Config.Containers[i].Version = "openapi"
 
 			} else {
 				if err := Config.Containers[i].getSession(); err == nil {
