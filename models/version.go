@@ -13,7 +13,7 @@ import (
 )
 
 var version = "v7.0"
-var describe = "修复BUG"
+var describe = "debug版本"
 var AppName = "xdd"
 var pname = regexp.MustCompile(`/([^/\s]+)`).FindStringSubmatch(os.Args[0])[1]
 var UpdateUrl = "https://update.smxy.xyz"
