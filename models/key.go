@@ -49,7 +49,6 @@ func useKey(id string, use int) string {
 					Number:   use,
 					Coin:     u.Value,
 					ActiveAt: time.Now(),
-					Womail:   "",
 				})
 			} else {
 				user.Coin += u.Value
