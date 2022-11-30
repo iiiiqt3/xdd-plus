@@ -29,7 +29,8 @@ var SendQQGroup = func(a int64, b int64, c interface{}) {
 }
 
 type ArkResData struct {
-	Status uint `json:"status"`
+	Status uint   `json:"status"`
+	Mode   string `json:"mode"`
 }
 
 type ArkRes struct {
@@ -63,9 +64,7 @@ var ListenQQTempPrivateMessage = func(uid int64, msg string) {
 }
 
 var ListenWXTempPrivateMessage = func(uid string, msg string) {
-
 	rt := handleMessage(msg, "wx", uid)
-
 	switch rt.(type) {
 	case string:
 		SendWxMsg(uid, rt.(string))
@@ -85,16 +84,9 @@ var ListenQQGroupMessage = func(gid int64, uid int64, msg string) {
 var pcodes = make(map[int]string)
 var replies = map[string]string{}
 var riskcodes = make(map[int]string)
-var riskcodes1 = make(map[string]ViVoData)
 var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
-var pzlist = make(map[string]int)
-var pz = 0
-var pzno = 0
-var zdlist = make(map[string]int)
-var zd = 0
-var zdno = 0
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -162,127 +154,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		switch msg {
 		default:
 
-			//膨胀
-			{
-				if strings.Contains(msg, "膨胀") {
-					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-					rsp.Param("url", msg)
-					rsp.Param("type", "hy")
-					data, err := rsp.Response()
-
-					if err != nil {
-						return "口令转换失败"
-					}
-					body, _ := ioutil.ReadAll(data.Body)
-					if strings.Contains(string(body), "口令转换失败") {
-						return "口令转换失败"
-					} else {
-						if strings.Contains(string(body), "shareType=expandHelp") {
-
-							if sender.IsAdmin {
-								sender.Reply("开始膨胀助力管理员")
-							} else {
-								value := GetEnv("pz")
-								if value == "" {
-									return "未开启膨胀助力"
-								} else {
-									coin := GetCoin(sender.UserID)
-									jbcoin, _ := strconv.Atoi(value)
-									if coin < jbcoin {
-										return fmt.Sprintf("膨胀助力需要%d个积分", jbcoin)
-									}
-									RemCoin(sender.UserID, jbcoin)
-								}
-							}
-
-							inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-							no := pzno
-							pzno += 1
-							pzlist[inviterCode[1]] = no
-							sender.Reply(fmt.Sprintf("膨胀助力即将开始，已扣除%d个积分，订单编号:%d,剩余%d", no, GetCoin(sender.UserID)))
-							go runpz(sender, inviterCode[1])
-						}
-					}
-				}
-
-			}
-
-			//金币助力
-			{
-				if strings.Contains(msg, "助力") {
-					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-					rsp.Param("url", msg)
-					rsp.Param("type", "hy")
-					data, err := rsp.Response()
-
-					if err != nil {
-						return "口令转换失败"
-					}
-					body, _ := ioutil.ReadAll(data.Body)
-					if strings.Contains(string(body), "口令转换失败") {
-						return "口令转换失败"
-					} else {
-						if strings.Contains(string(body), "shareType=taskHelp") {
-							if sender.IsAdmin {
-								sender.Reply("开始金币助力管理员")
-							} else {
-								value := GetEnv("jbzl")
-								if value == "" {
-									return "未开启金币助力"
-								} else {
-									coin := GetCoin(sender.UserID)
-									jbcoin, _ := strconv.Atoi(value)
-									if coin < jbcoin {
-										return fmt.Sprintf("金币助力需要%d个积分", jbcoin)
-									}
-									RemCoin(sender.UserID, jbcoin)
-									sender.Reply(fmt.Sprintf("金币助力即将开始，已扣除%d个积分，剩余%d", jbcoin, GetCoin(sender.UserID)))
-								}
-							}
-							inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-							flag := nianhelp(inviterCode[1])
-							if flag {
-								return "助力完成"
-							} else {
-								return "助力失败"
-							}
-						}
-					}
-				}
-			}
-
-			//组队
-			{
-				if sender.IsAdmin {
-					if strings.Contains(msg, "加入") || strings.Contains(msg, "咖叺") {
-						rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-						rsp.Param("url", msg)
-						rsp.Param("type", "hy")
-						data, err := rsp.Response()
-
-						if err != nil {
-							return "口令转换失败"
-						}
-						body, _ := ioutil.ReadAll(data.Body)
-						if strings.Contains(string(body), "口令转换失败") {
-							return "口令转换失败"
-						} else {
-							if strings.Contains(string(body), "shareType=team") {
-								sender.Reply("开始组队")
-								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-
-								flag := zdhelp(inviterCode[1])
-								if flag {
-									return "助力完成"
-								} else {
-									return "助力失败"
-								}
-							}
-						}
-					}
-				}
-			}
-
 			//绑定QQ
 			{
 				if strings.HasPrefix(msg, "DXWX") {
@@ -321,6 +192,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				}
 			}
 
+			//口令
 			{
 				if strings.Contains(msg, "口令") {
 					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
@@ -341,6 +213,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				}
 			}
 
+			//运行
 			{
 				if strings.Contains(msg, "运行") {
 					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
@@ -401,6 +274,20 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								var arkRes ArkRes
 								json.Unmarshal(data, &arkRes)
 								if !arkRes.Success && arkRes.Data.Status == 555 {
+
+									switch arkRes.Data.Mode {
+									case "USER_ID":
+										//验证
+										sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
+										//做个标记
+										riskcodes[sender.UserID] = "true"
+										if arkRes.Message != "" {
+											sender.Reply(arkRes.Message)
+										}
+									case "HISTORY_DEVICE":
+										sender.Reply("新设备登录需要验证，前往京东APP-我的-设置-账户与安全-新设备登录确认中确认，好了对我说:000000")
+										riskcodes[sender.UserID] = "true"
+									}
 									//验证
 									sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
 									//做个标记
@@ -422,6 +309,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								}
 							}
 						}
+					} else if len(Config.Madurl) > 0 {
+
 					}
 				}
 			}
@@ -454,12 +343,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 							if success {
 								pcodes[sender.UserID] = msg
-								logs.Info(string(sender.UserID))
+								logs.Info(strconv.Itoa(sender.UserID))
 								sender.Reply("请输入6位验证码：")
 								break
 							}
 							//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
-							if !success && status == 666 && i < 5 && captcha == 2 {
+							if !success && status == 666 && captcha == 2 {
 
 								sender.Reply("正在进行验证...")
 								for {
@@ -478,9 +367,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 										break
 									}
 									if i > 5 {
-										//pcodes[sender.UserID] = msg
-										//s := Config.Jdcurl + "/Captcha/" + msg
-										//sender.Reply(fmt.Sprintf("请访问网址进行手动验证%s", s))
 										sender.Reply("滑块验证失败,请尝试重新登录")
 										break
 									}
@@ -492,13 +378,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									if strings.Contains(message, "上限") {
 										i = 6
 										sender.Reply(message)
+										break
 									}
-									//sender.Reply(message)
 								}
-								//} else if !success && captcha == 2 {
-								//	pcodes[string(sender.UserID)] = msg
-								//	s := Config.Jdcurl + "/Captcha/" + msg
-								//	sender.Reply(fmt.Sprintf("请访问网址进行手动验证%s", s))
 
 							} else {
 
@@ -536,9 +418,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									message, _ := jsonparser.GetString(data, "message")
 									success, _ := jsonparser.GetBoolean(data, "success")
 									status, _ := jsonparser.GetInt(data, "data", "status")
-									if !success {
-										//s.Reply("滑块验证失败：" + string(data))
-									}
 									if success {
 										pcodes[sender.UserID] = msg
 										sender.Reply("请输入6位验证码：")
@@ -559,6 +438,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									if strings.Contains(message, "上限") {
 										i = 6
 										sender.Reply(message)
+										break
 									}
 								}
 							} else {
@@ -799,27 +679,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 		}
 
-		{ //赚钱大赢家
-			ss := regexp.MustCompile(`shareId=(\S+)(&|&amp;)bridgeType`).FindStringSubmatch(msg)
-			if len(ss) > 0 {
-				if !sender.IsAdmin {
-					coin := GetCoin(sender.UserID)
-					if coin < Config.Zqdyj {
-						return fmt.Sprintf("赚钱大赢家需要%d个互助值", Config.Zqdyj)
-					}
-					RemCoin(sender.UserID, Config.Zqdyj)
-					sender.Reply(fmt.Sprintf("赚钱大赢家即将开始，已扣除%d个互助值", Config.Zqdyj))
-				} else {
-					sender.Reply(fmt.Sprintf("赚钱大赢家即将开始，已扣除%d个互助值，管理员通道", Config.Zqdyj))
-					runTask(&Task{Path: "bigwinner_ccc.py", Envs: []Env{
-						{Name: "dyjid", Value: ss[1]},
-					}}, sender)
-
-					return "赚钱大赢家助力结束"
-				}
-			}
-		}
-
 		{
 			if strings.Contains(msg, "pt_key") {
 				logs.Info(msg + "开始CK登录")
@@ -928,106 +787,6 @@ func randShuffle(slice []JdCookie) {
 	})
 }
 
-func nianhelp(invited string) (flag bool) {
-	logs.Info("开始金币助力")
-	k := 0
-	var cks []JdCookie
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Find(&cks)
-	randShuffle(cks)
-	for _, ck := range cks {
-		time.Sleep(time.Second * time.Duration(3))
-		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
-		sc := getScKey(cookie)
-		if sc != "" {
-			url := "https://api.m.jd.com/client.action?functionId=promote_collectScore"
-			//body := fmt.Sprintf(`{"ss":"{\"extraData\":{\"log\":\"\",\"sceneid\":\"HYGJZYh5\"},\"secretp\":\"%s\",\"random\":\"%d\"}","inviteId":"%s"}`, sc, rand.Intn(99999999), invited)
-			body := fmt.Sprintf(`{"random":"3m5QtABC","log":"1666267341263~194Cl2EtLOeMDFqSmpmSzAxMQ==.W3xcUHlcfVlVclx+WRgBKBAYLQwBegJXNVtmKUoIRnsUVzVbNActOBsyM1IGBwAIJRgvIz4HJQB8Gl8aFHtaSnpaNA==.6c8730f2~C,1~22CD2662C9991565879D915A12D2A9A085468D19~07bzbsz~C~SRJAWBANam0cFkQPWxAOaxYFBhQLcE10AxgEfX4dURxAEk0UVgMdByMffwseUGAEGFQeQxMcElABTAVwGHYHTQJqbR4UHkQWaB4VVkJeFgpQGhBHQxZbEQgOBFcABgMGAQ8HBQINBlcEEBgSQwRXGwIQFUZEQEFUQlcSHBZHBFcQDhJSB0dNTEYUU1EWGRBHVV4SDmtYGgYFHAZNABUJHlRvHBZfWBULARwWUxIUCBYJBVhQClwCVQsGAgYKUVNUVQ0IUQYLDQhRAlUBDABWVxIYF1xHEwoSXWAJWVxREhhDRxsCA1cEBgYDBQQFAQICA00UWF8SDkMKWwtXAwUIUAZQBgEEA1FTAFQGUgUFBwEBXlRWB1QBVAMEBwlWBgcDFB4WVkQDEQMaXypBQUxsBnpcelJ3YyRfZlVeXldDAGkQTRBeQhcIFXBAQFhVQXVdWUBBFVZLFBIoXFMaFx4VX1FGFgpDBwQMAgVRERUaQQJAEg5uCgMFHAMNADwaEEZfFltoG1FiCV1eUQQBGwMSHBZZLmUQGBIFVR0PGh5DAwEaBBwDExwSBQZZBAMEEhhDClsLVwMFCFAGUAYBBANRUwBUBlIFBQcBAV5UVgdUAVQDBAcJVgYHAxQeFlEWPB8bUV0AEAoWU1RRV1ZWQERDGhBVWhZbEUwaHkNRWRYPEEAFHgAaBUMaEFdWaxcRAxoCUBAcFldWFQsSQlVeBVlfCQNZVGJNeXAiEBwWWFgVC2sBGABNBm8YElYNXF4aCEMDBgIDAAEGAwMMBlMOTAVhZRcEYAhFEEFEeXF4elReXFxmG3dLenEJXB1fbUoxZAJiA2ZiRWpqBwkqYnAMZFA1aWltWFQLfmZgSnxlQGd1AFAPa3FDfDdKVQFwI2djcU8KTnpicVd5MA5kcEkAJHgJAEguSABNcXMDVHNaDEQ0fkVyfV0KZ3F8AiBkXHV6dWJFcX9ncVdjY0dzbhtcTGxYMAd+cQ1/ellhXHkABm9/XX1iMGJeT1ckQnF5YgYAZ2RYY3YlYwJ4Wm1VfGttYSdfQEx3c1QMHgcHBQJVVFFSShgfCEZMH3BOZ118ZGZidXl1N2NxfFdxMntBbmMkRVtmYlp+VXVcTHEkZ11gdUxRYGtAYyt0cV9yc2ZWYndMdjJgZUx2cQZAanljKGB4dnt2ckZfYnJyWWNlcXlmIlt8cHoWd3R1Qn9keWJ6ZXUGXWFxAENcTQlcRwNZBloXHhVcQ1cWCkMUHhZIVxMRAxoCUE5IDUlIW1ZXV0ZXUUxYWBJJ~1uk1y6y","actionType":"0","inviteId":"%s"}`, invited)
-			req := httplib.Post(url)
-			random := browser.Random()
-			req.Param("clientVersion", "-1")
-			req.Param("appid", "signed_wh5")
-			req.Param("functionId", "promote_collectScore")
-			req.Param("body", body)
-			req.Header("User-Agent", random)
-			req.Header("Accept", "application/json, text/plain, */*")
-			req.Header("Connection", "keep-alive")
-			req.Header("Accept-Language", "zh-cn")
-			req.Header("Accept-Encoding", "gzip, deflate, br")
-			req.Header("Origin", "https://bunearth.m.jd.com")
-			req.Header("Cookie", cookie)
-			s, _ := req.String()
-			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
-			if bizCode == 0 {
-				k++
-				logs.Info("助力成功")
-
-			} else {
-				logs.Info("助力失败")
-				logs.Info(s)
-				if strings.Contains(s, "好友人气爆棚") {
-					return true
-				} else if strings.Contains(s, "火爆") {
-					ck.Update(Tyt, False)
-				} else {
-					ck.Update(Tyt, s)
-				}
-			}
-		}
-	}
-	return false
-}
-
-func zdhelp(invited string) (flag bool) {
-	logs.Info("开始组队")
-	k := 0
-	var cks []JdCookie
-	db.Where(fmt.Sprintf("%s = 'true'", Available)).Find(&cks)
-	randShuffle(cks)
-	for _, ck := range cks {
-		time.Sleep(time.Second * time.Duration(3))
-		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
-		sc := getScKey(cookie)
-		if sc != "" {
-			url := "https://api.m.jd.com/client.action?functionId=promote_pk_joinGroup"
-			body := fmt.Sprintf(`{"random":"3m5QtABC","log":"1666267341263~194Cl2EtLOeMDFqSmpmSzAxMQ==.W3xcUHlcfVlVclx+WRgBKBAYLQwBegJXNVtmKUoIRnsUVzVbNActOBsyM1IGBwAIJRgvIz4HJQB8Gl8aFHtaSnpaNA==.6c8730f2~C,1~22CD2662C9991565879D915A12D2A9A085468D19~07bzbsz~C~SRJAWBANam0cFkQPWxAOaxYFBhQLcE10AxgEfX4dURxAEk0UVgMdByMffwseUGAEGFQeQxMcElABTAVwGHYHTQJqbR4UHkQWaB4VVkJeFgpQGhBHQxZbEQgOBFcABgMGAQ8HBQINBlcEEBgSQwRXGwIQFUZEQEFUQlcSHBZHBFcQDhJSB0dNTEYUU1EWGRBHVV4SDmtYGgYFHAZNABUJHlRvHBZfWBULARwWUxIUCBYJBVhQClwCVQsGAgYKUVNUVQ0IUQYLDQhRAlUBDABWVxIYF1xHEwoSXWAJWVxREhhDRxsCA1cEBgYDBQQFAQICA00UWF8SDkMKWwtXAwUIUAZQBgEEA1FTAFQGUgUFBwEBXlRWB1QBVAMEBwlWBgcDFB4WVkQDEQMaXypBQUxsBnpcelJ3YyRfZlVeXldDAGkQTRBeQhcIFXBAQFhVQXVdWUBBFVZLFBIoXFMaFx4VX1FGFgpDBwQMAgVRERUaQQJAEg5uCgMFHAMNADwaEEZfFltoG1FiCV1eUQQBGwMSHBZZLmUQGBIFVR0PGh5DAwEaBBwDExwSBQZZBAMEEhhDClsLVwMFCFAGUAYBBANRUwBUBlIFBQcBAV5UVgdUAVQDBAcJVgYHAxQeFlEWPB8bUV0AEAoWU1RRV1ZWQERDGhBVWhZbEUwaHkNRWRYPEEAFHgAaBUMaEFdWaxcRAxoCUBAcFldWFQsSQlVeBVlfCQNZVGJNeXAiEBwWWFgVC2sBGABNBm8YElYNXF4aCEMDBgIDAAEGAwMMBlMOTAVhZRcEYAhFEEFEeXF4elReXFxmG3dLenEJXB1fbUoxZAJiA2ZiRWpqBwkqYnAMZFA1aWltWFQLfmZgSnxlQGd1AFAPa3FDfDdKVQFwI2djcU8KTnpicVd5MA5kcEkAJHgJAEguSABNcXMDVHNaDEQ0fkVyfV0KZ3F8AiBkXHV6dWJFcX9ncVdjY0dzbhtcTGxYMAd+cQ1/ellhXHkABm9/XX1iMGJeT1ckQnF5YgYAZ2RYY3YlYwJ4Wm1VfGttYSdfQEx3c1QMHgcHBQJVVFFSShgfCEZMH3BOZ118ZGZidXl1N2NxfFdxMntBbmMkRVtmYlp+VXVcTHEkZ11gdUxRYGtAYyt0cV9yc2ZWYndMdjJgZUx2cQZAanljKGB4dnt2ckZfYnJyWWNlcXlmIlt8cHoWd3R1Qn9keWJ6ZXUGXWFxAENcTQlcRwNZBloXHhVcQ1cWCkMUHhZIVxMRAxoCUE5IDUlIW1ZXV0ZXUUxYWBJJ~1uk1y6y","actionType":"0","inviteId":"%s"}`, invited)
-
-			req := httplib.Post(url)
-			random := browser.Random()
-			req.Param("clientVersion", "-1")
-			req.Param("appid", "signed_wh5")
-			req.Param("functionId", "promote_pk_joinGroup")
-			req.Param("body", body)
-			req.Header("User-Agent", random)
-			req.Header("Accept", "application/json, text/plain, */*")
-			req.Header("Connection", "keep-alive")
-			req.Header("Accept-Language", "zh-cn")
-			req.Header("Accept-Encoding", "gzip, deflate, br")
-			req.Header("Origin", "https://bunearth.m.jd.com")
-			req.Header("Cookie", cookie)
-			s, _ := req.String()
-			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
-			if bizCode == 0 {
-				k++
-				logs.Info("助力成功")
-			} else {
-				logs.Info("助力失败")
-				if strings.Contains(s, "该团队已经满员了") {
-					return true
-				} else if strings.Contains(s, "火爆") {
-					//ck.Update(Dig, False)
-				} else if strings.Contains(s, "已结束") {
-					return false
-				} else if strings.Contains(s, "你已经有团队了") || strings.Contains(s, "你已经有队伍了") {
-					//ck.Update(Dig, False)
-				} else {
-					//ck.Update(Dig, s)
-				}
-			}
-		}
-	}
-	return false
-}
-
 func starttyt(red string) (num int, f bool) {
 	k := 0
 	var cks []JdCookie
@@ -1107,88 +866,6 @@ func getScKey(ck string) (key string) {
 		return s
 	}
 	return ""
-}
-
-func runpz(sender *Sender, code string) {
-	for {
-		time.Sleep(time.Duration(rand.Intn(60)))
-		if pz < 3 {
-			pz++
-			num, f := startpz(code)
-			no := pzlist[code]
-			if f {
-				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀结束共用:%d个账号", no, num))
-			} else {
-				sender.Reply(fmt.Sprintf("订单编号：%d,膨胀异常，请联系群主，或自行检查", no))
-			}
-			pz--
-			return
-		}
-	}
-}
-
-func startpz(invited string) (num int, flag bool) {
-	logs.Info("开始膨胀助力")
-	k := 0
-	var cks []JdCookie
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Find(&cks)
-	randShuffle(cks)
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Dig, Available)).Order("RAND()").Find(&cks)
-	for _, ck := range cks {
-		time.Sleep(time.Second * time.Duration(3))
-		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
-		sc := getScKey(cookie)
-		logs.Info(cookie)
-		logs.Info(sc)
-		if sc != "" {
-			//https://wbbny.m.jd.com/pb/013349910/3rFiv8Sdkn7BPhk8Pw8xrgMWH6mT/index.html?babelChannel=shouyefuceng&shareType=expandHelp&inviteId=PKASTT0225KkcRkpP9VPQdhz9lf9cJgCTdXn4aRzTQjeQOc&mpin=RnFtkWRRYTOMmdRP--txCYtZA7-VliccLeHN&from=sc
-			url := "https://api.m.jd.com/client.action?functionId=promote_pk_collectPkExpandScore"
-			body := fmt.Sprintf(`{"random":"3m5QtABC","log":"1666267341263~194Cl2EtLOeMDFqSmpmSzAxMQ==.W3xcUHlcfVlVclx+WRgBKBAYLQwBegJXNVtmKUoIRnsUVzVbNActOBsyM1IGBwAIJRgvIz4HJQB8Gl8aFHtaSnpaNA==.6c8730f2~C,1~22CD2662C9991565879D915A12D2A9A085468D19~07bzbsz~C~SRJAWBANam0cFkQPWxAOaxYFBhQLcE10AxgEfX4dURxAEk0UVgMdByMffwseUGAEGFQeQxMcElABTAVwGHYHTQJqbR4UHkQWaB4VVkJeFgpQGhBHQxZbEQgOBFcABgMGAQ8HBQINBlcEEBgSQwRXGwIQFUZEQEFUQlcSHBZHBFcQDhJSB0dNTEYUU1EWGRBHVV4SDmtYGgYFHAZNABUJHlRvHBZfWBULARwWUxIUCBYJBVhQClwCVQsGAgYKUVNUVQ0IUQYLDQhRAlUBDABWVxIYF1xHEwoSXWAJWVxREhhDRxsCA1cEBgYDBQQFAQICA00UWF8SDkMKWwtXAwUIUAZQBgEEA1FTAFQGUgUFBwEBXlRWB1QBVAMEBwlWBgcDFB4WVkQDEQMaXypBQUxsBnpcelJ3YyRfZlVeXldDAGkQTRBeQhcIFXBAQFhVQXVdWUBBFVZLFBIoXFMaFx4VX1FGFgpDBwQMAgVRERUaQQJAEg5uCgMFHAMNADwaEEZfFltoG1FiCV1eUQQBGwMSHBZZLmUQGBIFVR0PGh5DAwEaBBwDExwSBQZZBAMEEhhDClsLVwMFCFAGUAYBBANRUwBUBlIFBQcBAV5UVgdUAVQDBAcJVgYHAxQeFlEWPB8bUV0AEAoWU1RRV1ZWQERDGhBVWhZbEUwaHkNRWRYPEEAFHgAaBUMaEFdWaxcRAxoCUBAcFldWFQsSQlVeBVlfCQNZVGJNeXAiEBwWWFgVC2sBGABNBm8YElYNXF4aCEMDBgIDAAEGAwMMBlMOTAVhZRcEYAhFEEFEeXF4elReXFxmG3dLenEJXB1fbUoxZAJiA2ZiRWpqBwkqYnAMZFA1aWltWFQLfmZgSnxlQGd1AFAPa3FDfDdKVQFwI2djcU8KTnpicVd5MA5kcEkAJHgJAEguSABNcXMDVHNaDEQ0fkVyfV0KZ3F8AiBkXHV6dWJFcX9ncVdjY0dzbhtcTGxYMAd+cQ1/ellhXHkABm9/XX1iMGJeT1ckQnF5YgYAZ2RYY3YlYwJ4Wm1VfGttYSdfQEx3c1QMHgcHBQJVVFFSShgfCEZMH3BOZ118ZGZidXl1N2NxfFdxMntBbmMkRVtmYlp+VXVcTHEkZ11gdUxRYGtAYyt0cV9yc2ZWYndMdjJgZUx2cQZAanljKGB4dnt2ckZfYnJyWWNlcXlmIlt8cHoWd3R1Qn9keWJ6ZXUGXWFxAENcTQlcRwNZBloXHhVcQ1cWCkMUHhZIVxMRAxoCUE5IDUlIW1ZXV0ZXUUxYWBJJ~1uk1y6y","actionType":"0","inviteId":"%s"}`, invited)
-			req := httplib.Post(url)
-			random := browser.Random()
-			req.Param("clientVersion", "-1")
-			//req.Param("functionId", "promote_pk_getHomeData")
-			req.Param("appid", "signed_wh5")
-			req.Param("functionId", "promote_pk_collectPkExpandScore")
-			req.Param("body", body)
-			req.Header("User-Agent", random)
-			req.Header("Accept", "application/json, text/plain, */*")
-			req.Header("Connection", "keep-alive")
-			req.Header("Accept-Language", "zh-cn")
-			req.Header("Accept-Encoding", "gzip, deflate, br")
-			req.Header("Origin", "https://wbbny.m.jd.com")
-			req.Header("Cookie", cookie)
-			s, _ := req.String()
-			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
-			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
-			if bizCode == 0 {
-				k++
-				logs.Info("助力成功")
-
-			} else {
-				logs.Info("助力失败")
-				logs.Info(s)
-				if strings.Contains(bizMsg, "TA已经获得足够的助力了") {
-					return k, true
-				} else if strings.Contains(bizMsg, "火爆") {
-					ck.Update(Dig, False)
-				} else if strings.Contains(bizMsg, "已结束") {
-					return k, false
-				} else if strings.Contains(bizMsg, "次数") {
-					ck.Update(Dig, False)
-				} else {
-					ck.Update(Dig, bizMsg)
-				}
-			}
-		} else {
-			CookieOK(&ck)
-			go func() {
-				Save <- &JdCookie{}
-			}()
-		}
-	}
-	return k, false
-
 }
 
 func getMd5String1(str string) string {

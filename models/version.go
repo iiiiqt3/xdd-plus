@@ -12,11 +12,12 @@ import (
 	"time"
 )
 
-var version = "v6.6.9"
-var describe = "修复版本"
+var version = "v7.0"
+var describe = "修复BUG"
 var AppName = "xdd"
 var pname = regexp.MustCompile(`/([^/\s]+)`).FindStringSubmatch(os.Args[0])[1]
 var UpdateUrl = "https://update.smxy.xyz"
+var notify = true
 
 func initVersion() {
 	Config.Version = version
@@ -35,6 +36,27 @@ func initVersion() {
 		if value != version {
 			logs.Info("小滴滴检测到新版本：" + value)
 			(&JdCookie{}).Push("小滴滴检测到新版本：" + value)
+		}
+	}
+}
+
+func GetNewVersion() {
+	if notify {
+		Config.Version = version
+		logs.Info("检查更新" + version)
+		value := GetEnv("updateUrl")
+		if value != "" {
+			UpdateUrl = value
+		}
+		value, err := httplib.Get(UpdateUrl + "/version").String()
+		if err != nil {
+			logs.Info("更新版本的失败")
+		} else {
+			if value != version {
+				notify = false
+				logs.Info("小滴滴检测到新版本：" + value)
+				(&JdCookie{}).Push("小滴滴检测到新版本：" + value)
+			}
 		}
 	}
 }
