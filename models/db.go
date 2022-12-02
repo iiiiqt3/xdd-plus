@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -271,7 +270,6 @@ func NewJdCookie(ck *JdCookie) error {
 		tx.Rollback()
 		return err
 	}
-	go test2(fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
 	if err := tx.Create(&JdCookie{
 		PtPin:    ck.PtPin,
 		PtKey:    ck.PtKey,
@@ -293,17 +291,7 @@ func UpdateCookie(ck *JdCookie) error {
 	ck.CreateAt = date
 	ck.UpdateAt = date
 	tx := db.Begin()
-	if err := tx.Updates(ck).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-	go test2(fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
-	if err := tx.Create(&JdCookie{
-		PtPin:    ck.PtPin,
-		PtKey:    ck.PtKey,
-		WsKey:    ck.WsKey,
-		CreateAt: date,
-	}).Error; err != nil {
+	if err := tx.Where(PtPin+" = ?", ck.PtPin).Updates(ck).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
