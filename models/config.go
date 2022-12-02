@@ -7,7 +7,7 @@ import (
 
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type WxConfig struct {
@@ -48,7 +48,7 @@ type Yaml struct {
 	SMSAddress          string `yaml:"SMSAddress"`
 	Lim                 int    `yaml:"Lim"`
 	Tyt                 int    `yaml:"Tyt"`
-	Zqdyj                 int    `yaml:"Zqdyj"`
+	Zqdyj               int    `yaml:"Zqdyj"`
 	IFC                 bool   `yaml:"IFC"`
 	Later               int    `yaml:"Later"`
 	Jdcurl              string `yaml:"Jdcurl"`
