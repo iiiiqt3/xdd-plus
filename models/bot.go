@@ -1267,7 +1267,7 @@ func rundyj(sender *Sender, code string) {
 			} else if getInt == 100 {
 				sender.Reply(fmt.Sprintf("订单编号：%d,地址:%s,等待管理员通知重发", no, fmt.Sprintf("https://wqs.jd.com/sns/202210/20/make-money-shop/bridge.html?type=sign&activeId=63526d8f5fe613a6adb48f03&shareId=%s&bridgeType=sign&sharefromapp=jdltapp&channel=superjd-m-makemoneyking-hudong&utm_user=plusmember&ad_od=share&utm_source=androidapp&utm_medium=appshare&utm_campaign=t_335139774&utm_term=Wxfriends", code)))
 			} else {
-				sender.Reply(fmt.Sprintf("订单编号：%d,邀请异常，%s,请联系管理员", no, code))
+				sender.Reply(fmt.Sprintf("订单编号：%d,邀请异常，%s,请联系管理员", no, fmt.Sprintf("https://wqs.jd.com/sns/202210/20/make-money-shop/bridge.html?type=sign&activeId=63526d8f5fe613a6adb48f03&shareId=%s&bridgeType=sign&sharefromapp=jdltapp&channel=superjd-m-makemoneyking-hudong&utm_user=plusmember&ad_od=share&utm_source=androidapp&utm_medium=appshare&utm_campaign=t_335139774&utm_term=Wxfriends", code)))
 			}
 			pz--
 			mu.Unlock()
