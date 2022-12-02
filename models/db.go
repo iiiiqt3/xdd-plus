@@ -270,15 +270,6 @@ func NewJdCookie(ck *JdCookie) error {
 		tx.Rollback()
 		return err
 	}
-	if err := tx.Create(&JdCookie{
-		PtPin:    ck.PtPin,
-		PtKey:    ck.PtKey,
-		WsKey:    ck.WsKey,
-		CreateAt: date,
-	}).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
 	return tx.Commit().Error
 }
 
