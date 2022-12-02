@@ -130,8 +130,7 @@ func initCookie() {
 	for i := range cks {
 		time.Sleep(time.Second * time.Duration(Config.Later))
 		if cks[i].Available == True && !CookieOK(&cks[i]) {
-			logs.Info("开始禁用")
-			cks[i].OutPool()
+			cks[i].Updates(JdCookie{Available: False})
 		}
 	}
 	(&JdCookie{}).Push("账号检测结束")
@@ -234,6 +233,7 @@ func updateCookie() {
 			rsp, _ := getKey(pinky)
 			if strings.Contains(rsp, "fake") {
 				yy++
+				ck.Update(Available, False)
 				ck.Push(fmt.Sprintf("Wskey失效账号，%s", ck.PtPin))
 				(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，%s", ck.PtPin))
 			} else {
@@ -246,8 +246,7 @@ func updateCookie() {
 				if ptPin != "" || ptKey != "" {
 					if nck, err := GetJdCookie(ck1.PtPin); err == nil {
 						xx++
-						nck.InPool(ck1.PtKey)
-						nck.Update(Available, True)
+						nck.Updates(JdCookie{PtKey: ptKey, Available: True})
 						msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
 						////不再发送成功提醒
 						//(&JdCookie{}).Push(msg)
@@ -258,7 +257,6 @@ func updateCookie() {
 						(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", ck.PtPin))
 					}
 				} else {
-
 					yy++
 					(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
 				}
@@ -343,35 +341,23 @@ func CookieOK(ck *JdCookie) bool {
 						//缺少错误判断
 						if strings.Contains(msg, "错误") {
 							ck.Push(fmt.Sprintf("Wskey失效账号，%s", ck.PtPin))
+							ck.Updates(JdCookie{Available: False})
 							(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，%s", ck.PtPin))
 						} else {
 							ptKey := FetchJdCookieValue("pt_key", msg)
 							ptPin := FetchJdCookieValue("pt_pin", msg)
-							logs.Info(ptPin)
-							ck := JdCookie{
-								PtKey: ptKey,
-								PtPin: ptPin,
-							}
 							if nck, err := GetJdCookie(ptPin); err == nil {
-								nck.InPool(ck.PtKey)
-								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-								(&JdCookie{}).Push(msg)
-								logs.Info(msg)
+								nck.Updates(JdCookie{PtKey: ptKey, Available: True})
 							} else {
-								//nck.Update(Available, False)
+								nck.Updates(JdCookie{Available: False})
 								(&JdCookie{}).Push(fmt.Sprintf("过期转换失败，%s", ck.PtPin))
 							}
 						}
-
-					} else {
-						ck.Push(fmt.Sprintf("失效账号，%s \n %s", ck.Nickname, Config.Invalid))
-						JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
 					}
 				} else {
-					ck.Push(fmt.Sprintf("失效账号，%s \n %s", ck.Nickname, Config.Invalid))
-					JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
+					//ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录，安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
+					//JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
 				}
-
 			}
 			return false
 		}

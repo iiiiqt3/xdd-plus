@@ -398,7 +398,7 @@ func CheckLogin(token, cookie, okl_token string) (string, *models.JdCookie) {
 			Hack:  models.False,
 		}
 		if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
-			nck.InPool(ck.PtKey)
+			models.UpdateCookie(&ck)
 			msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 			(&models.JdCookie{}).Push(msg)
 			logs.Info(msg)
@@ -496,7 +496,8 @@ func (c *LoginController) CkLogin() {
 					c.Ctx.WriteString(string(jsons))
 				} else if !models.HasKey(key) {
 					ck, _ := models.GetJdCookie(pin)
-					ck.InPool(key)
+					//更新CK
+					models.UpdateCookie(ck)
 					result.Message = fmt.Sprintf("更新成功")
 					//result.Data = ck.Query()
 					jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
@@ -560,9 +561,8 @@ func (c *LoginController) SMSLogin() {
 
 		if ptKey != "" && ptPin != "" {
 			if models.CookieOK(ck) {
-				(&models.JdCookie{}).Push(cookie)
 				if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
-					nck.InPool(ptKey)
+					models.UpdateCookie(ck)
 					if qq != "" && len(qq) > 6 {
 						//ck.Update(models.QQ, qq)
 						atoi, _ := strconv.Atoi(qq)
@@ -706,20 +706,21 @@ func (c *LoginController) WskeyLogin() {
 	}
 }
 
-func (c *LoginController) Cookie() {
-	cookies := c.Ctx.Input.Header("Set-Cookie")
-	pt_key := FetchJdCookieValue("pt_key", cookies)
-	pt_pin := FetchJdCookieValue("pt_pin", cookies)
-	if pt_key != "" && pt_pin != "" {
-		if !models.HasPin(pt_pin) {
-			models.NewJdCookie(&models.JdCookie{
-				PtKey: pt_key,
-				PtPin: pt_pin,
-				Hack:  models.True,
-			})
-		} else if !models.HasKey(pt_key) {
-			ck, _ := models.GetJdCookie(pt_pin)
-			ck.InPool(pt_key)
-		}
-	}
-}
+//
+//func (c *LoginController) Cookie() {
+//	cookies := c.Ctx.Input.Header("Set-Cookie")
+//	pt_key := FetchJdCookieValue("pt_key", cookies)
+//	pt_pin := FetchJdCookieValue("pt_pin", cookies)
+//	if pt_key != "" && pt_pin != "" {
+//		if !models.HasPin(pt_pin) {
+//			models.NewJdCookie(&models.JdCookie{
+//				PtKey: pt_key,
+//				PtPin: pt_pin,
+//				Hack:  models.True,
+//			})
+//		} else if !models.HasKey(pt_key) {
+//			ck, _ := models.GetJdCookie(pt_pin)
+//			ck.InPool(pt_key)
+//		}
+//	}
+//}

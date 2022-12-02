@@ -1088,7 +1088,7 @@ var codeSignals = []CodeSignal{
 							PtPin: ptPin,
 						}
 						if nck, err := GetJdCookie(ck.PtPin); err == nil {
-							nck.InPool(ck.PtKey)
+							nck.Updates(JdCookie{PtKey: ptKey, Available: True})
 							msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 							sender.Reply(msg)
 							logs.Info(msg)
@@ -1114,7 +1114,6 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			sender.handleJdCookies(func(ck *JdCookie) {
 				ck.Removes(ck)
-				ck.OutPool()
 				sender.Reply(fmt.Sprintf("已删除账号%s", ck.Nickname))
 			})
 			return nil
