@@ -2,12 +2,12 @@ package models
 
 import (
 	"crypto/md5"
-//	"encoding/base64"
+	//	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/buger/jsonparser"
-//	"github.com/skip2/go-qrcode"
+	//	"github.com/skip2/go-qrcode"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -56,10 +56,6 @@ type ViVoRes struct {
 }
 
 var ListenQQPrivateMessage = func(uid int64, msg string) {
-	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
-}
-
-var ListenQQTempPrivateMessage = func(uid int64, msg string) {
 	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
 }
 
@@ -167,30 +163,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					return useKey(msg, sender.UserID)
 				}
 			}
-
-			//转码
-//			{
-//				if strings.Contains(msg, "https://kpl.m.jd.com/product") {
-//					ss := regexp.MustCompile(`wareId=(\S+)(&|&amp;)utm_source`).FindStringSubmatch(msg)
-//					url := fmt.Sprintf("https://wqdeal.jd.com/deal/confirmorder/main?commlist=%s,,1,%s,1,0,0", ss[1], ss[1])
-//					data, _ := qrcode.Encode(url, qrcode.Medium, 256)
-//					err2 := ioutil.WriteFile("./output.jpg", data, 0666)
-//					if err2 != nil {
-//						logs.Error(err2)
-//					}
-//					return "data:image/png;base64," + base64.StdEncoding.EncodeToString(data)
-//				} else if strings.Contains(msg, "item.m.jd.com/product") {
-//					var s = msg[strings.Index(msg, "product/")+8 : strings.Index(msg, ".html?")]
-//					logs.Info(s)
-//					url := fmt.Sprintf("https://wqdeal.jd.com/deal/confirmorder/main?commlist=%s,,1,%s,1,0,0", s, s)
-//					data, _ := qrcode.Encode(url, qrcode.Medium, 256)
-//					err2 := ioutil.WriteFile("./output.jpg", data, 0666)
-//					if err2 != nil {
-//						logs.Error(err2)
-//					}
-//					return "data:image/png;base64," + base64.StdEncoding.EncodeToString(data)
-//				}
-//			}
 
 			//口令
 			{
@@ -520,7 +492,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								ck.Telegram = sender.UserID
 							}
 							if nck, err := GetJdCookie(ck.PtPin); err == nil {
-								nck.InPool(ck.PtKey)
+								nck.Updates(JdCookie{PtKey: ptKey})
 								if nck.WsKey == "" || len(nck.WsKey) == 0 {
 									if sender.IsQQ() {
 										ck.Update(QQ, ck.QQ)
@@ -699,7 +671,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							sender.Reply(fmt.Sprintf("重复提交"))
 						} else {
 							if nck, err := GetJdCookie(ck.PtPin); err == nil {
-								nck.InPool(ck.PtKey)
+								nck.Updates(JdCookie{PtKey: ptKey})
 								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 								if sender.IsQQ() {
 									ck.Update(QQ, ck.QQ)

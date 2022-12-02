@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var version = "v7.0"
+var version = "v7.1"
 var describe = "debug版本"
 var AppName = "xdd"
 var pname = regexp.MustCompile(`/([^/\s]+)`).FindStringSubmatch(os.Args[0])[1]

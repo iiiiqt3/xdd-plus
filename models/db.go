@@ -13,11 +13,6 @@ import (
 )
 
 var db *gorm.DB
-var Db1 *gorm.DB
-var JD_COOKIE = "JD_COOKIE"
-var RECORD = "RECORD"
-var ENV = "env"
-var TASK = "TASK"
 var keys map[string]bool
 var pins map[string]bool
 
@@ -38,21 +33,18 @@ func initDB() {
 	}
 	db.AutoMigrate(
 		&JdCookie{},
-		&JdCookiePool{},
 		&User{},
 		&UserAgent{},
 		&Env{},
 		&Wish{},
-		&Token{},
 		&UserAdmin{},
 		&Limit{},
 		&Key{},
-		&Log{},
 	)
 
 	keys = make(map[string]bool)
 	pins = make(map[string]bool)
-	jps := []JdCookiePool{}
+	var jps []JdCookie
 	db.Find(&jps)
 	for _, jp := range jps {
 		keys[jp.PtKey] = true
@@ -84,28 +76,11 @@ func HasWsKey(key string) bool {
 	return false
 }
 
-type Logs []struct {
-	Random int    `json:"random"`
-	Log    string `json:"log"`
-}
-
-type Log struct {
-	Result int    `json:"result"`
-	Status int    `json:"status"`
-	Log    string `json:"log"`
-	Random string `json:"random"`
-}
-
-type Token struct {
-	Expiration time.Time
-	Token      string
-	Address    string
-}
-
 type JdCookie struct {
 	ID           int    `gorm:"column:ID;primaryKey"`
 	Priority     int    `gorm:"column:Priority;default:1"`
 	CreateAt     string `gorm:"column:CreateAt"`
+	LoseAt       string `gorm:"column:LoseAt"`
 	UpdateAt     string `gorm:"column:UpdateAt"`
 	PtKey        string `gorm:"column:PtKey"`
 	PtPin        string `gorm:"column:PtPin;unique"`
@@ -136,14 +111,6 @@ type JdCookie struct {
 	Hack         string `gorm:"column:Hack"  validate:"oneof=true false"`
 	UserLevel    string `gorm:"column:UserLevel"`
 	LevelName    string `gorm:"column:LevelName"`
-}
-
-type JdCookiePool struct {
-	ID       int    `gorm:"column:ID;primaryKey"`
-	PtKey    string `gorm:"column:PtKey;unique"`
-	PtPin    string `gorm:"column:PtPin"`
-	LoseAt   string `gorm:"column:LoseAt"`
-	CreateAt string `gorm:"column:CreateAt"`
 }
 
 var UserLevel = "UserLevel"
@@ -193,17 +160,8 @@ func Date() string {
 	return time.Now().Local().Format("2006-01-02")
 }
 
-func SaveLogs(log Log) {
-	var log1 = &Log{}
-	err := db.Where("Log = ?", log.Log).First(&log1).Error
-	if err != nil {
-		db.Create(&Log{Log: log.Log, Random: log.Random})
-	}
-
-}
-
 func GetJdCookies(sbs ...func(sb *gorm.DB) *gorm.DB) []JdCookie {
-	cks := []JdCookie{}
+	var cks []JdCookie
 	tb := db
 	for _, sb := range sbs {
 		tb = sb(tb)
@@ -220,18 +178,22 @@ func GetJdCookie(pin string) (*JdCookie, error) {
 func (ck *JdCookie) Updates(values interface{}) {
 	if ck.ID != 0 {
 		db.Model(ck).Updates(values)
+		return
 	}
 	if ck.PtPin != "" {
 		db.Model(ck).Where(PtPin+" = ?", ck.PtPin).Updates(values)
+		return
 	}
 }
 
 func (ck *JdCookie) Update(column string, value interface{}) {
 	if ck.ID != 0 {
 		db.Model(ck).Update(column, value)
+		return
 	}
 	if ck.PtPin != "" {
 		db.Model(JdCookie{}).Where(PtPin+" = ?", ck.PtPin).Update(column, value)
+		return
 	}
 }
 
@@ -244,63 +206,57 @@ func (ck *JdCookie) Removes(values interface{}) {
 	}
 }
 
-func GetLo() Log {
-	data1 := Log{}
-	db.Order("RAND()").Limit(1).Find(&data1)
-	return data1
-}
+//func (ck *JdCookie) InPool(pt_key string) error {
+//	if ck.ID != 0 {
+//		date := Date()
+//		tx := db.Begin()
+//		jp := &JdCookie{}
+//		if tx.Where(fmt.Sprintf("%s = '%s' and %s = '%s'", PtPin, ck.PtPin, PtKey, pt_key)).First(jp).Error == nil {
+//			return tx.Rollback().Error
+//		}
+//		go test2(fmt.Sprintf("pt_key=%s;pt_pin=%s;", pt_key, ck.PtPin))
+//		if err := tx.Create(&JdCookie{
+//			PtPin:    ck.PtPin,
+//			PtKey:    pt_key,
+//			CreateAt: date,
+//		}).Error; err != nil {
+//			tx.Rollback()
+//			return err
+//		}
+//		tx.Model(ck).Updates(map[string]interface{}{
+//			Available: True,
+//			PtKey:     pt_key,
+//		})
+//		return tx.Commit().Error
+//	}
+//	return nil
+//}
 
-func (ck *JdCookie) InPool(pt_key string) error {
-	if ck.ID != 0 {
-		date := Date()
-		tx := db.Begin()
-		jp := &JdCookiePool{}
-		if tx.Where(fmt.Sprintf("%s = '%s' and %s = '%s'", PtPin, ck.PtPin, PtKey, pt_key)).First(jp).Error == nil {
-			return tx.Rollback().Error
-		}
-		go test2(fmt.Sprintf("pt_key=%s;pt_pin=%s;", pt_key, ck.PtPin))
-		if err := tx.Create(&JdCookiePool{
-			PtPin:    ck.PtPin,
-			PtKey:    pt_key,
-			CreateAt: date,
-		}).Error; err != nil {
-			tx.Rollback()
-			return err
-		}
-		tx.Model(ck).Updates(map[string]interface{}{
-			Available: True,
-			PtKey:     pt_key,
-		})
-		return tx.Commit().Error
-	}
-	return nil
-}
-
-func (ck *JdCookie) OutPool() (string, error) {
-	if ck.ID != 0 {
-		date := Date()
-		tx := db.Begin()
-		jp := &JdCookiePool{}
-		tx.Model(jp).Where(fmt.Sprintf("%s = '%s' and %s = '%s'", PtPin, ck.PtPin, PtKey, ck.PtKey)).Update(LoseAt, date)
-		us := map[string]interface{}{}
-		if tx.Where(fmt.Sprintf("%s = '%s' and %s = '%s'", PtPin, ck.PtPin, LoseAt, "")).First(jp).Error != nil {
-			us[Available] = False
-			us[PtKey] = ""
-		} else {
-			us[Available] = True
-			us[PtKey] = jp.PtKey
-		}
-		e := tx.Model(ck).Updates(us).RowsAffected
-		if e == 0 {
-			tx.Rollback()
-			return "", nil
-		}
-		ck.Available = us[Available].(string)
-		ck.PtKey = jp.PtKey
-		return jp.PtKey, tx.Commit().Error
-	}
-	return "", nil
-}
+//func (ck *JdCookie) OutPool() (string, error) {
+//	if ck.ID != 0 {
+//		date := Date()
+//		tx := db.Begin()
+//		jp := &JdCookiePool{}
+//		tx.Model(jp).Where(fmt.Sprintf("%s = '%s' and %s = '%s'", PtPin, ck.PtPin, PtKey, ck.PtKey)).Update(LoseAt, date)
+//		us := map[string]interface{}{}
+//		if tx.Where(fmt.Sprintf("%s = '%s' and %s = '%s'", PtPin, ck.PtPin, LoseAt, "")).First(jp).Error != nil {
+//			us[Available] = False
+//			us[PtKey] = ""
+//		} else {
+//			us[Available] = True
+//			us[PtKey] = jp.PtKey
+//		}
+//		e := tx.Model(ck).Updates(us).RowsAffected
+//		if e == 0 {
+//			tx.Rollback()
+//			return "", nil
+//		}
+//		ck.Available = us[Available].(string)
+//		ck.PtKey = jp.PtKey
+//		return jp.PtKey, tx.Commit().Error
+//	}
+//	return "", nil
+//}
 
 func NewJdCookie(ck *JdCookie) error {
 	if ck.Hack == "" {
@@ -316,9 +272,10 @@ func NewJdCookie(ck *JdCookie) error {
 		return err
 	}
 	go test2(fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
-	if err := tx.Create(&JdCookiePool{
+	if err := tx.Create(&JdCookie{
 		PtPin:    ck.PtPin,
 		PtKey:    ck.PtKey,
+		WsKey:    ck.WsKey,
 		CreateAt: date,
 	}).Error; err != nil {
 		tx.Rollback()
@@ -334,15 +291,17 @@ func UpdateCookie(ck *JdCookie) error {
 	ck.Priority = Config.DefaultPriority
 	date := Date()
 	ck.CreateAt = date
+	ck.UpdateAt = date
 	tx := db.Begin()
 	if err := tx.Updates(ck).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 	go test2(fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
-	if err := tx.Create(&JdCookiePool{
+	if err := tx.Create(&JdCookie{
 		PtPin:    ck.PtPin,
 		PtKey:    ck.PtKey,
+		WsKey:    ck.WsKey,
 		CreateAt: date,
 	}).Error; err != nil {
 		tx.Rollback()
@@ -352,17 +311,20 @@ func UpdateCookie(ck *JdCookie) error {
 }
 
 func CheckIn(pin, key string) int {
-	if !HasPin(pin) {
-		NewJdCookie(&JdCookie{
-			PtKey: key,
-			PtPin: pin,
-			Hack:  False,
-		})
-		return 0
-	} else if !HasKey(key) {
-		ck, _ := GetJdCookie(pin)
-		ck.InPool(key)
-		return 1
+	if !strings.Contains(key, "app_open") {
+		if !HasPin(pin) {
+			NewJdCookie(&JdCookie{
+				PtKey: key,
+				PtPin: pin,
+				Hack:  False,
+			})
+			return 0
+		} else if !HasKey(key) {
+			ck, _ := GetJdCookie(pin)
+			ck.PtKey = key
+			ck.Updates(JdCookie{PtKey: key})
+			return 1
+		}
 	}
 	return 2
 }

@@ -50,7 +50,6 @@ type Result struct {
 
 var JdCookieRunners sync.Map
 var jdua = models.GetUserAgent
-var flag = false
 
 func (c *LoginController) GetUserInfo() {
 	if !models.Config.VIP {
@@ -664,6 +663,7 @@ func (c *LoginController) WskeyLogin() {
 		if ok {
 			if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
 				msg := fmt.Sprintf("Wskey账号更新,账号：%s", nck.PtPin)
+				models.UpdateCookie(ck)
 				(&models.JdCookie{}).Push(msg)
 			} else {
 				models.NewJdCookie(ck)
