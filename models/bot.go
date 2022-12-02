@@ -1258,7 +1258,7 @@ func rundyj(sender *Sender, code string) {
 		for mu.TryLock() {
 			pz++
 			no := pzlist[code]
-			get := httplib.Get(fmt.Sprintf("http://zhangjiayuan.3322.org:8066/api/dyj?shareId=%s", code))
+			get := httplib.Get(fmt.Sprintf("http://192.168.195.40:8066/api/dyj?shareId=%s", code))
 			s, _ := get.Bytes()
 			logs.Info(string(s))
 			getInt, _ := jsonparser.GetInt(s, "code")
