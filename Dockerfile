@@ -6,6 +6,8 @@ COPY . .
 
 COPY ./.shell/docker-entrypoint.sh /run/docker-entrypoint.sh
 
+RUN apk add --no-cache git make build-base
+
 RUN go build -o /run/xdd -ldflags="-w -s"
 
 FROM node:alpine
