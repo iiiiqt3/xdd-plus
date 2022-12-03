@@ -15,10 +15,27 @@ import (
 var version = "v7.2"
 var describe = "debug版本"
 var AppName = "xdd"
-var pname = regexp.MustCompile(`/([^/\s]+)`).FindStringSubmatch(os.Args[0])[1]
+var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
 var notify = true
 
+func pname1() string {
+	var pname string
+	executable, err := os.Executable()
+	if err != nil {
+		submatch := regexp.MustCompile(`[\\/]([^/\s]+)`).FindStringSubmatch(os.Args[0])
+		if len(submatch) > 1 {
+			pname = submatch[1]
+		} else {
+			pname = submatch[0]
+		}
+	} else {
+		r, _ := regexp.Compile(`[\\/]`)
+		split := r.Split(executable, -1)
+		pname = split[len(split)-1]
+	}
+	return pname
+}
 func initVersion() {
 	Config.Version = version
 	logs.Info("检查更新" + version)
