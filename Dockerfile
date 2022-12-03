@@ -1,5 +1,7 @@
 FROM golang:alpine as builder
 
+ENV TZ=Asia/Shanghai GOPATH='/gopath'
+
 COPY . .
 
 COPY ./.shell/docker-entrypoint.sh /run/docker-entrypoint.sh
