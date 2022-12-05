@@ -17,6 +17,12 @@ type WxConfig struct {
 	Token   string
 }
 
+type FanLi struct {
+	Appid    string
+	Appkey   string
+	Union_id string
+}
+
 type Yaml struct {
 	Containers          []Container
 	Tasks               []Task
@@ -168,7 +174,7 @@ func initConfig() {
 	if Config.Pip == "" {
 		Config.Pip = "pip3"
 	}
-	if Config.FanLis.appid == "" || Config.FanLis.appkey == "" || Config.FanLis.union_id == "" {
+	if Config.FanLis.Appid == "" || Config.FanLis.Appkey == "" || Config.FanLis.Union_id == "" {
 		Config.OpenFan = false
 	} else {
 		Config.OpenFan = true
