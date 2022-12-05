@@ -117,12 +117,6 @@ func InitReplies() {
 	}
 }
 
-type msg struct {
-	State   string `xml:"state"`
-	Message string `xml:"message"`
-	Data    string `xml:"data"`
-}
-
 var handleMessage = func(msgs ...interface{}) interface{} {
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
 	logs.Info(msgs)
@@ -461,6 +455,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				}
 			}
 
+			//口令转换
 			{
 				if strings.Contains(msg, "口令") {
 					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
@@ -673,19 +668,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					//sender.Reply("服务升级中，目前登录请私聊群主谢谢")
 				}
 			}
-
-			//临时识别登录
-			//{
-			//	if strings.Contains(msg, "登录") || strings.Contains(msg, "登陆") {
-			//		sender.Reply("请使用网页")
-			//		if Config.CXURL != "" {
-			//			var png []byte
-			//			png, _ = qrcode.Encode(Config.CXURL, qrcode.Medium, 256)
-			//			sender.SendImg(png)
-			//		}
-			//
-			//	}
-			//}
 
 		}
 	}

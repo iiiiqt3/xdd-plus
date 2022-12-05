@@ -6,7 +6,6 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -38,7 +37,6 @@ func getKey(WSCK string) (string, error) {
 		return "Wskey错误", nil
 	}
 
-	time.Sleep(time.Duration(rand.Int63n(1)) * time.Second)
 	return ptKey, nil
 
 	//var count = 0

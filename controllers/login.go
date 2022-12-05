@@ -149,20 +149,23 @@ func (c *LoginController) SMSLogin() {
 			Hack:  models.False,
 			QQ:    0,
 		}
-		if qq != "" {
-			ck.QQ, _ = strconv.Atoi(qq)
-		}
-
 		if ptKey != "" && ptPin != "" {
 			if models.CookieOK(ck) {
 				//(&models.JdCookie{}).Push(cookie)
 				if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
-					models.UpdateCookie(ck)
 					if qq != "" && len(qq) > 6 {
 						//ck.Update(models.QQ, qq)
 						atoi, _ := strconv.Atoi(qq)
 						ck.Updates(models.JdCookie{
+							PtKey:    ptKey,
+							PtPin:    ptPin,
 							QQ:       atoi,
+							UpdateAt: time.Now().Local().Format("2006-01-02"),
+						})
+					} else {
+						ck.Updates(models.JdCookie{
+							PtKey:    ptKey,
+							PtPin:    ptPin,
 							UpdateAt: time.Now().Local().Format("2006-01-02"),
 						})
 					}
@@ -257,7 +260,11 @@ func (c *LoginController) WskeyLogin() {
 		if ok {
 			if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
 				msg := fmt.Sprintf("Wskey账号更新,账号：%s", nck.PtPin)
-				models.UpdateCookie(ck)
+				ck.Updates(models.JdCookie{
+					WsKey:    Wskey,
+					PtPin:    ptPin,
+					UpdateAt: time.Now().Local().Format("2006-01-02"),
+				})
 				(&models.JdCookie{}).Push(msg)
 			} else {
 				models.NewJdCookie(ck)
