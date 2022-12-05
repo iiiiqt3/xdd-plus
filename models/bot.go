@@ -175,7 +175,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//返利识别
 			{
 				JdItemPattern := "^https://item(.m)?.jd.com/(product/)?([0-9]+).html"
-				b2 := match.Match(msg, JdItemPattern) || strings.Contains(msg, "https://u.jd.com/")
+				b2 := !match.Match(msg, JdItemPattern) || strings.Contains(msg, "https://u.jd.com/")
 				if b2 {
 					return Get_powerful_link(msg)
 				}
