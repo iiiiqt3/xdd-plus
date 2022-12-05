@@ -144,36 +144,41 @@ func (c *WxController) HandleMessage() {
 
 	if models.Config.Wx.Model == "qx" {
 		event, _ := jsonparser.GetInt(data, "event")
-		switch event {
-		case 10009:
-			ag := &QXMessage{}
-			err := json.Unmarshal(data, ag)
-			logs.Info(err)
-			logs.Info("接收到信息" + ag.Data.Data.Msg)
-			models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
-
-		case 10011:
-			ag := &QxFriendVerifyMsg{}
-			err := json.Unmarshal(data, ag)
-			logs.Info(err)
-			auto := models.IsAutoAgreeFriendVerify()
-			if auto {
-				if models.UseAgreeMsg() {
-					AgreeMsg := models.GetEnv("AgreeMsg")
-					if !strings.Contains(ag.Data.Data.Content, AgreeMsg) {
-						return
-					}
+		val, _ := jsonparser.GetString(data, "wxid")
+		if val == models.Config.Wx.Robotid {
+			switch event {
+			case 10009:
+				ag := &QXMessage{}
+				err := json.Unmarshal(data, ag)
+				logs.Info(err)
+				logs.Info("接收到信息" + ag.Data.Data.Msg)
+				if ag.Wxid == models.Config.Wx.Robotid {
+					models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
 				}
-				args := make(map[string]string)
-				args["model"] = "qx"
-				args["v3"] = ag.Data.Data.V3
-				args["v4"] = ag.Data.Data.V4
-				args["content"] = ag.Data.Data.Content
-				args["uid"] = ag.Data.Data.Wxid
-				AgreeFriendVerify(args)
-			}
-		}
 
+			case 10011:
+				ag := &QxFriendVerifyMsg{}
+				err := json.Unmarshal(data, ag)
+				logs.Info(err)
+				auto := models.IsAutoAgreeFriendVerify()
+				if auto {
+					if models.UseAgreeMsg() {
+						AgreeMsg := models.GetEnv("AgreeMsg")
+						if !strings.Contains(ag.Data.Data.Content, AgreeMsg) {
+							return
+						}
+					}
+					args := make(map[string]string)
+					args["model"] = "qx"
+					args["v3"] = ag.Data.Data.V3
+					args["v4"] = ag.Data.Data.V4
+					args["content"] = ag.Data.Data.Content
+					args["uid"] = ag.Data.Data.Wxid
+					AgreeFriendVerify(args)
+				}
+			}
+
+		}
 	} else {
 		event, _ := jsonparser.GetString(data, "Event")
 		switch event {
