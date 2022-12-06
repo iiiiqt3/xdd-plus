@@ -45,7 +45,7 @@ func KLtoLJ(kl string) string {
 
 func DtoC(url string) string {
 	get := httplib.Get("https://u.jd.com/eID3CYR")
-	response, _ := get.Response()
-	location, _ := response.Location()
+	resp, _ := get.DoRequest()
+	location, _ := resp.Location()
 	return location.Path
 }
