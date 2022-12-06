@@ -395,6 +395,14 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"测试"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			return DtoC("")
+		},
+	},
+
+	{
 		Command: []string{"查询", "query"},
 		Handle: func(sender *Sender) interface{} {
 			if sender.Type == "wx" {

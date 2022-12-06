@@ -19,6 +19,7 @@ func Get_powerful_link(content string) string {
 	if AgreeMsg == "" {
 		return val
 	} else {
+
 		return LJtoKL(val)
 	}
 	return val
