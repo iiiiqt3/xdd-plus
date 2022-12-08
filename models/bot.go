@@ -619,7 +619,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		}
 
 		{ //tyt
-			if strings.Contains(msg, "3075b6eab065464dad1c4042d345ac97") {
+			if strings.Contains(msg, "e6ad1ef1a55c440e9054e663be14e1d6") {
 				no := tytno
 				tytno += 1
 				split := strings.Split(msg, "&amp;")
