@@ -15,12 +15,5 @@ func Get_powerful_link(content string) string {
 	get := httplib.Get(url)
 	s, _ := get.Bytes()
 	val, _ := jsonparser.GetString(s, "official")
-	AgreeMsg := GetEnv("FanLiKouLing")
-	if AgreeMsg == "" {
-		return val
-	} else {
-
-		return LJtoKL(val)
-	}
 	return val
 }
