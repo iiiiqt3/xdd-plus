@@ -104,6 +104,8 @@ func main() {
 	web.Router("/api/getUserPin", &controllers.UserController{}, "get:GetUserPin")
 	web.Router("/api/account", &controllers.AccountController{}, "get:List")
 	web.Router("/api/account", &controllers.AccountController{}, "post:CreateOrUpdate")
+	web.Router("/api/envs", &controllers.AccountController{}, "get:ListEnvs")
+	web.Router("/api/envs", &controllers.AccountController{}, "post:CreateOrUpdateEnv")
 	web.Router("/admin", &controllers.AccountController{}, "get:Admin")
 	web.Router("/wx/receive", &controllers.WxController{}, "get,post:HandleMessage")
 
