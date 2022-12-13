@@ -11,6 +11,9 @@ import (
 	"github.com/cdle/xdd/controllers"
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/qbot"
+	"io/ioutil"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -63,33 +66,33 @@ func main() {
 		})
 	}
 
-	//web.Get("/", func(ctx *context.Context) {
-	//	//if models.Config.Theme == "" {
-	//	//	models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
-	//	//}
-	//	models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
-	//	if theme != "" {
-	//		ctx.WriteString(theme)
-	//		return
-	//	}
-	//	if strings.Contains(models.Config.Theme, "http") {
-	//		logs.Info("下载最新主题")
-	//		s, _ := httplib.Get(models.Config.Theme).String()
-	//		if s != "" {
-	//			theme = s
-	//			ctx.WriteString(s)
-	//			return
-	//		}
-	//		logs.Warn("主题下载失败，使用默认主题")
-	//	}
-	//	f, err := os.Open(models.Config.Theme)
-	//	if err == nil {
-	//		d, _ := ioutil.ReadAll(f)
-	//		theme = string(d)
-	//		ctx.WriteString(string(d))
-	//		return
-	//	}
-	//})
+	web.Get("/", func(ctx *context.Context) {
+		//if models.Config.Theme == "" {
+		//	models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
+		//}
+		//models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
+		if theme != "" {
+			ctx.WriteString(theme)
+			return
+		}
+		if strings.Contains(models.Config.Theme, "http") {
+			logs.Info("下载最新主题")
+			s, _ := httplib.Get(models.Config.Theme).String()
+			if s != "" {
+				theme = s
+				ctx.WriteString(s)
+				return
+			}
+			logs.Warn("主题下载失败，使用默认主题")
+		}
+		f, err := os.Open(models.Config.Theme)
+		if err == nil {
+			d, _ := ioutil.ReadAll(f)
+			theme = string(d)
+			ctx.WriteString(string(d))
+			return
+		}
+	})
 
 	web.Router("/api/login/admin", &controllers.LoginController{}, "post:IsAdmin")
 	web.Router("/api/login/cklogin", &controllers.LoginController{}, "post:CkLogin")
