@@ -30,7 +30,7 @@ func SaveCache(key string, value string) (flag bool) {
 	if err == nil {
 		logs.Info("为空不报错")
 		if u.Cvalue != "" {
-			db.Where("key = ?", u.Ckey).Updates(&Cache{
+			db.Where("ckey = ?", u.Ckey).Updates(&Cache{
 				Cvalue:   value,
 				ActiveAt: time.Now().Unix() + 3600,
 			})
