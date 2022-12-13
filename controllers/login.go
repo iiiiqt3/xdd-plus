@@ -33,7 +33,7 @@ func FetchJdCookieValue(key string, cookies string) string {
 }
 
 func (c *LoginController) IsAdmin() {
-	pin := c.GetString("token")
+	pin := c.GetString("pin")
 	if pin == "" {
 		c.Ctx.Redirect(302, "/")
 		c.StopRun()
