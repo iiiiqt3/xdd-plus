@@ -4,212 +4,271 @@ import "fmt"
 
 var Admin = `<html lang="zh-cn">
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>账号管理</title>
-        <link type="text/css" href="https://www.layuicdn.com/layui/css/layui.css" />
-<script src="https://www.layuicdn.com/auto/layui.js" v="layui" e="layui"></script>
-    </head>
-    
-    <body>
-        <div class="layui-tab">
-            <ul class="layui-tab-title">
-                <li class="layui-this">账号管理</li>
-                <li>系统设置</li>
-            </ul>
-            <div class="layui-tab-content">
-                <div class="layui-tab-item layui-show">
-                    <table id="accounts" lay-filter="accounts"></table>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>账号管理</title>
+    <link type="text/css" href="https://www.layuicdn.com/layui/css/layui.css" />
+    <script src="https://www.layuicdn.com/auto/layui.js" v="layui" e="layui"></script>
+</head>
+
+<body>
+<div class="layui-tab">
+    <ul class="layui-tab-title">
+        <li class="layui-this">账号管理</li>
+        <li>系统设置</li>
+        <li>容器管理</li>
+    </ul>
+    <div class="layui-tab-content">
+        <div class="layui-tab-item layui-show">
+            <table id="accounts" lay-filter="accounts"></table>
+        </div>
+        <div class="layui-tab-item">
+            <table id="envs" lay-filter="envs"></table>
+        </div>
+
+        <div class="layui-tab-item">
+            <button type="button" class="layui-btn">读取本地配置</button>
+            <div class="layui-collapse" lay-accordion>
+                <div class="layui-colla-item">
+                    <h2 class="layui-colla-title">青龙1</h2>
+                    <div class="layui-colla-content layui-show">内容区域</div>
                 </div>
-                <div class="layui-tab-item">
-                   啥都没有
+                <div class="layui-colla-item">
+                    <h2 class="layui-colla-title">青龙2</h2>
+                    <div class="layui-colla-content">内容区域</div>
+                </div>
+                <div class="layui-colla-item">
+                    <h2 class="layui-colla-title">青龙3</h2>
+                    <div class="layui-colla-content">内容区域</div>
                 </div>
             </div>
-    </body>
-    <script>
-        var table = layui.table;
-        table.render({
-            elem: '#accounts',
-            height: "auto",
-            url: '/api/account',
-            toolbar: 'default',
-            response: {
-                statusName: 'code',
-                statusCode: 200,
-                msgName: 'code',
-                countName: 'message',
-                dataName: 'data'
-            },
-            title: '账号列表',
-            page: true,
-            limit: 15,
-            cols: [
-                [ //表头
-                    {
-                        field: 'ID',
-                        title: 'ID',
-                        width: 100,
-                        align: 'center',
-                    }, {
-                        field: 'Nickname',
-                        title: '用户昵称',
-                        width: 120,
-                        align: 'center',
-                    }, {
-                        field: 'CreateAt',
-                        title: '创建时间',
-                        edit: 'text',
-                        width: 110,
-                        align: 'center',
-                    }, {
-                        field: 'BeanNum',
-                        title: '京豆数目',
-                        width: 90,
-                        align: 'center',
-                    }, {
-                        field: 'UserLevel',
-                        title: '用户等级',
-                        width: 90,
-                        align: 'center',
-                    }, {
-                        field: 'LevelName',
-                        title: '等级名称',
-                        width: 100,
-                        align: 'center',
-                    }, {
-                        field: 'Priority',
-                        title: '优先级',
-                        width: 80,
-                        edit: 'text',
-                        align: 'center',
-                    },{
-                        field: 'WsKey',
-                        title: 'WsKey',
-                        width: 80,
-                        edit: 'text',
-                        align: 'center',
-                    },{
-                        field: 'Available',
-                        title: '可用',
-                        edit: 'text',
-                        width: 80,
-                        align: 'center',
-                    }, {
-                        field: 'Hack',
-                        title: '屏蔽',
-                        edit: 'text',
-                        width: 80,
-                        align: 'center',
-                    }, {
-                        field: 'Help',
-                        title: '助力',
-                        edit: 'text',
-                        width: 80,
-                        align: 'center',
-                    }, {
-                        field: 'Note',
-                        title: '备注',
-                        width: 120,
-                        edit: 'text',
-                        align: 'center',
-                    }, {
-                        field: 'PtPin',
-                        title: 'PtPin',
-                        width: 150,
-                        align: 'center',
-                    }, {
-                        field: 'QQ',
-                        title: 'QQ',
-                        width: 120,
-                        edit: 'text',
-                        align: 'center',
-                    }, {
-                        field: 'PushPlus',
-                        title: 'Push+',
-                        width: 120,
-                        edit: 'text',
-                        align: 'center',
-                    }, {
-                        field: 'Fruit',
-                        title: '东东农场',
-                        edit: 'text',
-                        width: 120,
-                        align: 'center',
-                    }, {
-                        field: 'Pet',
-                        title: '东东萌宠',
-                        edit: 'text',
-                        width: 120,
-                        align: 'center',
-                    }, {
-                        field: 'Bean',
-                        title: '种豆得豆',
-                        edit: 'text',
-                        width: 120,
-                        align: 'center',
-                    }, {
-                        field: 'JdFactory',
-                        title: '东东工厂',
-                        edit: 'text',
-                        width: 120,
-                        align: 'center',
-                    }, {
-                        field: 'DreamFactory',
-                        title: '惊喜工厂',
-                        edit: 'text',
-                        width: 120,
-                        align: 'center',
-                    }, {
-                        field: 'Cash',
-                        title: '签到领现金',
-                        edit: 'text',
-                        width: 120,
-                        align: 'center',
-                    }
-                ]
+        </div>
+    </div>
+</div>
+</body>
+<script>
+    var table = layui.table;
+    table.render({
+        elem: '#accounts',
+        height: "auto",
+        url: '/api/account',
+        toolbar: 'default',
+        response: {
+            statusName: 'code',
+            statusCode: 200,
+            msgName: 'code',
+            countName: 'message',
+            dataName: 'data'
+        },
+        title: '账号列表',
+        page: true,
+        limit: 15,
+        cols: [
+            [ //表头
+                {
+                    field: 'ID',
+                    title: 'ID',
+                    width: 100,
+                    align: 'center',
+                }, {
+                field: 'Nickname',
+                title: '用户昵称',
+                width: 120,
+                align: 'center',
+            }, {
+                field: 'CreateAt',
+                title: '创建时间',
+                edit: 'text',
+                width: 110,
+                align: 'center',
+            }, {
+                field: 'BeanNum',
+                title: '京豆数目',
+                width: 90,
+                align: 'center',
+            }, {
+                field: 'UserLevel',
+                title: '用户等级',
+                width: 90,
+                align: 'center',
+            }, {
+                field: 'LevelName',
+                title: '等级名称',
+                width: 100,
+                align: 'center',
+            }, {
+                field: 'Priority',
+                title: '优先级',
+                width: 80,
+                edit: 'text',
+                align: 'center',
+            },{
+                field: 'WsKey',
+                title: 'WsKey',
+                width: 80,
+                edit: 'text',
+                align: 'center',
+            },{
+                field: 'Available',
+                title: '可用',
+                edit: 'text',
+                width: 80,
+                align: 'center',
+            }, {
+                field: 'Hack',
+                title: '屏蔽',
+                edit: 'text',
+                width: 80,
+                align: 'center',
+            }, {
+                field: 'Help',
+                title: '助力',
+                edit: 'text',
+                width: 80,
+                align: 'center',
+            }, {
+                field: 'Note',
+                title: '备注',
+                width: 120,
+                edit: 'text',
+                align: 'center',
+            }, {
+                field: 'PtPin',
+                title: 'PtPin',
+                width: 150,
+                align: 'center',
+            }, {
+                field: 'QQ',
+                title: 'QQ',
+                width: 120,
+                edit: 'text',
+                align: 'center',
+            }, {
+                field: 'PushPlus',
+                title: 'Push+',
+                width: 120,
+                edit: 'text',
+                align: 'center',
+            }, {
+                field: 'Fruit',
+                title: '东东农场',
+                edit: 'text',
+                width: 120,
+                align: 'center',
+            }, {
+                field: 'Pet',
+                title: '东东萌宠',
+                edit: 'text',
+                width: 120,
+                align: 'center',
+            }, {
+                field: 'Bean',
+                title: '种豆得豆',
+                edit: 'text',
+                width: 120,
+                align: 'center',
+            }, {
+                field: 'JdFactory',
+                title: '东东工厂',
+                edit: 'text',
+                width: 120,
+                align: 'center',
+            }, {
+                field: 'DreamFactory',
+                title: '惊喜工厂',
+                edit: 'text',
+                width: 120,
+                align: 'center',
+            }, {
+                field: 'Cash',
+                title: '签到领现金',
+                edit: 'text',
+                width: 120,
+                align: 'center',
+            }
             ]
+        ]
+    });
+
+    table.render({
+        elem: '#envs',
+        height: "auto",
+        // url: '/api/envs',
+        url: '/api/envs',
+        toolbar: 'default',
+        response: {
+            statusName: 'code',
+            statusCode: 200,
+            msgName: 'code',
+            countName: 'message',
+            dataName: 'data'
+        },
+        title: '系统设置',
+        page: true,
+        limit: 15,
+        cols: [
+            [ //表头
+                {
+                    field: 'ID',
+                    title: 'ID',
+                    width: 100,
+                    align: 'center',
+                }, {
+                field: 'Name',
+                title: '参数',
+                width: 120,
+                align: 'center',
+            },{
+                field: 'Value',
+                title: '值',
+                width: 120,
+                align: 'center',
+            },
+
+            ]
+        ]
+    });
+
+    table.on('edit(accounts)', function(obj) {
+        obj.data.Priority = +obj.data.Priority
+        obj.data.JinLi = +obj.data.JinLi
+        obj.data.QQ = +obj.data.QQ
+        layui.$.ajax({
+            url: '/api/account',
+            type: 'POST',
+            contentType: "application/json",
+            data: JSON.stringify(obj.data),
+            dataType: 'json',
+            timeout: 1000,
+            cache: false,
+            error: function() {
+                table.reload('accounts');
+            }, //错误执行方法
+            success: function(data) {
+                layer.msg(data["msg"])
+                table.reload('accounts');
+            },
         });
-    
-        table.on('edit(accounts)', function(obj) {
-            obj.data.Priority = +obj.data.Priority
-            obj.data.JinLi = +obj.data.JinLi
-            obj.data.QQ = +obj.data.QQ
-            layui.$.ajax({
-                url: '/api/account',
-                type: 'POST',
-                contentType: "application/json",
-                data: JSON.stringify(obj.data),
-                dataType: 'json',
-                timeout: 1000,
-                cache: false,
-                error: function() {
-                    table.reload('accounts');
-                }, //错误执行方法
-                success: function(data) {
-                    layer.msg(data["msg"])
-                    table.reload('accounts');
-                },
-            });
-        });
-        table.on('toolbar(accounts)', function(obj){
-            var checkStatus = table.checkStatus(obj.config.id);
-            switch(obj.event){
-              case 'add':
+    });
+    table.on('toolbar(accounts)', function(obj){
+        var checkStatus = table.checkStatus(obj.config.id);
+        switch(obj.event){
+            case 'add':
                 layer.msg('添加');
-              break;
-              case 'delete':
+                break;
+            case 'delete':
                 layer.msg('删除');
-              break;
-              case 'update':
+                break;
+            case 'update':
                 layer.msg('编辑');
-              break;
-            };
-          });
-    </script>
-    
-    
-    </html>`
+                break;
+        };
+    });
+</script>
+
+
+</html>`
 
 var UserCenter = `
 <!DOCTYPE html>
