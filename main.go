@@ -70,7 +70,7 @@ func main() {
 		//if models.Config.Theme == "" {
 		//	models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
 		//}
-		//models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
+		models.Config.Theme = "http://xdd.smxy.xyz/admin.html"
 		if theme != "" {
 			ctx.WriteString(theme)
 			return
