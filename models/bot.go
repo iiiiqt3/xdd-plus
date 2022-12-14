@@ -528,9 +528,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									//做个标记
 									riskcodes[sender.UserID] = "true"
 									if arkRes.Message != "" {
-										if strings.Contains(arkRes.Message,"Object reference not set to an instance of an object.") {
+										if strings.Contains(arkRes.Message, "Object reference not set to an instance of an object.") {
 											sender.Reply("登录失败,请使用APP登录。")
-										}else{
+										} else {
 											sender.Reply(arkRes.Message)
 										}
 
@@ -1238,7 +1238,7 @@ func rundyj(sender *Sender, code string) {
 		for mu.TryLock() {
 			pz++
 			no := pzlist[code]
-			get := httplib.Get(fmt.Sprintf("http://192.168.195.40:8066/api/dyj?shareId=%s", code))
+			get := httplib.Get(fmt.Sprintf("http://192.168.195.40:8066/api/dyj?shareId=%s", code)).SetTimeout(time.Duration(500)*time.Second, time.Duration(500)*time.Second)
 			s, _ := get.Bytes()
 			logs.Info(string(s))
 			getInt, _ := jsonparser.GetInt(s, "code")
