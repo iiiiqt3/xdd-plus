@@ -1275,7 +1275,9 @@ func getShare(ck string) []byte {
 func getmoney(ck string) {
 	for i := 0; i < 20; i++ {
 		time.Sleep(time.Second * time.Duration(3))
-		req := httplib.Get("https://wq.jd.com/newtasksys/newtasksys_front/DoTask?g_ty=h5&g_tk=&appCode=msc588d6d5&__t=1670263454496&source=makemoneyshop&isSecurity=true&taskId=3533&bizCode=makemoneyshop&configExtra=&sceneval=2")
+		req := httplib.Get("https://wq.jd.com/newtasksys/newtasksys_front/Award?g_ty=h5&g_tk=&appCode=msc588d6d5&__t=1670263454496&source=makemoneyshop&isSecurity=true&taskId=3533&bizCode=makemoneyshop&configExtra=&sceneval=2")
+		req.Header("Host", "wq.jd.com")
+		req.Header("Referer", "https://wqs.jd.com")
 		req.Header("Cookie", ck)
 		bytes, _ := req.Bytes()
 		logs.Info(string(bytes))
