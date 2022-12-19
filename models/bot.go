@@ -1288,8 +1288,7 @@ func getmoney(ck string) {
 		req.Header("Content-Type", "text/html; charset=utf-8")
 		req.Header("Referer", "https://wqs.jd.com")
 		req.Header("Cookie", ck)
-		bytes, _ := req.Bytes()
-		logs.Info(string(bytes))
+		req.Response()
 	}
 
 }
