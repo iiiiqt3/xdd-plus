@@ -280,6 +280,7 @@ var codeSignals = []CodeSignal{
 						getInt, _ := jsonparser.GetInt(s, "code")
 						if getInt == 200 {
 							sender.Reply("已助力完成，正在自动领取.")
+							logs.Info(cookie)
 							getmoney(cookie)
 							bytes := getShare(cookie)
 							money, _ := jsonparser.GetString(bytes, "data", "canUseCoinMoney")
