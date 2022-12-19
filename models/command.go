@@ -263,7 +263,7 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
-		Command: []string{"大赢家"},
+		Command: []string{"dyj"},
 		Handle: func(sender *Sender) interface{} {
 			if Config.VIP == true {
 				sender.handleJdCookies(func(ck *JdCookie) {
