@@ -1275,7 +1275,7 @@ func getShare(ck string) []byte {
 func getmoney(ck string) {
 	for i := 0; i < 20; i++ {
 		time.Sleep(time.Second * time.Duration(3))
-		req := httplib.Get("https://wq.jd.com/newtasksys/newtasksys_front/Award?g_ty=h5&g_tk=&appCode=msc588d6d5&__t=1670263454496&source=makemoneyshop&isSecurity=true&taskId=3533&bizCode=makemoneyshop&_stk=__t%2CbizCode%2CisSecurity%2Csource%2CtaskId&_ste=1")
+		req := httplib.Get("https://wq.jd.com/newtasksys/newtasksys_front/DoTask?g_ty=h5&g_tk=&appCode=msc588d6d5&__t=1670263454496&source=makemoneyshop&isSecurity=true&taskId=3533&bizCode=makemoneyshop&configExtra=&sceneval=2")
 		req.Header("User-Agent", "jdltapp;iPhone;3.7.0;15.0.2;network/wifi;hasUPPay/0;pushNoticeIsOpen/1;lang/zh_CN;model/iPhone11,8;addressid/1886378178;hasOCPay/0;appBuild/1088;supportBestPay/0;jdSupportDarkMode/0;pv/194.15;apprpd/;ref/JDLTWebViewController;psq/1;ads/;psn/” ＋ randomString ＋ “|512;jdv/0|iosapp|t_335139774|liteshare|Qqfriends|1635491710000|1635491720;adk/;app_device/IOS;pap/JA2020_3112531|3.7.0|IOS 15.0.2;Mozilla/5.0 (iPhone; CPU iPhone OS 15_0_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1")
 		req.Header("Sec-Fetch-Dest", "script")
 		req.Header("Sec-Fetch-Mode", "no-cors")
