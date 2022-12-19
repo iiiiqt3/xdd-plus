@@ -1276,6 +1276,7 @@ func getmoney(ck string) {
 	for i := 0; i < 20; i++ {
 		time.Sleep(time.Second * time.Duration(3))
 		req := httplib.Get("https://wq.jd.com/newtasksys/newtasksys_front/Award?g_ty=h5&g_tk=&appCode=msc588d6d5&__t=1671472063174&source=makemoneyshop&taskId=3533&bizCode=makemoneyshop&sceneval=2")
+		req.Header("User-Agent", "jdltapp;android;4.5.0;;;appBuild/2370;ef/1;ep/%7B%22hdid%22%3A%22JM9F1ywUPwflvMIpYPok0tt5k9kW4ArJEU3lfLhxBqw%3D%22%2C%22ts%22%3A1671472044033%2C%22ridx%22%3A-1%2C%22cipher%22%3A%7B%22sv%22%3A%22CJC%3D%22%2C%22ad%22%3A%22YJTvEQCnEJvvY2DtEWZrDG%3D%3D%22%2C%22od%22%3A%22EJC1ENU0YJU2ZQVsDJqyZtU3CWC4DWU3CtC3EWC5CwSmEJSnZJKmYWHtYJHwYwPvDJPsCwUzYJDtDzO1Y2VvYG%3D%3D%22%2C%22ov%22%3A%22CzC%3D%22%2C%22ud%22%3A%22YJTvEQCnEJvvY2DtEWZrDG%3D%3D%22%7D%2C%22ciphertype%22%3A5%2C%22version%22%3A%221.2.0%22%2C%22appname%22%3A%22com.jd.jdlite%22%7D;Mozilla/5.0 (Linux; Android 13; V2218A Build/TP1A.220624.003; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/107.0.5304.105 Mobile Safari/537.36")
 		req.Header("Host", "wq.jd.com")
 		req.Header("Referer", "https://wqs.jd.com")
 		req.Header("Cookie", ck)
