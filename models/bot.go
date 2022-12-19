@@ -1256,6 +1256,39 @@ func rundyj(sender *Sender, code string) {
 	}
 }
 
+func getShare(ck string) []byte {
+	req := httplib.Get("https://api.m.jd.com/api?g_ty=h5&g_tk=&appCode=msc588d6d5&body=%7B%22activeId%22%3A%2263526d8f5fe613a6adb48f03%22%2C%22isFirst%22%3A0%2C%22operType%22%3A1%7D&appid=jdlt_h5&client=jxh5&functionId=makemoneyshop_home&clientVersion=1.2.5")
+	random := browser.Random()
+	req.Header("User-Agent", random)
+	req.Header("Host", "api.m.jd.com")
+	req.Header("Accept", "application/json, text/plain, */*")
+	req.Header("Connection", "keep-alive")
+	req.Header("Accept-Language", "zh-cn")
+	req.Header("Accept-Encoding", "gzip, deflate, br")
+	req.Header("Origin", "https://wqs.jd.com")
+	req.Header("Cookie", ck)
+	bytes, _ := req.Bytes()
+	return bytes
+
+}
+
+func getmoney(ck string) {
+	for i := 0; i < 20; i++ {
+		req := httplib.Get("https://wq.jd.com/newtasksys/newtasksys_front/Award?g_ty=h5&g_tk=&appCode=msc588d6d5&__t=1670263454496&source=makemoneyshop&isSecurity=true&taskId=3533&bizCode=makemoneyshop&_stk=__t%2CbizCode%2CisSecurity%2Csource%2CtaskId&_ste=1&h5st=20221206020414496%3B0933614378039508%3Bd06f1%3Btk02w946c1b8a18nQTwZLAc3Goo0tLGQYhcBuM%2FQjoI5QoLHijT2m1%2BYbPbYyNiiS7zj0HFS4H41Ci2WeGqwILuPKZTd%3Be9eef31f531a48eab967751116d1eafaf9890b7d01b297e5fa86515a5398acd0%3B3.1%3B1670263454496%3B7414c4e56278580a133b60b72a30beb2764d2e61c66a5620e8e838e06644d1bf1bc1ab246f8566bba10ad8ab8e5eae62e8fd2d4293a851daa349addea46807a4eb33d9f926fa20685e14656b20e4a9c6afc5c9068f517fc35b21cfcc3e03363ad04b7dbe7414517918f5d6101441d41d74ad10c5660b7727796ba0655e3ee8d0&sceneval=2")
+		random := browser.Random()
+		req.Header("User-Agent", random)
+		req.Header("Host", "api.m.jd.com")
+		req.Header("Accept", "application/json, text/plain, */*")
+		req.Header("Connection", "keep-alive")
+		req.Header("Accept-Language", "zh-cn")
+		req.Header("Accept-Encoding", "gzip, deflate, br")
+		req.Header("Origin", "https://wqs.jd.com")
+		req.Header("Cookie", ck)
+		req.Bytes()
+	}
+
+}
+
 func runpz(sender *Sender, code string) {
 	for {
 		time.Sleep(time.Duration(rand.Intn(60)))

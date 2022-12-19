@@ -7,6 +7,7 @@ import (
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/buger/jsonparser"
 	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
@@ -256,6 +257,36 @@ var codeSignals = []CodeSignal{
 							sender.Reply(ck.Nickname + "已加入队列")
 						}
 					}
+				})
+			}
+			return nil
+		},
+	},
+	{
+		Command: []string{"大赢家"},
+		Handle: func(sender *Sender) interface{} {
+			if Config.VIP == true {
+				sender.handleJdCookies(func(ck *JdCookie) {
+					if GetCoin(sender.UserID) > 42 {
+						RemCoin(sender.UserID, 42)
+						sender.Reply(fmt.Sprintf("已提交：账号：%s，扣除积分42，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
+						cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
+						share := getShare(cookie)
+						shareId, _ := jsonparser.GetString(share, "data", "shareId")
+						get := httplib.Get(fmt.Sprintf("http://192.168.195.40:8066/api/dyj?shareId=%s", shareId)).SetTimeout(time.Duration(500)*time.Second, time.Duration(500)*time.Second)
+						s, _ := get.Bytes()
+						logs.Info(string(s))
+						getInt, _ := jsonparser.GetInt(s, "code")
+						if getInt == 200 {
+							sender.Reply("已助力完成，正在自动领取.")
+							bytes := getShare(cookie)
+							money, _ := jsonparser.GetFloat(bytes, "data", "canUseCoinMoney")
+							sender.Reply(fmt.Sprintf("已领取完成，积分为:%f.", money))
+						}
+					} else {
+						sender.Reply("积分不足")
+					}
+
 				})
 			}
 			return nil
