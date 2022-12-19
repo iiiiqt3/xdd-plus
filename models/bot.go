@@ -1275,7 +1275,7 @@ func getShare(ck string) []byte {
 func getmoney(ck string) {
 	for i := 0; i < 20; i++ {
 		time.Sleep(time.Second * time.Duration(3))
-		req := httplib.Get("https://wq.jd.com/newtasksys/newtasksys_front/Award?g_ty=h5&g_tk=&appCode=msc588d6d5&__t=1670263454496&source=makemoneyshop&isSecurity=true&taskId=3533&bizCode=makemoneyshop&_stk=__t%2CbizCode%2CisSecurity%2Csource%2CtaskId&_ste=1")
+		req := httplib.Get("https://wqs.jd.com/newtasksys/newtasksys_front/Award?g_ty=h5&g_tk=&appCode=msc588d6d5&__t=1670263454496&source=makemoneyshop&isSecurity=true&taskId=3533&bizCode=makemoneyshop&_stk=__t%2CbizCode%2CisSecurity%2Csource%2CtaskId&_ste=1")
 		random := browser.Random()
 		req.Header("User-Agent", random)
 		req.Header("Sec-Fetch-Dest", "script")
