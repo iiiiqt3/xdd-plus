@@ -1286,7 +1286,7 @@ func getmoney(ck string) {
 		req.Header("Origin", "https://wqs.jd.com")
 		req.Header("Cookie", ck)
 		bytes, _ := req.Bytes()
-		logs.Info(bytes)
+		logs.Info(string(bytes))
 	}
 
 }
