@@ -272,6 +272,7 @@ var codeSignals = []CodeSignal{
 						sender.Reply(fmt.Sprintf("已提交：账号：%s，扣除积分42，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
 						cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
 						share := getShare(cookie)
+						logs.Info(string(share))
 						shareId, _ := jsonparser.GetString(share, "data", "shareId")
 						get := httplib.Get(fmt.Sprintf("http://192.168.195.40:8066/api/dyj?shareId=%s", shareId)).SetTimeout(time.Duration(500)*time.Second, time.Duration(500)*time.Second)
 						s, _ := get.Bytes()
