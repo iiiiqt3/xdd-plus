@@ -282,6 +282,8 @@ var codeSignals = []CodeSignal{
 							bytes := getShare(cookie)
 							money, _ := jsonparser.GetString(bytes, "data", "canUseCoinMoney")
 							sender.Reply(fmt.Sprintf("已领取完成，积分为:%s.", money))
+						} else {
+							sender.Reply("执行异常，清联系管理员")
 						}
 					} else {
 						sender.Reply("积分不足")
