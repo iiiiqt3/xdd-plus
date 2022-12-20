@@ -1279,14 +1279,7 @@ func getmoney(ck string) {
 		var str = "https://wq.jd.com/newtasksys/newtasksys_front/Award?g_ty=h5&g_tk=&appCode=msc588d6d5&__t=1671472063174&source=makemoneyshop&isSecurity=true&taskId=3533&bizCode=makemoneyshop&_stk=__t%2CbizCode%2CisSecurity%2Csource%2CtaskId&_ste=1&h5st=20221220014743179%3B6897072897615020%3Bd06f1%3Btk02w82a31b4c18nga3Pz1Kz96NMEr3qiA7Sq2jBGN3TTsD5TNtGiZpnMQYLUDsBinJAAOCNpDJrs6lakAdMForE53CQ%3Bea1ef35ef9bf605358bd2e17db13dd12beedfee60207bdb504dc5e50db351aff%3B3.1%3B1671472063179%3B62f4d401ae05799f14989d31956d3c5f09633e3696c2d8f838f2f363c4fcd57aac5270f01d53f14fa132771b2ca2231d02ed6f7b7db0024e9cb202a6780fc384bd416eff2590a9d13da456a774455c08157834bb91f3bdecc83ba0b720cb0a55fe184c27e70f4601ce9ad75cda15667fc1bfc38db3622e572b77dfa341d713780cc4b8d74f5892500b744858073ed8ed45f2cfa685d2a838af862f0361dae479fb2a5830375c52a9b627eb8a14f180fc&sceneval=2&callback=__jsonp1671472045318"
 		req := httplib.Get(str)
 		req.Header("User-Agent", "jdltapp;android;4.5.0;;;appBuild/2370;ef/1;ep/%7B%22hdid%22%3A%22JM9F1ywUPwflvMIpYPok0tt5k9kW4ArJEU3lfLhxBqw%3D%22%2C%22ts%22%3A1671472044033%2C%22ridx%22%3A-1%2C%22cipher%22%3A%7B%22sv%22%3A%22CJC%3D%22%2C%22ad%22%3A%22YJTvEQCnEJvvY2DtEWZrDG%3D%3D%22%2C%22od%22%3A%22EJC1ENU0YJU2ZQVsDJqyZtU3CWC4DWU3CtC3EWC5CwSmEJSnZJKmYWHtYJHwYwPvDJPsCwUzYJDtDzO1Y2VvYG%3D%3D%22%2C%22ov%22%3A%22CzC%3D%22%2C%22ud%22%3A%22YJTvEQCnEJvvY2DtEWZrDG%3D%3D%22%7D%2C%22ciphertype%22%3A5%2C%22version%22%3A%221.2.0%22%2C%22appname%22%3A%22com.jd.jdlite%22%7D;Mozilla/5.0 (Linux; Android 13; V2218A Build/TP1A.220624.003; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/107.0.5304.105 Mobile Safari/537.36")
-		req.Header("Host", "wq.jd.com")
-		req.Header("Sec-Fetch-Mode", "no-cors")
-		req.Header("Accept", "*/*")
-		req.Header("Accept-Encoding", "gzip, deflate")
-		req.Header("Connection", "keep-alive")
-		req.Header("Sec-Fetch-Site", "same-site")
-		req.Header("Content-Type", "text/html; charset=utf-8")
-		req.Header("Referer", "https://wqs.jd.com")
+		req.Header("Referer", "https://wqs.jd.com/sns/202210/20/make-money-shop/guest.html?activeId=63526d8f5fe613a6adb48f03&type=sign&__navVer=1")
 		req.Header("Cookie", ck)
 		req.Response()
 	}
