@@ -381,49 +381,51 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 			//挖宝统计
 			{
-				if strings.Contains(msg, "https://bnzf.jd.com/") {
-					if strings.Contains(msg, "xml version=") {
-						doc, _ := tinydom.LoadDocument(strings.NewReader(msg))
-						talk := doc.FirstChildElement("msg").FirstChildElement("appmsg").FirstChildElement("url").Text()
-						fmt.Print(talk)
-						msg = talk
-					}
-
-					split := strings.Split(msg, "&")
-					inviterId := ""
-					inviterCode := ""
-					for i := range split {
-						if strings.Contains(split[i], "inviterId=") {
-							env := strings.Split(split[i], "=")
-							inviterId = env[1]
+				if sender.IsAdmin {
+					if strings.Contains(msg, "https://bnzf.jd.com/") {
+						if strings.Contains(msg, "xml version=") {
+							doc, _ := tinydom.LoadDocument(strings.NewReader(msg))
+							talk := doc.FirstChildElement("msg").FirstChildElement("appmsg").FirstChildElement("url").Text()
+							fmt.Print(talk)
+							msg = talk
 						}
-						if strings.Contains(split[i], "inviterCode=") {
-							env := strings.Split(split[i], "=")
-							inviterCode = env[1]
-						}
-					}
-					f, err := os.OpenFile(ExecPath+"/table.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-					if err != nil {
-						logs.Warn("table.txt失败，", err)
-					}
-					str := fmt.Sprintf("https://bnzf.jd.com/?activityId=pTTvJeSTrpthgk9ASBVGsw&inviterId=%s&inviterCode=%s&utm_user=plusmember&ad_od=share&utm_source=androidapp&utm_medium=appshare&utm_campaign=t_335139774&utm_term=Wxfriends", inviterId, inviterCode)
-					sender.Reply("已提交")
-					f.WriteString(str + "\n")
-					f.Close()
 
-					//msg = strings.ReplaceAll(msg, "&amp;", "&")
-					//f, err := os.OpenFile(ExecPath+"/wblj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-					//if err != nil {
-					//	logs.Warn("wb.txt失败，", err)
-					//}
-					//if GetCoin(sender.UserID) > 19 {
-					//	f.WriteString(msg + "\n")
-					//	RemCoin(sender.UserID, 20)
-					//	sender.Reply(fmt.Sprintf("已提交转订单，扣除积分20，剩余积分：%d", GetCoin(sender.UserID)))
-					//} else {
-					//	sender.Reply("积分不足")
-					//}
-					//f.Close()
+						split := strings.Split(msg, "&")
+						inviterId := ""
+						inviterCode := ""
+						for i := range split {
+							if strings.Contains(split[i], "inviterId=") {
+								env := strings.Split(split[i], "=")
+								inviterId = env[1]
+							}
+							if strings.Contains(split[i], "inviterCode=") {
+								env := strings.Split(split[i], "=")
+								inviterCode = env[1]
+							}
+						}
+						f, err := os.OpenFile(ExecPath+"/table.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+						if err != nil {
+							logs.Warn("table.txt失败，", err)
+						}
+						str := fmt.Sprintf("https://bnzf.jd.com/?activityId=pTTvJeSTrpthgk9ASBVGsw&inviterId=%s&inviterCode=%s&utm_user=plusmember&ad_od=share&utm_source=androidapp&utm_medium=appshare&utm_campaign=t_335139774&utm_term=Wxfriends", inviterId, inviterCode)
+						sender.Reply("已提交")
+						f.WriteString(str + "\n")
+						f.Close()
+
+						//msg = strings.ReplaceAll(msg, "&amp;", "&")
+						//f, err := os.OpenFile(ExecPath+"/wblj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+						//if err != nil {
+						//	logs.Warn("wb.txt失败，", err)
+						//}
+						//if GetCoin(sender.UserID) > 19 {
+						//	f.WriteString(msg + "\n")
+						//	RemCoin(sender.UserID, 20)
+						//	sender.Reply(fmt.Sprintf("已提交转订单，扣除积分20，剩余积分：%d", GetCoin(sender.UserID)))
+						//} else {
+						//	sender.Reply("积分不足")
+						//}
+						//f.Close()
+					}
 				}
 			}
 
