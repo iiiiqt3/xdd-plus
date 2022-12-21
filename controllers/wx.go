@@ -72,6 +72,29 @@ type MyFriendVerifyMsg struct {
 	} `json:"content"`
 }
 
+type QXMoneyMessage struct {
+	Event int    `json:"event"`
+	Wxid  string `json:"wxid"`
+	Data  struct {
+		Type string `json:"type"`
+		Des  string `json:"des"`
+		Data struct {
+			FromWxid    string `json:"fromWxid"`
+			MsgSource   int    `json:"msgSource"`
+			TransType   int    `json:"transType"`
+			Money       string `json:"money"`
+			Memo        string `json:"memo"`
+			Transferid  string `json:"transferid"`
+			Invalidtime string `json:"invalidtime"`
+		} `json:"data"`
+		Timestamp string `json:"timestamp"`
+		Wxid      string `json:"wxid"`
+		Port      int    `json:"port"`
+		Pid       int    `json:"pid"`
+		Flag      string `json:"flag"`
+	} `json:"data"`
+}
+
 type QxFriendVerifyMsg struct {
 	Event int    `json:"event"`
 	Wxid  string `json:"wxid"`
@@ -155,6 +178,13 @@ func (c *WxController) HandleMessage() {
 				if ag.Wxid == models.Config.Wx.Robotid {
 					models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
 				}
+
+			//case 10006:
+			//	ag := &QXMoneyMessage{}
+			//	err := json.Unmarshal(data, ag)
+			//	logs.Info(err)
+			//	int, _ := strconv.Atoi(ag.Data.Data.Money)
+			//	money := models.AddMoney(ag.Data.Data.FromWxid, int*10)
 
 			case 10011:
 				ag := &QxFriendVerifyMsg{}

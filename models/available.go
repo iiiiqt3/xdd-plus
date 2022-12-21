@@ -233,11 +233,11 @@ func updateCookie() {
 			//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
 			rsp, _ := getKey(pinky)
-			if strings.Contains(rsp, "fake") {
+			if strings.Contains(rsp, "错误") {
 				yy++
 				ck.Update(Available, False)
 				//ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
-				//(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
+				(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
 			} else {
 				ptKey := FetchJdCookieValue("pt_key", rsp)
 				ptPin := FetchJdCookieValue("pt_pin", rsp)
@@ -328,7 +328,7 @@ func CookieOK(ck *JdCookie) bool {
 						if err != nil {
 							logs.Error(err)
 						}
-						JdCookie{}.Push(fmt.Sprintf("自动转换wskey---%s", msg))
+						//JdCookie{}.Push(fmt.Sprintf("自动转换wskey---%s", msg))
 						//缺少错误判断
 						if strings.Contains(msg, "错误") {
 							ck.Push(fmt.Sprintf("Wskey失效账号，%s", ck.PtPin))

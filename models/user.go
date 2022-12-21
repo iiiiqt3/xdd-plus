@@ -51,6 +51,19 @@ func AddCoin(uid int) int {
 	return u.Coin
 }
 
+func AddMoney(wx string, money int) bool {
+	var u User
+	if db.Where("wxid = ?", wx).First(&u).Error != nil {
+		SendWxMsg(wx, "充值失败")
+		return false
+	}
+	db.Model(u).Updates(map[string]interface{}{
+		"coin": gorm.Expr(fmt.Sprintf("coin+%d", money)),
+	})
+	SendWxMsg(wx, fmt.Sprintf("积分剩余%d", u.Coin+money))
+	return true
+}
+
 func RemCoin(uid int, num int) int {
 	var u User
 	db.Where("number = ?", uid).First(&u)
