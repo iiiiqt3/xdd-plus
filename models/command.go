@@ -277,10 +277,12 @@ var codeSignals = []CodeSignal{
 						s, _ := get.Bytes()
 						getInt, _ := jsonparser.GetInt(s, "code")
 						if getInt == 200 {
+
 							sender.Reply("已助力完成，正在自动领取.")
 							getmoney(cookie)
 							bytes := getShare(cookie)
 							money, _ := jsonparser.GetString(bytes, "data", "canUseCoinMoney")
+							JdCookie{PtPin: ck.PtPin}.Push(fmt.Sprintf("已领取完成，积分为:%s.", money))
 							sender.Reply(fmt.Sprintf("已领取完成，积分为:%s.", money))
 						} else {
 							sender.Reply("执行异常，清联系管理员")
