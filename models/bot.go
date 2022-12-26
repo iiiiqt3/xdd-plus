@@ -530,12 +530,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									//做个标记
 									riskcodes[sender.UserID] = "true"
 									if arkRes.Message != "" {
-										if strings.Contains(arkRes.Message, "object") {
-											sender.Reply("无安全验证通道，登录失败,请使用APP登录。")
-										} else {
-											sender.Reply(arkRes.Message)
-										}
-
+										sender.Reply(arkRes.Message)
 									}
 								} else if strings.Contains(arkRes.Message, "添加xdd成功") {
 									sender.Reply("登录成功。可以继续登录下一个账号")
@@ -544,7 +539,11 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									}()
 								} else {
 									if arkRes.Message != "" {
-										sender.Reply(arkRes.Message)
+										if strings.Contains(arkRes.Message, "object") {
+											sender.Reply("无安全验证通道，登录失败,请使用APP登录。")
+										} else {
+											sender.Reply(arkRes.Message)
+										}
 									} else {
 										sender.Reply("登陆失败，请重新登录，多次尝试失败请联系管理员")
 									}
