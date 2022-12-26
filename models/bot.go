@@ -530,8 +530,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 									//做个标记
 									riskcodes[sender.UserID] = "true"
 									if arkRes.Message != "" {
-										if strings.Contains(arkRes.Message, "Object reference not set to an instance of an object.") {
-											sender.Reply("登录失败,请使用APP登录。")
+										if strings.Contains(arkRes.Message, "object") {
+											sender.Reply("无安全验证通道，登录失败,请使用APP登录。")
 										} else {
 											sender.Reply(arkRes.Message)
 										}
