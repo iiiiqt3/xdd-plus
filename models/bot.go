@@ -272,18 +272,18 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							if strings.Contains(string(body), "shareType=expandHelp") {
 								sender.Reply("开始助力")
 								inviterCode := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(string(body))
-								f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-								if err != nil {
-									logs.Warn("zqdyj.txt失败，", err)
-								}
-								sender.Reply("已提交")
-								f.WriteString(inviterCode[1] + "&")
-								f.Close()
+								//f, err := os.OpenFile(ExecPath+"/zqdyj.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+								//if err != nil {
+								//	logs.Warn("zqdyj.txt失败，", err)
+								//}
+								//sender.Reply("已提交")
+								//f.WriteString(inviterCode[1] + "&")
+								//f.Close()
 
 								//runTask(&Task{Path: "jd_racxj_expandHelp.js", Envs: []Env{
 								//	{Name: "jd_racxj_inviteIdArr_expand", Value: inviterCode[1]}, {Name: "gua_racxj_token", Value: GetEnv("token")},
 								//}}, sender)
-								//go runpz(sender, inviterCode[1])
+								go runpz(sender, inviterCode[1])
 							}
 						}
 					}
