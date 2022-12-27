@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/buger/jsonparser"
 	"io/ioutil"
 	"strings"
 )
@@ -43,3 +44,13 @@ func KLtoLJ(kl string) string {
 	}
 }
 
+func NolanKl(kl string) string {
+	rsp := httplib.Post("https://api.nolanstore.top/JComExchange")
+	rsp.Param("code", kl)
+	//rsp.Param("type", "hy")
+
+	data, _ := rsp.Response()
+	body, _ := ioutil.ReadAll(data.Body)
+	val, _ := jsonparser.GetString(body, "data", "jumpUrl")
+	return val
+}
