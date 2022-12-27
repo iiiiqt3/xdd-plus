@@ -45,9 +45,9 @@ func KLtoLJ(kl string) string {
 }
 
 func NolanKl(kl string) string {
-	rsp := httplib.Post("https://api.nolanstore.top/JComExchange")
-	rsp.Param("code", kl)
+	rsp := httplib.Post("http://api.nolanstore.top/JComExchange")
 	rsp.Header("Content-Type", "application/json")
+	rsp.Param("code", kl)
 	//rsp.Param("type", "hy")
 
 	data, _ := rsp.Response()
