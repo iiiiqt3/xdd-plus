@@ -257,7 +257,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			{
 				if sender.IsAdmin {
 					if strings.Contains(msg, "膨胀") {
-						kl := NolanKl(msg)
+						kl := KLtoLJ(msg)
 						if strings.Contains(kl, "口令转换失败") {
 							return "口令转换失败"
 						} else {
