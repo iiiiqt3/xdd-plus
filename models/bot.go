@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -1367,6 +1368,14 @@ func startpz(invited string) (num int, flag bool) {
 			req.Header("Accept-Encoding", "gzip, deflate, br")
 			req.Header("Origin", "https://wbbny.m.jd.com")
 			req.Header("Cookie", cookie)
+			value := GetEnv("proxy")
+
+			proxy := func(req *http.Request) (*url.URL, error) {
+				u, _ := url.ParseRequestURI(value)
+				return u, nil
+			}
+			req.SetProxy(proxy)
+
 			s, _ := req.String()
 			bizCode, _ := jsonparser.GetInt([]byte(s), "data", "bizCode")
 			bizMsg, _ := jsonparser.GetString([]byte(s), "data", "bizMsg")
