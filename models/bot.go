@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -1352,9 +1353,9 @@ func startpz(invited string) (num int, flag bool) {
 		logs.Info(sc)
 		if sc != "" {
 			//https://wbbny.m.jd.com/pb/013349910/3rFiv8Sdkn7BPhk8Pw8xrgMWH6mT/index.html?babelChannel=shouyefuceng&shareType=expandHelp&inviteId=PKASTT0225KkcRkpP9VPQdhz9lf9cJgCTdXn4aRzTQjeQOc&mpin=RnFtkWRRYTOMmdRP--txCYtZA7-VliccLeHN&from=sc
-			url := "https://api.m.jd.com/client.action?functionId=promote_pk_collectPkExpandScore"
+			url1 := "https://api.m.jd.com/client.action?functionId=promote_pk_collectPkExpandScore"
 			body := fmt.Sprintf(`{"random":"3m5QtABC","log":"1666267341263~194Cl2EtLOeMDFqSmpmSzAxMQ==.W3xcUHlcfVlVclx+WRgBKBAYLQwBegJXNVtmKUoIRnsUVzVbNActOBsyM1IGBwAIJRgvIz4HJQB8Gl8aFHtaSnpaNA==.6c8730f2~C,1~22CD2662C9991565879D915A12D2A9A085468D19~07bzbsz~C~SRJAWBANam0cFkQPWxAOaxYFBhQLcE10AxgEfX4dURxAEk0UVgMdByMffwseUGAEGFQeQxMcElABTAVwGHYHTQJqbR4UHkQWaB4VVkJeFgpQGhBHQxZbEQgOBFcABgMGAQ8HBQINBlcEEBgSQwRXGwIQFUZEQEFUQlcSHBZHBFcQDhJSB0dNTEYUU1EWGRBHVV4SDmtYGgYFHAZNABUJHlRvHBZfWBULARwWUxIUCBYJBVhQClwCVQsGAgYKUVNUVQ0IUQYLDQhRAlUBDABWVxIYF1xHEwoSXWAJWVxREhhDRxsCA1cEBgYDBQQFAQICA00UWF8SDkMKWwtXAwUIUAZQBgEEA1FTAFQGUgUFBwEBXlRWB1QBVAMEBwlWBgcDFB4WVkQDEQMaXypBQUxsBnpcelJ3YyRfZlVeXldDAGkQTRBeQhcIFXBAQFhVQXVdWUBBFVZLFBIoXFMaFx4VX1FGFgpDBwQMAgVRERUaQQJAEg5uCgMFHAMNADwaEEZfFltoG1FiCV1eUQQBGwMSHBZZLmUQGBIFVR0PGh5DAwEaBBwDExwSBQZZBAMEEhhDClsLVwMFCFAGUAYBBANRUwBUBlIFBQcBAV5UVgdUAVQDBAcJVgYHAxQeFlEWPB8bUV0AEAoWU1RRV1ZWQERDGhBVWhZbEUwaHkNRWRYPEEAFHgAaBUMaEFdWaxcRAxoCUBAcFldWFQsSQlVeBVlfCQNZVGJNeXAiEBwWWFgVC2sBGABNBm8YElYNXF4aCEMDBgIDAAEGAwMMBlMOTAVhZRcEYAhFEEFEeXF4elReXFxmG3dLenEJXB1fbUoxZAJiA2ZiRWpqBwkqYnAMZFA1aWltWFQLfmZgSnxlQGd1AFAPa3FDfDdKVQFwI2djcU8KTnpicVd5MA5kcEkAJHgJAEguSABNcXMDVHNaDEQ0fkVyfV0KZ3F8AiBkXHV6dWJFcX9ncVdjY0dzbhtcTGxYMAd+cQ1/ellhXHkABm9/XX1iMGJeT1ckQnF5YgYAZ2RYY3YlYwJ4Wm1VfGttYSdfQEx3c1QMHgcHBQJVVFFSShgfCEZMH3BOZ118ZGZidXl1N2NxfFdxMntBbmMkRVtmYlp+VXVcTHEkZ11gdUxRYGtAYyt0cV9yc2ZWYndMdjJgZUx2cQZAanljKGB4dnt2ckZfYnJyWWNlcXlmIlt8cHoWd3R1Qn9keWJ6ZXUGXWFxAENcTQlcRwNZBloXHhVcQ1cWCkMUHhZIVxMRAxoCUE5IDUlIW1ZXV0ZXUUxYWBJJ~1uk1y6y","actionType":"0","inviteId":"%s"}`, invited)
-			req := httplib.Post(url)
+			req := httplib.Post(url1)
 			random := browser.Random()
 			req.Param("clientVersion", "-1")
 			//req.Param("functionId", "promote_pk_getHomeData")
@@ -1370,7 +1371,10 @@ func startpz(invited string) (num int, flag bool) {
 			req.Header("Cookie", cookie)
 			value := GetEnv("proxy")
 
-			proxy := func(req *http.Request) (*url.URL, error) {
+			proxy := func(req *http.Request) (
+				*url.URL,
+				error,
+			) {
 				u, _ := url.ParseRequestURI(value)
 				return u, nil
 			}

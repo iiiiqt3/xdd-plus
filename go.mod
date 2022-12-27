@@ -52,7 +52,10 @@ require (
 	gorm.io/gorm v1.21.13
 )
 
-require github.com/tinyhubs/tinydom v0.0.0-20200514151848-c8d6fb49f183
+require (
+	github.com/google/uuid v1.3.0
+	github.com/tinyhubs/tinydom v0.0.0-20200514151848-c8d6fb49f183
+)
 
 require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
@@ -67,7 +70,6 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
 	github.com/golang/protobuf v1.5.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.8.1 // indirect
