@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -16,6 +17,7 @@ type UserController struct {
 func (c *UserController) GetUserInfo() {
 
 	pin := c.GetString("pin")
+	pin = url.QueryEscape(pin)
 	cookie, err := models.GetJdCookie(pin)
 	ok := models.CookieOK(cookie)
 	if err != nil {
