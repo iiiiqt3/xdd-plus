@@ -135,7 +135,7 @@ func (ck *JdCookie) Query() string {
 	f := t.Sub(parse).Hours() / 24
 	i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
 
-	if i < 500 {
+	if i < 900 {
 		msgs = append(msgs, fmt.Sprintf("您已挂机：%d天", i))
 	} else {
 		msgs = append(msgs, fmt.Sprintf("您距离失效还有：28天"))
