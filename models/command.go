@@ -267,8 +267,8 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			if Config.VIP == true {
 				sender.handleJdCookies(func(ck *JdCookie) {
-					if GetCoin(sender.UserID) > 42 {
-						RemCoin(sender.UserID, 42)
+					if GetCoin(sender.UserID) < 42 {
+						//RemCoin(sender.UserID, 42)
 						sender.Reply(fmt.Sprintf("已提交：账号：%s，扣除积分42，剩余积分：%d", ck.PtPin, GetCoin(sender.UserID)))
 						cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
 						share := getShare(cookie)
