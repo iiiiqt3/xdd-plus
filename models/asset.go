@@ -80,19 +80,13 @@ func CompletePush() {
 			flag := false
 			var msg1 []string
 			var fruit = make(chan string)
-			var pet = make(chan string)
 			cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
 			go initFarm(cookie, fruit)
 			if strings.Contains(<-fruit, "已可领取") {
 				flag = true
 				msg1 = append(msg1, ck.Nickname+"您的农场无门槛红包已经成熟，请尽快领取\r\n 【东东农场】京东->我的->东东农场,完成是京东红包,可以用于京东app的任意商品")
 			}
-			time.Sleep(time.Second * 30)
-			go initPetTown(cookie, pet)
-			if strings.Contains(<-pet, "已可领取") {
-				flag = true
-				msg1 = append(msg1, ck.Nickname+"您的萌宠无门槛红包已经成熟，请尽快领取\r\n 【东东萌宠】京东->我的->东东萌宠,完成是京东红包,可以用于京东app的任意商品")
-			}
+			time.Sleep(time.Second * 30)		
 			if flag {
 				if ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
 					SendQQ(int64(ck.QQ), strings.Join(msg1, "\n"))
@@ -134,7 +128,7 @@ func (ck *JdCookie) Query() string {
 	f := t.Sub(parse).Hours() / 24
 	i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
 
-	if i < 500 {
+	if i < 1500 {
 		msgs = append(msgs, fmt.Sprintf("您已挂机：%d天", i))
 	} else {
 		msgs = append(msgs, fmt.Sprintf("您距离失效还有：28天"))
@@ -161,7 +155,6 @@ func (ck *JdCookie) Query() string {
 		}
 		var rpc = make(chan []RedList)
 		var fruit = make(chan string)
-		var pet = make(chan string)
 		var gold = make(chan int64)
 		var egg = make(chan int64)
 		var tyt = make(chan string)
@@ -172,7 +165,6 @@ func (ck *JdCookie) Query() string {
 		var jxzz = make(chan string)
 		go redPacket(cookie, rpc)
 		go initFarm(cookie, fruit)
-		go initPetTown(cookie, pet)
 		go jsGold(cookie, gold)
 		go jxncEgg(cookie, egg)
 		go tytCoupon(cookie, tyt)
@@ -297,7 +289,6 @@ func (ck *JdCookie) Query() string {
 			msgs = append(msgs, "暂无红包数据🧧")
 		}
 		msgs = append(msgs, fmt.Sprintf("东东农场：%s", <-fruit))
-		msgs = append(msgs, fmt.Sprintf("东东萌宠：%s", <-pet))
 		msgs = append(msgs, fmt.Sprintf("京喜工厂：%s", <-xgc))
 		msgs = append(msgs, fmt.Sprintf("京东试用：%s", <-dsy))
 		gn := <-gold
@@ -755,103 +746,7 @@ func initFarm(cookie string, state chan string) {
 	state <- rt
 }
 
-func initPetTown(cookie string, state chan string) {
-	type ResourceList struct {
-		AdvertID string `json:"advertId"`
-		ImageURL string `json:"imageUrl"`
-		Link     string `json:"link"`
-		ShopID   string `json:"shopId"`
-	}
-	type PetPlaceInfoList struct {
-		Place  int `json:"place"`
-		Energy int `json:"energy"`
-	}
-	type PetInfo struct {
-		AdvertID     string `json:"advertId"`
-		NickName     string `json:"nickName"`
-		IconURL      string `json:"iconUrl"`
-		ClickIconURL string `json:"clickIconUrl"`
-		FeedGifURL   string `json:"feedGifUrl"`
-		HomePetImage string `json:"homePetImage"`
-		CrossBallURL string `json:"crossBallUrl"`
-		RunURL       string `json:"runUrl"`
-		TickleURL    string `json:"tickleUrl"`
-	}
-	type GoodsInfo struct {
-		GoodsName        string `json:"goodsName"`
-		GoodsURL         string `json:"goodsUrl"`
-		GoodsID          string `json:"goodsId"`
-		ExchangeMedalNum int    `json:"exchangeMedalNum"`
-		ActivityID       string `json:"activityId"`
-		ActivityIds      string `json:"activityIds"`
-	}
-	type Result struct {
-		ShareCode              string             `json:"shareCode"`
-		HisHbFlag              bool               `json:"hisHbFlag"`
-		MasterHelpPeoples      []interface{}      `json:"masterHelpPeoples"`
-		HelpSwitchOn           bool               `json:"helpSwitchOn"`
-		UserStatus             int                `json:"userStatus"`
-		TotalEnergy            int                `json:"totalEnergy"`
-		MasterInvitePeoples    []interface{}      `json:"masterInvitePeoples"`
-		ShareTo                string             `json:"shareTo"`
-		PetSportStatus         int                `json:"petSportStatus"`
-		UserImage              string             `json:"userImage"`
-		MasterHelpReward       int                `json:"masterHelpReward"`
-		ShowHongBaoExchangePop bool               `json:"showHongBaoExchangePop"`
-		ShowNeedCollectPop     bool               `json:"showNeedCollectPop"`
-		PetSportReward         string             `json:"petSportReward"`
-		NewhandBubble          bool               `json:"newhandBubble"`
-		ResourceList           []ResourceList     `json:"resourceList"`
-		ProjectBubble          bool               `json:"projectBubble"`
-		MasterInvitePop        bool               `json:"masterInvitePop"`
-		MasterInviteReward     int                `json:"masterInviteReward"`
-		MedalNum               int                `json:"medalNum"`
-		MasterHelpPop          bool               `json:"masterHelpPop"`
-		MeetDays               int                `json:"meetDays"`
-		PetPlaceInfoList       []PetPlaceInfoList `json:"petPlaceInfoList"`
-		MedalPercent           float64            `json:"medalPercent"`
-		CharitableSwitchOn     bool               `json:"charitableSwitchOn"`
-		PetInfo                PetInfo            `json:"petInfo"`
-		NeedCollectEnergy      int                `json:"needCollectEnergy"`
-		FoodAmount             int                `json:"foodAmount"`
-		InviteCode             string             `json:"inviteCode"`
-		RulesURL               string             `json:"rulesUrl"`
-		PetStatus              int                `json:"petStatus"`
-		GoodsInfo              GoodsInfo          `json:"goodsInfo"`
-	}
-	type AutoGenerated struct {
-		Code       string `json:"code"`
-		ResultCode string `json:"resultCode"`
-		Message    string `json:"message"`
-		Result     Result `json:"result"`
-	}
-	a := AutoGenerated{}
-	req := httplib.Post(`https://api.m.jd.com/client.action?functionId=initPetTown`)
-	req.Header("Host", "api.m.jd.com")
-	req.Header("User-Agent", ua)
-	req.Header("cookie", cookie)
-	req.Header("Content-Type", "application/x-www-form-urlencoded")
-	req.Body(`body={}&appid=wh5&loginWQBiz=pet-town&clientVersion=9.0.4`)
-	data, _ := req.Bytes()
-	json.Unmarshal(data, &a)
-	rt := ""
-	if a.Code == "0" && a.ResultCode == "0" && a.Message == "success" {
-		if a.Result.UserStatus == 0 {
-			rt = "请手动开启活动⏰"
-		} else if a.Result.GoodsInfo.GoodsName == "" {
-			rt = "你忘了选购新的商品⏰"
-		} else if a.Result.PetStatus == 5 {
-			rt = a.Result.GoodsInfo.GoodsName + "已可领取⏰"
-		} else if a.Result.PetStatus == 6 {
-			rt = a.Result.GoodsInfo.GoodsName + "未继续领养新的物品⏰"
-		} else {
-			rt = a.Result.GoodsInfo.GoodsName + fmt.Sprintf("领养中，进度%.2f%%，勋章%d/%d🐶", a.Result.MedalPercent, a.Result.MedalNum, a.Result.GoodsInfo.ExchangeMedalNum)
-		}
-	} else {
-		rt = "数据异常"
-	}
-	state <- rt
-}
+
 
 func jsGold(cookie string, state chan int64) { //
 
