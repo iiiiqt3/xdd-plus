@@ -158,7 +158,6 @@ func (ck *JdCookie) Query() string {
 		var gold = make(chan int64)
 		var egg = make(chan int64)
 		var tyt = make(chan string)
-		var mmc = make(chan int64)
 		var zjb = make(chan int64)
 		var xgc = make(chan string)
 		var dsy = make(chan string)
@@ -168,7 +167,6 @@ func (ck *JdCookie) Query() string {
 		go jsGold(cookie, gold)
 		go jxncEgg(cookie, egg)
 		go tytCoupon(cookie, tyt)
-		go mmCoin(cookie, mmc)
 		go jdzz(cookie, zjb)
 		go jxgc(cookie, xgc)
 		go jdsy(cookie, dsy)
@@ -299,12 +297,7 @@ func (ck *JdCookie) Query() string {
 		} else {
 			msgs = append(msgs, fmt.Sprintf("京东赚赚：暂无数据"))
 		}
-		mmcCoin := <-mmc
-		if mmcCoin != 0 {
-			msgs = append(msgs, fmt.Sprintf("京东秒杀：%d秒秒币(≈%.2f元)💰", mmcCoin, float64(mmcCoin)/1000))
-		} else {
-			msgs = append(msgs, fmt.Sprintf("京东秒杀：暂无数据"))
-		}
+		
 		msgs = append(msgs, fmt.Sprintf("推一推券：%s", <-tyt))
 		msgs = append(msgs, fmt.Sprintf("惊喜牧场：%d枚鸡蛋🥚", <-egg))
 
@@ -933,20 +926,6 @@ func tytCoupon(cookie string, state chan string) {
 	state <- rt
 }
 
-func mmCoin(cookie string, state chan int64) {
-	req := httplib.Post(`https://api.m.jd.com/client.action`)
-	req.Header("Host", "api.m.jd.com")
-	req.Header("Accept", "application/json, text/plain, */*")
-	req.Header("Origin", "https://h5.m.jd.com")
-
-	req.Header("User-Agent", ua)
-	req.Header("cookie", cookie)
-	req.Header("Content-Type", "application/x-www-form-urlencoded")
-	req.Body(`uuid=3245ad3d16ab2153c69f9ca91cd2e931b06a3bb8&clientVersion=10.1.0&client=wh5&osVersion=&area=&networkType=wifi&functionId=homePageV2&body=%7B%7D&appid=SecKill2020`)
-	data, _ := req.Bytes()
-	mmc, _ := jsonparser.GetInt(data, "result", "assignment", "assignmentPoints")
-	state <- mmc
-}
 
 func jdzz(cookie string, state chan int64) { //
 	req := httplib.Get(`https://api.m.jd.com/client.action?functionId=interactTaskIndex&body={}&client=wh5&clientVersion=9.1.0`)
