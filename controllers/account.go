@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"github.com/cdle/xdd/models"
+	"io/ioutil"
+	"os"
 )
 
 type AccountController struct {
@@ -103,7 +105,14 @@ func (c *AccountController) CreateOrUpdate() {
 }
 
 func (c *AccountController) Admin() {
-	c.Ctx.WriteString(models.Admin)
+	//c.Ctx.WriteString(models.Admin)
+	f, err := os.Open("./theme/test.html")
+	if err == nil {
+		d, _ := ioutil.ReadAll(f)
+		//theme = string(d)
+		c.Ctx.WriteString(string(d))
+		return
+	}
 }
 
 func (c *AccountController) UserCenter() {
