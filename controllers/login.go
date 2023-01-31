@@ -562,12 +562,19 @@ func (c *LoginController) SMSLogin() {
 		if ptKey != "" && ptPin != "" {
 			if models.CookieOK(ck) {
 				if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
-					models.UpdateCookie(ck)
 					if qq != "" && len(qq) > 6 {
 						//ck.Update(models.QQ, qq)
 						atoi, _ := strconv.Atoi(qq)
 						ck.Updates(models.JdCookie{
+							PtKey:    ptKey,
+							PtPin:    ptPin,
 							QQ:       atoi,
+							UpdateAt: time.Now().Local().Format("2006-01-02"),
+						})
+					} else {
+						ck.Updates(models.JdCookie{
+							PtKey:    ptKey,
+							PtPin:    ptPin,
 							UpdateAt: time.Now().Local().Format("2006-01-02"),
 						})
 					}
@@ -576,7 +583,6 @@ func (c *LoginController) SMSLogin() {
 					(&models.JdCookie{}).Push(msg)
 
 				} else {
-
 					models.NewJdCookie(ck)
 					if qq != "" {
 						msg := fmt.Sprintf("来自短信的添加,账号：%s,QQ: %v", ck.PtPin, qq)
@@ -663,7 +669,11 @@ func (c *LoginController) WskeyLogin() {
 		if ok {
 			if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
 				msg := fmt.Sprintf("Wskey账号更新,账号：%s", nck.PtPin)
-				models.UpdateCookie(ck)
+				ck.Updates(models.JdCookie{
+					WsKey:    Wskey,
+					PtPin:    ptPin,
+					UpdateAt: time.Now().Local().Format("2006-01-02"),
+				})
 				(&models.JdCookie{}).Push(msg)
 			} else {
 				models.NewJdCookie(ck)
