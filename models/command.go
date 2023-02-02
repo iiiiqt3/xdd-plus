@@ -234,6 +234,26 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"跑"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			if len(sender.Contents) >= 1 {
+				var head = sender.Contents[0]
+				var args = strings.Join(sender.Contents[1:], " ")
+				rsp := cmd(fmt.Sprintf(`python3 ./runcommand.py check "%s" "%s"`, head, args), &Sender{})
+				sender.Reply(rsp)
+				if strings.Index(rsp, "开始") >= 0 {
+					rsp := cmd(fmt.Sprintf(`python3 ./runcommand.py run "%s" "%s"`, head, args), &Sender{})
+					sender.Reply(rsp)
+				}
+			}else{
+			sender.Reply("请配置开始信息")
+			}
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"sign", "打卡", "签到"},
 		Handle: func(sender *Sender) interface{} {
 			if sender.Type == "tgg" {
