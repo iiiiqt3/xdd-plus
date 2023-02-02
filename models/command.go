@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -318,7 +318,7 @@ var codeSignals = []CodeSignal{
 			cookies := response.Cookies()
 			qrlist[sender.UserID] = cookies
 			body := response.Body
-			all, _ := io.ReadAll(body)
+			all, _ := ioutil.ReadAll(body)
 			val, _ := jsonparser.GetString(all, "data", "qr")
 			SendQQ(int64(sender.UserID), []byte(val))
 			return nil
