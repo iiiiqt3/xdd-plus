@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -319,7 +320,7 @@ var codeSignals = []CodeSignal{
 			qrlist[sender.UserID] = cookies
 			all, _ := ioutil.ReadAll(response.Body)
 			//val, _ := jsonparser.GetString(all, "data", "qr")
-			SendQQ(int64(sender.UserID), all)
+			SendQQ(int64(sender.UserID), Base64Decode(string(all)))
 			return nil
 		},
 	},
@@ -883,4 +884,21 @@ func LimitJdCookie(cks []JdCookie, a string) []JdCookie {
 		}
 	}
 	return ncks
+}
+
+func Base64Decode(str string) string {
+	reader := strings.NewReader(str)
+	decoder := base64.NewDecoder(base64.RawStdEncoding, reader)
+	// 以流式解码
+	buf := make([]byte, 1024)
+	// 保存解码后的数据
+	dst := ""
+	for {
+		n, err := decoder.Read(buf)
+		dst += string(buf[:n])
+		if n == 0 || err != nil {
+			break
+		}
+	}
+	return dst
 }
