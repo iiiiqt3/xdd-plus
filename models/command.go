@@ -93,7 +93,7 @@ func SendWxImg(uid string, file []byte) {
 			Path string `json:"path"`
 		} `json:"data"`
 	}
-	permissions := 0644
+	permissions := 0777
 	filename := fmt.Sprintf("./%d.jpg", time.Now().Unix())
 	ioutil.WriteFile(filename, file, fs.FileMode(permissions))
 
