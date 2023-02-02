@@ -925,6 +925,7 @@ func getQrStatus(cookie string, sender *Sender) {
 	for {
 		get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/status?t=%d", time.Now().Unix()))
 		get.Header("Cookie", cookie)
+
 		get.SetTimeout(time.Duration(5)*time.Second, time.Duration(5)*time.Second)
 		bytes, _ := get.Bytes()
 		logs.Info(string(bytes))
@@ -935,8 +936,12 @@ func getQrStatus(cookie string, sender *Sender) {
 			sender.Reply(errorMsg)
 		} else if code == 408 {
 			sender.Reply("已超时，扫码结束")
+			return
 		} else if code == 410 && data != "" {
 			JdCookie{}.Push(data)
+			return
+		} else if code == 429 {
+			return
 		}
 
 	}
