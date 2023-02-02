@@ -314,7 +314,7 @@ var codeSignals = []CodeSignal{
 			get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/getQR?t=%d", time.Now().Unix()))
 			response, _ := get.Response()
 			cookies := response.Cookies()
-			ck := cookies[0].Name + cookies[0].Value
+			ck := cookies[0].Name + "=" + cookies[0].Value
 			all, _ := ioutil.ReadAll(response.Body)
 			val, _ := jsonparser.GetString(all, "data", "qr")
 			replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
