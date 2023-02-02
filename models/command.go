@@ -923,7 +923,10 @@ func getQrStatus(cookie []*http.Cookie, sender *Sender) {
 	//	  });
 
 	for {
-		get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/status?t=%d", time.Now().Unix())).SetCookie(cookie[0]).SetTimeout(time.Duration(5)*time.Second, time.Duration(5)*time.Second)
+		get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/status?t=%d", time.Now().Unix()))
+		get.SetEnableCookie(true)
+		get.SetCookie(cookie[0])
+		get.SetTimeout(time.Duration(5)*time.Second, time.Duration(5)*time.Second)
 		s := cookie[0].String()
 		logs.Info(s)
 		bytes, _ := get.Bytes()
