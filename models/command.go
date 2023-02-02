@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
-	"io/fs"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -94,19 +93,14 @@ func SendWxImg(uid string, file []byte) {
 		} `json:"data"`
 	}
 
-	//f, err := os.OpenFile(ExecPath+filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	//if err != nil {
-	//	logs.Warn("zqdyj.txt失败，", err)
-	//}
-	//sender.Reply("已提交")
-	//f.WriteString(inviterCode[1] + "&")
-	//f.Close()
-	//
-
-	permissions := 0777
 	filename := ExecPath + fmt.Sprintf("/%d.jpg", time.Now().Unix())
 
-	ioutil.WriteFile(filename, file, fs.FileMode(permissions))
+	f, err := os.OpenFile(ExecPath+filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		logs.Warn("zqdyj.txt失败，", err)
+	}
+	f.Write(file)
+	f.Close()
 
 	req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
 	reply := &QXMessage{
