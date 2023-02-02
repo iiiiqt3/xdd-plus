@@ -934,6 +934,7 @@ func getQrStatus(cookie string, sender *Sender) {
 		data, _ := jsonparser.GetString(bytes, "data")
 		if code == 500 || code == 202 {
 			sender.Reply(errorMsg)
+			return
 		} else if code == 408 {
 			sender.Reply("已超时，扫码结束")
 			return
