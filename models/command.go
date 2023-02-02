@@ -93,8 +93,19 @@ func SendWxImg(uid string, file []byte) {
 			Path string `json:"path"`
 		} `json:"data"`
 	}
+
+	//f, err := os.OpenFile(ExecPath+filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	//if err != nil {
+	//	logs.Warn("zqdyj.txt失败，", err)
+	//}
+	//sender.Reply("已提交")
+	//f.WriteString(inviterCode[1] + "&")
+	//f.Close()
+	//
+
 	permissions := 0777
-	filename := fmt.Sprintf("./%d.jpg", time.Now().Unix())
+	filename := ExecPath + fmt.Sprintf("./%d.jpg", time.Now().Unix())
+
 	ioutil.WriteFile(filename, file, fs.FileMode(permissions))
 
 	req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
