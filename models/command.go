@@ -320,7 +320,8 @@ var codeSignals = []CodeSignal{
 			qrlist[sender.UserID] = cookies
 			all, _ := ioutil.ReadAll(response.Body)
 			val, _ := jsonparser.GetString(all, "data", "qr")
-			decodeStr, _ := base64.StdEncoding.DecodeString(val)
+			replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
+			decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
 			SendQQ(int64(sender.UserID), decodeStr)
 			return nil
 		},
