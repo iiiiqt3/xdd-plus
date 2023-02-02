@@ -13,7 +13,6 @@ import (
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -315,13 +314,14 @@ var codeSignals = []CodeSignal{
 			get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/getQR?t=%d", time.Now().Unix()))
 			response, _ := get.Response()
 			cookies := response.Cookies()
+			ck := cookies[0].Name + cookies[0].Value
 			all, _ := ioutil.ReadAll(response.Body)
 			val, _ := jsonparser.GetString(all, "data", "qr")
 			replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
 			decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
 			SendQQ(int64(sender.UserID), decodeStr)
 			sender.Reply("请使用微信扫码，后摄像头,有效期为160秒")
-			go getQrStatus(cookies, sender)
+			go getQrStatus(ck, sender)
 			return nil
 		},
 	},
@@ -904,7 +904,7 @@ func Base64Decode(str string) string {
 	return dst
 }
 
-func getQrStatus(cookie []*http.Cookie, sender *Sender) {
+func getQrStatus(cookie string, sender *Sender) {
 
 	//		  if (data.code == 500 || data.code == 202) {
 	//			  qrExpire();
@@ -924,11 +924,8 @@ func getQrStatus(cookie []*http.Cookie, sender *Sender) {
 
 	for {
 		get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/status?t=%d", time.Now().Unix()))
-		get.SetEnableCookie(true)
-		get.SetCookie(cookie[0])
+		get.Header("Cookie", cookie)
 		get.SetTimeout(time.Duration(5)*time.Second, time.Duration(5)*time.Second)
-		s := cookie[0].String()
-		logs.Info(s)
 		bytes, _ := get.Bytes()
 		logs.Info(string(bytes))
 		code, _ := jsonparser.GetInt(bytes, "code")
