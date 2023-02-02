@@ -318,8 +318,8 @@ var codeSignals = []CodeSignal{
 			cookies := response.Cookies()
 			qrlist[sender.UserID] = cookies
 			body := response.Body
-			io.ReadAll(body)
-			SendQQ(int64(sender.UserID), response)
+			all, _ := io.ReadAll(body)
+			SendQQ(int64(sender.UserID), all)
 			return nil
 		},
 	},
