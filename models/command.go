@@ -39,8 +39,6 @@ type Sender struct {
 	ReplySenderUserID int
 }
 
-var qrlist = make(map[int][]*http.Cookie)
-
 type QQuery struct {
 	Code int `json:"code"`
 	Data struct {
@@ -317,13 +315,13 @@ var codeSignals = []CodeSignal{
 			get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/getQR?t=%d", time.Now().Unix()))
 			response, _ := get.Response()
 			cookies := response.Cookies()
-			qrlist[sender.UserID] = cookies
 			all, _ := ioutil.ReadAll(response.Body)
 			val, _ := jsonparser.GetString(all, "data", "qr")
 			replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
 			decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
 			SendQQ(int64(sender.UserID), decodeStr)
-			sender.Reply("请使用微信扫码，后摄像头")
+			sender.Reply("请使用微信扫码，后摄像头,有效期为160秒")
+			go getQrStatus(cookies, sender)
 			return nil
 		},
 	},
@@ -904,4 +902,40 @@ func Base64Decode(str string) string {
 		}
 	}
 	return dst
+}
+
+func getQrStatus(cookie []*http.Cookie, sender *Sender) {
+
+	//		  if (data.code == 500 || data.code == 202) {
+	//			  qrExpire();
+	//			  showTips(data.errorMsg);
+	//		  } else if (data.code == 408) {
+	//			qrExpire()
+	//			// location.reload();
+	//		  } else if (data.code == 410 && data.data) {
+	//			window.clearInterval(a.ib)
+	//			showTips(data.data.msg);
+	//			qrExpire();
+	//		  } else {
+	//			  setTimeout(checkLogin, 1000)
+	//		  }
+	//		}
+	//	  });
+
+	for {
+		get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/status?t=%d", time.Now().Unix())).SetTimeout(time.Duration(5)*time.Second, time.Duration(5)*time.Second)
+		bytes, _ := get.Bytes()
+		code, _ := jsonparser.GetInt(bytes, "code")
+		errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
+		data, _ := jsonparser.GetString(bytes, "data")
+		if code == 500 || code == 202 {
+			sender.Reply(errorMsg)
+		} else if code == 408 {
+			sender.Reply("已超时，扫码结束")
+		} else if code == 410 && data != "" {
+			JdCookie{}.Push(data)
+		}
+
+	}
+
 }
