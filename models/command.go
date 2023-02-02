@@ -353,7 +353,6 @@ var codeSignals = []CodeSignal{
 
 	{
 		Command: []string{"扫码", "微信扫码"},
-		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/getQR?t=%d", time.Now().Unix()))
 			response, _ := get.Response()
