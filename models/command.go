@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -78,7 +79,43 @@ func (sender *Sender) SendImg(msg []byte) {
 	switch sender.Type {
 	case "qq":
 		SendQQ(int64(sender.UserID), msg)
+	case "wx":
+		SendWxImg(sender.WxId, msg)
 	}
+
+}
+
+func SendWxImg(uid string, file []byte) {
+	type QXMessage struct {
+		Type string `json:"type"`
+		Data struct {
+			Wxid string `json:"wxid"`
+			Path string `json:"path"`
+		} `json:"data"`
+	}
+	permissions := 0644
+	filename := fmt.Sprintf("%d.jpg", time.Now().Unix())
+	ioutil.WriteFile(filename, file, fs.FileMode(permissions))
+
+	req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
+	reply := &QXMessage{
+		Type: "Q0010",
+		Data: struct {
+			Wxid string `json:"wxid"`
+			Path string `json:"path"`
+		}{
+			Wxid: uid,
+			Path: filename,
+		},
+	}
+	random := browser.Random()
+	req.Header("User-Agent", random)
+	marshal, _ := json.Marshal(reply)
+	logs.Info(string(marshal))
+	req.Body(string(marshal))
+	s, _ := req.String()
+	logs.Info(s)
+
 }
 
 func SendWxMsg(uid string, msg string) {
@@ -319,7 +356,7 @@ var codeSignals = []CodeSignal{
 			val, _ := jsonparser.GetString(all, "data", "qr")
 			replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
 			decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
-			SendQQ(int64(sender.UserID), decodeStr)
+			sender.SendImg(decodeStr)
 			sender.Reply("请使用微信扫码，后摄像头,有效期为160秒")
 			go getQrStatus(ck, sender)
 			return nil
