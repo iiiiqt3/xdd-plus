@@ -319,7 +319,8 @@ var codeSignals = []CodeSignal{
 			qrlist[sender.UserID] = cookies
 			body := response.Body
 			all, _ := io.ReadAll(body)
-			SendQQ(int64(sender.UserID), all)
+			val, _ := jsonparser.GetString(all, "data", "qr")
+			SendQQ(int64(sender.UserID), []byte(val))
 			return nil
 		},
 	},
