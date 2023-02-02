@@ -11,6 +11,7 @@ import (
 	"github.com/Mrs4s/go-cqhttp/modules/servers"
 	"github.com/cdle/xdd/qbot/internal/base"
 	"github.com/cdle/xdd/qbot/internal/cache"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -81,6 +82,9 @@ func Main() {
 				bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(msg.([]byte))}}})
 				//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.FriendImageElement{Url: "https://qn.smxy.xyz/2022/08/75df9ce017ed4f0ba2bbe68c7c0bc15a.jpg"}}})
 			}
+		case io.Reader:
+			bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{}}})
+
 			//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{File: "./output.jpg"}}})
 			//bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{URL: "https://qn.smxy.xyz/2022/08/75df9ce017ed4f0ba2bbe68c7c0bc15a.jpg"}}})
 		case *http.Response:
