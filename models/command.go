@@ -94,7 +94,7 @@ func SendWxImg(uid string, file []byte) {
 		} `json:"data"`
 	}
 	permissions := 0644
-	filename := fmt.Sprintf("%d.jpg", time.Now().Unix())
+	filename := fmt.Sprintf("/%d.jpg", time.Now().Unix())
 	ioutil.WriteFile(filename, file, fs.FileMode(permissions))
 
 	req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
