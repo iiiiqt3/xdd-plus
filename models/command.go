@@ -97,7 +97,6 @@ func SendWxImg(uid string, file []byte) {
 	filename := ExecPath + fmt.Sprintf("/static/%d.jpg", unix)
 	url := fmt.Sprintf("http://192.168.195.52:5703/static/%d.jpg", unix)
 
-	logs.Info(url)
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
 		logs.Warn("zqdyj.txt失败，", err)
@@ -113,7 +112,7 @@ func SendWxImg(uid string, file []byte) {
 			Path string `json:"path"`
 		}{
 			Wxid: uid,
-			Path: filename,
+			Path: url,
 		},
 	}
 	random := browser.Random()
