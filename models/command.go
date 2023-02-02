@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
+	"io"
+	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -35,6 +37,8 @@ type Sender struct {
 	IsAdmin           bool
 	ReplySenderUserID int
 }
+
+var qrlist = make(map[int][]*http.Cookie)
 
 type QQuery struct {
 	Code int `json:"code"`
@@ -302,6 +306,21 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			return Count()
+		},
+	},
+
+	{
+		Command: []string{"扫码", "微信扫码"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/getQR?t=%d", time.Now().Unix()))
+			response, _ := get.Response()
+			cookies := response.Cookies()
+			qrlist[sender.UserID] = cookies
+			body := response.Body
+			io.ReadAll(body)
+			SendQQ(int64(sender.UserID), response)
+			return nil
 		},
 	},
 
