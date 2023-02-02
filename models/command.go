@@ -927,6 +927,7 @@ func getQrStatus(cookie []*http.Cookie, sender *Sender) {
 		s := cookie[0].String()
 		logs.Info(s)
 		bytes, _ := get.Bytes()
+		logs.Info(string(bytes))
 		code, _ := jsonparser.GetInt(bytes, "code")
 		errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
 		data, _ := jsonparser.GetString(bytes, "data")
