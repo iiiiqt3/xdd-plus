@@ -323,6 +323,7 @@ var codeSignals = []CodeSignal{
 			replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
 			decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
 			SendQQ(int64(sender.UserID), decodeStr)
+			sender.Reply("请使用微信扫码，后摄像头")
 			return nil
 		},
 	},
