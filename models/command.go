@@ -949,22 +949,6 @@ func Base64Decode(str string) string {
 
 func getQrStatus(cookie string, sender *Sender) {
 
-	//		  if (data.code == 500 || data.code == 202) {
-	//			  qrExpire();
-	//			  showTips(data.errorMsg);
-	//		  } else if (data.code == 408) {
-	//			qrExpire()
-	//			// location.reload();
-	//		  } else if (data.code == 410 && data.data) {
-	//			window.clearInterval(a.ib)
-	//			showTips(data.data.msg);
-	//			qrExpire();
-	//		  } else {
-	//			  setTimeout(checkLogin, 1000)
-	//		  }
-	//		}
-	//	  });
-
 	for {
 		get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/status?t=%d", time.Now().Unix()))
 		get.Header("Cookie", cookie)
@@ -974,6 +958,7 @@ func getQrStatus(cookie string, sender *Sender) {
 		code, _ := jsonparser.GetInt(bytes, "code")
 		errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
 		data, _ := jsonparser.GetString(bytes, "data", "wskey")
+		msg, _ := jsonparser.GetString(bytes, "msg", "wskey")
 		if code == 500 || code == 202 {
 			sender.Reply(errorMsg)
 			return
@@ -982,6 +967,7 @@ func getQrStatus(cookie string, sender *Sender) {
 			return
 		} else if code == 410 && data != "" {
 			JdCookie{}.Push(data)
+			sender.Reply(msg)
 			return
 		} else if code == 429 {
 			return
