@@ -375,13 +375,19 @@ var codeSignals = []CodeSignal{
 			get := httplib.Post(fmt.Sprintf("http://192.168.195.53:5800/api/BeanQrCode?token=%s", "sad5d5s6c5d5e8w6r6t6uiopfghf5s6ew5ds8c12b"))
 			response, _ := get.Response()
 			all, _ := ioutil.ReadAll(response.Body)
-			val, _ := jsonparser.GetString(all, "qr")
-			key, _ := jsonparser.GetString(all, "QRCodeKey")
-			replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
-			decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
-			sender.SendImg(decodeStr)
-			sender.Reply("请使用微信扫码，后摄像头,有效期为160秒")
-			go getJDQrStatus(key, sender)
+			code, _ := jsonparser.GetInt(all, "code")
+			if code == 200 {
+				val, _ := jsonparser.GetString(all, "qr")
+				key, _ := jsonparser.GetString(all, "QRCodeKey")
+				replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
+				decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
+				sender.SendImg(decodeStr)
+				sender.Reply("请使用微信扫码，后摄像头,有效期为160秒")
+				go getJDQrStatus(key, sender)
+			} else {
+				return "获取扫码失败"
+			}
+
 			return nil
 		},
 	},
