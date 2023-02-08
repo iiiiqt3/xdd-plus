@@ -385,6 +385,7 @@ var codeSignals = []CodeSignal{
 				sender.Reply("请使用微信扫码，后摄像头,有效期为160秒")
 				go getJDQrStatus(key, sender)
 			} else {
+				logs.Info(string(all))
 				return "获取扫码失败"
 			}
 
