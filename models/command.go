@@ -352,7 +352,7 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-		Command: []string{"扫码", "微信扫码"},
+		Command: []string{"微信扫码"},
 		Handle: func(sender *Sender) interface{} {
 			get := httplib.Get(fmt.Sprintf("http://192.168.195.53:2081/d/getQR?t=%d", time.Now().Unix()))
 			response, _ := get.Response()
@@ -365,6 +365,23 @@ var codeSignals = []CodeSignal{
 			sender.SendImg(decodeStr)
 			sender.Reply("请使用微信扫码，后摄像头,有效期为160秒")
 			go getQrStatus(ck, sender)
+			return nil
+		},
+	},
+
+	{
+		Command: []string{"京东扫码"},
+		Handle: func(sender *Sender) interface{} {
+			get := httplib.Post(fmt.Sprintf("http://192.168.195.53:2081/api/BeanQrCode?token=%s", "123"))
+			response, _ := get.Response()
+			all, _ := ioutil.ReadAll(response.Body)
+			val, _ := jsonparser.GetString(all, "qr")
+			key, _ := jsonparser.GetString(all, "QRCodeKey")
+			replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
+			decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
+			sender.SendImg(decodeStr)
+			sender.Reply("请使用微信扫码，后摄像头,有效期为160秒")
+			go getJDQrStatus(key, sender)
 			return nil
 		},
 	},
@@ -945,6 +962,35 @@ func Base64Decode(str string) string {
 		}
 	}
 	return dst
+}
+
+func getJDQrStatus(cookie string, sender *Sender) {
+
+	for {
+		get := httplib.Post(fmt.Sprintf("http://192.168.195.53:2081/api/QrCheck?token=%s", "123"))
+		get.Param("QRCodeKey", cookie)
+		get.Param("qlkey", string(0))
+		bytes, _ := get.Bytes()
+		code, _ := jsonparser.GetInt(bytes, "code")
+		errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
+		data, _ := jsonparser.GetString(bytes, "data", "wskey")
+		msg, _ := jsonparser.GetString(bytes, "msg")
+		if code == 500 || code == 202 {
+			sender.Reply(errorMsg)
+			return
+		} else if code == 408 {
+			sender.Reply("已超时，扫码结束")
+			return
+		} else if code == 200 && data != "" {
+			JdCookie{}.Push(data)
+			sender.Reply(msg)
+			return
+		} else if code == 429 {
+			return
+		}
+
+	}
+
 }
 
 func getQrStatus(cookie string, sender *Sender) {

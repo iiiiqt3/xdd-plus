@@ -1,13 +1,10 @@
 package models
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -17,11 +14,38 @@ import (
 	"github.com/buger/jsonparser"
 )
 
-const (
-	QL = "ql"
-	V4 = "v4"
-	LI = "li"
-)
+//mode:  #模式 balance(均衡模式)、parallel(平行模式) 我一般留空
+//containers:  #容器，可配置多个
+//#############################################################
+//  - address: http://192.168.31.47:5700 #青龙2.2、青龙2.8、v1v2v3v4v5访问地址
+//#    username: admin #用户名，2.9以上不需要
+//#    password: admin #密码
+//    cid: jOABCDDDD-G2 #Client ID 青龙2.9开启二级验证后复制过来
+//    secret: dsdfsdfsdfsdfsf #Client Secret 青龙2.9开启二级验证后复制过来
+//    weigth: 3 #权重 balance模式下权重越高分得的ck越多，默认1
+//    mode: balance #单独对容器进行模式设置
+//    limit:  #限制容器ck数目
+//    resident: jd_xxx&jd_cccc
+//#############################################################
+//  - address: http://192.168.31.48:5700 #青龙2.2、青龙2.8、v1v2v3v4v5访问地址
+//#    username: admin #用户名，2.9以上不需要
+//#    password: admin #密码
+//    cid: jOABCDDDD-G2 #Client ID 青龙2.9开启二级验证后复制过来
+//    secret: dsdfsdfsdfsdfsf #Client Secret 青龙2.9开启二级验证后复制过来
+//    weigth: 3 #权重 balance模式下权重越高分得的ck越多，默认1
+//    mode: balance #单独对容器进行模式设置
+//    limit:  #限制容器ck数目
+//    resident: jd_aaa&jd_bbb
+//#############################################################
+//  - address: http://192.168.31.49:5701 #青龙2.2、青龙2.8、v1v2v3v4v5访问地址
+//#    username: admin #用户名，2.9以上不需要
+//#    password: admin #密码
+//    cid: jOABCDDDD-G2 #Client ID 青龙2.9开启二级验证后复制过来
+//    secret: dsdfsdfsdfsdfsf #Client Secret 青龙2.9开启二级验证后复制过来
+//    weigth: 3 #权重 balance模式下权重越高分得的ck越多，默认1
+//    mode: parallel #单独对容器进行模式设置,平行模式专跑88,锦鲤.开卡之类
+//    resident: jd_ddd&jd_eee
+//#############################################################
 
 type Token struct {
 	Expiration time.Time
@@ -32,24 +56,20 @@ type Token struct {
 type Container struct {
 	Type      string
 	Name      string
-	Default   bool
 	Address   string
-	Username  string
-	Password  string
 	Cid       string
 	Secret    string
-	Path      string
 	Version   string
 	Token     string
 	Available bool
 	Delete    []string
 	Weigth    int
 	Mode      string
-	Reader    *bufio.Reader
 	Config    string
 	Limit     int
 	cks       []JdCookie
 	Resident  string
+	Task
 }
 
 func initContainer() {
@@ -72,42 +92,6 @@ func initContainer() {
 				ql++
 				Config.Containers[i].Type = "ql"
 				Config.Containers[i].Version = "openapi"
-
-			} else {
-				if err := Config.Containers[i].getSession(); err == nil {
-					logs.Info("v系登录成功")
-				} else {
-					(&JdCookie{}).Push("容器出现错误连接" + Config.Containers[i].Address)
-					logs.Info("v系登录失败")
-				}
-				Config.Containers[i].Type = "v4"
-			}
-		} else if Config.Containers[i].Path != "" {
-			f, err := os.Open(Config.Containers[i].Path)
-			if err != nil {
-				logs.Warn("无法打开%s，请检查路径是否正确", Config.Containers[i].Path)
-			} else {
-				rd := bufio.NewReader(f)
-				for {
-					line, err := rd.ReadString('\n') //以'\n'为结束符读入一行
-					if err != nil || io.EOF == err {
-						break
-					}
-					if pt := regexp.MustCompile(`^Cookie\d+`).FindString(line); pt != "" {
-						Config.Containers[i].Type = "v4"
-						break
-					}
-					if strings.Contains(line, "TempBlockCookie") {
-						Config.Containers[i].Type = "v4"
-						break
-					}
-					if strings.Contains(line, "QYWX_KEY") {
-						Config.Containers[i].Type = "v4"
-						break
-					}
-				}
-				f.Close()
-				logs.Info(Config.Containers[i].Type + "配置文件正确")
 			}
 		}
 	}
@@ -121,7 +105,7 @@ func (c *Container) write(cks []JdCookie) error {
 		if len(c.Delete) > 0 {
 			c.request("/api/envs", DELETE, fmt.Sprintf(`[%s]`, strings.Join(c.Delete, ",")))
 		}
-		hh := []string{}
+		var hh []string
 		if len(cks) != 0 {
 			for _, ck := range cks {
 				if ck.Available == True {
@@ -156,7 +140,7 @@ func (c *Container) write(cks []JdCookie) error {
 					if err != nil {
 						continue
 					}
-					toDelete := []string{}
+					var toDelete []string
 					for _, env := range a.Data {
 						if env.IntID == 0 {
 							toDelete = append(toDelete, fmt.Sprintf("\"%s\"", env.ID))
@@ -183,19 +167,6 @@ func (c *Container) write(cks []JdCookie) error {
 				}
 			}
 		}
-	case "v4":
-		return c.postConfig(func(config string) string {
-			TempBlockCookie := ""
-			cookies := ""
-			for i, ck := range cks {
-				if ck.Available == False {
-					TempBlockCookie += fmt.Sprintf("%d ", i+1)
-				}
-				cookies += fmt.Sprintf("Cookie%d=\"pt_key=%s;pt_pin=%s;\"\n", i+1, ck.PtKey, ck.PtPin)
-			}
-			config = fmt.Sprintf(`TempBlockCookie="%s"`, TempBlockCookie) + "\n" + cookies + getVhelpRule(len(cks)) + config
-			return config
-		})
 	}
 	return nil
 }
@@ -240,36 +211,6 @@ func (c *Container) read() error {
 			}
 		}
 		return nil
-
-	case "v4":
-		return c.getConfig(func(rd *bufio.Reader) string {
-			config := ""
-			for {
-				line, err := rd.ReadString('\n') //以'\n'为结束符读入一行
-				if err != nil || io.EOF == err {
-					config += line
-					break
-				}
-				if pt := regexp.MustCompile(`^#?\s?Cookie(\d+)=\S+pt_key=(.+);pt_pin=([^'";\s]+);?`).FindStringSubmatch(line); len(pt) != 0 {
-					CheckIn(pt[3], pt[2])
-					continue
-				}
-				if pt := regexp.MustCompile(`^ForOther`).FindString(line); pt != "" {
-					continue
-				}
-				if pt := regexp.MustCompile(`^My.*\d+=`).FindString(line); pt != "" {
-					continue
-				}
-				if pt := regexp.MustCompile(`^Cookie\d+`).FindString(line); pt != "" {
-					continue
-				}
-				if pt := regexp.MustCompile(`^TempBlockCookie`).FindString(line); pt != "" {
-					continue
-				}
-				config += line
-			}
-			return config
-		})
 	}
 	return nil
 }
@@ -353,90 +294,3 @@ const (
 	PUT    = "PUT"
 	DELETE = "DELETE"
 )
-
-func (c *Container) getConfig(handle func(*bufio.Reader) string) error {
-	if c.Address == "" {
-		f, err := os.OpenFile(c.Path, os.O_RDWR|os.O_CREATE, 0777) //打开文件 |os.O_RDWR
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		c.Config = handle(bufio.NewReader(f))
-	} else {
-		err := c.getSession()
-		if err != nil {
-			return err
-		}
-		req := httplib.Get(c.Address + "/api/config/config")
-		req.Header("Cookie", c.Token)
-		rsp, err := req.Response()
-		if err != nil {
-			return err
-		}
-		c.Config = handle(bufio.NewReader(rsp.Body))
-	}
-	return nil
-}
-
-func (c *Container) postConfig(handle func(config string) string) error {
-	if c.Address == "" {
-		f, err := os.OpenFile(c.Path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		f.WriteString(handle(c.Config))
-	} else {
-		req := httplib.Post(c.Address + "/api/save")
-		req.Header("Cookie", c.Token)
-		req.Param("content", handle(c.Config))
-		req.Param("name", "config.sh")
-		_, err := req.Bytes()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *Container) getSession() error {
-
-	if Config.IsOldV4 {
-		req := httplib.Post(c.Address + "/api/auth")
-		req.Param("username", c.Username)
-		req.Param("password", c.Password)
-		rsp, err := req.Response()
-		if err != nil {
-			return err
-		}
-		c.Token = rsp.Header.Get("Set-Cookie")
-		if data, err := ioutil.ReadAll(rsp.Body); err != nil {
-			return err
-		} else {
-			err, _ := jsonparser.GetInt(data, "err")
-			if err != 0 {
-				return errors.New(string(data))
-			}
-		}
-		return nil
-	} else {
-		req := httplib.Post(c.Address + "/auth")
-		req.Param("username", c.Username)
-		req.Param("password", c.Password)
-		rsp, err := req.Response()
-		if err != nil {
-			return err
-		}
-		c.Token = rsp.Header.Get("Set-Cookie")
-		if data, err := ioutil.ReadAll(rsp.Body); err != nil {
-			return err
-		} else {
-			err, _ := jsonparser.GetInt(data, "err")
-			if err != 0 {
-				return errors.New(string(data))
-			}
-		}
-		return nil
-	}
-
-}

@@ -46,7 +46,6 @@ type Yaml struct {
 	Version             string `yaml:"version"`
 	CTime               string `yaml:"AtTime"`
 	IsHelp              bool   `yaml:"IsHelp"`
-	IsOldV4             bool   `yaml:"IsOldV4"`
 	ApiToken            string `yaml:"ApiToken"`
 	Invalid             string `yaml:"Invalid"`
 	Query               string `yaml:"Query"`
