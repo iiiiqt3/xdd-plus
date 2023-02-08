@@ -975,6 +975,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 		errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
 		data, _ := jsonparser.GetString(bytes, "data", "wskey")
 		msg, _ := jsonparser.GetString(bytes, "msg")
+		logs.Info(string(bytes))
 		if code == 500 || code == 202 {
 			sender.Reply(errorMsg)
 			return
