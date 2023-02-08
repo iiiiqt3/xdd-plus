@@ -990,7 +990,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 		bytes, _ := get.Bytes()
 
 		code, _ := jsonparser.GetInt(bytes, "code")
-		data, _ := jsonparser.GetString(bytes, "data", "wskey")
+		data, _ := jsonparser.GetString(bytes, "wskey")
 		pin, _ := jsonparser.GetString(bytes, "pin")
 		msg, _ := jsonparser.GetString(bytes, "msg")
 		logs.Info(string(bytes))
