@@ -997,7 +997,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 		if code == 502 || code == 503 || code == 403 || code == 54 {
 			sender.Reply(msg)
 			return
-		} else if code == 200 && data != "" && pin != "" {
+		} else if code == 200 {
 			cookie := fmt.Sprintf("pin=%s;wskey=%s;\n", pin, data)
 			JdCookie{}.Push(cookie)
 			sender.Reply(cookie)
