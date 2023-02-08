@@ -377,12 +377,11 @@ var codeSignals = []CodeSignal{
 			all, _ := ioutil.ReadAll(response.Body)
 			code, _ := jsonparser.GetInt(all, "code")
 			if code == 0 {
-				val, _ := jsonparser.GetString(all, "qr")
+				qr, _ := jsonparser.GetString(all, "qr")
 				key, _ := jsonparser.GetString(all, "QRCodeKey")
-				replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
-				decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
+				decodeStr, _ := base64.StdEncoding.DecodeString(qr)
 				sender.SendImg(decodeStr)
-				sender.Reply("请使用微信扫码，后摄像头,有效期为160秒")
+				sender.Reply("请使用京东APP扫码")
 				go getJDQrStatus(key, sender)
 			} else {
 				logs.Info(string(all))
@@ -976,7 +975,6 @@ func getJDQrStatus(cookie string, sender *Sender) {
 	for {
 		time.Sleep(time.Second * time.Duration(5))
 		get := httplib.Post(fmt.Sprintf("http://192.168.195.53:5800/api/QrCheck?token=%s", "sad5d5s6c5d5e8w6r6t6uiopfghf5s6ew5ds8c12b"))
-
 		marshal, _ := json.Marshal(struct {
 			QRCodeKey string `json:"QRCodeKey"`
 			Qlkey     string `json:"qlkey"`
@@ -986,9 +984,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 		},
 		)
 		get.Body(marshal)
-
 		bytes, _ := get.Bytes()
-
 		code, _ := jsonparser.GetInt(bytes, "code")
 		data, _ := jsonparser.GetString(bytes, "wskey")
 		pin, _ := jsonparser.GetString(bytes, "pin")
