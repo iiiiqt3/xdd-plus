@@ -994,7 +994,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 		pin, _ := jsonparser.GetString(bytes, "pin")
 		msg, _ := jsonparser.GetString(bytes, "msg")
 		logs.Info(string(bytes))
-		if code == 502 || code == 503 || code == 403 {
+		if code == 502 || code == 503 || code == 403 || code == 54 {
 			sender.Reply(msg)
 			return
 		} else if code == 200 && data != "" && pin != "" {
