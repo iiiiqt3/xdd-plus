@@ -967,7 +967,7 @@ func Base64Decode(str string) string {
 func getJDQrStatus(cookie string, sender *Sender) {
 
 	for {
-
+		time.Sleep(time.Second * time.Duration(5))
 		get := httplib.Post(fmt.Sprintf("http://192.168.195.53:5800/api/QrCheck?token=%s", "sad5d5s6c5d5e8w6r6t6uiopfghf5s6ew5ds8c12b"))
 
 		marshal, _ := json.Marshal(struct {
@@ -996,8 +996,6 @@ func getJDQrStatus(cookie string, sender *Sender) {
 			sender.Reply(cookie)
 			return
 		}
-
-		time.Sleep(time.Second * time.Duration(5))
 
 	}
 
