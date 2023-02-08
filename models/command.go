@@ -983,21 +983,15 @@ func getJDQrStatus(cookie string, sender *Sender) {
 		bytes, _ := get.Bytes()
 
 		code, _ := jsonparser.GetInt(bytes, "code")
-		errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
 		data, _ := jsonparser.GetString(bytes, "data", "wskey")
 		msg, _ := jsonparser.GetString(bytes, "msg")
 		logs.Info(string(bytes))
-		if code == 500 || code == 202 {
-			sender.Reply(errorMsg)
-			return
-		} else if code == 408 {
-			sender.Reply("已超时，扫码结束")
-			return
-		} else if code == 200 && data != "" {
-			JdCookie{}.Push(data)
+		if code == 502 || code == 503 {
 			sender.Reply(msg)
 			return
-		} else if code == 429 {
+		} else if code == 55 && data != "" {
+			JdCookie{}.Push(data)
+			sender.Reply(msg)
 			return
 		}
 
