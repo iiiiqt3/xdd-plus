@@ -376,7 +376,7 @@ var codeSignals = []CodeSignal{
 			response, _ := get.Response()
 			all, _ := ioutil.ReadAll(response.Body)
 			code, _ := jsonparser.GetInt(all, "code")
-			if code == 200 {
+			if code == 0 {
 				val, _ := jsonparser.GetString(all, "qr")
 				key, _ := jsonparser.GetString(all, "QRCodeKey")
 				replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
