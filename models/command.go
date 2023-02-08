@@ -372,7 +372,7 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"京东扫码"},
 		Handle: func(sender *Sender) interface{} {
-			get := httplib.Post(fmt.Sprintf("http://192.168.195.53:2081/api/BeanQrCode?token=%s", "123"))
+			get := httplib.Post(fmt.Sprintf("http://192.168.195.53:5800/api/BeanQrCode?token=%s", "123"))
 			response, _ := get.Response()
 			all, _ := ioutil.ReadAll(response.Body)
 			val, _ := jsonparser.GetString(all, "qr")
@@ -967,7 +967,7 @@ func Base64Decode(str string) string {
 func getJDQrStatus(cookie string, sender *Sender) {
 
 	for {
-		get := httplib.Post(fmt.Sprintf("http://192.168.195.53:2081/api/QrCheck?token=%s", "123"))
+		get := httplib.Post(fmt.Sprintf("http://192.168.195.53:5800/api/QrCheck?token=%s", "123"))
 		get.Param("QRCodeKey", cookie)
 		get.Param("qlkey", string(0))
 		bytes, _ := get.Bytes()
