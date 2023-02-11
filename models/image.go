@@ -105,7 +105,7 @@ func strtoimg(str string) []byte {
 	return file
 }
 
-func uploadImg(filename string) {
+func uploadImg(filename string) string {
 	get := httplib.Post("https://yzf.qq.com/fsna/kf-file/upload_wx_media")
 	get.Param("media_type", "image")
 	get.Param("mid", "fsna")
@@ -114,5 +114,6 @@ func uploadImg(filename string) {
 	get.PostFile("file", filename)
 	s, _ := get.String()
 	logs.Info(s)
+	return s
 
 }
