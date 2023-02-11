@@ -113,8 +113,8 @@ func initConfig() {
 		}
 		f.Close()
 	}
-	title, _ := ioutil.ReadFile(ExecPath + "/conf/title.conf")
-	Config.Title = string(title)
+	//title, _ := ioutil.ReadFile(ExecPath + "/conf/title.conf")
+	//Config.Title = string(title)
 
 	content, err := ioutil.ReadFile(ExecPath + "/conf/config.yaml")
 	if err != nil {
