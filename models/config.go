@@ -120,7 +120,8 @@ func initConfig() {
 	if err != nil {
 		logs.Warn("解析config.yaml读取错误: %v", err)
 	}
-	if yaml.Unmarshal(content, &Config) != nil {
+	err = yaml.Unmarshal(content, &Config)
+	if err != nil {
 		logs.Warn("解析config.yaml出错: %v", err)
 	}
 	if ExecPath == "/Users/cdle/Desktop/xdd" || Config.NoAdmin {
