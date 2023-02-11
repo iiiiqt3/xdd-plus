@@ -76,40 +76,30 @@ func HasWsKey(key string) bool {
 }
 
 type JdCookie struct {
-	ID           int    `gorm:"column:ID;primaryKey"`
-	Priority     int    `gorm:"column:Priority;default:1"`
-	CreateAt     string `gorm:"column:CreateAt"`
-	LoseAt       string `gorm:"column:LoseAt"`
-	UpdateAt     string `gorm:"column:UpdateAt"`
-	PtKey        string `gorm:"column:PtKey"`
-	PtPin        string `gorm:"column:PtPin;unique"`
-	WsKey        string `gorm:"column:WsKey"`
-	Note         string `gorm:"column:Note"`
-	Available    string `gorm:"column:Available;default:true" validate:"oneof=true false"`
-	Nickname     string `gorm:"column:Nickname"`
-	BeanNum      string `gorm:"column:BeanNum"`
-	QQ           int    `gorm:"column:QQ"`
-	PushPlus     string `gorm:"column:PushPlus"`
-	WxPush       string `gorm:"column:WxPush"`
-	Telegram     int    `gorm:"column:Telegram"`
-	Fruit        string `gorm:"column:Fruit"`
-	Pet          string `gorm:"column:Pet"`
-	Bean         string `gorm:"column:Bean"`
-	JdFactory    string `gorm:"column:JdFactory"`
-	DreamFactory string `gorm:"column:DreamFactory"`
-	Jxnc         string `gorm:"column:Jxnc"`
-	Jdzz         string `gorm:"column:Jdzz"`
-	Joy          string `gorm:"column:Joy"`
-	Sgmh         string `gorm:"column:Sgmh"`
-	Cfd          string `gorm:"column:Cfd"`
-	Cash         string `gorm:"column:Cash"`
-	Tyt          string `gorm:"column:Tyt;default:true" validate:"oneof=true false"`
-	Dig          string `gorm:"column:Dig;default:true" validate:"oneof=true false"`
-	Help         string `gorm:"column:Help;default:false" validate:"oneof=true false"`
-	Pool         string `gorm:"-"`
-	Hack         string `gorm:"column:Hack"  validate:"oneof=true false"`
-	UserLevel    string `gorm:"column:UserLevel"`
-	LevelName    string `gorm:"column:LevelName"`
+	ID        int    `gorm:"column:ID;primaryKey"`
+	Priority  int    `gorm:"column:Priority;default:1"`
+	CreateAt  string `gorm:"column:CreateAt"`
+	LoseAt    string `gorm:"column:LoseAt"`
+	UpdateAt  string `gorm:"column:UpdateAt"`
+	PtKey     string `gorm:"column:PtKey"`
+	PtPin     string `gorm:"column:PtPin;unique"`
+	WsKey     string `gorm:"column:WsKey"`
+	RWskey    string `gorm:"column:RWsKey"`
+	Note      string `gorm:"column:Note"`
+	Available string `gorm:"column:Available;default:true" validate:"oneof=true false"`
+	Nickname  string `gorm:"column:Nickname"`
+	BeanNum   string `gorm:"column:BeanNum"`
+	QQ        int    `gorm:"column:QQ"`
+	PushPlus  string `gorm:"column:PushPlus"`
+	WxPush    string `gorm:"column:WxPush"`
+	Telegram  int    `gorm:"column:Telegram"`
+	Tyt       string `gorm:"column:Tyt;default:true" validate:"oneof=true false"`
+	Dig       string `gorm:"column:Dig;default:true" validate:"oneof=true false"`
+	Help      string `gorm:"column:Help;default:false" validate:"oneof=true false"`
+	Pool      string `gorm:"-"`
+	Hack      string `gorm:"column:Hack"  validate:"oneof=true false"`
+	UserLevel string `gorm:"column:UserLevel"`
+	LevelName string `gorm:"column:LevelName"`
 }
 
 var UserLevel = "UserLevel"

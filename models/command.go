@@ -1029,7 +1029,6 @@ func getQrStatus(cookie string, sender *Sender) {
 		} else if code == 429 {
 			return
 		}
-
 	}
 
 }
