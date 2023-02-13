@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/buger/jsonparser"
 	"github.com/golang/freetype"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/image/font"
@@ -106,13 +107,13 @@ func strtoimg(str string) []byte {
 }
 
 func uploadImg(filename string) string {
-	get := httplib.Post("https://yzf.qq.com/fsna/kf-file/upload_wx_media")
-	get.Param("media_type", "image")
-	get.Param("mid", "fsna")
-	get.Param("agentid", "")
-	get.Param("userid", "kfh5221fa29cfc019f_h5cded9881fc7d6fdfece5fb364b196123")
+	get := httplib.Post("http://images.smxy.xyz/api/v1/upload")
+	get.Header("Authorization", "3|vYO0BddOAoHfIJnZEqNG11OmxLzdC5kASfP1JUFi")
+	get.Header("Content-Type", "multipart/form-data")
 	get.PostFile("file", filename)
-	s, _ := get.String()
+	bytes, _ := get.Bytes()
+	logs.Info(string(bytes))
+	s, _ := jsonparser.GetString(bytes, "data", "links", "url")
 	logs.Info(s)
 	return s
 
