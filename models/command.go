@@ -191,6 +191,10 @@ func (sender *Sender) IsQQ() bool {
 	return strings.Contains(sender.Type, "qq")
 }
 
+func (sender *Sender) isWX() bool {
+	return strings.Contains(sender.Type, "wx")
+}
+
 func (sender *Sender) IsTG() bool {
 	return strings.Contains(sender.Type, "tg")
 }
@@ -995,9 +999,25 @@ func getJDQrStatus(cookie string, sender *Sender) {
 			sender.Reply(msg)
 			return
 		} else if code == 200 {
-			cookie := fmt.Sprintf("pin=%s;wskey=%s;\n", pin, data)
-			JdCookie{}.Push(cookie)
-			sender.Reply(cookie)
+			//cookie := fmt.Sprintf("pin=%s;wskey=%s;\n", pin, data)
+			ck := JdCookie{
+				PtPin:  pin,
+				RWskey: data,
+			}
+			if nck, err := GetJdCookie(ck.PtPin); err == nil {
+				nck.Update(RWSKEY, data)
+				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+			} else {
+				NewJdCookie(&ck)
+				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+				if sender.IsQQ() || sender.IsQQ() {
+					ck.Update(QQ, sender.UserID)
+				}
+				sender.Reply(fmt.Sprintf(msg))
+				sender.Reply(ck.Query())
+				(&JdCookie{}).Push(msg)
+			}
 			return
 		}
 
@@ -1026,6 +1046,7 @@ func getQrStatus(cookie string, sender *Sender) {
 		} else if code == 410 && data != "" {
 			JdCookie{}.Push(data)
 			sender.Reply(msg)
+
 			return
 		} else if code == 429 {
 			return

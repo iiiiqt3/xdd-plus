@@ -777,8 +777,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 								msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
 
-								if sender.IsQQ() {
-									ck.Update(QQ, ck.QQ)
+								if sender.IsQQ() || sender.isWX() {
+									ck.Update(QQ, sender.UserID)
 								}
 
 								sender.Reply(fmt.Sprintf(msg))

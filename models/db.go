@@ -122,6 +122,7 @@ var Pool = "Pool"
 var True = "true"
 var False = "false"
 var QQ = "QQ"
+var RWSKEY = "RWsKey"
 var PushPlus = "PushPlus"
 var Save chan *JdCookie
 var ExecPath string
@@ -129,21 +130,6 @@ var Telegram = "Telegram"
 var Hack = "Hack"
 var Tyt = "Tyt"
 var Dig = "Dig"
-
-const (
-	Fruit        = "Fruit"
-	Pet          = "Pet"
-	Bean         = "Bean"
-	JdFactory    = "JdFactory"
-	DreamFactory = "DreamFactory"
-	Jxnc         = "Jxnc"
-	Jdzz         = "Jdzz"
-	Joy          = "Joy"
-	Sgmh         = "Sgmh"
-	Cfd          = "Cfd"
-	Cash         = "Cash"
-	Help         = "Help"
-)
 
 func Date() string {
 	return time.Now().Local().Format("2006-01-02")
