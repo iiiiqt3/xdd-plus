@@ -108,9 +108,9 @@ func strtoimg(str string) []byte {
 
 func uploadImg(filename string) string {
 	get := httplib.Post("http://images.smxy.xyz/api/v1/upload")
-	//get.Header("Authorization", "3|vYO0BddOAoHfIJnZEqNG11OmxLzdC5kASfP1JUFi")
-	//get.Header("Content-Type", "multipart/form-data")
-	//get.PostFile("file", filename)
+	get.Header("Authorization", "Bearer 3|vYO0BddOAoHfIJnZEqNG11OmxLzdC5kASfP1JUFi")
+	get.Header("Content-Type", "multipart/form-data")
+	get.PostFile("file", filename)
 	bytes, _ := get.Bytes()
 	logs.Info(string(bytes))
 	s, _ := jsonparser.GetString(bytes, "data", "links", "url")
