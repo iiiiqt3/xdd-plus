@@ -95,7 +95,6 @@ func SendWxImg(uid string, file []byte) {
 	unix := time.Now().Unix()
 
 	filename := ExecPath + fmt.Sprintf("/static/%d.jpg", unix)
-	url := fmt.Sprintf("http://192.168.195.52:5703/static/%d.jpg", unix)
 
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
@@ -105,7 +104,6 @@ func SendWxImg(uid string, file []byte) {
 	f.Close()
 
 	img := uploadImg(filename)
-	logs.Info(img)
 
 	req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
 	reply := &QXMessage{
@@ -115,7 +113,7 @@ func SendWxImg(uid string, file []byte) {
 			Path string `json:"path"`
 		}{
 			Wxid: uid,
-			Path: url,
+			Path: img,
 		},
 	}
 	random := browser.Random()

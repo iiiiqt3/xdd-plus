@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/golang/freetype"
 	log "github.com/sirupsen/logrus"
@@ -112,9 +111,9 @@ func uploadImg(filename string) string {
 	get.Header("Content-Type", "multipart/form-data")
 	get.PostFile("file", filename)
 	bytes, _ := get.Bytes()
-	logs.Info(string(bytes))
+	//logs.Info(string(bytes))
 	s, _ := jsonparser.GetString(bytes, "data", "links", "url")
-	logs.Info(s)
+	//logs.Info(s)
 	return s
 
 }
