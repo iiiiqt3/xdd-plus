@@ -28,6 +28,9 @@ type Result struct {
 }
 
 func main() {
+
+	models.GetCookie("test")
+
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
