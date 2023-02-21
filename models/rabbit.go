@@ -9,7 +9,6 @@ import (
 	"github.com/buger/jsonparser"
 	"gorm.io/gorm"
 	"math/rand"
-	"strings"
 	"time"
 )
 
@@ -79,7 +78,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 	}
 }
 
-func GetCookie(cookie string) {
+func GetCookie(cookie string) (bool, string, string) {
 	get := httplib.Post(fmt.Sprintf("http://192.168.195.53:5800/api/wsck?RabbitToken=%s", "sad5d5s6c5d5e8w6r6t6uiopfghf5s6ew5ds8c12b"))
 	marshal, _ := json.Marshal(struct {
 		WSCK        string `json:"wsck"`
@@ -90,7 +89,14 @@ func GetCookie(cookie string) {
 	})
 	get.Body(marshal)
 	bytes, _ := get.Bytes()
-	logs.Info(string(bytes))
+	val, _ := jsonparser.GetBoolean(bytes, "success")
+	if val {
+		msg, _ := jsonparser.GetString(bytes, "msg")
+		appck, _ := jsonparser.GetString(bytes, "data", "appck")
+		return val, msg, appck
+	} else {
+		return val, "", ""
+	}
 }
 
 func UpdateRwskey() {
@@ -105,18 +111,14 @@ func UpdateRwskey() {
 		if i == len(cks)/2 {
 			(&JdCookie{}).Push("Wskey已更新二分一")
 		}
+
 		time.Sleep(time.Duration(rand.Int63n(1)) * time.Second)
 		//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-		rsp, _ := getKey(pinky)
-		if strings.Contains(rsp, "错误") {
-			yy++
-			ck.Update(Available, False)
-			//ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
-			(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
-		} else {
-			ptKey := FetchJdCookieValue("pt_key", rsp)
-			ptPin := FetchJdCookieValue("pt_pin", rsp)
+		rsp, _, appck := GetCookie(pinky)
+		if rsp {
+			ptKey := FetchJdCookieValue("pt_key", appck)
+			ptPin := FetchJdCookieValue("pt_pin", appck)
 			ck1 := JdCookie{
 				PtKey: ptKey,
 				PtPin: ptPin,
@@ -138,6 +140,9 @@ func UpdateRwskey() {
 				yy++
 				(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
 			}
+
+		} else {
+			(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
 		}
 
 	}
