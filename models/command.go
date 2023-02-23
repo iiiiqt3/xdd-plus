@@ -471,6 +471,17 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"Rwskey更新"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			sender.Reply("更新所有账号")
+			logs.Info("更新所有账号")
+			UpdateRwskey()
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"导出所有账号"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
