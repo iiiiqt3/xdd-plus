@@ -10,7 +10,6 @@ import (
 	"gorm.io/gorm"
 	"math/rand"
 	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -37,10 +36,8 @@ func getJDQrStatus(cookie string, sender *Sender) {
 		get := httplib.Post(fmt.Sprintf("http://192.168.195.53:5800/api/QrCheck?token=%s", "sad5d5s6c5d5e8w6r6t6uiopfghf5s6ew5ds8c12b"))
 		marshal, _ := json.Marshal(struct {
 			QRCodeKey string `json:"QRCodeKey"`
-			Qlkey     string `json:"qlkey"`
 		}{
 			QRCodeKey: cookie,
-			Qlkey:     strconv.Itoa(0),
 		},
 		)
 		get.Body(marshal)
