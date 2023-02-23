@@ -9,6 +9,7 @@ import (
 	"github.com/buger/jsonparser"
 	"gorm.io/gorm"
 	"math/rand"
+	"net/url"
 	"time"
 )
 
@@ -44,15 +45,15 @@ func getJDQrStatus(cookie string, sender *Sender) {
 		get.Body(marshal)
 		bytes, _ := get.Bytes()
 		code, _ := jsonparser.GetInt(bytes, "code")
-		data, _ := jsonparser.GetString(bytes, "wskey")
-		pin, _ := jsonparser.GetString(bytes, "pin")
 		msg, _ := jsonparser.GetString(bytes, "msg")
 		logs.Info(string(bytes))
 		if code == 502 || code == 503 || code == 403 || code == 54 {
 			sender.Reply(msg)
 			return
 		} else if code == 200 {
-			//cookie := fmt.Sprintf("pin=%s;wskey=%s;\n", pin, data)
+			data, _ := jsonparser.GetString(bytes, "wskey")
+			pin, _ := jsonparser.GetString(bytes, "pin")
+			pin = url.QueryEscape(pin)
 			_, _, appck := GetCookie(data)
 			ck := JdCookie{
 				PtPin:  pin,
