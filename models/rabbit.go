@@ -54,7 +54,8 @@ func getJDQrStatus(cookie string, sender *Sender) {
 			data, _ := jsonparser.GetString(bytes, "wskey")
 			pin, _ := jsonparser.GetString(bytes, "pin")
 			pin = url.QueryEscape(pin)
-			_, _, appck := GetCookie(data)
+			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, data)
+			_, _, appck := GetCookie(pinky)
 			ck := JdCookie{
 				PtPin:  pin,
 				PtKey:  appck,
