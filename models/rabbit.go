@@ -102,6 +102,7 @@ func GetCookie(cookie string) (bool, string, string) {
 		appck, _ := jsonparser.GetString(bytes, "data", "appck")
 		return val, msg, appck
 	} else {
+		logs.Info(string(bytes))
 		return val, "", ""
 	}
 }
