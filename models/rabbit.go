@@ -21,7 +21,7 @@ func getJdQrImg(sender *Sender) {
 		key, _ := jsonparser.GetString(bytes, "QRCodeKey")
 		decodeStr, _ := base64.StdEncoding.DecodeString(qr)
 		sender.SendImg(decodeStr)
-		sender.Reply("请使用京东APP扫码")
+		sender.Reply("请使用京东APP扫码，150秒失效")
 		go getJDQrStatus(key, sender)
 	} else {
 		logs.Info(string(bytes))
