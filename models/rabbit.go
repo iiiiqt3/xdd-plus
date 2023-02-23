@@ -57,10 +57,10 @@ func getJDQrStatus(cookie string, sender *Sender) {
 			pin = url.QueryEscape(pin)
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, data)
 			_, _, appck := GetCookie(pinky)
-			appck = FetchJdCookieValue("pt_key", appck)
+			ptkey := FetchJdCookieValue("pt_key", appck)
 			ck := JdCookie{
 				PtPin:  pin,
-				PtKey:  appck,
+				PtKey:  ptkey,
 				RWskey: data,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
