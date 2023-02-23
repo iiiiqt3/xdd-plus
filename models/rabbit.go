@@ -122,7 +122,7 @@ func UpdateRwskey() {
 
 		time.Sleep(time.Duration(rand.Int63n(1)) * time.Second)
 		//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
-		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
+		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.RWskey)
 		rsp, _, appck := GetCookie(pinky)
 		if rsp {
 			ptKey := FetchJdCookieValue("pt_key", appck)
