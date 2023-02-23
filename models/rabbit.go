@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 	"math/rand"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -39,7 +40,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 			Qlkey     string `json:"qlkey"`
 		}{
 			QRCodeKey: cookie,
-			Qlkey:     string(0),
+			Qlkey:     strconv.Itoa(0),
 		},
 		)
 		get.Body(marshal)
@@ -98,6 +99,7 @@ func GetCookie(cookie string) (bool, string, string) {
 	if val {
 		msg, _ := jsonparser.GetString(bytes, "msg")
 		appck, _ := jsonparser.GetString(bytes, "data", "appck")
+		appck = FetchJdCookieValue("pt_key", appck)
 		return val, msg, appck
 	} else {
 		return val, "", ""
