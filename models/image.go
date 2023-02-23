@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"github.com/beego/beego/v2/client/httplib"
+	"github.com/buger/jsonparser"
 	"github.com/golang/freetype"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/image/font"
@@ -101,4 +103,17 @@ func strtoimg(str string) []byte {
 	file, _ := os.ReadFile(fileName)
 	os.Remove(fileName)
 	return file
+}
+
+func uploadImg(filename string) string {
+	get := httplib.Post("http://images.smxy.xyz/api/v1/upload")
+	get.Header("Authorization", "Bearer 3|vYO0BddOAoHfIJnZEqNG11OmxLzdC5kASfP1JUFi")
+	get.Header("Content-Type", "multipart/form-data")
+	get.PostFile("file", filename)
+	bytes, _ := get.Bytes()
+	//logs.Info(string(bytes))
+	s, _ := jsonparser.GetString(bytes, "data", "links", "url")
+	//logs.Info(s)
+	return s
+
 }

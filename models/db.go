@@ -12,6 +12,7 @@ import (
 )
 
 var db *gorm.DB
+
 var keys map[string]bool
 var pins map[string]bool
 
@@ -76,40 +77,30 @@ func HasWsKey(key string) bool {
 }
 
 type JdCookie struct {
-	ID           int    `gorm:"column:ID;primaryKey"`
-	Priority     int    `gorm:"column:Priority;default:1"`
-	CreateAt     string `gorm:"column:CreateAt"`
-	LoseAt       string `gorm:"column:LoseAt"`
-	UpdateAt     string `gorm:"column:UpdateAt"`
-	PtKey        string `gorm:"column:PtKey"`
-	PtPin        string `gorm:"column:PtPin;unique"`
-	WsKey        string `gorm:"column:WsKey"`
-	Note         string `gorm:"column:Note"`
-	Available    string `gorm:"column:Available;default:true" validate:"oneof=true false"`
-	Nickname     string `gorm:"column:Nickname"`
-	BeanNum      string `gorm:"column:BeanNum"`
-	QQ           int    `gorm:"column:QQ"`
-	PushPlus     string `gorm:"column:PushPlus"`
-	WxPush       string `gorm:"column:WxPush"`
-	Telegram     int    `gorm:"column:Telegram"`
-	Fruit        string `gorm:"column:Fruit"`
-	Pet          string `gorm:"column:Pet"`
-	Bean         string `gorm:"column:Bean"`
-	JdFactory    string `gorm:"column:JdFactory"`
-	DreamFactory string `gorm:"column:DreamFactory"`
-	Jxnc         string `gorm:"column:Jxnc"`
-	Jdzz         string `gorm:"column:Jdzz"`
-	Joy          string `gorm:"column:Joy"`
-	Sgmh         string `gorm:"column:Sgmh"`
-	Cfd          string `gorm:"column:Cfd"`
-	Cash         string `gorm:"column:Cash"`
-	Tyt          string `gorm:"column:Tyt;default:true" validate:"oneof=true false"`
-	Dig          string `gorm:"column:Dig;default:true" validate:"oneof=true false"`
-	Help         string `gorm:"column:Help;default:false" validate:"oneof=true false"`
-	Pool         string `gorm:"-"`
-	Hack         string `gorm:"column:Hack"  validate:"oneof=true false"`
-	UserLevel    string `gorm:"column:UserLevel"`
-	LevelName    string `gorm:"column:LevelName"`
+	ID        int    `gorm:"column:ID;primaryKey"`
+	Priority  int    `gorm:"column:Priority;default:1"`
+	CreateAt  string `gorm:"column:CreateAt"`
+	LoseAt    string `gorm:"column:LoseAt"`
+	UpdateAt  string `gorm:"column:UpdateAt"`
+	PtKey     string `gorm:"column:PtKey"`
+	PtPin     string `gorm:"column:PtPin;unique"`
+	WsKey     string `gorm:"column:WsKey"`
+	RWskey    string `gorm:"column:RWsKey"`
+	Note      string `gorm:"column:Note"`
+	Available string `gorm:"column:Available;default:true" validate:"oneof=true false"`
+	Nickname  string `gorm:"column:Nickname"`
+	BeanNum   string `gorm:"column:BeanNum"`
+	QQ        int    `gorm:"column:QQ"`
+	PushPlus  string `gorm:"column:PushPlus"`
+	WxPush    string `gorm:"column:WxPush"`
+	Telegram  int    `gorm:"column:Telegram"`
+	Tyt       string `gorm:"column:Tyt;default:true" validate:"oneof=true false"`
+	Dig       string `gorm:"column:Dig;default:true" validate:"oneof=true false"`
+	Help      string `gorm:"column:Help;default:false" validate:"oneof=true false"`
+	Pool      string `gorm:"-"`
+	Hack      string `gorm:"column:Hack"  validate:"oneof=true false"`
+	UserLevel string `gorm:"column:UserLevel"`
+	LevelName string `gorm:"column:LevelName"`
 }
 
 var UserLevel = "UserLevel"
@@ -132,6 +123,7 @@ var Pool = "Pool"
 var True = "true"
 var False = "false"
 var QQ = "QQ"
+var RWSKEY = "RWsKey"
 var PushPlus = "PushPlus"
 var Save chan *JdCookie
 var ExecPath string
@@ -139,21 +131,6 @@ var Telegram = "Telegram"
 var Hack = "Hack"
 var Tyt = "Tyt"
 var Dig = "Dig"
-
-const (
-	Fruit        = "Fruit"
-	Pet          = "Pet"
-	Bean         = "Bean"
-	JdFactory    = "JdFactory"
-	DreamFactory = "DreamFactory"
-	Jxnc         = "Jxnc"
-	Jdzz         = "Jdzz"
-	Joy          = "Joy"
-	Sgmh         = "Sgmh"
-	Cfd          = "Cfd"
-	Cash         = "Cash"
-	Help         = "Help"
-)
 
 func Date() string {
 	return time.Now().Local().Format("2006-01-02")
@@ -204,58 +181,6 @@ func (ck *JdCookie) Removes(values interface{}) {
 		db.Model(ck).Where(PtPin+" = ?", ck.PtPin).Delete(values)
 	}
 }
-
-//func (ck *JdCookie) InPool(pt_key string) error {
-//	if ck.ID != 0 {
-//		date := Date()
-//		tx := db.Begin()
-//		jp := &JdCookie{}
-//		if tx.Where(fmt.Sprintf("%s = '%s' and %s = '%s'", PtPin, ck.PtPin, PtKey, pt_key)).First(jp).Error == nil {
-//			return tx.Rollback().Error
-//		}
-//		go test2(fmt.Sprintf("pt_key=%s;pt_pin=%s;", pt_key, ck.PtPin))
-//		if err := tx.Create(&JdCookie{
-//			PtPin:    ck.PtPin,
-//			PtKey:    pt_key,
-//			CreateAt: date,
-//		}).Error; err != nil {
-//			tx.Rollback()
-//			return err
-//		}
-//		tx.Model(ck).Updates(map[string]interface{}{
-//			Available: True,
-//			PtKey:     pt_key,
-//		})
-//		return tx.Commit().Error
-//	}
-//	return nil
-//}
-
-//func (ck *JdCookie) OutPool() (string, error) {
-//	if ck.ID != 0 {
-//		date := Date()
-//		tx := db.Begin()
-//		jp := &JdCookiePool{}
-//		tx.Model(jp).Where(fmt.Sprintf("%s = '%s' and %s = '%s'", PtPin, ck.PtPin, PtKey, ck.PtKey)).Update(LoseAt, date)
-//		us := map[string]interface{}{}
-//		if tx.Where(fmt.Sprintf("%s = '%s' and %s = '%s'", PtPin, ck.PtPin, LoseAt, "")).First(jp).Error != nil {
-//			us[Available] = False
-//			us[PtKey] = ""
-//		} else {
-//			us[Available] = True
-//			us[PtKey] = jp.PtKey
-//		}
-//		e := tx.Model(ck).Updates(us).RowsAffected
-//		if e == 0 {
-//			tx.Rollback()
-//			return "", nil
-//		}
-//		ck.Available = us[Available].(string)
-//		ck.PtKey = jp.PtKey
-//		return jp.PtKey, tx.Commit().Error
-//	}
-//	return "", nil
-//}
 
 func NewJdCookie(ck *JdCookie) error {
 	if ck.Hack == "" {

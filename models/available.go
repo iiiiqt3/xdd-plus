@@ -330,34 +330,6 @@ func CookieOK(ck *JdCookie) bool {
 		if ui.Msg == "not login" {
 			if ck.Available == True {
 				ck.Update(Available, False)
-				if isOpenWskey() {
-					if len(ck.WsKey) > 0 {
-						var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-						msg, err := getKey(pinky)
-						if err != nil {
-							logs.Error(err)
-						}
-						//JdCookie{}.Push(fmt.Sprintf("自动转换wskey---%s", msg))
-						//缺少错误判断
-						if strings.Contains(msg, "错误") {
-							ck.Push(fmt.Sprintf("Wskey失效账号，%s", ck.PtPin))
-							ck.Updates(JdCookie{Available: False})
-							(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，%s", ck.PtPin))
-						} else {
-							ptKey := FetchJdCookieValue("pt_key", msg)
-							ptPin := FetchJdCookieValue("pt_pin", msg)
-							if nck, err := GetJdCookie(ptPin); err == nil {
-								nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-							} else {
-								nck.Updates(JdCookie{Available: False})
-								(&JdCookie{}).Push(fmt.Sprintf("过期转换失败，%s", ck.PtPin))
-							}
-						}
-					}
-				} else {
-					//ck.Push(fmt.Sprintf("失效账号，%s \n %s 请对我发送登录，安卓用户可使用登录APP快速登录", ck.Nickname, Config.Invalid))
-					//JdCookie{}.Push(fmt.Sprintf("失效账号，%s", ck.PtPin))
-				}
 			}
 			return false
 		}

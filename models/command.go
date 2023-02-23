@@ -68,6 +68,58 @@ func (sender *Sender) Reply(msg string) {
 	}
 }
 
+func (sender *Sender) SendImg(msg []byte) {
+	switch sender.Type {
+	case "qq":
+		SendQQ(int64(sender.UserID), msg)
+	case "wx":
+		SendWxImg(sender.WxId, msg)
+	}
+
+}
+
+func SendWxImg(uid string, file []byte) {
+	type QXMessage struct {
+		Type string `json:"type"`
+		Data struct {
+			Wxid string `json:"wxid"`
+			Path string `json:"path"`
+		} `json:"data"`
+	}
+	unix := time.Now().Unix()
+
+	filename := ExecPath + fmt.Sprintf("/static/%d.jpg", unix)
+
+	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		logs.Warn("zqdyj.txt失败，", err)
+	}
+	f.Write(file)
+	f.Close()
+
+	img := uploadImg(filename)
+
+	req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
+	reply := &QXMessage{
+		Type: "Q0010",
+		Data: struct {
+			Wxid string `json:"wxid"`
+			Path string `json:"path"`
+		}{
+			Wxid: uid,
+			Path: img,
+		},
+	}
+	random := browser.Random()
+	req.Header("User-Agent", random)
+	marshal, _ := json.Marshal(reply)
+	logs.Info(string(marshal))
+	req.Body(string(marshal))
+	s, _ := req.String()
+	logs.Info(s)
+
+}
+
 func SendWxMsg(uid string, msg string) {
 	model := Config.Wx.Model
 	switch model {
@@ -246,8 +298,8 @@ var codeSignals = []CodeSignal{
 					rsp := cmd(fmt.Sprintf(`python3 ./runcommand.py run "%s" "%s"`, head, args), &Sender{})
 					sender.Reply(rsp)
 				}
-			}else{
-			sender.Reply("请配置开始信息")
+			} else {
+				sender.Reply("请配置开始信息")
 			}
 			return nil
 		},
@@ -1050,28 +1102,6 @@ var codeSignals = []CodeSignal{
 				return "操作失败"
 			}
 			return "操作成功"
-		},
-	},
-	{
-		Command: []string{"help", "助力"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				ck.Update(Help, True)
-				sender.Reply(fmt.Sprintf("已设置助力账号%s(%s)", ck.PtPin, ck.Nickname))
-			})
-			return nil
-		},
-	},
-	{
-		Command: []string{"tool", "工具人", "unhelp", "取消助力"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				ck.Update(Help, False)
-				sender.Reply(fmt.Sprintf("已设置取消助力账号%s(%s)", ck.PtPin, ck.Nickname))
-			})
-			return nil
 		},
 	},
 	{
