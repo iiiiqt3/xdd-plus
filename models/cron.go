@@ -44,6 +44,7 @@ func InitSky() {
 		c.AddFunc(spec, func() {
 			fmt.Println("开始wskey转换")
 			updateCookie()
+			UpdateRwskey()
 		})
 
 		c.Start()
