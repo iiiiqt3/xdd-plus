@@ -10,7 +10,6 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/google/uuid"
-	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 	"io/ioutil"
 	"os"
@@ -569,10 +568,10 @@ var codeSignals = []CodeSignal{
 						}
 						sender.Reply(str)
 						//https://qladmin.smxy.xyz/query#/?id=1095916117
-						url := fmt.Sprintf("http://test.smxy.xyz/query#/?id=%d", sender.UserID)
-						var png []byte
-						png, _ = qrcode.Encode(url, qrcode.Medium, 256)
-						SendQQ(int64(sender.UserID), png)
+						//url := fmt.Sprintf("http://test.smxy.xyz/query#/?id=%d", sender.UserID)
+						//var png []byte
+						//png, _ = qrcode.Encode(url, qrcode.Medium, 256)
+						//SendQQ(int64(sender.UserID), png)
 					}
 
 				}
