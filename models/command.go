@@ -104,6 +104,8 @@ func SendWxImg(uid string, file []byte) {
 
 	img := uploadImg(filename)
 
+	os.Remove(filename)
+
 	req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
 	reply := &QXMessage{
 		Type: "Q0010",
