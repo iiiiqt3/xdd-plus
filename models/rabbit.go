@@ -26,7 +26,7 @@ func getJdQrImg(sender *Sender) {
 		go getJDQrStatus(key, sender)
 	} else {
 		logs.Info(string(bytes))
-		sender.Reply("获取扫码失败")
+		sender.Reply("获取扫码失败，目前登录人数过多，请一两分钟后再试")
 	}
 }
 
