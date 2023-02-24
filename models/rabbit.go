@@ -79,9 +79,6 @@ func getJDQrStatus(cookie string, sender *Sender) {
 				(&JdCookie{}).Push(msg)
 			}
 			return
-		} else {
-			sender.Reply("请求频繁，请稍后再试")
-			return
 		}
 
 	}
