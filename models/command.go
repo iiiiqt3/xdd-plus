@@ -789,8 +789,7 @@ var codeSignals = []CodeSignal{
 					}
 					if len(rsp) > 0 {
 						if strings.Contains(rsp, "错误") {
-							db.Model(ck).Where(PtPin+" = ?", ck.PtPin).Updates(JdCookie{WsKey: "", Available: False})
-							//ck.Updates(JdCookie{WsKey: "1", Available: False})
+							ck.Updates(JdCookie{WsKey: "null", Available: False})
 							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
 						}
 						ptKey := FetchJdCookieValue("pt_key", rsp)
