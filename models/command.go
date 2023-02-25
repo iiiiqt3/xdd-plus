@@ -791,20 +791,21 @@ var codeSignals = []CodeSignal{
 						if strings.Contains(rsp, "错误") {
 							ck.Updates(JdCookie{WsKey: "null", Available: False})
 							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
-						}
-						ptKey := FetchJdCookieValue("pt_key", rsp)
-						ptPin := FetchJdCookieValue("pt_pin", rsp)
-						ck := JdCookie{
-							PtKey: ptKey,
-							PtPin: ptPin,
-						}
-						if nck, err := GetJdCookie(ck.PtPin); err == nil {
-							nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-							msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-							sender.Reply(msg)
-							logs.Info(msg)
 						} else {
-							sender.Reply("转换失败")
+							ptKey := FetchJdCookieValue("pt_key", rsp)
+							ptPin := FetchJdCookieValue("pt_pin", rsp)
+							ck := JdCookie{
+								PtKey: ptKey,
+								PtPin: ptPin,
+							}
+							if nck, err := GetJdCookie(ck.PtPin); err == nil {
+								nck.Updates(JdCookie{PtKey: ptKey, Available: True})
+								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
+								sender.Reply(msg)
+								logs.Info(msg)
+							} else {
+								sender.Reply("转换失败")
+							}
 						}
 					} else {
 						sender.Reply("转换失败")
