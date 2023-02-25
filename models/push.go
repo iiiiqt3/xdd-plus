@@ -2,7 +2,7 @@ package models
 
 func (ck JdCookie) Push(msg string) {
 	if ck.PtPin != "" {
-		go SendQQ(int64(ck.QQ), msg)
+		//go SendQQ(int64(ck.QQ), msg)
 		go pushPlus(ck.PushPlus, msg)
 		go SendTgMsg(ck.Telegram, msg)
 	} else {

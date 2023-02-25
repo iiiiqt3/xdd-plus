@@ -218,7 +218,7 @@ func GetAuthKey() {
 
 func updateCookie() {
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where(fmt.Sprintf("%s != ?", WsKey), "")
+		return sb.Where(fmt.Sprintf("%s != ? ", WsKey), "")
 	})
 	xx := 0
 	yy := 0
@@ -236,7 +236,8 @@ func updateCookie() {
 			if strings.Contains(rsp, "错误") {
 				yy++
 				ck.Update(Available, False)
-				//ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
+				ck.Update(WsKey, "")
+				ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
 				(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
 			} else {
 				ptKey := FetchJdCookieValue("pt_key", rsp)
