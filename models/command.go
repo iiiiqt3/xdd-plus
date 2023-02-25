@@ -789,6 +789,7 @@ var codeSignals = []CodeSignal{
 					}
 					if len(rsp) > 0 {
 						if strings.Contains(rsp, "fake") {
+							ck.Updates(JdCookie{WsKey: "", Available: False})
 							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
 						}
 						ptKey := FetchJdCookieValue("pt_key", rsp)
