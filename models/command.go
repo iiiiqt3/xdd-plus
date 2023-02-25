@@ -788,7 +788,7 @@ var codeSignals = []CodeSignal{
 						logs.Error(err)
 					}
 					if len(rsp) > 0 {
-						if strings.Contains(rsp, "fake") {
+						if strings.Contains(rsp, "错误") {
 							ck.Updates(JdCookie{WsKey: "", Available: False})
 							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
 						}
