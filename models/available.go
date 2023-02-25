@@ -235,8 +235,9 @@ func updateCookie() {
 			rsp, _ := getKey(pinky)
 			if strings.Contains(rsp, "错误") {
 				yy++
-				ck.Update(Available, False)
-				ck.Update(WsKey, "")
+				ck.Updates(JdCookie{Available: False, WsKey: ""})
+				//ck.Update(Available, False)
+				//ck.Update(WsKey, "")
 				ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
 				(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
 			} else {
