@@ -128,23 +128,13 @@ func initCookie() {
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 0, True, True)
 	})
-	for i := range cks {
+	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(Config.Later))
-		if cks[i].Available == True && !CookieOK(&cks[i]) {
-			cks[i].Updates(JdCookie{Available: False})
+		if ck.Available == True && !CookieOK(&ck) {
+			ck.Updates(JdCookie{Available: False})
 		}
 	}
 	(&JdCookie{}).Push("账号检测结束")
-	//for i := 0; i < l-1; i++ {
-	//	if cks[i].Available == True && !CookieOK(&cks[i]) {
-	//		if pt_key, err := cks[i].OutPool(); err == nil && pt_key != "" {
-	//			i = i - 1
-	//			logs.Info("正常操作")
-	//			logs.Info(cks[i].PtPin)
-	//			logs.Info(i)
-	//		}
-	//	}
-	//}
 	go func() {
 		Save <- &JdCookie{}
 	}()
