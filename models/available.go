@@ -218,7 +218,7 @@ func GetAuthKey() {
 
 func updateCookie() {
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where(fmt.Sprintf("%s != ? and %S != ? ", WsKey, WsKey), "null", "")
+		return sb.Where(fmt.Sprintf("%s != ? and %s != ? ", WsKey, WsKey), "null", "")
 	})
 	xx := 0
 	yy := 0
