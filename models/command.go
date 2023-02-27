@@ -781,7 +781,7 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			sender.handleJdCookies(func(ck *JdCookie) {
-				if len(ck.WsKey) > 0 {
+				if ck.WsKey != "null" {
 					var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
 					rsp, err := getKey(pinky)
 					if err != nil {
@@ -793,23 +793,12 @@ var codeSignals = []CodeSignal{
 							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
 						} else {
 							ptKey := FetchJdCookieValue("pt_key", rsp)
-							ptPin := FetchJdCookieValue("pt_pin", rsp)
-							ck := JdCookie{
-								PtKey: ptKey,
-								PtPin: ptPin,
-							}
-							if nck, err := GetJdCookie(ck.PtPin); err == nil {
-								nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-								sender.Reply(msg)
-								logs.Info(msg)
-							} else {
-								sender.Reply("转换失败")
-							}
+							ck.Updates(JdCookie{PtKey: ptKey, Available: True})
+							msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
+							sender.Reply(msg)
 						}
 					} else {
 						sender.Reply("转换失败")
-						//sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
 					}
 				} else {
 					sender.Reply(fmt.Sprintf("Wskey为空，%s", ck.Nickname))

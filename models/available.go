@@ -223,45 +223,39 @@ func updateCookie() {
 	xx := 0
 	yy := 0
 	(&JdCookie{}).Push("开始定时更新转换Wskey")
-	for i := range cks {
+	for i, ck := range cks {
 		if i == len(cks)/2 {
 			(&JdCookie{}).Push("Wskey已更新二分一")
 		}
-		if len(cks[i].WsKey) > 0 {
-			time.Sleep(time.Duration(rand.Int63n(1)) * time.Second)
-			ck := cks[i]
-			//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
-			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-			rsp, _ := getKey(pinky)
-			if strings.Contains(rsp, "错误") {
-				yy++
-				ck.Updates(JdCookie{WsKey: "", Available: False})
-				ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
-				(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
-			} else {
-				ptKey := FetchJdCookieValue("pt_key", rsp)
-				ptPin := FetchJdCookieValue("pt_pin", rsp)
-				ck1 := JdCookie{
-					PtKey: ptKey,
-					PtPin: ptPin,
-				}
-				if ptPin != "" || ptKey != "" {
-					if nck, err := GetJdCookie(ck1.PtPin); err == nil {
-						xx++
-						nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-						msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
-						////不再发送成功提醒
-						//(&JdCookie{}).Push(msg)
-						logs.Info(msg)
-					} else {
-						yy++
-						ck1.Update(Available, False)
-						(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", ck.PtPin))
-					}
+		time.Sleep(time.Duration(rand.Int63n(1)) * time.Second)
+		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
+		rsp, _ := getKey(pinky)
+		if strings.Contains(rsp, "错误") {
+			yy++
+			ck.Updates(JdCookie{WsKey: "null", Available: False})
+			ck.Push(fmt.Sprintf("年费Wskey失效账号，%s，请联系管理员", ck.PtPin))
+			(&JdCookie{}).Push(fmt.Sprintf("年费Wskey失效，%s", ck.PtPin))
+		} else {
+			ptKey := FetchJdCookieValue("pt_key", rsp)
+			ptPin := FetchJdCookieValue("pt_pin", rsp)
+			ck1 := JdCookie{
+				PtKey: ptKey,
+				PtPin: ptPin,
+			}
+			if ptPin != "" && ptKey != "" {
+				if nck, err := GetJdCookie(ck1.PtPin); err == nil {
+					xx++
+					nck.Updates(JdCookie{PtKey: ptKey, Available: True})
+					msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
+					logs.Info(msg)
 				} else {
 					yy++
-					(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
+					ck1.Update(Available, False)
+					(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", ck.PtPin))
 				}
+			} else {
+				yy++
+				(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
 			}
 		}
 	}
