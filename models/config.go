@@ -24,51 +24,50 @@ type FanLi struct {
 }
 
 type Yaml struct {
-	Containers         []Container
-	Tasks              []Task
-	Qrcode             string
-	Master             string
-	Mode               string
-	Static             string
-	Database           string
-	QywxKey            string `yaml:"qywx_key"`
-	Resident           string
-	UserAgent          string `yaml:"user_agent"`
-	Theme              string
-	TelegramBotToken   string `yaml:"telegram_bot_token"`
-	TelegramUserID     int    `yaml:"telegram_user_id"`
-	QQID               int64  `yaml:"qquid"`
-	QQGroupID          int64  `yaml:"qqgid"`
-	DefaultPriority    int    `yaml:"default_priority"`
-	NoGhproxy          bool   `yaml:"no_ghproxy"`
-	QbotPublicMode     bool   `yaml:"qbot_public_mode"`
-	DailyAssetPushCron string `yaml:"daily_asset_push_cron"`
-	Version            string `yaml:"version"`
-	CTime              string `yaml:"AtTime"`
-	IsHelp             bool   `yaml:"IsHelp"`
-	ApiToken           string `yaml:"ApiToken"`
-	Invalid            string `yaml:"Invalid"`
-	Query              string `yaml:"Query"`
-	Query1             string `yaml:"Query1"`
-	TGURL              string `yaml:"TGURL"`
-	CXURL              string `yaml:"CXURL"`
-	SMSAddress         string `yaml:"SMSAddress"`
-	IsAddFriend        bool   `yaml:"IsAddFriend"`
-	Lim                int    `yaml:"Lim"`
-	Tyt                int    `yaml:"Tyt"`
-	IFC                bool   `yaml:"IFC"`
-	Later              int    `yaml:"Later"`
-	Jdcurl             string `yaml:"Jdcurl"`
-	GAMEOPEN           bool   `yaml:"GameOpen"`
-	Note               string `yaml:"Note"`
-	Rotation           bool   `yaml:"Rotation"`
-	VIP                bool
-	Node               string
-	Npm                string
-	Python             string
-	Pip                string
-	OpenFan            bool
-
+	Containers          []Container
+	Tasks               []Task
+	Qrcode              string
+	Master              string
+	Mode                string
+	Static              string
+	Database            string
+	QywxKey             string `yaml:"qywx_key"`
+	Resident            string
+	UserAgent           string `yaml:"user_agent"`
+	Theme               string
+	TelegramBotToken    string `yaml:"telegram_bot_token"`
+	TelegramUserID      int    `yaml:"telegram_user_id"`
+	QQID                int64  `yaml:"qquid"`
+	QQGroupID           int64  `yaml:"qqgid"`
+	DefaultPriority     int    `yaml:"default_priority"`
+	NoGhproxy           bool   `yaml:"no_ghproxy"`
+	QbotPublicMode      bool   `yaml:"qbot_public_mode"`
+	DailyAssetPushCron  string `yaml:"daily_asset_push_cron"`
+	Version             string `yaml:"version"`
+	CTime               string `yaml:"AtTime"`
+	IsHelp              bool   `yaml:"IsHelp"`
+	ApiToken            string `yaml:"ApiToken"`
+	Invalid             string `yaml:"Invalid"`
+	Query               string `yaml:"Query"`
+	Query1              string `yaml:"Query1"`
+	TGURL               string `yaml:"TGURL"`
+	CXURL               string `yaml:"CXURL"`
+	SMSAddress          string `yaml:"SMSAddress"`
+	IsAddFriend         bool   `yaml:"IsAddFriend"`
+	Lim                 int    `yaml:"Lim"`
+	Tyt                 int    `yaml:"Tyt"`
+	IFC                 bool   `yaml:"IFC"`
+	Later               int    `yaml:"Later"`
+	Jdcurl              string `yaml:"Jdcurl"`
+	GAMEOPEN            bool   `yaml:"GameOpen"`
+	Note                string `yaml:"Note"`
+	Rotation            bool   `yaml:"Rotation"`
+	VIP                 bool
+	Node                string
+	Npm                 string
+	Python              string
+	Pip                 string
+	OpenFan             bool
 	NoAdmin             bool   `yaml:"no_admin"`
 	QbotConfigFile      string `yaml:"qbot_config_file"`
 	Repos               []Repo
