@@ -118,31 +118,23 @@ func UpdateRwskey() {
 		if i == len(cks)/2 {
 			(&JdCookie{}).Push("Wskey已更新二分一")
 		}
-
-		time.Sleep(time.Duration(rand.Int63n(1)) * time.Second)
+		time.Sleep(time.Duration(rand.Int63n(2)) * time.Second)
 		//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 		pin, _ := url.QueryUnescape(ck.PtPin)
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, ck.RWskey)
 		rsp, _, appck := GetCookie(pinky)
 		if rsp {
 			ptKey := FetchJdCookieValue("pt_key", appck)
-			ptPin := FetchJdCookieValue("pt_pin", appck)
-			ck1 := JdCookie{
-				PtKey: ptKey,
-				PtPin: ptPin,
-			}
-			if ptPin != "" || ptKey != "" {
-				if nck, err := GetJdCookie(ck1.PtPin); err == nil {
+			if ptKey != "" {
+				if nck, err := GetJdCookie(pin); err == nil {
 					xx++
 					nck.Updates(JdCookie{PtKey: ptKey, Available: True})
 					msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
-					////不再发送成功提醒
-					//(&JdCookie{}).Push(msg)
 					logs.Info(msg)
 				} else {
 					yy++
-					ck1.Update(Available, False)
-					(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", ck.PtPin))
+					//ck1.Update(Available, False)
+					(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", pin))
 				}
 			} else {
 				yy++

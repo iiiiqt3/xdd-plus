@@ -7,7 +7,6 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"gorm.io/gorm"
-	"math/rand"
 	"net/url"
 	"strconv"
 	"strings"
@@ -131,6 +130,8 @@ func initCookie() {
 	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(Config.Later))
 		if ck.Available == True && !CookieOK(&ck) {
+
+			//todo 通知账号失效
 			ck.Updates(JdCookie{Available: False})
 		}
 	}
@@ -217,7 +218,7 @@ func updateCookie() {
 		if i == len(cks)/2 {
 			(&JdCookie{}).Push("Wskey已更新二分一")
 		}
-		time.Sleep(time.Duration(rand.Int63n(2)) * time.Second)
+		time.Sleep(time.Duration(3) * time.Second)
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
 		rsp, _ := getKey(pinky)
 		if strings.Contains(rsp, "错误") {

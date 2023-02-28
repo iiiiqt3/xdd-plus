@@ -143,7 +143,7 @@ module.exports = cookies`, cookies))
 								} else if Config.Containers[i].Limit == 2 {
 									(&Config.Containers[i]).write(ck2)
 								} else {
-									(&Config.Containers[i]).write(cks)
+									(&Config.Containers[i]).write(ck1)
 								}
 							}
 						}
