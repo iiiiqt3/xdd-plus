@@ -712,7 +712,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					//
 
 					msg := make(chan string)
-
 					loginList[sender.UserID] = msg
 					go LoginSelect(sender, msg)
 					sender.Reply("请选择登录渠道: \r\n 1:京东扫码  \r\n 2:微信扫码(渠道适配中)  \r\n 3:短信登录（渠道升级中）")
@@ -1455,6 +1454,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 		switch n {
 		case "京东扫码", "1":
 			getJdQrImg(sender)
+			loginList[sender.UserID] = nil
 		case "微信扫码", "2":
 			sender.Reply("渠道适配中")
 		case "短信登录", "3":
