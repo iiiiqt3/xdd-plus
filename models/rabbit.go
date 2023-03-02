@@ -139,7 +139,7 @@ func UpdateRwskey() {
 			} else {
 				yy++
 				logs.Info(appck)
-				(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
+				(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，账号:%s", ck.PtPin))
 			}
 
 		} else {
