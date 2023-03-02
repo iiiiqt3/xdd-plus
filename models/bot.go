@@ -103,6 +103,7 @@ var pzno = 0
 var zdlist = make(map[string]int)
 var zd = 0
 var zdno = 0
+var loginList = make(map[int]chan string)
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -156,6 +157,11 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		if IsUserAdmin(strconv.Itoa(sender.UserID)) {
 			sender.IsAdmin = true
 		}
+	}
+	if loginList[sender.UserID] != nil {
+		c2 := loginList[sender.UserID]
+		c2 <- msg
+		return nil
 	}
 
 	for i := range codeSignals {
@@ -704,7 +710,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					//		//sender.Reply("小滴滴")
 					//	}
 					//
-					sender.Reply("服务升级中，目前登录请发送京东扫码")
+
+					msg := make(chan string)
+
+					loginList[sender.UserID] = msg
+					go LoginSelect(sender, msg)
+					sender.Reply("请选择登录渠道: \r\n 1:京东扫码 \rn 2:微信扫码 ")
 				}
 
 			}
@@ -1431,5 +1442,23 @@ func FetchJdCookieValue(key string, cookies string) string {
 		return match[1]
 	} else {
 		return ""
+	}
+}
+
+func LoginSelect(sender *Sender, msg chan string) {
+	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
+		}
+		switch n {
+		case "京东":
+			getJdQrImg(sender)
+		case "q":
+			close(msg)
+		default:
+			sender.Reply("无匹配渠道，如需回复'q'退出登录流程")
+		}
 	}
 }
