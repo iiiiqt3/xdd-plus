@@ -715,7 +715,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 					loginList[sender.UserID] = msg
 					go LoginSelect(sender, msg)
-					sender.Reply("请选择登录渠道: \r\n 1:京东扫码 \rn 2:微信扫码 ")
+					sender.Reply("请选择登录渠道: \r\n 1:京东扫码 \r\n 2:微信扫码 ")
 				}
 
 			}
@@ -1456,6 +1456,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 		case "京东":
 			getJdQrImg(sender)
 		case "q":
+			loginList[sender.UserID] = nil
 			close(msg)
 		default:
 			sender.Reply("无匹配渠道，如需回复'q'退出登录流程")
