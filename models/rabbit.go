@@ -126,16 +126,9 @@ func UpdateRwskey() {
 		if rsp {
 			ptKey := FetchJdCookieValue("pt_key", appck)
 			if ptKey != "" {
-				if nck, err := GetJdCookie(ck.PtPin); err == nil {
-					xx++
-					nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-					msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
-					logs.Info(msg)
-				} else {
-					yy++
-					//ck1.Update(Available, False)
-					(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", pin))
-				}
+				ck.Updates(JdCookie{PtKey: ptKey, Available: True})
+				msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
+				logs.Info(msg)
 			} else {
 				yy++
 				logs.Info(appck)
