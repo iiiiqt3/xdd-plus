@@ -126,6 +126,7 @@ func UpdateRwskey() {
 		if rsp {
 			ptKey := FetchJdCookieValue("pt_key", appck)
 			if ptKey != "" {
+				xx++
 				ck.Updates(JdCookie{PtKey: ptKey, Available: True})
 				msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
 				logs.Info(msg)
