@@ -63,9 +63,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 				RWskey: data,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Update(RWSKEY, data)
-				nck.Update(QQ, sender.UserID)
-				nck.Update(PtKey, ptkey)
+				nck.Updates(JdCookie{RWskey: data, QQ: sender.UserID, PtKey: ptkey})
 				sender.Reply(fmt.Sprintf("登录成功:%s", ptPin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", ptPin))
 			} else {
