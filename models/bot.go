@@ -157,6 +157,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			sender.IsAdmin = true
 		}
 	}
+
 	for i := range codeSignals {
 		for j := range codeSignals[i].Command {
 			if codeSignals[i].Command[j] == head {
@@ -169,6 +170,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 		}
 	}
+
 	if Config.VIP {
 		switch msg {
 		default:
@@ -1053,6 +1055,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		}
 
 	}
+
 	return nil
 }
 
