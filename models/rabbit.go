@@ -53,12 +53,12 @@ func getJDQrStatus(cookie string, sender *Sender) {
 		} else if code == 200 {
 			data, _ := jsonparser.GetString(bytes, "wskey")
 			pin, _ := jsonparser.GetString(bytes, "pin")
-			pin = url.QueryEscape(pin)
+			ptPin := url.QueryEscape(pin)
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, data)
 			_, _, appck := GetCookie(pinky)
 			ptkey := FetchJdCookieValue("pt_key", appck)
 			ck := JdCookie{
-				PtPin:  pin,
+				PtPin:  ptPin,
 				PtKey:  ptkey,
 				RWskey: data,
 			}
@@ -66,11 +66,11 @@ func getJDQrStatus(cookie string, sender *Sender) {
 				nck.Update(RWSKEY, data)
 				nck.Update(QQ, sender.UserID)
 				nck.Update(PtKey, ptkey)
-				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+				sender.Reply(fmt.Sprintf("登录成功:%s", ptPin))
+				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", ptPin))
 			} else {
 				NewJdCookie(&ck)
-				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+				msg := fmt.Sprintf("添加账号，账号名:%s", ptPin)
 				if sender.IsQQ() || sender.IsQQ() {
 					ck.Update(QQ, sender.UserID)
 				}
