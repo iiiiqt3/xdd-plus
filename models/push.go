@@ -5,6 +5,7 @@ func (ck JdCookie) Push(msg string) {
 		//go SendQQ(int64(ck.QQ), msg)
 		go pushPlus(ck.PushPlus, msg)
 		go SendTgMsg(ck.Telegram, msg)
+		go SendWxMsg()
 	} else {
 		go SendQQ(Config.QQID, msg)
 		go qywxNotify(&QywxConfig{QywxKey: Config.QywxKey, Content: msg})

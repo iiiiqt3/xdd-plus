@@ -144,6 +144,7 @@ func UpdateRwskey() {
 			switch msg {
 			case "Wskey失效":
 				ck.Updates(JdCookie{RWskey: "null", Available: False})
+				ck.Push()
 				(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，账号:%s", ck.PtPin))
 			case "请求异常":
 				(&JdCookie{}).Push(fmt.Sprintf("请求异常，账号:%s", ck.PtPin))
