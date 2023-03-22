@@ -165,7 +165,7 @@ type QxAgreeFriend struct {
 func (c *WxController) HandleMessage() {
 	data := c.Ctx.Input.RequestBody
 
-	logs.Info(data)
+	logs.Info(string(data))
 	if models.Config.Wx.Model == "qx" {
 		event, _ := jsonparser.GetInt(data, "event")
 		val, _ := jsonparser.GetString(data, "wxid")
