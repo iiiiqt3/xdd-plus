@@ -134,6 +134,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			sender.IsAdmin = true
 		}
 	}
+	if loginList[sender.UserID] != nil {
+		c2 := loginList[sender.UserID]
+		c2 <- msg
+		return nil
+	}
+
 	for i := range codeSignals {
 		for j := range codeSignals[i].Command {
 			if codeSignals[i].Command[j] == head {
@@ -146,6 +152,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 		}
 	}
+
 	if Config.VIP {
 		switch msg {
 		default:
@@ -446,7 +453,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						}
 					} else {
 						//pcodes[sender.UserID] = "true"
-						//sender.Reply("小滴滴")
+						//sender.R
+						//eply("小滴滴")
 					}
 
 					//sender.Reply("服务升级中，目前登录请私聊群主谢谢")

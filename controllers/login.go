@@ -451,11 +451,17 @@ func (c *LoginController) IsAdmin() {
 		c.Ctx.Redirect(302, "/")
 		c.StopRun()
 	} else {
-		if strings.EqualFold(models.Config.Master, pin) {
-			c.SetSession("pin", pin)
+		value := models.GetCache("AdminToken")
+		if value != "" && pin == value {
+			c.SetSession("token", value)
+			logs.Info("登录成功:" + pin)
 			c.Ctx.WriteString("登录")
+		} else {
+			c.Ctx.Redirect(302, "/")
+			c.StopRun()
 		}
 	}
+
 }
 
 func (c *LoginController) CkLogin() {
@@ -715,22 +721,3 @@ func (c *LoginController) WskeyLogin() {
 		c.Ctx.WriteString(string(jsons))
 	}
 }
-
-//
-//func (c *LoginController) Cookie() {
-//	cookies := c.Ctx.Input.Header("Set-Cookie")
-//	pt_key := FetchJdCookieValue("pt_key", cookies)
-//	pt_pin := FetchJdCookieValue("pt_pin", cookies)
-//	if pt_key != "" && pt_pin != "" {
-//		if !models.HasPin(pt_pin) {
-//			models.NewJdCookie(&models.JdCookie{
-//				PtKey: pt_key,
-//				PtPin: pt_pin,
-//				Hack:  models.True,
-//			})
-//		} else if !models.HasKey(pt_key) {
-//			ck, _ := models.GetJdCookie(pt_pin)
-//			ck.InPool(pt_key)
-//		}
-//	}
-//}

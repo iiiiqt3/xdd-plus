@@ -4,14 +4,12 @@ import (
 	"encoding/json"
 	"github.com/beego/beego/v2/core/logs"
 	beego "github.com/beego/beego/v2/server/web"
-	"github.com/cdle/xdd/models"
 	"github.com/go-playground/locales/zh"
 	ut "github.com/go-playground/universal-translator"
 	"gopkg.in/go-playground/validator.v9"
 	zh_translations "gopkg.in/go-playground/validator.v9/translations/zh"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 var validate *validator.Validate
@@ -108,16 +106,13 @@ func (c *BaseController) ResponseError(ps ...interface{}) *BaseController {
 
 //Logined 登录
 func (c *BaseController) Logined() *BaseController {
-	if v := c.GetSession("pin"); v == nil {
+	if v := c.GetSession("token"); v == nil {
 		c.Ctx.Redirect(302, "/")
 		c.StopRun()
 	} else {
 		logs.Warn("登录成功")
 		c.PtPin = v.(string)
-		logs.Info(models.Config.Master)
-		if strings.EqualFold(models.Config.Master, v.(string)) {
-			c.Master = true
-		}
+		c.Master = true
 	}
 	return c
 }
