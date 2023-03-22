@@ -93,14 +93,17 @@ func GetCookie(cookie string) (bool, string, string) {
 	})
 	get.Body(marshal)
 	bytes, _ := get.Bytes()
-	val, _ := jsonparser.GetBoolean(bytes, "success")
+	val, err := jsonparser.GetBoolean(bytes, "success")
+	if err != nil {
+		return false, "请求异常", ""
+	}
 	if val {
 		msg, _ := jsonparser.GetString(bytes, "msg")
 		appck, _ := jsonparser.GetString(bytes, "data", "appck")
 		return val, msg, appck
 	} else {
 		logs.Info(string(bytes))
-		return val, "", ""
+		return val, "Wskey失效", ""
 	}
 }
 
@@ -120,7 +123,7 @@ func UpdateRwskey() {
 		//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 		pin, _ := url.QueryUnescape(ck.PtPin)
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, ck.RWskey)
-		rsp, _, appck := GetCookie(pinky)
+		rsp, msg, appck := GetCookie(pinky)
 		if rsp {
 			ptKey := FetchJdCookieValue("pt_key", appck)
 			if ptKey != "" {
@@ -135,7 +138,16 @@ func UpdateRwskey() {
 			}
 
 		} else {
-			(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
+			yy++
+			switch msg {
+			case "Wskey失效":
+				ck.Updates(JdCookie{RWskey: "null", Available: False})
+				(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，账号:%s", ck.PtPin))
+			case "请求异常":
+				(&JdCookie{}).Push(fmt.Sprintf("请求异常，账号:%s", ck.PtPin))
+			default:
+				(&JdCookie{}).Push(fmt.Sprintf("特殊异常，账号:%s", ck.PtPin))
+			}
 		}
 
 	}
