@@ -95,6 +95,8 @@ func GetCookie(cookie string) (bool, string, string) {
 	bytes, _ := get.Bytes()
 	val, err := jsonparser.GetBoolean(bytes, "success")
 	if err != nil {
+		logs.Info(val)
+		logs.Info(err)
 		return false, "请求异常", ""
 	}
 	if val {
