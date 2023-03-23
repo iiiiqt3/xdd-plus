@@ -59,7 +59,7 @@ func (c *UserController) GetUserInfo() {
 
 func (c *UserController) GetUserPin() {
 	qq := c.GetString("QQ")
-	if strings.EqualFold(qq, strconv.FormatInt(models.Config.QQID, 10)) {
+	if strings.EqualFold(qq, strconv.Itoa(models.Config.QQID)) {
 		result := Result{
 			Data:    "null",
 			Code:    1,
