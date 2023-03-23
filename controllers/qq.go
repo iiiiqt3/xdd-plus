@@ -30,7 +30,7 @@ type CqMessage struct {
 	RawMessage string `json:"raw_message"`
 }
 
-func (c *WxController) HandleQqMessage() {
+func (c *QQController) HandleQQMessage() {
 	data := c.Ctx.Input.RequestBody
 	logs.Info(string(data))
 	var msg CqMessage
