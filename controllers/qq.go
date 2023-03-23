@@ -32,13 +32,13 @@ type CqMessage struct {
 
 func (c *QQController) HandleQQMessage() {
 	data := c.Ctx.Input.RequestBody
-	logs.Info(string(data))
 	var msg CqMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		logs.Error(err)
 	}
 	if msg.PostType == "message" {
+		logs.Info(string(data))
 		logs.Info("接收到信息" + msg.RawMessage)
 		models.ListenQQPrivateMessage(int64(msg.UserID), msg.RawMessage)
 	}
