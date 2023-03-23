@@ -23,10 +23,10 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 )
 
-var SendQQ = func(a int64, b interface{}) {
+var SendQQ = func(a int, b interface{}) {
 
 }
-var SendQQGroup = func(a int64, b int64, c interface{}) {
+var SendQQGroup = func(a int, b int, c interface{}) {
 
 }
 
@@ -57,17 +57,11 @@ type ViVoRes struct {
 	ErrMsg  string   `json:"err_msg"`
 }
 
-var ListenQQPrivateMessage = func(uid int64, msg string) {
+var ListenQQPrivateMessage = func(uid int, msg string) {
 	//if strings.Contains(msg, "绑定微信") {
 	//	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
 	//}
-	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
-}
-
-var ListenQQTempPrivateMessage = func(uid int64, msg string) {
-	if strings.Contains(msg, "绑定微信") {
-		SendQQ(uid, handleMessage(msg, "qq", int(uid)))
-	}
+	SendQQ(uid, handleMessage(msg, "qq", uid))
 }
 
 var ListenWXTempPrivateMessage = func(uid string, msg string) {
@@ -79,12 +73,12 @@ var ListenWXTempPrivateMessage = func(uid string, msg string) {
 	}
 }
 
-var ListenQQGroupMessage = func(gid int64, uid int64, msg string) {
+var ListenQQGroupMessage = func(gid int, uid int, msg string) {
 	if gid == Config.QQGroupID {
 		if Config.QbotPublicMode {
-			SendQQGroup(gid, uid, handleMessage(msg, "qqg", int(uid), int(gid)))
+			SendQQGroup(gid, uid, handleMessage(msg, "qqg", uid, gid))
 		} else {
-			SendQQ(uid, handleMessage(msg, "qq", int(uid)))
+			SendQQ(uid, handleMessage(msg, "qq", uid))
 		}
 	}
 }
