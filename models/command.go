@@ -59,7 +59,7 @@ func (sender *Sender) Reply(msg string) {
 	case "tgg":
 		SendTggMsg(sender.ChatID, sender.UserID, msg, sender.MessageID, sender.Username)
 	case "qq":
-		SendQQ(int64(sender.UserID), msg)
+		SendQQ(sender.UserID, msg)
 		//SendQQ(int64(sender.UserID), msg)
 		//if strings.Contains(msg, "账号昵称：") && Config.VIP {
 		//	SendQQ(int64(sender.UserID), strtoimg(msg))
@@ -67,7 +67,7 @@ func (sender *Sender) Reply(msg string) {
 		//	SendQQ(int64(sender.UserID), msg)
 		//}
 	case "qqg":
-		SendQQGroup(int64(sender.ChatID), int64(sender.UserID), msg)
+		SendQQGroup(sender.ChatID, sender.UserID, msg)
 	case "wx":
 		SendWxMsg(sender.WxId, msg)
 	}
@@ -76,7 +76,7 @@ func (sender *Sender) Reply(msg string) {
 func (sender *Sender) SendImg(msg []byte) {
 	switch sender.Type {
 	case "qq":
-		SendQQ(int64(sender.UserID), msg)
+		SendQQ(sender.UserID, msg)
 	case "wx":
 		SendWxImg(sender.WxId, msg)
 	}

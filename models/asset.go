@@ -64,7 +64,7 @@ func DailyAssetsPush() {
 			msg := ck.Query()
 
 			if ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
-				SendQQ(int64(ck.QQ), msg)
+				SendQQ(ck.QQ, msg)
 			}
 			if ck.PushPlus != "" {
 				pushPlus(ck.PushPlus, msg)
@@ -95,7 +95,7 @@ func CompletePush() {
 			//}
 			if flag {
 				if ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
-					SendQQ(int64(ck.QQ), strings.Join(msg1, "\n"))
+					SendQQ(ck.QQ, strings.Join(msg1, "\n"))
 				}
 				if ck.PushPlus != "" {
 					pushPlus(ck.PushPlus, strings.Join(msg1, "\n"))
