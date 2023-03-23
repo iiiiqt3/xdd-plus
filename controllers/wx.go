@@ -162,7 +162,7 @@ type QxAgreeFriend struct {
 	} `json:"data"`
 }
 
-func (c *WxController) HandleMessage() {
+func (c *WxController) HandleWxMessage() {
 	data := c.Ctx.Input.RequestBody
 
 	logs.Info(string(data))
