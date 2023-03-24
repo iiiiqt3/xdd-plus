@@ -13,7 +13,6 @@ import (
 
 type QQMessage struct {
 	UserId  int
-	GroupId int
 	Message string
 }
 
