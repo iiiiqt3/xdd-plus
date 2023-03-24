@@ -28,7 +28,6 @@ var SendQQ = func(qq int, msg interface{}) {
 	switch msg.(type) {
 	case string:
 		SendQQMsg(QQMessage{UserId: qq, Message: msg.(string)})
-
 	}
 	//if bot == nil {
 	//	return
