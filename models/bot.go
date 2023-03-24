@@ -29,27 +29,6 @@ var SendQQ = func(qq int, msg interface{}) {
 	case string:
 		SendQQMsg(QQMessage{UserId: qq, Message: msg.(string)})
 	}
-	//if bot == nil {
-	//	return
-	//}
-	//
-	//if uid == 0 {
-	//	return
-	//}
-	//
-	//switch msg.(type) {
-	//case string:
-	//	if bot != nil {
-	//		bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&message.TextElement{Content: msg.(string)}}})
-	//	}
-	//case []byte:
-	//	if bot != nil {
-	//		bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(msg.([]byte))}}})
-	//	}
-	//case *http.Response:
-	//	data, _ := ioutil.ReadAll(msg.(*http.Response).Body)
-	//	bot.SendPrivateMessage(uid, models.Config.QQGroupID, &message.SendingMessage{Elements: []message.IMessageElement{&coolq.LocalImageElement{Stream: bytes.NewReader(data)}}})
-	//}
 }
 var SendQQGroup = func(a int, b int, c interface{}) {
 

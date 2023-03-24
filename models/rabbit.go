@@ -28,6 +28,7 @@ func getJdQrImg(sender *Sender) {
 			GroupID: 0,
 			Message: fmt.Sprintf("[CQ:image,file=base64://%s,type=show,id=40004]", qr),
 		})
+		sender.Reply(fmt.Sprintf("[CQ:image,file=base64://%s,type=show,id=40004]", qr))
 		sender.SendImg(decodeStr)
 
 		sender.Reply("请使用京东APP扫码，150秒失效")
