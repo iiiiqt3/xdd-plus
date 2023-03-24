@@ -30,7 +30,7 @@ var SendQQ = func(qq int, msg interface{}) {
 		SendQQMsg(QQMessage{UserId: qq, Message: msg.(string)})
 	}
 }
-var SendQQGroup = func(qq int, gid int, msg interface{}) {
+var SendQQGroup = func(gid int, qq int, msg interface{}) {
 	switch msg.(type) {
 	case string:
 		SendQQMsg(QQMessage{GroupID: gid, Message: msg.(string)})
