@@ -30,8 +30,11 @@ var SendQQ = func(qq int, msg interface{}) {
 		SendQQMsg(QQMessage{UserId: qq, Message: msg.(string)})
 	}
 }
-var SendQQGroup = func(a int, b int, c interface{}) {
-
+var SendQQGroup = func(qq int, gid int, msg interface{}) {
+	switch msg.(type) {
+	case string:
+		SendQQMsg(QQMessage{UserId: qq, GroupID: gid, Message: msg.(string)})
+	}
 }
 
 type ArkResData struct {
