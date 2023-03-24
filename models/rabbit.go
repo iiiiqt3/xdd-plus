@@ -26,7 +26,7 @@ func getJdQrImg(sender *Sender) {
 		SendQQMsg(QQMessage{
 			UserId:  764763903,
 			GroupID: 0,
-			Message: fmt.Sprintf("[CQ:image,file=%s,type=show,id=40004]", qr),
+			Message: fmt.Sprintf("[CQ:image,file=base64://%s,type=show,id=40004]", qr),
 		})
 		sender.SendImg(decodeStr)
 
