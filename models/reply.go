@@ -12,8 +12,9 @@ import (
 )
 
 type QQMessage struct {
-	UserId  int
-	Message string
+	UserId  int    `json:"user_id"`
+	GroupID int    `json:"group_id"`
+	Message string `json:"message"`
 }
 
 func SendWxImg(uid string, file []byte) {
