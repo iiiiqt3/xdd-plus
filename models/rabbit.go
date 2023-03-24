@@ -21,14 +21,6 @@ func getJdQrImg(sender *Sender) {
 		qr, _ := jsonparser.GetString(bytes, "qr")
 		key, _ := jsonparser.GetString(bytes, "QRCodeKey")
 		decodeStr, _ := base64.StdEncoding.DecodeString(qr)
-		//[CQ:image,file=http://baidu.com/1.jpg,type=show,id=40004]
-
-		SendQQMsg(QQMessage{
-			UserId:  764763903,
-			GroupID: 0,
-			Message: fmt.Sprintf("[CQ:image,file=base64://%s,type=show,id=40004]", qr),
-		})
-		sender.Reply(fmt.Sprintf("[CQ:image,file=base64://%s,type=show,id=40004]", qr))
 		sender.SendImg(decodeStr)
 
 		sender.Reply("请使用京东APP扫码，150秒失效")
