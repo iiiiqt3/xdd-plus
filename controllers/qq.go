@@ -48,9 +48,9 @@ func (c *QQController) HandleQQMessage() {
 		logs.Info(string(data))
 		logs.Info("接收到信息" + msg.RawMessage)
 		if msg.MessageType == "private" {
-			models.ListenQQPrivateMessage(msg.UserID, msg.RawMessage)
+			models.ListenQQPrivateMessage(msg.UserID, msg.Message)
 		} else if msg.MessageType == "group" {
-			models.ListenQQGroupMessage(msg.UserID, msg.GroupID, msg.RawMessage)
+			models.ListenQQGroupMessage(msg.UserID, msg.GroupID, msg.Message)
 		}
 	}
 
