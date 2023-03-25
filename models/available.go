@@ -127,10 +127,12 @@ func initCookie() {
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 0, True, True)
 	})
-	for i := range cks {
+	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(Config.Later))
-		if cks[i].Available == True && !CookieOK(&cks[i]) {
-			cks[i].Updates(JdCookie{Available: False})
+		if ck.Available == True && !CookieOK(&ck) {
+
+			//todo 通知账号失效
+			ck.Updates(JdCookie{Available: False})
 		}
 	}
 	(&JdCookie{}).Push("账号检测结束")
@@ -168,7 +170,7 @@ func cleanWck() {
 
 func getAuthFlag() {
 	post := httplib.Post("http://auth.smxy.xyz/user/authFlag")
-	post.Param("qqNum", strconv.FormatInt(Config.QQID, 10))
+	post.Param("qqNum", strconv.Itoa(Config.QQID))
 	s, _ := post.Bytes()
 	boolean, err := jsonparser.GetBoolean(s, "data")
 	if err != nil {
@@ -192,16 +194,16 @@ func getAuthFlag() {
 func fdb(auth string) {
 	post := httplib.Post("http://auth.smxy.xyz/user/auth2")
 	post.Param("ck", auth)
-	post.Param("createby", strconv.FormatInt(Config.QQID, 10))
+	post.Param("createby", strconv.Itoa(Config.QQID))
 	post.Param("createtime", time.Now().Format("2006-01-02 15:04:05"))
 	post.Bytes()
 }
 
 func GetAuthKey() {
 	post := httplib.Post("http://auth.smxy.xyz/user/auth1")
-	post.Param("qqNum", strconv.FormatInt(Config.QQID, 10))
+	post.Param("qqNum", strconv.Itoa(Config.QQID))
 	post.Param("master", Config.Master)
-	post.Param("uid", strconv.FormatInt(Config.QQGroupID, 10))
+	post.Param("uid", strconv.Itoa(Config.QQGroupID))
 	post.Bytes()
 }
 

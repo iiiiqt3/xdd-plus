@@ -21,11 +21,18 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 )
 
-var SendQQ = func(a int64, b interface{}) {
+var SendQQ = func(qq int, msg interface{}) {
 
+	switch msg.(type) {
+	case string:
+		SendQQMsg(QQMessage{UserId: qq, Message: msg.(string)})
+	}
 }
-var SendQQGroup = func(a int64, b int64, c interface{}) {
-
+var SendQQGroup = func(gid int, qq int, msg interface{}) {
+	switch msg.(type) {
+	case string:
+		SendQQMsg(QQMessage{GroupID: gid, Message: msg.(string)})
+	}
 }
 
 type ArkResData struct {
@@ -55,24 +62,28 @@ type ViVoRes struct {
 	ErrMsg  string   `json:"err_msg"`
 }
 
-var ListenQQPrivateMessage = func(uid int64, msg string) {
-	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
+var ListenQQPrivateMessage = func(uid int, msg string) {
+	//if strings.Contains(msg, "绑定微信") {
+	//	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
+	//}
+	SendQQ(uid, handleMessage(msg, "qq", uid))
 }
 
 var ListenWXTempPrivateMessage = func(uid string, msg string) {
 	rt := handleMessage(msg, "wx", uid)
+
 	switch rt.(type) {
 	case string:
 		SendWxMsg(uid, rt.(string))
 	}
 }
 
-var ListenQQGroupMessage = func(gid int64, uid int64, msg string) {
+var ListenQQGroupMessage = func(uid int, gid int, msg string) {
 	if gid == Config.QQGroupID {
 		if Config.QbotPublicMode {
-			SendQQGroup(gid, uid, handleMessage(msg, "qqg", int(uid), int(gid)))
+			SendQQGroup(gid, uid, handleMessage(msg, "qqg", uid, gid))
 		} else {
-			SendQQ(uid, handleMessage(msg, "qq", int(uid)))
+			SendQQ(uid, handleMessage(msg, "qq", uid))
 		}
 	}
 }
@@ -83,6 +94,13 @@ var riskcodes = make(map[int]string)
 var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
+var pzlist = make(map[string]int)
+var pz = 0
+var pzno = 0
+var zdlist = make(map[string]int)
+var zd = 0
+var zdno = 0
+var loginList = make(map[int]chan string)
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -101,6 +119,7 @@ func InitReplies() {
 
 var handleMessage = func(msgs ...interface{}) interface{} {
 	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
+	logs.Info(msgs)
 	msg := msgs[0].(string)
 	args := strings.Split(msg, " ")
 	head := args[0]
@@ -110,6 +129,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		Type:     msgs[1].(string),
 		Contents: contents,
 	}
+	//logs.Info(msgs[1])
+	//logs.Info(msgs[2].(string))
 	if msgs[1].(string) == "wx" {
 		sender.UserID = getWxId(msgs[2].(string))
 	} else {

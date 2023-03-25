@@ -63,7 +63,7 @@ func DailyAssetsPush() {
 			msg := ck.Query()
 
 			if ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
-				SendQQ(int64(ck.QQ), msg)
+				SendQQ(ck.QQ, msg)
 			}
 			if ck.PushPlus != "" {
 				pushPlus(ck.PushPlus, msg)
@@ -88,7 +88,7 @@ func CompletePush() {
 			time.Sleep(time.Second * 30)
 			if flag {
 				if ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
-					SendQQ(int64(ck.QQ), strings.Join(msg1, "\n"))
+					SendQQ(ck.QQ, strings.Join(msg1, "\n"))
 				}
 				if ck.PushPlus != "" {
 					pushPlus(ck.PushPlus, strings.Join(msg1, "\n"))
@@ -143,13 +143,9 @@ func (ck *JdCookie) Query() string {
 		//msgs = append(msgs, fmt.Sprintf("等级名称：%v", ck.LevelName))
 
 		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
-		if !strings.Contains(cookie, "open") {
-			if ck.UpdateAt != "" {
-				parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
-				f := t.Sub(parse1).Hours() / 24
-				i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
-				msgs = append(msgs, fmt.Sprintf("您距离失效还有：%d天", 28-i))
-			}
+		if ck.UpdateAt != "" {
+			parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
+			msgs = append(msgs, fmt.Sprintf("最后更新时间：%s", parse1))
 		}
 		var rpc = make(chan []RedList)
 		var fruit = make(chan string)
@@ -317,6 +313,14 @@ func getXd(cookie string) (string, string) {
 	req.Header("Accept-Language", "zh-CN,zh-Hans;q=0.9")
 	req.Header("Referer", "https://st.jingxi.com/")
 	req.Header("Cookie", cookie)
+	value := GetEnv("proxy")
+	if value != "" {
+		proxy := func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(value)
+			return u, nil
+		}
+		req.SetProxy(proxy)
+	}
 	resp, _ := req.Bytes()
 	xibean, err := jsonparser.GetInt(resp, "data", "xibean")
 	if err != nil {

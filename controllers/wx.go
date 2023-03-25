@@ -72,6 +72,29 @@ type MyFriendVerifyMsg struct {
 	} `json:"content"`
 }
 
+type QXMoneyMessage struct {
+	Event int    `json:"event"`
+	Wxid  string `json:"wxid"`
+	Data  struct {
+		Type string `json:"type"`
+		Des  string `json:"des"`
+		Data struct {
+			FromWxid    string `json:"fromWxid"`
+			MsgSource   int    `json:"msgSource"`
+			TransType   int    `json:"transType"`
+			Money       string `json:"money"`
+			Memo        string `json:"memo"`
+			Transferid  string `json:"transferid"`
+			Invalidtime string `json:"invalidtime"`
+		} `json:"data"`
+		Timestamp string `json:"timestamp"`
+		Wxid      string `json:"wxid"`
+		Port      int    `json:"port"`
+		Pid       int    `json:"pid"`
+		Flag      string `json:"flag"`
+	} `json:"data"`
+}
+
 type QxFriendVerifyMsg struct {
 	Event int    `json:"event"`
 	Wxid  string `json:"wxid"`
@@ -139,41 +162,54 @@ type QxAgreeFriend struct {
 	} `json:"data"`
 }
 
-func (c *WxController) HandleMessage() {
+func (c *WxController) HandleWxMessage() {
 	data := c.Ctx.Input.RequestBody
 
+	logs.Info(string(data))
 	if models.Config.Wx.Model == "qx" {
 		event, _ := jsonparser.GetInt(data, "event")
-		switch event {
-		case 10009:
-			ag := &QXMessage{}
-			err := json.Unmarshal(data, ag)
-			logs.Info(err)
-			logs.Info("接收到信息" + ag.Data.Data.Msg)
-			models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
-
-		case 10011:
-			ag := &QxFriendVerifyMsg{}
-			err := json.Unmarshal(data, ag)
-			logs.Info(err)
-			auto := models.IsAutoAgreeFriendVerify()
-			if auto {
-				if models.UseAgreeMsg() {
-					AgreeMsg := models.GetEnv("AgreeMsg")
-					if !strings.Contains(ag.Data.Data.Content, AgreeMsg) {
-						return
-					}
+		val, _ := jsonparser.GetString(data, "wxid")
+		if val == models.Config.Wx.Robotid {
+			switch event {
+			case 10009:
+				ag := &QXMessage{}
+				err := json.Unmarshal(data, ag)
+				logs.Info(err)
+				logs.Info("接收到信息" + ag.Data.Data.Msg)
+				if ag.Wxid == models.Config.Wx.Robotid {
+					models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
 				}
-				args := make(map[string]string)
-				args["model"] = "qx"
-				args["v3"] = ag.Data.Data.V3
-				args["v4"] = ag.Data.Data.V4
-				args["content"] = ag.Data.Data.Content
-				args["uid"] = ag.Data.Data.Wxid
-				AgreeFriendVerify(args)
-			}
-		}
 
+			//case 10006:
+			//	ag := &QXMoneyMessage{}
+			//	err := json.Unmarshal(data, ag)
+			//	logs.Info(err)
+			//	int, _ := strconv.Atoi(ag.Data.Data.Money)
+			//	money := models.AddMoney(ag.Data.Data.FromWxid, int*10)
+
+			case 10011:
+				ag := &QxFriendVerifyMsg{}
+				err := json.Unmarshal(data, ag)
+				logs.Info(err)
+				auto := models.IsAutoAgreeFriendVerify()
+				if auto {
+					if models.UseAgreeMsg() {
+						AgreeMsg := models.GetEnv("AgreeMsg")
+						if !strings.Contains(ag.Data.Data.Content, AgreeMsg) {
+							return
+						}
+					}
+					args := make(map[string]string)
+					args["model"] = "qx"
+					args["v3"] = ag.Data.Data.V3
+					args["v4"] = ag.Data.Data.V4
+					args["content"] = ag.Data.Data.Content
+					args["uid"] = ag.Data.Data.Wxid
+					AgreeFriendVerify(args)
+				}
+			}
+
+		}
 	} else {
 		event, _ := jsonparser.GetString(data, "Event")
 		switch event {

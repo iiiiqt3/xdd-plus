@@ -100,7 +100,7 @@ func (c *LoginController) GetUserPin() {
 		return
 	}
 	qq := c.GetString("QQ")
-	if strings.EqualFold(qq, strconv.FormatInt(models.Config.QQID, 10)) {
+	if strings.EqualFold(qq, strconv.Itoa(models.Config.QQID)) {
 		return
 	}
 	pins := models.GetPinList(qq)
@@ -275,9 +275,9 @@ func init() {
 						case "qq", "qqg":
 							ck.Update(models.QQ, uid)
 							if gid != 0 {
-								go models.SendQQGroup(int64(gid), int64(uid), "扫码成功")
+								go models.SendQQGroup(gid, uid, "扫码成功")
 							} else {
-								go models.SendQQ(int64(uid), "扫码成功")
+								go models.SendQQ(uid, "扫码成功")
 							}
 						case "tg", "tgg":
 							ck.Update(models.Telegram, uid)
@@ -297,9 +297,9 @@ func init() {
 						case "qq", "qqg":
 							// ck.Update(models.QQ, uid)
 							if gid != 0 {
-								go models.SendQQGroup(int64(gid), int64(uid), "扫码失败")
+								go models.SendQQGroup(gid, uid, "扫码失败")
 							} else {
-								go models.SendQQ(int64(uid), "扫码失败")
+								go models.SendQQ(uid, "扫码失败")
 							}
 						case "tg", "tgg":
 							// ck.Update(models.Telegram, uid)

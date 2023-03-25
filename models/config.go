@@ -7,7 +7,7 @@ import (
 
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 type WxConfig struct {
@@ -15,6 +15,12 @@ type WxConfig struct {
 	Url     string
 	Robotid string
 	Token   string
+}
+
+type FanLi struct {
+	Appid    string
+	Appkey   string
+	Union_id string
 }
 
 type Yaml struct {
@@ -31,24 +37,25 @@ type Yaml struct {
 	Theme               string
 	TelegramBotToken    string `yaml:"telegram_bot_token"`
 	TelegramUserID      int    `yaml:"telegram_user_id"`
-	OpenQQ              string `yaml:"OpenQQ"`
-	QQID                int64  `yaml:"qquid"`
-	QQGroupID           int64  `yaml:"qqgid"`
+	QQID                int    `yaml:"qquid"`
+	QQGroupID           int    `yaml:"qqgid"`
 	DefaultPriority     int    `yaml:"default_priority"`
+	NoGhproxy           bool   `yaml:"no_ghproxy"`
 	QbotPublicMode      bool   `yaml:"qbot_public_mode"`
 	DailyAssetPushCron  string `yaml:"daily_asset_push_cron"`
 	Version             string `yaml:"version"`
+	CTime               string `yaml:"AtTime"`
 	IsHelp              bool   `yaml:"IsHelp"`
-	IsOldV4             bool   `yaml:"IsOldV4"`
 	ApiToken            string `yaml:"ApiToken"`
 	Invalid             string `yaml:"Invalid"`
 	Query               string `yaml:"Query"`
 	Query1              string `yaml:"Query1"`
 	TGURL               string `yaml:"TGURL"`
+	CXURL               string `yaml:"CXURL"`
 	SMSAddress          string `yaml:"SMSAddress"`
+	IsAddFriend         bool   `yaml:"IsAddFriend"`
 	Lim                 int    `yaml:"Lim"`
 	Tyt                 int    `yaml:"Tyt"`
-	Zqdyj               int    `yaml:"Zqdyj"`
 	IFC                 bool   `yaml:"IFC"`
 	Later               int    `yaml:"Later"`
 	Jdcurl              string `yaml:"Jdcurl"`
@@ -57,6 +64,7 @@ type Yaml struct {
 	RabbitToken         string `yaml:"RabbitToken"`
 	GAMEOPEN            bool   `yaml:"GameOpen"`
 	Note                string `yaml:"Note"`
+	Rotation            bool   `yaml:"Rotation"`
 	VIP                 bool
 	Node                string
 	Npm                 string
@@ -108,14 +116,15 @@ func initConfig() {
 		}
 		f.Close()
 	}
-	title, _ := ioutil.ReadFile(ExecPath + "/conf/title.conf")
-	Config.Title = string(title)
+	//title, _ := ioutil.ReadFile(ExecPath + "/conf/title.conf")
+	//Config.Title = string(title)
 
 	content, err := ioutil.ReadFile(ExecPath + "/conf/config.yaml")
 	if err != nil {
 		logs.Warn("解析config.yaml读取错误: %v", err)
 	}
-	if yaml.Unmarshal(content, &Config) != nil {
+	err = yaml.Unmarshal(content, &Config)
+	if err != nil {
 		logs.Warn("解析config.yaml出错: %v", err)
 	}
 	if ExecPath == "/Users/cdle/Desktop/xdd" || Config.NoAdmin {
@@ -127,17 +136,20 @@ func initConfig() {
 	if Config.Master == "" {
 		Config.Master = "xxxx"
 	}
+	if Config.CTime == "" {
+		Config.CTime = "10"
+	}
 	if Config.Mode != Parallel && Config.Mode != Vip {
 		Config.Mode = Balance
 	}
 	if Config.Qrcode != "" {
 		Config.Theme = Config.Qrcode
 	}
+	if Config.NoGhproxy {
+		GhProxy = ""
+	}
 	if Config.Tyt == 0 {
 		Config.Tyt = 8
-	}
-	if Config.Zqdyj == 0 {
-		Config.Zqdyj = 500
 	}
 
 	if Config.Wx.Model == "" {
@@ -165,7 +177,7 @@ func initConfig() {
 	if Config.Pip == "" {
 		Config.Pip = "pip3"
 	}
-	if Config.FanLis.appid == "" || Config.FanLis.appkey == "" || Config.FanLis.union_id == "" {
+	if Config.FanLis.Appid == "" || Config.FanLis.Appkey == "" || Config.FanLis.Union_id == "" {
 		Config.OpenFan = false
 	} else {
 		Config.OpenFan = true

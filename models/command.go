@@ -1,11 +1,9 @@
 package models
 
 import (
-	"encoding/json"
+	"encoding/base64"
 	"errors"
 	"fmt"
-	browser "github.com/EDDYCJY/fake-useragent"
-	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
@@ -57,12 +55,12 @@ func (sender *Sender) Reply(msg string) {
 		SendTggMsg(sender.ChatID, sender.UserID, msg, sender.MessageID, sender.Username)
 	case "qq":
 		if strings.Contains(msg, "账号昵称：") && Config.VIP && isOpenImg() {
-			SendQQ(int64(sender.UserID), strtoimg(msg))
+			SendQQ(sender.UserID, strtoimg(msg))
 		} else {
-			SendQQ(int64(sender.UserID), msg)
+			SendQQ(sender.UserID, msg)
 		}
 	case "qqg":
-		SendQQGroup(int64(sender.ChatID), int64(sender.UserID), msg)
+		SendQQGroup(sender.ChatID, sender.UserID, msg)
 	case "wx":
 		SendWxMsg(sender.WxId, msg)
 	}
@@ -71,105 +69,13 @@ func (sender *Sender) Reply(msg string) {
 func (sender *Sender) SendImg(msg []byte) {
 	switch sender.Type {
 	case "qq":
-		SendQQ(int64(sender.UserID), msg)
+		SendQQMsg(QQMessage{
+			UserId:  sender.UserID,
+			GroupID: 0,
+			Message: fmt.Sprintf("[CQ:image,file=base64://%s,type=show,id=40004]", base64.StdEncoding.EncodeToString(msg)),
+		})
 	case "wx":
 		SendWxImg(sender.WxId, msg)
-	}
-
-}
-
-func SendWxImg(uid string, file []byte) {
-	type QXMessage struct {
-		Type string `json:"type"`
-		Data struct {
-			Wxid string `json:"wxid"`
-			Path string `json:"path"`
-		} `json:"data"`
-	}
-	unix := time.Now().Unix()
-
-	filename := ExecPath + fmt.Sprintf("/static/%d.jpg", unix)
-
-	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	if err != nil {
-		logs.Warn("zqdyj.txt失败，", err)
-	}
-	f.Write(file)
-	f.Close()
-
-	img := uploadImg(filename)
-
-	req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
-	reply := &QXMessage{
-		Type: "Q0010",
-		Data: struct {
-			Wxid string `json:"wxid"`
-			Path string `json:"path"`
-		}{
-			Wxid: uid,
-			Path: img,
-		},
-	}
-	random := browser.Random()
-	req.Header("User-Agent", random)
-	marshal, _ := json.Marshal(reply)
-	logs.Info(string(marshal))
-	req.Body(string(marshal))
-	s, _ := req.String()
-	logs.Info(s)
-
-}
-
-func SendWxMsg(uid string, msg string) {
-	model := Config.Wx.Model
-	switch model {
-	case "my":
-		type MySendMessage struct {
-			Token     string `json:"token"`
-			API       string `json:"api"`
-			RobotWxid string `json:"robot_wxid"`
-			ToWxid    string `json:"to_wxid"`
-			Msg       string `json:"msg"`
-		}
-		req := httplib.Post(Config.Wx.Url)
-		reply := &MySendMessage{
-			Token:     Config.Wx.Token,
-			API:       "SendTextMsg",
-			RobotWxid: Config.Wx.Robotid,
-			ToWxid:    uid,
-			Msg:       msg,
-		}
-		random := browser.Random()
-		req.Header("User-Agent", random)
-		marshal, _ := json.Marshal(reply)
-		req.Body(string(marshal))
-		req.String()
-
-	case "qx":
-		msg = strings.ReplaceAll(msg, "\n", "\r")
-		type QxSendMessage struct {
-			Type string `json:"type"`
-			Data struct {
-				Wxid string `json:"wxid"`
-				Msg  string `json:"msg"`
-			} `json:"data"`
-		}
-		req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
-		reply := &QxSendMessage{
-			Type: "Q0001",
-			Data: struct {
-				Wxid string `json:"wxid"`
-				Msg  string `json:"msg"`
-			}{
-				Wxid: uid,
-				Msg:  msg,
-			},
-		}
-		random := browser.Random()
-		req.Header("User-Agent", random)
-		marshal, _ := json.Marshal(reply)
-		req.Body(string(marshal))
-		req.String()
 	}
 
 }
@@ -564,7 +470,7 @@ var codeSignals = []CodeSignal{
 							sender.Reply("请扫描二维码查看")
 							var png []byte
 							png, _ = qrcode.Encode(url, qrcode.Medium, 256)
-							SendQQ(int64(sender.UserID), png)
+							sender.SendImg(png)
 						}
 					}
 
@@ -597,7 +503,7 @@ var codeSignals = []CodeSignal{
 							var png []byte
 							png, _ = qrcode.Encode(url, qrcode.Medium, 256)
 							logs.Info(Config.QQGroupID)
-							SendQQGroup(Config.QQGroupID, int64(sender.UserID), png)
+							SendQQGroup(Config.QQGroupID, sender.UserID, png)
 						}
 					}
 				}
