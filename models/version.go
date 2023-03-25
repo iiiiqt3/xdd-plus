@@ -65,7 +65,7 @@ func GetNewVersion() {
 		if value != "" {
 			UpdateUrl = value
 		}
-		value, err := httplib.Get(UpdateUrl + "/version").String()
+		value, err := httplib.Get(UpdateUrl + "/version1").String()
 		if err != nil {
 			logs.Info("更新版本的失败")
 		} else {
