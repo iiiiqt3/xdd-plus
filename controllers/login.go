@@ -461,7 +461,6 @@ func (c *LoginController) IsAdmin() {
 			c.StopRun()
 		}
 	}
-
 }
 
 func (c *LoginController) CkLogin() {

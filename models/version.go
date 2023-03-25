@@ -81,7 +81,7 @@ func GetNewVersion() {
 func Update(sender *Sender) error {
 	logs.Info("检查更新" + version)
 	sender.Reply("小滴滴开始检查更新")
-	value, err := httplib.Get(UpdateUrl + "/version").String()
+	value, err := httplib.Get(UpdateUrl + "/version1").String()
 	if err != nil {
 		return errors.New("获取版本号失败")
 	} else {
