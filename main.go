@@ -15,7 +15,6 @@ import (
 	"github.com/beego/beego/v2/server/web/filter/cors"
 	"github.com/cdle/xdd/controllers"
 	"github.com/cdle/xdd/models"
-	"github.com/cdle/xdd/qbot"
 )
 
 var theme = ""
@@ -143,11 +142,6 @@ func main() {
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	}()
-	if models.Config.QQID != 0 && models.Config.OpenQQ == "" {
-		go qbot.Main()
-	} else {
-		logs.Info("不启动QQ")
-	}
 
 	web.Run()
 }
