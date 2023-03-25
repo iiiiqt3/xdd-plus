@@ -152,8 +152,6 @@ func (ck *JdCookie) Query() string {
 		//msgs = append(msgs, fmt.Sprintf("等级名称：%v", ck.LevelName))
 		if ck.Priority > 9 {
 			msgs = append(msgs, fmt.Sprintf("用户等级：%s", "VIP用户"))
-		} else if strings.Contains(ck.PtKey, "app_open") {
-			msgs = append(msgs, fmt.Sprintf("用户等级：%s", "年费用户"))
 		} else {
 			msgs = append(msgs, fmt.Sprintf("用户等级：%s", "普通用户"))
 		}
@@ -161,13 +159,7 @@ func (ck *JdCookie) Query() string {
 		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
 		if ck.UpdateAt != "" {
 			parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
-			f := t.Sub(parse1).Hours() / 24
-			i, _ := strconv.Atoi(fmt.Sprintf("%1.0f", f))
-			if !strings.Contains(cookie, "app_open") {
-				msgs = append(msgs, fmt.Sprintf("您距离登录失效还有：%d天,仅供参考", 28-i))
-			} else {
-				msgs = append(msgs, fmt.Sprintf("尊贵的年费用户，您距离失效还有：%d天,仅供参考", 365-i))
-			}
+			msgs = append(msgs, fmt.Sprintf("最后更新时间：%s", parse1))
 		}
 		var rpc = make(chan []RedList)
 		var fruit = make(chan string)
