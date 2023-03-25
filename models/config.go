@@ -40,6 +40,7 @@ type Yaml struct {
 	QQID                int    `yaml:"qquid"`
 	QQGroupID           int    `yaml:"qqgid"`
 	QQUrl               string `yaml:"qqurl"`
+	QQToken             string `yaml:"qqtoken"`
 	DefaultPriority     int    `yaml:"default_priority"`
 	NoGhproxy           bool   `yaml:"no_ghproxy"`
 	QbotPublicMode      bool   `yaml:"qbot_public_mode"`

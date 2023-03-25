@@ -127,6 +127,9 @@ func SendQQMsg(msg QQMessage) {
 		post := httplib.Post(Config.QQUrl + "/send_msg")
 		post.Header("Content-Type", "application/json")
 		marshal, _ := json.Marshal(msg)
+		if Config.QQToken != "" {
+			post.Header("Authorization", "Bearer "+Config.QQToken)
+		}
 		logs.Info(string(marshal))
 		post.Body(string(marshal))
 		s, _ := post.String()
