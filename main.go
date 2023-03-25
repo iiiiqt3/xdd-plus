@@ -28,6 +28,7 @@ type Result struct {
 }
 
 func main() {
+
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
@@ -112,6 +113,7 @@ func main() {
 	if models.Config.VIP {
 		web.Router("/wx/receive", &controllers.WxController{}, "post:HandleMessage")
 		web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
+		web.Router("/qq", &controllers.QQController{}, "get,post:HandleQQMessage")
 	}
 
 	if models.Config.Static == "" {
