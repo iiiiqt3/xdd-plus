@@ -74,11 +74,11 @@ func (sender *Sender) Reply(msg string) {
 func (sender *Sender) SendImg(msg []byte) {
 	switch sender.Type {
 	case "qq":
-		SendQQMsg(QQMessage{
-			UserId:  sender.UserID,
-			GroupID: 0,
-			Message: fmt.Sprintf("[CQ:image,file=base64://%s,type=show,id=40004]", base64.StdEncoding.EncodeToString(msg)),
-		})
+		//SendQQMsg(QQMessage{
+		//	UserId:  sender.UserID,
+		//	GroupID: 0,
+		//	Message: fmt.Sprintf("[CQ:image,file=base64://%s,type=show,id=40004]", base64.StdEncoding.EncodeToString(msg)),
+		//})
 	case "wx":
 		SendWxImg(sender.WxId, msg)
 	}
