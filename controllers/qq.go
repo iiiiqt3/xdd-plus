@@ -67,7 +67,7 @@ func (c *QQController) Echo() {
 			logs.Info("change:", err)
 			break
 		}
-		HandleQQMessage(msg)
+		go HandleQQMessage(msg)
 
 	}
 }
