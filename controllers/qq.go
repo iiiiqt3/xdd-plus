@@ -64,7 +64,7 @@ func (c *QQController) Echo() {
 		var msg CqMessage
 		err = json.Unmarshal(message, &msg)
 		if err != nil {
-			logs.Info("read:", err)
+			logs.Info("change:", err)
 			break
 		}
 		HandleQQMessage(msg)
