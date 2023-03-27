@@ -6,15 +6,20 @@ import (
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/cdle/xdd/controllers"
 	"os"
 	"strings"
 	"time"
 )
 
 type QQMessage struct {
-	UserId  int    `json:"user_id"`
-	GroupID int    `json:"group_id"`
-	Message string `json:"message"`
+	Action string `json:"action"`
+	QQMsg  struct {
+		UserId  int    `json:"user_id"`
+		GroupID int    `json:"group_id"`
+		Message string `json:"message"`
+	}
+	Echo string `json:"echo"`
 }
 
 func SendWxImg(uid string, file []byte) {
@@ -132,5 +137,8 @@ func SendQQMsg(msg QQMessage) {
 	//	s, _ := post.String()
 	//	logs.Info(s)
 	//}
+	marshal, _ := json.Marshal(msg)
+	logs.Info(string(marshal))
+	controllers.WriteMsg(marshal)
 
 }
