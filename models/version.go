@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var version = "v8.1"
+var version = "v8.2"
 var describe = "内测剔除CQ版本"
 var AppName = "xdd"
 var pname = pname1()
