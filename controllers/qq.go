@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
+	"github.com/gorilla/websocket"
 )
+
+var upgrader = websocket.Upgrader{}
 
 type QQController struct {
 	BaseController
@@ -35,6 +38,29 @@ type CqMessage struct {
 	MessageID int         `json:"message_id"`
 	Anonymous interface{} `json:"anonymous"`
 	Font      int         `json:"font"`
+}
+
+func echo(c *QQController) {
+	//服务升级，对于来到的http连接进行服务升级，升级到ws
+	cn, err := upgrader.Upgrade(c.Ctx.ResponseWriter, c.Ctx.Request, nil)
+	defer cn.Close()
+	if err != nil {
+		panic(err)
+	}
+	for {
+		//messageType int, p []byte, err error
+		mt, message, err := cn.ReadMessage()
+		if err != nil {
+			logs.Info("read:", err)
+			break
+		}
+		logs.Info("recv: %s", message)
+		err = cn.WriteMessage(mt, message)
+		if err != nil {
+			logs.Info("write:", err)
+			break
+		}
+	}
 }
 
 func (c *QQController) HandleQQMessage() {
