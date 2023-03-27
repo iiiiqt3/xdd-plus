@@ -59,6 +59,13 @@ func (c *QQController) Echo() {
 			break
 		}
 		logs.Info("recv: %s , %d", message, mt)
+		var msg CqMessage
+		err = json.Unmarshal(message, &msg)
+		if err != nil {
+			logs.Error(err)
+			break
+		}
+		HandleQQMessage(msg)
 
 		//err = cn.WriteMessage(mt, message)
 		//if err != nil {
@@ -75,15 +82,8 @@ func WriteMsg(msg []byte) {
 	}
 }
 
-func (c *QQController) HandleQQMessage() {
-	data := c.Ctx.Input.RequestBody
-	var msg CqMessage
-	err := json.Unmarshal(data, &msg)
-	if err != nil {
-		logs.Error(err)
-	}
+func HandleQQMessage(msg CqMessage) {
 	if msg.PostType == "message" {
-		logs.Info(string(data))
 		logs.Info("接收到信息" + msg.RawMessage)
 		if msg.MessageType == "private" {
 			models.ListenQQPrivateMessage(msg.UserID, msg.Message)
