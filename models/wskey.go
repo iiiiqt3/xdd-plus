@@ -3,12 +3,9 @@ package models
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
-	"github.com/robfig/cron/v3"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -16,54 +13,36 @@ import (
 	"time"
 )
 
-func intiSky() {
-	c := cron.New(cron.WithSeconds()) //精确到秒
-
-	spec := GetEnv("cron")
-	if spec == "" {
-		spec = "0 " + strconv.Itoa(rand.Intn(59)) + " 0/8 * * ?" //cron表达式，每秒一次
-	}
-
-	if isOpenWskey() {
-		c.AddFunc(spec, func() {
-			fmt.Println("开始wskey转换")
-			updateCookie()
-		})
-		c.Start()
-	}
-
-}
-
 func getKey(WSCK string) (string, error) {
 	var ptKey = ""
 	sign := GetEnv("sign")
 	if sign == "" {
-		time.Sleep(time.Duration(rand.Int63n(5)) * time.Second)
-		ptKey, _ = GetZKToken(WSCK)
+		ptKey, _ = getZyWskey(WSCK)
 	} else {
 		ptKey, _ = getTokenKey(WSCK)
+	}
+	if !strings.Contains(ptKey, "app_open") {
+		return "Wskey错误", nil
 	}
 	return ptKey, nil
 }
 
 /*
-
-下面是自定义接口
+下面是sign接口
 */
 
-func getSelfToken() string {
+func getSelfSign() string {
 	sign := GetEnv("sign")
 	req := httplib.Post(sign)
 	req.Param("body", "{}")
 	req.Param("functionId", "genToken")
 	data, _ := req.Bytes()
-	logs.Info(string(data))
 	getString, _ := jsonparser.GetString(data, "data", "convertUrl")
 	return getString
 }
 
 func getTokenKey(WSCK string) (string, error) {
-	s := getSelfToken()
+	s := getSelfSign()
 	logs.Info(s)
 	str := `https://api.m.jd.com/client.action?` + s + "&functionId=genToken"
 	req := httplib.Post(str)
@@ -112,11 +91,6 @@ func appjmp(tokenKey string) (string, error) {
 Zy接口注释 一下全部走ZY接口
 */
 
-func GetZKToken(wsKey string) (string, error) {
-	url := checkCloud()
-	return getZyToken(url, wsKey)
-}
-
 func checkCloud() string {
 	urlList := []string{"aHR0cDovLzQzLjEzNS45MC4yMy8=", "aHR0cHM6Ly9zaGl6dWt1Lm1sLw==", "aHR0cHM6Ly9jZi5zaGl6dWt1Lm1sLw=="}
 	for i := range urlList {
@@ -124,7 +98,6 @@ func checkCloud() string {
 		req := httplib.Get(string(decodeString))
 		req.Header("User-Agent", "python-requests/2.25.1")
 		s, err := req.String()
-		logs.Info(s, err)
 		if strings.Contains(s, "200") && err == nil {
 			return string(decodeString)
 		}
@@ -178,7 +151,7 @@ func cloudInfo(url string) string {
 	return "jdapp;android;10.3.5;;;appBuild/92468;ef/1;ep/{\"hdid\":\"JM9F1ywUPwflvMIpYPok0tt5k9kW4ArJEU3lfLhxBqw=\",\"ts\":1647918020020,\"ridx\":-1,\"cipher\":{\"sv\":\"CJS=\",\"ad\":\"EWOzY2ZuCNHsEWHvEJc3EG==\",\"od\":\"ENY0CJS3ZtvvCtK5ZJC5Yq==\",\"ov\":\"CzO=\",\"ud\":\"EWOzY2ZuCNHsEWHvEJc3EG==\"},\"ciphertype\":5,\"version\":\"1.2.0\",\"appname\":\"com.jingdong.app.mall\"};Mozilla/5.0 (Linux; Android 12; M2102K1C Build/SKQ1.211006.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/97.0.4692.98 Mobile Safari/537.36"
 }
 
-func getZySign(urls string, ua string) T2 {
+func getZyToken(urls string, ua string) T2 {
 	t := T2{}
 	for i := 0; i <= 10; i++ {
 		req1 := httplib.Get(urls + "genToken")
@@ -195,9 +168,10 @@ func getZySign(urls string, ua string) T2 {
 	return T2{}
 }
 
-func getZyToken(urls string, wskey string) (string, error) {
+func getZyWskey(wskey string) (string, error) {
+	urls := checkCloud()
 	ua := cloudInfo(urls)
-	t := getZySign(urls, ua)
+	t := getZyToken(urls, ua)
 	v := url.Values{}
 	v.Add("functionId", t.FunctionId)
 	v.Add("clientVersion", t.ClientVersion)

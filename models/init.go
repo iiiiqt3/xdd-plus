@@ -35,7 +35,7 @@ func init() {
 	initTask()
 	initNolan()
 	//initRepos()
-	intiSky()
+	InitSky()
 }
 
 func initNolan() {

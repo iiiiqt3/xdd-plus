@@ -220,6 +220,15 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"京东扫码"},
+		Handle: func(sender *Sender) interface{} {
+			getJdQrImg(sender)
+			//sender.Reply("渠道升级，预计今晚修复完成")
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"sign", "打卡", "签到"},
 		Handle: func(sender *Sender) interface{} {
 			if sender.Type == "tgg" {
@@ -365,6 +374,17 @@ var codeSignals = []CodeSignal{
 			sender.Reply("更新所有账号")
 			logs.Info("更新所有账号")
 			updateCookie()
+			return nil
+		},
+	},
+
+	{
+		Command: []string{"Rwskey更新"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			sender.Reply("更新所有账号")
+			logs.Info("更新所有账号")
+			UpdateRwskey()
 			return nil
 		},
 	},
