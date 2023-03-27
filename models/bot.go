@@ -44,6 +44,18 @@ var SendQQ = func(qq int, msg interface{}) {
 var SendQQGroup = func(gid int, qq int, msg interface{}) {
 	switch msg.(type) {
 	case string:
+		SendQQMsg(QQMessage{
+			Action: "send_msg",
+			QQMsg: struct {
+				UserId  int    `json:"user_id"`
+				GroupID int    `json:"group_id"`
+				Message string `json:"message"`
+			}{
+				GroupID: gid,
+				Message: msg.(string),
+			},
+			Echo: "user_id",
+		})
 		//SendQQMsg(QQMessage{GroupID: gid, Message: msg.(string)})
 	}
 }

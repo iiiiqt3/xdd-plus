@@ -14,8 +14,16 @@ func WsInit(wss *websocket.Conn, nt int) {
 }
 
 func WriteMsg(msg []byte) {
-	err := ws.WriteMessage(mt, msg)
-	if err != nil {
-		logs.Info("write:", err)
+
+	for {
+		if ws != nil {
+			err := ws.WriteMessage(mt, msg)
+			if err != nil {
+				logs.Info("write:", err)
+			}
+			break
+		} else {
+			logs.Info("等待ws连接")
+		}
 	}
 }
