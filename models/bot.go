@@ -37,7 +37,7 @@ var SendQQ = func(qq int, msg interface{}) {
 				UserId:  qq,
 				Message: msg.(string),
 			},
-			Echo: "",
+			Echo: "user_id",
 		})
 	}
 }

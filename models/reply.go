@@ -123,19 +123,6 @@ func SendWxMsg(uid string, msg string) {
 }
 
 func SendQQMsg(msg QQMessage) {
-	//value := GetEnv("qqurl")
-	//if value == "" {
-	//	logs.Info("QQ服务未开启")
-	//	return
-	//} else {
-	//	post := httplib.Post(value + "/send_msg")
-	//	post.Header("Content-Type", "application/json")
-	//	marshal, _ := json.Marshal(msg)
-	//	logs.Info(string(marshal))
-	//	post.Body(string(marshal))
-	//	s, _ := post.String()
-	//	logs.Info(s)
-	//}
 	marshal, _ := json.Marshal(msg)
 	logs.Info(string(marshal))
 	WriteMsg(marshal)
