@@ -8,6 +8,8 @@ import (
 )
 
 var upgrader = websocket.Upgrader{}
+var ws *websocket.Conn
+var mt int
 
 type QQController struct {
 	BaseController
@@ -40,39 +42,39 @@ type CqMessage struct {
 	Font      int         `json:"font"`
 }
 
-func echo(c *QQController) {
+func (c *QQController) Echo() {
 	//服务升级，对于来到的http连接进行服务升级，升级到ws
-	cn, err := upgrader.Upgrade(c.Ctx.ResponseWriter, c.Ctx.Request, nil)
-	defer cn.Close()
+	var err error
+	ws, err = upgrader.Upgrade(c.Ctx.ResponseWriter, c.Ctx.Request, nil)
+	defer ws.Close()
 	if err != nil {
 		panic(err)
 	}
+	models.WsInit(ws, 1)
+
 	for {
 		//messageType int, p []byte, err error
-		mt, message, err := cn.ReadMessage()
+		nt, message, err := ws.ReadMessage()
+		mt = nt
 		if err != nil {
 			logs.Info("read:", err)
 			break
 		}
-		logs.Info("recv: %s", message)
-		err = cn.WriteMessage(mt, message)
+		//logs.Info("recv: %s , %d", message, mt)
+		var msg CqMessage
+		err = json.Unmarshal(message, &msg)
 		if err != nil {
-			logs.Info("write:", err)
+			logs.Info("change:", err)
 			break
 		}
+		go HandleQQMessage(msg)
+
 	}
 }
 
-func (c *QQController) HandleQQMessage() {
-	data := c.Ctx.Input.RequestBody
-	var msg CqMessage
-	err := json.Unmarshal(data, &msg)
-	if err != nil {
-		logs.Error(err)
-	}
+func HandleQQMessage(msg CqMessage) {
 	if msg.PostType == "message" {
-		logs.Info(string(data))
-		logs.Info("接收到信息" + msg.RawMessage)
+		logs.Info("接收到信息" + msg.Message)
 		if msg.MessageType == "private" {
 			models.ListenQQPrivateMessage(msg.UserID, msg.Message)
 		} else if msg.MessageType == "group" {

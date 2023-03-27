@@ -113,7 +113,7 @@ func main() {
 	if models.Config.VIP {
 		web.Router("/wx/receive", &controllers.WxController{}, "post:HandleWxMessage")
 		web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
-		web.Router("/qq", &controllers.QQController{}, "get,post:HandleQQMessage")
+		web.Router("/qq", &controllers.QQController{}, "get,post:Echo")
 	}
 
 	if models.Config.Static == "" {

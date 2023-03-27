@@ -12,9 +12,13 @@ import (
 )
 
 type QQMessage struct {
-	UserId  int    `json:"user_id"`
-	GroupID int    `json:"group_id"`
-	Message string `json:"message"`
+	Action string `json:"action"`
+	QQMsg  struct {
+		UserId  int    `json:"user_id"`
+		GroupID int    `json:"group_id"`
+		Message string `json:"message"`
+	} `json:"params"`
+	Echo string `json:"echo"`
 }
 
 func SendWxImg(uid string, file []byte) {
@@ -119,20 +123,8 @@ func SendWxMsg(uid string, msg string) {
 }
 
 func SendQQMsg(msg QQMessage) {
+	marshal, _ := json.Marshal(msg)
+	logs.Info(string(marshal))
+	WriteMsg(marshal)
 
-	if Config.QQUrl == "" {
-		logs.Info("QQ服务未开启")
-		return
-	} else {
-		post := httplib.Post(Config.QQUrl + "/send_msg")
-		post.Header("Content-Type", "application/json")
-		marshal, _ := json.Marshal(msg)
-		if Config.QQToken != "" {
-			post.Header("Authorization", "Bearer "+Config.QQToken)
-		}
-		logs.Info(string(marshal))
-		post.Body(string(marshal))
-		s, _ := post.String()
-		logs.Info(s)
-	}
 }
