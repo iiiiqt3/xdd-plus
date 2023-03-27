@@ -49,17 +49,17 @@ func (c *QQController) Echo() {
 	}
 	for {
 		//messageType int, p []byte, err error
-		mt, message, err := cn.ReadMessage()
+		_, message, err := cn.ReadMessage()
 		if err != nil {
 			logs.Info("read:", err)
 			break
 		}
 		logs.Info("recv: %s", message)
-		err = cn.WriteMessage(mt, message)
-		if err != nil {
-			logs.Info("write:", err)
-			break
-		}
+		//err = cn.WriteMessage(mt, message)
+		//if err != nil {
+		//	logs.Info("write:", err)
+		//	break
+		//}
 	}
 }
 
