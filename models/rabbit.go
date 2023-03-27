@@ -112,7 +112,7 @@ func GetCookie(cookie string) (bool, string, string) {
 
 func UpdateRwskey() {
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where(fmt.Sprintf("%s != ?", RWSKEY), "")
+		return sb.Where(fmt.Sprintf("%s != ?", RWSKEY), "null")
 	})
 	xx := 0
 	yy := 0
@@ -137,6 +137,7 @@ func UpdateRwskey() {
 			} else {
 				yy++
 				logs.Info(appck)
+				ck.Updates(JdCookie{RWskey: "null", Available: False})
 				(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，账号:%s", ck.PtPin))
 			}
 
