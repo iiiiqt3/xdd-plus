@@ -14,8 +14,17 @@ import (
 	"time"
 )
 
+var RabbitUrl string
+var RabbitToken string
+
 func getJdQrImg(sender *Sender) {
-	get := httplib.Post(fmt.Sprintf("%s/api/BeanQrCode?token=%s", Config.QR, Config.RabbitToken))
+	RabbitUrl = GetEnv("RabbitUrl")
+	RabbitToken = GetEnv("RabbitToken")
+	if RabbitUrl == "" || RabbitToken == "" {
+		logs.Error("RabbitUrl or RabbitToken is empty")
+		return
+	}
+	get := httplib.Post(fmt.Sprintf("%s/api/BeanQrCode?token=%s", RabbitUrl, RabbitToken))
 	bytes, _ := get.Bytes()
 	code, _ := jsonparser.GetInt(bytes, "code")
 	if code == 0 {
@@ -34,7 +43,7 @@ func getJdQrImg(sender *Sender) {
 func getJDQrStatus(cookie string, sender *Sender) {
 	for {
 		time.Sleep(time.Second * time.Duration(5))
-		get := httplib.Post(fmt.Sprintf("%s/api/QrCheck?token=%s", Config.QR, Config.RabbitToken))
+		get := httplib.Post(fmt.Sprintf("%s/api/QrCheck?token=%s", RabbitUrl, RabbitToken))
 		marshal, _ := json.Marshal(struct {
 			QRCodeKey string `json:"QRCodeKey"`
 			Qlkey     string `json:"qlkey"`
@@ -86,7 +95,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 }
 
 func GetCookie(cookie string) (bool, string, string) {
-	get := httplib.Post(fmt.Sprintf("%s/api/wsck?RabbitToken=%s", Config.QR, Config.RabbitToken))
+	get := httplib.Post(fmt.Sprintf("%s/api/wsck?RabbitToken=%s", RabbitUrl, RabbitToken))
 	marshal, _ := json.Marshal(struct {
 		WSCK        string `json:"wsck"`
 		RabbitToken string `json:"RabbitToken"`

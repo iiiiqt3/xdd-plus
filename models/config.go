@@ -62,8 +62,6 @@ type Yaml struct {
 	Later               int    `yaml:"Later"`
 	Jdcurl              string `yaml:"Jdcurl"`
 	Madurl              string `yaml:"Madurl"`
-	QR                  string `yaml:"Qr"`
-	RabbitToken         string `yaml:"RabbitToken"`
 	GAMEOPEN            bool   `yaml:"GameOpen"`
 	Note                string `yaml:"Note"`
 	Rotation            bool   `yaml:"Rotation"`
