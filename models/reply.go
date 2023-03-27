@@ -17,7 +17,7 @@ type QQMessage struct {
 		UserId  int    `json:"user_id"`
 		GroupID int    `json:"group_id"`
 		Message string `json:"message"`
-	}
+	} `json:"params"`
 	Echo string `json:"echo"`
 }
 
