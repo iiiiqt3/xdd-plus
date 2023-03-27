@@ -40,7 +40,7 @@ type CqMessage struct {
 	Font      int         `json:"font"`
 }
 
-func (c *QQController) echo() {
+func (c *QQController) Echo() {
 	//服务升级，对于来到的http连接进行服务升级，升级到ws
 	cn, err := upgrader.Upgrade(c.Ctx.ResponseWriter, c.Ctx.Request, nil)
 	defer cn.Close()
