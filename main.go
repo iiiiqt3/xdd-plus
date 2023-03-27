@@ -108,7 +108,7 @@ func main() {
 	web.Router("/api/envs", &controllers.AccountController{}, "post:CreateOrUpdateEnv")
 	web.Router("/admin", &controllers.AccountController{}, "get:Admin")
 	web.Router("/wx/receive", &controllers.WxController{}, "get,post:HandleWxMessage")
-	web.Router("/qq", &controllers.WsController{}, "get,post:Echo")
+	web.Router("/qq", &controllers.QQController{}, "get,post:Echo")
 
 	if models.Config.Static == "" {
 		models.Config.Static = "./static"
