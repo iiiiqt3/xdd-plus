@@ -96,7 +96,7 @@ func initContainer() {
 		}
 	}
 
-	(&JdCookie{}).Push(fmt.Sprintf("容器加载完毕，共%d个", ql))
+	//(&JdCookie{}).Push(fmt.Sprintf("容器加载完毕，共%d个", ql))
 }
 
 func (c *Container) write(cks []JdCookie) error {
