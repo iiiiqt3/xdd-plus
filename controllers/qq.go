@@ -8,6 +8,7 @@ import (
 )
 
 var upgrader = websocket.Upgrader{}
+var ws *websocket.Conn
 
 type QQController struct {
 	BaseController
@@ -42,19 +43,21 @@ type CqMessage struct {
 
 func (c *QQController) Echo() {
 	//服务升级，对于来到的http连接进行服务升级，升级到ws
-	cn, err := upgrader.Upgrade(c.Ctx.ResponseWriter, c.Ctx.Request, nil)
-	defer cn.Close()
+	var err error
+	ws, err = upgrader.Upgrade(c.Ctx.ResponseWriter, c.Ctx.Request, nil)
+	//defer ws.Close()
 	if err != nil {
 		panic(err)
 	}
 	for {
 		//messageType int, p []byte, err error
-		_, message, err := cn.ReadMessage()
+		mt, message, err := ws.ReadMessage()
 		if err != nil {
 			logs.Info("read:", err)
 			break
 		}
-		logs.Info("recv: %s", message)
+		logs.Info("recv: %s , %d", message, mt)
+
 		//err = cn.WriteMessage(mt, message)
 		//if err != nil {
 		//	logs.Info("write:", err)
@@ -62,6 +65,14 @@ func (c *QQController) Echo() {
 		//}
 	}
 }
+
+//func WriteMsg(msg []byte) {
+//	err := ws.WriteMessage(mt, message)
+//	if err != nil {
+//		logs.Info("write:", err)
+//		break
+//	}
+//}
 
 func (c *QQController) HandleQQMessage() {
 	data := c.Ctx.Input.RequestBody
