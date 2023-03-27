@@ -6,7 +6,6 @@ import (
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/cdle/xdd/controllers"
 	"os"
 	"strings"
 	"time"
@@ -139,6 +138,6 @@ func SendQQMsg(msg QQMessage) {
 	//}
 	marshal, _ := json.Marshal(msg)
 	logs.Info(string(marshal))
-	controllers.WriteMsg(marshal)
+	//controllers.WriteMsg(marshal)
 
 }
