@@ -60,21 +60,21 @@ func (c *QQController) Echo() {
 			logs.Info("read:", err)
 			break
 		}
-		logs.Info("recv: %s , %d", message, mt)
+		//logs.Info("recv: %s , %d", message, mt)
+		var msg CqMessage
+		err = json.Unmarshal(message, &msg)
+		if err != nil {
+			logs.Info("read:", err)
+			break
+		}
+		HandleQQMessage(msg)
 
 	}
 }
 
-func (c *QQController) HandleQQMessage() {
-	data := c.Ctx.Input.RequestBody
-	var msg CqMessage
-	err := json.Unmarshal(data, &msg)
-	if err != nil {
-		logs.Error(err)
-	}
+func HandleQQMessage(msg CqMessage) {
 	if msg.PostType == "message" {
-		logs.Info(string(data))
-		logs.Info("接收到信息" + msg.RawMessage)
+		logs.Info("接收到信息" + msg.Message)
 		if msg.MessageType == "private" {
 			models.ListenQQPrivateMessage(msg.UserID, msg.Message)
 		} else if msg.MessageType == "group" {
