@@ -9,6 +9,7 @@ import (
 
 var upgrader = websocket.Upgrader{}
 var ws *websocket.Conn
+var mt int
 
 type QQController struct {
 	BaseController
@@ -51,7 +52,8 @@ func (c *QQController) Echo() {
 	}
 	for {
 		//messageType int, p []byte, err error
-		mt, message, err := ws.ReadMessage()
+		nt, message, err := ws.ReadMessage()
+		mt = nt
 		if err != nil {
 			logs.Info("read:", err)
 			break
@@ -66,13 +68,12 @@ func (c *QQController) Echo() {
 	}
 }
 
-//func WriteMsg(msg []byte) {
-//	err := ws.WriteMessage(mt, message)
-//	if err != nil {
-//		logs.Info("write:", err)
-//		break
-//	}
-//}
+func WriteMsg(msg []byte) {
+	err := ws.WriteMessage(mt, msg)
+	if err != nil {
+		logs.Info("write:", err)
+	}
+}
 
 func (c *QQController) HandleQQMessage() {
 	data := c.Ctx.Input.RequestBody
