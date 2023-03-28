@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var version = "v8.4"
+var version = "v8.5"
 var describe = "西瓜修复版本"
 var AppName = "xdd"
 var pname = pname1()

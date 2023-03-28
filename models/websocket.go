@@ -3,6 +3,8 @@ package models
 import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/gorilla/websocket"
+	"math/rand"
+	"time"
 )
 
 var ws *websocket.Conn
@@ -23,6 +25,7 @@ func WriteMsg(msg []byte) {
 			}
 			break
 		} else {
+			time.Sleep(time.Second * time.Duration(rand.Intn(5)))
 			logs.Info("等待ws连接")
 		}
 	}
