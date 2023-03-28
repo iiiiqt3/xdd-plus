@@ -238,9 +238,12 @@ func (c *WxController) HandleWxMessage() {
 		case "EventPrivateChat":
 			ag := &WxMessage{}
 			err := json.Unmarshal(data, ag)
-			logs.Info(err)
-			logs.Info("接收到信息" + ag.Content.Msg)
-			models.ListenWXTempPrivateMessage(ag.Content.FromWxid, ag.Content.Msg)
+			if ag.Content.RobotWxid == models.Config.Wx.Robotid {
+				logs.Info(err)
+				logs.Info("接收到信息" + ag.Content.Msg)
+				models.ListenWXTempPrivateMessage(ag.Content.FromWxid, ag.Content.Msg)
+
+			}
 
 		}
 	}
