@@ -22,46 +22,54 @@ type QQMessage struct {
 }
 
 func SendWxImg(uid string, file []byte) {
-	type QXMessage struct {
-		Type string `json:"type"`
-		Data struct {
-			Wxid string `json:"wxid"`
-			Path string `json:"path"`
-		} `json:"data"`
+	switch Config.Wx.Model {
+
+	case "qx":
+		type QXMessage struct {
+			Type string `json:"type"`
+			Data struct {
+				Wxid string `json:"wxid"`
+				Path string `json:"path"`
+			} `json:"data"`
+		}
+		unix := time.Now().Unix()
+
+		filename := ExecPath + fmt.Sprintf("/static/%d.jpg", unix)
+
+		f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+		if err != nil {
+			logs.Warn("zqdyj.txt失败，", err)
+		}
+		f.Write(file)
+		f.Close()
+
+		img := uploadImg(filename)
+
+		os.Remove(filename)
+
+		req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
+		reply := &QXMessage{
+			Type: "Q0010",
+			Data: struct {
+				Wxid string `json:"wxid"`
+				Path string `json:"path"`
+			}{
+				Wxid: uid,
+				Path: img,
+			},
+		}
+		random := browser.Random()
+		req.Header("User-Agent", random)
+		marshal, _ := json.Marshal(reply)
+		logs.Info(string(marshal))
+		req.Body(string(marshal))
+		s, _ := req.String()
+		logs.Info(s)
+	case "my":
+		logs.Info("")
+	default:
+		logs.Info("尚未配置微信")
 	}
-	unix := time.Now().Unix()
-
-	filename := ExecPath + fmt.Sprintf("/static/%d.jpg", unix)
-
-	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	if err != nil {
-		logs.Warn("zqdyj.txt失败，", err)
-	}
-	f.Write(file)
-	f.Close()
-
-	img := uploadImg(filename)
-
-	os.Remove(filename)
-
-	req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
-	reply := &QXMessage{
-		Type: "Q0010",
-		Data: struct {
-			Wxid string `json:"wxid"`
-			Path string `json:"path"`
-		}{
-			Wxid: uid,
-			Path: img,
-		},
-	}
-	random := browser.Random()
-	req.Header("User-Agent", random)
-	marshal, _ := json.Marshal(reply)
-	logs.Info(string(marshal))
-	req.Body(string(marshal))
-	s, _ := req.String()
-	logs.Info(s)
 
 }
 
