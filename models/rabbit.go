@@ -17,7 +17,7 @@ import (
 var RabbitUrl string
 var RabbitToken string
 
-func getJdQrImg(sender *Sender) {
+func RabbitGetJdQrImg(sender *Sender) {
 	RabbitUrl = GetEnv("RabbitUrl")
 	RabbitToken = GetEnv("RabbitToken")
 	if RabbitUrl == "" || RabbitToken == "" {

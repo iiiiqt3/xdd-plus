@@ -222,7 +222,16 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"京东扫码"},
 		Handle: func(sender *Sender) interface{} {
-			getJdQrImg(sender)
+			RabbitGetJdQrImg(sender)
+			//sender.Reply("渠道升级，预计今晚修复完成")
+			return nil
+		},
+	},
+
+	{
+		Command: []string{"N京东扫码"},
+		Handle: func(sender *Sender) interface{} {
+			NolanGetJdQrImg(sender)
 			//sender.Reply("渠道升级，预计今晚修复完成")
 			return nil
 		},
