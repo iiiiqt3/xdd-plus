@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v8.3"
-var describe = "内测剔除CQ版本"
+var version = "v8.4"
+var describe = "西瓜修复版本"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
