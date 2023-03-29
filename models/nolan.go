@@ -86,9 +86,7 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				RWskey: rwskey,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Update(RWSKEY, rwskey)
-				nck.Update(QQ, sender.UserID)
-				nck.Update(PtKey, ptkey)
+				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey})
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 			} else {
