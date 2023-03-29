@@ -120,11 +120,17 @@ func RabbitGetCookie(cookie string) (bool, string, string) {
 }
 
 func UpdateRwskey() {
-	RabbitUrl = GetEnv("RabbitUrl")
-	RabbitApiToken = GetEnv("RabbitApiToken")
-	RabbitToken = GetEnv("RabbitToken")
-	if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
-		logs.Error("RabbitUrl or RabbitToken is empty")
+	//RabbitUrl = GetEnv("RabbitUrl")
+	//RabbitApiToken = GetEnv("RabbitApiToken")
+	//RabbitToken = GetEnv("RabbitToken")
+	//if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
+	//	logs.Error("RabbitUrl or RabbitToken is empty")
+	//	return
+	//}
+	NolanUrl = GetEnv("NolanUrl")
+	NolanToken = GetEnv("NolanToken")
+	if NolanUrl == "" || NolanToken == "" {
+		logs.Error("NolanUrl or NolanToken is empty")
 		return
 	}
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
