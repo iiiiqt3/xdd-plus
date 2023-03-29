@@ -65,7 +65,7 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 		get.Header("Content-Type", "application/json")
 		get.Body(fmt.Sprintf("{\n  \"qrkey\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", cookie, NolanToken))
 		bytes, _ := get.Bytes()
-		code, _ := jsonparser.GetBoolean(bytes, "code")
+		code, _ := jsonparser.GetBoolean(bytes, "success")
 		msg, _ := jsonparser.GetString(bytes, "message")
 		logs.Info(string(bytes))
 		if code {
