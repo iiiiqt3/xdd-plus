@@ -83,6 +83,8 @@ func (sender *Sender) SendImg(msg []byte) {
 			},
 			Echo: "",
 		})
+	case "qqg":
+
 	case "wx":
 		SendWxImg(sender.WxId, msg)
 	}
