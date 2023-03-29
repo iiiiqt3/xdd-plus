@@ -34,11 +34,10 @@ func initDB() {
 	db.AutoMigrate(
 		&JdCookie{},
 		&User{},
-		&UserAgent{},
 		&Env{},
-		&Wish{},
+		&Token{},
 		&UserAdmin{},
-		&Limit{},
+		&Cache{},
 		&Key{},
 	)
 
@@ -91,7 +90,7 @@ type JdCookie struct {
 	Nickname  string `gorm:"column:Nickname"`
 	BeanNum   string `gorm:"column:BeanNum"`
 	QQ        int    `gorm:"column:QQ"`
-	WX        string `gorm:"column:WX"`
+	WeiXin    string `gorm:"column:WeiXin"`
 	PushPlus  string `gorm:"column:PushPlus"`
 	WxPush    string `gorm:"column:WxPush"`
 	Telegram  int    `gorm:"column:Telegram"`

@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v8.5"
-var describe = "西瓜修复版本"
+var version = "v8.6"
+var describe = "增加了返利，增加了口令"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
@@ -43,7 +43,7 @@ func initVersion() {
 	if value != "" {
 		UpdateUrl = value
 	}
-	value, err := httplib.Get(UpdateUrl + "/version").String()
+	value, err := httplib.Get(UpdateUrl + "/version1").String()
 	if err != nil {
 		logs.Info("更新版本的失败")
 	} else {

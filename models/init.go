@@ -51,3 +51,7 @@ func initNolan() {
 	}
 
 }
+
+func IdToWx() {
+	
+}

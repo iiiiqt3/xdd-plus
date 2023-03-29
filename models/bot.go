@@ -5,7 +5,6 @@ import (
 	//	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/buger/jsonparser"
 	//	"github.com/skip2/go-qrcode"
 	"io"
@@ -117,12 +116,6 @@ var riskcodes = make(map[int]string)
 var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
-var pzlist = make(map[string]int)
-var pz = 0
-var pzno = 0
-var zdlist = make(map[string]int)
-var zd = 0
-var zdno = 0
 var loginList = make(map[int]chan string)
 
 func InitReplies() {
@@ -201,6 +194,15 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		switch msg {
 		default:
 
+			//返利识别
+			{
+				matched, _ := regexp.MatchString("^https://item(.m)?.jd.com/(product/)?([0-9]+).html", msg)
+				b2 := matched || strings.Contains(msg, "https://u.jd.com/")
+				if b2 {
+					return Get_powerful_link(msg)
+				}
+			}
+
 			//绑定QQ
 			{
 				if strings.HasPrefix(msg, "DXWX") {
@@ -215,24 +217,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				}
 			}
 
-			//口令
+			//口令转换
 			{
 				if strings.Contains(msg, "口令") {
-					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-					rsp.Param("url", msg)
-					rsp.Param("type", "hy")
-					//rsp.Body(fmt.Sprintf(`url=%s&type=hy`, msg))
-					data, err := rsp.Response()
-
-					if err != nil {
-						return "口令转换失败"
-					}
-					body, _ := ioutil.ReadAll(data.Body)
-					if strings.Contains(string(body), "口令转换失败") {
-						return "口令转换失败"
-					} else {
-						return string(body)
-					}
+					sender.Reply(NolanKl(msg))
 				}
 			}
 
@@ -811,87 +799,6 @@ func randShuffle(slice []JdCookie) {
 	})
 }
 
-func starttyt(red string) (num int, f bool) {
-	k := 0
-	var cks []JdCookie
-	db.Where(fmt.Sprintf("%s = 'true' and %s = 'true'", Tyt, Available)).Find(&cks)
-	randShuffle(cks)
-	logs.Info(len(cks))
-	if len(cks) < 50 {
-		(&JdCookie{}).Push("推一推账号不足  注意补单")
-		return k, false
-	}
-	for _, ck := range cks {
-		time.Sleep(time.Second * 10)
-		logs.Info(ck.PtPin)
-		cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
-		sprintf := fmt.Sprintf(`https://api.m.jd.com/?functionId=helpCoinDozer&appid=station-soa-h5&client=H5&clientVersion=1.0.0&t=1641900500241&body={"actId":"49f40d2f40b3470e8d6c39aa4866c7ff","channel":"coin_dozer","referer":"-1","frontendInitStatus":"s","packetId":"%s","helperStatus":"0"}&_ste=1`, red)
-		req := httplib.Post(sprintf)
-		random := browser.Random()
-		req.Header("User-Agent", random)
-		req.Header("Host", "api.m.jd.com")
-		req.Header("Accept", "application/json, text/plain, */*")
-		req.Header("Origin", "https://pushgold.jd.com")
-		req.Header("Cookie", cookie)
-		data, _ := req.String()
-		code, _ := jsonparser.GetInt([]byte(data), "code")
-		logs.Info(data)
-		if code == 0 {
-			k++
-			logs.Info(jsonparser.GetString([]byte(data), "data", "amount"))
-		} else {
-			if strings.Contains(data, "完成") {
-				logs.Info("返回完成")
-				return k, true
-			} else if strings.Contains(data, "帮砍机会已用完") {
-				ck.Update(Tyt, False)
-			} else if strings.Contains(data, "火爆") {
-				ck.Update(Tyt, False)
-			} else if strings.Contains(data, "帮砍排队") {
-				return k, false
-			} else if strings.Contains(data, "need") {
-				ck.Update(Tyt, "need verity")
-			} else if strings.Contains(data, "未登录") {
-				CookieOK(&ck)
-			} else {
-				getString, _ := jsonparser.GetString([]byte(data), "msg")
-				ck.Update(Tyt, getString)
-				logs.Info(getString)
-			}
-		}
-	}
-	return k, false
-}
-
-func getMd5String(b []byte) string {
-	return fmt.Sprintf("%x", md5.Sum(b))
-}
-
-func getScKey(ck string) (key string) {
-	url := "https://api.m.jd.com/client.action?functionId=promote_getHomeData"
-	req := httplib.Get(url)
-	random := browser.Random()
-	req.Param("clientVersion", "-1")
-	req.Param("functionId", "promote_pk_getHomeData")
-	req.Param("appid", "signed_wh5")
-	req.Header("User-Agent", random)
-	req.Header("Host", "api.m.jd.com")
-	req.Header("Accept", "application/json, text/plain, */*")
-	req.Header("Connection", "keep-alive")
-	req.Header("Accept-Language", "zh-cn")
-	req.Header("Accept-Encoding", "gzip, deflate, br")
-	req.Header("Origin", "https://bunearth.m.jd.com")
-	req.Header("Cookie", ck)
-	data, _ := req.String()
-	if strings.Contains(data, "secretp") {
-		index := strings.Index(data, "\"secretp\":") + 11
-		i := strings.Index(data, "shareCopywriting") - 3
-		s := data[index:i]
-		return s
-	}
-	return ""
-}
-
 func getMd5String1(str string) string {
 	m := md5.New()
 	io.WriteString(m, str)
@@ -905,5 +812,29 @@ func FetchJdCookieValue(key string, cookies string) string {
 		return match[1]
 	} else {
 		return ""
+	}
+}
+
+func LoginSelect(sender *Sender, msg chan string) {
+	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
+		}
+		switch n {
+		case "京东扫码", "1":
+			NolanGetJdQrImg(sender)
+			loginList[sender.UserID] = nil
+		case "微信扫码", "2":
+			sender.Reply("渠道适配中")
+		case "短信登录", "3":
+			sender.Reply("渠道升级，等待后续开放")
+		case "q":
+			loginList[sender.UserID] = nil
+			close(msg)
+		default:
+			sender.Reply("无匹配渠道，如需回复'q'退出登录流程")
+		}
 	}
 }
