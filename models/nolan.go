@@ -75,33 +75,31 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 			nolan := &NolanRWskey{}
 			json.Unmarshal(bytes, nolan)
 			logs.Info(nolan.Data.Rwskey)
-
-			//pin, _ := jsonparser.GetString(bytes, "pin")
-			//pin = url.QueryEscape(pin)
-			//var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, data)
-			//_, _, appck := RabbitGetCookie(pinky)
-			//ptkey := FetchJdCookieValue("pt_key", appck)
-			//ck := JdCookie{
-			//	PtPin:  pin,
-			//	PtKey:  ptkey,
-			//	RWskey: data,
-			//}
-			//if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			//	nck.Update(RWSKEY, data)
-			//	nck.Update(QQ, sender.UserID)
-			//	nck.Update(PtKey, ptkey)
-			//	sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-			//	(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
-			//} else {
-			//	NewJdCookie(&ck)
-			//	msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-			//	if sender.IsQQ() || sender.IsQQ() {
-			//		ck.Update(QQ, sender.UserID)
-			//	}
-			//	sender.Reply(fmt.Sprintf(msg))
-			//	sender.Reply(ck.Query())
-			//	(&JdCookie{}).Push(msg)
-			//}
+			var pinky = nolan.Data.Rwskey
+			_, _, appck := NolanGetCookie(pinky)
+			pin := FetchJdCookieValue("pin", appck)
+			ptkey := FetchJdCookieValue("pt_key", appck)
+			ck := JdCookie{
+				PtPin:  pin,
+				PtKey:  ptkey,
+				RWskey: pinky,
+			}
+			if nck, err := GetJdCookie(ck.PtPin); err == nil {
+				nck.Update(RWSKEY, pinky)
+				nck.Update(QQ, sender.UserID)
+				nck.Update(PtKey, ptkey)
+				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+			} else {
+				NewJdCookie(&ck)
+				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+				if sender.IsQQ() || sender.IsQQ() {
+					ck.Update(QQ, sender.UserID)
+				}
+				sender.Reply(fmt.Sprintf(msg))
+				sender.Reply(ck.Query())
+				(&JdCookie{}).Push(msg)
+			}
 			return
 		} else {
 			msg, _ := jsonparser.GetString(bytes, "message")
@@ -110,5 +108,28 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				return
 			}
 		}
+	}
+}
+
+func NolanGetCookie(cookie string) (bool, string, string) {
+	//http://192.168.195.53:5016/env/wskey
+	get := httplib.Post(fmt.Sprintf("%s/env/wskey", NolanUrl))
+	marshal, _ := json.Marshal(struct {
+		WSCK        string `json:"wskey"`
+		BotApiToken string `json:"botApiToken"`
+	}{
+		WSCK:        cookie,
+		BotApiToken: NolanToken,
+	})
+	get.Body(marshal)
+	bytes, _ := get.Bytes()
+	val, _ := jsonparser.GetBoolean(bytes, "success")
+	if val {
+		msg, _ := jsonparser.GetString(bytes, "msg")
+		appck, _ := jsonparser.GetString(bytes, "data", "appck")
+		return val, msg, appck
+	} else {
+		logs.Info(string(bytes))
+		return val, "", ""
 	}
 }
