@@ -221,10 +221,17 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-		Command: []string{"京东扫码"},
+		Command: []string{"微信扫码"},
+		Handle: func(sender *Sender) interface{} {
+			BBKGetWxQrImg(sender)
+			return nil
+		},
+	},
+
+	{
+		Command: []string{"R京东扫码"},
 		Handle: func(sender *Sender) interface{} {
 			RabbitGetJdQrImg(sender)
-			//sender.Reply("渠道升级，预计今晚修复完成")
 			return nil
 		},
 	},
@@ -434,6 +441,7 @@ var codeSignals = []CodeSignal{
 			return str
 		},
 	},
+
 	{
 		Command: []string{"备注", "bz"},
 		Handle: func(sender *Sender) interface{} {

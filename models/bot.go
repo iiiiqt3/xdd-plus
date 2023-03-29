@@ -462,7 +462,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 			//识别登录
 			{
-				if strings.Contains(msg, "登录") || strings.Contains(msg, "登陆") {
+				if msg == "登录" || msg == "登陆" {
 
 					//if len(Config.Jdcurl) > 0 {
 					//	var tabcount int64
@@ -494,7 +494,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					msg := make(chan string)
 					loginList[sender.UserID] = msg
 					go LoginSelect(sender, msg)
-					sender.Reply("请选择登录渠道: \r\n 1:京东扫码  \r\n 2:微信扫码(渠道适配中)  \r\n 3:短信登录（渠道升级中）")
+					sender.Reply("请选择登录渠道: \r\n 1:兔子京东扫码  \r\n 2:Nolan京东扫码  \r\n 3:BBK京东扫码  \r\n 4:BBK微信扫码  \r\n  如需退出请回复'q'退出登录流程")
 
 				}
 			}
@@ -828,14 +828,51 @@ func LoginSelect(sender *Sender, msg chan string) {
 		if !ok {
 			break
 		}
+		//请选择登录渠道:
+		// 1:兔子京东扫码
+		// 2:Nolan京东扫码
+		// 3:BBK京东扫码
+		// 4:BBK微信扫码
 		switch n {
-		case "京东扫码", "1":
+		case "兔子京东扫码", "1":
+			RabbitUrl = GetEnv("RabbitUrl")
+			RabbitApiToken = GetEnv("RabbitApiToken")
+			RabbitToken = GetEnv("RabbitToken")
+			if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
+				logs.Error("RabbitUrl or RabbitToken is empty")
+				sender.Reply("渠道尚未配置")
+				return
+			}
+			RabbitGetJdQrImg(sender)
+			loginList[sender.UserID] = nil
+		case "Nolan京东扫码", "2":
+			NolanUrl = GetEnv("NolanUrl")
+			NolanToken = GetEnv("NolanToken")
+			if NolanUrl == "" || NolanToken == "" {
+				logs.Error("NolanUrl or NolanToken is empty")
+				sender.Reply("渠道尚未配置")
+				return
+			}
 			NolanGetJdQrImg(sender)
 			loginList[sender.UserID] = nil
-		case "微信扫码", "2":
-			sender.Reply("渠道适配中")
-		case "短信登录", "3":
-			sender.Reply("渠道升级，等待后续开放")
+		case "BBK京东扫码", "3":
+			BBKJdUrl = GetEnv("BBKJdUrl")
+			if BBKJdUrl == "" {
+				logs.Error("BBKJdUrl is empty")
+				sender.Reply("渠道尚未配置")
+				return
+			}
+			BBKGetJdQrImg(sender)
+			loginList[sender.UserID] = nil
+		case "BBK微信扫码", "4":
+			BBKWxUrl = GetEnv("BbkWxUrl")
+			if BBKWxUrl == "" {
+				logs.Error("BbkWxUrl is empty")
+				sender.Reply("渠道尚未配置")
+				return
+			}
+			BBKGetWxQrImg(sender)
+			loginList[sender.UserID] = nil
 		case "q":
 			loginList[sender.UserID] = nil
 			close(msg)
