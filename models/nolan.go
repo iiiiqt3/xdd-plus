@@ -5,6 +5,7 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
+	"github.com/skip2/go-qrcode"
 )
 
 var NolanUrl string
@@ -19,6 +20,7 @@ func NolanGetJdQrImg(sender *Sender) {
 	}
 
 	//http://192.168.195.53:5016/qr/GetQRKey
+	//https://qr.m.jd.com/p?k=${qrcode_info.value.QRCodeKey
 	get := httplib.Post(fmt.Sprintf("%s/qr/GetQRKey", RabbitUrl))
 	get.Header("Content-Type", "application/json")
 	get.Body(fmt.Sprintf("{\n  \"botApitoken\": \"%s\"\n}", NolanToken))
@@ -28,6 +30,9 @@ func NolanGetJdQrImg(sender *Sender) {
 	code, _ := jsonparser.GetBoolean(bytes, "success")
 	if code {
 		key, _ := jsonparser.GetString(bytes, "data", "key")
+		var png []byte
+		png, _ = qrcode.Encode("https://qr.m.jd.com/p?k="+key, qrcode.Medium, 256)
+		sender.SendImg(png)
 		logs.Info(key)
 		//decodeStr, _ := base64.StdEncoding.DecodeString(qr)
 		//sender.SendImg(decodeStr)
