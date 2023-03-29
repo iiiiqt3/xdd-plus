@@ -15,16 +15,17 @@ import (
 )
 
 var RabbitUrl string
+var RabbitApiToken string
 var RabbitToken string
 
 func RabbitGetJdQrImg(sender *Sender) {
 	RabbitUrl = GetEnv("RabbitUrl")
-	RabbitToken = GetEnv("RabbitToken")
-	if RabbitUrl == "" || RabbitToken == "" {
+	RabbitApiToken = GetEnv("RabbitToken")
+	if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
 		logs.Error("RabbitUrl or RabbitToken is empty")
 		return
 	}
-	get := httplib.Post(fmt.Sprintf("%s/api/BeanQrCode?token=%s", RabbitUrl, RabbitToken))
+	get := httplib.Post(fmt.Sprintf("%s/api/BeanQrCode?token=%s", RabbitUrl, RabbitApiToken))
 	bytes, _ := get.Bytes()
 	code, _ := jsonparser.GetInt(bytes, "code")
 	if code == 0 {
@@ -43,7 +44,7 @@ func RabbitGetJdQrImg(sender *Sender) {
 func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 	for {
 		time.Sleep(time.Second * time.Duration(5))
-		get := httplib.Post(fmt.Sprintf("%s/api/QrCheck?token=%s", RabbitUrl, RabbitToken))
+		get := httplib.Post(fmt.Sprintf("%s/api/QrCheck?token=%s", RabbitUrl, RabbitApiToken))
 		marshal, _ := json.Marshal(struct {
 			QRCodeKey string `json:"QRCodeKey"`
 			Qlkey     string `json:"qlkey"`
@@ -95,13 +96,13 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 }
 
 func RabbitGetCookie(cookie string) (bool, string, string) {
-	get := httplib.Post(fmt.Sprintf("%s/api/wsck?RabbitToken=%s", RabbitUrl, RabbitToken))
+	get := httplib.Post(fmt.Sprintf("%s/api/wsck?RabbitToken=%s", RabbitUrl, RabbitApiToken))
 	marshal, _ := json.Marshal(struct {
 		WSCK        string `json:"wsck"`
 		RabbitToken string `json:"RabbitToken"`
 	}{
 		WSCK:        cookie,
-		RabbitToken: "3cd2db5316374ebf885a3c421f370c34",
+		RabbitToken: RabbitToken,
 	})
 	get.Body(marshal)
 	bytes, _ := get.Bytes()
@@ -118,8 +119,8 @@ func RabbitGetCookie(cookie string) (bool, string, string) {
 
 func UpdateRwskey() {
 	RabbitUrl = GetEnv("RabbitUrl")
-	RabbitToken = GetEnv("RabbitToken")
-	if RabbitUrl == "" || RabbitToken == "" {
+	RabbitApiToken = GetEnv("RabbitToken")
+	if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
 		logs.Error("RabbitUrl or RabbitToken is empty")
 		return
 	}
