@@ -494,7 +494,11 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					msg := make(chan string)
 					loginList[sender.UserID] = msg
 					go LoginSelect(sender, msg)
-					sender.Reply("请选择登录渠道: \r\n 1:兔子京东扫码  \r\n 2:Nolan京东扫码  \r\n 3:BBK京东扫码  \r\n 4:BBK微信扫码  \r\n  如需退出请回复'q'退出登录流程")
+					if Config.QQID == 764763903 {
+						sender.Reply("请选择登录渠道: \r\n  2:Nolan京东扫码  \r\n  如需退出请回复'q'退出登录流程")
+					} else {
+						sender.Reply("请选择登录渠道: \r\n 1:兔子京东扫码  \r\n 2:Nolan京东扫码  \r\n 3:BBK京东扫码  \r\n 4:BBK微信扫码  \r\n  如需退出请回复'q'退出登录流程")
+					}
 
 				}
 			}
