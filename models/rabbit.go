@@ -117,6 +117,12 @@ func RabbitGetCookie(cookie string) (bool, string, string) {
 }
 
 func UpdateRwskey() {
+	RabbitUrl = GetEnv("RabbitUrl")
+	RabbitToken = GetEnv("RabbitToken")
+	if RabbitUrl == "" || RabbitToken == "" {
+		logs.Error("RabbitUrl or RabbitToken is empty")
+		return
+	}
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where(fmt.Sprintf("%s != ?", RWSKEY), "")
 	})
