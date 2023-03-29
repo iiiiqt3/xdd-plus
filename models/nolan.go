@@ -14,9 +14,9 @@ var NolanUrl string
 var NolanToken string
 
 func NolanGetJdQrImg(sender *Sender) {
-	RabbitUrl = GetEnv("NolanUrl")
-	RabbitToken = GetEnv("NolanToken")
-	if RabbitUrl == "" || RabbitToken == "" {
+	NolanUrl = GetEnv("NolanUrl")
+	NolanToken = GetEnv("NolanToken")
+	if NolanUrl == "" || NolanToken == "" {
 		logs.Error("NolanUrl or NolanToken is empty")
 		return
 	}
