@@ -23,6 +23,7 @@ func init() {
 	}
 	ExecPath, _ = filepath.Abs(filepath.Dir(os.Args[0]))
 	logs.Info("当前%s", ExecPath)
+	InitChan()
 	initConfig()
 	initDB()
 	go initVersion()
@@ -53,5 +54,5 @@ func initNolan() {
 }
 
 func IdToWx() {
-	
+
 }

@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+var msgchan = make(chan []byte)
+
+func InitChan() {
+	go WriteMsg(msgchan)
+}
+
 type QQMessage struct {
 	Action string `json:"action"`
 	QQMsg  struct {
@@ -160,8 +166,9 @@ func SendWxMsg(uid string, msg string) {
 }
 
 func SendQQMsg(msg QQMessage) {
+
 	marshal, _ := json.Marshal(msg)
 	logs.Info(string(marshal))
-	WriteMsg(marshal)
+	msgchan <- marshal
 
 }

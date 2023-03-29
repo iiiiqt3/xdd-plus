@@ -14,11 +14,15 @@ func WsInit(wss *websocket.Conn, nt int) {
 	mt = nt
 }
 
-func WriteMsg(msg []byte) {
-
+func WriteMsg(msg chan []byte) {
 	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
+		}
 		if ws != nil {
-			err := ws.WriteMessage(mt, msg)
+			err := ws.WriteMessage(mt, n)
 			if err != nil {
 				logs.Info("write:", err)
 			}
