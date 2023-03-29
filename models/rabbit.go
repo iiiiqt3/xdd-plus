@@ -33,14 +33,14 @@ func RabbitGetJdQrImg(sender *Sender) {
 		decodeStr, _ := base64.StdEncoding.DecodeString(qr)
 		sender.SendImg(decodeStr)
 		sender.Reply("请使用京东APP扫码，150秒失效")
-		go getJDQrStatus(key, sender)
+		go RabbitGetJDQrStatus(key, sender)
 	} else {
 		logs.Info(string(bytes))
 		sender.Reply("获取扫码失败")
 	}
 }
 
-func getJDQrStatus(cookie string, sender *Sender) {
+func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 	for {
 		time.Sleep(time.Second * time.Duration(5))
 		get := httplib.Post(fmt.Sprintf("%s/api/QrCheck?token=%s", RabbitUrl, RabbitToken))
@@ -65,7 +65,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 			pin, _ := jsonparser.GetString(bytes, "pin")
 			pin = url.QueryEscape(pin)
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, data)
-			_, _, appck := GetCookie(pinky)
+			_, _, appck := RabbitGetCookie(pinky)
 			ptkey := FetchJdCookieValue("pt_key", appck)
 			ck := JdCookie{
 				PtPin:  pin,
@@ -94,7 +94,7 @@ func getJDQrStatus(cookie string, sender *Sender) {
 	}
 }
 
-func GetCookie(cookie string) (bool, string, string) {
+func RabbitGetCookie(cookie string) (bool, string, string) {
 	get := httplib.Post(fmt.Sprintf("%s/api/wsck?RabbitToken=%s", RabbitUrl, RabbitToken))
 	marshal, _ := json.Marshal(struct {
 		WSCK        string `json:"wsck"`
@@ -132,7 +132,7 @@ func UpdateRwskey() {
 		time.Sleep(time.Duration(rand.Int63n(1)) * time.Second)
 		//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.RWskey)
-		rsp, _, appck := GetCookie(pinky)
+		rsp, _, appck := RabbitGetCookie(pinky)
 		if rsp {
 			ptKey := FetchJdCookieValue("pt_key", appck)
 			ptPin := FetchJdCookieValue("pt_pin", appck)

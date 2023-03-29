@@ -26,7 +26,6 @@ func WriteMsg(msg chan []byte) {
 			if err != nil {
 				logs.Info("write:", err)
 			}
-			break
 		} else {
 			time.Sleep(time.Second * time.Duration(6))
 			logs.Info("等待ws连接")
