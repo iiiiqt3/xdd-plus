@@ -178,7 +178,6 @@ func UpdateRwskey() {
 		} else {
 			(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
 		}
-		return
 	}
 	go func() {
 		Save <- &JdCookie{}
