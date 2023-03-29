@@ -62,16 +62,8 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 		time.Sleep(time.Second * time.Duration(5))
 		//http://192.168.195.53:5016/qr/CheckQRKey
 		get := httplib.Post(fmt.Sprintf("%s/qr/CheckQRKey", NolanUrl))
-		marshal, _ := json.Marshal(struct {
-			QRKey       string `json:"qrkey"`
-			BotApitoken string `json:"botApitoken"`
-		}{
-			QRKey:       cookie,
-			BotApitoken: NolanToken,
-		},
-		)
 
-		get.Body(marshal)
+		get.Body(fmt.Sprintf("{\n  \"qrkey\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", cookie, NolanToken))
 		bytes, _ := get.Bytes()
 		code, _ := jsonparser.GetBoolean(bytes, "code")
 		msg, _ := jsonparser.GetString(bytes, "message")
@@ -80,7 +72,6 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 			sender.Reply(msg)
 			return
 		} else {
-
 			if code {
 				data, _ := jsonparser.GetString(bytes, "data")
 				logs.Info(data)
