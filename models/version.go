@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v8.6"
-var describe = "增加了返利，增加了口令"
+var version = "v8.7"
+var describe = "增加登录连续对话"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
