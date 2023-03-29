@@ -47,16 +47,20 @@ func NolanGetJdQrImg(sender *Sender) {
 func NolanGetJDQrStatus(cookie string, sender *Sender) {
 
 	type NolanRWskey struct {
-		Status       int           `json:"status"`
-		Mode         string        `json:"mode"`
-		Ck           string        `json:"ck"`
-		Rwskey       string        `json:"rwskey"`
-		AccessToken  string        `json:"accessToken"`
-		RefreshToken string        `json:"refreshToken"`
-		Roles        []interface{} `json:"roles"`
-		Img          string        `json:"img"`
-		Username     string        `json:"username"`
-		Expires      time.Time     `json:"expires"`
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+		Data    struct {
+			Ck           string        `json:"ck"`
+			Rwskey       string        `json:"rwskey"`
+			AccessToken  string        `json:"accessToken"`
+			RefreshToken string        `json:"refreshToken"`
+			Roles        []interface{} `json:"roles"`
+			Img          interface{}   `json:"img"`
+			Username     string        `json:"username"`
+			Expires      time.Time     `json:"expires"`
+			Status       int           `json:"status"`
+			Mode         interface{}   `json:"mode"`
+		} `json:"data"`
 	}
 	for {
 		time.Sleep(time.Second * time.Duration(5))
@@ -68,10 +72,9 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 		code, _ := jsonparser.GetBoolean(bytes, "success")
 		logs.Info(string(bytes))
 		if code {
-			data, _ := jsonparser.GetString(bytes, "data")
-			logs.Info(data)
 			nolan := &NolanRWskey{}
-			json.Unmarshal([]byte(data), nolan)
+			json.Unmarshal(bytes, nolan)
+			logs.Info(nolan.Data.Rwskey)
 
 			//pin, _ := jsonparser.GetString(bytes, "pin")
 			//pin = url.QueryEscape(pin)
