@@ -79,13 +79,14 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 			_, _, appck := NolanGetCookie(pinky)
 			pin := FetchJdCookieValue("pin", appck)
 			ptkey := FetchJdCookieValue("pt_key", appck)
+			rwskey := FetchJdCookieValue("wskey", pinky)
 			ck := JdCookie{
 				PtPin:  pin,
 				PtKey:  ptkey,
-				RWskey: pinky,
+				RWskey: rwskey,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Update(RWSKEY, pinky)
+				nck.Update(RWSKEY, rwskey)
 				nck.Update(QQ, sender.UserID)
 				nck.Update(PtKey, ptkey)
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
@@ -114,14 +115,7 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 func NolanGetCookie(cookie string) (bool, string, string) {
 	//http://192.168.195.53:5016/env/wskey
 	get := httplib.Post(fmt.Sprintf("%s/env/wskey", NolanUrl))
-	marshal, _ := json.Marshal(struct {
-		WSCK        string `json:"wskey"`
-		BotApiToken string `json:"botApiToken"`
-	}{
-		WSCK:        cookie,
-		BotApiToken: NolanToken,
-	})
-	get.Body(marshal)
+	get.Body(fmt.Sprintf("{\n  \"botApiToken\": \"%s\",\n  \"wskey\": \"%s\"\n}", NolanToken, cookie))
 	bytes, _ := get.Bytes()
 	val, _ := jsonparser.GetBoolean(bytes, "success")
 	if val {
