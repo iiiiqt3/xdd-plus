@@ -43,7 +43,6 @@ func BBKGetWxQrStatus(cookie string, sender *Sender) {
 		code, _ := jsonparser.GetInt(bytes, "code")
 		errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
 		data, _ := jsonparser.GetString(bytes, "data", "wskey")
-		msg, _ := jsonparser.GetString(bytes, "msg", "wskey")
 		if code == 500 || code == 202 {
 			sender.Reply(errorMsg)
 			return
@@ -51,8 +50,29 @@ func BBKGetWxQrStatus(cookie string, sender *Sender) {
 			sender.Reply("已超时，扫码结束")
 			return
 		} else if code == 410 && data != "" {
-			JdCookie{}.Push(data)
-			sender.Reply(msg)
+			_, _, appck := RabbitGetCookie(data)
+			ptkey := FetchJdCookieValue("pt_key", appck)
+			pin := FetchJdCookieValue("pin", appck)
+			rwskey := FetchJdCookieValue("wskey", data)
+			ck := JdCookie{
+				PtPin:  pin,
+				PtKey:  ptkey,
+				RWskey: rwskey,
+			}
+			if nck, err := GetJdCookie(ck.PtPin); err == nil {
+				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey})
+				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+			} else {
+				NewJdCookie(&ck)
+				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+				if sender.IsQQ() || sender.IsQQ() {
+					ck.Update(QQ, sender.UserID)
+				}
+				sender.Reply(fmt.Sprintf(msg))
+				sender.Reply(ck.Query())
+				(&JdCookie{}).Push(msg)
+			}
 
 			return
 		} else if code == 429 {
@@ -91,7 +111,6 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 		code, _ := jsonparser.GetInt(bytes, "code")
 		errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
 		data, _ := jsonparser.GetString(bytes, "data", "wskey")
-		msg, _ := jsonparser.GetString(bytes, "msg", "wskey")
 		if code == 500 || code == 202 {
 			sender.Reply(errorMsg)
 			return
@@ -99,8 +118,29 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 			sender.Reply("已超时，扫码结束")
 			return
 		} else if code == 410 && data != "" {
-			JdCookie{}.Push(data)
-			sender.Reply(msg)
+			_, _, appck := RabbitGetCookie(data)
+			ptkey := FetchJdCookieValue("pt_key", appck)
+			pin := FetchJdCookieValue("pin", appck)
+			rwskey := FetchJdCookieValue("wskey", data)
+			ck := JdCookie{
+				PtPin:  pin,
+				PtKey:  ptkey,
+				RWskey: rwskey,
+			}
+			if nck, err := GetJdCookie(ck.PtPin); err == nil {
+				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey})
+				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+			} else {
+				NewJdCookie(&ck)
+				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+				if sender.IsQQ() || sender.IsQQ() {
+					ck.Update(QQ, sender.UserID)
+				}
+				sender.Reply(fmt.Sprintf(msg))
+				sender.Reply(ck.Query())
+				(&JdCookie{}).Push(msg)
+			}
 
 			return
 		} else if code == 429 {
