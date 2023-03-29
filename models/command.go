@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 	"os"
@@ -918,6 +919,17 @@ var codeSignals = []CodeSignal{
 			}
 			cmd(ct, sender)
 			return nil
+		},
+	},
+
+	{
+		Command: []string{"管理后台"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			u := uuid.New()
+			s := u.String()
+			SaveCache("AdminToken", s)
+			return "你的临时授权码为：" + s
 		},
 	},
 	{
