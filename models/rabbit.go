@@ -145,7 +145,7 @@ func UpdateRwskey() {
 			(&JdCookie{}).Push("Wskey已更新二分一")
 		}
 
-		time.Sleep(time.Duration(rand.Int63n(3)) * time.Second)
+		time.Sleep(time.Duration(rand.Int63n(2)) * time.Second)
 		//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.RWskey)
 		rsp, _, appck := NolanGetCookie(pinky)
