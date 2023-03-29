@@ -534,15 +534,15 @@ var codeSignals = []CodeSignal{
 							str = str + fmt.Sprintf("账号：%s  \n", s)
 						}
 						sender.Reply(str)
-						query := GetEnv("query")
-						url := fmt.Sprintf("%squery#/?id=%d", query, sender.UserID)
-						if query != "" {
-							sender.Reply("请扫描二维码查看")
-							var png []byte
-							png, _ = qrcode.Encode(url, qrcode.Medium, 256)
-							logs.Info(Config.QQGroupID)
-							SendQQGroup(Config.QQGroupID, sender.UserID, png)
-						}
+						//query := GetEnv("query")
+						//url := fmt.Sprintf("%squery#/?id=%d", query, sender.UserID)
+						//if query != "" {
+						//	sender.Reply("请扫描二维码查看")
+						//	var png []byte
+						//	png, _ = qrcode.Encode(url, qrcode.Medium, 256)
+						//	//logs.Info(Config.QQGroupID)
+						//	//SendQQGroup(, sender.UserID, png)
+						//}
 					}
 				}
 			default:

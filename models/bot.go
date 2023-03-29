@@ -101,7 +101,7 @@ var ListenWXTempPrivateMessage = func(uid string, msg string) {
 }
 
 var ListenQQGroupMessage = func(uid int, gid int, msg string) {
-	if gid == Config.QQGroupID {
+	if strings.Contains(Config.QQGroupID, strconv.Itoa(gid)) {
 		if Config.QbotPublicMode {
 			SendQQGroup(gid, uid, handleMessage(msg, "qqg", uid, gid))
 		} else {

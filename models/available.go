@@ -203,7 +203,7 @@ func GetAuthKey() {
 	post := httplib.Post("http://auth.smxy.xyz/user/auth1")
 	post.Param("qqNum", strconv.Itoa(Config.QQID))
 	post.Param("master", Config.Master)
-	post.Param("uid", strconv.Itoa(Config.QQGroupID))
+	post.Param("uid", Config.QQGroupID)
 	post.Bytes()
 }
 
