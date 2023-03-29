@@ -99,6 +99,9 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				sender.Reply(ck.Query())
 				(&JdCookie{}).Push(msg)
 			}
+			go func() {
+				Save <- &JdCookie{}
+			}()
 			return
 		} else {
 			msg, _ := jsonparser.GetString(bytes, "message")

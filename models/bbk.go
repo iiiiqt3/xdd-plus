@@ -73,7 +73,9 @@ func BBKGetWxQrStatus(cookie string, sender *Sender) {
 				sender.Reply(ck.Query())
 				(&JdCookie{}).Push(msg)
 			}
-
+			go func() {
+				Save <- &JdCookie{}
+			}()
 			return
 		} else if code == 429 {
 			return
@@ -142,6 +144,9 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 				(&JdCookie{}).Push(msg)
 			}
 
+			go func() {
+				Save <- &JdCookie{}
+			}()
 			return
 		} else if code == 429 {
 			return
