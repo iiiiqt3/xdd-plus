@@ -20,7 +20,8 @@ var RabbitToken string
 
 func RabbitGetJdQrImg(sender *Sender) {
 	RabbitUrl = GetEnv("RabbitUrl")
-	RabbitApiToken = GetEnv("RabbitToken")
+	RabbitApiToken = GetEnv("RabbitApiToken")
+	RabbitToken = GetEnv("RabbitToken")
 	if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
 		logs.Error("RabbitUrl or RabbitToken is empty")
 		return
@@ -119,7 +120,8 @@ func RabbitGetCookie(cookie string) (bool, string, string) {
 
 func UpdateRwskey() {
 	RabbitUrl = GetEnv("RabbitUrl")
-	RabbitApiToken = GetEnv("RabbitToken")
+	RabbitApiToken = GetEnv("RabbitApiToken")
+	RabbitToken = GetEnv("RabbitToken")
 	if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
 		logs.Error("RabbitUrl or RabbitToken is empty")
 		return
