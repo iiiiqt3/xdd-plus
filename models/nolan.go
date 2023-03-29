@@ -76,43 +76,46 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 		code, _ := jsonparser.GetBoolean(bytes, "code")
 		msg, _ := jsonparser.GetString(bytes, "message")
 		logs.Info(string(bytes))
-		if !code {
+		if msg != "" {
 			sender.Reply(msg)
 			return
 		} else {
 
-			data, _ := jsonparser.GetString(bytes, "data")
-			logs.Info(data)
-			nolan := &NolanRWskey{}
-			json.Unmarshal([]byte(data), nolan)
+			if code {
+				data, _ := jsonparser.GetString(bytes, "data")
+				logs.Info(data)
+				nolan := &NolanRWskey{}
+				json.Unmarshal([]byte(data), nolan)
 
-			//pin, _ := jsonparser.GetString(bytes, "pin")
-			//pin = url.QueryEscape(pin)
-			//var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, data)
-			//_, _, appck := RabbitGetCookie(pinky)
-			//ptkey := FetchJdCookieValue("pt_key", appck)
-			//ck := JdCookie{
-			//	PtPin:  pin,
-			//	PtKey:  ptkey,
-			//	RWskey: data,
-			//}
-			//if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			//	nck.Update(RWSKEY, data)
-			//	nck.Update(QQ, sender.UserID)
-			//	nck.Update(PtKey, ptkey)
-			//	sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-			//	(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
-			//} else {
-			//	NewJdCookie(&ck)
-			//	msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-			//	if sender.IsQQ() || sender.IsQQ() {
-			//		ck.Update(QQ, sender.UserID)
-			//	}
-			//	sender.Reply(fmt.Sprintf(msg))
-			//	sender.Reply(ck.Query())
-			//	(&JdCookie{}).Push(msg)
-			//}
-			return
+				//pin, _ := jsonparser.GetString(bytes, "pin")
+				//pin = url.QueryEscape(pin)
+				//var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, data)
+				//_, _, appck := RabbitGetCookie(pinky)
+				//ptkey := FetchJdCookieValue("pt_key", appck)
+				//ck := JdCookie{
+				//	PtPin:  pin,
+				//	PtKey:  ptkey,
+				//	RWskey: data,
+				//}
+				//if nck, err := GetJdCookie(ck.PtPin); err == nil {
+				//	nck.Update(RWSKEY, data)
+				//	nck.Update(QQ, sender.UserID)
+				//	nck.Update(PtKey, ptkey)
+				//	sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+				//	(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+				//} else {
+				//	NewJdCookie(&ck)
+				//	msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+				//	if sender.IsQQ() || sender.IsQQ() {
+				//		ck.Update(QQ, sender.UserID)
+				//	}
+				//	sender.Reply(fmt.Sprintf(msg))
+				//	sender.Reply(ck.Query())
+				//	(&JdCookie{}).Push(msg)
+				//}
+				return
+			}
+
 		}
 
 	}
