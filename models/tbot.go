@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"time"
 
@@ -81,6 +82,32 @@ func SendTgMsg(uid int, msg string) {
 		return
 	}
 	b.Send(&tb.User{ID: uid}, msg)
+}
+
+func SendTgImg(uid int, file []byte) {
+	unix := time.Now().Unix()
+
+	filename := ExecPath + fmt.Sprintf("/static/%d.jpg", unix)
+
+	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		logs.Warn("zqdyj.txt失败，", err)
+	}
+	f.Write(file)
+	f.Close()
+
+	img := uploadImg(filename)
+
+	os.Remove(filename)
+
+	if b == nil || uid == 0 {
+		return
+	}
+	b.Send(&tb.User{ID: uid}, tb.Photo{
+		File: tb.File{
+			FileURL: img,
+		},
+	})
 }
 
 func SendTggMsg(gid int, uid int, msg string, mid int, unm string) {
