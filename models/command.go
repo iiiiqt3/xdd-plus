@@ -72,7 +72,7 @@ func (sender *Sender) SendImg(msg []byte) {
 	switch sender.Type {
 	case "qq":
 		SendQQMsg(QQMessage{
-			Action: "send_msg",
+			Action: "send_group_msg",
 			QQMsg: struct {
 				MessageType string `json:"message_type"`
 				UserId      int    `json:"user_id"`
@@ -96,7 +96,7 @@ func (sender *Sender) SendImg(msg []byte) {
 			}{
 				MessageType: "group",
 				GroupID:     sender.ChatID,
-				Message:     fmt.Sprintf("[CQ:cardimage,file=base64://%s,type=show]", base64.StdEncoding.EncodeToString(msg)),
+				Message:     fmt.Sprintf("[CQ:at,qq=%d][CQ:image,file=base64://%s,type=show]", sender.UserID, base64.StdEncoding.EncodeToString(msg)),
 			},
 			Echo: "",
 		})

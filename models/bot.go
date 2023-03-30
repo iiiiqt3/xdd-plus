@@ -51,7 +51,7 @@ var SendQQGroup = func(gid int, qq int, msg interface{}) {
 				Message     string `json:"message"`
 			}{
 				GroupID: gid,
-				Message: msg.(string),
+				Message: fmt.Sprintf("[CQ:at,qq=%d]", qq) + msg.(string),
 			},
 			Echo: "user_id",
 		})
