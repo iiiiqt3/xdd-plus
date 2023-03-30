@@ -133,7 +133,7 @@ func UpdateRwskey() {
 		return
 	}
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where(fmt.Sprintf("%s != ?", RWSKEY), "null")
+		return sb.Where(fmt.Sprintf("%s != ? and %s !=?", RWSKEY, RWSKEY), "null", "")
 	})
 	xx := 0
 	yy := 0
