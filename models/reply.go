@@ -20,9 +20,10 @@ func InitChan() {
 type QQMessage struct {
 	Action string `json:"action"`
 	QQMsg  struct {
-		UserId  int    `json:"user_id"`
-		GroupID int    `json:"group_id"`
-		Message string `json:"message"`
+		MessageType string `json:"message_type"`
+		UserId      int    `json:"user_id"`
+		GroupID     int    `json:"group_id"`
+		Message     string `json:"message"`
 	} `json:"params"`
 	Echo string `json:"echo"`
 }

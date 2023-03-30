@@ -74,9 +74,10 @@ func (sender *Sender) SendImg(msg []byte) {
 		SendQQMsg(QQMessage{
 			Action: "send_msg",
 			QQMsg: struct {
-				UserId  int    `json:"user_id"`
-				GroupID int    `json:"group_id"`
-				Message string `json:"message"`
+				MessageType string `json:"message_type"`
+				UserId      int    `json:"user_id"`
+				GroupID     int    `json:"group_id"`
+				Message     string `json:"message"`
 			}{
 				UserId:  sender.UserID,
 				GroupID: 0,
@@ -88,12 +89,14 @@ func (sender *Sender) SendImg(msg []byte) {
 		SendQQMsg(QQMessage{
 			Action: "send_msg",
 			QQMsg: struct {
-				UserId  int    `json:"user_id"`
-				GroupID int    `json:"group_id"`
-				Message string `json:"message"`
+				MessageType string `json:"message_type"`
+				UserId      int    `json:"user_id"`
+				GroupID     int    `json:"group_id"`
+				Message     string `json:"message"`
 			}{
-				GroupID: sender.ChatID,
-				Message: fmt.Sprintf("[CQ:image,file=base64://%s,type=show,id=40004]", base64.StdEncoding.EncodeToString(msg)),
+				MessageType: "group",
+				GroupID:     sender.ChatID,
+				Message:     fmt.Sprintf("[CQ:image,file=base64://%s,type=show,id=40004]", base64.StdEncoding.EncodeToString(msg)),
 			},
 			Echo: "",
 		})

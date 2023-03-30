@@ -27,9 +27,10 @@ var SendQQ = func(qq int, msg interface{}) {
 		SendQQMsg(QQMessage{
 			Action: "send_msg",
 			QQMsg: struct {
-				UserId  int    `json:"user_id"`
-				GroupID int    `json:"group_id"`
-				Message string `json:"message"`
+				MessageType string `json:"message_type"`
+				UserId      int    `json:"user_id"`
+				GroupID     int    `json:"group_id"`
+				Message     string `json:"message"`
 			}{
 				UserId:  qq,
 				Message: msg.(string),
@@ -44,9 +45,10 @@ var SendQQGroup = func(gid int, qq int, msg interface{}) {
 		SendQQMsg(QQMessage{
 			Action: "send_msg",
 			QQMsg: struct {
-				UserId  int    `json:"user_id"`
-				GroupID int    `json:"group_id"`
-				Message string `json:"message"`
+				MessageType string `json:"message_type"`
+				UserId      int    `json:"user_id"`
+				GroupID     int    `json:"group_id"`
+				Message     string `json:"message"`
 			}{
 				GroupID: gid,
 				Message: msg.(string),
