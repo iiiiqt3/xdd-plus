@@ -64,9 +64,9 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 		} else if code == 200 {
 			data, _ := jsonparser.GetString(bytes, "wskey")
 			pin, _ := jsonparser.GetString(bytes, "pin")
-			pin = url.QueryEscape(pin)
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, data)
 			_, _, appck := RabbitGetCookie(pinky)
+			pin = url.QueryEscape(pin)
 			ptkey := FetchJdCookieValue("pt_key", appck)
 			ck := JdCookie{
 				PtPin:  pin,

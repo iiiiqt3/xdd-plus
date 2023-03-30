@@ -13,11 +13,12 @@ import (
 
 var BBKWxUrl string
 var BBKJdUrl string
+var BBKToken string
 
 func BBKGetWxQrImg(sender *Sender) {
-	BBKWxUrl = GetEnv("BbkWxUrl")
+	BBKWxUrl = GetEnv("BBKWxUrl")
 	if BBKWxUrl == "" {
-		logs.Error("BbkWxUrl is empty")
+		logs.Error("BBKWxUrl is empty")
 		return
 	}
 	get := httplib.Get(fmt.Sprintf("%s/d/getQR?t=%d", BBKWxUrl, time.Now().Unix()))
@@ -50,28 +51,35 @@ func BBKGetWxQrStatus(cookie string, sender *Sender) {
 			sender.Reply("已超时，扫码结束")
 			return
 		} else if code == 410 && data != "" {
-			_, _, appck := RabbitGetCookie(data)
-			ptkey := FetchJdCookieValue("pt_key", appck)
-			pin := FetchJdCookieValue("pin", appck)
-			rwskey := FetchJdCookieValue("wskey", data)
+			appck := getKey(data)
+			ptKey := FetchJdCookieValue("pt_key", appck)
+			ptPin := FetchJdCookieValue("pt_pin", appck)
 			ck := JdCookie{
-				PtPin:  pin,
-				PtKey:  ptkey,
-				RWskey: rwskey,
+				PtKey: ptKey,
+				PtPin: ptPin,
 			}
-			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey})
-				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+			if strings.Contains(appck, "fake") {
+				//todo 失效账号处理
+				ck.Updates(JdCookie{Available: False})
 			} else {
-				NewJdCookie(&ck)
-				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-				if sender.IsQQ() || sender.IsQQ() {
-					ck.Update(QQ, sender.UserID)
+				if ptPin != "" || ptKey != "" {
+					if nck, err := GetJdCookie(ck.PtPin); err == nil {
+						nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptKey})
+						sender.Reply(fmt.Sprintf("登录成功:%s", ptPin))
+						(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", ptPin))
+					} else {
+						NewJdCookie(&ck)
+						msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+						if sender.IsQQ() || sender.IsQQ() {
+							ck.Update(QQ, sender.UserID)
+						}
+						sender.Reply(fmt.Sprintf(msg))
+						sender.Reply(ck.Query())
+						(&JdCookie{}).Push(msg)
+					}
+				} else {
+					(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ptPin))
 				}
-				sender.Reply(fmt.Sprintf(msg))
-				sender.Reply(ck.Query())
-				(&JdCookie{}).Push(msg)
 			}
 			go func() {
 				Save <- &JdCookie{}
@@ -120,7 +128,7 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 			sender.Reply("已超时，扫码结束")
 			return
 		} else if code == 410 && data != "" {
-			_, _, appck := RabbitGetCookie(data)
+			_, _, appck := BBKGetCookie(data)
 			ptkey := FetchJdCookieValue("pt_key", appck)
 			pin := FetchJdCookieValue("pin", appck)
 			rwskey := FetchJdCookieValue("wskey", data)
@@ -153,4 +161,29 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 		}
 	}
 
+}
+
+func BBKGetCookie(cookie string) (bool, string, string) {
+	BBKToken = GetEnv("BBKToken")
+	if BBKToken == "" {
+		logs.Error("BBKToken is empty")
+		return false, "", ""
+	}
+	//http://192.168.195.53:5016/env/wskey
+	//http://你的IP:3081/d/convert?pin=xxx&wskey=xxx&token=机器人token
+	pin := FetchJdCookieValue("pin", cookie)
+	rwskey := FetchJdCookieValue("wskey", cookie)
+	get := httplib.Get(fmt.Sprintf("%s/d/convert?pin=%s&wskey=%s&token=%s", NolanUrl, pin, rwskey, BBKToken))
+	bytes, _ := get.Bytes()
+	logs.Info(string(bytes))
+	data, _ := jsonparser.GetString(bytes, "data")
+	code, _ := jsonparser.GetInt(bytes, "code")
+	msg, _ := jsonparser.GetString(bytes, "msg")
+	errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
+	if code == 200 {
+		return true, msg, data
+	} else {
+		logs.Info(string(bytes))
+		return false, errorMsg, data
+	}
 }

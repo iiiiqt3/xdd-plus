@@ -519,10 +519,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				}
 				if len(wsKey) > 0 && len(ptPin) > 0 {
 					wkey := "pin=" + ptPin + ";wskey=" + wsKey + ";"
-					rsp, err := getKey(wkey)
-					if err != nil {
-						logs.Error(err)
-					}
+					rsp := getKey(wkey)
 					if strings.Contains(rsp, "fake_") {
 						logs.Error("wskey错误")
 						sender.Reply(fmt.Sprintf("wskey错误 除京东APP皆不可用"))

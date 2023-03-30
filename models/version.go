@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var version = "v9.3"
+var version = "v9.4"
 var describe = "增加登录连续对话"
 var AppName = "xdd"
 var pname = pname1()

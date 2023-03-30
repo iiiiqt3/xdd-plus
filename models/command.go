@@ -1088,10 +1088,7 @@ var codeSignals = []CodeSignal{
 			sender.handleJdCookies(func(ck *JdCookie) {
 				if len(ck.WsKey) > 0 {
 					var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-					rsp, err := getKey(pinky)
-					if err != nil {
-						logs.Error(err)
-					}
+					rsp := getKey(pinky)
 					if len(rsp) > 0 {
 						if strings.Contains(rsp, "fake") {
 							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))

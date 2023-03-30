@@ -220,7 +220,7 @@ func updateCookie() {
 		}
 		time.Sleep(time.Duration(3) * time.Second)
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-		rsp, _ := getKey(pinky)
+		rsp := getKey(pinky)
 		if strings.Contains(rsp, "错误") {
 			yy++
 			ck.Updates(JdCookie{WsKey: "null", Available: False})
@@ -259,7 +259,7 @@ func updateCookie() {
 func CheckWskeyOK(ck *JdCookie) (bool, string) {
 	if len(ck.WsKey) > 0 {
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-		rsp, _ := getKey(pinky)
+		rsp := getKey(pinky)
 		if strings.Contains(rsp, "fake") {
 			return false, "失效账号"
 		} else {

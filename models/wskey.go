@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func getKey(WSCK string) (string, error) {
+func getKey(WSCK string) string {
 	var ptKey = ""
 	sign := GetEnv("sign")
 	if sign == "" {
@@ -22,9 +22,9 @@ func getKey(WSCK string) (string, error) {
 		ptKey, _ = getTokenKey(WSCK)
 	}
 	if !strings.Contains(ptKey, "app_open") {
-		return "Wskey错误", nil
+		return "Wskey错误"
 	}
-	return ptKey, nil
+	return ptKey
 }
 
 /*
