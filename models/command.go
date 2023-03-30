@@ -87,7 +87,7 @@ func (sender *Sender) SendImg(msg []byte) {
 		})
 	case "qqg":
 		SendQQMsg(QQMessage{
-			Action: "send_msg",
+			Action: "send_group_msg",
 			QQMsg: struct {
 				MessageType string `json:"message_type"`
 				UserId      int    `json:"user_id"`
