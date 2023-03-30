@@ -87,7 +87,7 @@ func (sender *Sender) SendImg(msg []byte) {
 		})
 	case "qqg":
 		SendQQMsg(QQMessage{
-			Action: "send_group_msg",
+			Action: "send_msg",
 			QQMsg: struct {
 				MessageType string `json:"message_type"`
 				UserId      int    `json:"user_id"`
@@ -96,7 +96,7 @@ func (sender *Sender) SendImg(msg []byte) {
 			}{
 				MessageType: "group",
 				GroupID:     sender.ChatID,
-				Message:     fmt.Sprintf("[CQ:image,file=%s,type=show,subType=0]", "http://images.smxy.xyz/i/2023/03/30/64253fb87c1a8.jpg"),
+				Message:     fmt.Sprintf("[CQ:image,file=base64://%s,type=show]", base64.StdEncoding.EncodeToString(msg)),
 			},
 			Echo: "",
 		})
