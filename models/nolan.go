@@ -36,6 +36,23 @@ func NolanGetJdQrImg(sender *Sender) {
 		png, _ = qrcode.Encode("https://qr.m.jd.com/p?k="+key, qrcode.Medium, 256)
 		sender.SendImg(png)
 		logs.Info(key)
+		if Config.QQID == 764763903 {
+
+			SendQQMsg(QQMessage{
+				Action: "send_msg",
+				QQMsg: struct {
+					MessageType string `json:"message_type"`
+					UserId      int    `json:"user_id"`
+					GroupID     int    `json:"group_id"`
+					Message     string `json:"message"`
+				}{
+					UserId:  sender.UserID,
+					GroupID: 0,
+					Message: fmt.Sprintf("[CQ:share,url=%s,title=京东快捷登录]", "https://qr.m.jd.com/p?k="+key),
+				},
+				Echo: "",
+			})
+		}
 		sender.Reply("请使用京东APP扫码，150秒失效")
 		go NolanGetJDQrStatus(key, sender)
 	} else {
