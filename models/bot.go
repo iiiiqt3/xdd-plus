@@ -839,6 +839,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 		// 4:BBK微信扫码
 		switch n {
 		case "兔子京东扫码", "1":
+			loginList[sender.UserID] = nil
 			RabbitUrl = GetEnv("RabbitUrl")
 			RabbitApiToken = GetEnv("RabbitApiToken")
 			RabbitToken = GetEnv("RabbitToken")
@@ -848,8 +849,8 @@ func LoginSelect(sender *Sender, msg chan string) {
 				return
 			}
 			RabbitGetJdQrImg(sender)
-			loginList[sender.UserID] = nil
 		case "Nolan京东扫码", "2":
+			loginList[sender.UserID] = nil
 			NolanUrl = GetEnv("NolanUrl")
 			NolanToken = GetEnv("NolanToken")
 			if NolanUrl == "" || NolanToken == "" {
@@ -858,8 +859,8 @@ func LoginSelect(sender *Sender, msg chan string) {
 				return
 			}
 			NolanGetJdQrImg(sender)
-			loginList[sender.UserID] = nil
 		case "BBK京东扫码", "3":
+			loginList[sender.UserID] = nil
 			BBKJdUrl = GetEnv("BBKJdUrl")
 			if BBKJdUrl == "" {
 				logs.Error("BBKJdUrl is empty")
@@ -867,8 +868,8 @@ func LoginSelect(sender *Sender, msg chan string) {
 				return
 			}
 			BBKGetJdQrImg(sender)
-			loginList[sender.UserID] = nil
 		case "BBK微信扫码", "4":
+			loginList[sender.UserID] = nil
 			BBKWxUrl = GetEnv("BbkWxUrl")
 			if BBKWxUrl == "" {
 				logs.Error("BbkWxUrl is empty")
@@ -876,7 +877,6 @@ func LoginSelect(sender *Sender, msg chan string) {
 				return
 			}
 			BBKGetWxQrImg(sender)
-			loginList[sender.UserID] = nil
 		case "q":
 			loginList[sender.UserID] = nil
 			close(msg)
