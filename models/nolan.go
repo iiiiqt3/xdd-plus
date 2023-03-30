@@ -37,7 +37,6 @@ func NolanGetJdQrImg(sender *Sender) {
 		sender.SendImg(png)
 		logs.Info(key)
 		if Config.QQID == 764763903 {
-
 			SendQQMsg(QQMessage{
 				Action: "send_msg",
 				QQMsg: struct {
