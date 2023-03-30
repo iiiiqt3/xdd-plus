@@ -108,6 +108,9 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 			if msg != "二维码未扫描，请扫描二维码" && msg != "请手机客户端确认登录" {
 				sender.Reply(msg)
 				return
+			} else if msg == "请先获取二维码" {
+				sender.Reply("二维码失效")
+				return
 			}
 		}
 	}
