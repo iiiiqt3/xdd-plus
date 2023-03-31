@@ -132,6 +132,7 @@ func UpdateRwskey() {
 		logs.Error("NolanUrl or NolanToken is empty")
 		return
 	}
+
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where(fmt.Sprintf("%s != ? and %s !=?", RWSKEY, RWSKEY), "null", "")
 	})
