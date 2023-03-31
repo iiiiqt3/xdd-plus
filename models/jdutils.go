@@ -52,6 +52,7 @@ func NolanKl(kl string) string {
 	//rsp.Param("type", "hy")
 
 	body, _ := rsp.Bytes()
+	logs.Info(string(body))
 	val, _ := jsonparser.GetString(body, "data", "jumpUrl")
 	return val
 }
