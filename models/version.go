@@ -13,7 +13,7 @@ import (
 )
 
 var version = "v9.7"
-var describe = "暂定默认nolan转换渠道，修复私聊消息，修复群消息"
+var describe = "暂定默认nolan转换渠道，修复私聊消息，修复群消息，短信"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
