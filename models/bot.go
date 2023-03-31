@@ -221,7 +221,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//口令转换
 			{
 				if strings.Contains(msg, "口令") {
-					sender.Reply(NolanKl(msg))
+					sender.Reply(KLtoLJ(msg))
 				}
 			}
 
