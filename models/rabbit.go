@@ -120,19 +120,15 @@ func RabbitGetCookie(cookie string) (bool, string, string) {
 }
 
 func UpdateRwskey() {
-	//RabbitUrl = GetEnv("RabbitUrl")
-	//RabbitApiToken = GetEnv("RabbitApiToken")
-	//RabbitToken = GetEnv("RabbitToken")
-	//if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
-	//	logs.Error("RabbitUrl or RabbitToken is empty")
-	//	return
-	//}
+	RabbitUrl = GetEnv("RabbitUrl")
+	RabbitApiToken = GetEnv("RabbitApiToken")
+	RabbitToken = GetEnv("RabbitToken")
+
 	NolanUrl = GetEnv("NolanUrl")
 	NolanToken = GetEnv("NolanToken")
-	if NolanUrl == "" || NolanToken == "" {
-		logs.Error("NolanUrl or NolanToken is empty")
-		return
-	}
+
+	BBKToken = GetEnv("BBKToken")
+	BBKJdUrl = GetEnv("BBKJdUrl")
 
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where(fmt.Sprintf("%s != ? and %s !=?", RWSKEY, RWSKEY), "null", "")
@@ -148,7 +144,20 @@ func UpdateRwskey() {
 
 		//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.RWskey)
-		rsp, _, appck := NolanGetCookie(pinky)
+		//rsp, _, appck := NolanGetCookie(pinky)
+		var rsp bool
+		var appck string
+		//自动切换转换渠道，默认nolan
+		if NolanUrl != "" && NolanToken != "" {
+			rsp, _, appck = NolanGetCookie(pinky)
+		} else if RabbitUrl != "" && RabbitApiToken != "" && RabbitToken != "" {
+			pin, _ := url.QueryUnescape(ck.PtPin)
+			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, ck.RWskey)
+			rsp, _, appck = RabbitGetCookie(pinky)
+		} else if BBKToken != "" && BBKJdUrl != "" {
+			rsp, _, appck = BBKGetCookie(pinky)
+		}
+
 		if rsp {
 			ptKey := FetchJdCookieValue("pt_key", appck)
 			ptPin := FetchJdCookieValue("pt_pin", appck)
