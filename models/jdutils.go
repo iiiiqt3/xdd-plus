@@ -51,8 +51,7 @@ func NolanKl(kl string) string {
 	rsp.Body("{\r\n  \"code\": \"口令海量低价好物，新人享1分购噢！  http:/JEFc2BMGPfeew1副制这段话￥G9Q4kDK5Vh%⇝【⤴ιng▴栋特价】\"\r\n}")
 	//rsp.Param("type", "hy")
 
-	data, _ := rsp.Response()
-	body, _ := ioutil.ReadAll(data.Body)
+	body, _ := rsp.Bytes()
 	val, _ := jsonparser.GetString(body, "data", "jumpUrl")
 	return val
 }
