@@ -173,7 +173,7 @@ func BBKGetCookie(cookie string) (bool, string, string) {
 	//http://你的IP:3081/d/convert?pin=xxx&wskey=xxx&token=机器人token
 	pin := FetchJdCookieValue("pin", cookie)
 	rwskey := FetchJdCookieValue("wskey", cookie)
-	get := httplib.Get(fmt.Sprintf("%s/d/convert?pin=%s&wskey=%s&token=%s", NolanUrl, pin, rwskey, BBKToken))
+	get := httplib.Get(fmt.Sprintf("%s/d/convert?pin=%s&wskey=%s&token=%s", BBKJdUrl, pin, rwskey, BBKToken))
 	bytes, _ := get.Bytes()
 	logs.Info(string(bytes))
 	data, _ := jsonparser.GetString(bytes, "data")
