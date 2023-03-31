@@ -138,13 +138,13 @@ func NolanGetCookie(cookie string) (bool, string, string) {
 	get.Body(fmt.Sprintf("{\n  \"botApiToken\": \"%s\",\n  \"wskey\": \"%s\"\n}", NolanToken, cookie))
 	bytes, _ := get.Bytes()
 	logs.Info(string(bytes))
+	msg, _ := jsonparser.GetString(bytes, "msg")
+	appck, _ := jsonparser.GetString(bytes, "data", "appck")
 	val, _ := jsonparser.GetBoolean(bytes, "success")
-	if val {
-		msg, _ := jsonparser.GetString(bytes, "msg")
-		appck, _ := jsonparser.GetString(bytes, "data", "appck")
+	if appck != "" {
 		return val, msg, appck
 	} else {
 		logs.Info(string(bytes))
-		return val, "", ""
+		return false, "", ""
 	}
 }
