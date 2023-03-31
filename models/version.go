@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v9.5"
-var describe = "修复图片"
+var version = "v9.6"
+var describe = "暂定默认nolan转换渠道，修复私聊消息，修复群消息"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"

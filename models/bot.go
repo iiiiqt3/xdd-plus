@@ -5,7 +5,6 @@ import (
 	//	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/buger/jsonparser"
 	//	"github.com/skip2/go-qrcode"
 	"io"
 	"io/ioutil"
@@ -337,126 +336,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					if reg.MatchString(msg) {
 						//诺兰登录
 						if len(Config.Jdcurl) > 0 {
-							sender.Reply("请耐心等待...")
-							addr := Config.Jdcurl
-							req := httplib.Post(addr + "/api/SendSMS")
-							req.Header("content-type", "application/json")
-							data, _ := req.Body(`{"Phone":"` + msg + `","qlkey":0}`).Bytes()
-							message, _ := jsonparser.GetString(data, "message")
-							success, _ := jsonparser.GetBoolean(data, "success")
-							status, _ := jsonparser.GetInt(data, "data", "status")
-							captcha, _ := jsonparser.GetInt(data, "data", "captcha")
-							if captcha == 0 {
-								captcha = 1
-							}
-							if message != "" && status != 666 {
-								sender.Reply(message)
-							}
-							i := 1
-
-							if success {
-								pcodes[sender.UserID] = msg
-								logs.Info(strconv.Itoa(sender.UserID))
-								sender.Reply("请输入6位验证码：")
-								break
-							}
-							//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
-							if !success && status == 666 && captcha == 2 {
-
-								sender.Reply("正在进行验证...")
-								for {
-									req = httplib.Post(addr + "/api/AutoCaptcha")
-									req.Header("content-type", "application/json")
-									data, _ := req.Body(`{"Phone":"` + msg + `"}`).Bytes()
-									message, _ := jsonparser.GetString(data, "message")
-									success, _ := jsonparser.GetBoolean(data, "success")
-									status, _ := jsonparser.GetInt(data, "data", "status")
-									if !success {
-										//s.Reply("滑块验证失败：" + string(data))
-									}
-									if success {
-										pcodes[sender.UserID] = msg
-										sender.Reply("请输入6位验证码：")
-										break
-									}
-									if i > 5 {
-										sender.Reply("滑块验证失败,请尝试重新登录")
-										break
-									}
-									if status == 666 {
-										i++
-										sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
-										continue
-									}
-									if strings.Contains(message, "上限") {
-										i = 6
-										sender.Reply(message)
-										break
-									}
-								}
-
-							} else {
-
-								sender.Reply("滑块失败，请网页登录")
-							}
-							//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
+							NolanSendSMS(msg, sender)
 						} else if len(Config.Madurl) > 0 {
-							sender.Reply("请耐心等待...")
-							addr := Config.Madurl
-							req := httplib.Post(addr + "/api/SendSMS")
-							req.Header("content-type", "application/json")
-							data, _ := req.Body(`{"Phone":"` + msg + `","qlkey":0}`).Bytes()
-							message, _ := jsonparser.GetString(data, "message")
-							success, _ := jsonparser.GetBoolean(data, "success")
-							status, _ := jsonparser.GetInt(data, "data", "status")
-							if message != "" && status != 666 {
-								sender.Reply(message)
-							}
-							i := 1
-
-							if success {
-								pcodes[sender.UserID] = msg
-								logs.Info(string(sender.UserID))
-								sender.Reply("请输入6位验证码：")
-								break
-							}
-							//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
-							if !success && status == 666 && i < 5 {
-
-								sender.Reply("正在进行验证...")
-								for {
-									req = httplib.Post(addr + "/api/AutoCaptcha")
-									req.Header("content-type", "application/json")
-									data, _ := req.Body(`{"Phone":"` + msg + `"}`).Bytes()
-									message, _ := jsonparser.GetString(data, "message")
-									success, _ := jsonparser.GetBoolean(data, "success")
-									status, _ := jsonparser.GetInt(data, "data", "status")
-									if success {
-										pcodes[sender.UserID] = msg
-										sender.Reply("请输入6位验证码：")
-										break
-									}
-									if i > 5 {
-										//pcodes[sender.UserID] = msg
-										//s := Config.Jdcurl + "/Captcha/" + msg
-										//sender.Reply(fmt.Sprintf("请访问网址进行手动验证%s", s))
-										sender.Reply("滑块验证失败,请尝试重新登录")
-										break
-									}
-									if status == 666 {
-										i++
-										sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
-										continue
-									}
-									if strings.Contains(message, "上限") {
-										i = 6
-										sender.Reply(message)
-										break
-									}
-								}
-							} else {
-								sender.Reply("滑块失败，请网页登录")
-							}
+							RabbitSendSMS(msg, sender)
 						}
 					}
 				}
