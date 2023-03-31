@@ -130,7 +130,7 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 		} else if code == 410 && data != "" {
 			_, _, appck := BBKGetCookie(data)
 			ptkey := FetchJdCookieValue("pt_key", appck)
-			pin := FetchJdCookieValue("pin", appck)
+			pin := FetchJdCookieValue("pt_pin", appck)
 			rwskey := FetchJdCookieValue("wskey", data)
 			ck := JdCookie{
 				PtPin:  pin,
