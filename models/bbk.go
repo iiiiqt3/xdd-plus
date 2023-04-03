@@ -165,8 +165,9 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 
 func BBKGetCookie(cookie string) (bool, string, string) {
 	BBKToken = GetEnv("BBKToken")
-	if BBKToken == "" {
-		logs.Error("BBKToken is empty")
+	BBKJdUrl = GetEnv("BBKJdUrl")
+	if BBKToken == "" || BBKJdUrl == "" {
+		logs.Error("BBKToken or BBKJdUrl is empty")
 		return false, "", ""
 	}
 	//http://192.168.195.53:5016/env/wskey
