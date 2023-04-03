@@ -30,6 +30,7 @@ func initCron() {
 	c.AddFunc(strconv.Itoa(rand.Intn(59))+" 10 5/7 * ?", GetAuthKey)
 	//logs.Info("0 " + strconv.Itoa(rand.Intn(59)) + " 0/" + strconv.Itoa(Config.Later) + " * * ?" + "调试推送时间")
 	c.AddFunc("0 8-20/5 * * ?", initCookie)
+	c.AddFunc("0 10 * * 3,5", AutoBak)
 	c.AddFunc("0 15 * * ?", GetNewVersion)
 
 	c.Start()

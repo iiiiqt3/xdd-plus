@@ -349,6 +349,17 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"XDD专用还愿CK指令，慎用！"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			sender.Reply("开始还原CK，后悔请马上重启")
+			Reduction()
+			sender.Reply("已还原完成")
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"coin", "积分"},
 		Handle: func(sender *Sender) interface{} {
 			return fmt.Sprintf("积分:%d", GetCoin(sender.UserID))
