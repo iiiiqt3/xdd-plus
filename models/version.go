@@ -13,7 +13,7 @@ import (
 )
 
 var version = "v10"
-var describe = "增加自动备份系统test"
+var describe = "增加自动备份系统修复"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
