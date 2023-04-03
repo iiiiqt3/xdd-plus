@@ -360,6 +360,17 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"备份CK"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			sender.Reply("开始备份CK")
+			AutoBak()
+			sender.Reply("备份完成")
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"coin", "积分"},
 		Handle: func(sender *Sender) interface{} {
 			return fmt.Sprintf("积分:%d", GetCoin(sender.UserID))
