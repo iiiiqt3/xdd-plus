@@ -27,6 +27,7 @@ func initTgBot() {
 		})
 		if err != nil {
 			logs.Warn("监听tgbot失败")
+			logs.Info(err)
 			return
 		}
 		handle := func(m *tb.Message) {

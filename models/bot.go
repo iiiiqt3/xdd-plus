@@ -378,10 +378,47 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					msg := make(chan string)
 					loginList[sender.UserID] = msg
 					go LoginSelect(sender, msg)
+
+					msgs := []string{
+						fmt.Sprintf("请选择登录渠道: \r\n"),
+					}
+
+					RabbitUrl = GetEnv("RabbitUrl")
+					RabbitApiToken = GetEnv("RabbitApiToken")
+					RabbitToken = GetEnv("RabbitToken")
+
+					NolanUrl = GetEnv("NolanUrl")
+					NolanToken = GetEnv("NolanToken")
+
+					BBKToken = GetEnv("BBKToken")
+					BBKJdUrl = GetEnv("BBKJdUrl")
+					BBKWxUrl = GetEnv("BBKWxUrl")
+
+					RabbitUrl = GetEnv("RabbitUrl")
+					RabbitApiToken = GetEnv("RabbitApiToken")
+					RabbitToken = GetEnv("RabbitToken")
+
+					if RabbitUrl != "" && RabbitApiToken != "" && RabbitToken != "" {
+						msgs = append(msgs, "1:兔子京东扫码")
+					}
+
+					if NolanUrl != "" && NolanToken != "" {
+						msgs = append(msgs, "2:Nolan京东扫码")
+					}
+
+					if BBKJdUrl != "" && BBKToken != "" {
+						msgs = append(msgs, "3:BBK京东扫码")
+					}
+
+					if BBKWxUrl != "" {
+						msgs = append(msgs, "4:BBK微信扫码")
+					}
+
 					if Config.QQID == 764763903 {
 						sender.Reply("请选择登录渠道: \r\n  2:Nolan京东扫码  \r\n  如需退出请回复'q'退出登录流程")
 					} else {
-						sender.Reply("请选择登录渠道: \r\n 1:兔子京东扫码  \r\n 2:Nolan京东扫码  \r\n 3:BBK京东扫码  \r\n 4:BBK微信扫码  \r\n  如需退出请回复'q'退出登录流程")
+						msgs = append(msgs, "如需退出请回复'q'退出登录流程")
+						sender.Reply(strings.Join(msgs, "\n"))
 					}
 
 				}
@@ -751,9 +788,9 @@ func LoginSelect(sender *Sender, msg chan string) {
 			BBKGetJdQrImg(sender)
 		case "BBK微信扫码", "4":
 			loginList[sender.UserID] = nil
-			BBKWxUrl = GetEnv("BbkWxUrl")
+			BBKWxUrl = GetEnv("BBKWxUrl")
 			if BBKWxUrl == "" {
-				logs.Error("BbkWxUrl is empty")
+				logs.Error("BBKWxUrl is empty")
 				sender.Reply("渠道尚未配置")
 				return
 			}

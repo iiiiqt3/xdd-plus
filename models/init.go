@@ -36,6 +36,7 @@ func init() {
 	initTask()
 	initNolan()
 	//initRepos()
+	initWX()
 }
 
 func initNolan() {
@@ -52,6 +53,8 @@ func initNolan() {
 
 }
 
-func IdToWx() {
-
+func initWX() {
+	if Config.Wx.Model == "nolan" {
+		
+	}
 }
