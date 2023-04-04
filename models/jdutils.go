@@ -1,7 +1,6 @@
 package models
 
 import (
-	"compress/gzip"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
@@ -52,11 +51,11 @@ func NolanKl(kl string) string {
 	rsp.Body("{\r\n  \"code\": \"口令海量低价好物，新人享1分购噢！  http:/JEFc2BMGPfeew1副制这段话￥G9Q4kDK5Vh%⇝【⤴ιng▴栋特价】\"\r\n}")
 	//rsp.Param("type", "hy")
 
-	data, _ := rsp.Response()
-	reader, _ := gzip.NewReader(data.Body)
-	body, _ := ioutil.ReadAll(reader)
+	//data, _ := rsp.Response()
+	//reader, _ := gzip.NewReader(data.Body)
+	//body, _ := ioutil.ReadAll(reader)
 
-	//body, _ := rsp.Bytes()
+	body, _ := rsp.Bytes()
 	logs.Info(string(body))
 	val, _ := jsonparser.GetString(body, "data", "jumpUrl")
 	return val
