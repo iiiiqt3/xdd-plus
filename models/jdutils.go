@@ -5,6 +5,8 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -49,7 +51,11 @@ func NolanKl(kl string) string {
 	rsp.Header("Content-Type", "application/json")
 	rsp.Header("Accept", "*/*")
 	rsp.Body("{\n  \"code\": \"15:/缝纫机教师😁，⇝𝒥𝓲𝓲𝓲𝓷𝓰◗凍(Q6BXW0mhbly)\"\n}")
-
+	proxy := func(req *http.Request) (*url.URL, error) {
+		u, _ := url.ParseRequestURI("http://192.168.271.1:7890")
+		return u, nil
+	}
+	rsp.SetProxy(proxy)
 	body, _ := rsp.Bytes()
 	logs.Info(string(body))
 	val, _ := jsonparser.GetString(body, "data", "jumpUrl")
