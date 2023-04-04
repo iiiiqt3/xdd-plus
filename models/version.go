@@ -13,7 +13,7 @@ import (
 )
 
 var version = "v10.2"
-var describe = "动态登录菜单，二维码转为口令登录"
+var describe = "动态登录菜单，二维码转为口令登录1"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
