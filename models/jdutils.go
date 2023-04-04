@@ -3,10 +3,8 @@ package models
 import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/buger/jsonparser"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
@@ -47,17 +45,27 @@ func KLtoLJ(kl string) string {
 }
 
 func NolanKl(kl string) string {
-	rsp := httplib.Post("https://api.nolanstore.top/JComExchange")
-	rsp.Header("Content-Type", "application/json")
-	rsp.Header("Accept", "*/*")
-	rsp.Body("{\n  \"code\": \"15:/缝纫机教师😁，⇝𝒥𝓲𝓲𝓲𝓷𝓰◗凍(Q6BXW0mhbly)\"\n}")
-	proxy := func(req *http.Request) (*url.URL, error) {
-		u, _ := url.ParseRequestURI("http://192.168.271.1:7890")
-		return u, nil
+	//rsp := httplib.Post("https://api.nolanstore.top/JComExchange")
+	//rsp.Header("Content-Type", "application/json")
+	//rsp.Header("Accept", "*/*")
+	//rsp.Body("{\n  \"code\": \"15:/缝纫机教师😁，⇝𝒥𝓲𝓲𝓲𝓷𝓰◗凍(Q6BXW0mhbly)\"\n}")
+	//body, _ := rsp.Bytes()
+	//logs.Info(string(body))
+	//val, _ := jsonparser.GetString(body, "data", "jumpUrl")
+	//return val
+
+	resp, err := http.Post("https://api.nolanstore.top/JComExchange", "application/json", strings.NewReader("{\n  \"code\": \"15:/缝纫机教师😁，⇝𝒥𝓲𝓲𝓲𝓷𝓰◗凍(Q6BXW0mhbly)\"\n}"))
+	if err != nil {
+		logs.Info("post请求失败 error: %+v", err)
+
 	}
-	rsp.SetProxy(proxy)
-	body, _ := rsp.Bytes()
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logs.Info("读取Body失败 error: %+v", err)
+
+	}
 	logs.Info(string(body))
-	val, _ := jsonparser.GetString(body, "data", "jumpUrl")
-	return val
+	return string(body)
+
 }
