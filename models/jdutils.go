@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/buger/jsonparser"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -66,6 +67,7 @@ func NolanKl(kl string) string {
 
 	}
 	logs.Info(string(body))
-	return string(body)
+	val, _ := jsonparser.GetString(body, "data", "jumpUrl")
+	return val
 
 }
