@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v10.1"
-var describe = "分离升级服务器，分离图床启动CDN加速，增加cron参数自定义更新配置，如无配置则为每日10点22点随机分钟数更新"
+var version = "v10.2"
+var describe = "动态登录菜单，二维码转为口令登录"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"

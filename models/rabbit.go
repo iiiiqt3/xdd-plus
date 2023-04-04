@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
@@ -30,11 +29,15 @@ func RabbitGetJdQrImg(sender *Sender) {
 	bytes, _ := get.Bytes()
 	code, _ := jsonparser.GetInt(bytes, "code")
 	if code == 0 {
-		qr, _ := jsonparser.GetString(bytes, "qr")
+
 		key, _ := jsonparser.GetString(bytes, "QRCodeKey")
-		decodeStr, _ := base64.StdEncoding.DecodeString(qr)
-		sender.SendImg(decodeStr)
-		sender.Reply("请使用京东APP扫码，150秒失效")
+		sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
+
+		//qr, _ := jsonparser.GetString(bytes, "qr")
+		//decodeStr, _ := base64.StdEncoding.DecodeString(qr)
+		//sender.SendImg(decodeStr)
+
+		sender.Reply("请复制口令到京东APP登录，150秒失效")
 		go RabbitGetJDQrStatus(key, sender)
 	} else {
 		logs.Info(string(bytes))

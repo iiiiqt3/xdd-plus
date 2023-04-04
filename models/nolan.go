@@ -6,7 +6,6 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
-	"github.com/skip2/go-qrcode"
 	"strconv"
 	"strings"
 	"time"
@@ -34,9 +33,12 @@ func NolanGetJdQrImg(sender *Sender) {
 	code, _ := jsonparser.GetBoolean(bytes, "success")
 	if code {
 		key, _ := jsonparser.GetString(bytes, "data", "key")
-		var png []byte
-		png, _ = qrcode.Encode("https://qr.m.jd.com/p?k="+key, qrcode.Medium, 256)
-		sender.SendImg(png)
+		//var png []byte
+		//png, _ = qrcode.Encode("https://qr.m.jd.com/p?k="+key, qrcode.Medium, 256)
+		//sender.SendImg(png)
+
+		sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
+
 		logs.Info(key)
 		if Config.QQID == 764763903 {
 			SendQQMsg(QQMessage{
@@ -54,22 +56,8 @@ func NolanGetJdQrImg(sender *Sender) {
 				Echo: "",
 			})
 
-			SendQQMsg(QQMessage{
-				Action: "send_msg",
-				QQMsg: struct {
-					MessageType string `json:"message_type"`
-					UserId      int    `json:"user_id"`
-					GroupID     int    `json:"group_id"`
-					Message     string `json:"message"`
-				}{
-					UserId:  sender.UserID,
-					GroupID: 0,
-					Message: LJtoKL("https://qr.m.jd.com/p?k=" + key),
-				},
-				Echo: "",
-			})
 		}
-		sender.Reply("请使用京东APP扫码，150秒失效")
+		sender.Reply("请复制口令到京东APP登录，150秒失效")
 		go NolanGetJDQrStatus(key, sender)
 	} else {
 		logs.Info(string(bytes))

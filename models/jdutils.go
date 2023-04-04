@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
@@ -45,17 +46,9 @@ func KLtoLJ(kl string) string {
 	}
 }
 
-func NolanKl(kl string) string {
-	//rsp := httplib.Post("https://api.nolanstore.top/JComExchange")
-	//rsp.Header("Content-Type", "application/json")
-	//rsp.Header("Accept", "*/*")
-	//rsp.Body("{\n  \"code\": \"15:/缝纫机教师😁，⇝𝒥𝓲𝓲𝓲𝓷𝓰◗凍(Q6BXW0mhbly)\"\n}")
-	//body, _ := rsp.Bytes()
-	//logs.Info(string(body))
-	//val, _ := jsonparser.GetString(body, "data", "jumpUrl")
-	//return val
+func NolanKlToLj(kl string) string {
 
-	resp, err := http.Post("https://api.nolanstore.top/JComExchange", "application/json", strings.NewReader("{\n  \"code\": \"15:/缝纫机教师😁，⇝𝒥𝓲𝓲𝓲𝓷𝓰◗凍(Q6BXW0mhbly)\"\n}"))
+	resp, err := http.Post("https://api.nolanstore.top/JComExchange", "application/json", strings.NewReader(fmt.Sprintf("{\n  \"code\": \"%s\"\n}", kl)))
 	if err != nil {
 		logs.Info("post请求失败 error: %+v", err)
 
@@ -68,6 +61,25 @@ func NolanKl(kl string) string {
 	}
 	logs.Info(string(body))
 	val, _ := jsonparser.GetString(body, "data", "jumpUrl")
+	return val
+
+}
+
+func NolanLJToKL(lj string, title string) string {
+
+	resp, err := http.Post("https://api.nolanstore.top/JCommand", "application/json", strings.NewReader(fmt.Sprintf("{\n  \"url\": \"%s\",\n  \"title\": \"%s\",\n  \"img\": \"\"\n}", lj, title)))
+	if err != nil {
+		logs.Info("post请求失败 error: %+v", err)
+
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logs.Info("读取Body失败 error: %+v", err)
+
+	}
+	logs.Info(string(body))
+	val, _ := jsonparser.GetString(body, "data")
 	return val
 
 }
