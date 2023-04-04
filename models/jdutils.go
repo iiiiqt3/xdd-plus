@@ -45,7 +45,7 @@ func KLtoLJ(kl string) string {
 }
 
 func NolanKl(kl string) string {
-	rsp := httplib.Post("http://api.nolanstore.top/JComExchange")
+	rsp := httplib.Post("https://api.nolanstore.top/JComExchange")
 	rsp.Header("Content-Type", "application/json")
 	rsp.Header("Accept", "*/*")
 	//rsp.Param("body", "{\r\n  \"code\": \"口令海量低价好物，新人享1分购噢！  http:/JEFc2BMGPfeew1副制这段话￥G9Q4kDK5Vh%⇝【⤴ιng▴栋特价】\"\r\n}")
