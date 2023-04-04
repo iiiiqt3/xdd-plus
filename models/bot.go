@@ -380,7 +380,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					go LoginSelect(sender, msg)
 
 					msgs := []string{
-						fmt.Sprintf("请选择登录渠道: \r\n"),
+						fmt.Sprintf("请选择登录渠道:"),
 					}
 
 					RabbitUrl = GetEnv("RabbitUrl")

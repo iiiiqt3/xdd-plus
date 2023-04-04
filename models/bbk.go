@@ -103,11 +103,15 @@ func BBKGetJdQrImg(sender *Sender) {
 	cookies := response.Cookies()
 	ck := cookies[0].Name + "=" + cookies[0].Value
 	all, _ := ioutil.ReadAll(response.Body)
-	val, _ := jsonparser.GetString(all, "data", "qr")
-	replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
-	decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
-	sender.SendImg(decodeStr)
-	sender.Reply("请使用京东APP扫码,有效期为160秒")
+
+	key, _ := jsonparser.GetString(all, "data", "qrUrl")
+	sender.Reply(NolanLJToKL(key, "京东快捷登录"))
+
+	//val, _ := jsonparser.GetString(all, "data", "qr")
+	//replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
+	//decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
+	//sender.SendImg(decodeStr)
+	sender.Reply("请复制到京东APP打开,有效期为160秒")
 	go BBKGetJdQrStatus(ck, sender)
 }
 
