@@ -648,6 +648,15 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"测试"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			NolanKl("")
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"设置管理员"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
