@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v10.3"
-var describe = "适配BBK京东 修复空格"
+var version = "v10.4"
+var describe = "修复定时异常"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"

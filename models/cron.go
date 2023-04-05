@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"github.com/beego/beego/v2/adapter/logs"
 	"github.com/robfig/cron/v3"
 	"math/rand"
@@ -30,6 +31,12 @@ func initCron() {
 	if spec == "" {
 		spec = strconv.Itoa(rand.Intn(59)) + " 10/12 * * ?" //cron表达式，每秒一次
 	}
+
+	c.AddFunc(spec, func() {
+		fmt.Println("开始wskey转换")
+		updateCookie()
+		UpdateRwskey()
+	})
 
 	c.AddFunc(strconv.Itoa(rand.Intn(59))+" "+strconv.Itoa(rand.Intn(24))+" * * ?", getAuthFlag)
 	c.AddFunc(strconv.Itoa(rand.Intn(59))+" 10 5/7 * ?", GetAuthKey)

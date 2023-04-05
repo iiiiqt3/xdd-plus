@@ -394,10 +394,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					BBKJdUrl = GetEnv("BBKJdUrl")
 					BBKWxUrl = GetEnv("BBKWxUrl")
 
-					RabbitUrl = GetEnv("RabbitUrl")
-					RabbitApiToken = GetEnv("RabbitApiToken")
-					RabbitToken = GetEnv("RabbitToken")
-
 					if RabbitUrl != "" && RabbitApiToken != "" && RabbitToken != "" {
 						msgs = append(msgs, "1:兔子京东扫码")
 					}
