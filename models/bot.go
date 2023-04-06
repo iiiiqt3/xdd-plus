@@ -111,9 +111,8 @@ var ListenQQGroupMessage = func(uid int, gid int, msg string) {
 	}
 }
 
-var pcodes = make(map[int]string)
+var smsList = make(map[int]chan string)
 var replies = map[string]string{}
-var riskcodes = make(map[int]string)
 var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0

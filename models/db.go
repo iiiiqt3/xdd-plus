@@ -76,6 +76,15 @@ func HasWsKey(key string) bool {
 	return false
 }
 
+type Wish struct {
+	ID         int
+	CreatedAt  time.Time
+	UserNumber int
+	Content    string
+	Coin       int
+	Status     int // 1 2
+}
+
 type JdCookie struct {
 	ID        int    `gorm:"column:ID;primaryKey"`
 	Priority  int    `gorm:"column:Priority;default:1"`
