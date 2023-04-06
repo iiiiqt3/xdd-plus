@@ -77,7 +77,13 @@ func NolanLJToKL(lj string, title string) string {
 		logs.Info("post请求失败 error: %+v", err)
 
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logs.Info("获取失败")
+		}
+	}(resp.Body)
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logs.Info("读取Body失败 error: %+v", err)
@@ -85,7 +91,10 @@ func NolanLJToKL(lj string, title string) string {
 	}
 	logs.Info(string(body))
 	val, _ := jsonparser.GetString(body, "data")
-	return val
+	if val != "" {
+		return val
+	}
+	return "口令转换失败，请重新获取"
 
 }
 
