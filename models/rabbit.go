@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -27,6 +26,7 @@ func RabbitGetJdQrImg(sender *Sender) {
 	}
 	get := httplib.Post(fmt.Sprintf("%s/api/BeanQrCode?token=%s", RabbitUrl, RabbitApiToken))
 	bytes, _ := get.Bytes()
+	logs.Info(string(bytes))
 	code, _ := jsonparser.GetInt(bytes, "code")
 	if code == 0 {
 
@@ -197,61 +197,61 @@ func UpdateRwskey() {
 	(&JdCookie{}).Push(fmt.Sprintf("所有CK转换完成，共%d个,转换失败个数共%d个", xx, yy))
 }
 
-func RabbitSendSMS(phone string, sender *Sender) {
-	sender.Reply("请耐心等待...")
-	addr := Config.Madurl
-	req := httplib.Post(addr + "/api/SendSMS")
-	req.Header("content-type", "application/json")
-	data, _ := req.Body(`{"Phone":"` + phone + `","qlkey":0}`).Bytes()
-	message, _ := jsonparser.GetString(data, "message")
-	success, _ := jsonparser.GetBoolean(data, "success")
-	status, _ := jsonparser.GetInt(data, "data", "status")
-	if message != "" && status != 666 {
-		sender.Reply(message)
-	}
-	i := 1
-	if success {
-		pcodes[sender.UserID] = phone
-		logs.Info(string(sender.UserID))
-		sender.Reply("请输入6位验证码：")
-		return
-	}
-	//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
-	if !success && status == 666 {
-
-		sender.Reply("正在进行验证...")
-		for {
-			i++
-			req = httplib.Post(addr + "/api/AutoCaptcha")
-			req.Header("content-type", "application/json")
-			data, _ := req.Body(`{"Phone":"` + phone + `"}`).Bytes()
-			message, _ := jsonparser.GetString(data, "message")
-			success, _ := jsonparser.GetBoolean(data, "success")
-			status, _ := jsonparser.GetInt(data, "data", "status")
-			if success {
-				pcodes[sender.UserID] = phone
-				sender.Reply("请输入6位验证码：")
-				break
-			}
-			if i > 5 {
-				//pcodes[sender.UserID] = msg
-				//s := Config.Jdcurl + "/Captcha/" + msg
-				//sender.Reply(fmt.Sprintf("请访问网址进行手动验证%s", s))
-				sender.Reply("滑块验证失败,请尝试重新登录")
-				break
-			}
-			if status == 666 {
-				i++
-				sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
-				continue
-			}
-			if strings.Contains(message, "上限") {
-				i = 6
-				sender.Reply(message)
-				break
-			}
-		}
-	} else {
-		sender.Reply("滑块失败，请网页登录")
-	}
-}
+//func RabbitSendSMS(phone string, sender *Sender) {
+//	sender.Reply("请耐心等待...")
+//	addr := Config.Madurl
+//	req := httplib.Post(addr + "/api/SendSMS")
+//	req.Header("content-type", "application/json")
+//	data, _ := req.Body(`{"Phone":"` + phone + `","qlkey":0}`).Bytes()
+//	message, _ := jsonparser.GetString(data, "message")
+//	success, _ := jsonparser.GetBoolean(data, "success")
+//	status, _ := jsonparser.GetInt(data, "data", "status")
+//	if message != "" && status != 666 {
+//		sender.Reply(message)
+//	}
+//	i := 1
+//	if success {
+//		pcodes[sender.UserID] = phone
+//		logs.Info(string(sender.UserID))
+//		sender.Reply("请输入6位验证码：")
+//		return
+//	}
+//	//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
+//	if !success && status == 666 {
+//
+//		sender.Reply("正在进行验证...")
+//		for {
+//			i++
+//			req = httplib.Post(addr + "/api/AutoCaptcha")
+//			req.Header("content-type", "application/json")
+//			data, _ := req.Body(`{"Phone":"` + phone + `"}`).Bytes()
+//			message, _ := jsonparser.GetString(data, "message")
+//			success, _ := jsonparser.GetBoolean(data, "success")
+//			status, _ := jsonparser.GetInt(data, "data", "status")
+//			if success {
+//				pcodes[sender.UserID] = phone
+//				sender.Reply("请输入6位验证码：")
+//				break
+//			}
+//			if i > 5 {
+//				//pcodes[sender.UserID] = msg
+//				//s := Config.Jdcurl + "/Captcha/" + msg
+//				//sender.Reply(fmt.Sprintf("请访问网址进行手动验证%s", s))
+//				sender.Reply("滑块验证失败,请尝试重新登录")
+//				break
+//			}
+//			if status == 666 {
+//				i++
+//				sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
+//				continue
+//			}
+//			if strings.Contains(message, "上限") {
+//				i = 6
+//				sender.Reply(message)
+//				break
+//			}
+//		}
+//	} else {
+//		sender.Reply("滑块失败，请网页登录")
+//	}
+//}
