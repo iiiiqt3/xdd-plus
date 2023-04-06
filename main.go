@@ -114,6 +114,8 @@ func main() {
 		web.Router("/wx/receive", &controllers.WxController{}, "post:HandleWxMessage")
 		web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
 		web.Router("/qq", &controllers.QQController{}, "get,post:Echo")
+		web.Router("/api/envs", &controllers.AccountController{}, "get:ListEnvs")
+		web.Router("/api/envs", &controllers.AccountController{}, "post:CreateOrUpdateEnv")
 	}
 
 	if models.Config.Static == "" {

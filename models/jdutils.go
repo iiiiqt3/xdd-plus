@@ -1,13 +1,18 @@
 package models
 
 import (
+	"crypto/md5"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
+	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"regexp"
 	"strings"
+	"time"
 )
 
 func LJtoKL(url string) string {
@@ -82,4 +87,28 @@ func NolanLJToKL(lj string, title string) string {
 	val, _ := jsonparser.GetString(body, "data")
 	return val
 
+}
+
+//随机slice数组
+func randShuffle(slice []JdCookie) {
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(slice), func(i, j int) {
+		slice[i], slice[j] = slice[j], slice[i]
+	})
+}
+
+func getMd5String1(str string) string {
+	m := md5.New()
+	io.WriteString(m, str)
+	arr := m.Sum(nil)
+	return fmt.Sprintf("%x", arr)
+}
+
+func FetchJdCookieValue(key string, cookies string) string {
+	match := regexp.MustCompile(key + `=([^;]*);{0,1}`).FindStringSubmatch(cookies)
+	if len(match) == 2 {
+		return match[1]
+	} else {
+		return ""
+	}
 }

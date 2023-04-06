@@ -1,12 +1,8 @@
 package models
 
 import (
-	"crypto/md5"
-	//	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	//	"github.com/skip2/go-qrcode"
-	"io"
+
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -246,102 +242,102 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			//验证码
-			{
-				regex := "^\\d{5}(\\d|X|x)$"
-				reg := regexp.MustCompile(regex)
-				if reg.MatchString(msg) {
-					logs.Info("进入验证码阶段")
-					addr := Config.Jdcurl
-					phone := pcodes[sender.UserID]
-					if len(addr) > 0 {
-						//若兰登录
-
-						risk := riskcodes[sender.UserID]
-						logs.Info(sender.UserID)
-						if strings.EqualFold(risk, "true") {
-							logs.Info("进入风险验证阶段")
-							if phone != "" {
-								req := httplib.Post(addr + "/api/VerifyCardCode")
-								req.Header("content-type", "application/json")
-								data, _ := req.Body(`{"Phone":"` + phone + `","QQ":"` + strconv.Itoa(sender.UserID) + `","qlkey":0,"Code":"` + msg + `"}`).Bytes()
-								var arkRes ArkRes
-								json.Unmarshal(data, &arkRes)
-								if arkRes.Success || strings.Contains(arkRes.Message, "添加xdd成功") {
-									sender.Reply("登录成功。可以继续登录下一个账号")
-									go func() {
-										Save <- &JdCookie{}
-									}()
-								} else if !arkRes.Success {
-									sender.Reply("验证失败,可能填写错误")
-								}
-							}
-							riskcodes[sender.UserID] = "false"
-						} else {
-							logs.Info("进入验证码阶段")
-							if phone != "" {
-								req := httplib.Post(addr + "/api/VerifyCode")
-								req.Header("content-type", "application/json")
-								data, _ := req.Body(`{"Phone":"` + phone + `","QQ":"` + strconv.Itoa(sender.UserID) + `","qlkey":0,"Code":"` + msg + `"}`).Bytes()
-								var arkRes ArkRes
-								json.Unmarshal(data, &arkRes)
-								if !arkRes.Success && arkRes.Data.Status == 555 {
-
-									switch arkRes.Data.Mode {
-									case "USER_ID":
-										//验证
-										sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
-										//做个标记
-										riskcodes[sender.UserID] = "true"
-										if arkRes.Message != "" {
-											sender.Reply(arkRes.Message)
-										}
-									case "HISTORY_DEVICE":
-										sender.Reply("新设备登录需要验证，前往京东APP-我的-设置-账户与安全-新设备登录确认中确认，好了对我说:000000")
-										riskcodes[sender.UserID] = "true"
-									}
-									//验证
-									sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
-									//做个标记
-									riskcodes[sender.UserID] = "true"
-									if arkRes.Message != "" {
-										sender.Reply(arkRes.Message)
-									}
-								} else if strings.Contains(arkRes.Message, "添加xdd成功") {
-									sender.Reply("登录成功。可以继续登录下一个账号")
-									go func() {
-										Save <- &JdCookie{}
-									}()
-								} else {
-									if arkRes.Message != "" {
-										sender.Reply(arkRes.Message)
-									} else {
-										sender.Reply("登陆失败，请重新登录，多次尝试失败请联系管理员")
-									}
-								}
-							}
-						}
-					} else if len(Config.Madurl) > 0 {
-
-					}
-				}
-			}
+			//{
+			//	regex := "^\\d{5}(\\d|X|x)$"
+			//	reg := regexp.MustCompile(regex)
+			//	if reg.MatchString(msg) {
+			//		logs.Info("进入验证码阶段")
+			//		addr := Config.Jdcurl
+			//		phone := pcodes[sender.UserID]
+			//		if len(addr) > 0 {
+			//			//若兰登录
+			//
+			//			risk := riskcodes[sender.UserID]
+			//			logs.Info(sender.UserID)
+			//			if strings.EqualFold(risk, "true") {
+			//				logs.Info("进入风险验证阶段")
+			//				if phone != "" {
+			//					req := httplib.Post(addr + "/api/VerifyCardCode")
+			//					req.Header("content-type", "application/json")
+			//					data, _ := req.Body(`{"Phone":"` + phone + `","QQ":"` + strconv.Itoa(sender.UserID) + `","qlkey":0,"Code":"` + msg + `"}`).Bytes()
+			//					var arkRes ArkRes
+			//					json.Unmarshal(data, &arkRes)
+			//					if arkRes.Success || strings.Contains(arkRes.Message, "添加xdd成功") {
+			//						sender.Reply("登录成功。可以继续登录下一个账号")
+			//						go func() {
+			//							Save <- &JdCookie{}
+			//						}()
+			//					} else if !arkRes.Success {
+			//						sender.Reply("验证失败,可能填写错误")
+			//					}
+			//				}
+			//				riskcodes[sender.UserID] = "false"
+			//			} else {
+			//				logs.Info("进入验证码阶段")
+			//				if phone != "" {
+			//					req := httplib.Post(addr + "/api/VerifyCode")
+			//					req.Header("content-type", "application/json")
+			//					data, _ := req.Body(`{"Phone":"` + phone + `","QQ":"` + strconv.Itoa(sender.UserID) + `","qlkey":0,"Code":"` + msg + `"}`).Bytes()
+			//					var arkRes ArkRes
+			//					json.Unmarshal(data, &arkRes)
+			//					if !arkRes.Success && arkRes.Data.Status == 555 {
+			//
+			//						switch arkRes.Data.Mode {
+			//						case "USER_ID":
+			//							//验证
+			//							sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
+			//							//做个标记
+			//							riskcodes[sender.UserID] = "true"
+			//							if arkRes.Message != "" {
+			//								sender.Reply(arkRes.Message)
+			//							}
+			//						case "HISTORY_DEVICE":
+			//							sender.Reply("新设备登录需要验证，前往京东APP-我的-设置-账户与安全-新设备登录确认中确认，好了对我说:000000")
+			//							riskcodes[sender.UserID] = "true"
+			//						}
+			//						//验证
+			//						sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
+			//						//做个标记
+			//						riskcodes[sender.UserID] = "true"
+			//						if arkRes.Message != "" {
+			//							sender.Reply(arkRes.Message)
+			//						}
+			//					} else if strings.Contains(arkRes.Message, "添加xdd成功") {
+			//						sender.Reply("登录成功。可以继续登录下一个账号")
+			//						go func() {
+			//							Save <- &JdCookie{}
+			//						}()
+			//					} else {
+			//						if arkRes.Message != "" {
+			//							sender.Reply(arkRes.Message)
+			//						} else {
+			//							sender.Reply("登陆失败，请重新登录，多次尝试失败请联系管理员")
+			//						}
+			//					}
+			//				}
+			//			}
+			//		} else if len(Config.Madurl) > 0 {
+			//
+			//		}
+			//	}
+			//}
 
 			//手机号
-			{
-				ist := pcodes[(sender.UserID)]
-				if strings.EqualFold(ist, "true") {
-					regular := `^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$`
-					reg := regexp.MustCompile(regular)
-					if reg.MatchString(msg) {
-						//诺兰登录
-						if len(Config.Jdcurl) > 0 {
-							NolanSendSMS(msg, sender)
-						} else if len(Config.Madurl) > 0 {
-							RabbitSendSMS(msg, sender)
-						}
-					}
-				}
-			}
+			//{
+			//	ist := pcodes[(sender.UserID)]
+			//	if strings.EqualFold(ist, "true") {
+			//		regular := `^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$`
+			//		reg := regexp.MustCompile(regular)
+			//		if reg.MatchString(msg) {
+			//			//诺兰登录
+			//			if len(Config.Jdcurl) > 0 {
+			//				NolanSendSMS(msg, sender)
+			//			} else if len(Config.Madurl) > 0 {
+			//				RabbitSendSMS(msg, sender)
+			//			}
+			//		}
+			//	}
+			//}
 
 			//识别登录
 			{
@@ -711,30 +707,6 @@ func runtyt(sender *Sender, code string) {
 			tytnum--
 			return
 		}
-	}
-}
-
-//随机slice数组
-func randShuffle(slice []JdCookie) {
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(slice), func(i, j int) {
-		slice[i], slice[j] = slice[j], slice[i]
-	})
-}
-
-func getMd5String1(str string) string {
-	m := md5.New()
-	io.WriteString(m, str)
-	arr := m.Sum(nil)
-	return fmt.Sprintf("%x", arr)
-}
-
-func FetchJdCookieValue(key string, cookies string) string {
-	match := regexp.MustCompile(key + `=([^;]*);{0,1}`).FindStringSubmatch(cookies)
-	if len(match) == 2 {
-		return match[1]
-	} else {
-		return ""
 	}
 }
 
