@@ -31,7 +31,12 @@ func RabbitGetJdQrImg(sender *Sender) {
 	if code == 0 {
 
 		key, _ := jsonparser.GetString(bytes, "QRCodeKey")
-		sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
+
+		//返回口令
+		jcommond, _ := jsonparser.GetString(bytes, "jcommond")
+		sender.Reply(jcommond)
+
+		//sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
 
 		//qr, _ := jsonparser.GetString(bytes, "qr")
 		//decodeStr, _ := base64.StdEncoding.DecodeString(qr)
