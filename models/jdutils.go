@@ -75,7 +75,7 @@ func NolanLJToKL(lj string, title string) string {
 	resp, err := http.Post("https://api.nolanstore.top/JCommand", "application/json", strings.NewReader(fmt.Sprintf("{\n  \"url\": \"%s\",\n  \"title\": \"%s\",\n  \"img\": \"\"\n}", lj, title)))
 	if err != nil {
 		logs.Info("post请求失败 error: %+v", err)
-
+		return "口令转换失败，请重新获取"
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
