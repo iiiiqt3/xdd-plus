@@ -521,7 +521,7 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"查询", "query"},
 		Handle: func(sender *Sender) interface{} {
-
+			sender.Reply("正在为您查询，请耐心等待")
 			switch sender.Type {
 			case "wx":
 				sender.handleJdCookies(func(ck *JdCookie) {
