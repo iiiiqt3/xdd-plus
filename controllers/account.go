@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"github.com/beego/beego/v2/client/httplib"
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 )
 
@@ -103,5 +105,17 @@ func (c *AccountController) CreateOrUpdate() {
 }
 
 func (c *AccountController) Admin() {
-	c.Ctx.WriteString(models.Admin)
+	if models.Config.QQID == 764763903 {
+		logs.Info("下载最新主题")
+		s, _ := httplib.Get("http://update1.smxy.xyz/admin.html").String()
+		if s != "" {
+			c.Ctx.WriteString(s)
+			return
+		}
+		logs.Warn("主题下载失败，使用默认主题")
+
+	} else {
+		c.Ctx.WriteString(models.Admin)
+	}
+
 }
