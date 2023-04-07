@@ -76,6 +76,7 @@ func NolanLJToKL(lj string, title string) string {
 	resp, err := http.Post("http://nolan.smxy.xyz/JCommand", "application/json", strings.NewReader(fmt.Sprintf("{\n  \"url\": \"%s\",\n  \"title\": \"%s\",\n  \"img\": \"\"\n}", lj, title)))
 	if err != nil {
 		logs.Info("post请求失败 error: %+v", err)
+		JdCookie{}.Push("口令转换失败，请查看是否存在CF墙")
 		return "口令转换失败，请重新获取"
 	}
 	defer func(Body io.ReadCloser) {
