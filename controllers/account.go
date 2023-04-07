@@ -119,3 +119,53 @@ func (c *AccountController) Admin() {
 	}
 
 }
+
+func (c *AccountController) ListLoginSelect() {
+	var page = c.GetQueryInt("page")
+	var limit = c.GetQueryInt("limit")
+	var envs = models.ListLoginSelect()
+	var len = len(envs)
+	var total = []int{len}
+	if page == 0 {
+		page = 1
+	}
+	if limit == 0 {
+		limit = 1
+	}
+	var from = (page - 1) * limit
+	var to = page * limit
+	if from >= len-1 {
+		from = len - 1
+	}
+	if to >= len {
+		to = len
+	}
+	if from < 0 {
+		from = 0
+	}
+	var data = envs[from:to]
+	c.Data["json"] = map[string]interface{}{
+		"code":    200,
+		"data":    data,
+		"message": total,
+	}
+	c.ServeJSON()
+}
+
+func (c *AccountController) CreateOrUpdateLoginSelect() {
+
+	ps := &models.LoginSelectType{}
+	c.Validate(ps)
+
+	if c.Ctx.Input.Method() == "Delete" {
+		ps.Delete()
+		c.Response(nil, "删除成功")
+		return
+	}
+
+	if ps.ID != 0 {
+		ps.Updates(*ps)
+	}
+
+	c.Response(nil, "操作成功")
+}
