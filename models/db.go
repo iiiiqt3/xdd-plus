@@ -40,6 +40,7 @@ func initDB() {
 		&Cache{},
 		&Key{},
 		&BakJdCookie{},
+		&LoginSelectType{},
 	)
 
 	keys = make(map[string]bool)
