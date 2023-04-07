@@ -129,6 +129,7 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				return
 			} else if msg == "没有次数了!" {
 				JdCookie{}.Push("Pro没有次数请及时签到")
+				return
 			} else if msg != "二维码未扫描，请扫描二维码" && msg != "请手机客户端确认登录" {
 				sender.Reply(msg)
 				return
