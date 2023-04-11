@@ -31,7 +31,6 @@ func initCron() {
 	if spec == "" {
 		spec = strconv.Itoa(rand.Intn(59)) + " 10/12 * * ?" //cron表达式，每秒一次
 	}
-
 	c.AddFunc(spec, func() {
 		fmt.Println("开始wskey转换")
 		updateCookie()
