@@ -68,7 +68,5 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			}
 		}
 
-		sender.Reply("无法识别")
-
 	}
 }
