@@ -7,11 +7,10 @@ import (
 
 var smsList = make(map[int]chan string)
 var phoneList = make(map[int]string)
+var Nark string
+var Rabbit string
 
 func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
-
-	var Nark string
-	var Rabbit string
 
 	switch smsSelect {
 
