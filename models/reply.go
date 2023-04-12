@@ -167,7 +167,6 @@ func SendWxMsg(uid string, msg string) {
 }
 
 func SendQQMsg(msg QQMessage) {
-
 	marshal, _ := json.Marshal(msg)
 	logs.Info(string(marshal))
 	msgchan <- marshal

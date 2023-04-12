@@ -107,7 +107,6 @@ var ListenQQGroupMessage = func(uid int, gid int, msg string) {
 	}
 }
 
-var smsList = make(map[int]chan string)
 var replies = map[string]string{}
 var tytlist = make(map[string]int)
 var tytno = 0
@@ -169,6 +168,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	}
 	if loginList[sender.UserID] != nil {
 		c2 := loginList[sender.UserID]
+		c2 <- msg
+		return nil
+	}
+
+	if smsList[sender.UserID] != nil {
+		c2 := smsList[sender.UserID]
 		c2 <- msg
 		return nil
 	}

@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v10.5"
-var describe = "优化代码，打开系统设置接口，增加Wskey短信初始化模块"
+var version = "v10.6"
+var describe = "短信Wskey"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
