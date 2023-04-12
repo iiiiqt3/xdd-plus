@@ -136,7 +136,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 			break
 		}
 
-		if Config.QQID == 764763903 {
+		if Config.QQID == 764763902 {
 			if n == "q" {
 				//todo退出流程
 				loginList[sender.UserID] = nil
@@ -251,6 +251,9 @@ func LoginSelect(sender *Sender, msg chan string) {
 					return
 				}
 				BBKGetWxQrImg(sender)
+			case "5":
+				loginList[sender.UserID] = nil
+				go SmsSelect(sender, make(chan string), "Rabbit")
 			case "q":
 				loginList[sender.UserID] = nil
 				close(msg)
