@@ -20,7 +20,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			logs.Error("Nark is empty")
 			return
 		}
-	case Rabbit:
+	case "Rabbit":
 		Rabbit = GetEnv("Rabbit")
 		if Nark == "" {
 			logs.Error("Rabbit is empty")
