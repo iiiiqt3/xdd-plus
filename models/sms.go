@@ -35,6 +35,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			break
 		}
 
+		logs.Info("收到消息" + n)
 		regex := "^\\d{5}(\\d|X|x)$"
 		reg := regexp.MustCompile(regex)
 		if reg.MatchString(n) {
