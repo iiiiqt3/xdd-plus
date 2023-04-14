@@ -13,7 +13,6 @@ var Rabbit string
 func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 
 	switch smsSelect {
-
 	case "Nolan":
 		Nark = GetEnv("Nark")
 		if Nark == "" {
@@ -22,7 +21,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 		}
 	case "Rabbit":
 		Rabbit = GetEnv("Rabbit")
-		if Nark == "" {
+		if Rabbit == "" {
 			logs.Error("Rabbit is empty")
 			return
 		}

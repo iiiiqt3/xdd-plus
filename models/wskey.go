@@ -198,9 +198,6 @@ func LoginSelect(sender *Sender, msg chan string) {
 					return
 				}
 				BBKGetWxQrImg(sender)
-			case 5:
-				loginList[sender.UserID] = nil
-				go SmsSelect(sender, make(chan string), "Rabbit")
 			default:
 				sender.Reply("无匹配渠道，如需回复'q'退出登录流程")
 			}
