@@ -209,6 +209,7 @@ func RabbitSendSMS(phone string, sender *Sender) {
 	req := httplib.Post(RabbitUrl + "/api/sendSMS")
 	req.Header("content-type", "application/json")
 	data, _ := req.Body(`{"Phone":"` + phone + `","qlkey":1}`).Bytes()
+	logs.Info(string(data))
 	message, _ := jsonparser.GetString(data, "message")
 	success, _ := jsonparser.GetBoolean(data, "success")
 	status, _ := jsonparser.GetInt(data, "data", "status")
