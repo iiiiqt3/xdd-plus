@@ -267,7 +267,40 @@ func RabbitSendCode(phone string, code string, sender *Sender) {
 	req.Header("content-type", "application/json")
 	data, _ := req.Body(fmt.Sprintf("{\n    \"Phone\": %s,\n    \"Code\": \"%s\",\n    \"qlkey\": 1\n}", phone, code)).Bytes()
 	logs.Info(string(data))
-	//message, _ := jsonparser.GetString(data, "message")
-	//success, _ := jsonparser.GetBoolean(data, "success")
-	//status, _ := jsonparser.GetInt(data, "data", "status")
+
+	message, _ := jsonparser.GetString(data, "msg")
+	pin, _ := jsonparser.GetString(data, "pin")
+	state, _ := jsonparser.GetInt(data, "code")
+	wskey, _ := jsonparser.GetString(data, "wskey")
+	appck, _ := jsonparser.GetString(data, "ck")
+
+	if state == 200 {
+
+		ptkey := FetchJdCookieValue("pt_key", appck)
+		ck := JdCookie{
+			PtPin: pin,
+			PtKey: ptkey,
+			WsKey: wskey,
+		}
+		if nck, err := GetJdCookie(ck.PtPin); err == nil {
+			nck.Updates(JdCookie{WsKey: wskey, QQ: sender.UserID, PtKey: ptkey})
+			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+		} else {
+			NewJdCookie(&ck)
+			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+			if sender.IsQQ() || sender.IsQQ() {
+				ck.Update(QQ, sender.UserID)
+			}
+			sender.Reply(fmt.Sprintf(msg))
+			sender.Reply(ck.Query())
+			(&JdCookie{}).Push(msg)
+		}
+
+		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+		(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+		smsList[sender.UserID] = nil
+	} else {
+		sender.Reply(message)
+	}
 }
