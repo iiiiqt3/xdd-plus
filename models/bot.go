@@ -410,6 +410,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						msgs = append(msgs, "4:BBK微信扫码")
 					}
 
+					if RabbitUrl != "" && RabbitApiToken != "" && RabbitToken != "" {
+						msgs = append(msgs, "5:兔子短信Wskey")
+					}
+
 					if Config.QQID == 764763903 {
 						sender.Reply("请选择登录渠道: \r\n  2:Nolan京东扫码  \r\n  如需退出请回复'q'退出登录流程")
 					} else {

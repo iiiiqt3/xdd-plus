@@ -23,6 +23,8 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 		if RabbitUrl == "" {
 			logs.Error("RabbitUrl is empty")
 			return
+		} else {
+			sender.Reply("请输入11位手机号")
 		}
 	}
 
@@ -33,7 +35,6 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			break
 		}
 
-		logs.Info("收到消息" + n)
 		regex := "^\\d{5}(\\d|X|x)$"
 		reg := regexp.MustCompile(regex)
 		if reg.MatchString(n) {
@@ -59,6 +60,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			case "Nolan":
 
 			case "Rabbit":
+
 				phoneList[sender.UserID] = n
 				go RabbitSendSMS(n, sender)
 			default:
