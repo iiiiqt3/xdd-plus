@@ -20,7 +20,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			return
 		}
 	case "Rabbit":
-		Rabbit = GetEnv("Rabbit")
+		Rabbit = GetEnv("RabbitUrl")
 		if Rabbit == "" {
 			logs.Error("Rabbit is empty")
 			return
