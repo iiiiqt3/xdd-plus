@@ -8,7 +8,6 @@ import (
 var smsList = make(map[int]chan string)
 var phoneList = make(map[int]string)
 var Nark string
-var Rabbit string
 
 func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 
@@ -20,9 +19,9 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			return
 		}
 	case "Rabbit":
-		Rabbit = GetEnv("RabbitUrl")
-		if Rabbit == "" {
-			logs.Error("Rabbit is empty")
+		RabbitUrl = GetEnv("RabbitUrl")
+		if RabbitUrl == "" {
+			logs.Error("RabbitUrl is empty")
 			return
 		}
 	}
