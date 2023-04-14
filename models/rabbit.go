@@ -257,6 +257,7 @@ func RabbitSendSMS(phone string, sender *Sender) {
 			}
 		}
 	} else {
+		smsList[sender.UserID] = nil
 		sender.Reply("滑块失败，请网页登录")
 	}
 }
