@@ -206,8 +206,7 @@ func UpdateRwskey() {
 func RabbitSendSMS(phone string, sender *Sender) {
 	sender.Reply("请耐心等待...")
 	logs.Info(RabbitUrl)
-	RabbitUrl = GetEnv("RabbitUrl")
-	req := httplib.Post(RabbitUrl + "/api/SendSMS")
+	req := httplib.Post(RabbitUrl + "/api/sendSMS")
 	req.Header("content-type", "application/json")
 	data, _ := req.Body(`{"Phone":"` + phone + `","qlkey":1}`).Bytes()
 	message, _ := jsonparser.GetString(data, "message")
