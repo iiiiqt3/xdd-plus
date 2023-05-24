@@ -154,6 +154,7 @@ func UpdateRwskey() {
 		//JdCookie{}.Push(fmt.Sprintf("更新账号账号，%s", ck.Nickname))
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.RWskey)
 		//rsp, _, appck := NolanGetCookie(pinky)
+
 		var rsp bool
 		var appck string
 		//自动切换转换渠道，默认nolan

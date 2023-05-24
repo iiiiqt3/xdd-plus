@@ -1168,6 +1168,48 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"更新指定R"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			sender.handleJdCookies(func(ck *JdCookie) {
+				if len(ck.WsKey) > 0 {
+					var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
+					_, _, rsp := RabbitGetCookie(pinky)
+					_, _, rsp = NolanGetCookie(pinky)
+					_, _, rsp = BBKGetCookie(pinky)
+
+					if len(rsp) > 0 {
+						if strings.Contains(rsp, "fake") {
+							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
+						}
+						ptKey := FetchJdCookieValue("pt_key", rsp)
+						ptPin := FetchJdCookieValue("pt_pin", rsp)
+						ck := JdCookie{
+							PtKey: ptKey,
+							PtPin: ptPin,
+						}
+						if nck, err := GetJdCookie(ck.PtPin); err == nil {
+							nck.Updates(JdCookie{PtKey: ptKey, Available: True})
+							msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
+							sender.Reply(msg)
+							logs.Info(msg)
+						} else {
+							sender.Reply("转换失败")
+						}
+					} else {
+						sender.Reply("转换失败")
+						//sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
+					}
+				} else {
+					sender.Reply(fmt.Sprintf("Wskey为空，%s", ck.Nickname))
+				}
+
+			})
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"删除", "clean"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {

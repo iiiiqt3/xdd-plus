@@ -72,7 +72,6 @@ func NolanKlToLj(kl string) string {
 
 func NolanLJToKL(lj string, title string) string {
 
-	//resp, err := http.Post("https://api.nolanstore.top/JCommand", "application/json", strings.NewReader(fmt.Sprintf("{\n  \"url\": \"%s\",\n  \"title\": \"%s\",\n  \"img\": \"\"\n}", lj, title)))
 	resp, err := http.Post("http://nolan.smxy.xyz/JCommand", "application/json", strings.NewReader(fmt.Sprintf("{\n  \"url\": \"%s\",\n  \"title\": \"%s\",\n  \"img\": \"\"\n}", lj, title)))
 	if err != nil {
 		logs.Info("post请求失败 error: %+v", err)
