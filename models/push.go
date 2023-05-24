@@ -12,6 +12,9 @@ func (ck JdCookie) Push(msg string) {
 		//go SendWxMsg()
 		go pushPlus(ck.PushPlus, msg)
 		go SendTgMsg(ck.Telegram, msg)
+		if ck.WeiXin != "" {
+			go SendWxMsg(ck.WeiXin, msg)
+		}
 	} else {
 		go SendQQ(Config.QQID, msg)
 		go qywxNotify(&QywxConfig{QywxKey: Config.QywxKey, Content: msg})
