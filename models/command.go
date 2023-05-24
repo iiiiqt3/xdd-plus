@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -1153,9 +1154,12 @@ var codeSignals = []CodeSignal{
 			sender.handleJdCookies(func(ck *JdCookie) {
 				if len(ck.WsKey) > 0 {
 					var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-					_, _, rsp := RabbitGetCookie(pinky)
-					_, _, rsp = NolanGetCookie(pinky)
+					_, _, rsp := NolanGetCookie(pinky)
 					_, _, rsp = BBKGetCookie(pinky)
+
+					pin, _ := url.QueryUnescape(ck.PtPin)
+					pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, ck.WsKey)
+					_, _, rsp = RabbitGetCookie(pinky)
 
 					if len(rsp) > 0 {
 						if strings.Contains(rsp, "fake") {
@@ -1264,7 +1268,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-	
+
 	{
 		Command: []string{"转账"},
 		Handle: func(sender *Sender) interface{} {
