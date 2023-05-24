@@ -195,6 +195,10 @@ func UpdateRwskey() {
 			}
 
 		} else {
+			ck.Updates(JdCookie{RWskey: "null", Available: False})
+			ck.Push(fmt.Sprintf("RWskey失效账号，%s，请联系管理员", ck.PtPin))
+			(&JdCookie{}).Push(fmt.Sprintf("RWskey失效，%s", ck.PtPin))
+			//todo Rwskey过期
 			(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
 		}
 	}
