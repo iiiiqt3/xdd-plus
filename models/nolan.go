@@ -139,7 +139,7 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 }
 
 func NolanGetCookie(cookie string) (bool, string, string) {
-	get := httplib.Post(fmt.Sprintf("%s/env/wskey", NolanUrl))
+	get := httplib.Post(fmt.Sprintf("%s/env/wskey", "http://192.168.195.53:5016"))
 	get.Header("Content-Type", "application/json")
 	//get.Body(fmt.Sprintf("{\n  \"botApiToken\": \"%s\",\n  \"wskey\": \"%s\"\n}", NolanToken, cookie))
 	get.Body(fmt.Sprintf("{\n  \"botApiToken\": \"%s\",\n  \"wskey\": \"%s\"\n}", "ashdjkasdkasjdlksjsadkldase", cookie))
