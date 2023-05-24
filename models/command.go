@@ -1153,13 +1153,13 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			sender.handleJdCookies(func(ck *JdCookie) {
 				if len(ck.WsKey) > 0 {
-					var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
+					var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.RWskey)
 					logs.Info(pinky)
 					_, _, rsp := NolanGetCookie(pinky)
 					_, _, rsp = BBKGetCookie(pinky)
 
 					pin, _ := url.QueryUnescape(ck.PtPin)
-					pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, ck.WsKey)
+					pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, ck.RWskey)
 					_, _, rsp = RabbitGetCookie(pinky)
 
 					if len(rsp) > 0 {
