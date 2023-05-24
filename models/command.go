@@ -199,27 +199,6 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-		Command: []string{"清空WCK"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			cleanWck()
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"删除WCK"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				ck.Update(WsKey, "")
-				sender.Reply(fmt.Sprintf("已删除WCK,%s", ck.Nickname))
-			})
-			return nil
-		},
-	},
-
-	{
 		Command: []string{"跑"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -1220,6 +1199,26 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+	{
+		Command: []string{"删除WCK"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			sender.handleJdCookies(func(ck *JdCookie) {
+				ck.Update(WsKey, "")
+				sender.Reply(fmt.Sprintf("已删除WCK,%s", ck.Nickname))
+			})
+			return nil
+		},
+	},
+
+	{
+		Command: []string{"清空WCK"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			cleanWck()
+			return nil
+		},
+	},
 
 	{
 		Command: []string{"清理过期账号"},
@@ -1265,17 +1264,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-	{
-		Command: []string{"删除WCK"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				ck.Update(WsKey, "")
-				sender.Reply(fmt.Sprintf("已删除WCK,%s", ck.Nickname))
-			})
-			return nil
-		},
-	},
+	
 	{
 		Command: []string{"转账"},
 		Handle: func(sender *Sender) interface{} {
