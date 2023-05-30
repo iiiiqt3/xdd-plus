@@ -235,20 +235,20 @@ func (ck *JdCookie) Query() string {
 			for _, rp := range rps {
 				b := Float64(rp.Balance)
 				asset.RedPacket.Total += b
-				if strings.Contains(rp.ActivityName, "京喜") || strings.Contains(rp.OrgLimitStr, "京喜") {
+				if strings.Contains(rp.OrgLimitStr, "京喜") || strings.Contains(rp.OrgLimitStr, "特价") {
 					asset.RedPacket.Jx += b
 					if ysd >= rp.EndTime {
 						asset.RedPacket.ToExpireJx += b
 						asset.RedPacket.ToExpire += b
 					}
-				} else if strings.Contains(rp.ActivityName, "特价版") {
+				} else if strings.Contains(rp.OrgLimitStr, "特价版") {
 					asset.RedPacket.Js += b
 					if ysd >= rp.EndTime {
 						asset.RedPacket.ToExpireJs += b
 						asset.RedPacket.ToExpire += b
 					}
 
-				} else if strings.Contains(rp.ActivityName, "京东健康") {
+				} else if strings.Contains(rp.OrgLimitStr, "京东健康") {
 					asset.RedPacket.Jk += b
 					if ysd >= rp.EndTime {
 						asset.RedPacket.ToExpireJk += b
