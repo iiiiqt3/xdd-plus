@@ -232,7 +232,7 @@ func (ck *JdCookie) Query() string {
 		ysd := int(time.Now().Add(24 * time.Hour).Unix())
 		if rps := <-rpc; len(rps) != 0 {
 			for _, rp := range rps {
-				b := Float64(rp.Balance)
+				b := rp.Balance
 				asset.RedPacket.Total += b
 				if strings.Contains(rp.OrgLimitStr, "京喜") || strings.Contains(rp.OrgLimitStr, "特价") {
 					asset.RedPacket.Jx += b
@@ -521,22 +521,46 @@ func getJingXiBeanDeatil(cookie string) []JingXiDetail {
 }
 
 type RedList struct {
-	ActivityName string `json:"activityName"`
-	Balance      string `json:"balance"`
-	BeginTime    int    `json:"beginTime"`
-	DelayRemark  string `json:"delayRemark"`
-	Discount     string `json:"discount"`
-	EndTime      int    `json:"endTime"`
-	HbID         string `json:"hbId"`
-	HbState      int    `json:"hbState"`
-	IsDelay      bool   `json:"isDelay"`
-	OrgLimitStr  string `json:"orgLimitStr"`
+	ActivityID        int           `json:"activityId"`
+	ActivityName      string        `json:"activityName"`
+	BackgroundLinkURL string        `json:"backgroundLinkUrl"`
+	Balance           float64       `json:"balance"`
+	BeginTime         int64         `json:"beginTime"`
+	Channel           string        `json:"channel"`
+	Count             int           `json:"count"`
+	CreateTime        int64         `json:"createTime"`
+	Delay             bool          `json:"delay"`
+	Delayed           bool          `json:"delayed"`
+	Discount          float64       `json:"discount"`
+	EndTime           int           `json:"endTime"`
+	HbFlag            string        `json:"hbFlag"`
+	HbID              string        `json:"hbId"`
+	HbState           int           `json:"hbState"`
+	HbType            int           `json:"hbType"`
+	HongbaoName       string        `json:"hongbaoName"`
+	HourLabel         int           `json:"hourLabel"`
+	OrderIDList       []interface{} `json:"orderIdList"`
+	OrgFlag           string        `json:"orgFlag,omitempty"`
+	OrgLimitStr       string        `json:"orgLimitStr"`
+	Pin               string        `json:"pin"`
+	SkuLimitStr       string        `json:"skuLimitStr"`
+	StationLimitStr   string        `json:"stationLimitStr"`
+	Yn                int           `json:"yn"`
+	PlatformFlag      string        `json:"platformFlag,omitempty"`
+	UseLinkURL        string        `json:"useLinkUrl,omitempty"`
 }
 
 func redPacket(cookie string, rpc chan []RedList) {
 	type UseRedInfo struct {
-		Count   int       `json:"count"`
-		RedList []RedList `json:"hongBaoList"`
+		Count       int       `json:"count"`
+		HongBaoList []RedList `json:"hongBaoList"`
+		Message     string    `json:"message"`
+		PageNum     int       `json:"pageNum"`
+		PageSize    int       `json:"pageSize"`
+		Pin         string    `json:"pin"`
+		ResultCode  int       `json:"resultCode"`
+		Success     bool      `json:"success"`
+		Tid         int       `json:"tid"`
 	}
 
 	a := UseRedInfo{}
@@ -552,7 +576,7 @@ func redPacket(cookie string, rpc chan []RedList) {
 	data, _ := req.Bytes()
 	logs.Info(string(data))
 	json.Unmarshal(data, &a)
-	rpc <- a.RedList
+	rpc <- a.HongBaoList
 }
 
 func initFarm(cookie string, state chan string) {
