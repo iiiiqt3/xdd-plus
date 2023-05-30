@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/beego/beego/v2/core/logs"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
@@ -150,7 +151,6 @@ func (ck *JdCookie) Query() string {
 		var rpc = make(chan []RedList)
 		var fruit = make(chan string)
 		var gold = make(chan int64)
-		var egg = make(chan int64)
 		var zjb = make(chan int64)
 		var xgc = make(chan string)
 		var dsy = make(chan string)
@@ -158,7 +158,6 @@ func (ck *JdCookie) Query() string {
 		go redPacket(cookie, rpc)
 		go initFarm(cookie, fruit)
 		go jsGold(cookie, gold)
-		go jxncEgg(cookie, egg)
 		go jdzz(cookie, zjb)
 		go jxgc(cookie, xgc)
 		go jdsy(cookie, dsy)
@@ -289,7 +288,6 @@ func (ck *JdCookie) Query() string {
 		} else {
 			msgs = append(msgs, fmt.Sprintf("京东赚赚：暂无数据"))
 		}
-		msgs = append(msgs, fmt.Sprintf("惊喜牧场：%d枚鸡蛋🥚", <-egg))
 
 	} else {
 		msgs = append(msgs, []string{
@@ -552,6 +550,7 @@ func redPacket(cookie string, rpc chan []RedList) {
 	req.Header("Referer", "https://h5.jd.com/")
 	req.Header("Cookie", cookie)
 	data, _ := req.Bytes()
+	logs.Info(string(data))
 	json.Unmarshal(data, &a)
 	rpc <- a.RedList
 }
@@ -780,22 +779,6 @@ func jsGold(cookie string, state chan int64) { //
 	data, _ := req.Bytes()
 	json.Unmarshal(data, &a)
 	state <- int64(a.Data.BalanceVO.GoldBalance)
-}
-
-func jxncEgg(cookie string, state chan int64) {
-	req := httplib.Get("https://m.jingxi.com/jxmc/queryservice/GetHomePageInfo?channel=7&sceneid=1001&activeid=null&activekey=null&isgift=1&isquerypicksite=1&_stk=activeid%2Cactivekey%2Cchannel%2Cisgift%2Cisquerypicksite%2Csceneid&_ste=1&h5st=20210818211830955%3B4408816258824161%3B10028%3Btk01w8db21b2130ny2eg0siAPpNQgBqjGzYfuG6IP7Z%2BAOB40BiqLQ%2Blglfi540AB%2FaQrTduHbnk61ngEeKn813gFeRD%3Bd9a0b833bf99a29ed726cbffa07ba955cc27d1ff7d2d55552878fc18fc667929&_=1629292710957&sceneval=2&g_login_type=1&g_ty=ls")
-	req.Header("User-Agent", ua)
-	req.Header("Host", "m.jingxi.com")
-	req.Header("Accept", "*/*")
-	req.Header("Connection", "keep-alive")
-	req.Header("Accept-Language", "zh-cn")
-	req.Header("Accept-Encoding", "gzip, deflate, br")
-	req.Header("Referer", "https://st.jingxi.com/pingou/jxmc/index.html?nativeConfig=%7B%22immersion%22%3A1%2C%22toColor%22%3A%22%23e62e0f%22%7D&;__mcwvt=sjcp&ptag=7155.9.95")
-	req.Header("Cookie", cookie)
-	data, _ := req.Bytes()
-
-	egg, _ := jsonparser.GetInt(data, "data", "eggcnt")
-	state <- egg
 }
 
 func jdzz(cookie string, state chan int64) { //
