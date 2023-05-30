@@ -232,6 +232,7 @@ func (ck *JdCookie) Query() string {
 		ysd := int(time.Now().Add(24 * time.Hour).Unix())
 		if rps := <-rpc; len(rps) != 0 {
 			for _, rp := range rps {
+				logs.Info(rp)
 				b := rp.Balance
 				asset.RedPacket.Total += b
 				if strings.Contains(rp.OrgLimitStr, "京喜") || strings.Contains(rp.OrgLimitStr, "特价") {
