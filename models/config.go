@@ -181,3 +181,6 @@ func initConfig() {
 		Config.OpenFan = true
 	}
 }
+
+type systemConfig struct {
+}
