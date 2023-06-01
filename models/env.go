@@ -7,7 +7,14 @@ type Env struct {
 }
 
 func InitEnv() {
-
+	//
+	//envs := GetEnvs()
+	//for i, env := range envs {
+	//
+	//	if env.Name {
+	//
+	//	}
+	//}
 }
 
 func ExportEnv(env *Env) {
@@ -24,7 +31,7 @@ func UnExportEnv(env *Env) {
 }
 
 func GetEnvs() []Env {
-	envs := []Env{}
+	var envs []Env
 	db.Find(&envs)
 	return envs
 }

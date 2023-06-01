@@ -229,7 +229,7 @@ func (ck *JdCookie) Query() string {
 		//logs.Info(ck.BeanNum)
 		xd, s := getXd(cookie)
 		msgs = append(msgs, fmt.Sprintf("当前京豆：%s京豆,%s喜豆", s, xd))
-		ysd := int(time.Now().Add(24 * time.Hour).Unix())
+		ysd := int(time.Now().Add(24*time.Hour).Unix()) * 1000
 		if rps := <-rpc; len(rps) != 0 {
 			for _, rp := range rps {
 				logs.Info(rp)
@@ -269,10 +269,10 @@ func (ck *JdCookie) Query() string {
 				return ""
 			}
 			msgs = append(msgs, []string{
-				fmt.Sprintf("所有红包：%.2f%s元🧧", asset.RedPacket.Total, e(asset.RedPacket.ToExpire)),
+				fmt.Sprintf("所有红包：%.2f%s元", asset.RedPacket.Total, e(asset.RedPacket.ToExpire)),
 				fmt.Sprintf("京喜红包：%.2f%s元", asset.RedPacket.Jx, e(asset.RedPacket.ToExpireJx)),
 				fmt.Sprintf("极速红包：%.2f%s元", asset.RedPacket.Js, e(asset.RedPacket.ToExpireJs)),
-				//fmt.Sprintf("健康红包：%.2f%s元", asset.RedPacket.Jk, e(asset.RedPacket.ToExpireJk)),
+				//fmt.Sprintf("健康红包：%.2f%s元", asset.RedPacket.Jk, e (asset.RedPacket.ToExpireJk)),
 				fmt.Sprintf("京东红包：%.2f%s元", asset.RedPacket.Jd, e(asset.RedPacket.ToExpireJd)),
 			}...)
 		} else {
