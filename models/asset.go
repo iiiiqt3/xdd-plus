@@ -146,18 +146,19 @@ func (ck *JdCookie) Query() string {
 		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
 		if ck.UpdateAt != "" {
 			parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
-			msgs = append(msgs, fmt.Sprintf("最后更新时间：%s", parse1))
+			logs.Info(parse1)
+			msgs = append(msgs, fmt.Sprintf("最后更新时间：%s", parse1.Format("2006-01-02T15:04:05")))
 		}
 		var rpc = make(chan []RedList)
 		var fruit = make(chan string)
 		var gold = make(chan int64)
-//		var zjb = make(chan int64)
-//		var jxzz = make(chan string)
+		//		var zjb = make(chan int64)
+		//		var jxzz = make(chan string)
 		go redPacket(cookie, rpc)
 		go initFarm(cookie, fruit)
 		go jsGold(cookie, gold)
-//		go jdzz(cookie, zjb)
-//		go jingxiangzhi(cookie, jxzz)
+		//		go jdzz(cookie, zjb)
+		//		go jingxiangzhi(cookie, jxzz)
 		today := time.Now().Local().Format("2006-01-02")
 		yestoday := time.Now().Local().Add(-time.Hour * 24).Format("2006-01-02")
 		today1 := time.Now().Local().Format("2006/01/02")
@@ -319,9 +320,6 @@ func getXd(cookie string) (string, string) {
 	}
 	return strconv.FormatInt(xibean, 10), strconv.FormatInt(jingbean, 10)
 }
-
-
-
 
 type BeanDetail struct {
 	Date         string `json:"date"`
@@ -690,8 +688,6 @@ func jdzz(cookie string, state chan int64) { //
 	mmc, _ := jsonparser.GetString(data, "data", "totalNum")
 	state <- int64(Int(mmc))
 }
-
-
 
 func jxGcFuncName(cookie string, body string, _stk string) *httplib.BeegoHTTPRequest {
 	now := time.Now()
