@@ -161,30 +161,8 @@ func (ck *JdCookie) Query() string {
 		//		go jingxiangzhi(cookie, jxzz)
 		today := time.Now().Local().Format("2006-01-02")
 		yestoday := time.Now().Local().Add(-time.Hour * 24).Format("2006-01-02")
-		today1 := time.Now().Local().Format("2006/01/02")
-		yestoday1 := time.Now().Local().Add(-time.Hour * 24).Format("2006/01/02")
 		page := 1
 		end := false
-		jds := getJingXiBeanDeatil(cookie)
-		if jds == nil {
-			msgs = append(msgs, "喜豆加载中，请耐心等待")
-		}
-		for _, jd := range jds {
-			amount := jd.Amount
-			if strings.Contains(jd.Createdate, today1) {
-				if amount > 0 {
-					asset.Bean.XDTodayIn += amount
-				} else {
-					asset.Bean.XDTodayOut += -amount
-				}
-			} else if strings.Contains(jd.Createdate, yestoday1) {
-				if amount > 0 {
-					asset.Bean.XDYestodayIn += amount
-				} else {
-					asset.Bean.XDYestodayOut += -amount
-				}
-			}
-		}
 		for {
 			if end {
 				msgs = append(msgs, []string{
