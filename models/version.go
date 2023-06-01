@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v10.6"
-var describe = "短信Wskey"
+var version = "v10.8"
+var describe = "修复Wskey更新"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
