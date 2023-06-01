@@ -38,7 +38,7 @@ func getKey(WSCK string) string {
 //}
 
 func getNewSign(sign string) string {
-	req := httplib.Post("http://nsign.smxy.xyz/sign")
+	req := httplib.Post(sign)
 	//req.Param("body", "{\"url\": \"https://plogin.m.jd.com/jd-mlogin/static/html/appjmp_blank.html\"}")
 	//req.Param("fn", "genToken")
 	req.Body("{\n  \"body\": {\"url\": \"https://plogin.m.jd.com/jd-mlogin/static/html/appjmp_blank.html\"},\n  \"fn\": \"genToken\"\n}")
