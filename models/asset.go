@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/core/logs"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -46,6 +45,50 @@ type Asset struct {
 		NcStatus float64
 		McStatus float64
 	}
+}
+
+type TotalBean struct {
+	Base struct {
+		TipUrl       string `json:"TipUrl"`
+		AccountType  int    `json:"accountType"`
+		CurPin       string `json:"curPin"`
+		HeadImageUrl string `json:"headImageUrl"`
+		IsJTH        string `json:"isJTH"`
+		JdNum        int    `json:"jdNum"`
+		Jvalue       int    `json:"jvalue"`
+		LevelName    string `json:"levelName"`
+		Mobile       string `json:"mobile"`
+		Nickname     string `json:"nickname"`
+		UserLevel    int    `json:"userLevel"`
+	} `json:"base"`
+	DefinePin        int    `json:"definePin"`
+	IsHitArea        int    `json:"isHitArea"`
+	IsHomeWhite      int    `json:"isHomeWhite"`
+	IsLongPwdActive  int    `json:"isLongPwdActive"`
+	IsPlusVip        bool   `json:"isPlusVip"`
+	IsRealNameAuth   bool   `json:"isRealNameAuth"`
+	IsShortPwdActive int    `json:"isShortPwdActive"`
+	Msg              string `json:"msg"`
+	OrderFlag        int    `json:"orderFlag"`
+	Retcode          int    `json:"retcode"`
+	UserFlag         int    `json:"userFlag"`
+}
+
+func getToTalBean(cookie string, totalBean chan TotalBean) {
+
+	a := TotalBean{}
+	req := httplib.Post(`https://wq.jd.com/user/info/QueryJDUserInfo?sceneval=2`)
+	req.Header("User-Agent", "jdapp;iPhone;9.4.4;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1")
+	req.Header("Accept", "application/json,text/plain, */*")
+	req.Header("Connection", "keep-alive")
+	req.Header("Accept-Language", "zh-cn")
+	req.Header("Accept-Encoding", "gzip, deflate, br")
+	req.Header("Referer", "https://wqs.jd.com/my/jingdou/my.shtml?sceneval=2")
+	req.Header("Cookie", cookie)
+	data, _ := req.Bytes()
+	logs.Info(string(data))
+	json.Unmarshal(data, &a)
+	totalBean <- a
 }
 
 var Int = func(s string) int {
@@ -147,7 +190,7 @@ func (ck *JdCookie) Query() string {
 		if ck.UpdateAt != "" {
 			parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
 			logs.Info(parse1)
-			msgs = append(msgs, fmt.Sprintf("最后更新时间：%s", parse1.Format("2006-01-02T15:04:05")))
+			msgs = append(msgs, fmt.Sprintf("最后更新时间：%s", parse1.Format("2006-01-02")))
 		}
 		var rpc = make(chan []RedList)
 		var fruit = make(chan string)
@@ -200,9 +243,7 @@ func (ck *JdCookie) Query() string {
 			}
 			page++
 		}
-		//logs.Info(ck.BeanNum)
-		xd, s := getXd(cookie)
-		msgs = append(msgs, fmt.Sprintf("当前京豆：%s京豆,%s喜豆", s, xd))
+
 		ysd := int(time.Now().Add(24*time.Hour).Unix()) * 1000
 		if rps := <-rpc; len(rps) != 0 {
 			for _, rp := range rps {
@@ -265,38 +306,6 @@ func (ck *JdCookie) Query() string {
 		msgs = append(msgs, Config.Query1)
 	}
 	return strings.Join(msgs, "\n")
-}
-
-func getXd(cookie string) (string, string) {
-	req := httplib.Get(fmt.Sprintf("https://m.jingxi.com/activeapi/querybeanamount?_=%t&sceneval=2&g_login_type=1&g_ty=ls", time.Now().UnixMilli()))
-	log.Info(time.Now().UnixMilli())
-	req.Header("User-Agent", "jdpingou;android;5.5.0;11;network/wifi;model/M2102K1C;appBuild/18299;partner/lcjx11;session/110;pap/JA2019_3111789;brand/Xiaomi;Mozilla/5.0 (Linux; Android 11; M2102K1C Build/RKQ1.201112.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/92.0.4515.159 Mobile Safari/537.36")
-	req.Header("Host", "m.jingxi.com")
-	req.Header("Accept", "*/*")
-	req.Header("Accept-Encoding", "gzip, deflate, br")
-	req.Header("Accept-Language", "zh-CN,zh-Hans;q=0.9")
-	req.Header("Referer", "https://st.jingxi.com/")
-	req.Header("Cookie", cookie)
-	value := GetEnv("proxy")
-	if value != "" {
-		proxy := func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI(value)
-			return u, nil
-		}
-		req.SetProxy(proxy)
-	}
-	resp, _ := req.Bytes()
-	xibean, err := jsonparser.GetInt(resp, "data", "xibean")
-	if err != nil {
-		log.Info(err)
-		return "喜豆加载中", "京豆加载中"
-	}
-	jingbean, err := jsonparser.GetInt(resp, "data", "jingbean")
-	if err != nil {
-		log.Info(err)
-		return "喜豆加载中", "京豆加载中"
-	}
-	return strconv.FormatInt(xibean, 10), strconv.FormatInt(jingbean, 10)
 }
 
 type BeanDetail struct {
