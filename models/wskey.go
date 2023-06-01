@@ -13,7 +13,7 @@ func getKey(WSCK string) string {
 	var ptKey = ""
 	sign := GetEnv("sign")
 	if sign == "" {
-		ptKey, _ = getTokenKey("https://sign.smxy.xyz/jd/sign", WSCK)
+		ptKey, _ = getTokenKey("https://nsign.smxy.xyz/jd/sign", WSCK)
 	} else {
 		ptKey, _ = getTokenKey(sign, WSCK)
 	}
@@ -27,14 +27,14 @@ func getKey(WSCK string) string {
 下面是sign接口
 */
 
-func getSelfSign(sign string) string {
-	req := httplib.Post(sign)
-	req.Param("body", "{}")
-	req.Param("functionId", "genToken")
-	data, _ := req.Bytes()
-	getString, _ := jsonparser.GetString(data, "data", "convertUrl")
-	return getString
-}
+//func getSelfSign(sign string) string {
+//	req := httplib.Post(sign)
+//	req.Param("body", "{}")
+//	req.Param("functionId", "genToken")
+//	data, _ := req.Bytes()
+//	getString, _ := jsonparser.GetString(data, "data", "convertUrl")
+//	return getString
+//}
 
 func getNewSign(sign string) string {
 	req := httplib.Post("http://nolan.smxy.xyz/sign")
@@ -43,18 +43,14 @@ func getNewSign(sign string) string {
 	req.Body("{\n  \"body\": {\"url\": \"https://plogin.m.jd.com/jd-mlogin/static/html/appjmp_blank.html\"},\n  \"fn\": \"genToken\"\n}")
 	req.Header("Content-Type", "application/json")
 	data, _ := req.Bytes()
-	logs.Info(string(data))
-
-	getString, _ := jsonparser.GetString(data, "data", "convertUrl")
-	logs.Info(getString)
+	getString, _ := jsonparser.GetString(data, "body")
 	return getString
 
 }
 
 func getTokenKey(sign string, WSCK string) (string, error) {
-	s := getSelfSign(sign)
-	s1 := getNewSign(sign)
-	logs.Info(s1)
+	//s := getSelfSign(sign)
+	s := getNewSign(sign)
 	logs.Info(s)
 	str := `https://api.m.jd.com/client.action?` + s + "&functionId=genToken"
 	req := httplib.Post(str)
