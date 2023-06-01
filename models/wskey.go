@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 func getKey(WSCK string) string {
@@ -49,23 +50,35 @@ func getNewSign(sign string) string {
 }
 
 func getTokenKey(sign string, WSCK string) (string, error) {
-	//s := getSelfSign(sign)
-	s := getNewSign(sign)
-	logs.Info(s)
-	str := `https://api.m.jd.com/client.action?` + s + "&functionId=genToken"
-	req := httplib.Post(str)
-	req.Header("cookie", WSCK)
-	req.Header("User-Agent", ua)
-	req.Header("content-type", `application/x-www-form-urlencoded; charset=UTF-8`)
-	req.Header("charset", `UTF-8`)
-	req.Header("accept-encoding", `br,gzip,deflate`)
-	req.Body(`%7B%22to%22%3A%20%22https%3A//m.jd.com%22%2C%20%22action%22%3A%20%22to%22%7D`)
-	data, err := req.Bytes()
-	if err != nil {
-		return "", err
+
+	var tokenKey string
+	var i = 0
+	for {
+		i++
+		//s := getSelfSign(sign)
+		s := getNewSign(sign)
+		logs.Info(s)
+		str := `https://api.m.jd.com/client.action?` + s + "&functionId=genToken"
+		req := httplib.Post(str)
+		req.Header("cookie", WSCK)
+		req.Header("User-Agent", ua)
+		req.Header("content-type", `application/x-www-form-urlencoded; charset=UTF-8`)
+		req.Header("charset", `UTF-8`)
+		req.Header("accept-encoding", `br,gzip,deflate`)
+		req.Body(`%7B%22to%22%3A%20%22https%3A//m.jd.com%22%2C%20%22action%22%3A%20%22to%22%7D`)
+		data, err := req.Bytes()
+		if err != nil {
+			return "", err
+		}
+		logs.Info(string(data))
+		tokenKey, _ = jsonparser.GetString(data, "tokenKey")
+
+		if tokenKey != "xxx" || i == 7 {
+			break
+		} else {
+			time.Sleep(time.Duration(2) * time.Second)
+		}
 	}
-	logs.Info(string(data))
-	tokenKey, _ := jsonparser.GetString(data, "tokenKey")
 	ptKey, _ := appjmp(tokenKey)
 	return ptKey, nil
 }
