@@ -38,8 +38,9 @@ func getSelfSign(sign string) string {
 
 func getNewSign(sign string) string {
 	req := httplib.Post("http://nolan.smxy.xyz/sign")
-	req.Param("body", "{\"url\": \"https://plogin.m.jd.com/jd-mlogin/static/html/appjmp_blank.html\"}")
-	req.Param("fn", "genToken")
+	//req.Param("body", "{\"url\": \"https://plogin.m.jd.com/jd-mlogin/static/html/appjmp_blank.html\"}")
+	//req.Param("fn", "genToken")
+	req.Body("{\n  \"body\": {\"url\": \"https://plogin.m.jd.com/jd-mlogin/static/html/appjmp_blank.html\"},\n  \"fn\": \"genToken\"\n}")
 	req.Header("Content-Type", "application/json")
 	data, _ := req.Bytes()
 	logs.Info(string(data))
