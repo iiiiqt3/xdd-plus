@@ -76,7 +76,7 @@ func getTokenKey(sign string, WSCK string) (string, error) {
 		if tokenKey != "xxx" || i == 7 {
 			break
 		} else {
-			time.Sleep(time.Duration(2) * time.Second)
+			time.Sleep(time.Duration(10) * time.Second)
 		}
 	}
 	ptKey, _ := appjmp(tokenKey)
