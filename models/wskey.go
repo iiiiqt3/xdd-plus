@@ -14,7 +14,8 @@ func getKey(WSCK string) string {
 	var ptKey = ""
 	sign := GetEnv("sign")
 	if sign == "" {
-		ptKey, _ = getTokenKey("http://nsign.smxy.xyz/sign", WSCK)
+		//ptKey, _ = getTokenKey("http://nsign.smxy.xyz/sign", WSCK)
+		ptKey, _ = getTokenKey("http://log.smxy.xyz", WSCK)
 	} else {
 		ptKey, _ = getTokenKey(sign, WSCK)
 	}

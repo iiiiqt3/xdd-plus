@@ -218,7 +218,7 @@ func updateCookie() {
 		if i == len(cks)/2 {
 			(&JdCookie{}).Push("Wskey已更新二分一")
 		}
-		time.Sleep(time.Duration(2) * time.Second)
+		time.Sleep(time.Duration(1) * time.Second)
 		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
 		rsp := getKey(pinky)
 		if strings.Contains(rsp, "错误") {
