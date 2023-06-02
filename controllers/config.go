@@ -10,6 +10,10 @@ type ConfigController struct {
 	BaseController
 }
 
+func (c *ConfigController) NextPrepare() {
+	c.Logined()
+}
+
 func (c *ConfigController) ListConfig() {
 
 	var config = models.ListConfig()
