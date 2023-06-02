@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 )
 
@@ -17,11 +18,12 @@ func (c *ConfigController) NextPrepare() {
 func (c *ConfigController) ListConfig() {
 
 	var config = models.ListConfig()
-	marshal, _ := json.Marshal(config)
+	//marshal, _ := json.Unmarshal(config)
+	logs.Info(config)
 
 	c.Data["json"] = map[string]interface{}{
 		"code": 200,
-		"data": marshal,
+		"data": config,
 	}
 	c.ServeJSON()
 }
