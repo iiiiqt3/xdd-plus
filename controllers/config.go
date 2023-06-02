@@ -10,7 +10,7 @@ type ConfigController struct {
 	BaseController
 }
 
-func (c *AccountController) ListConfig() {
+func (c *ConfigController) ListConfig() {
 
 	var config = models.ListConfig()
 	marshal, _ := json.Marshal(config)
@@ -22,7 +22,7 @@ func (c *AccountController) ListConfig() {
 	c.ServeJSON()
 }
 
-func (c *AccountController) CreateOrUpdateConfig() {
+func (c *ConfigController) CreateOrUpdateConfig() {
 
 	var result map[string]interface{}
 	err := json.Unmarshal(c.Ctx.Input.RequestBody, &result)
