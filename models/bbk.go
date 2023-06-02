@@ -36,6 +36,7 @@ func BBKGetWxQrImg(sender *Sender) {
 
 func BBKGetWxQrStatus(cookie string, sender *Sender) {
 	for {
+		time.Sleep(time.Second * time.Duration(5))
 		get := httplib.Get(fmt.Sprintf("%s/d/status?t=%d", BBKWxUrl, time.Now().Unix()))
 		get.Header("Cookie", cookie)
 		logs.Info(cookie)

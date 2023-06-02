@@ -596,6 +596,7 @@ func initFarm(cookie string, state chan string) {
 		req.SetProxy(proxy)
 	}
 	data, _ := req.Bytes()
+	logs.Info(string(data))
 	json.Unmarshal(data, &a)
 
 	rt := a.FarmUserPro.Name
