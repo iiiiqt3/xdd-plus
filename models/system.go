@@ -12,3 +12,11 @@ type SystemConfig struct {
 	BBKJdUrl       string
 	BBKToken       string
 }
+
+func ListConfig() SystemConfig {
+	var config SystemConfig
+	db.Find(&config)
+	Sys = config
+
+	return config
+}

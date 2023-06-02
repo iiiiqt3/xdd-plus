@@ -116,6 +116,9 @@ func main() {
 		web.Router("/qq", &controllers.QQController{}, "get,post:Echo")
 		web.Router("/api/envs", &controllers.AccountController{}, "get:ListEnvs")
 		web.Router("/api/envs", &controllers.AccountController{}, "post:CreateOrUpdateEnv")
+		web.Router("/api/config", &controllers.AccountController{}, "get:ListConfig")
+		web.Router("/api/config", &controllers.AccountController{}, "post,delete:CreateOrUpdateConfig")
+
 		//web.Router("/api/loginselect", &controllers.AccountController{}, "get:ListLoginSelect")
 		//web.Router("/api/loginselect", &controllers.AccountController{}, "post,delete:CreateOrUpdateLoginSelect")
 	}
