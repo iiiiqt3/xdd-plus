@@ -247,7 +247,6 @@ func (ck *JdCookie) Query() string {
 		ysd := int(time.Now().Add(24*time.Hour).Unix()) * 1000
 		if rps := <-rpc; len(rps) != 0 {
 			for _, rp := range rps {
-				logs.Info(rp)
 				b := rp.Balance
 				asset.RedPacket.Total += b
 				if strings.Contains(rp.OrgLimitStr, "京喜") || strings.Contains(rp.OrgLimitStr, "特价") {
@@ -431,7 +430,6 @@ func redPacket(cookie string, rpc chan []RedList) {
 	req.Header("Referer", "https://h5.jd.com/")
 	req.Header("Cookie", cookie)
 	data, _ := req.Bytes()
-	logs.Info(string(data))
 	json.Unmarshal(data, &a)
 	rpc <- a.HongBaoList
 }
