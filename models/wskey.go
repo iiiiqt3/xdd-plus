@@ -39,8 +39,6 @@ func getKey(WSCK string) string {
 
 func getNewSign(sign string) string {
 	req := httplib.Post(sign)
-	//req.Param("body", "{\"url\": \"https://plogin.m.jd.com/jd-mlogin/static/html/appjmp_blank.html\"}")
-	//req.Param("fn", "genToken")
 	req.Body("{\n  \"body\": {\"url\": \"https://plogin.m.jd.com/jd-mlogin/static/html/appjmp_blank.html\"},\n  \"fn\": \"genToken\"\n}")
 	req.Header("Content-Type", "application/json")
 	data, _ := req.Bytes()
@@ -57,7 +55,6 @@ func getTokenKey(sign string, WSCK string) (string, error) {
 		i++
 		//s := getSelfSign(sign)
 		s := getNewSign(sign)
-		logs.Info(s)
 		str := `https://api.m.jd.com/client.action?` + s + "&functionId=genToken"
 		req := httplib.Post(str)
 		req.Header("cookie", WSCK)
@@ -70,9 +67,7 @@ func getTokenKey(sign string, WSCK string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		logs.Info(string(data))
 		tokenKey, _ = jsonparser.GetString(data, "tokenKey")
-
 		if tokenKey != "xxx" || i == 7 {
 			break
 		} else {
