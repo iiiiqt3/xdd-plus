@@ -25,6 +25,7 @@ func init() {
 	logs.Info("当前%s", ExecPath)
 	InitChan()
 	initConfig()
+	initSysConfig()
 	initDB()
 	go initVersion()
 	//go initUserAgent()
@@ -55,6 +56,6 @@ func initNolan() {
 
 func initWX() {
 	if Config.Wx.Model == "nolan" {
-		
+
 	}
 }
