@@ -210,7 +210,7 @@ func (ck *JdCookie) Query() string {
 		end := false
 		to := <-totalbean
 		if to.IsPlusVip {
-			msgs = append(msgs, fmt.Sprintf("账号信息：%s,京享值:%s", "Plus会员", to.Base.Jvalue))
+			msgs = append(msgs, fmt.Sprintf("账号信息：%s,京享值:%d", "Plus会员", to.Base.Jvalue))
 		}
 		msgs = append(msgs, fmt.Sprintf("账号信息：%s"))
 		for {
