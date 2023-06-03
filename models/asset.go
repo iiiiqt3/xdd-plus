@@ -208,6 +208,11 @@ func (ck *JdCookie) Query() string {
 		yestoday := time.Now().Local().Add(-time.Hour * 24).Format("2006-01-02")
 		page := 1
 		end := false
+		to := <-totalbean
+		if to.IsPlusVip {
+			msgs = append(msgs, fmt.Sprintf("账号信息：%s,京享值:%s", "Plus会员", to.Base.Jvalue))
+		}
+		msgs = append(msgs, fmt.Sprintf("账号信息：%s"))
 		for {
 			if end {
 				msgs = append(msgs, []string{
@@ -245,7 +250,6 @@ func (ck *JdCookie) Query() string {
 			}
 			page++
 		}
-		to := <-totalbean
 		msgs = append(msgs, fmt.Sprintf("当前京豆：%d京豆", to.Base.JdNum))
 		ysd := int(time.Now().Add(24*time.Hour).Unix()) * 1000
 		if rps := <-rpc; len(rps) != 0 {
