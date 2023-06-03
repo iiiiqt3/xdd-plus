@@ -86,7 +86,7 @@ func getToTalBean(cookie string, totalBean chan TotalBean) {
 	req.Header("Referer", "https://wqs.jd.com/my/jingdou/my.shtml?sceneval=2")
 	req.Header("Cookie", cookie)
 	data, _ := req.Bytes()
-	logs.Info(string(data))
+	//logs.Info(string(data))
 	json.Unmarshal(data, &a)
 	totalBean <- a
 }
