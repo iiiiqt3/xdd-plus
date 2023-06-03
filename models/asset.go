@@ -197,11 +197,13 @@ func (ck *JdCookie) Query() string {
 		var gold = make(chan int64)
 		//		var zjb = make(chan int64)
 		//		var jxzz = make(chan string)
+		var totalbean = make(chan TotalBean)
+		go getToTalBean(cookie, totalbean)
 		go redPacket(cookie, rpc)
 		go initFarm(cookie, fruit)
 		go jsGold(cookie, gold)
 		//		go jdzz(cookie, zjb)
-		//		go jingxiangzhi(cookie, jxzz)
+		//		go jingxiangzhi(cookie,' jxzz)
 		today := time.Now().Local().Format("2006-01-02")
 		yestoday := time.Now().Local().Add(-time.Hour * 24).Format("2006-01-02")
 		page := 1
@@ -243,7 +245,8 @@ func (ck *JdCookie) Query() string {
 			}
 			page++
 		}
-
+		to := <-totalbean
+		msgs = append(msgs, fmt.Sprintf("当前京豆：%d京豆", to.Base.JdNum))
 		ysd := int(time.Now().Add(24*time.Hour).Unix()) * 1000
 		if rps := <-rpc; len(rps) != 0 {
 			for _, rp := range rps {
