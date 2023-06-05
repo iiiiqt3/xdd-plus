@@ -177,6 +177,24 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 var codeSignals = []CodeSignal{
 
 	{
+		Command: []string{"删掉"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			cost := sender.Contents[0]
+			//url_help :=sender.Contents[0]
+			if len(sender.Contents) >= 1 {
+				//sender.Contents = sender.Contents[1:]
+				sender.Reply(fmt.Sprintf("开始删除%s行", cost))
+				rsp := cmd(fmt.Sprintf("python3 ./tou_ck.py %s", cost), &Sender{})
+				sender.Reply(rsp)
+			} else {
+				sender.Reply("请配置开始信息")
+			}
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"生成卡密"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
