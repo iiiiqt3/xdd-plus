@@ -182,6 +182,7 @@ func runTask(task *Task, sender *Sender) string {
 		}
 	}
 	if msg != "" {
+		logs.Info("消息测试")
 		sender.Reply(msg)
 	}
 	task.Running = False
