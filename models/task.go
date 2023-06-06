@@ -131,14 +131,13 @@ func runTask(task *Task, sender *Sender) string {
 	} else {
 		cmd2.Dir = ExecPath + "/scripts/"
 	}
-	logs.Info("即将开始")
 	err = cmd2.Start()
-	logs.Info("即将开始1")
 	if err != nil {
 		logs.Warn("%v", err)
 		return ""
 	}
 	go func() {
+		logs.Info("进入测试")
 		msg := ""
 		reader := bufio.NewReader(stderr)
 		for {
@@ -148,6 +147,7 @@ func runTask(task *Task, sender *Sender) string {
 			}
 			msg += line
 		}
+		logs.Info(task.Name)
 		if msg != "" {
 			logs.Info(task.Name)
 			if (task.Name == "jd_qmckd_branchHelp.js" || task.Name == "jd_qmckd_taskHelp.js") && strings.Contains(msg, "本次共运行") {
