@@ -131,6 +131,7 @@ func runTask(task *Task, sender *Sender) string {
 	} else {
 		cmd2.Dir = ExecPath + "/scripts/"
 	}
+	logs.Info("即将开始")
 	err = cmd2.Start()
 	if err != nil {
 		logs.Warn("%v", err)
@@ -181,7 +182,6 @@ func runTask(task *Task, sender *Sender) string {
 		}
 	}
 	if msg != "" {
-
 		sender.Reply(msg)
 	}
 	task.Running = False
