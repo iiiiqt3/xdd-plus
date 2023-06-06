@@ -146,6 +146,7 @@ func runTask(task *Task, sender *Sender) string {
 			if err2 != nil || io.EOF == err2 {
 				break
 			}
+			logs.Info("test")
 			msg += line
 		}
 
