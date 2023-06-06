@@ -193,49 +193,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 	if Config.VIP {
 		switch msg {
-		default:
-
-			{ //快递拆红包
-				ss := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)shareType`).FindStringSubmatch(msg)
-				if len(ss) > 0 {
-					if !sender.IsAdmin {
-						coin := GetCoin(sender.UserID)
-						if coin < 25 {
-							return fmt.Sprintf("拆红包助力需要%d个互助值", 25)
-						}
-						RemCoin(sender.UserID, 25)
-						sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个积分,剩余%d", 25, GetCoin(sender.UserID)))
-					} else {
-						sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个互助值，管理员通道", 25))
-					}
-					runTask(&Task{Path: "jd_qmckd_branchHelp.js", Envs: []Env{
-						{Name: "jd_qmckd_inviteIdArr_expand", Value: ss[1]},
-					}}, sender)
-
-					return "拆红包助力已结束"
-				}
-			}
-
-			{ //拆快递_任务助力
-				ss := regexp.MustCompile(`taskHelp&inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(msg)
-				if len(ss) > 0 {
-					if !sender.IsAdmin {
-						coin := GetCoin(sender.UserID)
-						if coin < Config.Tyt {
-							return fmt.Sprintf("拆快递_任务助力需要%d个互助值", Config.Tyt)
-						}
-						RemCoin(sender.UserID, Config.Tyt)
-						sender.Reply(fmt.Sprintf("拆快递_任务助力即将开始，已扣除%d个积分,剩余%d", Config.Tyt, GetCoin(sender.UserID)))
-					} else {
-						sender.Reply(fmt.Sprintf("拆快递_任务助力即将开始，已扣除%d个互助值，管理员通道", Config.Tyt))
-					}
-					runTask(&Task{Path: "jd_qmckd_taskHelp.js", Envs: []Env{
-						{Name: "jd_qmckd_inviteIdArr", Value: ss[1]},
-					}}, sender)
-
-					return "拆快递_任务助力已结束"
-				}
-			}
+		default:			
 
 			//返利识别
 			{
@@ -658,6 +616,48 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						//return fmt.Sprintf("订单编号：%d,推一推结束", no)
 					}
 				}
+			}
+		}
+
+		{ //快递拆红包
+				ss := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)shareType`).FindStringSubmatch(msg)
+				if len(ss) > 0 {
+					if !sender.IsAdmin {
+						coin := GetCoin(sender.UserID)
+						if coin < 25 {
+							return fmt.Sprintf("拆红包助力需要%d个互助值", 25)
+						}
+						RemCoin(sender.UserID, 25)
+						sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个积分,剩余%d", 25, GetCoin(sender.UserID)))
+					} else {
+						sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个互助值，管理员通道", 25))
+					}
+					runTask(&Task{Path: "jd_qmckd_branchHelp.js", Envs: []Env{
+						{Name: "jd_qmckd_inviteIdArr_expand", Value: ss[1]},
+					}}, sender)
+
+					return "拆红包助力已结束"
+				}
+			}
+
+			{ //拆快递_任务助力
+				ss := regexp.MustCompile(`taskHelp&inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(msg)
+				if len(ss) > 0 {
+					if !sender.IsAdmin {
+						coin := GetCoin(sender.UserID)
+						if coin < Config.Tyt {
+							return fmt.Sprintf("拆快递_任务助力需要%d个互助值", Config.Tyt)
+						}
+						RemCoin(sender.UserID, Config.Tyt)
+						sender.Reply(fmt.Sprintf("拆快递_任务助力即将开始，已扣除%d个积分,剩余%d", Config.Tyt, GetCoin(sender.UserID)))
+					} else {
+						sender.Reply(fmt.Sprintf("拆快递_任务助力即将开始，已扣除%d个互助值，管理员通道", Config.Tyt))
+					}
+					runTask(&Task{Path: "jd_qmckd_taskHelp.js", Envs: []Env{
+						{Name: "jd_qmckd_inviteIdArr", Value: ss[1]},
+					}}, sender)
+
+					return "拆快递_任务助力已结束"
 			}
 		}
 

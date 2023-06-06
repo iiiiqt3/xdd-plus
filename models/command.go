@@ -181,9 +181,7 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			cost := sender.Contents[0]
-			//url_help :=sender.Contents[0]
 			if len(sender.Contents) >= 1 {
-				//sender.Contents = sender.Contents[1:]
 				sender.Reply(fmt.Sprintf("开始删除%s行", cost))
 				rsp := cmd(fmt.Sprintf("python3 ./tou_ck.py %s", cost), &Sender{})
 				sender.Reply(rsp)
@@ -191,6 +189,19 @@ var codeSignals = []CodeSignal{
 				sender.Reply("请配置开始信息")
 			}
 			return nil
+		},
+	},
+
+	{
+	Command: []string{"停助力", "停止助力"},
+	Handle: func(sender *Sender) interface{} {
+		if sender.UserID == 995336676 || sender.IsAdmin {
+			rsp := cmd(fmt.Sprintf(`bash stop.sh`), &Sender{})
+			return rsp
+			}else{
+				sender.Reply("无权操作")
+			}
+		return nil
 		},
 	},
 
