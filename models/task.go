@@ -137,17 +137,18 @@ func runTask(task *Task, sender *Sender) string {
 		return ""
 	}
 	go func() {
-		logs.Info("进入测试")
+		logs.Info(task.Name)
 		msg := ""
 		reader := bufio.NewReader(stderr)
 		for {
+			logs.Info("111111")
 			line, err2 := reader.ReadString('\n')
 			if err2 != nil || io.EOF == err2 {
 				break
 			}
 			msg += line
 		}
-		logs.Info(task.Name)
+
 		if msg != "" {
 			logs.Info(task.Name)
 			if (task.Name == "jd_qmckd_branchHelp.js" || task.Name == "jd_qmckd_taskHelp.js") && strings.Contains(msg, "本次共运行") {
