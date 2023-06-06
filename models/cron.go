@@ -46,3 +46,8 @@ func initCron() {
 
 	c.Start()
 }
+
+func initHELP() {
+	db.Model(JdCookie{}).Update("Red", "true")
+	db.Model(JdCookie{}).Update("Ckd", "true")
+}

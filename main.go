@@ -3,18 +3,17 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/beego/beego/v2/server/web"
-	"io/ioutil"
-	"os"
-	"strings"
-	"time"
-
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
 	"github.com/beego/beego/v2/server/web/filter/cors"
 	"github.com/cdle/xdd/controllers"
 	"github.com/cdle/xdd/models"
+	"io/ioutil"
+	"os"
+	"strings"
+	"time"
 )
 
 var theme = ""

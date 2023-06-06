@@ -108,6 +108,8 @@ type JdCookie struct {
 	Telegram  int    `gorm:"column:Telegram"`
 	Tyt       string `gorm:"column:Tyt;default:true" validate:"oneof=true false"`
 	Dig       string `gorm:"column:Dig;default:true" validate:"oneof=true false"`
+	CKD       string `gorm:"column:Ckd;default:true" validate:"oneof=true false"`
+	Red       string `gorm:"column:Red;default:true" validate:"oneof=true false"`
 	Help      string `gorm:"column:Help;default:false" validate:"oneof=true false"`
 	Pool      string `gorm:"-"`
 	Hack      string `gorm:"column:Hack"  validate:"oneof=true false"`

@@ -34,11 +34,11 @@ type Task struct {
 }
 
 func initTask() {
-	 for i := range Config.Tasks {
-	 	if Config.Tasks[i].Cron != "" {
-	 		createTask(&Config.Tasks[i])
-	 	}
-	 }
+	for i := range Config.Tasks {
+		if Config.Tasks[i].Cron != "" {
+			createTask(&Config.Tasks[i])
+		}
+	}
 }
 
 func createTask(task *Task) {
@@ -106,7 +106,7 @@ func runTask(task *Task, sender *Sender) string {
 	if strings.Contains(task.Name, ".py") {
 		lan = Config.Python
 	}
-	cmd := exec.Command(lan, task.Name)
+	cmd2 := exec.Command(lan, task.Name)
 	pins := ""
 	for _, env := range GetEnvs() {
 		if env.Name+".js" == task.Name && env.Value != "" {
@@ -114,24 +114,24 @@ func runTask(task *Task, sender *Sender) string {
 				pins += "&" + ck.PtPin
 			}
 		}
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+		cmd2.Env = append(cmd2.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
 	}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", "pins", pins))
+	cmd2.Env = append(cmd2.Env, fmt.Sprintf("%s=%s", "pins", pins))
 	for _, env := range task.Envs {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+		cmd2.Env = append(cmd2.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
 	}
-	stdout, err := cmd.StdoutPipe()
-	stderr, err := cmd.StderrPipe()
+	stdout, err := cmd2.StdoutPipe()
+	stderr, err := cmd2.StderrPipe()
 	if err != nil {
-		logs.Warn("cmd.StdoutPipe: ", err)
+		logs.Warn("cmd2.StdoutPipe: ", err)
 		return ""
 	}
 	if task.Git != "" {
-		cmd.Dir = task.Git
+		cmd2.Dir = task.Git
 	} else {
-		cmd.Dir = ExecPath + "/scripts/"
+		cmd2.Dir = ExecPath + "/scripts/"
 	}
-	err = cmd.Start()
+	err = cmd2.Start()
 	if err != nil {
 		logs.Warn("%v", err)
 		return ""
@@ -147,6 +147,14 @@ func runTask(task *Task, sender *Sender) string {
 			msg += line
 		}
 		if msg != "" {
+			logs.Info(task.Name)
+			if (task.Name == "jd_qmckd_branchHelp.js" || task.Name == "jd_qmckd_taskHelp.js") && strings.Contains(msg, "本次共运行") {
+				logs.Info("进入")
+				ss := regexp.MustCompile(`(\d+)`).FindStringSubmatch(msg)
+				logs.Info(ss)
+				rsp := cmd(fmt.Sprintf("python3 ./tou_ck.py %s", ss[1]), &Sender{})
+				sender.Reply(rsp)
+			}
 			sender.Reply(msg)
 		}
 	}()
@@ -173,6 +181,7 @@ func runTask(task *Task, sender *Sender) string {
 		}
 	}
 	if msg != "" {
+
 		sender.Reply(msg)
 	}
 	task.Running = False
