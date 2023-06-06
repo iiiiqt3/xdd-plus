@@ -133,6 +133,7 @@ func runTask(task *Task, sender *Sender) string {
 	}
 	logs.Info("即将开始")
 	err = cmd2.Start()
+	logs.Info("即将开始1")
 	if err != nil {
 		logs.Warn("%v", err)
 		return ""
