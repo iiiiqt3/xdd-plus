@@ -663,9 +663,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				order3 := &Order{id: ordernum, name: ss[1]}
 				ordernum++
 				orderQueue.AddOrder(order3)
-				runTask(&Task{Path: "jd_qmckd_branchHelp.js", Envs: []Env{
-					{Name: "jd_qmckd_inviteIdArr_expand", Value: ss[1]},
-				}}, sender)
+				//runTask(&Task{Path: "jd_qmckd_branchHelp.js", Envs: []Env{
+				//	{Name: "jd_qmckd_inviteIdArr_expand", Value: ss[1]},
+				//}}, sender)
 
 				return "拆红包助力已结束"
 			}
