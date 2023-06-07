@@ -238,7 +238,7 @@ func DeleteCk(N int) string {
 	}
 	defer inputFile.Close()
 
-	tmpFile, err := os.CreateTemp(ExecPath+"/scripts/", "temp")
+	tmpFile, err := os.Open(ExecPath + "/scripts/temp.txt")
 	if err != nil {
 		panic(err)
 	}
