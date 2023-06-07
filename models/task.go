@@ -231,45 +231,52 @@ func findShareCode(msg string) string {
 }
 
 func DeleteCk(N int) string {
-	file, err := os.OpenFile(ExecPath+"/scripts/ck.txt", os.O_RDWR, 0777)
+	// 打开原始文件和临时文件
+	inputFile, err := os.Open(ExecPath + "/scripts/ck.txt")
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
+	defer inputFile.Close()
+
+	tmpFile, err := os.CreateTemp("", "temp")
+	if err != nil {
+		panic(err)
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
 
 	// 创建一个 Scanner 对象来逐行读取原始文件
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(inputFile)
 
 	// 跳过前 N 行
 	for i := 0; i < N; i++ {
 		if !scanner.Scan() {
 			// 如果文件行数不足 N 行，则直接退出
-			return "文件行数不足 N 行，则直接退出"
+			return " 如果文件行数不足 N 行，直接退出"
 		}
 	}
 
-	// 记录当前文件指针的位置
-	offset, err := file.Seek(0, os.SEEK_CUR)
-	if err != nil {
-		panic(err)
-	}
-
-	// 将剩余的行写入原始文件
+	// 将剩余的行写入临时文件
 	for scanner.Scan() {
-		line := scanner.Text() + "\n"
-		_, err := file.WriteAt([]byte(line), offset)
-		if err != nil {
-			panic(err)
-		}
-		offset += int64(len(line))
+		fmt.Fprintln(tmpFile, scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
 		panic(err)
 	}
 
-	// 截断文件，删除多余的行
-	err = file.Truncate(offset)
+	// 关闭原始文件和临时文件
+	inputFile.Close()
+	tmpFile.Close()
+
+	// 删除原有的文件
+	err = os.Remove("ck.txt")
+	if err != nil {
+		panic(err)
+	}
+
+	// 重命名临时文件为原始文件
+	err = os.Rename(tmpFile.Name(), "ck.txt")
 	if err != nil {
 		panic(err)
 	}
