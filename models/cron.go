@@ -49,7 +49,6 @@ func initCron() {
 }
 
 func initHELP() {
-
 	for {
 		order := orderQueue.ProcessOrder()
 		if order == nil {

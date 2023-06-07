@@ -113,7 +113,7 @@ var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
 var ordernum = 0
-var orderQueue OrderQueue
+var orderQueue = &OrderQueue{}
 var loginList = make(map[int]chan string)
 
 func InitReplies() {
