@@ -138,7 +138,6 @@ func runTask(task *Task, sender *Sender) string {
 		return ""
 	}
 	go func() {
-		logs.Info(task.Name)
 		msg := ""
 		reader := bufio.NewReader(stderr)
 		for {
@@ -146,12 +145,10 @@ func runTask(task *Task, sender *Sender) string {
 			if err2 != nil || io.EOF == err2 {
 				break
 			}
-			logs.Info("test")
 			msg += line
 
 		}
 		if msg != "" {
-			logs.Info(task.Name)
 			sender.Reply(msg)
 		}
 	}()
