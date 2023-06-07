@@ -231,7 +231,7 @@ func findShareCode(msg string) string {
 }
 
 func DeleteCk(N int) string {
-	file, err := os.OpenFile(ExecPath+"/scripts/ck.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	file, err := os.OpenFile(ExecPath+"/scripts/ck.txt", os.O_RDWR|os.O_TRUNC, 0777)
 	if err != nil {
 		panic(err)
 	}
@@ -241,7 +241,6 @@ func DeleteCk(N int) string {
 	scanner := bufio.NewScanner(file)
 
 	// 跳过前 N 行
-	N = 3
 	for i := 0; i < N; i++ {
 		if !scanner.Scan() {
 			// 如果文件行数不足 N 行，则直接退出
