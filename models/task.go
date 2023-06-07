@@ -231,54 +231,59 @@ func findShareCode(msg string) string {
 }
 
 func DeleteCk(N int) string {
-	// 打开原始文件和临时文件
-	inputFile, err := os.Open(ExecPath + "/scripts/ck.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer inputFile.Close()
-
-	tmpFile, err := os.CreateTemp(ExecPath+"/scripts", "temp")
-	if err != nil {
-		panic(err)
-	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
-
-	// 创建一个 Scanner 对象来逐行读取原始文件
-	scanner := bufio.NewScanner(inputFile)
-
-	// 跳过前 N 行
-	for i := 0; i < N; i++ {
-		if !scanner.Scan() {
-			// 如果文件行数不足 N 行，则直接退出
-			return " 如果文件行数不足 N 行，直接退出"
+	N -= 2
+	if N > 0 {
+		// 打开原始文件和临时文件
+		inputFile, err := os.Open(ExecPath + "/scripts/ck.txt")
+		if err != nil {
+			panic(err)
 		}
-	}
+		defer inputFile.Close()
 
-	// 将剩余的行写入临时文件
-	for scanner.Scan() {
-		fmt.Fprintln(tmpFile, scanner.Text())
-	}
+		tmpFile, err := os.CreateTemp(ExecPath+"/scripts", "temp")
+		if err != nil {
+			panic(err)
+		}
+		defer os.Remove(tmpFile.Name())
+		defer tmpFile.Close()
 
-	if err := scanner.Err(); err != nil {
-		panic(err)
-	}
+		// 创建一个 Scanner 对象来逐行读取原始文件
+		scanner := bufio.NewScanner(inputFile)
 
-	// 关闭原始文件和临时文件
-	inputFile.Close()
-	tmpFile.Close()
+		// 跳过前 N 行
+		for i := 0; i < N; i++ {
+			if !scanner.Scan() {
+				// 如果文件行数不足 N 行，则直接退出
+				return " 如果文件行数不足 N 行，直接退出"
+			}
+		}
 
-	// 删除原有的文件
-	err = os.Remove(ExecPath + "/scripts/ck.txt")
-	if err != nil {
-		panic(err)
-	}
+		// 将剩余的行写入临时文件
+		for scanner.Scan() {
+			fmt.Fprintln(tmpFile, scanner.Text())
+		}
 
-	// 重命名临时文件为原始文件
-	err = os.Rename(tmpFile.Name(), ExecPath+"/scripts/ck.txt")
-	if err != nil {
-		panic(err)
+		if err := scanner.Err(); err != nil {
+			panic(err)
+		}
+
+		// 关闭原始文件和临时文件
+		inputFile.Close()
+		tmpFile.Close()
+
+		// 删除原有的文件
+		err = os.Remove(ExecPath + "/scripts/ck.txt")
+		if err != nil {
+			panic(err)
+		}
+
+		// 重命名临时文件为原始文件
+		err = os.Rename(tmpFile.Name(), ExecPath+"/scripts/ck.txt")
+		if err != nil {
+			panic(err)
+		}
+		return "删除成功"
 	}
-	return "删除成功"
+	return "低于0不删除"
+
 }
