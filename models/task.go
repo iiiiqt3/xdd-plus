@@ -282,7 +282,8 @@ func DeleteCk(N int) string {
 		if err != nil {
 			panic(err)
 		}
-		return fmt.Sprintf("成功删除%d行", N)
+		//return fmt.Sprintf("成功删除%d行", N)
+		return "删除成功"
 	}
 	return "低于0不删除"
 
