@@ -52,6 +52,7 @@ func initHELP() {
 	for {
 		order := orderQueue.ProcessOrder()
 		if order == nil {
+			logs.Info("ProcessOrder")
 			break
 		}
 
