@@ -258,7 +258,7 @@ func DeleteCk(N int) string {
 
 	// 将剩余的行写入临时文件
 	for scanner.Scan() {
-		fmt.Fprintln(tmpFile, scanner.Text())
+		tmpFile.WriteString(scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
