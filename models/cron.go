@@ -6,6 +6,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"math/rand"
 	"strconv"
+	"time"
 )
 
 var c *cron.Cron
@@ -48,6 +49,14 @@ func initCron() {
 }
 
 func initHELP() {
-	db.Model(JdCookie{}).Update("Red", "true")
-	db.Model(JdCookie{}).Update("Ckd", "true")
+
+	for {
+		order := orderQueue.ProcessOrder()
+		if order == nil {
+			break
+		}
+
+		fmt.Printf("Processing order %d: %s\n", order.id, order.name)
+		time.Sleep(time.Second * time.Duration(20))
+	}
 }

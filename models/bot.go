@@ -112,6 +112,8 @@ var replies = map[string]string{}
 var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
+var ordernum = 0
+var orderQueue OrderQueue
 var loginList = make(map[int]chan string)
 
 func InitReplies() {
@@ -643,6 +645,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				}
 			}
 		}
+
 		{ //快递拆红包
 			ss := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)shareType`).FindStringSubmatch(msg)
 			if len(ss) > 0 {
@@ -656,6 +659,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				} else {
 					sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个互助值，管理员通道", 25))
 				}
+
+				order3 := &Order{id: ordernum, name: ss[1]}
+				ordernum++
+				orderQueue.AddOrder(order3)
 				runTask(&Task{Path: "jd_qmckd_branchHelp.js", Envs: []Env{
 					{Name: "jd_qmckd_inviteIdArr_expand", Value: ss[1]},
 				}}, sender)

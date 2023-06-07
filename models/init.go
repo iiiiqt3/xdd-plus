@@ -36,6 +36,7 @@ func init() {
 	InitReplies()
 	initTask()
 	initNolan()
+	initHELP()
 	//initRepos()
 	initWX()
 }
