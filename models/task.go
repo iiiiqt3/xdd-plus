@@ -238,7 +238,7 @@ func DeleteCk(N int) string {
 	}
 	defer inputFile.Close()
 
-	tmpFile, err := os.OpenFile(ExecPath+"/scripts/temp.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	tmpFile, err := os.CreateTemp(ExecPath+"/scripts", "temp")
 	if err != nil {
 		panic(err)
 	}
@@ -258,7 +258,7 @@ func DeleteCk(N int) string {
 
 	// 将剩余的行写入临时文件
 	for scanner.Scan() {
-		tmpFile.WriteString(scanner.Text())
+		fmt.Fprintln(tmpFile, scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -276,7 +276,7 @@ func DeleteCk(N int) string {
 	}
 
 	// 重命名临时文件为原始文件
-	err = os.Rename(tmpFile.Name(), "ck.txt")
+	err = os.Rename(tmpFile.Name(), ExecPath+"/scripts/ck.txt")
 	if err != nil {
 		panic(err)
 	}
