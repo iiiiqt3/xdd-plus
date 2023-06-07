@@ -54,7 +54,7 @@ func initHELP() {
 		order := orderQueue.ProcessOrder()
 		if order == nil {
 			//logs.Info("ProcessOrder")
-			break
+			continue
 		}
 
 		fmt.Printf("Processing order %d: %s\n", order.id, order.name)
