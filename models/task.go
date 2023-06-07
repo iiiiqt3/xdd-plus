@@ -231,7 +231,7 @@ func findShareCode(msg string) string {
 }
 
 func DeleteCk(N int) string {
-	file, err := os.OpenFile(ExecPath+"/scripts/ck.txt", os.O_RDWR|os.O_TRUNC, 0777)
+	file, err := os.OpenFile(ExecPath+"/scripts/ck.txt", os.O_RDWR, 0777)
 	if err != nil {
 		panic(err)
 	}
