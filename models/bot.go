@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"gorm.io/gorm"
 
 	"io/ioutil"
 	"math/rand"
@@ -193,7 +194,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 	if Config.VIP {
 		switch msg {
-		default:			
+		default:
 
 			//返利识别
 			{
@@ -619,45 +620,68 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 		}
 
-		{ //快递拆红包
-				ss := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)shareType`).FindStringSubmatch(msg)
-				if len(ss) > 0 {
-					if !sender.IsAdmin {
-						coin := GetCoin(sender.UserID)
-						if coin < 25 {
-							return fmt.Sprintf("拆红包助力需要%d个互助值", 25)
-						}
-						RemCoin(sender.UserID, 25)
-						sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个积分,剩余%d", 25, GetCoin(sender.UserID)))
-					} else {
-						sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个互助值，管理员通道", 25))
+		{
+			if Config.QQID == 764763903 {
+				if msg == "导出助力账号" {
+					var msgs []string
+					cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+						return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 0, True, True)
+					})
+					for _, ck := range cks {
+						msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
 					}
-					runTask(&Task{Path: "jd_qmckd_branchHelp.js", Envs: []Env{
-						{Name: "jd_qmckd_inviteIdArr_expand", Value: ss[1]},
-					}}, sender)
-
-					return "拆红包助力已结束"
+					sender.Reply("导出所有账号")
+					logs.Info("导出所有账号")
+					f, err := os.OpenFile(ExecPath+"/scripts/jdCookie.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+					if err != nil {
+						logs.Warn("创建jdCookie.txt失败，", err)
+					}
+					join := strings.Join(msgs, "\n")
+					f.WriteString(join)
+					f.Close()
+					return nil
 				}
 			}
-
-			{ //拆快递_任务助力
-				ss := regexp.MustCompile(`taskHelp&inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(msg)
-				if len(ss) > 0 {
-					if !sender.IsAdmin {
-						coin := GetCoin(sender.UserID)
-						if coin < Config.Tyt {
-							return fmt.Sprintf("拆快递_任务助力需要%d个互助值", Config.Tyt)
-						}
-						RemCoin(sender.UserID, Config.Tyt)
-						sender.Reply(fmt.Sprintf("拆快递_任务助力即将开始，已扣除%d个积分,剩余%d", Config.Tyt, GetCoin(sender.UserID)))
-					} else {
-						sender.Reply(fmt.Sprintf("拆快递_任务助力即将开始，已扣除%d个互助值，管理员通道", Config.Tyt))
+		}
+		{ //快递拆红包
+			ss := regexp.MustCompile(`inviteId=(\S+)(&|&amp;)shareType`).FindStringSubmatch(msg)
+			if len(ss) > 0 {
+				if !sender.IsAdmin {
+					coin := GetCoin(sender.UserID)
+					if coin < 25 {
+						return fmt.Sprintf("拆红包助力需要%d个互助值", 25)
 					}
-					runTask(&Task{Path: "jd_qmckd_taskHelp.js", Envs: []Env{
-						{Name: "jd_qmckd_inviteIdArr", Value: ss[1]},
-					}}, sender)
+					RemCoin(sender.UserID, 25)
+					sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个积分,剩余%d", 25, GetCoin(sender.UserID)))
+				} else {
+					sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个互助值，管理员通道", 25))
+				}
+				runTask(&Task{Path: "jd_qmckd_branchHelp.js", Envs: []Env{
+					{Name: "jd_qmckd_inviteIdArr_expand", Value: ss[1]},
+				}}, sender)
 
-					return "拆快递_任务助力已结束"
+				return "拆红包助力已结束"
+			}
+		}
+
+		{ //拆快递_任务助力
+			ss := regexp.MustCompile(`taskHelp&inviteId=(\S+)(&|&amp;)mpin`).FindStringSubmatch(msg)
+			if len(ss) > 0 {
+				if !sender.IsAdmin {
+					coin := GetCoin(sender.UserID)
+					if coin < Config.Tyt {
+						return fmt.Sprintf("拆快递_任务助力需要%d个互助值", Config.Tyt)
+					}
+					RemCoin(sender.UserID, Config.Tyt)
+					sender.Reply(fmt.Sprintf("拆快递_任务助力即将开始，已扣除%d个积分,剩余%d", Config.Tyt, GetCoin(sender.UserID)))
+				} else {
+					sender.Reply(fmt.Sprintf("拆快递_任务助力即将开始，已扣除%d个互助值，管理员通道", Config.Tyt))
+				}
+				runTask(&Task{Path: "jd_qmckd_taskHelp.js", Envs: []Env{
+					{Name: "jd_qmckd_inviteIdArr", Value: ss[1]},
+				}}, sender)
+
+				return "拆快递_任务助力已结束"
 			}
 		}
 

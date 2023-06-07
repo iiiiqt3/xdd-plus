@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -106,7 +107,7 @@ func runTask(task *Task, sender *Sender) string {
 	if strings.Contains(task.Name, ".py") {
 		lan = Config.Python
 	}
-	cmd2 := exec.Command(lan, task.Name)
+	cmd := exec.Command(lan, task.Name)
 	pins := ""
 	for _, env := range GetEnvs() {
 		if env.Name+".js" == task.Name && env.Value != "" {
@@ -114,24 +115,24 @@ func runTask(task *Task, sender *Sender) string {
 				pins += "&" + ck.PtPin
 			}
 		}
-		cmd2.Env = append(cmd2.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
 	}
-	cmd2.Env = append(cmd2.Env, fmt.Sprintf("%s=%s", "pins", pins))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", "pins", pins))
 	for _, env := range task.Envs {
-		cmd2.Env = append(cmd2.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
 	}
-	stdout, err := cmd2.StdoutPipe()
-	stderr, err := cmd2.StderrPipe()
+	stdout, err := cmd.StdoutPipe()
+	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		logs.Warn("cmd2.StdoutPipe: ", err)
+		logs.Warn("cmd.StdoutPipe: ", err)
 		return ""
 	}
 	if task.Git != "" {
-		cmd2.Dir = task.Git
+		cmd.Dir = task.Git
 	} else {
-		cmd2.Dir = ExecPath + "/scripts/"
+		cmd.Dir = ExecPath + "/scripts/"
 	}
-	err = cmd2.Start()
+	err = cmd.Start()
 	if err != nil {
 		logs.Warn("%v", err)
 		return ""
@@ -141,24 +142,16 @@ func runTask(task *Task, sender *Sender) string {
 		msg := ""
 		reader := bufio.NewReader(stderr)
 		for {
-			logs.Info("111111")
 			line, err2 := reader.ReadString('\n')
 			if err2 != nil || io.EOF == err2 {
 				break
 			}
 			logs.Info("test")
 			msg += line
-		}
 
+		}
 		if msg != "" {
 			logs.Info(task.Name)
-			if (task.Name == "jd_qmckd_branchHelp.js" || task.Name == "jd_qmckd_taskHelp.js") && strings.Contains(msg, "本次共运行") {
-				logs.Info("进入")
-				ss := regexp.MustCompile(`(\d+)`).FindStringSubmatch(msg)
-				logs.Info(ss)
-				rsp := cmd(fmt.Sprintf("python3 ./tou_ck.py %s", ss[1]), &Sender{})
-				sender.Reply(rsp)
-			}
 			sender.Reply(msg)
 		}
 	}()
@@ -186,6 +179,16 @@ func runTask(task *Task, sender *Sender) string {
 	}
 	if msg != "" {
 		logs.Info("消息测试")
+		if (task.Name == "jd_qmckd_branchHelp.js" || task.Name == "jd_qmckd_taskHelp.js") && strings.Contains(msg, "本次共运行") {
+			ss := regexp.MustCompile(`(\d+)`).FindStringSubmatch(msg)
+			logs.Info(ss)
+			atoi, err := strconv.Atoi(ss[1])
+			if err != nil {
+				panic(err)
+			}
+			rsp := DeleteCk(atoi)
+			sender.Reply(rsp)
+		}
 		sender.Reply(msg)
 	}
 	task.Running = False
@@ -228,4 +231,51 @@ func findShareCode(msg string) string {
 	} else {
 		return ""
 	}
+}
+
+func DeleteCk(N int) string {
+	file, err := os.OpenFile(ExecPath+"/scripts/ck.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	// 创建一个 Scanner 对象来逐行读取原始文件
+	scanner := bufio.NewScanner(file)
+
+	// 跳过前 N 行
+	N = 3
+	for i := 0; i < N; i++ {
+		if !scanner.Scan() {
+			// 如果文件行数不足 N 行，则直接退出
+			return "文件行数不足 N 行，则直接退出"
+		}
+	}
+
+	// 记录当前文件指针的位置
+	offset, err := file.Seek(0, os.SEEK_CUR)
+	if err != nil {
+		panic(err)
+	}
+
+	// 将剩余的行写入原始文件
+	for scanner.Scan() {
+		line := scanner.Text() + "\n"
+		_, err := file.WriteAt([]byte(line), offset)
+		if err != nil {
+			panic(err)
+		}
+		offset += int64(len(line))
+	}
+
+	if err := scanner.Err(); err != nil {
+		panic(err)
+	}
+
+	// 截断文件，删除多余的行
+	err = file.Truncate(offset)
+	if err != nil {
+		panic(err)
+	}
+	return "删除成功"
 }

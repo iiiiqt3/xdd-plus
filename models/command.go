@@ -193,15 +193,15 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-	Command: []string{"停助力", "停止助力"},
-	Handle: func(sender *Sender) interface{} {
-		if sender.UserID == 995336676 || sender.IsAdmin {
-			rsp := cmd(fmt.Sprintf(`bash stop.sh`), &Sender{})
-			return rsp
-			}else{
+		Command: []string{"停助力", "停止助力"},
+		Handle: func(sender *Sender) interface{} {
+			if sender.UserID == 995336676 || sender.IsAdmin {
+				rsp := cmd(fmt.Sprintf(`bash stop.sh`), &Sender{})
+				return rsp
+			} else {
 				sender.Reply("无权操作")
 			}
-		return nil
+			return nil
 		},
 	},
 
