@@ -270,7 +270,7 @@ func DeleteCk(N int) string {
 	tmpFile.Close()
 
 	// 删除原有的文件
-	err = os.Remove("ck.txt")
+	err = os.Remove(ExecPath + "/scripts/ck.txt")
 	if err != nil {
 		panic(err)
 	}
