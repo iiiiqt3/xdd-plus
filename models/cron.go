@@ -54,6 +54,7 @@ func initHELP() {
 		order := orderQueue.ProcessOrder()
 		if order == nil {
 			//logs.Info("ProcessOrder")
+			time.Sleep(time.Second * time.Duration(5))
 			continue
 		}
 
@@ -62,6 +63,6 @@ func initHELP() {
 			{Name: "jd_qmckd_inviteIdArr_expand", Value: order.name},
 		}}, order.Sender)
 		order.Sender.Reply(fmt.Sprintf("订单ID:%d已完成", order.id))
-		time.Sleep(time.Second * time.Duration(3))
+		//time.Sleep(time.Second * time.Duration(3))
 	}
 }
