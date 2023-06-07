@@ -655,19 +655,19 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						return fmt.Sprintf("拆红包助力需要%d个互助值", 25)
 					}
 					RemCoin(sender.UserID, 25)
-					sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个积分,剩余%d", 25, GetCoin(sender.UserID)))
+					order3 := &Order{id: ordernum, name: ss[1], Sender: sender}
+					orderQueue.AddOrder(order3)
+					sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个积分,剩余%d，订单ID:%d", 25, GetCoin(sender.UserID), ordernum))
 				} else {
-					sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个互助值，管理员通道", 25))
+					order3 := &Order{id: ordernum, name: ss[1], Sender: sender}
+					orderQueue.AddOrder(order3)
+					sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个互助值，管理员通道,订单ID:%d", 25, ordernum))
 				}
-
-				order3 := &Order{id: ordernum, name: ss[1]}
 				ordernum++
-				orderQueue.AddOrder(order3)
 				//runTask(&Task{Path: "jd_qmckd_branchHelp.js", Envs: []Env{
 				//	{Name: "jd_qmckd_inviteIdArr_expand", Value: ss[1]},
 				//}}, sender)
 
-				return "拆红包助力已结束"
 			}
 		}
 

@@ -1,8 +1,9 @@
 package models
 
 type Order struct {
-	id   int
-	name string
+	id     int
+	name   string
+	Sender *Sender
 }
 
 type OrderQueue struct {

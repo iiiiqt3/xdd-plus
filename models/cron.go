@@ -57,7 +57,11 @@ func initHELP() {
 			continue
 		}
 
-		fmt.Printf("Processing order %d: %s\n", order.id, order.name)
-		time.Sleep(time.Second * time.Duration(20))
+		//fmt.Printf("Processing order %d: %s\n", order.id, order.name)
+		//runTask(&Task{Path: "jd_qmckd_branchHelp.js", Envs: []Env{
+		//	{Name: "jd_qmckd_inviteIdArr_expand", Value: order.name},
+		//}}, order.Sender)
+		order.Sender.Reply(fmt.Sprintf("订单ID:%d已完成", order.id))
+		time.Sleep(time.Second * time.Duration(3))
 	}
 }
