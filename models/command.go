@@ -204,15 +204,6 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
-	{
-		Command: []string{"测试"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			initHELP()
-			return nil
-		},
-	},
 	{
 		Command: []string{"生成卡密"},
 		Admin:   true,
