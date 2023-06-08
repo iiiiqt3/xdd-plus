@@ -176,14 +176,11 @@ func runTask(task *Task, sender *Sender) string {
 	}
 	if msg != "" {
 		logs.Info("消息测试")
-		if (task.Name == "jd_qmckd_branchHelp.js" || task.Name == "jd_qmckd_taskHelp.js") && strings.Contains(msg, "本次共运行") {
-			ss := regexp.MustCompile(`(\d+)`).FindStringSubmatch(msg)
-			logs.Info(ss)
-			atoi, err := strconv.Atoi(ss[1])
-			if err != nil {
-				panic(err)
-			}
-			rsp := DeleteCk(atoi)
+		if task.Name == "jd_qmckd_branchHelp.js" && strings.Contains(msg, "本次共运行") {
+			rsp := DeleteCk(msg, "ck")
+			sender.Reply(rsp)
+		} else if task.Name == "jd_qmckd_taskHelp.js" && strings.Contains(msg, "本次共运行") {
+			rsp := DeleteCk(msg, "ck1")
 			sender.Reply(rsp)
 		}
 		sender.Reply(msg)
@@ -230,17 +227,22 @@ func findShareCode(msg string) string {
 	}
 }
 
-func DeleteCk(N int) string {
+func DeleteCk(msg string, acvitity string) string {
+	ss := regexp.MustCompile(`(\d+)`).FindStringSubmatch(msg)
+	N, err := strconv.Atoi(ss[1])
+	if err != nil {
+		panic(err)
+	}
 	N -= 2
 	if N > 0 {
 		// 打开原始文件和临时文件
-		inputFile, err := os.Open(ExecPath + "/scripts/ck.txt")
+		inputFile, err := os.Open(ExecPath + fmt.Sprintf("/scripts/%s.txt", acvitity))
 		if err != nil {
 			panic(err)
 		}
 		defer inputFile.Close()
 
-		tmpFile, err := os.CreateTemp(ExecPath+"/scripts", "temp")
+		tmpFile, err := os.CreateTemp(ExecPath+"/scripts", acvitity)
 		if err != nil {
 			panic(err)
 		}
@@ -272,13 +274,13 @@ func DeleteCk(N int) string {
 		tmpFile.Close()
 
 		// 删除原有的文件
-		err = os.Remove(ExecPath + "/scripts/ck.txt")
+		err = os.Remove(ExecPath + fmt.Sprintf("/scripts/%s.txt", acvitity))
 		if err != nil {
 			panic(err)
 		}
 
 		// 重命名临时文件为原始文件
-		err = os.Rename(tmpFile.Name(), ExecPath+"/scripts/ck.txt")
+		err = os.Rename(tmpFile.Name(), ExecPath+fmt.Sprintf("/scripts/%s.txt", acvitity))
 		if err != nil {
 			panic(err)
 		}

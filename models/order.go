@@ -1,5 +1,14 @@
 package models
 
+import (
+	"fmt"
+	"time"
+)
+
+//静态变量区
+var branchHelpOrderNum = 0
+var branchHelpOrderQueue = &OrderQueue{}
+
 type Order struct {
 	id     int
 	name   string
@@ -23,4 +32,21 @@ func (oq *OrderQueue) ProcessOrder() *Order {
 	oq.orders = oq.orders[1:]
 
 	return order
+}
+
+func initOrder(activity *OrderQueue, activityName string, inviteIdName string) {
+	for {
+		order := activity.ProcessOrder()
+		if order == nil {
+			time.Sleep(time.Second * time.Duration(3))
+			continue
+		}
+
+		fmt.Printf("Processing order %d: %s\n", order.id, order.name)
+		runTask(&Task{Path: fmt.Sprintf("%s.js", activityName), Envs: []Env{
+			{Name: inviteIdName, Value: order.name},
+		}}, order.Sender)
+		order.Sender.Reply(fmt.Sprintf("订单ID:%d已完成", order.id))
+
+	}
 }

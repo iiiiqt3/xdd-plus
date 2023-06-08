@@ -6,7 +6,6 @@ import (
 	"github.com/robfig/cron/v3"
 	"math/rand"
 	"strconv"
-	"time"
 )
 
 var c *cron.Cron
@@ -46,23 +45,4 @@ func initCron() {
 	c.AddFunc("0 8-20/1 * * ?", GetNewVersion)
 
 	c.Start()
-}
-
-func initHELP() {
-	orderQueue = &OrderQueue{}
-	for {
-		order := orderQueue.ProcessOrder()
-		if order == nil {
-			//logs.Info("ProcessOrder")
-			time.Sleep(time.Second * time.Duration(5))
-			continue
-		}
-
-		fmt.Printf("Processing order %d: %s\n", order.id, order.name)
-		runTask(&Task{Path: "jd_qmckd_branchHelp.js", Envs: []Env{
-			{Name: "jd_qmckd_inviteIdArr_expand", Value: order.name},
-		}}, order.Sender)
-		order.Sender.Reply(fmt.Sprintf("订单ID:%d已完成", order.id))
-		//time.Sleep(time.Second * time.Duration(3))
-	}
 }
