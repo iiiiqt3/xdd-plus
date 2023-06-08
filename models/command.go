@@ -181,6 +181,11 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			cost := sender.Contents[0]
+
+			if Config.QQID == 764763903 {
+				DeleteCk(cost, "ck")
+				return "删除成功"
+			}
 			if len(sender.Contents) >= 1 {
 				sender.Reply(fmt.Sprintf("开始删除%s行", cost))
 				rsp := cmd(fmt.Sprintf("python3 ./tou_ck.py %s", cost), &Sender{})
