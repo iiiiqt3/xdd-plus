@@ -27,6 +27,7 @@ type Sender struct {
 	UserID            int
 	ChatID            int
 	GroupId           int
+	WxGroupId         string
 	Type              string
 	Contents          []string
 	MessageID         int
@@ -179,14 +180,15 @@ var codeSignals = []CodeSignal{
 		Command: []string{"监听微信群"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
-			if !strings.Contains(Config.WXGroupID, sender.Contents[0]) {
+			if !strings.Contains(Config.WXGroupID, sender.WxGroupId) {
+				logs.Info(sender.WxGroupId)
 				env := GetEnv("WxGroupID")
-				if strings.Contains(env, sender.Contents[0]) {
+				if strings.Contains(env, sender.WxGroupId) {
 					return "已在监听列表"
 				} else {
 					env1 := &Env{
 						Name:  "WxGroupID",
-						Value: env + "," + sender.Contents[0],
+						Value: env + "," + sender.WxGroupId,
 					}
 					ExportEnv(env1)
 				}
@@ -201,12 +203,12 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 
-			if strings.Contains(Config.WXGroupID, sender.Contents[0]) {
+			if strings.Contains(Config.WXGroupID, sender.WxGroupId) {
 				env := GetEnv("WxGroupID")
-				if !strings.Contains(env, sender.Contents[0]) {
+				if !strings.Contains(env, sender.WxGroupId) {
 					return "不在监听范围"
 				} else {
-					replace := strings.ReplaceAll(env, sender.Contents[0], "")
+					replace := strings.ReplaceAll(env, sender.WxGroupId, "")
 					env1 := &Env{
 						Name:  "WxGroupID",
 						Value: replace,

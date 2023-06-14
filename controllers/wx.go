@@ -249,8 +249,10 @@ func (c *WxController) HandleWxMessage() {
 			ag := &WxMessage{}
 			err := json.Unmarshal(data, ag)
 			if ag.Content.RobotWxid == models.Config.Wx.Robotid {
+
 				logs.Info(err)
 				logs.Info("接收到微信群信息" + ag.Content.Msg)
+				logs.Info(ag.Content.FromGroup)
 				models.ListenWXGroupMessage(ag.Content.FromWxid, ag.Content.FromGroup, ag.Content.Msg)
 
 			}

@@ -100,7 +100,8 @@ var ListenWXTempPrivateMessage = func(uid string, msg string) {
 
 var ListenWXGroupMessage = func(uid string, gid string, msg string) {
 	if strings.Contains(Config.WXGroupID, gid) || msg == "监听微信群" {
-		rt := handleMessage(msg, "wx", uid, gid)
+
+		rt := handleMessage(msg, "wxg", uid, gid)
 
 		switch rt.(type) {
 		case string:
@@ -155,7 +156,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	}
 	//logs.Info(msgs[1])
 	//logs.Info(msgs[2].(string))
-	if msgs[1].(string) == "wx" {
+	if msgs[1].(string) == "wx" || msgs[1].(string) == "wxg" {
 		sender.UserID = getWxId(msgs[2].(string))
 	} else {
 		sender.UserID = msgs[2].(int)
@@ -163,8 +164,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	if len(msgs) >= 4 {
 		sender.ChatID = msgs[3].(int)
 	}
-	if sender.Type == "wx" {
+	if sender.Type == "wx" || sender.Type == "wxg" {
 		sender.WxId = msgs[2].(string)
+		sender.WxGroupId = msgs[3].(string)
 	}
 	if sender.Type == "tgg" {
 		sender.MessageID = msgs[4].(int)
