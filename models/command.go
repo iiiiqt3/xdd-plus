@@ -215,6 +215,7 @@ var codeSignals = []CodeSignal{
 						Value: replace,
 					}
 					ExportEnv(env1)
+					Config.WXGroupID = replace
 					return "取消监听成功"
 				}
 			} else {
