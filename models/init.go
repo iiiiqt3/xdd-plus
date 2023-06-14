@@ -56,7 +56,6 @@ func initNolan() {
 }
 
 func initWX() {
-	if Config.Wx.Model == "nolan" {
-
-	}
+	env := GetEnv("WxGroupID")
+	Config.WXGroupID = env
 }

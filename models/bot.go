@@ -98,6 +98,18 @@ var ListenWXTempPrivateMessage = func(uid string, msg string) {
 	}
 }
 
+var ListenWXGroupMessage = func(uid string, gid string, msg string) {
+	if strings.Contains(Config.WXGroupID, gid) || msg == "监听微信群" {
+		rt := handleMessage(msg, "wx", uid, gid)
+
+		switch rt.(type) {
+		case string:
+			SendWxGroupMsg(uid, gid, rt.(string))
+		}
+	}
+
+}
+
 var ListenQQGroupMessage = func(uid int, gid int, msg string) {
 	if strings.Contains(Config.QQGroupID, strconv.Itoa(gid)) {
 		if Config.QbotPublicMode {

@@ -175,7 +175,50 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 }
 
 var codeSignals = []CodeSignal{
+	{
+		Command: []string{"监听微信群"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			if !strings.Contains(Config.WXGroupID, sender.Contents[0]) {
+				env := GetEnv("WxGroupID")
+				if strings.Contains(env, sender.Contents[0]) {
+					return "已在监听列表"
+				} else {
+					env1 := &Env{
+						Name:  "WxGroupID",
+						Value: env + "," + sender.Contents[0],
+					}
+					ExportEnv(env1)
+				}
+			} else {
+				return "已在监听列表"
+			}
+			return nil
+		},
+	},
+	{
+		Command: []string{"取消监听"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
 
+			if strings.Contains(Config.WXGroupID, sender.Contents[0]) {
+				env := GetEnv("WxGroupID")
+				if !strings.Contains(env, sender.Contents[0]) {
+					return "不在监听范围"
+				} else {
+					replace := strings.ReplaceAll(env, sender.Contents[0], "")
+					env1 := &Env{
+						Name:  "WxGroupID",
+						Value: replace,
+					}
+					ExportEnv(env1)
+				}
+			} else {
+				return "不在监听范围"
+			}
+			return nil
+		},
+	},
 	{
 		Command: []string{"删掉"},
 		Admin:   true,
