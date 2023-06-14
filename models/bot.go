@@ -164,7 +164,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	if len(msgs) >= 4 && sender.Type != "wxg" {
 		sender.ChatID = msgs[3].(int)
 	}
-	if sender.Type == "wx" || sender.Type == "wxg" {
+	if sender.Type == "wx" {
+		sender.WxId = msgs[2].(string)
+	}
+	if sender.Type == "wxg" {
 		sender.WxId = msgs[2].(string)
 		sender.WxGroupId = msgs[3].(string)
 	}
