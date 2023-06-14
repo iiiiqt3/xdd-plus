@@ -191,6 +191,7 @@ var codeSignals = []CodeSignal{
 						Value: env + "," + sender.WxGroupId,
 					}
 					ExportEnv(env1)
+					return "监听成功"
 				}
 			} else {
 				return "已在监听列表"
@@ -214,6 +215,7 @@ var codeSignals = []CodeSignal{
 						Value: replace,
 					}
 					ExportEnv(env1)
+					return "取消监听成功"
 				}
 			} else {
 				return "不在监听范围"
