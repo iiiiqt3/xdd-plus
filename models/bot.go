@@ -246,21 +246,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//运行
 			{
 				if strings.Contains(msg, "运行") {
-					rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
-					rsp.Param("url", msg)
-					rsp.Param("type", "hy")
-					//rsp.Body(fmt.Sprintf(`url=%s&type=hy`, msg))
-					data, err := rsp.Response()
-
-					if err != nil {
-						return "口令转换失败"
-					}
-					body, _ := ioutil.ReadAll(data.Body)
-					if strings.Contains(string(body), "口令转换失败") {
-						return "口令转换失败"
-					} else {
-						msg = string(body)
-					}
+					lj := KLtoLJ(msg)
+					msg = lj
 				}
 			}
 
@@ -365,34 +352,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//识别登录
 			{
 				if msg == "登录" || msg == "登陆" {
-
-					//if len(Config.Jdcurl) > 0 {
-					//	var tabcount int64
-					//	addr := Config.Jdcurl
-					//	if addr == "" {
-					//		return "若兰很忙，请稍后再试。"
-					//	}
-					//	logs.Info(addr + "/api/Config")
-					//	if addr != "" {
-					//		data, _ := httplib.Get(addr + "/api/Config").Bytes()
-					//		logs.Info(string(data) + "返回数据")
-					//		tabcount, _ = jsonparser.GetInt(data, "data", "autocount")
-					//		if tabcount != 0 {
-					//			pcodes[sender.UserID] = "true"
-					//			riskcodes[sender.UserID] = "false"
-					//			sender.Reply("若兰为您服务，请输入11位手机号：")
-					//		} else {
-					//			sender.Reply("服务忙，请稍后再试。")
-					//		}
-					//	}
-					//} else {
-					//	//pcodes[sender.UserID] = "true"
-					//	//sender.R
-					//	//eply("小滴滴")
-					//}
-
-					//sender.Reply("服务升级中，目前登录请私聊群主谢谢")
-
 					msg := make(chan string)
 					loginList[sender.UserID] = msg
 					go LoginSelect(sender, msg)
@@ -673,6 +632,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					order3 := &Order{id: branchHelpOrderNum, name: ss[1], Sender: sender}
 					branchHelpOrderQueue.AddOrder(order3)
 					sender.Reply(fmt.Sprintf("拆红包助力即将开始，已扣除%d个积分,剩余%d，订单ID:%d", 25, GetCoin(sender.UserID), branchHelpOrderNum))
+
 				} else {
 					order3 := &Order{id: branchHelpOrderNum, name: ss[1], Sender: sender}
 					branchHelpOrderQueue.AddOrder(order3)

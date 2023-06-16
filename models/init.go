@@ -25,7 +25,7 @@ func init() {
 	logs.Info("当前%s", ExecPath)
 	InitChan()
 	initConfig()
-	//initSysConfig()
+	initSysConfig()
 	initDB()
 	go initVersion()
 	//go initUserAgent()
