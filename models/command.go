@@ -191,6 +191,7 @@ var codeSignals = []CodeSignal{
 						Value: env + "," + sender.WxGroupId,
 					}
 					ExportEnv(env1)
+					initWX()
 					return "监听成功"
 				}
 			} else {
@@ -215,7 +216,7 @@ var codeSignals = []CodeSignal{
 						Value: replace,
 					}
 					ExportEnv(env1)
-					Config.WXGroupID = replace
+					initWX()
 					return "取消监听成功"
 				}
 			} else {
