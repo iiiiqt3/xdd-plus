@@ -195,7 +195,7 @@ func UpdateRwskey() {
 			}
 
 		} else {
-			ck.Updates(JdCookie{RWskey: "null", Available: False})
+			//ck.Updates(JdCookie{RWskey: "null", Available: False})
 			ck.Push(fmt.Sprintf("RWskey失效账号，%s，请稍后重新登录", ck.PtPin))
 			(&JdCookie{}).Push(fmt.Sprintf("RWskey失效，%s", ck.PtPin))
 		}
