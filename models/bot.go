@@ -99,10 +99,8 @@ var ListenWXTempPrivateMessage = func(uid string, msg string) {
 }
 
 var ListenWXGroupMessage = func(uid string, gid string, msg string) {
-	if strings.Contains(Config.WXGroupID, gid) || msg == "监听微信群" {
-
+	if strings.Contains(Config.WXGroupID, gid) || msg == "监听微信群" || msg == "取消监听" {
 		rt := handleMessage(msg, "wxg", uid, gid)
-
 		switch rt.(type) {
 		case string:
 			SendWxGroupMsg(uid, gid, rt.(string))

@@ -1,5 +1,10 @@
 package models
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 var Sys SystemConfig
 
 type SystemConfig struct {
@@ -41,8 +46,11 @@ func initSysConfig() {
 }
 
 func ListConfig() SystemConfig {
+	env := GetEnv("sysconfig")
 	var config SystemConfig
-	db.Find(&config)
-	Sys = config
+	err := json.Unmarshal([]byte(env), &config)
+	if err != nil {
+		fmt.Println("解析失败:", err)
+	}
 	return config
 }
