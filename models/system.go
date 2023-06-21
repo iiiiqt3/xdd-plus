@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/beego/beego/v2/core/logs"
 )
 
 var Sys SystemConfig
@@ -48,9 +49,34 @@ func initSysConfig() {
 func ListConfig() SystemConfig {
 	env := GetEnv("sysconfig")
 	var config SystemConfig
-	err := json.Unmarshal([]byte(env), &config)
-	if err != nil {
-		fmt.Println("解析失败:", err)
+	if env != "" {
+		err := json.Unmarshal([]byte(env), &config)
+		if err != nil {
+			fmt.Println("解析失败:", err)
+		} else {
+			Sys = config
+		}
+
+	} else {
+		logs.Info("缺少系统配置")
 	}
+
 	return config
+}
+
+func SaveSysConfig(config SystemConfig) string {
+	jsonBytes, err := json.Marshal(config)
+	if err != nil {
+		fmt.Println("转换失败:", err)
+		return "转换失败"
+	}
+
+	jsonStr := string(jsonBytes)
+	fmt.Println("转换结果:", jsonStr)
+	env1 := &Env{
+		Name:  "sysconfig",
+		Value: jsonStr,
+	}
+	ExportEnv(env1)
+	return "保存成功"
 }

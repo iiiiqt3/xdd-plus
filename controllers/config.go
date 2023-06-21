@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 )
@@ -30,16 +29,21 @@ func (c *ConfigController) ListConfig() {
 
 func (c *ConfigController) CreateOrUpdateConfig() {
 
-	var result map[string]interface{}
-	err := json.Unmarshal(c.Ctx.Input.RequestBody, &result)
+	var sys models.SystemConfig
+	err := json.Unmarshal(c.Ctx.Input.RequestBody, &sys)
 	if err != nil {
-		panic(err)
+		c.Ctx.Output.SetStatus(400)
+		c.Ctx.Output.Body([]byte("Invalid JSON data"))
+		return
 	}
 
-	for key, value := range result {
-		fmt.Printf("%s: %v\n", key, value)
-	}
+	// 处理用户数据
+	// ...
 
-	c.Response(nil, "操作成功")
+	msg := models.SaveSysConfig(sys)
+	logs.Info(msg)
+
+	c.Ctx.Output.SetStatus(200)
+	c.Ctx.Output.Body([]byte("User data saved"))
 
 }
