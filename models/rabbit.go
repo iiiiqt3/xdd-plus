@@ -157,15 +157,36 @@ func UpdateRwskey() {
 
 		var rsp bool
 		var appck string
+		var retry int
 		//自动切换转换渠道，默认nolan
 		if NolanUrl != "" && NolanToken != "" {
-			rsp, _, appck = NolanGetCookie(pinky)
+			for !rsp {
+				rsp, _, appck = NolanGetCookie(pinky)
+				retry++
+				if retry == 5 {
+					break
+				}
+			}
 		} else if RabbitUrl != "" && RabbitApiToken != "" && RabbitToken != "" {
 			pin, _ := url.QueryUnescape(ck.PtPin)
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, ck.RWskey)
-			rsp, _, appck = RabbitGetCookie(pinky)
+
+			for !rsp {
+				rsp, _, appck = RabbitGetCookie(pinky)
+				retry++
+				if retry == 5 {
+					break
+				}
+			}
+
 		} else if BBKToken != "" && BBKJdUrl != "" {
-			rsp, _, appck = BBKGetCookie(pinky)
+			for !rsp {
+				rsp, _, appck = BBKGetCookie(pinky)
+				retry++
+				if retry == 5 {
+					break
+				}
+			}
 		}
 
 		if rsp {
