@@ -124,6 +124,7 @@ func RabbitGetCookie(cookie string) (bool, string, string) {
 		return val, msg, appck
 	} else {
 		logs.Info(string(bytes))
+		time.Sleep(time.Second * 3)
 		return val, "", ""
 	}
 }

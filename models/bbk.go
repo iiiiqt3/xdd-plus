@@ -191,6 +191,7 @@ func BBKGetCookie(cookie string) (bool, string, string) {
 		return true, msg, data
 	} else {
 		logs.Info(string(bytes))
+		time.Sleep(time.Second * 3)
 		return false, errorMsg, data
 	}
 }
