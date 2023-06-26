@@ -164,6 +164,7 @@ func UpdateRwskey() {
 				rsp, _, appck = NolanGetCookie(pinky)
 				retry++
 				if retry == 5 {
+					logs.Info("退出尝试")
 					break
 				}
 			}
