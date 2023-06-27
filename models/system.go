@@ -44,6 +44,7 @@ type SystemConfig struct {
 
 func initSysConfig() {
 	ListConfig()
+	updateConfig()
 }
 
 func ListConfig() SystemConfig {
@@ -72,11 +73,45 @@ func SaveSysConfig(config SystemConfig) string {
 	}
 
 	jsonStr := string(jsonBytes)
-	fmt.Println("转换结果:", jsonStr)
 	env1 := &Env{
 		Name:  "sysconfig",
 		Value: jsonStr,
 	}
 	ExportEnv(env1)
+	ListConfig()
 	return "保存成功"
+}
+
+func updateConfig() {
+	env := GetEnv("11.6")
+	if env != "" {
+		var sys SystemConfig
+
+		sys.RabbitUrl = GetEnv("RabbitUrl")
+		sys.RabbitApiToken = GetEnv("RabbitApiToken")
+		sys.RabbitToken = GetEnv("RabbitToken")
+
+		sys.NolanUrl = GetEnv("NolanUrl")
+		sys.NolanToken = GetEnv("NolanToken")
+
+		sys.BBKToken = GetEnv("BBKToken")
+		sys.BBKJdUrl = GetEnv("BBKJdUrl")
+
+		SaveSysConfig(sys)
+
+		env := &Env{}
+		env.Name = "11.6"
+		env.Value = "true"
+		ExportEnv(env)
+
+		//UnExportEnv(&Env{Name: "RabbitUrl"})
+		//UnExportEnv(&Env{Name: "RabbitApiToken"})
+		//UnExportEnv(&Env{Name: "RabbitToken"})
+		//UnExportEnv(&Env{Name: "NolanUrl"})
+		//UnExportEnv(&Env{Name: "NolanToken"})
+		//UnExportEnv(&Env{Name: "BBKToken"})
+		//UnExportEnv(&Env{Name: "BBKJdUrl"})
+
+		JdCookie{}.Push("升级成功，已将短信相关配置转移，后续请使用网页端配置")
+	}
 }
