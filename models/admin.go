@@ -10,45 +10,334 @@ var Admin = `<html lang="zh-cn">
     <title>账号管理</title>
     <link type="text/css" href="https://www.layuicdn.com/layui/css/layui.css" />
     <script src="https://www.layuicdn.com/auto/layui.js" v="layui" e="layui"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+
+    <!--    <link rel="stylesheet" href="//cdn.bootcdn.net/ajax/libs/zui/1.10.0/css/zui.min.css">-->
+
+<!--    &lt;!&ndash; ZUI Javascript 依赖 jQuery &ndash;&gt;-->
+<!--    <script src="//cdn.bootcdn.net/ajax/libs/zui/1.10.0/lib/jquery/jquery.js"></script>-->
+<!--    &lt;!&ndash; ZUI 标准版压缩后的 JavaScript 文件 &ndash;&gt;-->
+<!--    <script src="//cdn.bootcdn.net/ajax/libs/zui/1.10.0/js/zui.min.js"></script>-->
+
+<!--    <link type="text/css" href="http://xdd.smxy.xyz/layui/cardTable/cardTable.css" />-->
+<!--    <script src="http://xdd.smxy.xyz/layui/cardTable/cardTable.js" v="layui" e="layui"></script>-->
 </head>
 
 <body>
-<div class="layui-tab">
+<div class="layui-tab" lay-filter="demo">
     <ul class="layui-tab-title">
         <li class="layui-this">账号管理</li>
+        <li>消息管理</li>
         <li>系统设置</li>
         <li>容器管理</li>
+        <li>登录管理</li>
+        <li>查询管理</li>
     </ul>
     <div class="layui-tab-content">
         <div class="layui-tab-item layui-show">
             <table id="accounts" lay-filter="accounts"></table>
         </div>
+
+        <div class="layui-tab-item">
+
+
+        </div>
+
         <div class="layui-tab-item">
             <table id="envs" lay-filter="envs"></table>
         </div>
 
         <div class="layui-tab-item">
-            <button type="button" class="layui-btn">读取本地配置</button>
-            <div class="layui-collapse" lay-accordion>
+            <button type="button" class="layui-btn">导入本地配置</button>
+
+            <div class="layui-collapse" lay-filter="ql" lay-accordion>
                 <div class="layui-colla-item">
-                    <h2 class="layui-colla-title">青龙1</h2>
-                    <div class="layui-colla-content layui-show">内容区域</div>
-                </div>
-                <div class="layui-colla-item">
-                    <h2 class="layui-colla-title">青龙2</h2>
-                    <div class="layui-colla-content">内容区域</div>
-                </div>
-                <div class="layui-colla-item">
-                    <h2 class="layui-colla-title">青龙3</h2>
-                    <div class="layui-colla-content">内容区域</div>
+<!--                    <h2 class="layui-colla-title">青龙1</h2>-->
+<!--                    <div class="layui-colla-content layui-show">内容区域</div>-->
+                    <div id="currentTableId" lay-filter="currentTableFilter"></div>
                 </div>
             </div>
         </div>
+
+        <div class="layui-tab-item">
+
+
+            <form class="layui-form" action="" lay-filter="example">
+
+                <div class="layui-row layui-col-space10">
+
+                    <div class="layui-col-md4 ">
+                        <label class="layui-form-label layui-form-pane" style="margin-right: 20px">RabbitUrl</label>
+                        <div class="layui-input-inline" style="width: 300px;">
+                            <input type="text" name="RabbitUrl" placeholder="" autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <label class="layui-form-label" style="margin-right: 20px">RabbitApiToken</label>
+                        <div class="layui-input-inline" style="width: 300px;">
+                            <input type="text" name="RabbitApiToken"  placeholder="" autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <label class="layui-form-label" style="margin-right: 20px">RabbitToken</label>
+                        <div class="layui-input-inline" style="width: 300px;">
+                            <input type="text" name="RabbitToken"   placeholder="" autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-row layui-col-space10">
+
+                    <div class="layui-col-md4">
+                        <label class="layui-form-label" style="margin-right: 20px">NolanUrl</label>
+                        <div class="layui-input-inline" style="width: 300px;">
+                            <input type="text" name="NolanUrl" placeholder="" autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <label class="layui-form-label" style="margin-right: 20px">NolanToken</label>
+                        <div class="layui-input-inline" style="width: 300px;">
+                            <input type="text" name="NolanToken"  placeholder="" autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="layui-row layui-col-space10">
+                    <div class="layui-col-md4">
+                        <label class="layui-form-label" style="margin-right: 20px">BBKWxUrl</label>
+                        <div class="layui-input-inline" style="width: 300px;">
+                            <input type="text" name="BBKWxUrl" placeholder="" autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <label class="layui-form-label" style="margin-right: 20px">BBKJdUrl</label>
+                        <div class="layui-input-inline" style="width: 300px;">
+                            <input type="text" name="BBKJdUrl"  placeholder="" autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-col-md4">
+                        <label class="layui-form-label" style="margin-right: 20px">BBKToken</label>
+                        <div class="layui-input-inline" style="width: 300px;">
+                            <input type="text" name="BBKToken"  placeholder="" autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+
+
+                </div>
+
+
+                <table class="layui-table">
+                    <colgroup>
+                        <col width="150">
+                        <col width="200">
+                        <col>
+                    </colgroup>
+                    <thead>
+                    <tr>
+                        <th>渠道</th>
+                        <th>开关</th>
+                        <th>别名</th>
+                        <th>顺序</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>Rabbit京东扫码</td>
+                        <td><input type="checkbox" name="Rabbit" lay-skin="switch"></td>
+                        <td><input type="text" name="RabbitName"  placeholder="请输入显示名称" autocomplete="off" class="layui-input"></td>
+                        <td> <input type="text" name="RabbitNumber"   lay-verify="number" placeholder="请输入顺序" autocomplete="off" class="layui-input"></td>
+                    </tr>
+                    <tr>
+                        <td>短信Wskey</td>
+                        <td><input type="checkbox" name="RabbitSms" lay-skin="switch"></td>
+                        <td><input type="text" name="RabbitSms"  placeholder="请输入显示名称" autocomplete="off" class="layui-input"></td>
+                        <td> <input type="text" name="RabbitSmsNumber"   lay-verify="number" placeholder="请输入顺序" autocomplete="off" class="layui-input"></td>
+                    </tr>
+                    <tr>
+                        <td>FastRabbit</td>
+                        <td><input type="checkbox" name="FastRabbit" lay-skin="switch"></td>
+                        <td><input type="text" name="FastRabbitName"  placeholder="请输入显示名称" autocomplete="off" class="layui-input"></td>
+                        <td> <input type="text" name="FastRabbitNumber"   lay-verify="number" placeholder="请输入顺序" autocomplete="off" class="layui-input"></td>
+                    </tr>
+                    <tr>
+                        <td>MadRabbit</td>
+                        <td><input type="checkbox" name="MadRabbit" lay-skin="switch"></td>
+                        <td><input type="text" name="MadRabbitName"  placeholder="请输入显示名称" autocomplete="off" class="layui-input"></td>
+                        <td> <input type="text" name="MadRabbitNumber"   lay-verify="number" placeholder="请输入顺序" autocomplete="off" class="layui-input"></td>
+                    </tr>
+                    <tr>
+                        <td>Pro京东扫码</td>
+                        <td><input type="checkbox" name="Pro" lay-skin="switch"></td>
+                        <td><input type="text" name="ProName"  placeholder="请输入显示名称" autocomplete="off" class="layui-input"></td>
+                        <td> <input type="text" name="ProNumber"   lay-verify="number" placeholder="请输入顺序" autocomplete="off" class="layui-input"></td>
+                    </tr>
+                    <tr>
+                        <td>Pro短信登录</td>
+                        <td><input type="checkbox" name="ProSms" lay-skin="switch"></td>
+                        <td><input type="text" name="ProSmsName"  placeholder="请输入显示名称" autocomplete="off" class="layui-input"></td>
+                        <td> <input type="text" name="ProSmsNumber"   lay-verify="number" placeholder="请输入顺序" autocomplete="off" class="layui-input"></td>
+                    </tr>
+                    <tr>
+                        <td>BBK京东扫码</td>
+                        <td><input type="checkbox" name="BBKJd" lay-skin="switch"></td>
+                        <td><input type="text" name="BBKJdName"  placeholder="请输入显示名称" autocomplete="off" class="layui-input"></td>
+                        <td> <input type="text" name="BBKJdNumber"   lay-verify="number" placeholder="请输入顺序" autocomplete="off" class="layui-input"></td>
+                    </tr>
+                    <tr>
+                        <td>BBK微信扫码</td>
+                        <td><input type="checkbox" name="BBKWx" lay-skin="switch"></td>
+                        <td><input type="text" name="BBKWxName"  placeholder="请输入显示名称" autocomplete="off" class="layui-input"></td>
+                        <td> <input type="text" name="BBKWxNumber"   lay-verify="number" placeholder="请输入顺序" autocomplete="off" class="layui-input"></td>
+                    </tr>
+                    </tbody>
+
+                </table>
+
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <button class="layui-btn" lay-submit lay-filter="formDemo">立即保存</button>
+                    </div>
+                </div>
+
+            </form>
+
+        </div>
+
+        <div class="layui-tab-item">
+            <form class="layui-form" action="" lay-filter="exampl11e">
+            <table class="layui-table">
+                <colgroup>
+                    <col width="150">
+                    <col width="200">
+                    <col>
+                </colgroup>
+                <thead>
+                <tr>
+                    <th>渠道</th>
+                    <th>开关</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>7天过期京豆</td>
+                    <td><input type="checkbox" name="7day" lay-skin="switch"></td>
+                </tr>
+                <tr>
+                    <td>东东农场</td>
+                    <td><input type="checkbox" name="farm" lay-skin="switch"></td>
+                </tr>
+                <tr>
+                    <td>喜豆查询</td>
+                    <td><input type="checkbox" name="xd" lay-skin="switch"></td>
+                </tr>
+                <tr>
+                    <td>极速金币</td>
+                    <td><input type="checkbox" name="jsjb" lay-skin="switch"></td>
+                </tr>
+                <tr>
+                    <td>查优惠券</td>
+                    <td><input type="checkbox" name="yhj" lay-skin="switch"></td>
+                </tr>
+                <tr>
+                    <td>汪汪赛跑</td>
+                    <td><input type="checkbox" name="wangwang" lay-skin="switch"></td>
+                </tr>
+                <tr>
+                    <td>E卡查询</td>
+                    <td><input type="checkbox" name="eka" lay-skin="switch"></td>
+                </tr>
+                </tbody>
+
+            </table>
+            </form>
+        </div>
+
     </div>
 </div>
 </body>
+
+<script type="text/html" id="currentTableBar">
+    <a class="layui-btn layui-btn-sm layui-btn-normal data-info-btn" lay-event="details"><i class="layui-icon">&#xe60b;</i></a>
+</script>
+
 <script>
+
+    var form = layui.form;
+
+    //监听提交
+    form.on('submit(formDemo)', function(data){
+        layer.msg(JSON.stringify(data.field));
+        $.ajax({
+            url: '/api/config',
+            type: 'POST',
+            dataType: 'json',
+            data: JSON.stringify(data.field),
+            success: function(data) {
+                // 遍历JSON对象的属性并存储到本地缓存中
+                // for (var key in data) {
+                //     localStorage.setItem(key, JSON.stringify(data[key]));
+                // }
+                layer.msg(data)
+            },
+            error: function(xhr, textStatus, errorThrown) {
+                console.log('请求失败');
+            }
+        });
+        return false;
+    });
+
+    $.ajax({
+        url: '/api/config',
+        type: 'GET',
+        success: function(res) {
+            // 将返回的数据赋值给表单元素
+            form.val('example', res.data);
+        }
+    });
+
+    layui.use('element', function(){
+        var element = layui.element;
+
+        //一些事件触发
+
+        element.on('tab(demo)', function(data){
+            // layer.msg('切到到了' + data.index + '：' + this.innerHTML);
+
+            if (data.index===4){
+
+
+
+            }
+
+            // console.log(tabName); //得到当前Tab的所在下标
+            // console.log(data.elem.); //得到当前的Tab大容器
+        });
+    });
+
+
+    //
+    // 发送ajax请求获取数据
+    // $.ajax({
+    //     url: '/api/envs',
+    //     type: 'POST',
+    //     dataType: 'json',
+    //     success: function(data) {
+    //         // 遍历JSON对象的属性并存储到本地缓存中
+    //         for (var key in data) {
+    //             localStorage.setItem(key, JSON.stringify(data[key]));
+    //         }
+    //     },
+    //     error: function(xhr, textStatus, errorThrown) {
+    //         console.log('请求失败');
+    //     }
+    // });
+
+
+
     var table = layui.table;
+    //账号管理
     table.render({
         elem: '#accounts',
         height: "auto",
@@ -150,47 +439,53 @@ var Admin = `<html lang="zh-cn">
                 width: 120,
                 edit: 'text',
                 align: 'center',
-            }, {
-                field: 'Fruit',
-                title: '东东农场',
-                edit: 'text',
-                width: 120,
-                align: 'center',
-            }, {
-                field: 'Pet',
-                title: '东东萌宠',
-                edit: 'text',
-                width: 120,
-                align: 'center',
-            }, {
-                field: 'Bean',
-                title: '种豆得豆',
-                edit: 'text',
-                width: 120,
-                align: 'center',
-            }, {
-                field: 'JdFactory',
-                title: '东东工厂',
-                edit: 'text',
-                width: 120,
-                align: 'center',
-            }, {
-                field: 'DreamFactory',
-                title: '惊喜工厂',
-                edit: 'text',
-                width: 120,
-                align: 'center',
-            }, {
-                field: 'Cash',
-                title: '签到领现金',
-                edit: 'text',
-                width: 120,
-                align: 'center',
             }
             ]
         ]
     });
 
+    table.on('edit(accounts)', function(obj) {
+        obj.data.Priority = +obj.data.Priority
+        obj.data.JinLi = +obj.data.JinLi
+        obj.data.QQ = +obj.data.QQ
+        layui.$.ajax({
+            url: '/api/account',
+            type: 'POST',
+            contentType: "application/json",
+            data: JSON.stringify(obj.data),
+            dataType: 'json',
+            timeout: 1000,
+            cache: false,
+            error: function() {
+                table.reload('accounts');
+            }, //错误执行方法
+            success: function(data) {
+                layer.msg(data["msg"])
+                table.reload('accounts');
+            },
+        });
+    });
+
+    table.on('toolbar(accounts)', function(obj){
+        var checkStatus = table.checkStatus(obj.config.id);
+        switch(obj.event){
+            case 'add':
+                layer.msg('添加');
+                layer.open({
+                    type: 1,
+                    content: '' //这里content是一个普通的String
+                });
+                break;
+            case 'delete':
+                layer.msg('删除');
+                break;
+            case 'update':
+                layer.msg('编辑');
+                break;
+        };
+    });
+
+    //系统设置
     table.render({
         elem: '#envs',
         height: "auto",
@@ -230,41 +525,105 @@ var Admin = `<html lang="zh-cn">
         ]
     });
 
-    table.on('edit(accounts)', function(obj) {
-        obj.data.Priority = +obj.data.Priority
-        obj.data.JinLi = +obj.data.JinLi
-        obj.data.QQ = +obj.data.QQ
-        layui.$.ajax({
-            url: '/api/account',
-            type: 'POST',
-            contentType: "application/json",
-            data: JSON.stringify(obj.data),
-            dataType: 'json',
-            timeout: 1000,
-            cache: false,
-            error: function() {
-                table.reload('accounts');
-            }, //错误执行方法
-            success: function(data) {
-                layer.msg(data["msg"])
-                table.reload('accounts');
+
+    //登录配置
+    table.render({
+        elem: '#LoginSelect',
+        height: "auto",
+        url: '/api/loginselect',
+        toolbar: 'default',
+        response: {
+            statusName: 'code',
+            statusCode: 200,
+            msgName: 'code',
+            countName: 'message',
+            dataName: 'data'
+        },
+        title: '系统设置',
+        page: true,
+        limit: 15,
+        cols: [
+            [ //表头
+                {
+                    field: 'ID',
+                    title: 'ID',
+                    width: 100,
+                    align: 'center',
+                }, {
+                field: 'Name',
+                title: '参数',
+                width: 120,
+                align: 'center',
+            },{
+                field: 'Value',
+                title: '值',
+                width: 120,
+                align: 'center',
             },
-        });
+
+            ]
+        ]
     });
-    table.on('toolbar(accounts)', function(obj){
-        var checkStatus = table.checkStatus(obj.config.id);
-        switch(obj.event){
-            case 'add':
-                layer.msg('添加');
-                break;
-            case 'delete':
-                layer.msg('删除');
-                break;
-            case 'update':
-                layer.msg('编辑');
-                break;
-        };
-    });
+
+
+
+
+
+
+    //容器管理
+    // layui.config({
+    //     base: 'http://xdd.smxy.xyz/layui/' //配置 layui 第三方扩展组件存放的基础目录
+    // }).extend({
+    //     cardTable: 'cardTable/cardTable'
+    // }).use(['layer', 'form', 'jquery', 'cardTable'], function () {
+    //     let form = layui.form;
+    //     let $ = layui.jquery;
+    //     let layer = layui.layer;
+    //     let cardTable = layui.cardTable;
+    //
+    //     var currentTable = cardTable.render({
+    //         elem: '#currentTableId',
+    //         //此为动态
+    //         //url: '/card.json',
+    //         //此为静态
+    //         limit: 12, //每页数量默认是每行数量的双倍
+    //         linenum: 4, //每行数量 2,3,4,6
+    //         url: 'http://xdd.smxy.xyz/test.json',
+    //         toolbar:'currentTableBar',
+    //     })
+    //     // 监听搜索操作
+    //     form.on('submit(data-search-btn)', function (data) {
+    //         queryJson = data.field;
+    //         cardTable.reload("currentTableId", {
+    //             where: queryJson,
+    //         });
+    //         return false;
+    //     });
+    //     //卡片单击事件
+    //     currentTable.on('row(currentTableFilter)', function (obj) {
+    //         layer.msg("单击事件");
+    //         return false;
+    //     });
+    //     //卡片双击事件
+    //     currentTable.on('rowDouble(currentTableFilter)', function (obj) {
+    //         layer.msg("双击事件");
+    //         return false;
+    //     });
+    //     //toolrow监听事件
+    //     currentTable.on('tool(currentTableFilter)', function (obj) {
+    //         if (obj.event === 'details') {
+    //             layer.msg("按钮事件");
+    //         }
+    //         return false;
+    //     });
+    //     form.on('submit(data-btn)', function () {
+    //         var data = cardTable.getAllData("currentTableId");
+    //         layer.msg(JSON.stringify(data));
+    //         return false;
+    //     });
+    // });
+
+
 </script>
 
 

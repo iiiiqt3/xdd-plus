@@ -6,7 +6,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 )
 
-var Sys SystemConfig
+var sysConfig SystemConfig
 
 type SystemConfig struct {
 	RabbitUrl        string `json:"RabbitUrl"`
@@ -55,7 +55,7 @@ func ListConfig() SystemConfig {
 		if err != nil {
 			fmt.Println("解析失败:", err)
 		} else {
-			Sys = config
+			sysConfig = config
 		}
 
 	} else {

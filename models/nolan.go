@@ -9,22 +9,17 @@ import (
 	"time"
 )
 
-var NolanUrl string
-var NolanToken string
-
 func NolanGetJdQrImg(sender *Sender) {
-	NolanUrl = GetEnv("NolanUrl")
-	NolanToken = GetEnv("NolanToken")
-	if NolanUrl == "" || NolanToken == "" {
+	if sysConfig.NolanUrl == "" || sysConfig.NolanToken == "" {
 		logs.Error("NolanUrl or NolanToken is empty")
 		return
 	}
 
 	//http://192.168.195.53:5016/qr/GetQRKey
 	//https://qr.m.jd.com/p?k=${qrcode_info.value.QRCodeKey
-	get := httplib.Post(fmt.Sprintf("%s/qr/GetQRKey", NolanUrl))
+	get := httplib.Post(fmt.Sprintf("%s/qr/GetQRKey", sysConfig.NolanUrl))
 	get.Header("Content-Type", "application/json")
-	get.Body(fmt.Sprintf("{\n  \"botApitoken\": \"%s\"\n}", NolanToken))
+	get.Body(fmt.Sprintf("{\n  \"botApitoken\": \"%s\"\n}", sysConfig.NolanToken))
 	bytes, _ := get.Bytes()
 	logs.Info(string(bytes))
 
@@ -84,9 +79,9 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 	for {
 		time.Sleep(time.Second * time.Duration(5))
 		//http://192.168.195.53:5016/qr/CheckQRKey
-		get := httplib.Post(fmt.Sprintf("%s/qr/CheckQRKey", NolanUrl))
+		get := httplib.Post(fmt.Sprintf("%s/qr/CheckQRKey", sysConfig.NolanUrl))
 		get.Header("Content-Type", "application/json")
-		get.Body(fmt.Sprintf("{\n  \"qrkey\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", cookie, NolanToken))
+		get.Body(fmt.Sprintf("{\n  \"qrkey\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", cookie, sysConfig.NolanToken))
 		bytes, _ := get.Bytes()
 		code, _ := jsonparser.GetBoolean(bytes, "success")
 		logs.Info(string(bytes))
@@ -139,10 +134,10 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 }
 
 func NolanGetCookie(cookie string) (bool, string, string) {
-	get := httplib.Post(fmt.Sprintf("%s/env/wskey", NolanUrl))
+	get := httplib.Post(fmt.Sprintf("%s/env/wskey", sysConfig.NolanUrl))
 	get.Header("Content-Type", "application/json")
 	//get.Body(fmt.Sprintf("{\n  \"botApiToken\": \"%s\",\n  \"wskey\": \"%s\"\n}", NolanToken, cookie))
-	get.Body(fmt.Sprintf("{\n  \"botApiToken\": \"%s\",\n  \"wskey\": \"%s\"\n}", NolanToken, cookie))
+	get.Body(fmt.Sprintf("{\n  \"botApiToken\": \"%s\",\n  \"wskey\": \"%s\"\n}", sysConfig.NolanToken, cookie))
 	bytes, _ := get.Bytes()
 	msg, _ := jsonparser.GetString(bytes, "msg")
 	appck, _ := jsonparser.GetString(bytes, "data", "appck")

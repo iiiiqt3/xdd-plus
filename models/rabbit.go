@@ -13,19 +13,12 @@ import (
 	"time"
 )
 
-var RabbitUrl string
-var RabbitApiToken string
-var RabbitToken string
-
 func RabbitGetJdQrImg(sender *Sender) {
-	RabbitUrl = GetEnv("RabbitUrl")
-	RabbitApiToken = GetEnv("RabbitApiToken")
-	RabbitToken = GetEnv("RabbitToken")
-	if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
+	if sysConfig.RabbitUrl == "" || sysConfig.RabbitApiToken == "" || sysConfig.RabbitToken == "" {
 		logs.Error("RabbitUrl or RabbitToken is empty")
 		return
 	}
-	get := httplib.Post(fmt.Sprintf("%s/api/BeanQrCode?token=%s", RabbitUrl, RabbitApiToken))
+	get := httplib.Post(fmt.Sprintf("%s/api/BeanQrCode?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	bytes, _ := get.Bytes()
 	logs.Info(string(bytes))
 	code, _ := jsonparser.GetInt(bytes, "code")
@@ -54,7 +47,7 @@ func RabbitGetJdQrImg(sender *Sender) {
 func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 	for {
 		time.Sleep(time.Second * time.Duration(5))
-		get := httplib.Post(fmt.Sprintf("%s/api/QrCheck?token=%s", RabbitUrl, RabbitApiToken))
+		get := httplib.Post(fmt.Sprintf("%s/api/QrCheck?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 		marshal, _ := json.Marshal(struct {
 			QRCodeKey string `json:"QRCodeKey"`
 			Qlkey     string `json:"qlkey"`
@@ -107,13 +100,13 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 }
 
 func RabbitGetCookie(cookie string) (bool, string, string) {
-	get := httplib.Post(fmt.Sprintf("%s/api/wsck?RabbitToken=%s", RabbitUrl, RabbitApiToken))
+	get := httplib.Post(fmt.Sprintf("%s/api/wsck?RabbitToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	marshal, _ := json.Marshal(struct {
 		WSCK        string `json:"wsck"`
 		RabbitToken string `json:"RabbitToken"`
 	}{
 		WSCK:        cookie,
-		RabbitToken: RabbitToken,
+		RabbitToken: sysConfig.RabbitToken,
 	})
 	get.Body(marshal)
 	bytes, _ := get.Bytes()
@@ -130,15 +123,6 @@ func RabbitGetCookie(cookie string) (bool, string, string) {
 }
 
 func UpdateRwskey() {
-	RabbitUrl = GetEnv("RabbitUrl")
-	RabbitApiToken = GetEnv("RabbitApiToken")
-	RabbitToken = GetEnv("RabbitToken")
-
-	NolanUrl = GetEnv("NolanUrl")
-	NolanToken = GetEnv("NolanToken")
-
-	BBKToken = GetEnv("BBKToken")
-	BBKJdUrl = GetEnv("BBKJdUrl")
 
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where(fmt.Sprintf("%s != ? and %s !=?", RWSKEY, RWSKEY), "null", "")
@@ -160,7 +144,7 @@ func UpdateRwskey() {
 		var appck string
 		var retry int
 		//自动切换转换渠道，默认nolan
-		if NolanUrl != "" && NolanToken != "" {
+		if sysConfig.NolanUrl != "" && sysConfig.NolanToken != "" {
 			for !rsp {
 				rsp, _, appck = NolanGetCookie(pinky)
 				retry++
@@ -169,7 +153,7 @@ func UpdateRwskey() {
 					break
 				}
 			}
-		} else if RabbitUrl != "" && RabbitApiToken != "" && RabbitToken != "" {
+		} else if sysConfig.RabbitUrl != "" && sysConfig.RabbitApiToken != "" && sysConfig.RabbitToken != "" {
 			pin, _ := url.QueryUnescape(ck.PtPin)
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, ck.RWskey)
 
@@ -231,8 +215,8 @@ func UpdateRwskey() {
 
 func RabbitSendSMS(phone string, sender *Sender) {
 	sender.Reply("请耐心等待...")
-	logs.Info(RabbitUrl)
-	req := httplib.Post(fmt.Sprintf("%s/api/sendSMS?token=%s", RabbitUrl, RabbitApiToken))
+	logs.Info(sysConfig.RabbitUrl)
+	req := httplib.Post(fmt.Sprintf("%s/api/sendSMS?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	req.Header("content-type", "application/json")
 	data, _ := req.Body(`{"Phone":"` + phone + `","qlkey":1}`).Bytes()
 	logs.Info(string(data))
@@ -254,7 +238,7 @@ func RabbitSendSMS(phone string, sender *Sender) {
 		sender.Reply("正在进行验证...")
 		for {
 			i++
-			req = httplib.Post(fmt.Sprintf("%s/api/AutoCaptcha?token=%s", RabbitUrl, RabbitApiToken))
+			req = httplib.Post(fmt.Sprintf("%s/api/AutoCaptcha?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 			req.Header("content-type", "application/json")
 			data, _ := req.Body(`{"Phone":"` + phone + `"}`).Bytes()
 			message, _ := jsonparser.GetString(data, "message")
@@ -290,7 +274,7 @@ func RabbitSendSMS(phone string, sender *Sender) {
 
 func RabbitSendCode(phone string, code string, sender *Sender) {
 	sender.Reply("请耐心等待...")
-	req := httplib.Post(fmt.Sprintf("%s/api/VerifyCode?token=%s", RabbitUrl, RabbitApiToken))
+	req := httplib.Post(fmt.Sprintf("%s/api/VerifyCode?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	req.Header("content-type", "application/json")
 	data, _ := req.Body(fmt.Sprintf("{\n    \"Phone\": %s,\n    \"Code\": \"%s\",\n    \"qlkey\": 1\n}", phone, code)).Bytes()
 	logs.Info(string(data))

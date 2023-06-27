@@ -11,17 +11,12 @@ import (
 	"time"
 )
 
-var BBKWxUrl string
-var BBKJdUrl string
-var BBKToken string
-
 func BBKGetWxQrImg(sender *Sender) {
-	BBKWxUrl = GetEnv("BBKWxUrl")
-	if BBKWxUrl == "" {
+	if sysConfig.BBKWxUrl == "" {
 		logs.Error("BBKWxUrl is empty")
 		return
 	}
-	get := httplib.Get(fmt.Sprintf("%s/d/getQR?t=%d", BBKWxUrl, time.Now().Unix()))
+	get := httplib.Get(fmt.Sprintf("%s/d/getQR?t=%d", sysConfig.BBKWxUrl, time.Now().Unix()))
 	response, _ := get.Response()
 	cookies := response.Cookies()
 	ck := cookies[0].Name + "=" + cookies[0].Value
@@ -37,7 +32,7 @@ func BBKGetWxQrImg(sender *Sender) {
 func BBKGetWxQrStatus(cookie string, sender *Sender) {
 	for {
 		time.Sleep(time.Second * time.Duration(2))
-		get := httplib.Get(fmt.Sprintf("%s/d/status?t=%d", BBKWxUrl, time.Now().Unix()))
+		get := httplib.Get(fmt.Sprintf("%s/d/status?t=%d", sysConfig.BBKWxUrl, time.Now().Unix()))
 		get.Header("Cookie", cookie)
 		logs.Info(cookie)
 		bytes, _ := get.Bytes()
@@ -94,12 +89,11 @@ func BBKGetWxQrStatus(cookie string, sender *Sender) {
 }
 
 func BBKGetJdQrImg(sender *Sender) {
-	BBKJdUrl = GetEnv("BBKJdUrl")
-	if BBKJdUrl == "" {
+	if sysConfig.BBKJdUrl == "" {
 		logs.Error("BBKJdUrl is empty")
 		return
 	}
-	get := httplib.Get(fmt.Sprintf("%s/d/getQR?t=%d", BBKJdUrl, time.Now().Unix()))
+	get := httplib.Get(fmt.Sprintf("%s/d/getQR?t=%d", sysConfig.BBKJdUrl, time.Now().Unix()))
 	response, _ := get.Response()
 	cookies := response.Cookies()
 	ck := cookies[0].Name + "=" + cookies[0].Value
@@ -119,7 +113,7 @@ func BBKGetJdQrImg(sender *Sender) {
 func BBKGetJdQrStatus(cookie string, sender *Sender) {
 	for {
 		time.Sleep(time.Second * time.Duration(2))
-		get := httplib.Get(fmt.Sprintf("%s/d/status?t=%d", BBKJdUrl, time.Now().Unix()))
+		get := httplib.Get(fmt.Sprintf("%s/d/status?t=%d", sysConfig.BBKJdUrl, time.Now().Unix()))
 		get.Header("Cookie", cookie)
 		logs.Info(cookie)
 		bytes, _ := get.Bytes()
@@ -170,9 +164,7 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 }
 
 func BBKGetCookie(cookie string) (bool, string, string) {
-	BBKToken = GetEnv("BBKToken")
-	BBKJdUrl = GetEnv("BBKJdUrl")
-	if BBKToken == "" || BBKJdUrl == "" {
+	if sysConfig.BBKToken == "" || sysConfig.BBKJdUrl == "" {
 		logs.Error("BBKToken or BBKJdUrl is empty")
 		return false, "", ""
 	}
@@ -180,7 +172,7 @@ func BBKGetCookie(cookie string) (bool, string, string) {
 	//http://你的IP:3081/d/convert?pin=xxx&wskey=xxx&token=机器人token
 	pin := FetchJdCookieValue("pin", cookie)
 	rwskey := FetchJdCookieValue("wskey", cookie)
-	get := httplib.Get(fmt.Sprintf("%s/d/convert?pin=%s&wskey=%s&token=%s", BBKJdUrl, pin, rwskey, BBKToken))
+	get := httplib.Get(fmt.Sprintf("%s/d/convert?pin=%s&wskey=%s&token=%s", sysConfig.BBKJdUrl, pin, rwskey, sysConfig.BBKToken))
 	bytes, _ := get.Bytes()
 	logs.Info(string(bytes))
 	data, _ := jsonparser.GetString(bytes, "data")
