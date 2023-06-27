@@ -112,6 +112,6 @@ func updateConfig() {
 		//UnExportEnv(&Env{Name: "BBKToken"})
 		//UnExportEnv(&Env{Name: "BBKJdUrl"})
 
-		JdCookie{}.Push("升级成功，已将短信相关配置转移，后续请使用网页端配置")
+		JdCookie{}.Push("升级成功，已将短信相关配置转移，后续请使用网页端配置，请及时打开网页配置登录渠道")
 	}
 }
