@@ -84,7 +84,9 @@ func SaveSysConfig(config SystemConfig) string {
 
 func updateConfig() {
 	env := GetEnv("11.6")
-	if env != "" {
+	if env == "" {
+		logs.Info("开始更新")
+
 		var sys SystemConfig
 
 		sys.RabbitUrl = GetEnv("RabbitUrl")
