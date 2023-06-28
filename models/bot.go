@@ -358,34 +358,23 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						fmt.Sprintf("请选择登录渠道:"),
 					}
 
-					RabbitUrl = GetEnv("RabbitUrl")
-					RabbitApiToken = GetEnv("RabbitApiToken")
-					RabbitToken = GetEnv("RabbitToken")
-
-					NolanUrl = GetEnv("NolanUrl")
-					NolanToken = GetEnv("NolanToken")
-
-					BBKToken = GetEnv("BBKToken")
-					BBKJdUrl = GetEnv("BBKJdUrl")
-					BBKWxUrl = GetEnv("BBKWxUrl")
-
-					if RabbitUrl != "" && RabbitApiToken != "" && RabbitToken != "" {
+					if sysConfig.RabbitUrl != "" && sysConfig.RabbitApiToken != "" && sysConfig.RabbitToken != "" {
 						msgs = append(msgs, "1:兔子京东扫码")
 					}
 
-					if NolanUrl != "" && NolanToken != "" {
+					if sysConfig.NolanUrl != "" && sysConfig.NolanToken != "" {
 						msgs = append(msgs, "2:Nolan京东扫码")
 					}
 
-					if BBKJdUrl != "" && BBKToken != "" {
+					if sysConfig.BBKJdUrl != "" && sysConfig.BBKToken != "" {
 						msgs = append(msgs, "3:BBK京东扫码")
 					}
 
-					if BBKWxUrl != "" {
+					if sysConfig.BBKWxUrl != "" {
 						msgs = append(msgs, "4:BBK微信扫码")
 					}
 
-					if RabbitUrl != "" && RabbitApiToken != "" && RabbitToken != "" {
+					if sysConfig.RabbitUrl != "" && sysConfig.RabbitApiToken != "" && sysConfig.RabbitToken != "" {
 						msgs = append(msgs, "5:兔子短信Wskey")
 					}
 
