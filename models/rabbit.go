@@ -165,7 +165,7 @@ func UpdateRwskey() {
 				}
 			}
 
-		} else if BBKToken != "" && BBKJdUrl != "" {
+		} else if sysConfig.BBKToken != "" && sysConfig.BBKJdUrl != "" {
 			for !rsp {
 				rsp, _, appck = BBKGetCookie(pinky)
 				retry++

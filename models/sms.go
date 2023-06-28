@@ -19,8 +19,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			return
 		}
 	case "Rabbit":
-		RabbitUrl = GetEnv("RabbitUrl")
-		if RabbitUrl == "" {
+		if sysConfig.RabbitUrl == "" {
 			logs.Error("RabbitUrl is empty")
 			return
 		} else {
