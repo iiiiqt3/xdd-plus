@@ -187,10 +187,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 			switch n {
 			case "兔子京东扫码", "1":
 				loginList[sender.UserID] = nil
-				RabbitUrl = GetEnv("RabbitUrl")
-				RabbitApiToken = GetEnv("RabbitApiToken")
-				RabbitToken = GetEnv("RabbitToken")
-				if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
+				if sysConfig.RabbitUrl == "" || sysConfig.RabbitApiToken == "" || sysConfig.RabbitToken == "" {
 					logs.Error("RabbitUrl or RabbitToken is empty")
 					sender.Reply("渠道尚未配置")
 					return
@@ -198,9 +195,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 				RabbitGetJdQrImg(sender)
 			case "Nolan京东扫码", "2":
 				loginList[sender.UserID] = nil
-				NolanUrl = GetEnv("NolanUrl")
-				NolanToken = GetEnv("NolanToken")
-				if NolanUrl == "" || NolanToken == "" {
+				if sysConfig.NolanUrl == "" || sysConfig.NolanToken == "" {
 					logs.Error("NolanUrl or NolanToken is empty")
 					sender.Reply("渠道尚未配置")
 					return
@@ -208,8 +203,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 				NolanGetJdQrImg(sender)
 			case "BBK京东扫码", "3":
 				loginList[sender.UserID] = nil
-				BBKJdUrl = GetEnv("BBKJdUrl")
-				if BBKJdUrl == "" {
+				if sysConfig.BBKJdUrl == "" {
 					logs.Error("BBKJdUrl is empty")
 					sender.Reply("渠道尚未配置")
 					return
@@ -217,8 +211,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 				BBKGetJdQrImg(sender)
 			case "BBK微信扫码", "4":
 				loginList[sender.UserID] = nil
-				BBKWxUrl = GetEnv("BBKWxUrl")
-				if BBKWxUrl == "" {
+				if sysConfig.BBKWxUrl == "" {
 					logs.Error("BBKWxUrl is empty")
 					sender.Reply("渠道尚未配置")
 					return

@@ -95,12 +95,13 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 			ptkey := FetchJdCookieValue("pt_key", appck)
 			rwskey := FetchJdCookieValue("wskey", pinky)
 			ck := JdCookie{
-				PtPin:  pin,
-				PtKey:  ptkey,
-				RWskey: rwskey,
+				PtPin:     pin,
+				PtKey:     ptkey,
+				RWskey:    rwskey,
+				Available: True,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey})
+				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True})
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 			} else {
