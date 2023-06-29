@@ -498,7 +498,7 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-		Command: []string{"Rwskey更新"},
+		Command: []string{"Rwskey更新", "更新Rwskey"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			sender.Reply("更新所有账号")
