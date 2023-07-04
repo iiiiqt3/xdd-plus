@@ -197,7 +197,6 @@ var codeSignals = []CodeSignal{
 			} else {
 				return "已在监听列表"
 			}
-			return nil
 		},
 	},
 	{
@@ -222,7 +221,6 @@ var codeSignals = []CodeSignal{
 			} else {
 				return "不在监听范围"
 			}
-			return nil
 		},
 	},
 	{
@@ -704,15 +702,6 @@ var codeSignals = []CodeSignal{
 					return "操作成功"
 				}
 			}
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"测试"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			NolanKlToLj("")
 			return nil
 		},
 	},

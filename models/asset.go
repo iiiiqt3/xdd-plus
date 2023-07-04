@@ -331,10 +331,9 @@ func getJingBeanBalanceDetail(page int, cookie string) []BeanDetail {
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Header("Cookie", cookie)
 	req.Body(fmt.Sprintf(`body={"pageSize": "20", "page": "%d"}&appid=ld`, page))
-	value := GetEnv("proxy")
-	if value != "" {
+	if sysConfig.ProxyUrl != "" {
 		proxy := func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI(value)
+			u, _ := url.ParseRequestURI(sysConfig.ProxyUrl)
 			return u, nil
 		}
 		req.SetProxy(proxy)
@@ -368,10 +367,9 @@ func getJingXiBeanDeatil(cookie string) []JingXiDetail {
 	req.Header("Accept-Language", "zh-CN,zh-Hans;q=0.9")
 	req.Header("Referer", "https://st.jingxi.com/")
 	req.Header("Cookie", cookie)
-	value := GetEnv("proxy")
-	if value != "" {
+	if sysConfig.ProxyUrl != "" {
 		proxy := func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI(value)
+			u, _ := url.ParseRequestURI(sysConfig.ProxyUrl)
 			return u, nil
 		}
 		req.SetProxy(proxy)
@@ -591,10 +589,9 @@ func initFarm(cookie string, state chan string) {
 	req.Header("User-Agent", ua)
 	req.Header("Content-Type", "application/x-www-form-urlencoded")
 	req.Body(`body={"version":4}&appid=wh5&clientVersion=9.1.0`)
-	value := GetEnv("proxy")
-	if value != "" {
+	if sysConfig.ProxyUrl != "" {
 		proxy := func(req *http.Request) (*url.URL, error) {
-			u, _ := url.ParseRequestURI(value)
+			u, _ := url.ParseRequestURI(sysConfig.ProxyUrl)
 			return u, nil
 		}
 		req.SetProxy(proxy)

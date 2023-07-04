@@ -40,6 +40,7 @@ type SystemConfig struct {
 	BBKWx            string `json:"BBKWx"`
 	BBKWxName        string `json:"BBKWxName"`
 	BBKWxNumber      string `json:"BBKWxNumber"`
+	ProxyUrl         string `json:"ProxyUrl"`
 }
 
 func initSysConfig() {
@@ -98,7 +99,7 @@ func updateConfig() {
 
 		sys.BBKToken = GetEnv("BBKToken")
 		sys.BBKJdUrl = GetEnv("BBKJdUrl")
-
+		sys.ProxyUrl = GetEnv("proxy")
 		SaveSysConfig(sys)
 
 		env := &Env{}
@@ -113,6 +114,8 @@ func updateConfig() {
 		//UnExportEnv(&Env{Name: "NolanToken"})
 		//UnExportEnv(&Env{Name: "BBKToken"})
 		//UnExportEnv(&Env{Name: "BBKJdUrl"})
+
+		//todo UserId转换为WxId
 
 		JdCookie{}.Push("升级成功，已将短信相关配置转移，后续请使用网页端配置，请及时打开网页配置登录渠道")
 	}
