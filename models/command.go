@@ -565,6 +565,26 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
+		Command: []string{"设置掉线通知", "掉线通知"},
+		Handle: func(sender *Sender) interface{} {
+			if len(sender.Contents) > 1 {
+				PushPlus := sender.Contents[0]
+				sender.Contents = sender.Contents[1:]
+				str := sender.Contents[0]
+				number, err := strconv.Atoi(str)
+				count := 0
+				sender.handleJdCookies(func(ck *JdCookie) {
+					count++
+					if (err == nil && number == count) || ck.PtPin == str || sender.IsAdmin {
+						ck.Update("PushPlus", PushPlus)
+						sender.Reply(fmt.Sprintf("已设置账号%s(%s)的通知token为%s。", ck.PtPin, ck.Nickname, PushPlus))
+					}
+				})
+			}
+			return nil
+		},
+	},
+	{
 		Command: []string{"通知过期账号", "通知失效账号"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
