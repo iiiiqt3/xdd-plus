@@ -67,6 +67,8 @@ func (sender *Sender) Reply(msg string) {
 		SendQQGroup(sender.ChatID, sender.UserID, msg)
 	case "wx":
 		SendWxMsg(sender.WxId, msg)
+	case "wxg":
+		SendWxGroupMsg(sender.WxId, sender.WxGroupId, msg)
 	}
 }
 
