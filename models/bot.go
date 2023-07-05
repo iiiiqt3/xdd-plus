@@ -165,6 +165,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	if sender.Type == "wx" {
 		sender.WxId = msgs[2].(string)
 	}
+
 	if sender.Type == "wxg" {
 		sender.WxId = msgs[2].(string)
 		sender.WxGroupId = msgs[3].(string)
