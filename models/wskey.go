@@ -185,7 +185,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 			// 4:BBK微信扫码
 
 			switch n {
-			case "兔子京东扫码", "1":
+			case "口令登录", "1":
 				loginList[sender.UserID] = nil
 				if sysConfig.RabbitUrl == "" || sysConfig.RabbitApiToken == "" || sysConfig.RabbitToken == "" {
 					logs.Error("RabbitUrl or RabbitToken is empty")
