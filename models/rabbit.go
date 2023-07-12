@@ -10,7 +10,6 @@ import (
 	"gorm.io/gorm"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -227,16 +226,13 @@ func RabbitSendSMS(phone string, sender *Sender) {
 	if message != "" && status != 666 {
 		sender.Reply(message)
 	}
-	i := 1
 	if success {
 		logs.Info(strconv.Itoa(sender.UserID))
 		sender.Reply("请输入6位验证码：")
 		return
-	}
-	//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
-	if !success && (status == 666 || status == 505) {
-
+	} else {
 		sender.Reply("正在进行验证...")
+		i := 1
 		for {
 			i++
 			req = httplib.Post(fmt.Sprintf("%s/api/AutoCaptcha?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
@@ -250,9 +246,7 @@ func RabbitSendSMS(phone string, sender *Sender) {
 				break
 			}
 			if i > 5 {
-				//pcodes[sender.UserID] = msg
-				//s := Config.Jdcurl + "/Captcha/" + msg
-				//sender.Reply(fmt.Sprintf("请访问网址进行手动验证%s", s))
+				smsList[sender.UserID] = nil
 				sender.Reply("滑块验证失败,请尝试重新登录")
 				break
 			}
@@ -260,16 +254,13 @@ func RabbitSendSMS(phone string, sender *Sender) {
 				i++
 				sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
 				continue
-			}
-			if strings.Contains(message, "上限") {
-				i = 6
+			} else {
 				sender.Reply(message)
+				smsList[sender.UserID] = nil
 				break
 			}
+
 		}
-	} else {
-		smsList[sender.UserID] = nil
-		sender.Reply("滑块失败，请尝试重新登录")
 	}
 }
 
@@ -314,9 +305,9 @@ func RabbitSendCode(phone string, code string, sender *Sender) {
 		smsList[sender.UserID] = nil
 	} else if state == 505 {
 		RiskUrl, _ := jsonparser.GetString(data, "RiskUrl")
-
 		var png []byte
 		png, _ = qrcode.Encode(RiskUrl, qrcode.Medium, 256)
+
 		sender.SendImg(png)
 		sender.Reply(message)
 	} else {
