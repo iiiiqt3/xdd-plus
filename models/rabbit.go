@@ -267,11 +267,11 @@ func RabbitSendSMS(phone string, sender *Sender) {
 func RabbitSendCode(phone string, code string, sender *Sender) {
 	sender.Reply("请耐心等待...")
 	req := httplib.Post(fmt.Sprintf("%s/api/VerifyCode?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
-	req.Header("content-type", "application/json; charset=utf-8")
+	req.Header("Content-Type", "application/json; charset=utf-8")
 	data, _ := req.Body(fmt.Sprintf("{\n    \"Phone\": %s,\n    \"Code\": \"%s\",\n    \"qlkey\": 1\n}", phone, code)).Bytes()
 	logs.Info(string(data))
 
-	message, _ := jsonparser.GetString(data, "msg")
+	message, _ := jsonparser.GetString(data, "message")
 	pin, _ := jsonparser.GetString(data, "pin")
 	state, _ := jsonparser.GetInt(data, "code")
 	wskey, _ := jsonparser.GetString(data, "wskey")
