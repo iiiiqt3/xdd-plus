@@ -309,7 +309,9 @@ func RabbitSendCode(phone string, code string, sender *Sender) {
 
 		sender.SendImg(png)
 		sender.Reply(message)
+		smsList[sender.UserID] = nil
 	} else {
+		logs.Info(message)
 		sender.Reply(message)
 	}
 }
