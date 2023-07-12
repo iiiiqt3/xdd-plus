@@ -278,7 +278,6 @@ func RabbitSendCode(phone string, code string, sender *Sender) {
 	appck, _ := jsonparser.GetString(data, "ck")
 
 	if state == 200 {
-
 		ptkey := FetchJdCookieValue("pt_key", appck)
 		ck := JdCookie{
 			PtPin: pin,
@@ -303,7 +302,7 @@ func RabbitSendCode(phone string, code string, sender *Sender) {
 		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 		(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		smsList[sender.UserID] = nil
-	} else if state == 505 {
+	} else if state == 555 {
 		RiskUrl, _ := jsonparser.GetString(data, "RiskUrl")
 		var png []byte
 		png, _ = qrcode.Encode(RiskUrl, qrcode.Medium, 256)
