@@ -59,7 +59,6 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			case "Nolan":
 
 			case "Rabbit":
-
 				phoneList[sender.UserID] = n
 				go RabbitSendSMS(n, sender)
 			default:

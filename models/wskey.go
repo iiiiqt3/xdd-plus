@@ -177,6 +177,33 @@ func LoginSelect(sender *Sender, msg chan string) {
 			//default:
 			//	sender.Reply("无匹配渠道，如需回复'q'退出登录流程")
 			//}
+		} else if Config.QQID == 413255735 {
+			//请选择登录渠道:
+			// 1:兔子京东扫码
+			// 2:Nolan京东扫码
+			// 3:BBK京东扫码
+			// 4:BBK微信扫码
+
+			switch n {
+			case "兔子京东扫码", "1":
+				loginList[sender.UserID] = nil
+				if sysConfig.RabbitUrl == "" || sysConfig.RabbitApiToken == "" || sysConfig.RabbitToken == "" {
+					logs.Error("RabbitUrl or RabbitToken is empty")
+					sender.Reply("渠道尚未配置")
+					return
+				}
+				RabbitGetJdQrImg(sender)
+			case "2", "短信登录":
+				loginList[sender.UserID] = nil
+				c2 := make(chan string)
+				smsList[sender.UserID] = c2
+				go SmsSelect(sender, c2, "Rabbit")
+			case "q":
+				loginList[sender.UserID] = nil
+				close(msg)
+			default:
+				sender.Reply("无匹配渠道，如需回复'q'退出登录流程")
+			}
 		} else {
 			//请选择登录渠道:
 			// 1:兔子京东扫码
