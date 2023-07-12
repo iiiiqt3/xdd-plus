@@ -203,7 +203,7 @@ func (ck *JdCookie) Query() string {
 		go initFarm(cookie, fruit)
 		go jsGold(cookie, gold)
 		//		go jdzz(cookie, zjb)
-		//		go jingxiangzhi(cookie,' jxzz)
+		//		go jingxiangzhi(cookie, jxzz)
 		today := time.Now().Local().Format("2006-01-02")
 		yestoday := time.Now().Local().Add(-time.Hour * 24).Format("2006-01-02")
 		page := 1
