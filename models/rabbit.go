@@ -217,7 +217,7 @@ func RabbitSendSMS(phone string, sender *Sender) {
 	sender.Reply("请耐心等待...")
 	logs.Info(sysConfig.RabbitUrl)
 	req := httplib.Post(fmt.Sprintf("%s/api/sendSMS?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
-	req.Header("content-type", "application/json")
+	req.Header("content-type", "application/json; charset=utf-8")
 	data, _ := req.Body(`{"Phone":"` + phone + `","qlkey":1}`).Bytes()
 	logs.Info(string(data))
 	message, _ := jsonparser.GetString(data, "message")
@@ -236,7 +236,7 @@ func RabbitSendSMS(phone string, sender *Sender) {
 		for {
 			i++
 			req = httplib.Post(fmt.Sprintf("%s/api/AutoCaptcha?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
-			req.Header("content-type", "application/json")
+			req.Header("content-type", "application/json; charset=utf-8")
 			data, _ := req.Body(`{"Phone":"` + phone + `"}`).Bytes()
 			message, _ := jsonparser.GetString(data, "message")
 			success, _ := jsonparser.GetBoolean(data, "success")
@@ -267,7 +267,7 @@ func RabbitSendSMS(phone string, sender *Sender) {
 func RabbitSendCode(phone string, code string, sender *Sender) {
 	sender.Reply("请耐心等待...")
 	req := httplib.Post(fmt.Sprintf("%s/api/VerifyCode?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
-	req.Header("content-type", "application/json")
+	req.Header("content-type", "application/json; charset=utf-8")
 	data, _ := req.Body(fmt.Sprintf("{\n    \"Phone\": %s,\n    \"Code\": \"%s\",\n    \"qlkey\": 1\n}", phone, code)).Bytes()
 	logs.Info(string(data))
 
