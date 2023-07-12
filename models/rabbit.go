@@ -6,6 +6,7 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
+	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 	"net/url"
 	"strconv"
@@ -233,7 +234,7 @@ func RabbitSendSMS(phone string, sender *Sender) {
 		return
 	}
 	//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
-	if !success && status == 666 {
+	if !success && (status == 666 || status == 505) {
 
 		sender.Reply("正在进行验证...")
 		for {
@@ -255,7 +256,7 @@ func RabbitSendSMS(phone string, sender *Sender) {
 				sender.Reply("滑块验证失败,请尝试重新登录")
 				break
 			}
-			if status == 666 {
+			if status == 666 || status == 505 {
 				i++
 				sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
 				continue
@@ -311,6 +312,13 @@ func RabbitSendCode(phone string, code string, sender *Sender) {
 		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 		(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		smsList[sender.UserID] = nil
+	} else if state == 505 {
+		RiskUrl, _ := jsonparser.GetString(data, "RiskUrl")
+
+		var png []byte
+		png, _ = qrcode.Encode(RiskUrl, qrcode.Medium, 256)
+		sender.SendImg(png)
+		sender.Reply(message)
 	} else {
 		sender.Reply(message)
 	}
