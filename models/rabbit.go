@@ -214,7 +214,7 @@ func UpdateRwskey() {
 }
 
 func RabbitSendSMS(phone string, sender *Sender) {
-	sender.Reply("请耐心等待...")
+	sender.Reply("正在验证...")
 	logs.Info(sysConfig.RabbitUrl)
 	req := httplib.Post(fmt.Sprintf("%s/api/sendSMS?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	req.Header("content-type", "application/json; charset=utf-8")
@@ -310,8 +310,10 @@ func RabbitSendCode(phone string, code string, sender *Sender) {
 		sender.SendImg(png)
 		sender.Reply(message)
 		smsList[sender.UserID] = nil
+	} else if state == 505 {
+		sender.Reply(message)
 	} else {
-		logs.Info(message)
+		smsList[sender.UserID] = nil
 		sender.Reply(message)
 	}
 }
