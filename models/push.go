@@ -19,6 +19,7 @@ func (ck JdCookie) Push(msg string) {
 		go SendQQ(Config.QQID, msg)
 		go qywxNotify(&QywxConfig{QywxKey: Config.QywxKey, Content: msg})
 		go SendTgMsg(Config.TelegramUserID, msg)
+
 	}
 }
 
