@@ -359,7 +359,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						fmt.Sprintf("请选择登录渠道:"),
 					}
 
-					if sysConfig.RabbitUrl != "" && sysConfig.RabbitApiToken != "" && sysConfig.RabbitToken != "" {
+					if sysConfig.RabbitUrl != "" && sysConfig.RabbitApiToken != "" && sysConfig.RabbitToken != "" && sysConfig.Rabbit == "1" {
 						msgs = append(msgs, "1:兔子京东扫码")
 					}
 
