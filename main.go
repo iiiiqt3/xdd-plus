@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
@@ -26,9 +25,6 @@ type Result struct {
 	Data    interface{} `json:"data"`
 	Message string      `json:"message"`
 }
-
-//go:embed web/*
-var WebFs embed.FS
 
 func main() {
 
@@ -97,10 +93,10 @@ func main() {
 		}
 	})
 
-	web.Get("/admin", func(ctx *context.Context) {
-		file, _ := WebFs.ReadFile("admin.html")
-		ctx.WriteString(string(file))
-	})
+	//web.Get("/admin", func(ctx *context.Context) {
+	//	file, _ := WebFs.ReadFile("admin.html")
+	//	ctx.WriteString(string(file))
+	//})
 
 	web.Router("/api/login/qrcode", &controllers.LoginController{}, "get:GetQrcode")
 	web.Router("/api/login/qrcode.png", &controllers.LoginController{}, "get:GetQrcode")
@@ -116,7 +112,7 @@ func main() {
 	web.Router("/api/getUserPin", &controllers.LoginController{}, "get:GetUserPin")
 	web.Router("/api/account", &controllers.AccountController{}, "get:List")
 	web.Router("/api/account", &controllers.AccountController{}, "post:CreateOrUpdate")
-	//web.Router("/admin", &controllers.AccountController{}, "get:Admin")
+	web.Router("/admin", &controllers.AccountController{}, "get:Admin")
 	//web.Router("/admin", &controllers.AccountController{}, "post:Admin")
 	if models.Config.VIP {
 		web.Router("/wx/receive", &controllers.WxController{}, "post:HandleWxMessage")
