@@ -113,7 +113,7 @@ func main() {
 	web.Router("/api/account", &controllers.AccountController{}, "get:List")
 	web.Router("/api/account", &controllers.AccountController{}, "post:CreateOrUpdate")
 	web.Router("/admin", &controllers.AccountController{}, "get:Admin")
-	//vweb.Router("/admin", &controllers.AccountController{}, "post:Admin")
+	web.Router("/admin", &controllers.AccountController{}, "post:Admin")
 	if models.Config.VIP {
 		web.Router("/wx/receive", &controllers.WxController{}, "post:HandleWxMessage")
 		web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
