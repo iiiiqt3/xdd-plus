@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/vweb"
 )
@@ -107,7 +108,7 @@ func (c *AccountController) CreateOrUpdate() {
 
 func (c *AccountController) Admin() {
 	file, _ := vweb.WebFs.ReadFile("/vweb/admin.html")
-	fmt.Println(string(file))
+	logs.Info(string(file))
 	c.Ctx.WriteString(string(file))
 
 	//if models.Config.QQID == 764763903 {
