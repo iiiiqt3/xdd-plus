@@ -2,5 +2,5 @@ package vweb
 
 import "embed"
 
-//go:embed /*
+//go:embed /
 var WebFs embed.FS
