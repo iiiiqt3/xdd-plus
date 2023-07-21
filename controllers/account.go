@@ -107,7 +107,7 @@ func (c *AccountController) CreateOrUpdate() {
 }
 
 func (c *AccountController) Admin() {
-	file, _ := vweb.WebFs.ReadFile("admin.html")
+	file, _ := vweb.WebFs.ReadFile("html/admin.html")
 	logs.Info(string(file))
 	c.Ctx.WriteString(string(file))
 
