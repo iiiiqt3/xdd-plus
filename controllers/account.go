@@ -1,15 +1,14 @@
 package controllers
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 )
 
-////go:embed /web/*
-//var WebFs embed.FS
+//go:embed /web/*
+var WebFs embed.FS
 
 type AccountController struct {
 	BaseController
@@ -110,21 +109,21 @@ func (c *AccountController) CreateOrUpdate() {
 }
 
 func (c *AccountController) Admin() {
-	//file, _ := WebFs.ReadFile("admin.html")
-	//c.Ctx.WriteString(string(file))
+	file, _ := WebFs.ReadFile("/web/admin.html")
+	c.Ctx.WriteString(string(file))
 
-	if models.Config.QQID == 764763903 {
-		logs.Info("下载最新主题")
-		s, _ := httplib.Get("http://update1.smxy.xyz/admin.html").String()
-		if s != "" {
-			c.Ctx.WriteString(s)
-			return
-		}
-		logs.Warn("主题下载失败，使用默认主题")
-
-	} else {
-		c.Ctx.WriteString(models.Admin)
-	}
+	//if models.Config.QQID == 764763903 {
+	//	logs.Info("下载最新主题")
+	//	s, _ := httplib.Get("http://update1.smxy.xyz/admin.html").String()
+	//	if s != "" {
+	//		c.Ctx.WriteString(s)
+	//		return
+	//	}
+	//	logs.Warn("主题下载失败，使用默认主题")
+	//
+	//} else {
+	//	c.Ctx.WriteString(models.Admin)
+	//}
 }
 
 //func (c *AccountController) ListLoginSelect() {
