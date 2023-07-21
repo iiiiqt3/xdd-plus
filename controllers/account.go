@@ -1,14 +1,11 @@
 package controllers
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"github.com/cdle/xdd/models"
+	"github.com/cdle/xdd/web"
 )
-
-//go:embed /web/*.html
-var WebFs embed.FS
 
 type AccountController struct {
 	BaseController
@@ -109,7 +106,7 @@ func (c *AccountController) CreateOrUpdate() {
 }
 
 func (c *AccountController) Admin() {
-	file, _ := WebFs.ReadFile("/web/admin.html")
+	file, _ := web.WebFs.ReadFile("/web/admin.html")
 	c.Ctx.WriteString(string(file))
 
 	//if models.Config.QQID == 764763903 {
