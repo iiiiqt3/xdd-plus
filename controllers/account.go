@@ -7,7 +7,7 @@ import (
 	"github.com/cdle/xdd/models"
 )
 
-//go:embed /web/*
+//go:embed /web/*.html
 var WebFs embed.FS
 
 type AccountController struct {
