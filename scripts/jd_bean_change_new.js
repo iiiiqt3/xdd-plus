@@ -1017,7 +1017,7 @@ async function requestAlgo() {
             "fp": $.fingerprint,
             "appId": $.appId.toString(),
             "timestamp": Date.now(),
-            "platform": "web",
+            "platform": "vweb",
             "expandParams": ""
         })
     }

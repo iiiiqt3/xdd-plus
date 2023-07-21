@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cdle/xdd/models"
-	"github.com/cdle/xdd/web"
+	"github.com/cdle/xdd/vweb"
 )
 
 type AccountController struct {
@@ -106,7 +106,8 @@ func (c *AccountController) CreateOrUpdate() {
 }
 
 func (c *AccountController) Admin() {
-	file, _ := web.WebFs.ReadFile("/web/admin.html")
+	file, _ := vweb.WebFs.ReadFile("/vweb/admin.html")
+	fmt.Println(string(file))
 	c.Ctx.WriteString(string(file))
 
 	//if models.Config.QQID == 764763903 {

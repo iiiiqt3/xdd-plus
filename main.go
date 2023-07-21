@@ -93,7 +93,7 @@ func main() {
 		}
 	})
 
-	//web.Get("/admin", func(ctx *context.Context) {
+	//vweb.Get("/admin", func(ctx *context.Context) {
 	//	file, _ := WebFs.ReadFile("admin.html")
 	//	ctx.WriteString(string(file))
 	//})
@@ -102,7 +102,7 @@ func main() {
 	web.Router("/api/login/qrcode.png", &controllers.LoginController{}, "get:GetQrcode")
 	web.Router("/api/login/qrcode1", &controllers.LoginController{}, "get:GetQrcode1")
 	web.Router("/api/login/query", &controllers.LoginController{}, "get:Query")
-	//web.Router("/api/login/cookie", &controllers.LoginController{}, "get:Cookie")
+	//vweb.Router("/api/login/cookie", &controllers.LoginController{}, "get:Cookie")
 	web.Router("/api/login/admin", &controllers.LoginController{}, "post:IsAdmin")
 	web.Router("/api/login/cklogin", &controllers.LoginController{}, "post:CkLogin")
 	web.Router("/api/login/smslogin", &controllers.LoginController{}, "post:SMSLogin")
@@ -113,7 +113,7 @@ func main() {
 	web.Router("/api/account", &controllers.AccountController{}, "get:List")
 	web.Router("/api/account", &controllers.AccountController{}, "post:CreateOrUpdate")
 	web.Router("/admin", &controllers.AccountController{}, "get:Admin")
-	//web.Router("/admin", &controllers.AccountController{}, "post:Admin")
+	//vweb.Router("/admin", &controllers.AccountController{}, "post:Admin")
 	if models.Config.VIP {
 		web.Router("/wx/receive", &controllers.WxController{}, "post:HandleWxMessage")
 		web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
@@ -123,8 +123,8 @@ func main() {
 		web.Router("/api/config", &controllers.ConfigController{}, "get:ListConfig")
 		web.Router("/api/config", &controllers.ConfigController{}, "post:CreateOrUpdateConfig")
 
-		//web.Router("/api/loginselect", &controllers.AccountController{}, "get:ListLoginSelect")
-		//web.Router("/api/loginselect", &controllers.AccountController{}, "post,delete:CreateOrUpdateLoginSelect")
+		//vweb.Router("/api/loginselect", &controllers.AccountController{}, "get:ListLoginSelect")
+		//vweb.Router("/api/loginselect", &controllers.AccountController{}, "post,delete:CreateOrUpdateLoginSelect")
 	}
 
 	if models.Config.Static == "" {
@@ -157,4 +157,5 @@ func main() {
 	}()
 
 	web.Run()
+
 }

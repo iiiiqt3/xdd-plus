@@ -1,4 +1,4 @@
-package web
+package vweb
 
 import "embed"
 
