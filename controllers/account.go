@@ -3,7 +3,6 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/vweb"
 )
@@ -108,7 +107,6 @@ func (c *AccountController) CreateOrUpdate() {
 
 func (c *AccountController) Admin() {
 	file, _ := vweb.WebFs.ReadFile("html/admin.html")
-	logs.Info(string(file))
 	c.Ctx.WriteString(string(file))
 
 	//if models.Config.QQID == 764763903 {
@@ -116,13 +114,14 @@ func (c *AccountController) Admin() {
 	//	s, _ := httplib.Get("http://update1.smxy.xyz/admin.html").String()
 	//	if s != "" {
 	//		c.Ctx.WriteString(s)
-	//		return
+	//		return b
 	//	}
 	//	logs.Warn("主题下载失败，使用默认主题")
 	//
 	//} else {
 	//	c.Ctx.WriteString(models.Admin)
 	//}
+
 }
 
 //func (c *AccountController) ListLoginSelect() {

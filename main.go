@@ -28,6 +28,8 @@ type Result struct {
 
 func main() {
 
+	logs.SetLogger(logs.AdapterFile, "{\"filename\":\"xdd.log\", \"level\":6}")
+
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
@@ -93,10 +95,14 @@ func main() {
 		}
 	})
 
-	//vweb.Get("/admin", func(ctx *context.Context) {
-	//	file, _ := WebFs.ReadFile("admin.html")
-	//	ctx.WriteString(string(file))
-	//})
+	//for prefix, staticDir := range StaticDir {
+	//	if strings.HasPrefix(r.URL.Path, prefix) {
+	//		file := staticDir + r.URL.Path[len(prefix):]
+	//		http.ServeFile(w, r, file)
+	//		w.started = true
+	//		return
+	//	}
+	//}
 
 	web.Router("/api/login/qrcode", &controllers.LoginController{}, "get:GetQrcode")
 	web.Router("/api/login/qrcode.png", &controllers.LoginController{}, "get:GetQrcode")
@@ -131,6 +137,7 @@ func main() {
 		models.Config.Static = "./static"
 	}
 	web.BConfig.WebConfig.StaticDir["/static"] = models.Config.Static
+
 	web.BConfig.AppName = models.AppName
 	web.BConfig.WebConfig.AutoRender = false
 	web.BConfig.CopyRequestBody = true
