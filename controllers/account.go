@@ -71,6 +71,7 @@ func (c *AccountController) ListEnvs() {
 		from = 0
 	}
 	var data = envs[from:to]
+
 	c.Data["json"] = map[string]interface{}{
 		"code":    200,
 		"data":    data,
