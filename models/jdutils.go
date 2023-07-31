@@ -36,7 +36,7 @@ func LJtoKL(url string) string {
 func LJtoLJ(url string) []byte {
 	rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
 	rsp.Param("url", url)
-	rsp.Param("type", "kl")
+	rsp.Param("type", "su")
 	rsp.Param("u", "sq.jd.com")
 	rsp.Param("model", "json")
 	data, err := rsp.Response()
