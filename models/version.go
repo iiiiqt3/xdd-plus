@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var version = "v11.9"
+var version = "v12.0"
 var describe = "修复Wskey更新"
 var AppName = "xdd"
 var pname = pname1()
