@@ -33,6 +33,25 @@ func LJtoKL(url string) string {
 	}
 }
 
+func LJtoLJ(url string) []byte {
+	rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+	rsp.Param("url", url)
+	rsp.Param("type", "kl")
+	rsp.Param("u", "sq.jd.com")
+	rsp.Param("model", "json")
+	data, err := rsp.Response()
+	if err != nil {
+		return []byte("口令转换失败")
+	}
+	body, _ := ioutil.ReadAll(data.Body)
+	logs.Info(string(body))
+	if strings.Contains(string(body), "口令转换失败") {
+		return []byte("口令转换失败")
+	} else {
+		return body
+	}
+}
+
 func KLtoLJ(kl string) string {
 	rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
 	rsp.Param("url", kl)
