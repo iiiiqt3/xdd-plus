@@ -32,6 +32,7 @@ func NolanGetJdQrImg(sender *Sender) {
 
 		lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
 		url, _ := jsonparser.GetString(lj, "code")
+		logs.Info(url)
 		sender.Reply(NolanLJToKL(url, "京东快捷登录"))
 
 		logs.Info(key)
