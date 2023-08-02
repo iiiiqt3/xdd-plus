@@ -44,7 +44,7 @@ func RabbitGetJdQrImg(sender *Sender) {
 		//logs.Info(url)
 		//sender.Reply(NolanLJToKL(url, "京东快捷登录"))
 
-		sender.Reply("请复制口令到京东APP登录，150秒失效")
+		sender.Reply("请使用京东APP扫描，150秒失效")
 		go RabbitGetJDQrStatus(key, sender)
 	} else {
 		logs.Info(string(bytes))

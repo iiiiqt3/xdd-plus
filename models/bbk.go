@@ -106,7 +106,7 @@ func BBKGetJdQrImg(sender *Sender) {
 	replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
 	decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
 	sender.SendImg(decodeStr)
-	sender.Reply("请复制到京东APP打开,有效期为160秒")
+	sender.Reply("请使用京东APP扫描,有效期为160秒")
 	go BBKGetJdQrStatus(ck, sender)
 }
 
