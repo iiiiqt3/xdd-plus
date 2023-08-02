@@ -140,6 +140,7 @@ func GetImageToken() {
 	if val {
 		token, _ := jsonparser.GetString(bytes, "data", "token")
 		sysConfig.ImageToken = token
+		SaveSysConfig(sysConfig)
 		logs.Info("图床登录成功，已记录Token")
 	} else {
 		logs.Warn("图床登录失败，请检查用户名密码")
