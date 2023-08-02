@@ -120,6 +120,7 @@ func uploadImg(filename string) string {
 	get := httplib.Post("http://images.smxy.xyz/api/v1/upload")
 	get.Header("Authorization", sysConfig.ImageToken)
 	get.Header("Content-Type", "multipart/form-data")
+	get.Param("strategy_id", "1")
 	get.PostFile("file", filename)
 	bytes, _ := get.Bytes()
 	logs.Info(string(bytes))
