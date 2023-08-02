@@ -27,8 +27,8 @@ func RabbitGetJdQrImg(sender *Sender) {
 		key, _ := jsonparser.GetString(bytes, "QRCodeKey")
 
 		//返回口令
-		//jcommond, _ := jsonparser.GetString(bytes, "jcommond")
-		//sender.Reply(jcommond)
+		jcommond, _ := jsonparser.GetString(bytes, "jcommond")
+		sender.Reply(jcommond)
 
 		//图片
 		//sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
@@ -38,10 +38,10 @@ func RabbitGetJdQrImg(sender *Sender) {
 		//sender.SendImg(decodeStr)
 
 		//口令转
-		lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
-		url, _ := jsonparser.GetString(lj, "code")
-		logs.Info(url)
-		sender.Reply(NolanLJToKL(url, "京东快捷登录"))
+		//lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
+		//url, _ := jsonparser.GetString(lj, "code")
+		//logs.Info(url)
+		//sender.Reply(NolanLJToKL(url, "京东快捷登录"))
 
 		sender.Reply("请复制口令到京东APP登录，150秒失效")
 		go RabbitGetJDQrStatus(key, sender)

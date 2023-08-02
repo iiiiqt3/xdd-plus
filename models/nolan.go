@@ -30,10 +30,12 @@ func NolanGetJdQrImg(sender *Sender) {
 		//png, _ = qrcode.Encode("https://qr.m.jd.com/p?k="+key, qrcode.Medium, 256)
 		//sender.SendImg(png)
 
-		lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
-		url, _ := jsonparser.GetString(lj, "code")
-		logs.Info(url)
-		sender.Reply(NolanLJToKL(url, "京东快捷登录"))
+		sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
+
+		//lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
+		//url, _ := jsonparser.GetString(lj, "code")
+		//logs.Info(url)
+		//sender.Reply(NolanLJToKL(url, "京东快捷登录"))
 
 		logs.Info(key)
 		//if Config.QQID == 764763903 {
