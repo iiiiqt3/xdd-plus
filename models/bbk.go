@@ -102,10 +102,10 @@ func BBKGetJdQrImg(sender *Sender) {
 	key, _ := jsonparser.GetString(all, "data", "qrUrl")
 	sender.Reply(NolanLJToKL(key, "京东快捷登录"))
 
-	//val, _ := jsonparser.GetString(all, "data", "qr")
-	//replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
-	//decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
-	//sender.SendImg(decodeStr)
+	val, _ := jsonparser.GetString(all, "data", "qr")
+	replaceAll := strings.ReplaceAll(val, "data:image/jpeg;base64,", "")
+	decodeStr, _ := base64.StdEncoding.DecodeString(replaceAll)
+	sender.SendImg(decodeStr)
 	sender.Reply("请复制到京东APP打开,有效期为160秒")
 	go BBKGetJdQrStatus(ck, sender)
 }

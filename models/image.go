@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/golang/freetype"
 	log "github.com/sirupsen/logrus"
@@ -106,8 +107,18 @@ func strtoimg(str string) []byte {
 }
 
 func uploadImg(filename string) string {
+	if sysConfig.ImageToken == "" {
+		logs.Info("图床Token为空")
+		if sysConfig.ImageUserName == "" || sysConfig.ImagePassword == "" {
+			logs.Info("图床账号密码为空")
+			return "图床账号密码为空"
+		} else {
+			GetImageToken()
+		}
+	}
+
 	get := httplib.Post("http://images.smxy.xyz/api/v1/upload")
-	//get.Header("Authorization", "Bearer 3|vYO0BddOAoHfIJnZEqNG11OmxLzdC5kASfP1JUFi")
+	get.Header("Authorization", sysConfig.ImageToken)
 	get.Header("Content-Type", "multipart/form-data")
 	get.PostFile("file", filename)
 	bytes, _ := get.Bytes()
@@ -115,5 +126,23 @@ func uploadImg(filename string) string {
 	s, _ := jsonparser.GetString(bytes, "data", "links", "url")
 	//logs.Info(s)
 	return s
+
+}
+
+func GetImageToken() {
+	get := httplib.Post("http://images.smxy.xyz/api/v1/tokens")
+	get.Header("Content-Type", "multipart/form-data")
+	get.Param("email", sysConfig.ImageUserName)
+	get.Param("password", sysConfig.ImagePassword)
+	bytes, _ := get.Bytes()
+	logs.Info(string(bytes))
+	val, _ := jsonparser.GetBoolean(bytes, "status")
+	if val {
+		token, _ := jsonparser.GetString(bytes, "data", "token")
+		sysConfig.ImageToken = token
+		logs.Info("图床登录成功，已记录Token")
+	} else {
+		logs.Warn("图床登录失败，请检查用户名密码")
+	}
 
 }

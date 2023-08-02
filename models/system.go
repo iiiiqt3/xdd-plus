@@ -9,6 +9,9 @@ import (
 var sysConfig SystemConfig
 
 type SystemConfig struct {
+	ImageUserName    string `json:"ImageUserName"`
+	ImagePassword    string `json:"ImagePassword"`
+	ImageToken       string `json:"ImageToken"`
 	RabbitUrl        string `json:"RabbitUrl"`
 	RabbitApiToken   string `json:"RabbitApiToken"`
 	RabbitToken      string `json:"RabbitToken"`

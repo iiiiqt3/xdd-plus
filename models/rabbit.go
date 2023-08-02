@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
@@ -27,15 +28,15 @@ func RabbitGetJdQrImg(sender *Sender) {
 		key, _ := jsonparser.GetString(bytes, "QRCodeKey")
 
 		//返回口令
-		jcommond, _ := jsonparser.GetString(bytes, "jcommond")
-		sender.Reply(jcommond)
+		//jcommond, _ := jsonparser.GetString(bytes, "jcommond")
+		//sender.Reply(jcommond)
 
 		//图片
-		//sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
-		//
-		//qr, _ := jsonparser.GetString(bytes, "qr")
-		//decodeStr, _ := base64.StdEncoding.DecodeString(qr)
-		//sender.SendImg(decodeStr)
+		sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
+
+		qr, _ := jsonparser.GetString(bytes, "qr")
+		decodeStr, _ := base64.StdEncoding.DecodeString(qr)
+		sender.SendImg(decodeStr)
 
 		//口令转
 		//lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)

@@ -6,6 +6,7 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
+	"github.com/skip2/go-qrcode"
 	"time"
 )
 
@@ -26,11 +27,11 @@ func NolanGetJdQrImg(sender *Sender) {
 	code, _ := jsonparser.GetBoolean(bytes, "success")
 	if code {
 		key, _ := jsonparser.GetString(bytes, "data", "key")
-		//var png []byte
-		//png, _ = qrcode.Encode("https://qr.m.jd.com/p?k="+key, qrcode.Medium, 256)
-		//sender.SendImg(png)
+		var png []byte
+		png, _ = qrcode.Encode("https://qr.m.jd.com/p?k="+key, qrcode.Medium, 256)
+		sender.SendImg(png)
 
-		sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
+		//sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
 
 		//lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
 		//url, _ := jsonparser.GetString(lj, "code")
