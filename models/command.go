@@ -108,6 +108,9 @@ func (sender *Sender) SendImg(msg []byte) {
 		SendTgImg(sender.UserID, msg)
 	case "wx":
 		SendWxImg(sender.WxId, msg)
+	case "wxg":
+		SendWxImg(sender.WxGroupId, msg)
+
 	}
 
 }
