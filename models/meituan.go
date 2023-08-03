@@ -60,7 +60,7 @@ func CheckDownLine(cookie *MeiTuan) bool {
 	return true
 }
 
-func UpLine(token string, sender Sender) bool {
+func UpLine(token string, sender *Sender) bool {
 	info := GetUserInfo(token)
 	val, _ := jsonparser.GetInt(info, "code")
 	if val == 401 {

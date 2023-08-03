@@ -238,7 +238,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//校验美团
 			{
 				if strings.HasPrefix(msg, "Ag") {
-
+					UpLine(msg, sender)
 				}
 			}
 
