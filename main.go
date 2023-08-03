@@ -28,7 +28,7 @@ type Result struct {
 
 func main() {
 
-	logs.SetLogger(logs.AdapterFile, "{\"filename\":\"xdd.log\", \"level\":6}")
+	logs.SetLogger(logs.AdapterFile, "{\"filename\":\"logs\xdd.log\", \"level\":6}")
 
 	go func() {
 		models.Save <- &models.JdCookie{}
