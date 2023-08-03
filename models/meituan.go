@@ -62,15 +62,15 @@ func CheckDownLine(cookie *MeiTuan) bool {
 
 func UpLine(token string, sender *Sender) bool {
 	info := GetUserInfo(token)
-	val, _ := jsonparser.GetInt(info, "code")
+	val, _ := jsonparser.GetInt(info, "error", "code")
 	if val == 401 {
 		return false
 	} else {
 		date := Date()
-		id, _ := jsonparser.GetInt(info, "id")
+		id, _ := jsonparser.GetInt(info, "user", "id")
 		tuan, err := getMeiTuan(strconv.FormatInt(id, 10))
 		if err != nil {
-			Username, _ := jsonparser.GetString(info, "auditUsername")
+			Username, _ := jsonparser.GetString(info, "user", "auditUsername")
 			ck := MeiTuan{
 				ID:        int(id),
 				CreateAt:  date,
