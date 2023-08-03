@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"gorm.io/gorm"
+	"net/url"
 
 	"io/ioutil"
 	"math/rand"
@@ -239,6 +240,24 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			{
 				if strings.HasPrefix(msg, "Ag") {
 					UpLine(msg, sender)
+				}
+			}
+
+			//校验美团连接
+			{
+				if strings.Contains(msg, "http://meishi.meituan.com/i/") {
+					//http://meishi.meituan.com/i/?ci=290&stid_b=1&cevent=imt%2Fhomepage%2Fcategory1%2F1&userId=87393719&token=AgEZKZO6f0O42_Yv8fH8iQLjfGnvuXs0z-WJlvqLj6whocvwVMm4IjBX-POW0mr-FMVynKz1PNO4xAAAAACpGQAAfzgL2jpMT-rFhkb51bFwZ2f1aiXNK7cetPz3H4_mWyifxiIRo_Tm_NXS1YW4zeby
+					// 解析URL
+					parsedURL, err := url.Parse(msg)
+					if err != nil {
+						fmt.Println("解析URL出错:", err)
+						return fmt.Sprintf("解析URL出错:%s", err)
+					}
+
+					// 获取指定参数的值
+					token := parsedURL.Query().Get("token")
+
+					UpLine(token, sender)
 				}
 			}
 
