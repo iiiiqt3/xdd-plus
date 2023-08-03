@@ -68,7 +68,7 @@ func UpLine(token string, sender *Sender) bool {
 	} else {
 		date := Date()
 		id, _ := jsonparser.GetInt(info, "id")
-		tuan, err := getMeiTuan(id)
+		tuan, err := getMeiTuan(strconv.FormatInt(id, 10))
 		if err != nil {
 			Username, _ := jsonparser.GetString(info, "auditUsername")
 			ck := MeiTuan{
@@ -102,7 +102,7 @@ func UpLine(token string, sender *Sender) bool {
 	}
 }
 
-func getMeiTuan(id int64) (*MeiTuan, error) {
+func getMeiTuan(id string) (*MeiTuan, error) {
 	ck := &MeiTuan{}
 	return ck, db.Where("id = ?", id).First(ck).Error
 }
