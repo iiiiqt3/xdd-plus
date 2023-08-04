@@ -133,7 +133,7 @@ func GetMTCookies(sbs ...func(sb *gorm.DB) *gorm.DB) []MeiTuan {
 	for _, sb := range sbs {
 		tb = sb(tb)
 	}
-	tb.Find(&cks)
+	tb.Order("ID asc").Find(&cks)
 	return cks
 }
 
