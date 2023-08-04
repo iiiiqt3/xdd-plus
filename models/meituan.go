@@ -141,7 +141,7 @@ func GetMeiTuan(sender *Sender) string {
 	switch sender.Type {
 	case "qq", "qqg":
 		cks := GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s == ?  ", QQ), sender.UserID)
+			return sb.Where(fmt.Sprintf("%s = ?  ", QQ), sender.UserID)
 		})
 		if len(cks) > 0 {
 			for _, meituan := range cks {
@@ -152,7 +152,7 @@ func GetMeiTuan(sender *Sender) string {
 		}
 	case "wx", "wxg":
 		cks := GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s == ?  ", "WeiXin"), sender.WxId)
+			return sb.Where(fmt.Sprintf("%s = ?  ", "WeiXin"), sender.WxId)
 		})
 		if len(cks) > 0 {
 			for _, meituan := range cks {
