@@ -165,7 +165,7 @@ func GetMeiTuan(sender *Sender) string {
 	default:
 		return "暂不匹配该渠道"
 	}
-	return ""
+	return "已完成查询"
 }
 
 func (ck *MeiTuan) Query() string {
