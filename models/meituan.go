@@ -182,9 +182,13 @@ func (ck *MeiTuan) Query() string {
 			logs.Info(parse1)
 			msgs = append(msgs, fmt.Sprintf("最后更新时间：%s", parse1.Format("2006-01-02")))
 		}
-		msgs = append(msgs, fmt.Sprintf("赚金币余额:%f", ck.CashToken))
-		msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
-		msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
+		if ck.CoinToken == "" {
+			msgs = append(msgs, "暂无赚金币数据")
+		} else {
+			msgs = append(msgs, fmt.Sprintf("赚金币余额:%f", ck.CashToken))
+			msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
+			msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
+		}
 	} else {
 		msgs = append(msgs, []string{
 			"提醒：该账号已过期，请重新登录",
