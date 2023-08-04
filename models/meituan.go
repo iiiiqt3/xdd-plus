@@ -2,29 +2,35 @@ package models
 
 import (
 	"fmt"
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
+	"gorm.io/gorm"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type MeiTuan struct {
-	ID        int    `gorm:"column:ID;primaryKey"`
-	CreateAt  string `gorm:"column:CreateAt"`
-	LoseAt    string `gorm:"column:LoseAt"`
-	UpdateAt  string `gorm:"column:UpdateAt"`
-	Token     string `gorm:"column:Token"`
-	Note      string `gorm:"column:Note"`
-	Available string `gorm:"column:Available;default:true" validate:"oneof=true false"`
-	Nickname  string `gorm:"column:Nickname"`
-	UserId    string `gorm:"column:UserId"`
-	QQ        int    `gorm:"column:QQ"`
-	WeiXin    string `gorm:"column:WeiXin"`
-	PushPlus  string `gorm:"column:PushPlus"`
-	WxPush    string `gorm:"column:WxPush"`
-	Telegram  int    `gorm:"column:Telegram"`
+	ID         int     `gorm:"column:ID;primaryKey"`
+	CreateAt   string  `gorm:"column:CreateAt"`
+	LoseAt     string  `gorm:"column:LoseAt"`
+	UpdateAt   string  `gorm:"column:UpdateAt"`
+	Token      string  `gorm:"column:Token"`
+	Note       string  `gorm:"column:Note"`
+	Available  string  `gorm:"column:Available;default:true" validate:"oneof=true false"`
+	Nickname   string  `gorm:"column:Nickname"`
+	UserId     string  `gorm:"column:UserId"`
+	QQ         int     `gorm:"column:QQ"`
+	WeiXin     string  `gorm:"column:WeiXin"`
+	PushPlus   string  `gorm:"column:PushPlus"`
+	WxPush     string  `gorm:"column:WxPush"`
+	Telegram   int     `gorm:"column:Telegram"`
+	CashToken  float64 `gorm:"column:CashToken"`
+	CoinToken  string  `gorm:"column:CoinToken"`
+	ExpireTime string  `gorm:"column:ExpireTime"`
 }
 
 func getUA() string {
@@ -119,6 +125,74 @@ func (ck *MeiTuan) Update(column string, value interface{}) {
 		db.Model(ck).Update(column, value)
 		return
 	}
+}
+
+func GetMTCookies(sbs ...func(sb *gorm.DB) *gorm.DB) []MeiTuan {
+	var cks []MeiTuan
+	tb := db
+	for _, sb := range sbs {
+		tb = sb(tb)
+	}
+	tb.Find(&cks)
+	return cks
+}
+
+func GetMeiTuan(sender *Sender) string {
+	switch sender.Type {
+	case "qq", "qqg":
+		cks := GetMTCookies(func(sb *gorm.DB) *gorm.DB {
+			return sb.Where(fmt.Sprintf("%s == ?  ", QQ), sender.UserID)
+		})
+		if len(cks) > 0 {
+			for _, meituan := range cks {
+				sender.Reply(meituan.Query())
+			}
+		} else {
+			return "查无美团账号"
+		}
+	case "wx", "wxg":
+		cks := GetMTCookies(func(sb *gorm.DB) *gorm.DB {
+			return sb.Where(fmt.Sprintf("%s == ?  ", "WeiXin"), sender.WxId)
+		})
+		if len(cks) > 0 {
+			for _, meituan := range cks {
+				sender.Reply(meituan.Query())
+			}
+		} else {
+			return "查无美团账号"
+		}
+
+	default:
+		return "暂不匹配该渠道"
+	}
+	return ""
+}
+
+func (ck *MeiTuan) Query() string {
+	msgs := []string{
+		fmt.Sprintf("账号昵称：%s", ck.Nickname),
+	}
+	if ck.Note != "" {
+		msgs = append(msgs, fmt.Sprintf("账号备注：%s", ck.Note))
+	}
+
+	if CheckDownLine(ck) {
+		if ck.UpdateAt != "" {
+			parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
+			logs.Info(parse1)
+			msgs = append(msgs, fmt.Sprintf("最后更新时间：%s", parse1.Format("2006-01-02")))
+		}
+		msgs = append(msgs, fmt.Sprintf("赚金币余额:%f", ck.CashToken))
+		msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
+		msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
+	} else {
+		msgs = append(msgs, []string{
+			"提醒：该账号已过期，请重新登录",
+		}...)
+	}
+
+	return strings.Join(msgs, "\n")
+
 }
 
 func GetUserInfo(token string) []byte {

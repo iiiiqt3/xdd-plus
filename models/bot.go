@@ -253,12 +253,18 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						fmt.Println("解析URL出错:", err)
 						return fmt.Sprintf("解析URL出错:%s", err)
 					}
-
 					// 获取指定参数的值
 					token := parsedURL.Query().Get("token")
-
 					UpLine(token, sender)
 				}
+			}
+
+			//查询美团详细
+			{
+				if msg == "查询美团" {
+					return GetMeiTuan(sender)
+				}
+
 			}
 
 			//口令转换
