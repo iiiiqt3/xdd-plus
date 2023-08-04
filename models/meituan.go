@@ -190,9 +190,8 @@ func (ck *MeiTuan) Query() string {
 			msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
 		}
 	} else {
-		msgs = append(msgs, []string{
-			"提醒：该账号已过期，请重新登录",
-		}...)
+		parse1, _ := time.Parse("2006-01-02", ck.LoseAt)
+		msgs = append(msgs, fmt.Sprintf("提醒：该账号已过期，请重新登录,失效时间:%s", parse1.Format("2006-01-02")))
 	}
 
 	return strings.Join(msgs, "\n")
