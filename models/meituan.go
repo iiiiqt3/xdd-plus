@@ -565,10 +565,9 @@ func (ck *MeiTuan) RunCoin() {
 	ck.UUID = GetUUID()
 	meituan := LoginMeituan(ck)
 	if meituan != 0 {
-		logs.Info("登录失败")
-		return
+		logs.Info("登录成功")
+		taskList(ck)
 	}
-	taskList(ck)
 
 }
 
