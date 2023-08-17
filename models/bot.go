@@ -124,7 +124,7 @@ var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
 var loginList = make(map[int]chan string)
-var meituanList = make(map[int]chan string)
+var meituanList = make(map[*Sender]chan string)
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -184,6 +184,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			sender.IsAdmin = true
 		}
 	}
+
 	if loginList[sender.UserID] != nil {
 		c2 := loginList[sender.UserID]
 		c2 <- msg
@@ -192,6 +193,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 	if smsList[sender.UserID] != nil {
 		c2 := smsList[sender.UserID]
+		c2 <- msg
+		return nil
+	}
+
+	if meituanList[sender] != nil {
+		c2 := meituanList[sender]
 		c2 <- msg
 		return nil
 	}
@@ -277,6 +284,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				if msg == "美团50" {
 					meiTuans := GetMeiTuan(sender)
 					if len(meiTuans) > 0 {
+
+						//进入队列
+						msg := make(chan string)
+						meituanList[sender] = msg
+						go MeituanSelect(sender, msg, 1, meiTuans)
+
 						msgs := []string{
 							"请回复以下序列号指定账号运行任务:",
 						}

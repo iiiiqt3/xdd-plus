@@ -789,3 +789,42 @@ func GetUUID() string {
 	randomIndex := rand.Intn(len(uuidArray))
 	return uuidArray[randomIndex]
 }
+
+func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan) {
+	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
+		}
+
+		if n == "q" {
+			loginList[sender.UserID] = nil
+			close(msg)
+			return
+		}
+
+		num, err := strconv.Atoi(n)
+		if err != nil {
+			sender.Reply(fmt.Sprintf("转换失败:%s", err))
+			return
+		}
+		//typ 1 美团50  2 美团领卷  3美团抢卷
+
+		switch typ {
+		case 1:
+			//美团50
+			taskList(&meituans[num])
+			meituanList[sender] = nil
+		case 2:
+			sender.Reply("开发中")
+			meituanList[sender] = nil
+		case 3:
+			sender.Reply("开发中")
+			meituanList[sender] = nil
+		default:
+			return
+		}
+
+	}
+}
