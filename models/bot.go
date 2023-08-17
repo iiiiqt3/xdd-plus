@@ -277,9 +277,13 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				if msg == "美团50" {
 					meiTuans := GetMeiTuan(sender)
 					if len(meiTuans) > 0 {
-						for i, tuan := range meiTuans {
-							sender.Reply(fmt.Sprintf("%d、%s", i, tuan.Nickname))
+						msgs := []string{
+							"请回复以下序列号指定账号运行任务:",
 						}
+						for i, tuan := range meiTuans {
+							msgs = append(msgs, fmt.Sprintf("%d、%s", i, tuan.Nickname))
+						}
+						sender.Reply(strings.Join(msgs, "\n"))
 					} else {
 						return "查无美团账号"
 					}
