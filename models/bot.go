@@ -124,6 +124,7 @@ var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
 var loginList = make(map[int]chan string)
+var meituanList = make(map[int]chan string)
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -261,9 +262,28 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			//查询美团详细
 			{
 				if msg == "查询美团" {
-					return GetMeiTuan(sender)
+					meiTuans := GetMeiTuan(sender)
+					if len(meiTuans) > 0 {
+						for _, meituan := range meiTuans {
+							sender.Reply(meituan.Query())
+						}
+					} else {
+						return "查无美团账号"
+					}
 				}
+			}
 
+			{
+				if msg == "美团50" {
+					meiTuans := GetMeiTuan(sender)
+					if len(meiTuans) > 0 {
+						for i, tuan := range meiTuans {
+							sender.Reply(fmt.Sprintf("%d、%s", i, tuan.Nickname))
+						}
+					} else {
+						return "查无美团账号"
+					}
+				}
 			}
 
 			//口令转换

@@ -259,3 +259,158 @@ func LoginSelect(sender *Sender, msg chan string) {
 
 	}
 }
+
+func Meituan50Select(sender *Sender, msg chan string) {
+	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
+		}
+
+		if Config.QQID == 764763902 {
+			if n == "q" {
+				loginList[sender.UserID] = nil
+				close(msg)
+				return
+			}
+
+			//var login LoginSelectType
+			//if len(msg) > 1 {
+			//	login = GetLoginSelectTypeByName(n)
+			//} else {
+			//	itoa, _ := strconv.Atoi(n)
+			//	login = GetLoginSelectType(itoa)
+			//}
+
+			//请选择登录渠道:
+			// 1:兔子京东扫码
+			// 2:Nolan京东扫码
+			// 3:BBK京东扫码
+			// 4:BBK微信扫码
+
+			//switch login.Type {
+			//case 1:
+			//	loginList[sender.UserID] = nil
+			//	RabbitUrl = GetEnv("RabbitUrl")
+			//	RabbitApiToken = GetEnv("RabbitApiToken")
+			//	RabbitToken = GetEnv("RabbitToken")
+			//	if RabbitUrl == "" || RabbitApiToken == "" || RabbitToken == "" {
+			//		logs.Error("RabbitUrl or RabbitToken is empty")
+			//		sender.Reply("渠道尚未配置")
+			//		return
+			//	}
+			//	RabbitGetJdQrImg(sender)
+			//case 2:
+			//	loginList[sender.UserID] = nil
+			//	NolanUrl = GetEnv("NolanUrl")
+			//	NolanToken = GetEnv("NolanToken")
+			//	if NolanUrl == "" || NolanToken == "" {
+			//		logs.Error("NolanUrl or NolanToken is empty")
+			//		sender.Reply("渠道尚未配置")
+			//		return
+			//	}
+			//	NolanGetJdQrImg(sender)
+			//case 3:
+			//	loginList[sender.UserID] = nil
+			//	BBKJdUrl = GetEnv("BBKJdUrl")
+			//	if BBKJdUrl == "" {
+			//		logs.Error("BBKJdUrl is empty")
+			//		sender.Reply("渠道尚未配置")
+			//		return
+			//	}
+			//	BBKGetJdQrImg(sender)
+			//case 4:
+			//	loginList[sender.UserID] = nil
+			//	BBKWxUrl = GetEnv("BBKWxUrl")
+			//	if BBKWxUrl == "" {
+			//		logs.Error("BBKWxUrl is empty")
+			//		sender.Reply("渠道尚未配置")
+			//		return
+			//	}
+			//	BBKGetWxQrImg(sender)
+			//default:
+			//	sender.Reply("无匹配渠道，如需回复'q'退出登录流程")
+			//}
+		} else if Config.QQID == 413255735 {
+			//请选择登录渠道:
+			// 1:兔子京东扫码
+			// 2:Nolan京东扫码
+			// 3:BBK京东扫码
+			// 4:BBK微信扫码
+
+			switch n {
+			case "扫码登录", "1":
+				loginList[sender.UserID] = nil
+				if sysConfig.RabbitUrl == "" || sysConfig.RabbitApiToken == "" || sysConfig.RabbitToken == "" {
+					logs.Error("RabbitUrl or RabbitToken is empty")
+					sender.Reply("渠道尚未配置")
+					return
+				}
+				RabbitGetJdQrImg(sender)
+			case "2", "短信登录":
+				loginList[sender.UserID] = nil
+				c2 := make(chan string)
+				smsList[sender.UserID] = c2
+				go SmsSelect(sender, c2, "Rabbit")
+			case "q":
+				loginList[sender.UserID] = nil
+				close(msg)
+			default:
+				sender.Reply("无匹配渠道，如需回复'q'退出登录流程")
+			}
+		} else {
+			//请选择登录渠道:
+			// 1:兔子京东扫码
+			// 2:Nolan京东扫码
+			// 3:BBK京东扫码
+			// 4:BBK微信扫码
+
+			switch n {
+			case "兔子京东扫码", "1":
+				loginList[sender.UserID] = nil
+				if sysConfig.RabbitUrl == "" || sysConfig.RabbitApiToken == "" || sysConfig.RabbitToken == "" {
+					logs.Error("RabbitUrl or RabbitToken is empty")
+					sender.Reply("渠道尚未配置")
+					return
+				}
+				RabbitGetJdQrImg(sender)
+			case "Nolan京东扫码", "2":
+				loginList[sender.UserID] = nil
+				if sysConfig.NolanUrl == "" || sysConfig.NolanToken == "" {
+					logs.Error("NolanUrl or NolanToken is empty")
+					sender.Reply("渠道尚未配置")
+					return
+				}
+				NolanGetJdQrImg(sender)
+			case "BBK京东扫码", "3":
+				loginList[sender.UserID] = nil
+				if sysConfig.BBKJdUrl == "" {
+					logs.Error("BBKJdUrl is empty")
+					sender.Reply("渠道尚未配置")
+					return
+				}
+				BBKGetJdQrImg(sender)
+			case "BBK微信扫码", "4":
+				loginList[sender.UserID] = nil
+				if sysConfig.BBKWxUrl == "" {
+					logs.Error("BBKWxUrl is empty")
+					sender.Reply("渠道尚未配置")
+					return
+				}
+				BBKGetWxQrImg(sender)
+			case "5":
+				loginList[sender.UserID] = nil
+				c2 := make(chan string)
+				smsList[sender.UserID] = c2
+				go SmsSelect(sender, c2, "Rabbit")
+			case "q":
+				loginList[sender.UserID] = nil
+				close(msg)
+			default:
+				sender.Reply("无匹配渠道，如需回复'q'退出登录流程")
+			}
+		}
+
+	}
+}

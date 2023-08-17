@@ -488,35 +488,20 @@ func GetMTCookies(sbs ...func(sb *gorm.DB) *gorm.DB) []MeiTuan {
 	return cks
 }
 
-func GetMeiTuan(sender *Sender) string {
+func GetMeiTuan(sender *Sender) []MeiTuan {
 	switch sender.Type {
 	case "qq", "qqg":
-		cks := GetMTCookies(func(sb *gorm.DB) *gorm.DB {
+		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
 			return sb.Where(fmt.Sprintf("%s = ?  ", QQ), sender.UserID)
 		})
-		if len(cks) > 0 {
-			for _, meituan := range cks {
-				sender.Reply(meituan.Query())
-			}
-		} else {
-			return "查无美团账号"
-		}
 	case "wx", "wxg":
-		cks := GetMTCookies(func(sb *gorm.DB) *gorm.DB {
+		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
 			return sb.Where(fmt.Sprintf("%s = ?  ", "WeiXin"), sender.WxId)
 		})
-		if len(cks) > 0 {
-			for _, meituan := range cks {
-				sender.Reply(meituan.Query())
-			}
-		} else {
-			return "查无美团账号"
-		}
-
 	default:
-		return "暂不匹配该渠道"
+		return nil
 	}
-	return "已完成查询"
+	return nil
 }
 
 func (ck *MeiTuan) Query() string {
