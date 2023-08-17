@@ -568,7 +568,7 @@ func (ck *MeiTuan) RunCoin() {
 		logs.Info("登录失败")
 		return
 	}
-	ck.RunCoin()
+	taskList(ck)
 
 }
 
