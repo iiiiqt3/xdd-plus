@@ -788,7 +788,7 @@ func GetUUID() string {
 	//	"0000000000000FE39E282D85D4184826D7A3CB6BDEE71A168979301991229841",
 	//	"000000000000026CD052477C44C26964557ABBE7B24C7A168980721534295742"}
 	rand.Seed(time.Now().UnixNano())
-	uuid := fmt.Sprintf("0000000000000%sA%d%d", strings.ToUpper(uuid.New().String()), time.Now().UnixNano(), rand.Intn(89)+10)
+	uuid := fmt.Sprintf("0000000000000%sA%d%d", strings.ReplaceAll(strings.ToUpper(uuid.New().String()), "-", ""), time.Now().UnixNano(), rand.Intn(89)+10)
 	return uuid
 }
 
