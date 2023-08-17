@@ -642,7 +642,7 @@ func taskList(meituan *MeiTuan) {
 	cookie := fmt.Sprintf("utm_medium=android;uuid=%s;token=%s;mt_c_token=%s;", meituan.UUID, meituan.Token, meituan.Token)
 	req.Header("Cookie", cookie)
 	body, _ := req.Bytes()
-	fmt.Println(body)
+	fmt.Println(string(body))
 
 	//转换
 	var list TaskList
