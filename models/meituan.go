@@ -572,7 +572,7 @@ func (ck *MeiTuan) RunCoin() {
 }
 
 func LoginMeituan(meituan *MeiTuan) int64 {
-	url := fmt.Sprintf("https://game.meituan.com/mgc/gamecenter/common/mtUser/player/login?gameType=10402&mtUserId=%s&mtToken=%s&mtDeviceId=%s&nonceStr=%s&externalStr=%s", meituan.UserId, meituan.Token, meituan.UUID, gen16(), "{\"cityId\":\"1\"}")
+	url := fmt.Sprintf("https://game.meituan.com/earn-daily/login/loginMgc?gameType=10402&mtUserId=%s&mtToken=%s&mtDeviceId=%s&nonceStr=%s&externalStr=%s", meituan.UserId, meituan.Token, meituan.UUID, gen16(), "{\"cityId\":\"1\"}")
 	req := httplib.Get(url)
 	setHeader(req)
 	cookie := fmt.Sprintf("utm_medium=android;uuid=%s;token=%s;mt_c_token=%s;", meituan.UUID, meituan.Token, meituan.Token)
