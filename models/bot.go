@@ -124,7 +124,7 @@ var tytlist = make(map[string]int)
 var tytno = 0
 var tytnum = 0
 var loginList = make(map[int]chan string)
-var meituanList = make(map[*Sender]chan string)
+var meituanList = make(map[int]chan string)
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -197,8 +197,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		return nil
 	}
 
-	if meituanList[sender] != nil {
-		c2 := meituanList[sender]
+	if meituanList[sender.UserID] != nil {
+		c2 := meituanList[sender.UserID]
 		c2 <- msg
 		return nil
 	}
@@ -287,7 +287,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 						//进入队列
 						msg := make(chan string)
-						meituanList[sender] = msg
+						meituanList[sender.UserID] = msg
 						go MeituanSelect(sender, msg, 1, meiTuans)
 
 						msgs := []string{

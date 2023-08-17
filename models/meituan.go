@@ -421,6 +421,7 @@ func UpLine(token string, sender *Sender) bool {
 	info := GetUserInfo(token)
 	val, _ := jsonparser.GetInt(info, "error", "code")
 	if val == 401 {
+		sender.Reply("您的CK已失效")
 		return false
 	} else {
 		date := Date()
@@ -815,13 +816,13 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 		case 1:
 			//美团50
 			taskList(&meituans[num])
-			meituanList[sender] = nil
+			meituanList[sender.UserID] = nil
 		case 2:
 			sender.Reply("开发中")
-			meituanList[sender] = nil
+			meituanList[sender.UserID] = nil
 		case 3:
 			sender.Reply("开发中")
-			meituanList[sender] = nil
+			meituanList[sender.UserID] = nil
 		default:
 			return
 		}
