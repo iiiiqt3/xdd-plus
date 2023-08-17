@@ -565,7 +565,9 @@ func (ck *MeiTuan) RunCoin() {
 	ck.UUID = GetUUID()
 	meituan := LoginMeituan(ck)
 	if meituan != 0 {
-		logs.Info("登录成功")
+		logs.Info("登录失败")
+		return
+	} else {
 		taskList(ck)
 	}
 
@@ -579,7 +581,7 @@ func LoginMeituan(meituan *MeiTuan) int64 {
 	req.Header("Cookie", cookie)
 	body, _ := req.Bytes()
 	val, _ := jsonparser.GetInt(body, "code")
-	accessToken, _ := jsonparser.GetString(body, "data", "accessToken")
+	accessToken, _ := jsonparser.GetString(body, "response", "accessToken")
 	meituan.AcToken = accessToken
 	return val
 }
