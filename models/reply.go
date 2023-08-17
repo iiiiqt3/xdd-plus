@@ -32,7 +32,7 @@ func SendWxImg(uid string, file []byte) {
 
 	unix := time.Now().Unix()
 
-	filename := ExecPath + fmt.Sprintf("/static/%d.jpg", unix)
+	filename := ExecPath + fmt.Sprintf("/%d.jpg", unix)
 
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {

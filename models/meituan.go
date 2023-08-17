@@ -1,7 +1,10 @@
 package models
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"gorm.io/gorm"
@@ -12,6 +15,193 @@ import (
 	"strings"
 	"time"
 )
+
+type PacketInfo struct {
+	Code int `json:"code"`
+	Data struct {
+		PlayerBaseModel struct {
+			ActivityCycleInfo struct {
+				CashToken  int   `json:"cashToken"`
+				CycleId    int   `json:"cycleId"`
+				CoinToken  int   `json:"coinToken"`
+				ExpireTime int64 `json:"expireTime"`
+			} `json:"activityCycleInfo"`
+			WithdrawInfoList []struct {
+				CashTokenCost int `json:"cashTokenCost"`
+				Id            int `json:"id"`
+				Times         int `json:"times"`
+				CoinTokenCost int `json:"coinTokenCost"`
+				Type          int `json:"type"`
+			} `json:"withdrawInfoList"`
+			LotteryInfo struct {
+				LastRefreshTime        int64 `json:"lastRefreshTime"`
+				DailyDrawTimes         int   `json:"dailyDrawTimes"`
+				LeftLotteryTimesAmount int   `json:"leftLotteryTimesAmount"`
+			} `json:"lotteryInfo"`
+			RedPacketInfo struct {
+				DailyOpenWithdrawRedPacketTimes int   `json:"dailyOpenWithdrawRedPacketTimes"`
+				LastRefreshTime                 int64 `json:"lastRefreshTime"`
+				TotalOpenRedPacketTimes         int   `json:"totalOpenRedPacketTimes"`
+				DailyOpenNormalRedPacketTimes   int   `json:"dailyOpenNormalRedPacketTimes"`
+				LeftNormalRedPacketAmount       int   `json:"leftNormalRedPacketAmount"`
+			} `json:"redPacketInfo"`
+		} `json:"playerBaseModel"`
+		RewardModelList []struct {
+			Amount                 int         `json:"amount"`
+			Seq                    int         `json:"seq"`
+			BigReward              bool        `json:"bigReward"`
+			Rewarded               bool        `json:"rewarded"`
+			RewardedTime           int64       `json:"rewardedTime"`
+			ResourceId             int         `json:"resourceId"`
+			MaxAvailableAmount     int         `json:"maxAvailableAmount"`
+			ResourceType           int         `json:"resourceType"`
+			RewardedResourceAmount int         `json:"rewardedResourceAmount"`
+			RewardedCouponModel    interface{} `json:"rewardedCouponModel"`
+		} `json:"rewardModelList"`
+		XtbAmount int `json:"xtbAmount"`
+	} `json:"data"`
+	ProtocolId int    `json:"protocolId"`
+	ServerTime int64  `json:"serverTime"`
+	Desc       string `json:"desc"`
+}
+
+type SignInfo struct {
+	Code int `json:"code"`
+	Data struct {
+		PlayerBaseModel struct {
+			ActivityCycleInfo struct {
+				CashToken  int   `json:"cashToken"`
+				CycleId    int   `json:"cycleId"`
+				CoinToken  int   `json:"coinToken"`
+				ExpireTime int64 `json:"expireTime"`
+			} `json:"activityCycleInfo"`
+			WithdrawInfoList []struct {
+				CashTokenCost int `json:"cashTokenCost"`
+				Id            int `json:"id"`
+				Times         int `json:"times"`
+				CoinTokenCost int `json:"coinTokenCost"`
+				Type          int `json:"type"`
+			} `json:"withdrawInfoList"`
+			LotteryInfo struct {
+				LastRefreshTime        int64 `json:"lastRefreshTime"`
+				DailyDrawTimes         int   `json:"dailyDrawTimes"`
+				LeftLotteryTimesAmount int   `json:"leftLotteryTimesAmount"`
+			} `json:"lotteryInfo"`
+			RedPacketInfo struct {
+				DailyOpenWithdrawRedPacketTimes int   `json:"dailyOpenWithdrawRedPacketTimes"`
+				LastRefreshTime                 int64 `json:"lastRefreshTime"`
+				TotalOpenRedPacketTimes         int   `json:"totalOpenRedPacketTimes"`
+				DailyOpenNormalRedPacketTimes   int   `json:"dailyOpenNormalRedPacketTimes"`
+				LeftNormalRedPacketAmount       int   `json:"leftNormalRedPacketAmount"`
+			} `json:"redPacketInfo"`
+		} `json:"playerBaseModel"`
+		SignInPopModel struct {
+			Title           string `json:"title"`
+			RewardModelList []struct {
+				StartTime       int64 `json:"startTime"`
+				RewardModelList []struct {
+					Amount                 int         `json:"amount"`
+					Seq                    int         `json:"seq"`
+					BigReward              bool        `json:"bigReward"`
+					Rewarded               bool        `json:"rewarded"`
+					RewardedTime           int64       `json:"rewardedTime"`
+					ResourceId             int         `json:"resourceId"`
+					MaxAvailableAmount     int         `json:"maxAvailableAmount"`
+					ResourceType           int         `json:"resourceType"`
+					RewardedResourceAmount int         `json:"rewardedResourceAmount"`
+					RewardedCouponModel    interface{} `json:"rewardedCouponModel"`
+				} `json:"rewardModelList"`
+				State     int  `json:"state"`
+				Current   bool `json:"current"`
+				Ratio     int  `json:"ratio"`
+				TargetDay int  `json:"targetDay"`
+			} `json:"rewardModelList"`
+		} `json:"signInPopModel"`
+		RemitNotificationModelList []struct {
+			Title   string `json:"title"`
+			Content string `json:"content"`
+			IconUrl string `json:"iconUrl"`
+		} `json:"remitNotificationModelList"`
+	} `json:"data"`
+	ProtocolId int    `json:"protocolId"`
+	ServerTime int64  `json:"serverTime"`
+	Desc       string `json:"desc"`
+}
+
+type LotteryInfo struct {
+	Code int `json:"code"`
+	Data struct {
+		PlayerBaseModel struct {
+			ActivityCycleInfo struct {
+				CashToken  int   `json:"cashToken"`
+				CycleId    int   `json:"cycleId"`
+				CoinToken  int   `json:"coinToken"`
+				ExpireTime int64 `json:"expireTime"`
+			} `json:"activityCycleInfo"`
+			WithdrawInfoList []struct {
+				CashTokenCost int `json:"cashTokenCost"`
+				Id            int `json:"id"`
+				Times         int `json:"times"`
+				CoinTokenCost int `json:"coinTokenCost"`
+				Type          int `json:"type"`
+			} `json:"withdrawInfoList"`
+			LotteryInfo struct {
+				LastRefreshTime        int64 `json:"lastRefreshTime"`
+				DailyDrawTimes         int   `json:"dailyDrawTimes"`
+				LeftLotteryTimesAmount int   `json:"leftLotteryTimesAmount"`
+			} `json:"lotteryInfo"`
+			RedPacketInfo struct {
+				DailyOpenWithdrawRedPacketTimes int   `json:"dailyOpenWithdrawRedPacketTimes"`
+				LastRefreshTime                 int64 `json:"lastRefreshTime"`
+				TotalOpenRedPacketTimes         int   `json:"totalOpenRedPacketTimes"`
+				DailyOpenNormalRedPacketTimes   int   `json:"dailyOpenNormalRedPacketTimes"`
+				LeftNormalRedPacketAmount       int   `json:"leftNormalRedPacketAmount"`
+			} `json:"redPacketInfo"`
+		} `json:"playerBaseModel"`
+		CurrentRewardList []struct {
+			Amount                 int         `json:"amount"`
+			Seq                    int         `json:"seq"`
+			BigReward              bool        `json:"bigReward"`
+			Rewarded               bool        `json:"rewarded"`
+			RewardedTime           int64       `json:"rewardedTime"`
+			ResourceId             int         `json:"resourceId"`
+			MaxAvailableAmount     int         `json:"maxAvailableAmount"`
+			ResourceType           int         `json:"resourceType"`
+			RewardedResourceAmount int         `json:"rewardedResourceAmount"`
+			RewardedCouponModel    interface{} `json:"rewardedCouponModel"`
+		} `json:"currentRewardList"`
+		XtbAmount       int `json:"xtbAmount"`
+		RewardModelList []struct {
+			Amount                 int   `json:"amount"`
+			Seq                    int   `json:"seq"`
+			BigReward              bool  `json:"bigReward"`
+			Rewarded               bool  `json:"rewarded"`
+			RewardedTime           int64 `json:"rewardedTime"`
+			ResourceId             int   `json:"resourceId"`
+			MaxAvailableAmount     int   `json:"maxAvailableAmount"`
+			ResourceType           int   `json:"resourceType"`
+			RewardedResourceAmount int   `json:"rewardedResourceAmount"`
+			RewardedCouponModel    *struct {
+				UseRule           string      `json:"useRule"`
+				Uiinfo            interface{} `json:"uiinfo"`
+				TabId             interface{} `json:"tabId"`
+				FaceValue         string      `json:"faceValue"`
+				Desc              string      `json:"desc"`
+				SkuId             int         `json:"skuId"`
+				Price             interface{} `json:"price"`
+				Icon              string      `json:"icon"`
+				TotalStorage      string      `json:"totalStorage"`
+				Storage           string      `json:"storage"`
+				CycleSurplusStock interface{} `json:"cycleSurplusStock"`
+				Name              string      `json:"name"`
+				CycleStock        interface{} `json:"cycleStock"`
+			} `json:"rewardedCouponModel"`
+		} `json:"rewardModelList"`
+	} `json:"data"`
+	ProtocolId int    `json:"protocolId"`
+	ServerTime int64  `json:"serverTime"`
+	Desc       string `json:"desc"`
+}
 
 type MeiTuan struct {
 	ID         int     `gorm:"column:ID;primaryKey"`
@@ -31,6 +221,167 @@ type MeiTuan struct {
 	CashToken  float64 `gorm:"column:CashToken"`
 	CoinToken  string  `gorm:"column:CoinToken"`
 	ExpireTime string  `gorm:"column:ExpireTime"`
+	UUID       string  `gorm:"column:UUID"`
+	AcToken    string  `gorm:"column:AcToken"`
+}
+
+type MBody struct {
+	AcToken    string `json:"acToken"`
+	RiskParams struct {
+		Ip          string `json:"ip"`
+		Fingerprint string `json:"fingerprint"`
+		CityId      string `json:"cityId"`
+		Platform    int    `json:"platform"`
+		App         int    `json:"app"`
+		Version     string `json:"version"`
+		Uuid        string `json:"uuid"`
+	} `json:"riskParams"`
+	ProtocolId int    `json:"protocolId"`
+	Data       string `json:"data"`
+}
+
+type TaskList struct {
+	ProtocolId int `json:"protocolId"`
+	Data       struct {
+		GuideInfo struct {
+			FirstRedPacketGuide  bool `json:"firstRedPacketGuide"`
+			SecondRedPacketGuide bool `json:"secondRedPacketGuide"`
+			CoinTokenGuide       bool `json:"coinTokenGuide"`
+			XtbGuide             bool `json:"xtbGuide"`
+		} `json:"guideInfo"`
+		TaskInfoList []struct {
+			Id               int `json:"id"`
+			Status           int `json:"status"`
+			Process          int `json:"process"`
+			DailyFinishTimes int `json:"dailyFinishTimes"`
+			DailyRewardTimes int `json:"dailyRewardTimes"`
+			MgcTaskBaseInfo  struct {
+				ViewTitle               string `json:"viewTitle"`
+				ViewContent             string `json:"viewContent"`
+				ViewProcessName         string `json:"viewProcessName"`
+				ViewTips                string `json:"viewTips"`
+				ViewJumpUrl             string `json:"viewJumpUrl"`
+				MinLimit                int    `json:"minLimit"`
+				MaxLimit                int    `json:"maxLimit"`
+				ViewExtraJson           string `json:"viewExtraJson"`
+				Order                   int    `json:"order"`
+				CurPeriodMaxFinishTimes int    `json:"curPeriodMaxFinishTimes"`
+			} `json:"mgcTaskBaseInfo"`
+			ExtraContent     string `json:"extraContent"`
+			TotalRewardTimes int    `json:"totalRewardTimes"`
+			TotalInitTimes   int    `json:"totalInitTimes"`
+			TotalFinishTimes int    `json:"totalFinishTimes"`
+			TotalFailTimes   int    `json:"totalFailTimes"`
+			MgcTaskExtraData struct {
+				NextAvailableFinishTime int `json:"nextAvailableFinishTime"`
+				CurPeriodParams         struct {
+				} `json:"curPeriodParams"`
+				AllPeriodParams struct {
+				} `json:"allPeriodParams"`
+			} `json:"mgcTaskExtraData"`
+		} `json:"taskInfoList"`
+		SwitchMsg []struct {
+			Type   int `json:"type"`
+			Status int `json:"status"`
+		} `json:"switchMsg"`
+		Nickname        string `json:"nickname"`
+		Portrait        string `json:"portrait"`
+		PlayerBaseModel struct {
+			ActivityCycleInfo struct {
+				CashToken            int           `json:"cashToken"`
+				CoinToken            int           `json:"coinToken"`
+				ExpireTime           int64         `json:"expireTime"`
+				TokenExchangeTimes   int           `json:"tokenExchangeTimes"`
+				RandomWithdrawChance []interface{} `json:"randomWithdrawChance"`
+				LargeWithdrawChance  []interface{} `json:"largeWithdrawChance"`
+				CycleId              int           `json:"cycleId"`
+			} `json:"activityCycleInfo"`
+			LotteryInfo struct {
+				LeftLotteryTimesAmount int         `json:"leftLotteryTimesAmount"`
+				DailyDrawTimes         int         `json:"dailyDrawTimes"`
+				LastRefreshTime        int64       `json:"lastRefreshTime"`
+				RecentlyLotteryResult  interface{} `json:"recentlyLotteryResult"`
+			} `json:"lotteryInfo"`
+			RedPacketInfo struct {
+				LeftRedPacketAmount     int   `json:"leftRedPacketAmount"`
+				DailyOpenRedPacketTimes int   `json:"dailyOpenRedPacketTimes"`
+				LastRefreshTime         int64 `json:"lastRefreshTime"`
+				TotalOpenRedPacketTimes int   `json:"totalOpenRedPacketTimes"`
+			} `json:"redPacketInfo"`
+		} `json:"playerBaseModel"`
+		SignInPopModel struct {
+			Title           string `json:"title"`
+			RewardModelList []struct {
+				TargetDay       int   `json:"targetDay"`
+				Ratio           int   `json:"ratio"`
+				State           int   `json:"state"`
+				Current         bool  `json:"current"`
+				StartTime       int64 `json:"startTime"`
+				RewardModelList []struct {
+					ResourceId             int         `json:"resourceId"`
+					ResourceType           int         `json:"resourceType"`
+					Rewarded               bool        `json:"rewarded"`
+					RewardedTime           int         `json:"rewardedTime"`
+					Amount                 int         `json:"amount"`
+					RewardedResourceAmount int         `json:"rewardedResourceAmount"`
+					RewardedCouponModel    interface{} `json:"rewardedCouponModel"`
+					MaxAvailableAmount     int         `json:"maxAvailableAmount"`
+					Seq                    int         `json:"seq"`
+				} `json:"rewardModelList"`
+			} `json:"rewardModelList"`
+		} `json:"signInPopModel"`
+		PopModels []struct {
+			Id          int    `json:"id"`
+			Position    int    `json:"position"`
+			IconUrl     string `json:"iconUrl"`
+			BottomTitle string `json:"bottomTitle"`
+			TopTitle    string `json:"topTitle"`
+			JumpUrl     string `json:"jumpUrl"`
+		} `json:"popModels"`
+		Rule                     string `json:"rule"`
+		RedPacketGiveLotteryConf string `json:"redPacketGiveLotteryConf"`
+		CreateTime               int64  `json:"createTime"`
+		RedPacketNumInitToday    int    `json:"redPacketNumInitToday"`
+		XtbAmount                int    `json:"xtbAmount"`
+		UpdateVersion            bool   `json:"updateVersion"`
+		Version                  int    `json:"version"`
+	} `json:"data"`
+	Code       int    `json:"code"`
+	Desc       string `json:"desc"`
+	ServerTime int64  `json:"serverTime"`
+}
+
+func NewBody(acToken string, uuid string, data string, ProtocolId int) MBody {
+	return MBody{
+		AcToken: acToken,
+		RiskParams: struct {
+			Ip          string `json:"ip"`
+			Fingerprint string `json:"fingerprint"`
+			CityId      string `json:"cityId"`
+			Platform    int    `json:"platform"`
+			App         int    `json:"app"`
+			Version     string `json:"version"`
+			Uuid        string `json:"uuid"`
+		}(struct {
+			Ip          string
+			Fingerprint string
+			CityId      string
+			Platform    int
+			App         int
+			Version     string
+			Uuid        string
+		}{
+			Ip:          "",
+			Fingerprint: "undefined",
+			CityId:      "1",
+			Platform:    4,
+			App:         0,
+			Version:     "12.9.209",
+			Uuid:        uuid,
+		}),
+		ProtocolId: ProtocolId,
+		Data:       data,
+	}
 }
 
 func getUA() string {
@@ -188,6 +539,7 @@ func (ck *MeiTuan) Query() string {
 			msgs = append(msgs, fmt.Sprintf("赚金币余额:%f", ck.CashToken))
 			msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
 			msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
+			msgs = append(msgs, fmt.Sprintf("赚金币过期时间:%s", ck.CoinToken))
 		}
 	} else {
 		parse1, _ := time.Parse("2006-01-02", ck.LoseAt)
@@ -222,31 +574,215 @@ func GetUserInfo(token string) []byte {
 
 }
 
-func LoginMeituan(meituan *MeiTuan) {
+func (ck *MeiTuan) RunCoin() {
+	ck.UUID = GetUUID()
+	meituan := LoginMeituan(ck)
+	if meituan != 0 {
+		return
+	}
 
-	//url := "https://game.meituan.com/mgc/gamecenter/common/mtUser/player/login?gameType=10402&mtUserId=2671745339&mtToken=AgGZIhpANpaGF3nKv4BkpMODg1umic_4eOtonxB4JIls-7qoFli6J74rcupVqKgFRnescC_xeqHvywAAAACpGQAAxmqNqbPoVXhS31jUUgGMtq9h2JkVFjcF5vtkm7c4M-ZmdVRmdyBVhO5ghs9GJZMC&mtDeviceId=00000000000009889BF295E9143E4BF8009AC0FFAAB72A169037358192590584&nonceStr=9lp09r18e2i1018e&externalStr={"cityId":"110"}"
-	url := fmt.Sprintf("\"https://game.meituan.com/mgc/gamecenter/common/mtUser/player/login?gameType=10402&mtUserId=2671745339&mtToken=AgGZIhpANpaGF3nKv4BkpMODg1umic_4eOtonxB4JIls-7qoFli6J74rcupVqKgFRnescC_xeqHvywAAAACpGQAAxmqNqbPoVXhS31jUUgGMtq9h2JkVFjcF5vtkm7c4M-ZmdVRmdyBVhO5ghs9GJZMC&mtDeviceId=00000000000009889BF295E9143E4BF8009AC0FFAAB72A169037358192590584&nonceStr=9lp09r18e2i1018e&externalStr={\"cityId\":\"110\"}\"\n")
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Add("Host", "game.meituan.com")
-	req.Header.Add("X-Titans-User", "")
-	req.Header.Add("Accept", "application/json, text/plain, */*")
-	req.Header.Add("X-Requested-With", "XMLHttpRequest")
-	req.Header.Add("Accept-Encoding", "gzip, deflate, br")
-	req.Header.Add("Accept-Language", "zh-CN,zh-Hans;q=0.9")
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Origin", "https://awp.meituan.com")
-	req.Header.Add("mToken", "undefined")
-	req.Header.Add("User-Agent", getUA())
-	req.Header.Add("Referer", "https://awp.meituan.com/")
-	req.Header.Add("Connection", "keep-alive")
-	req.Header.Add("acToken", "undefined")
-	cookie := fmt.Sprintf("utm_medium=android;uuid=%s;token=%s;mt_c_token=%s;", GetUUID(), meituan.Token, meituan.Token)
-	req.Header.Add("Cookie", cookie)
-	res, _ := http.DefaultClient.Do(req)
-	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
-	fmt.Println(res)
-	fmt.Println(string(body))
+}
+
+func LoginMeituan(meituan *MeiTuan) int64 {
+	url := fmt.Sprintf("https://game.meituan.com/mgc/gamecenter/common/mtUser/player/login?gameType=10402&mtUserId=%s&mtToken=%s&mtDeviceId=%s&nonceStr=%s&externalStr=%s", meituan.UserId, meituan.Token, meituan.UUID, gen16(), "{\"cityId\":\"1\"}")
+	req := httplib.Get(url)
+	setHeader(req)
+	cookie := fmt.Sprintf("utm_medium=android;uuid=%s;token=%s;mt_c_token=%s;", meituan.UUID, meituan.Token, meituan.Token)
+	req.Header("Cookie", cookie)
+	body, _ := req.Bytes()
+	val, _ := jsonparser.GetInt(body, "code")
+	accessToken, _ := jsonparser.GetString(body, "data", "accessToken")
+	meituan.AcToken = accessToken
+	return val
+}
+
+func gen16() string {
+
+	randomBytes := make([]byte, 16)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		fmt.Println("生成随机字节出错:", err)
+		return ""
+	}
+	// 将字节转换为16进制字符串
+	return hex.EncodeToString(randomBytes)
+
+}
+
+func setHeader(req *httplib.BeegoHTTPRequest) {
+
+	req.Header("Host", "game.meituan.com")
+	req.Header("Sec-Fetch-Site", "same-site")
+	req.Header("Accept", "application/json, text/plain, */*")
+	req.Header("X-Requested-With", "XMLHttpRequest")
+	req.Header("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7")
+	req.Header("Content-Type", "application/json")
+	req.Header("mToken", "undefined")
+	req.Header("Origin", "https://awp.meituan.com")
+	req.Header("Referer", "https://awp.meituan.com/")
+	req.Header("Sec-Fetch-Mode", "cors")
+	req.Header("Connection", "keep-alive")
+	req.Header("acToken", "undefined")
+	req.Header("Sec-Fetch-Dest", "empty")
+	req.Header("content-type", "application/json")
+	req.Header("User-Agent", getUA())
+
+}
+
+//utm_medium=android;uuid=%s;token=%s;mt_c_token=%s;
+
+func taskList(meituan *MeiTuan) {
+	//声明对象
+	lbody := NewBody(meituan.AcToken, meituan.UUID, "{}", 1001)
+	jsonData, err := json.Marshal(lbody)
+	if err != nil {
+		fmt.Println("JSON encoding error:", err)
+		return
+	}
+
+	req := httplib.Post("https://game.meituan.com/earn-daily/msg/post")
+	req.Body(jsonData)
+	setHeader(req)
+	cookie := fmt.Sprintf("utm_medium=android;uuid=%s;token=%s;mt_c_token=%s;", meituan.UUID, meituan.Token, meituan.Token)
+	req.Header("Cookie", cookie)
+	body, _ := req.Bytes()
+	fmt.Println(body)
+
+	//转换
+	var list TaskList
+	json.Unmarshal(body, &list)
+	taskList := list.Data.TaskInfoList
+	signState := list.Data.SignInPopModel.RewardModelList
+
+	for _, s := range signState {
+		if s.Current {
+			if s.State == 2 {
+				logs.Info("今日已签到打卡")
+				break
+			}
+			// 签到
+			SignIn(meituan)
+		}
+	}
+
+	for _, s := range taskList {
+		if s.Id == 15099 || s.Id == 15278 || s.Id == 780 {
+			continue
+		}
+		times := s.DailyFinishTimes
+		finishTimes := s.MgcTaskBaseInfo.CurPeriodMaxFinishTimes
+		title := s.MgcTaskBaseInfo.ViewTitle
+		if times == finishTimes {
+			logs.Info(fmt.Sprintf("任务:%s,已完成", title))
+			continue
+		}
+		num := finishTimes - times
+		for i := 0; i < num; i++ {
+			mBody := NewBody(meituan.AcToken, meituan.UUID, fmt.Sprintf("{\n    \"taskId\" : %d,\n    \"externalStr\" : \"{\\\"cityId\\\":-1}\"\n  }", s.Id), 1004)
+			GoShoping(mBody, cookie)
+			logs.Info(fmt.Sprintf("完成任务:%s", title))
+			time.Sleep(time.Second * time.Duration(rand.Intn(6)+5))
+			mBody1 := NewBody(meituan.AcToken, meituan.UUID, fmt.Sprintf("{\n    \"taskId\" : %d,\n    \"externalStr\" : \"{\\\"cityId\\\":-1}\"\n  }"), 1005)
+			GoShoping(mBody1, cookie)
+			logs.Info(fmt.Sprintf("领取%s任务奖励成功", title))
+		}
+	}
+	time.Sleep(time.Second * 2)
+
+	body, _ = req.Bytes()
+	fmt.Println(body)
+	json.Unmarshal(body, &list)
+	model := list.Data.PlayerBaseModel
+	packetAmount := model.RedPacketInfo.LeftRedPacketAmount
+	if packetAmount == 0 {
+		logs.Info("今天红包已经开完了")
+	} else {
+		logs.Info("今天红包个数:%d", packetAmount)
+		for i := 0; i < packetAmount; i++ {
+			OpenPacket(meituan)
+		}
+	}
+
+	DrawInfo := list.Data.PlayerBaseModel.LotteryInfo.LeftLotteryTimesAmount
+	if DrawInfo == 0 {
+		logs.Info("抽奖次数为0")
+	} else {
+		logs.Info("默认关闭抽奖")
+	}
+
+}
+
+func SignIn(meituan *MeiTuan) {
+	lbody := NewBody(meituan.AcToken, meituan.UUID, "{}", 1007)
+	jsonData, err := json.Marshal(lbody)
+	if err != nil {
+		fmt.Println("JSON encoding error:", err)
+		return
+	}
+
+	req := httplib.Post("https://game.meituan.com/earn-daily/msg/post")
+	req.Body(jsonData)
+	setHeader(req)
+	cookie := fmt.Sprintf("utm_medium=android;uuid=%s;token=%s;mt_c_token=%s;", meituan.UUID, meituan.Token, meituan.Token)
+	req.Header("Cookie", cookie)
+	body, _ := req.Bytes()
+
+	val, _ := jsonparser.GetInt(body, "code")
+	if val != 200 {
+		logs.Info("签到失败")
+		logs.Info(string(body))
+	} else {
+		var sign SignInfo
+		json.Unmarshal(body, &sign)
+		modelList := sign.Data.RemitNotificationModelList
+		content := modelList[0].Content
+		logs.Info(content)
+	}
+}
+
+func OpenPacket(meituan *MeiTuan) {
+	//声明对象
+	lbody := NewBody(meituan.AcToken, meituan.UUID, "{}", 1008)
+	jsonData, err := json.Marshal(lbody)
+	if err != nil {
+		fmt.Println("JSON encoding error:", err)
+		return
+	}
+	req := httplib.Post("https://game.meituan.com/earn-daily/msg/post")
+	req.Body(jsonData)
+	setHeader(req)
+	cookie := fmt.Sprintf("utm_medium=android;uuid=%s;token=%s;mt_c_token=%s;", meituan.UUID, meituan.Token, meituan.Token)
+	req.Header("Cookie", cookie)
+	body, _ := req.Bytes()
+	fmt.Println(body)
+	var red PacketInfo
+	json.Unmarshal(body, &red)
+	list := red.Data.RewardModelList
+	activityCycleInfo := red.Data.PlayerBaseModel.ActivityCycleInfo
+	cashToken := float64(activityCycleInfo.CashToken / 100.0)
+	maxCashToken := 49.98
+	for _, s := range list {
+		if cashToken > maxCashToken {
+			logs.Info("开红包获得:%d金币", s.Amount)
+		} else {
+			logs.Info("开红包获得:%d金额", s.Amount)
+		}
+	}
+
+}
+
+func GoShoping(body MBody, cookie string) string {
+	jsonData, err := json.Marshal(body)
+	if err != nil {
+		fmt.Println("JSON encoding error:", err)
+		return ""
+	}
+	req := httplib.Post("https://game.meituan.com/earn-daily/msg/post")
+	req.Body(jsonData)
+	setHeader(req)
+	req.Header("Cookie", cookie)
+	result, _ := req.Bytes()
+	return string(result)
 
 }
 
