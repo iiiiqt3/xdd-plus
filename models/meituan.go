@@ -1,7 +1,7 @@
 package models
 
 import (
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
@@ -586,15 +586,21 @@ func LoginMeituan(meituan *MeiTuan) int64 {
 
 func gen16() string {
 
-	randomBytes := make([]byte, 16)
-	_, err := rand.Read(randomBytes)
+	randomString, err := randStringBytesCrypto(16)
 	if err != nil {
-		fmt.Println("生成随机字节出错:", err)
-		return ""
+		panic(err)
 	}
-	// 将字节转换为16进制字符串
-	return hex.EncodeToString(randomBytes)
+	return randomString
 
+}
+
+func randStringBytesCrypto(n int) (string, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(b), nil
 }
 
 func setHeader(req *httplib.BeegoHTTPRequest) {
