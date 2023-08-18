@@ -629,7 +629,7 @@ func setHeader(req *httplib.BeegoHTTPRequest) {
 
 func taskList(meituan *MeiTuan) {
 	//声明对象
-	lbody := NewBody(meituan.AcToken, meituan.UUID, "{}", 1001)
+	lbody := NewBody(meituan.AcToken, meituan.UUID, "{\n    \"externalStr\" : \"{\\\"cityId\\\":-1}\"\n  }", 1001)
 	jsonData, err := json.Marshal(lbody)
 	if err != nil {
 		fmt.Println("JSON encoding error:", err)
