@@ -40,7 +40,8 @@ func initDB() {
 		&Cache{},
 		&Key{},
 		&BakJdCookie{},
-		MeiTuan{},
+		&MeiTuan{},
+		&Auth{},
 		//&LoginSelectType{},
 	)
 

@@ -570,7 +570,6 @@ func (ck *MeiTuan) RunCoin() {
 	} else {
 		taskList(ck)
 	}
-
 }
 
 func LoginMeituan(meituan *MeiTuan) int64 {

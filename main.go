@@ -25,6 +25,12 @@ type Result struct {
 	Data    interface{} `json:"data"`
 	Message string      `json:"message"`
 }
+type AuthResult struct {
+	Flag    bool        `json:"flag"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
+}
 
 func main() {
 
@@ -33,6 +39,37 @@ func main() {
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
+
+	web.Get("/phone", func(ctx *context.Context) {
+		tel := ctx.Input.Query("phone")
+		logs.Info(tel)
+		auth := models.GetAuth(tel)
+		if auth {
+			result := AuthResult{
+				Flag:    true,
+				Data:    "null",
+				Code:    20000,
+				Message: "操作成功",
+			}
+			jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+			if errs != nil {
+				fmt.Println(errs.Error())
+			}
+			ctx.WriteString(string(jsons))
+		} else {
+			result := AuthResult{
+				Flag:    false,
+				Data:    "null",
+				Code:    51000,
+				Message: "操作失败",
+			}
+			jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+			if errs != nil {
+				fmt.Println(errs.Error())
+			}
+			ctx.WriteString(string(jsons))
+		}
+	})
 
 	web.Get("/count", func(ctx *context.Context) {
 		ctx.WriteString(models.Count())
