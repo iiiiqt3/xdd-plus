@@ -20,9 +20,9 @@ func AddAuth(tel string) bool {
 	tx := db.Begin()
 	if err := tx.Create(ck).Error; err != nil {
 		tx.Rollback()
-		return true
-	} else {
 		return false
+	} else {
+		return true
 	}
 }
 
