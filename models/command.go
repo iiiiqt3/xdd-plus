@@ -478,9 +478,9 @@ var codeSignals = []CodeSignal{
 			ctt := sender.JoinContens()
 			auth := Remove(ctt)
 			if auth {
-				return "授权成功"
+				return "操作成功"
 			} else {
-				return "授权失败"
+				return "操作失败"
 			}
 		},
 	},
