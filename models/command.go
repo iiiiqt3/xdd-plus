@@ -458,6 +458,34 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"授权"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			ctt := sender.JoinContens()
+			auth := AddAuth(ctt)
+			if auth {
+				return "授权成功"
+			} else {
+				return "授权失败"
+			}
+		},
+	},
+
+	{
+		Command: []string{"取消授权"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			ctt := sender.JoinContens()
+			auth := Remove(ctt)
+			if auth {
+				return "授权成功"
+			} else {
+				return "授权失败"
+			}
+		},
+	},
+
+	{
 		Command: []string{"开始检测"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
