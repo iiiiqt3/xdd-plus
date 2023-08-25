@@ -40,7 +40,7 @@ func main() {
 		models.Save <- &models.JdCookie{}
 	}()
 
-	web.Get("/phone", func(ctx *context.Context) {
+	web.Get("/permisson", func(ctx *context.Context) {
 		tel := ctx.Input.Query("phone")
 		logs.Info(tel)
 		auth := models.GetAuth(tel)
