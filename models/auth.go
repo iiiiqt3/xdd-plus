@@ -7,7 +7,7 @@ type Auth struct {
 func GetAuth(tel string) bool {
 	ck := &Auth{}
 	tx := db.Where("tel = ?", tel).First(ck).Error
-	if tx != nil {
+	if tx == nil {
 		return true
 	}
 	return false
