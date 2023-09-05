@@ -578,52 +578,47 @@ func (ck *MeiTuan) RunCoin() {
 
 func (ck *MeiTuan) RunTT(sender *Sender) {
 	logs.Info("开始领")
-	meituan := LoginMeituan(ck)
-	if meituan != 0 {
-		logs.Info("登录失败")
+
+	file1, _ := vweb.WebFs.ReadFile("js/meituan.js")
+
+	// 创建一个临时文件来保存JavaScript脚本
+	file, err := os.CreateTemp("", "script.js")
+	if err != nil {
+		fmt.Println("创建临时文件失败:", err)
 		return
-	} else {
-		file1, _ := vweb.WebFs.ReadFile("js/meituan.js")
-
-		// 创建一个临时文件来保存JavaScript脚本
-		file, err := os.CreateTemp("", "script.js")
-		if err != nil {
-			fmt.Println("创建临时文件失败:", err)
-			return
-		}
-		defer os.Remove(file.Name())
-
-		// 将JavaScript脚本写入临时文件
-		_, err = file.Write(file1)
-		if err != nil {
-			fmt.Println("写入临时文件失败:", err)
-			return
-		}
-
-		// 执行JavaScript脚本
-		cmd := exec.Command("node", file.Name())
-
-		envs := []Env{
-			{Name: "meituanCookie", Value: ck.Token},
-			{Name: "meituanCommonTask", Value: False},
-			{Name: "meituanMrzqTask", Value: False},
-			{Name: "meituanCyfTask", Value: False},
-		}
-		for _, env := range envs {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
-		}
-
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			fmt.Println("执行JavaScript脚本失败:", err)
-			return
-		}
-		// 输出脚本执行结果
-		fmt.Println(string(output))
-		logs.Info(string(output))
-		sender.Reply("领卷完成")
-
 	}
+	defer os.Remove(file.Name())
+
+	// 将JavaScript脚本写入临时文件
+	_, err = file.Write(file1)
+	if err != nil {
+		fmt.Println("写入临时文件失败:", err)
+		return
+	}
+
+	// 执行JavaScript脚本
+	cmd := exec.Command("node", file.Name())
+
+	envs := []Env{
+		{Name: "meituanCookie", Value: ck.Token},
+		{Name: "meituanCommonTask", Value: False},
+		{Name: "meituanMrzqTask", Value: False},
+		{Name: "meituanCyfTask", Value: False},
+	}
+	for _, env := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("执行JavaScript脚本失败:", err)
+		return
+	}
+	// 输出脚本执行结果
+	fmt.Println(string(output))
+	logs.Info(string(output))
+	sender.Reply("领卷完成")
+
 }
 
 func LoginMeituan(meituan *MeiTuan) int64 {
