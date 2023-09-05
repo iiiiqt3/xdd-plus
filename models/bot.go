@@ -303,6 +303,29 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				}
 			}
 
+			{
+				if msg == "美团领卷" {
+					meiTuans := GetMeiTuan(sender)
+					if len(meiTuans) > 0 {
+
+						//进入队列
+						msg := make(chan string)
+						meituanList[sender.UserID] = msg
+						go MeituanSelect(sender, msg, 2, meiTuans)
+
+						msgs := []string{
+							"请回复以下序列号指定账号运行任务:",
+						}
+						for i, tuan := range meiTuans {
+							msgs = append(msgs, fmt.Sprintf("%d、%s", i, tuan.Nickname))
+						}
+						sender.Reply(strings.Join(msgs, "\n"))
+					} else {
+						return "查无美团账号"
+					}
+				}
+			}
+
 			//口令转换
 			{
 				if strings.Contains(msg, "口令") {
