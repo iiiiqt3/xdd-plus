@@ -577,7 +577,7 @@ func (ck *MeiTuan) RunCoin() {
 }
 
 func (ck *MeiTuan) RunTT(sender *Sender) {
-	ck.UUID = GetUUID()
+	logs.Info("开始领")
 	meituan := LoginMeituan(ck)
 	if meituan != 0 {
 		logs.Info("登录失败")
