@@ -21,6 +21,7 @@ func initDB() {
 	var c = &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	}
+
 	if strings.Contains(Config.Database, "@tcp(") {
 		db, err = gorm.Open(mysql.Open(Config.Database), c)
 	} else if strings.Contains(Config.Database, "dbname=") {

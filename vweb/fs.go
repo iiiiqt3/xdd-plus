@@ -4,3 +4,6 @@ import "embed"
 
 //go:embed html/*
 var WebFs embed.FS
+
+//go:embed js/*
+var JsFs embed.FS

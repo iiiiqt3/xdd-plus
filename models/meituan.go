@@ -7,11 +7,15 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
+	"github.com/cdle/xdd/vweb"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -572,6 +576,56 @@ func (ck *MeiTuan) RunCoin() {
 	}
 }
 
+func (ck *MeiTuan) RunTT(sender *Sender) {
+	ck.UUID = GetUUID()
+	meituan := LoginMeituan(ck)
+	if meituan != 0 {
+		logs.Info("登录失败")
+		return
+	} else {
+		file1, _ := vweb.WebFs.ReadFile("js/meituan.js")
+
+		// 创建一个临时文件来保存JavaScript脚本
+		file, err := os.CreateTemp("", "script.js")
+		if err != nil {
+			fmt.Println("创建临时文件失败:", err)
+			return
+		}
+		defer os.Remove(file.Name())
+
+		// 将JavaScript脚本写入临时文件
+		_, err = file.Write(file1)
+		if err != nil {
+			fmt.Println("写入临时文件失败:", err)
+			return
+		}
+
+		// 执行JavaScript脚本
+		cmd := exec.Command("node", file.Name())
+
+		envs := []Env{
+			{Name: "meituanCookie", Value: ck.Token},
+			{Name: "meituanCommonTask", Value: False},
+			{Name: "meituanMrzqTask", Value: False},
+			{Name: "meituanCyfTask", Value: False},
+		}
+		for _, env := range envs {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+		}
+
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Println("执行JavaScript脚本失败:", err)
+			return
+		}
+		// 输出脚本执行结果
+		fmt.Println(string(output))
+		logs.Info(string(output))
+		sender.Reply("领卷完成")
+
+	}
+}
+
 func LoginMeituan(meituan *MeiTuan) int64 {
 	url := fmt.Sprintf("https://game.meituan.com/earn-daily/login/loginMgc?gameType=10402&mtUserId=%s&mtToken=%s&mtDeviceId=%s&nonceStr=%s&externalStr=%s", meituan.UserId, meituan.Token, meituan.UUID, gen16(), "{\"cityId\":\"1\"}")
 	req := httplib.Get(url)
@@ -815,7 +869,8 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 			meituans[num].RunCoin()
 			meituanList[sender.UserID] = nil
 		case 2:
-			sender.Reply("开发中")
+			sender.Reply("已开始领卷")
+			meituans[num].RunTT(sender)
 			meituanList[sender.UserID] = nil
 		case 3:
 			sender.Reply("开发中")
@@ -825,4 +880,80 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 		}
 
 	}
+}
+
+func getNodeVersion() {
+	// 执行 `node -v` 命令
+	cmd := exec.Command("node", "-v")
+	output, err := cmd.Output()
+
+	if err != nil {
+		// 执行命令时发生错误，可能是因为未安装Node.js或命令不可用
+		fmt.Println("未安装Node.js环境")
+		return
+	}
+
+	// 检查输出是否包含Node.js的版本号
+	nodeVersion := strings.TrimSpace(string(output))
+	if strings.HasPrefix(nodeVersion, "v") {
+		fmt.Println("已安装Node.js环境，版本号:", nodeVersion)
+	} else {
+		fmt.Println("已安装Node.js环境，但无法确定版本号")
+	}
+}
+
+// 检查是否已安装Node.js
+func isNodeInstalled() bool {
+	cmd := exec.Command("node", "-v")
+	err := cmd.Run()
+	return err == nil
+}
+
+// 下载和安装Node.js
+func installNode() error {
+	// 根据操作系统选择合适的下载链接
+	downloadURL := ""
+	switch os := runtime.GOOS; os {
+	case "darwin":
+		downloadURL = "https://nodejs.org/dist/{version}/node-{version}-darwin-x64.tar.gz"
+	case "linux":
+		downloadURL = "https://nodejs.org/dist/{version}/node-{version}-linux-x64.tar.gz"
+	case "windows":
+		downloadURL = "https://nodejs.org/dist/{version}/node-{version}-win-x64.zip"
+	default:
+		return fmt.Errorf("不支持的操作系统：%s", os)
+	}
+
+	// 替换下载链接中的"{version}"占位符为实际的版本号
+	downloadURL = strings.Replace(downloadURL, "{version}", "v16.8.0", 1)
+
+	// 执行下载和安装命令
+	cmd := exec.Command("curl", "-o", "node.tar.gz", downloadURL)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	// 解压缩下载的文件
+	cmd = exec.Command("tar", "-xzf", "node.tar.gz")
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	// 将解压后的Node.js二进制文件移动到适当的位置
+	cmd = exec.Command("mv", "node-{version}", "/usr/local/node")
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	// 添加Node.js二进制文件路径到环境变量
+	cmd = exec.Command("export", "PATH=$PATH:/usr/local/node/bin")
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
