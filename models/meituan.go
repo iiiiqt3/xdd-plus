@@ -579,7 +579,7 @@ func (ck *MeiTuan) RunCoin() {
 func (ck *MeiTuan) RunTT(sender *Sender) {
 	logs.Info("开始领")
 
-	file1, _ := vweb.WebFs.ReadFile("js/meituan.js")
+	file1, _ := vweb.JsFs.ReadFile("js/meituan.js")
 
 	// 创建一个临时文件来保存JavaScript脚本
 	file, err := os.CreateTemp("", "script.js")
