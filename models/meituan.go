@@ -582,7 +582,7 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 	file1, _ := vweb.JsFs.ReadFile("js/meituan.js")
 
 	// 创建一个临时文件来保存JavaScript脚本
-	file, err := os.CreateTemp("", "script.js")
+	file, err := os.CreateTemp("/opt/xdd-plus/scripts", "script.js")
 	if err != nil {
 		fmt.Println("创建临时文件失败:", err)
 		return
