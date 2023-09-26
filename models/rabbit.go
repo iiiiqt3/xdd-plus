@@ -53,6 +53,8 @@ func RabbitGetJdQrImg(sender *Sender) {
 }
 
 func RabbitGetJDQrStatus(cookie string, sender *Sender) {
+	// {"success":false,"message":"","data":{"ck":"","rwskey":"","accessToken":"","refreshToken":"","roles":[],"img":null,"username":"user","expires":"2023-09-26T15:45:13.3731483+08:00","status":0,"mode":null}}
+
 	for {
 		time.Sleep(time.Second * time.Duration(5))
 		get := httplib.Post(fmt.Sprintf("%s/api/QrCheck?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
@@ -75,6 +77,10 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 		} else if code == 200 {
 			data, _ := jsonparser.GetString(bytes, "wskey")
 			pin, _ := jsonparser.GetString(bytes, "pin")
+			if data == "" || pin == "" {
+				sender.Reply("账号风控，请使用其他登录方式。")
+				return
+			}
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, data)
 			_, _, appck := RabbitGetCookie(pinky)
 			pin = url.QueryEscape(pin)
