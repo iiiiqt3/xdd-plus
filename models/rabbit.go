@@ -78,7 +78,7 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 			data, _ := jsonparser.GetString(bytes, "wskey")
 			pin, _ := jsonparser.GetString(bytes, "pin")
 			if data == "" || pin == "" {
-				sender.Reply("账号风控，请使用其他登录方式。")
+				sender.Reply("渠道维护，请使用其他登录方式。")
 				return
 			}
 			var pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, data)
