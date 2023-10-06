@@ -43,12 +43,12 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			case "Nolan":
 				f := RiskList[sender.UserID]
 				RiskList[sender.UserID] = false
+				phone := phoneList[sender.UserID]
+				phoneList[sender.UserID] = ""
 				if f {
 					//todo 验证
-
+					go NolanAuthCode(phone, n, sender)
 				} else {
-					phone := phoneList[sender.UserID]
-					phoneList[sender.UserID] = ""
 					go NolanSendCode(phone, n, sender)
 				}
 				deal = true

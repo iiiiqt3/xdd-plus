@@ -225,7 +225,8 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 		if state == 555 {
 			mode, _ := jsonparser.GetString(data, "data", "mode")
 			if mode == "USER_ID" {
-				RiskList[sender.UserID] = false
+				RiskList[sender.UserID] = true
+				phoneList[sender.UserID] = phone
 				sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
 			} else if mode == "HISTORY_DEVICE" {
 				sender.Reply("请使用手机进行验证后重新登录")
@@ -281,7 +282,9 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 		//(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		smsList[sender.UserID] = nil
 	} else {
+		smsList[sender.UserID] = nil
 		sender.Reply("登录失败，请联系管理员")
+
 		(&JdCookie{}).Push("Pro短信登录异常" + message)
 	}
 }
