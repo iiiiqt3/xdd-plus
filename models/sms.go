@@ -42,10 +42,12 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 				phone := phoneList[sender.UserID]
 				phoneList[sender.UserID] = ""
 				go NolanSendCode(phone, n, sender)
+				return
 			case "Rabbit":
 				phone := phoneList[sender.UserID]
 				phoneList[sender.UserID] = ""
 				go RabbitSendCode(phone, n, sender)
+				return
 			default:
 				logs.Info("报错了")
 				return
@@ -61,9 +63,11 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 				logs.Info("Pro短信登录")
 				phoneList[sender.UserID] = n
 				go NolanSendSMS(n, sender)
+				return
 			case "Rabbit":
 				phoneList[sender.UserID] = n
 				go RabbitSendSMS(n, sender)
+				return
 			default:
 				logs.Info("报错了")
 				return
@@ -72,9 +76,11 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 
 		if n != "q" {
 			sender.Reply("当前处于登录流程，回复‘q’可退出流程")
+			return
 		} else {
 			sender.Reply("退出登录流程")
 			smsList[sender.UserID] = nil
+			return
 		}
 
 	}
