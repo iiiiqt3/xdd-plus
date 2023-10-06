@@ -171,13 +171,13 @@ func NolanSendSMS(phone string, sender *Sender) {
 	logs.Info(string(data))
 	message, _ := jsonparser.GetString(data, "message")
 	success, _ := jsonparser.GetBoolean(data, "success")
-	status, _ := jsonparser.GetInt(data, "data", "status")
+	//status, _ := jsonparser.GetInt(data, "data", "status")
 	if success {
 		logs.Info(strconv.Itoa(sender.UserID))
 		sender.Reply("请输入6位验证码：")
 		return
 	} else {
-		sender.Reply("滑块失败，请网页登录")
+		sender.Reply(message)
 		return
 	}
 }
