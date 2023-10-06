@@ -58,6 +58,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			logs.Info("进入手机号阶段")
 			switch smsSelect {
 			case "Nolan":
+				logs.Info("Pro短信登录")
 				phoneList[sender.UserID] = n
 				go NolanSendSMS(n, sender)
 			case "Rabbit":
@@ -68,6 +69,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 				return
 			}
 		}
+
 		if n != "q" {
 			sender.Reply("当前处于登录流程，回复‘q’可退出流程")
 		} else {
