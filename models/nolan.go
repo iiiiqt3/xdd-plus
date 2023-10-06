@@ -233,7 +233,6 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 				smsList[sender.UserID] = nil
 				return
 			}
-			smsList[sender.UserID] = nil
 		} else if state == 404 {
 			smsList[sender.UserID] = nil
 			sender.Reply("请晚上20点后再次尝试验证")
