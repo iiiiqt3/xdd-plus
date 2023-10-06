@@ -33,6 +33,7 @@ func NolanGetJdQrImg(sender *Sender) {
 		sender.SendImg(png)
 
 		//sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
+		sender.Reply(fmt.Sprintf("https://qr.m.jd.com/p?k=%s", key))
 
 		//lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
 		//url, _ := jsonparser.GetString(lj, "code")
@@ -57,7 +58,7 @@ func NolanGetJdQrImg(sender *Sender) {
 		//	})
 		//
 		//}
-		sender.Reply("请使用京东APP扫描，150秒失效")
+		sender.Reply("请使用京东APP扫描,或复制链接用浏览器打开。150秒失效")
 		go NolanGetJDQrStatus(key, sender)
 	} else {
 		logs.Info(string(bytes))
@@ -134,7 +135,7 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				JdCookie{}.Push("Pro没有次数请及时签到")
 				return
 			} else if msg != "二维码未扫描，请扫描二维码" && msg != "请手机客户端确认登录" {
-				sender.Reply("渠道维护，请使用其他登录方式。")
+				sender.Reply(msg)
 				return
 			}
 		}
