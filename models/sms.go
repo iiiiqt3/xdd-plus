@@ -7,6 +7,7 @@ import (
 
 var smsList = make(map[int]chan string)
 var phoneList = make(map[int]string)
+var RiskList = make(map[int]bool)
 var Nark string
 
 func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
@@ -40,10 +41,17 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			logs.Info("进入验证码阶段")
 			switch smsSelect {
 			case "Nolan":
-				phone := phoneList[sender.UserID]
-				phoneList[sender.UserID] = ""
+				f := RiskList[sender.UserID]
+				RiskList[sender.UserID] = false
+				if f {
+					//todo 验证
+
+				} else {
+					phone := phoneList[sender.UserID]
+					phoneList[sender.UserID] = ""
+					go NolanSendCode(phone, n, sender)
+				}
 				deal = true
-				go NolanSendCode(phone, n, sender)
 			case "Rabbit":
 				phone := phoneList[sender.UserID]
 				phoneList[sender.UserID] = ""

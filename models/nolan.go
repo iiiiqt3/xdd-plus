@@ -186,7 +186,6 @@ func NolanSendSMS(phone string, sender *Sender) {
 }
 
 func NolanSendCode(phone string, code string, sender *Sender) {
-	sender.Reply("请耐心等待...")
 	req := httplib.Post(fmt.Sprintf("%s/sms/VerifyCode", sysConfig.NolanUrl))
 	req.Header("Content-Type", "application/json; charset=utf-8")
 	sprintf := fmt.Sprintf("{\n  \"phone\": \"%s\",\n  \"code\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", phone, code, sysConfig.NolanToken)
@@ -197,6 +196,65 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 	success, _ := jsonparser.GetBoolean(data, "success")
 	ck, _ := jsonparser.GetString(data, "data", "ck")
 	state, _ := jsonparser.GetInt(data, "data", "status")
+	if success {
+		ptkey := FetchJdCookieValue("pt_key", ck)
+		pin := FetchJdCookieValue("pt_pin", ck)
+		ck := JdCookie{
+			PtPin: pin,
+			PtKey: ptkey,
+		}
+		if nck, err := GetJdCookie(ck.PtPin); err == nil {
+			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey})
+			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+			//(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+		} else {
+			NewJdCookie(&ck)
+			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+			if sender.IsQQ() || sender.IsQQ() {
+				ck.Update(QQ, sender.UserID)
+			}
+			sender.Reply(fmt.Sprintf(msg))
+			sender.Reply(ck.Query())
+			(&JdCookie{}).Push(msg)
+		}
+
+		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+		(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+		smsList[sender.UserID] = nil
+	} else {
+		if state == 555 {
+			mode, _ := jsonparser.GetString(data, "data", "mode")
+			if mode == "USER_ID" {
+				RiskList[sender.UserID] = false
+				sender.Reply("你的账号需要验证才能登陆，请输入你的京东账号绑定的身份证前两位和后四位，最后一位如果是X，请输入大写X\n例如：31122X")
+			} else if mode == "HISTORY_DEVICE" {
+				sender.Reply("请使用手机进行验证后重新登录")
+				smsList[sender.UserID] = nil
+				return
+			}
+			smsList[sender.UserID] = nil
+		} else if state == 404 {
+			smsList[sender.UserID] = nil
+			sender.Reply("请晚上20点后再次尝试验证")
+		} else {
+			smsList[sender.UserID] = nil
+			sender.Reply(message)
+		}
+	}
+}
+
+func NolanAuthCode(phone string, code string, sender *Sender) {
+	req := httplib.Post(fmt.Sprintf("%s/sms/VerifyCard", sysConfig.NolanUrl))
+	req.Header("Content-Type", "application/json; charset=utf-8")
+	sprintf := fmt.Sprintf("{\n  \"phone\": \"%s\",\n  \"code\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", phone, code, sysConfig.NolanToken)
+	data, _ := req.Body(sprintf).Bytes()
+	logs.Info(string(data))
+
+	message, _ := jsonparser.GetString(data, "message")
+	success, _ := jsonparser.GetBoolean(data, "success")
+	ck, _ := jsonparser.GetString(data, "data", "ck")
+	//state, _ := jsonparser.GetInt(data, "data", "status")
+
 	if success {
 		ptkey := FetchJdCookieValue("pt_key", ck)
 		pin := FetchJdCookieValue("pt_pin", ck)
@@ -220,24 +278,10 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 		}
 
 		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-		(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+		//(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		smsList[sender.UserID] = nil
 	} else {
-		if state == 555 {
-			mode, _ := jsonparser.GetString(data, "data", "mode")
-			if mode == "USER_ID" {
-
-			} else if mode == "HISTORY_DEVICE" {
-
-			}
-			sender.Reply(message)
-			smsList[sender.UserID] = nil
-		} else if state == 404 {
-			smsList[sender.UserID] = nil
-			sender.Reply("请晚上20点后再次尝试验证")
-		} else {
-			smsList[sender.UserID] = nil
-			sender.Reply(message)
-		}
+		sender.Reply("登录失败，请联系管理员")
+		(&JdCookie{}).Push("Pro短信登录异常" + message)
 	}
 }
