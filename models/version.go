@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v13.0"
-var describe = "对接Pro短信"
+var version = "v13.1"
+var describe = "修复二次验证"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"

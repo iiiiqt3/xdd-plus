@@ -475,7 +475,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					}
 
 					if Config.QQID == 764763903 {
-						sender.Reply("请选择登录渠道: \r\n  2:Nolan京东扫码    \r\n  如需退出请回复'q'退出登录流程")
+						sender.Reply("请选择登录渠道: \r\n  2:Nolan京东扫码    \r\n  6:Pro短信  \r\n  如需退出请回复'q'退出登录流程")
 					} else if Config.QQID == 413255735 {
 						sender.Reply("请选择登录渠道: \r\n  1:口令登录  \r\n  2.短信登录  \r\n  如需退出请回复'q'退出登录流程")
 					} else {
