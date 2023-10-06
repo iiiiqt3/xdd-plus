@@ -186,9 +186,10 @@ func NolanSendSMS(phone string, sender *Sender) {
 
 func NolanSendCode(phone string, code string, sender *Sender) {
 	sender.Reply("请耐心等待...")
-	req := httplib.Post(fmt.Sprintf("%s/sms/VerifyCode", sysConfig.RabbitUrl))
+	req := httplib.Post(fmt.Sprintf("%s/sms/VerifyCode", sysConfig.NolanUrl))
 	req.Header("Content-Type", "application/json; charset=utf-8")
-	data, _ := req.Body(fmt.Sprintf("{\n    \"phone\": %s,\n    \"code\": \"%s\",\n    \"botApitoken\": %s\n}", phone, code, sysConfig.NolanToken)).Bytes()
+	sprintf := fmt.Sprintf("{\n  \"phone\": \"%s\",\n  \"code\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", phone, code, sysConfig.NolanToken)
+	data, _ := req.Body(sprintf).Bytes()
 	logs.Info(string(data))
 
 	message, _ := jsonparser.GetString(data, "message")
