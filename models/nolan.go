@@ -180,6 +180,7 @@ func NolanSendSMS(phone string, sender *Sender) {
 		return
 	} else {
 		sender.Reply(message)
+		sender.Reply("验证失败，请尝试重新输入手机号码")
 		return
 	}
 }
