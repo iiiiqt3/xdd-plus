@@ -13,9 +13,8 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 
 	switch smsSelect {
 	case "Nolan":
-		Nark = GetEnv("Nark")
-		if Nark == "" {
-			logs.Error("Nark is empty")
+		if sysConfig.NolanUrl == "" || sysConfig.NolanToken == "" {
+			logs.Error("NolanUrl or NolanToken is empty")
 			return
 		}
 	case "Rabbit":
@@ -40,7 +39,9 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			logs.Info("进入验证码阶段")
 			switch smsSelect {
 			case "Nolan":
-
+				phone := phoneList[sender.UserID]
+				phoneList[sender.UserID] = ""
+				go NolanSendCode(phone, n, sender)
 			case "Rabbit":
 				phone := phoneList[sender.UserID]
 				phoneList[sender.UserID] = ""
@@ -57,7 +58,8 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			logs.Info("进入手机号阶段")
 			switch smsSelect {
 			case "Nolan":
-
+				phoneList[sender.UserID] = n
+				go NolanSendSMS(n, sender)
 			case "Rabbit":
 				phoneList[sender.UserID] = n
 				go RabbitSendSMS(n, sender)

@@ -7,6 +7,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/skip2/go-qrcode"
+	"strconv"
 	"time"
 )
 
@@ -157,67 +158,117 @@ func NolanGetCookie(cookie string) (bool, string, string) {
 	}
 }
 
-//func NolanSendSMS(phone string, sender *Sender) {
-//	NolanUrl = GetEnv("NolanUrl")
-//	if NolanUrl == "" {
-//		logs.Error("NolanUrl  is empty")
-//		return
-//	}
-//	sender.Reply("请耐心等待...")
-//	req := httplib.Post(NolanUrl + "/api/SendSMS")
-//	req.Header("content-type", "application/json")
-//	data, _ := req.Body(`{"Phone":"` + phone + `","qlkey":0}`).Bytes()
-//	message, _ := jsonparser.GetString(data, "message")
-//	success, _ := jsonparser.GetBoolean(data, "success")
-//	status, _ := jsonparser.GetInt(data, "data", "status")
-//	captcha, _ := jsonparser.GetInt(data, "data", "captcha")
-//	if captcha == 0 {
-//		captcha = 1
-//	}
-//	if message != "" && status != 666 {
-//		sender.Reply(message)
-//	}
-//	i := 1
-//	if success {
-//		pcodes[sender.UserID] = phone
-//		logs.Info(strconv.Itoa(sender.UserID))
-//		sender.Reply("请输入6位验证码：")
-//		return
-//	}
-//	//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
-//	if !success && status == 666 && captcha == 2 {
-//		sender.Reply("正在进行验证...")
-//		for {
-//			req = httplib.Post(NolanUrl + "/api/AutoCaptcha")
-//			req.Header("content-type", "application/json")
-//			data, _ := req.Body(`{"Phone":"` + phone + `"}`).Bytes()
-//			message, _ := jsonparser.GetString(data, "message")
-//			success, _ := jsonparser.GetBoolean(data, "success")
-//			status, _ := jsonparser.GetInt(data, "data", "status")
-//			if !success {
-//				//s.Reply("滑块验证失败：" + string(data))
-//			}
-//			if success {
-//				pcodes[sender.UserID] = phone
-//				sender.Reply("请输入6位验证码：")
-//				break
-//			}
-//			if i > 5 {
-//				sender.Reply("滑块验证失败,请尝试重新登录")
-//				break
-//			}
-//			if status == 666 {
-//				i++
-//				sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
-//				continue
-//			}
-//			if strings.Contains(message, "上限") {
-//				i = 6
-//				sender.Reply(message)
-//				break
-//			}
-//		}
-//	} else {
-//		sender.Reply("滑块失败，请网页登录")
-//	}
-//}
+func NolanSendSMS(phone string, sender *Sender) {
+	if sysConfig.NolanUrl == "" || sysConfig.NolanToken == "" {
+		logs.Error("NolanUrl or NolanToken is empty")
+		return
+	}
+
+	sender.Reply("请耐心等待...")
+	req := httplib.Post(sysConfig.NolanUrl + "/sms/SendSMS")
+	req.Header("content-type", "application/json")
+	data, _ := req.Body(`{"Phone":"` + phone + `","botApitoken":` + sysConfig.NolanToken + `}`).Bytes()
+	message, _ := jsonparser.GetString(data, "message")
+	success, _ := jsonparser.GetBoolean(data, "success")
+	status, _ := jsonparser.GetInt(data, "data", "status")
+	captcha, _ := jsonparser.GetInt(data, "data", "mode")
+	if captcha == 0 {
+		captcha = 1
+	}
+	if message != "" && status != 666 {
+		sender.Reply(message)
+	}
+	if success {
+		logs.Info(strconv.Itoa(sender.UserID))
+		sender.Reply("请输入6位验证码：")
+		return
+	}
+	//{"success":true,"message":"","data":{"ckcount":0,"tabcount":3}}
+	if !success && status == 666 && captcha == 2 {
+		sender.Reply("正在进行验证...")
+		//for {
+		//	req = httplib.Post(sysConfig.NolanUrl + "/api/AutoCaptcha")
+		//	req.Header("content-type", "application/json")
+		//	data, _ := req.Body(`{"phone":"` + phone + `"}`).Bytes()
+		//	message, _ := jsonparser.GetString(data, "message")
+		//	success, _ := jsonparser.GetBoolean(data, "success")
+		//	status, _ := jsonparser.GetInt(data, "data", "status")
+		//	if !success {
+		//		//s.Reply("滑块验证失败：" + string(data))
+		//	}
+		//	if success {
+		//		sender.Reply("请输入6位验证码：")
+		//		break
+		//	}
+		//	if i > 5 {
+		//		sender.Reply("滑块验证失败,请尝试重新登录")
+		//		break
+		//	}
+		//	if status == 666 {
+		//		i++
+		//		sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
+		//		continue
+		//	}
+		//	if strings.Contains(message, "上限") {
+		//		i = 6
+		//		sender.Reply(message)
+		//		break
+		//	}
+		//}
+	} else {
+		sender.Reply("滑块失败，请网页登录")
+	}
+}
+
+func NolanSendCode(phone string, code string, sender *Sender) {
+	sender.Reply("请耐心等待...")
+	req := httplib.Post(fmt.Sprintf("%s/sms/VerifyCode", sysConfig.RabbitUrl))
+	req.Header("Content-Type", "application/json; charset=utf-8")
+	data, _ := req.Body(fmt.Sprintf("{\n    \"phone\": %s,\n    \"code\": \"%s\",\n    \"botApitoken\": %s\n}", phone, code, sysConfig.NolanToken)).Bytes()
+	logs.Info(string(data))
+
+	message, _ := jsonparser.GetString(data, "message")
+	success, _ := jsonparser.GetBoolean(data, "success")
+	ck, _ := jsonparser.GetString(data, "data", "ck")
+	state, _ := jsonparser.GetInt(data, "data", "status")
+	if success {
+		ptkey := FetchJdCookieValue("pt_key", ck)
+		pin := FetchJdCookieValue("pt_pin", ck)
+		ck := JdCookie{
+			PtPin: pin,
+			PtKey: ptkey,
+		}
+		if nck, err := GetJdCookie(ck.PtPin); err == nil {
+			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey})
+			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+		} else {
+			NewJdCookie(&ck)
+			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+			if sender.IsQQ() || sender.IsQQ() {
+				ck.Update(QQ, sender.UserID)
+			}
+			sender.Reply(fmt.Sprintf(msg))
+			sender.Reply(ck.Query())
+			(&JdCookie{}).Push(msg)
+		}
+
+		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
+		(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+		smsList[sender.UserID] = nil
+	} else {
+		if state == 555 {
+			mode, _ := jsonparser.GetString(data, "data", "mode")
+			if mode == "USER_ID" {
+
+			} else if mode == "HISTORY_DEVICE" {
+
+			}
+			sender.Reply(message)
+			smsList[sender.UserID] = nil
+		} else {
+			smsList[sender.UserID] = nil
+			sender.Reply(message)
+		}
+	}
+}

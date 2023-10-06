@@ -248,7 +248,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 				loginList[sender.UserID] = nil
 				c2 := make(chan string)
 				smsList[sender.UserID] = c2
-				go SmsSelect(sender, c2, "Rabbit")
+				go SmsSelect(sender, c2, "Nolan")
 			case "q":
 				loginList[sender.UserID] = nil
 				close(msg)
