@@ -32,6 +32,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 		if !ok {
 			break
 		}
+		deal := false
 
 		regex := "^\\d{5}(\\d|X|x)$"
 		reg := regexp.MustCompile(regex)
@@ -41,13 +42,13 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			case "Nolan":
 				phone := phoneList[sender.UserID]
 				phoneList[sender.UserID] = ""
+				deal = true
 				go NolanSendCode(phone, n, sender)
-				return
 			case "Rabbit":
 				phone := phoneList[sender.UserID]
 				phoneList[sender.UserID] = ""
+				deal = true
 				go RabbitSendCode(phone, n, sender)
-				return
 			default:
 				logs.Info("报错了")
 				return
@@ -62,19 +63,19 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			case "Nolan":
 				logs.Info("Pro短信登录")
 				phoneList[sender.UserID] = n
+				deal = true
 				go NolanSendSMS(n, sender)
-				return
 			case "Rabbit":
 				phoneList[sender.UserID] = n
+				deal = true
 				go RabbitSendSMS(n, sender)
-				return
 			default:
 				logs.Info("报错了")
 				return
 			}
 		}
 
-		if n != "q" {
+		if n != "q" && deal == false {
 			sender.Reply("当前处于登录流程，回复‘q’可退出流程")
 		} else {
 			sender.Reply("退出登录流程")
