@@ -75,13 +75,14 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			}
 		}
 
-		if n != "q" && deal == false {
-			sender.Reply("当前处于登录流程，回复‘q’可退出流程")
-		} else {
+		if n == "q" {
 			sender.Reply("退出登录流程")
 			smsList[sender.UserID] = nil
 			return
 		}
 
+		if !deal {
+			sender.Reply("当前处于登录流程，回复‘q’可退出流程")
+		}
 	}
 }
