@@ -168,6 +168,7 @@ func NolanSendSMS(phone string, sender *Sender) {
 	req := httplib.Post(sysConfig.NolanUrl + "/sms/SendSMS")
 	req.Header("content-type", "application/json")
 	data, _ := req.Body(`{"Phone":"` + phone + `","botApitoken":` + sysConfig.NolanToken + `}`).Bytes()
+	logs.Info("`{\"Phone\":\"` + phone + `\",\"botApitoken\":` + sysConfig.NolanToken + `}`")
 	logs.Info(string(data))
 	message, _ := jsonparser.GetString(data, "message")
 	success, _ := jsonparser.GetBoolean(data, "success")
