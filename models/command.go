@@ -229,6 +229,16 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
+		Command: []string{"短信登录", "短信登陆"},
+		Handle: func(sender *Sender) interface{} {
+			c2 := make(chan string)
+			smsList[sender.UserID] = c2
+			sender.Reply("请输入手机号")
+			go SmsSelect(sender, c2, "Nolan")
+			return nil
+		},
+	},
+	{
 		Command: []string{"删掉"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
