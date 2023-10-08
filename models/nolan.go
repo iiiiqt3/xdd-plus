@@ -3,12 +3,13 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/skip2/go-qrcode"
-	"strconv"
-	"time"
 )
 
 func NolanGetJdQrImg(sender *Sender) {
@@ -109,13 +110,23 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				Available: True,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True})
+				if sender.Type == "wx" || sender.Type == "wxg" {
+					nck.Updates(JdCookie{RWskey: rwskey, WeiXin: sender.WxId, PtKey: ptkey, Available: True})
+				} else if sender.Type == "tg" {
+					nck.Updates(JdCookie{RWskey: rwskey, Telegram: sender.UserID, PtKey: ptkey, Available: True})
+				} else {
+					nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True})
+				}
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 			} else {
 				NewJdCookie(&ck)
 				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-				if sender.IsQQ() || sender.IsQQ() {
+				if sender.Type == "wx" || sender.Type == "wxg" {
+					ck.Update("WeiXin", sender.WxId)
+				} else if sender.Type == "tg" {
+					ck.Update(Telegram, sender.UserID)
+				} else {
 					ck.Update(QQ, sender.UserID)
 				}
 				sender.Reply(fmt.Sprintf(msg))
@@ -208,13 +219,23 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 			PtKey: ptkey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
+			if sender.Type == "wx" || sender.Type == "wxg" {
+				nck.Updates(JdCookie{WeiXin: sender.WxId, PtKey: ptkey, Available: True})
+			} else if sender.Type == "tg" {
+				nck.Updates(JdCookie{Telegram: sender.UserID, PtKey: ptkey, Available: True})
+			} else {
+				nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
+			}
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			//(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
 			NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-			if sender.IsQQ() || sender.IsQQ() {
+			if sender.Type == "wx" || sender.Type == "wxg" {
+				ck.Update("WeiXin", sender.WxId)
+			} else if sender.Type == "tg" {
+				ck.Update(Telegram, sender.UserID)
+			} else {
 				ck.Update(QQ, sender.UserID)
 			}
 			sender.Reply(fmt.Sprintf(msg))
@@ -267,20 +288,29 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			PtKey: ptkey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
+			if sender.Type == "wx" || sender.Type == "wxg" {
+				nck.Updates(JdCookie{WeiXin: sender.WxId, PtKey: ptkey, Available: True})
+			} else if sender.Type == "tg" {
+				nck.Updates(JdCookie{Telegram: sender.UserID, PtKey: ptkey, Available: True})
+			} else {
+				nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
+			}
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
 			NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-			if sender.IsQQ() || sender.IsQQ() {
+			if sender.Type == "wx" || sender.Type == "wxg" {
+				ck.Update("WeiXin", sender.WxId)
+			} else if sender.Type == "tg" {
+				ck.Update(Telegram, sender.UserID)
+			} else {
 				ck.Update(QQ, sender.UserID)
 			}
 			sender.Reply(fmt.Sprintf(msg))
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 		}
-
 		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 		//(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		smsList[sender.UserID] = nil
