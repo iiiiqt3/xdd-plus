@@ -110,23 +110,13 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				Available: True,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				if sender.Type == "wx" || sender.Type == "wxg" {
-					nck.Updates(JdCookie{RWskey: rwskey, WeiXin: sender.WxId, PtKey: ptkey, Available: True})
-				} else if sender.Type == "tg" {
-					nck.Updates(JdCookie{RWskey: rwskey, Telegram: sender.UserID, PtKey: ptkey, Available: True})
-				} else {
-					nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True})
-				}
+				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True})
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 			} else {
 				NewJdCookie(&ck)
 				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-				if sender.Type == "wx" || sender.Type == "wxg" {
-					ck.Update("WeiXin", sender.WxId)
-				} else if sender.Type == "tg" {
-					ck.Update(Telegram, sender.UserID)
-				} else {
+				if sender.IsQQ() || sender.IsQQ() {
 					ck.Update(QQ, sender.UserID)
 				}
 				sender.Reply(fmt.Sprintf(msg))
@@ -141,9 +131,6 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 			msg, _ := jsonparser.GetString(bytes, "message")
 			if msg == "请先获取二维码" {
 				sender.Reply("key已失效，请重新获取")
-				return
-			} else if msg == "" {
-				sender.Reply("扫码登录失败，请晚上20点以后使用命令：短信登录")
 				return
 			} else if msg == "没有次数了!" {
 				JdCookie{}.Push("Pro没有次数请及时签到")
@@ -219,23 +206,13 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 			PtKey: ptkey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			if sender.Type == "wx" || sender.Type == "wxg" {
-				nck.Updates(JdCookie{WeiXin: sender.WxId, PtKey: ptkey, Available: True})
-			} else if sender.Type == "tg" {
-				nck.Updates(JdCookie{Telegram: sender.UserID, PtKey: ptkey, Available: True})
-			} else {
-				nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
-			}
+			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey})
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			//(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
 			NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-			if sender.Type == "wx" || sender.Type == "wxg" {
-				ck.Update("WeiXin", sender.WxId)
-			} else if sender.Type == "tg" {
-				ck.Update(Telegram, sender.UserID)
-			} else {
+			if sender.IsQQ() || sender.IsQQ() {
 				ck.Update(QQ, sender.UserID)
 			}
 			sender.Reply(fmt.Sprintf(msg))
@@ -246,6 +223,10 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 		(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		smsList[sender.UserID] = nil
+		go func() {
+			Save <- &JdCookie{}
+		}()
+		return
 	} else {
 		if state == 555 {
 			mode, _ := jsonparser.GetString(data, "data", "mode")
@@ -288,32 +269,27 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			PtKey: ptkey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			if sender.Type == "wx" || sender.Type == "wxg" {
-				nck.Updates(JdCookie{WeiXin: sender.WxId, PtKey: ptkey, Available: True})
-			} else if sender.Type == "tg" {
-				nck.Updates(JdCookie{Telegram: sender.UserID, PtKey: ptkey, Available: True})
-			} else {
-				nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
-			}
+			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey})
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
 			NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-			if sender.Type == "wx" || sender.Type == "wxg" {
-				ck.Update("WeiXin", sender.WxId)
-			} else if sender.Type == "tg" {
-				ck.Update(Telegram, sender.UserID)
-			} else {
+			if sender.IsQQ() || sender.IsQQ() {
 				ck.Update(QQ, sender.UserID)
 			}
 			sender.Reply(fmt.Sprintf(msg))
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 		}
+
 		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 		//(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		smsList[sender.UserID] = nil
+		go func() {
+			Save <- &JdCookie{}
+		}()
+		return
 	} else {
 		smsList[sender.UserID] = nil
 		sender.Reply("登录失败，请联系管理员")
