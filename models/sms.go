@@ -90,7 +90,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 		}
 
 		if !deal {
-			sender.Reply("当前处于登录流程，回复‘q’可退出流程")
+			sender.Reply("当前处于短信登录流程，信息输入错误，请重新输入，或回复‘q’退出流程")
 		}
 	}
 }
