@@ -132,6 +132,9 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 			if msg == "请先获取二维码" {
 				sender.Reply("key已失效，请重新获取")
 				return
+			} else if msg == "" {
+				sender.Reply("扫码登录失败，请晚上20点以后使用命令：短信登录")
+				return
 			} else if msg == "没有次数了!" {
 				JdCookie{}.Push("Pro没有次数请及时签到")
 				return
