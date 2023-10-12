@@ -4,16 +4,18 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/beego/beego/v2/core/logs"
-	"github.com/google/uuid"
-	"github.com/skip2/go-qrcode"
-	"gorm.io/gorm"
+	"math/rand"
 	"net/url"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/beego/beego/v2/core/logs"
+	"github.com/google/uuid"
+	"github.com/skip2/go-qrcode"
+	"gorm.io/gorm"
 )
 
 type CodeSignal struct {
@@ -633,11 +635,16 @@ var codeSignals = []CodeSignal{
 			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 				return sb.Where(fmt.Sprintf("%s = ? ", Available), False)
 			})
+			xk := 0
 			for _, ck := range cks {
 				rt := fmt.Sprintf("你的账号【%s】已过期，请对机器人发（登录）重新上车", ck.Nickname)
+				time.Sleep(time.Second * time.Duration(Config.Later))
+				time.Sleep(time.Duration(rand.Intn(1000)+2000) * time.Millisecond)
 				ck.Push(rt)
 				time.Sleep(500)
+				xk++
 			}
+			(&JdCookie{}).Push(fmt.Sprintf("发送完成，已通知过期账号%d个", xk))
 			return nil
 		},
 	},
@@ -1653,6 +1660,31 @@ var codeSignals = []CodeSignal{
 				sender.Reply(fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey))
 			})
 			return nil
+		},
+	},
+	{
+		Command: []string{"回填微信"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			cks := GetJdCookies()
+			xx := 0
+			successCount := 0
+			for i := range cks {
+				if cks[i].QQ != 0 {
+					//logs.Info(cks[i].QQ)
+					WeiXin := getWeiXinId(cks[i].QQ)
+					if WeiXin != "找不到对应的微信ID" {
+						ck := cks[i]
+						ck.Updates(JdCookie{WeiXin: WeiXin})
+						successCount++
+					}
+					xx++
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
+			(&JdCookie{}).Push(fmt.Sprintf("回填微信完成，共处理%d个数据，回填成功：%d个", xx, successCount))
+			return nil
+
 		},
 	},
 }
