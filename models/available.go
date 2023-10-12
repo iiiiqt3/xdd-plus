@@ -3,14 +3,16 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
-	"github.com/buger/jsonparser"
-	"gorm.io/gorm"
+	"math/rand"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/beego/beego/v2/client/httplib"
+	"github.com/beego/beego/v2/core/logs"
+	"github.com/buger/jsonparser"
+	"gorm.io/gorm"
 )
 
 type UserInfoResult struct {
@@ -127,15 +129,20 @@ func initCookie() {
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 0, True, True)
 	})
+	xj := 0
 	for _, ck := range cks {
 		time.Sleep(time.Second * time.Duration(Config.Later))
 		if ck.Available == True && !CookieOK(&ck) {
-
 			//todo 通知账号失效
 			ck.Updates(JdCookie{Available: False})
+			time.Sleep(time.Second * time.Duration(Config.Later))
+			time.Sleep(time.Duration(rand.Intn(1000)+2000) * time.Millisecond)
+			ck.Push(fmt.Sprintf("失效账号，%s，请稍后重新登录", ck.PtPin))
+			(&JdCookie{}).Push(fmt.Sprintf("失效账号：%s", ck.PtPin))
+			xj++
 		}
 	}
-	(&JdCookie{}).Push("账号检测结束")
+	(&JdCookie{}).Push(fmt.Sprintf("账号检测结束，失效账号%d个", xj))
 	go func() {
 		Save <- &JdCookie{}
 	}()
