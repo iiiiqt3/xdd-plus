@@ -129,3 +129,11 @@ func makeWxId(uid int, wxid string) string {
 	return wxid
 
 }
+
+func getWeiXinId(QQid int) string {
+	var u User
+	if db.Where("number = ?", QQid).First(&u).Error != nil {
+		return "找不到对应的微信ID"
+	}
+	return u.Wxid
+}
