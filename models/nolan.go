@@ -211,7 +211,7 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
 			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-			//(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
 			NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
@@ -222,9 +222,6 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 		}
-
-		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-		(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		smsList[sender.UserID] = nil
 		go func() {
 			Save <- &JdCookie{}
@@ -290,9 +287,6 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 		}
-
-		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-		//(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		smsList[sender.UserID] = nil
 		go func() {
 			Save <- &JdCookie{}
