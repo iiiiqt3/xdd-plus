@@ -4,14 +4,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strconv"
+	"time"
+
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
-	"net/url"
-	"strconv"
-	"time"
 )
 
 func RabbitGetJdQrImg(sender *Sender) {
@@ -217,6 +218,7 @@ func UpdateRwskey() {
 
 		} else {
 			ck.Updates(JdCookie{RWskey: "null", Available: False})
+			time.Sleep(time.Second * time.Duration(Config.Later))
 			ck.Push(fmt.Sprintf("RWskey失效账号，%s，请稍后重新登录", ck.PtPin))
 			(&JdCookie{}).Push(fmt.Sprintf("RWskey失效，%s", ck.PtPin))
 		}
