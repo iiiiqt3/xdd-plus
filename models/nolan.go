@@ -241,8 +241,8 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 			}
 		} else if state == 404 {
 			if message == "验证码输入错误" {
-				sender.Reply("验证码输入错误,请重新登录")
-				smsList[sender.UserID] = nil
+				sender.Reply("验证码输入错误,请重新输入")
+				//smsList[sender.UserID] = nil
 			} else {
 				smsList[sender.UserID] = nil
 				sender.Reply("你的账号需要验证才能登陆，请晚上20点后再次尝试验证")
