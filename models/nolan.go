@@ -286,16 +286,16 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			sender.Reply(fmt.Sprintf(msg))
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
+
 		}
+		RiskList[sender.UserID] = false
 		smsList[sender.UserID] = nil
 		go func() {
 			Save <- &JdCookie{}
 		}()
 		return
 	} else {
-		smsList[sender.UserID] = nil
-		sender.Reply("登录失败，请联系管理员")
-
+		sender.Reply(message)
 		(&JdCookie{}).Push("Pro短信登录异常" + message)
 	}
 }
