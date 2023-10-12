@@ -264,7 +264,7 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 	message, _ := jsonparser.GetString(data, "message")
 	success, _ := jsonparser.GetBoolean(data, "success")
 	ck, _ := jsonparser.GetString(data, "data", "ck")
-	//state, _ := jsonparser.GetInt(data, "data", "status")
+	state, _ := jsonparser.GetInt(data, "data", "status")
 
 	if success {
 		ptkey := FetchJdCookieValue("pt_key", ck)
@@ -295,7 +295,13 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 		}()
 		return
 	} else {
-		sender.Reply(message)
-		(&JdCookie{}).Push("Pro短信登录异常" + message)
+		if state == 404 {
+			sender.Reply(message)
+		} else {
+			sender.Reply(message)
+			smsList[sender.UserID] = nil
+			(&JdCookie{}).Push("Pro短信登录异常" + message)
+			return
+		}
 	}
 }
