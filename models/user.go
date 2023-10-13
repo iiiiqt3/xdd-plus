@@ -14,9 +14,9 @@ type User struct {
 	Class    string
 	ActiveAt time.Time
 	Coin     int
-	Wxid     string `gorm:"column:wxid;unique"`
-	QQ       string `gorm:"column:qq;unique"`
-	Telegram string `gorm:"column:telegram;unique"`
+	Wxid     string `gorm:"column:wxid;"`
+	QQ       string `gorm:"column:qq;"`
+	Telegram string `gorm:"column:telegram;"`
 }
 
 func ClearCoin(uid int) int {
