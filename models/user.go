@@ -9,12 +9,14 @@ import (
 )
 
 type User struct {
-	ID       int
-	Number   int `gorm:"unique"`
-	Class    string
-	ActiveAt time.Time
-	Coin     int
-	Wxid     string
+	ID         int
+	Number     int `gorm:"unique"`
+	Class      string
+	ActiveAt   time.Time
+	Coin       int
+	Wxid       string
+	QQ         string
+	TelegramId string
 }
 
 func ClearCoin(uid int) int {
