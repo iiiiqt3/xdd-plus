@@ -49,6 +49,7 @@ type SystemConfig struct {
 func initSysConfig() {
 	ListConfig()
 	updateConfig()
+	updateUsers()
 }
 
 func ListConfig() SystemConfig {
