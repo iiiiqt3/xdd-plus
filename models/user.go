@@ -14,9 +14,9 @@ type User struct {
 	Class      string
 	ActiveAt   time.Time
 	Coin       int
-	Wxid       string
-	QQ         string
-	TelegramId string
+	Wxid       string `gorm:"unique"`
+	QQ         string `gorm:"unique"`
+	TelegramId string `gorm:"unique"`
 }
 
 func ClearCoin(uid int) int {
