@@ -130,7 +130,7 @@ func updateUsers() {
 		logs.Info("开始更新")
 		//todo
 		JdCookie{}.Push("正在进行用户结构改造，请勿关闭程序")
-		sql := "要执行的SQL"
+		sql := "UPDATE users SET qq = number"
 		// 在Exec方法中在sql 后面可以使用多个参数作为占位的补充
 		// 例如需要name=?，则写法可以使用util.Db.Exec(sql,"张三").Error
 		err := db.Exec(sql).Error
