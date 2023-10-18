@@ -110,6 +110,8 @@ type JdCookie struct {
 	Telegram  int    `gorm:"column:Telegram"`
 	Pool      string `gorm:"-"`
 	UserID    int    `gorm:"column:UserId"`
+	UserLevel string `gorm:"column:UserLevel"`
+	LevelName string `gorm:"column:LevelName"`
 }
 
 var UserLevel = "UserLevel"
@@ -192,6 +194,7 @@ func (ck *JdCookie) Removes(values interface{}) {
 }
 
 func NewJdCookie(ck *JdCookie) error {
+
 	ck.Priority = Config.DefaultPriority
 	date := Date()
 	ck.CreateAt = date
@@ -205,6 +208,7 @@ func NewJdCookie(ck *JdCookie) error {
 }
 
 func UpdateCookie(ck *JdCookie) error {
+
 	ck.Priority = Config.DefaultPriority
 	date := Date()
 	ck.CreateAt = date

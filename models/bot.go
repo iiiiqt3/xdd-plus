@@ -781,9 +781,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								(&JdCookie{}).Push(msg)
 								logs.Info(msg)
 							} else {
-								if Cdle {
-									ck.Hack = True
-								}
 								NewJdCookie(&ck)
 								msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
 								if sender.IsQQ() {
