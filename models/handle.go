@@ -31,7 +31,7 @@ func initHandle() {
 			logs.Info(fmt.Sprintf("总共%d个号", len(cks)))
 			var tmp []JdCookie
 			for _, ck := range cks {
-				if ck.Priority >= 0 && ck.Hack != True {
+				if ck.Priority >= 0 {
 					tmp = append(tmp, ck)
 				}
 			}
