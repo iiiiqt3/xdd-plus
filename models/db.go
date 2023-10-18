@@ -115,6 +115,7 @@ type JdCookie struct {
 	Help      string `gorm:"column:Help;default:false" validate:"oneof=true false"`
 	Pool      string `gorm:"-"`
 	Hack      string `gorm:"column:Hack"  validate:"oneof=true false"`
+	UserID    int    `gorm:"column:UserId"`
 	UserLevel string `gorm:"column:UserLevel"`
 	LevelName string `gorm:"column:LevelName"`
 }

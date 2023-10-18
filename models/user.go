@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"github.com/beego/beego/v2/core/logs"
 	"math/rand"
 	"time"
 
@@ -17,6 +18,7 @@ type User struct {
 	Wxid     string `gorm:"column:wxid;"`
 	QQ       string `gorm:"column:qq;"`
 	Telegram string `gorm:"column:telegram;"`
+	IsAdmin  bool   `gorm:"column:isAdmin;"`
 }
 
 func ClearCoin(uid int) int {
@@ -99,6 +101,22 @@ func getWxId(wxid string) int {
 	}
 }
 
+func getUserId(typ string, uid string) string {
+	switch typ {
+	case "qq", "qqg":
+
+	case "wx", "wxg":
+
+	case "tg":
+
+	default:
+		logs.Info("错误的渠道来源")
+
+	}
+
+	return ""
+}
+
 func setWxId(uid string, wxid string) string {
 	var u User
 	db.Where("wxid = ? and class = ?", wxid, "wx").Delete(&u)
@@ -113,7 +131,6 @@ func setWxId(uid string, wxid string) string {
 }
 
 func makeWxId(uid int, wxid string) string {
-
 	var u User
 	if db.Where("number = ?", uid).First(&u).Error != nil {
 		db.Create(&User{

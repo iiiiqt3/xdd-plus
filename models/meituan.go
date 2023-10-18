@@ -406,7 +406,7 @@ func getModel() string {
 	return models[rand.Intn(len(models))]
 }
 
-func CheckDownLine(cookie *MeiTuan) bool {
+func (cookie *MeiTuan) CheckDownLine() bool {
 	if cookie.Available == False {
 		return false
 	}
@@ -518,7 +518,7 @@ func (ck *MeiTuan) Query() string {
 		msgs = append(msgs, fmt.Sprintf("账号备注：%s", ck.Note))
 	}
 
-	if CheckDownLine(ck) {
+	if ck.CheckDownLine() {
 		if ck.UpdateAt != "" {
 			parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
 			logs.Info(parse1)
@@ -878,6 +878,7 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 }
 
 func getNodeVersion() {
+
 	// 执行 `node -v` 命令
 	cmd := exec.Command("node", "-v")
 	output, err := cmd.Output()

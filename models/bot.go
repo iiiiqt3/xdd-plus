@@ -142,8 +142,7 @@ func InitReplies() {
 }
 
 var handleMessage = func(msgs ...interface{}) interface{} {
-	time.Sleep(time.Second * time.Duration(rand.Intn(5)))
-	logs.Info(msgs)
+	time.Sleep(time.Second * time.Duration(rand.Intn(3)))
 	msg := msgs[0].(string)
 	args := strings.Split(msg, " ")
 	head := args[0]
@@ -155,6 +154,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	}
 	//logs.Info(msgs[1])
 	//logs.Info(msgs[2].(string))
+
 	if msgs[1].(string) == "wx" || msgs[1].(string) == "wxg" {
 		sender.UserID = getWxId(msgs[2].(string))
 	} else {

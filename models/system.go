@@ -138,6 +138,12 @@ func updateUsers() {
 		if err != nil {
 			logs.Info(err.Error())
 		}
+		sql1 := "UPDATE users SET qq = \"\" WHERE LENGTH(qq)>13"
+
+		err = db.Exec(sql1).Error
+		if err != nil {
+			logs.Info(err.Error())
+		}
 
 		JdCookie{}.Push("升级成功，已将短信相关配置转移，后续请使用网页端配置，请及时打开网页配置登录渠道")
 	}
