@@ -108,16 +108,8 @@ type JdCookie struct {
 	PushPlus  string `gorm:"column:PushPlus"`
 	WxPush    string `gorm:"column:WxPush"`
 	Telegram  int    `gorm:"column:Telegram"`
-	Tyt       string `gorm:"column:Tyt;default:true" validate:"oneof=true false"`
-	Dig       string `gorm:"column:Dig;default:true" validate:"oneof=true false"`
-	CKD       string `gorm:"column:Ckd;default:true" validate:"oneof=true false"`
-	Red       string `gorm:"column:Red;default:true" validate:"oneof=true false"`
-	Help      string `gorm:"column:Help;default:false" validate:"oneof=true false"`
 	Pool      string `gorm:"-"`
-	Hack      string `gorm:"column:Hack"  validate:"oneof=true false"`
 	UserID    int    `gorm:"column:UserId"`
-	UserLevel string `gorm:"column:UserLevel"`
-	LevelName string `gorm:"column:LevelName"`
 }
 
 var UserLevel = "UserLevel"
@@ -200,9 +192,6 @@ func (ck *JdCookie) Removes(values interface{}) {
 }
 
 func NewJdCookie(ck *JdCookie) error {
-	if ck.Hack == "" {
-		ck.Hack = False
-	}
 	ck.Priority = Config.DefaultPriority
 	date := Date()
 	ck.CreateAt = date
@@ -216,9 +205,6 @@ func NewJdCookie(ck *JdCookie) error {
 }
 
 func UpdateCookie(ck *JdCookie) error {
-	if ck.Hack == "" {
-		ck.Hack = False
-	}
 	ck.Priority = Config.DefaultPriority
 	date := Date()
 	ck.CreateAt = date
@@ -237,7 +223,6 @@ func CheckIn(pin, key string) int {
 			NewJdCookie(&JdCookie{
 				PtKey: key,
 				PtPin: pin,
-				Hack:  False,
 			})
 			return 0
 		} else if !HasKey(key) {
