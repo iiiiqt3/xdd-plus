@@ -395,16 +395,12 @@ func CheckLogin(token, cookie, okl_token string) (string, *models.JdCookie) {
 		ck := models.JdCookie{
 			PtKey: pt_key,
 			PtPin: pt_pin,
-			Hack:  models.False,
 		}
-		if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
+		if _, err := models.GetJdCookie(ck.PtPin); err == nil {
 			models.UpdateCookie(&ck)
 			msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 			(&models.JdCookie{}).Push(msg)
 			logs.Info(msg)
-			if nck.Hack == models.True {
-				ck.Update(models.Hack, models.False)
-			}
 		} else {
 			models.NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，%s", ck.PtPin)
@@ -477,7 +473,6 @@ func (c *LoginController) CkLogin() {
 		ck := &models.JdCookie{
 			PtKey:    key,
 			PtPin:    pin,
-			Hack:     models.False,
 			QQ:       qq,
 			Note:     bz,
 			PushPlus: push,
@@ -557,7 +552,6 @@ func (c *LoginController) SMSLogin() {
 		ck := &models.JdCookie{
 			PtKey: ptKey,
 			PtPin: ptPin,
-			Hack:  models.False,
 			QQ:    0,
 		}
 		if qq != "" {
@@ -666,7 +660,6 @@ func (c *LoginController) WskeyLogin() {
 	ck := &models.JdCookie{
 		WsKey: Wskey,
 		PtPin: ptPin,
-		Hack:  models.False,
 		QQ:    0,
 	}
 	if Wskey != "" && ptPin != "" {
