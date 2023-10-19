@@ -145,6 +145,21 @@ func updateUsers() {
 			logs.Info(err.Error())
 		}
 
+		sql2 := "SELECT id,wxid FROM (SELECT * FROM users ORDER BY active_at DESC LIMIT 10000 ) t WHERE wxid != \"\"  GROUP BY wxid HAVING COUNT(1)>1  \n"
+		rows, err := db.Raw(sql2).Rows()
+		if err != nil {
+			logs.Error(err.Error())
+		}
+		// 遍历查询结果
+		for rows.Next() {
+			var user User
+			err := db.ScanRows(rows, &user)
+			if err != nil {
+				logs.Error(err.Error())
+			}
+			db.Delete(user).Commit()
+			logs.Info("删除用户:" + user.Wxid)
+		}
 		JdCookie{}.Push("升级成功，已将短信相关配置转移，后续请使用网页端配置，请及时打开网页配置登录渠道")
 	}
 }
