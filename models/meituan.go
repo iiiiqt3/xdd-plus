@@ -618,7 +618,7 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 	// 输出脚本执行结果
 	logs.Info(string(output))
 	sender.Reply(replexQuan(string(output)))
-	sender.Reply("领卷完成")
+	//sender.Reply("领卷完成")
 
 }
 
@@ -626,7 +626,7 @@ func replexQuan(info string) string {
 	re := regexp.MustCompile(`\d+减\d+`)
 	matches := re.FindAllString(info, -1)
 	msgs := []string{
-		fmt.Sprintf("共计领卷%d张,明细如下:", len(matches)),
+		fmt.Sprintf("领卷完成共计领卷%d张,明细如下:", len(matches)),
 	}
 	for _, match := range matches {
 		msgs = append(msgs, match)
