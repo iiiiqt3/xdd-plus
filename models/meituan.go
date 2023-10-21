@@ -643,7 +643,6 @@ func replexQuan(info string) string {
 				result = append(result, " ")
 			}
 		}
-
 		return strings.Join(msgs, "")
 	} else {
 		return strings.Join(msgs, "\n")
