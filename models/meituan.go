@@ -884,7 +884,12 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 			meituanList[sender.UserID] = nil
 		case 2:
 			sender.Reply("已开始领卷")
-			meituans[num].RunTT(sender)
+			if meituans[num].CheckDownLine() {
+				meituans[num].RunTT(sender)
+			} else {
+				sender.Reply("账号已失效，请重新登录")
+			}
+
 			meituanList[sender.UserID] = nil
 		case 3:
 			sender.Reply("开发中")
