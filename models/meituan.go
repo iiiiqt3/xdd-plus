@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -615,10 +616,25 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 		return
 	}
 	// 输出脚本执行结果
-	fmt.Println(string(output))
 	logs.Info(string(output))
+	sender.Reply(replexQuan(string(output)))
 	sender.Reply("领卷完成")
 
+}
+
+func replexQuan(info string) string {
+	re := regexp.MustCompile(`\d+减\d+`)
+	matches := re.FindAllString(info, -1)
+	msgs := []string{
+		fmt.Sprintf("共计领卷%d张,明细如下:", len(matches)),
+	}
+	for _, match := range matches {
+		msgs = append(msgs, match)
+		fmt.Println(match)
+	}
+	return strings.Join(msgs, "\n")
+	//return nil
+	//return matches
 }
 
 func LoginMeituan(meituan *MeiTuan) int64 {
