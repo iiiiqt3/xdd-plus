@@ -872,6 +872,8 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 		num, err := strconv.Atoi(n)
 		if err != nil {
 			sender.Reply(fmt.Sprintf("转换失败:%s", err))
+			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
+			meituanList[sender.UserID] = nil
 			return
 		}
 		//typ 1 美团50  2 美团领卷  3美团抢卷
@@ -894,6 +896,8 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 			sender.Reply("开发中")
 			meituanList[sender.UserID] = nil
 		default:
+			sender.Reply("暂无对应的渠道,已经退出流程请重新输入")
+			meituanList[sender.UserID] = nil
 			return
 		}
 
