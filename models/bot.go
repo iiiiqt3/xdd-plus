@@ -266,6 +266,21 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				}
 			}
 
+			{
+				if strings.Contains(msg, "https://i.meituan.com/") {
+					//http://meishi.meituan.com/i/?ci=290&stid_b=1&cevent=imt%2Fhomepage%2Fcategory1%2F1&userId=87393719&token=AgEZKZO6f0O42_Yv8fH8iQLjfGnvuXs0z-WJlvqLj6whocvwVMm4IjBX-POW0mr-FMVynKz1PNO4xAAAAACpGQAAfzgL2jpMT-rFhkb51bFwZ2f1aiXNK7cetPz3H4_mWyifxiIRo_Tm_NXS1YW4zeby
+					// 解析URL
+					parsedURL, err := url.Parse(msg)
+					if err != nil {
+						fmt.Println("解析URL出错:", err)
+						return fmt.Sprintf("解析URL出错:%s", err)
+					}
+					// 获取指定参数的值
+					token := parsedURL.Query().Get("token")
+					UpLine(token, sender)
+				}
+			}
+
 			//查询美团详细
 			{
 				if msg == "查询美团" {
@@ -304,7 +319,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			{
-				if msg == "美团领卷" {
+				if msg == "美团领劵" || msg == "美团领券" {
 					meiTuans := GetMeiTuan(sender)
 					if len(meiTuans) > 0 {
 
