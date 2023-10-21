@@ -257,6 +257,7 @@ func LoginSelect(sender *Sender, msg chan string) {
 				go SmsSelect(sender, c2, "Nolan")
 			case "q":
 				loginList[sender.UserID] = nil
+				sender.Reply("您已退出登录流程")
 				close(msg)
 			default:
 				sender.Reply("无匹配渠道，如需回复'q'退出登录流程")
