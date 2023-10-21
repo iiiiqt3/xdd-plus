@@ -311,8 +311,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						//进入队列
 						msg := make(chan string)
 						meituanList[sender.UserID] = msg
-						go MeituanSelect(sender, msg, 2, meiTuans)
 
+						go MeituanSelect(sender, msg, 2, meiTuans)
 						msgs := []string{
 							"请回复以下序列号指定账号运行任务:",
 						}

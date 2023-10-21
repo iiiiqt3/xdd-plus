@@ -17,7 +17,9 @@ const _0x24272f = process.env[_0x20b8d0 + "AutoWithdraw"] || "true",
     _0x1bffba = 15000,
     _0x5c27c5 = 3,
     _0x1ab535 = process.env[_0x20b8d0 + "MrzqTask"] || true,
+    ljTask    = process.env[_0x20b8d0 + "LjTask"] || true,
     _0x4186a1 = process.env[_0x20b8d0 + "CyfTask"] || true;
+
 
 const _0x248ef1 = 3.1,
     _0x16ef55 = "meituan",
@@ -2268,9 +2270,7 @@ class _0x523575 extends _0x136d29 {
         }
 
         await this.refTask();
-        await this.ttsqTask();
-        await this.wxSqSignTask();
-        await this.wxSqsqTask();
+        ljTask && ljTask != "false" && (await this.ttsqTask()&& await this.wxSqSignTask()&& await this.wxSqsqTask());
         _0x1ab535 && _0x1ab535 != "false" && (await this.appMrzqTask());
         _0x4186a1 && _0x4186a1 != "false" && (await this.appCyfTask());
         await this.notifyTask();
