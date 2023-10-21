@@ -630,7 +630,7 @@ func replexQuan(info string) string {
 		msgs = append(msgs, match)
 	}
 	if len(matches) > 10 {
-		return strings.Join(msgs, "\t")
+		return strings.Join(msgs, "、\t")
 	} else {
 
 		return strings.Join(msgs, "\n")
