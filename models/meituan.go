@@ -7,13 +7,11 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
-	"github.com/cdle/xdd/vweb"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -580,41 +578,41 @@ func (ck *MeiTuan) RunCoin() {
 func (ck *MeiTuan) RunTT(sender *Sender) {
 	logs.Info("开始领")
 
-	file1, _ := vweb.JsFs.ReadFile("js/meituan.js")
-
-	// 创建一个临时文件来保存JavaScript脚本
-	file, err := os.CreateTemp(ExecPath+"/scripts", "script.js")
-	if err != nil {
-		fmt.Println("创建临时文件失败:", err)
-		return
-	}
-	defer os.Remove(file.Name())
-
-	// 将JavaScript脚本写入临时文件
-	_, err = file.Write(file1)
-	if err != nil {
-		fmt.Println("写入临时文件失败:", err)
-		return
-	}
-
-	// 执行JavaScript脚本
-	cmd := exec.Command("node", file.Name())
-
-	envs := []Env{
-		{Name: "meituanCookie", Value: ck.Token},
-		{Name: "meituanCommonTask", Value: False},
-		{Name: "meituanMrzqTask", Value: False},
-		{Name: "meituanCyfTask", Value: False},
-	}
-	for _, env := range envs {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
-	}
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println("执行JavaScript脚本失败:", err)
-		return
-	}
+	//file1, _ := vweb.JsFs.ReadFile("js/meituan.js")
+	//
+	//// 创建一个临时文件来保存JavaScript脚本
+	//file, err := os.CreateTemp(ExecPath+"/scripts", "script.js")
+	//if err != nil {
+	//	fmt.Println("创建临时文件失败:", err)
+	//	return
+	//}
+	//defer os.Remove(file.Name())
+	//
+	//// 将JavaScript脚本写入临时文件
+	//_, err = file.Write(file1)
+	//if err != nil {
+	//	fmt.Println("写入临时文件失败:", err)
+	//	return
+	//}
+	//
+	//// 执行JavaScript脚本
+	//cmd := exec.Command("node", file.Name())
+	//
+	//envs := []Env{
+	//	{Name: "meituanCookie", Value: ck.Token},
+	//	{Name: "meituanCommonTask", Value: False},
+	//	{Name: "meituanMrzqTask", Value: False},
+	//	{Name: "meituanCyfTask", Value: False},
+	//}
+	//for _, env := range envs {
+	//	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+	//}
+	//
+	//output, err := cmd.CombinedOutput()
+	//if err != nil {
+	//	fmt.Println("执行JavaScript脚本失败:", err)
+	//	return
+	//}
 	// 输出脚本执行结果
 	logs.Info(string(output))
 	sender.Reply(replexQuan("京东车之前扫码不上的是因为账号有风控, 可以等晚上8点后尝试手机短信登录, 如果触发了验证并成功通过, 下次可以再次尝试扫码登录\n京豆车扫码/短信登录: https://ark.leafxxx.win\n美团: https://raw.githubusercontent.com/leafTheFish/DeathNote/main/meituanV3.js\n\n频道： https://t.me/maomaoNote\n群组： https://t.me/maomaoNoteChat\n上京东车的请自己关注京东红包，在过期前用掉避免浪费\n\n运行正常\n\n2023.09.12 22:30 屏蔽集合任务, 更新少量券\n\n现在运行的脚本版本是：3.09，最新脚本版本：3.1\n共找到1个账号\n\n-------------------------------------\nAPP每日赚钱设置为: 每日随机提现\n集合任务开关设置为: 关闭\n每日赚钱任务开关设置为: 关闭\n抽月符任务开关设置为: 关闭\n-------------------------------------\n\n---------------- 账号[1] ----------------\n账号[1][]登录成功\n---------------- 天天神券 ----------------\n账号[1][]领券: [下午茶红包]35减4\n账号[1][]弹窗领券失败[1]: 活动未生效\n账号[1][]请求[gundamGrabV4]返回[403]\n账号[1][]领券失败[-1]: \n账号[1][]请求[gundamGrabV4]返回[403]\n账号[1][]领券失败[-1]: \n账号[1][]请求[gundamGrabV4]返回[403]\n账号[1][]领券失败[-1]: \n账号[1][]请求[gundamGrabV4]返回[403]\n账号[1][]领券失败[-1]: \n账号[1][]请求[get_mtgsig]返回[502]\n账号[1][]请求[get_mtgsig]返回[502]\n账号[1][]请求[get_mtgsig]返回[502]\n账号[1][]获取mtgsig失败[undefined]: undefined\n账号[1][]已连续签到0天\n账号[1][]开天天神券宝箱: [个人号专享神券]37减8\n账号[1][]开天天神券宝箱: [个人号专享神券]33减7\n账号[1][]开天天神券宝箱: [个人号专享神券]25减6\n账号[1][]开天天神券宝箱: [个人号专享神券]20减4\n账号[1][]查询签到失败[1]: 活动失效\n账号[1][]查询签到失败[1]: 活动失效\n账号[1][]开天天神券宝箱: [天天神券-社群连续签到专享]21减4\n账号[1][]已连续签到0天\n账号[1][]开天天神券宝箱: [老用户回归礼]20减10\n账号[1][]已连续签到0天\n账号[1][]开天天神券宝箱: [天天神券-服务号专享]25减4\n账号[1][]查询签到失败[1]: 活动失效\n账号[1][]开天天神券宝箱失败[1]: 预发失败，actionCode = 1000, awardId=13753\n账号[1][]查询签到失败[1]: 活动失效\n账号[1][]开天天神券宝箱失败[1]: 预发失败，actionCode = 1000, awardId=10874\n账号[1][]已连续签到0天\n账号[1][]开天天神券宝箱: [老用户回归礼]20减10\n账号[1][]开天天神券宝箱: [服务号专享神券]24减5\n账号[1][]开天天神券宝箱: [服务号专享神券]35减7\n账号[1][]天天神券抽奖: [服务号专享-当天可用]33减7\n---------------- WX-社群签到 ----------------\n账号[1][]今天社群未签到, 本周已签到0天\n账号[1][]社群签到领券: [膨胀神券-社群签到红包]35减8\n账号[1][]社群签到领券: [天天神券-社群签到红包]32减7\n账号[1][]社群签到领券: [天天神券-社群签到红包]23减6\n账号[1][]社群签到领券: [天天神券-社群签到红包]20减4\n账号[1][]今天社群未签到, 本周已签到0天\n账号[1][]社群签到领券: [社群神券]37减8\n账号[1][]社群签到领券: [社群神券]33减7\n账号[1][]社群签到领券: [膨胀神券]25减6\n账号[1][]社群签到领券: [天天神券]20减4\n账号[1][]今天社群未签到, 本周已签到0天\n账号[1][]社群签到领券: [社群神券]37减9\n账号[1][]社群签到领券: [社群神券]33减8\n账号[1][]社群签到领券: [社群神券]25减7\n账号[1][]社群签到领券: [社群神券]20减6\n---------------- WX-社群神券 ----------------\n账号[1][]社群抽奖: [10点惊喜红包-社群专享]20减3\n账号[1][]社群抽奖: [周六大放价-社群神券]20减4\n账号[1][]社群抽奖: [服务号专享-当天可用]28减6\n账号[1][]社群抽奖: [服务号专享-当天可用]20减3\n账号[1][]社群抽奖: 财源广进\n---------------- 汇总推送 ----------------\n账号[1][]钱包余额: 0.60元, 立减金: 0.00元\n\n============== 推送 ==============\n\n[11:42:31][美团]运行结束，共运行了13.683秒\n"))
