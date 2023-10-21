@@ -618,7 +618,6 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 	//输出脚本执行结果
 	//logs.Info(string(output))
 	sender.Reply(replexQuan(string(output)))
-	//sender.Reply("领卷完成")
 
 }
 
