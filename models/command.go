@@ -1687,6 +1687,13 @@ var codeSignals = []CodeSignal{
 
 		},
 	},
+	{
+		Command: []string{"美团登录", "登录美团"},
+		Handle: func(sender *Sender) interface{} {
+			Meituan_getck(sender)
+			return nil
+		},
+	},
 }
 
 var mx = map[int]bool{}
