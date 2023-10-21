@@ -626,14 +626,14 @@ func replexQuan(info string) string {
 	msgs := []string{
 		fmt.Sprintf("领卷完成共计领卷%d张,明细如下:\n", len(matches)),
 	}
+	for _, match := range matches {
+		msgs = append(msgs, match)
+	}
 	if len(matches) > 10 {
-
-		return strings.Join(msgs, "")
-	} else {
-		for _, match := range matches {
-			msgs = append(msgs, match)
-		}
 		return strings.Join(msgs, "\t")
+	} else {
+
+		return strings.Join(msgs, "\n")
 	}
 
 }
