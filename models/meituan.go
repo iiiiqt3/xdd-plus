@@ -625,27 +625,17 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 func replexQuan(info string) string {
 	re := regexp.MustCompile(`\d+减\d+`)
 	matches := re.FindAllString(info, -1)
-	var msgs []string
-	for _, match := range matches {
-		msgs = append(msgs, match)
+	msgs := []string{
+		fmt.Sprintf("领卷完成共计领卷%d张,明细如下:\n", len(matches)),
 	}
 	if len(matches) > 10 {
-		var result []string
-		result = append(result, fmt.Sprintf("领卷完成共计领卷%d张,明细如下:\n", len(matches)))
-		count := 0
-		for _, coupon := range msgs {
-			result = append(result, coupon)
-			count++
-			if count == 3 {
-				result = append(result, "\n")
-				count = 0
-			} else {
-				result = append(result, " ")
-			}
-		}
+
 		return strings.Join(msgs, "")
 	} else {
-		return strings.Join(msgs, "\n")
+		for _, match := range matches {
+			msgs = append(msgs, match)
+		}
+		return strings.Join(msgs, "\t")
 	}
 
 }
