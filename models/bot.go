@@ -262,7 +262,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					}
 					// 获取指定参数的值
 					token := parsedURL.Query().Get("token")
-					if sender.Type == "qq" || msg == "qqg" {
+					if sender.Type == "qq" || sender.Type == "qqg" {
 						return "QQ平台暂时不支持提交链接，请复制链接token=后面的ck发送机器人"
 					} else {
 						UpLine(token, sender)
@@ -281,7 +281,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					}
 					// 获取指定参数的值
 					token := parsedURL.Query().Get("token")
-					if sender.Type == "qq" || msg == "qqg" {
+					if sender.Type == "qq" || sender.Type == "qqg" {
 						return "QQ平台暂时不支持提交链接，请复制链接token=后面的ck发送机器人"
 					} else {
 						UpLine(token, sender)
