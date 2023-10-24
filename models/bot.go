@@ -252,28 +252,13 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 			//校验美团连接
 			{
-				if strings.Contains(msg, "http://meishi.meituan.com/i/") {
+				if strings.Contains(msg, "http://meishi.meituan.com/i/") || strings.Contains(msg, "https://i.meituan.com/") {
 					//http://meishi.meituan.com/i/?ci=290&stid_b=1&cevent=imt%2Fhomepage%2Fcategory1%2F1&userId=87393719&token=AgEZKZO6f0O42_Yv8fH8iQLjfGnvuXs0z-WJlvqLj6whocvwVMm4IjBX-POW0mr-FMVynKz1PNO4xAAAAACpGQAAfzgL2jpMT-rFhkb51bFwZ2f1aiXNK7cetPz3H4_mWyifxiIRo_Tm_NXS1YW4zeby
 					// 解析URL
-					parsedURL, err := url.Parse(msg)
-					if err != nil {
-						fmt.Println("解析URL出错:", err)
-						return fmt.Sprintf("解析URL出错:%s", err)
-					}
-					// 获取指定参数的值
-					token := parsedURL.Query().Get("token")
 					if sender.Type == "qq" || sender.Type == "qqg" {
-						return "QQ平台暂时不支持提交链接，请复制链接token=后面的ck发送机器人"
-					} else {
-						UpLine(token, sender)
-					}
-				}
-			}
+						msg = strings.ReplaceAll(msg, "&amp;", "&")
 
-			{
-				if strings.Contains(msg, "https://i.meituan.com/") {
-					//http://meishi.meituan.com/i/?ci=290&stid_b=1&cevent=imt%2Fhomepage%2Fcategory1%2F1&userId=87393719&token=AgEZKZO6f0O42_Yv8fH8iQLjfGnvuXs0z-WJlvqLj6whocvwVMm4IjBX-POW0mr-FMVynKz1PNO4xAAAAACpGQAAfzgL2jpMT-rFhkb51bFwZ2f1aiXNK7cetPz3H4_mWyifxiIRo_Tm_NXS1YW4zeby
-					// 解析URL
+					}
 					parsedURL, err := url.Parse(msg)
 					if err != nil {
 						fmt.Println("解析URL出错:", err)
@@ -281,11 +266,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					}
 					// 获取指定参数的值
 					token := parsedURL.Query().Get("token")
-					if sender.Type == "qq" || sender.Type == "qqg" {
-						return "QQ平台暂时不支持提交链接，请复制链接token=后面的ck发送机器人"
-					} else {
-						UpLine(token, sender)
-					}
+					UpLine(token, sender)
 				}
 			}
 
