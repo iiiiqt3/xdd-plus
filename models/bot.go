@@ -686,7 +686,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				if msg == "导出助力账号" {
 					var msgs []string
 					cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-						return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 0, True, True)
+						return sb.Where(fmt.Sprintf("%s >= ? and %s = ?", Priority, Available), 0, True)
 					})
 					for _, ck := range cks {
 						msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))

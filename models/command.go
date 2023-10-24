@@ -557,7 +557,7 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			var msgs []string
 			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-				return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 0, True, True)
+				return sb.Where(fmt.Sprintf("%s >= ? and %s = ?", Priority, Available), 0, True)
 			})
 			for _, ck := range cks {
 				msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
@@ -1238,18 +1238,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
-		Command: []string{"屏蔽", "hack"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				ck.Update(Priority, -1)
-				sender.Reply(fmt.Sprintf("已屏蔽账号%s", ck.Nickname))
-			})
-			return nil
-		},
-	},
-
-	{
 		Command: []string{"更新指定"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -1399,18 +1387,6 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-	{
-		Command: []string{"取消屏蔽", "unhack"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				ck.Update(Priority, 2)
-				sender.Reply(fmt.Sprintf("已取消屏蔽账号%s", ck.Nickname))
-			})
-			return nil
-		},
-	},
-
 	{
 		Command: []string{"转账"},
 		Handle: func(sender *Sender) interface{} {

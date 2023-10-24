@@ -127,7 +127,7 @@ type UserInfoResult struct {
 func initCookie() {
 	(&JdCookie{}).Push("开始账号检测")
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 0, True, True)
+		return sb.Where(fmt.Sprintf("%s >= ? and %s = ?", Priority, Available), 0, True)
 	})
 	xj := 0
 	for _, ck := range cks {
@@ -185,7 +185,7 @@ func getAuthFlag() {
 	}
 	if boolean {
 		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 0, True, True)
+			return sb.Where(fmt.Sprintf("%s >= ? and %s = ?", Priority, Available), 0, True)
 		})
 		for _, ck := range cks {
 			authcode := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)

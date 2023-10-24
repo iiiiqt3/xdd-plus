@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v13.1"
-var describe = "修复二次验证"
+var version = "v13.2"
+var describe = "修复新号不进入容器"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
