@@ -4,12 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
-	"github.com/buger/jsonparser"
-	"github.com/cdle/xdd/vweb"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -20,6 +14,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/beego/beego/v2/client/httplib"
+	"github.com/beego/beego/v2/core/logs"
+	"github.com/buger/jsonparser"
+	"github.com/cdle/xdd/vweb"
+	"github.com/google/uuid"
+	"github.com/skip2/go-qrcode"
+	"gorm.io/gorm"
 )
 
 type PacketInfo struct {
@@ -427,7 +429,7 @@ func UpLine(token string, sender *Sender) bool {
 	info := GetUserInfo(token)
 	val, _ := jsonparser.GetInt(info, "error", "code")
 	if val == 401 {
-		sender.Reply("您的CK已失效")
+		sender.Reply("您的CK已失效，请重新提交")
 		return false
 	} else {
 		date := Date()
@@ -497,7 +499,7 @@ func GetMTCookies(sbs ...func(sb *gorm.DB) *gorm.DB) []MeiTuan {
 
 func GetMeiTuan(sender *Sender) []MeiTuan {
 	switch sender.Type {
-	case "qq", "qqg":
+	case "qq", "qqg", "tg":
 		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
 			return sb.Where(fmt.Sprintf("%s = ?  ", QQ), sender.UserID)
 		})
@@ -979,4 +981,12 @@ func installNode() error {
 	}
 
 	return nil
+}
+
+// 美团登录
+func Meituan_getck(sender *Sender) {
+	var png []byte
+	png, _ = qrcode.Encode("https://passport.meituan.com/useraccount/ilogin?", qrcode.Medium, 256)
+	sender.SendImg(png)
+	sender.Reply("请微信识别或扫描二维码，登录之后点击微信右上角的 ... 点击下面投诉旁边的复制链接发送给机器人")
 }
