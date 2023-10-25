@@ -227,12 +227,17 @@ func UpdateRwskey() {
 	(&JdCookie{}).Push(fmt.Sprintf("所有CK转换完成，共%d个,转换失败个数共%d个", xx, yy))
 }
 
-func RabbitSendSMS(phone string, sender *Sender) {
+func RabbitSendSMS(ty string, phone string, sender *Sender) {
 	sender.Reply("正在验证...")
 	logs.Info(sysConfig.RabbitUrl)
-	req := httplib.Post(fmt.Sprintf("%s/api/sendSMS?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+	var req *httplib.BeegoHTTPRequest
+	if ty == "mck" {
+		req = httplib.Post(fmt.Sprintf("%s/bot/mck/sendSMS?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+	} else if ty == "wskey" {
+		req = httplib.Post(fmt.Sprintf("%s/bot/wskey/sendSMS?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+	}
 	req.Header("content-type", "application/json; charset=utf-8")
-	data, _ := req.Body(`{"Phone":"` + phone + `","qlkey":1}`).Bytes()
+	data, _ := req.Body(`{"Phone":"` + phone + `"}`).Bytes()
 	logs.Info(string(data))
 	message, _ := jsonparser.GetString(data, "message")
 	success, _ := jsonparser.GetBoolean(data, "success")
@@ -249,7 +254,11 @@ func RabbitSendSMS(phone string, sender *Sender) {
 		i := 1
 		for {
 			i++
-			req = httplib.Post(fmt.Sprintf("%s/api/AutoCaptcha?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+			if ty == "mck" {
+				req = httplib.Post(fmt.Sprintf("%s/bot/mck/AutoCaptcha?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+			} else if ty == "wskey" {
+				req = httplib.Post(fmt.Sprintf("%s/bot/wskey/AutoCaptcha?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+			}
 			req.Header("content-type", "application/json; charset=utf-8")
 			data, _ := req.Body(`{"Phone":"` + phone + `"}`).Bytes()
 			message, _ := jsonparser.GetString(data, "message")
@@ -278,13 +287,19 @@ func RabbitSendSMS(phone string, sender *Sender) {
 	}
 }
 
-func RabbitSendCode(phone string, code string, sender *Sender) {
+func RabbitSendCode(ty string, phone string, code string, sender *Sender) {
 	sender.Reply("请耐心等待...")
-	req := httplib.Post(fmt.Sprintf("%s/api/VerifyCode?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
-	req.Header("Content-Type", "application/json; charset=utf-8")
-	data, _ := req.Body(fmt.Sprintf("{\n    \"Phone\": %s,\n    \"Code\": \"%s\",\n    \"qlkey\": 1\n}", phone, code)).Bytes()
-	logs.Info(string(data))
 
+	var req *httplib.BeegoHTTPRequest
+	if ty == "mck" {
+		req = httplib.Post(fmt.Sprintf("%s/bot/mck/VerifyCode?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+	} else if ty == "wskey" {
+		req = httplib.Post(fmt.Sprintf("%s/bot/wskey/VerifyCode?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+	}
+	req.Header("Content-Type", "application/json; charset=utf-8")
+	data, _ := req.Body(fmt.Sprintf("{\n    \"Phone\": %s,\n    \"Code\": \"%s\" \n}", phone, code)).Bytes()
+
+	logs.Info(string(data))
 	message, _ := jsonparser.GetString(data, "message")
 	pin, _ := jsonparser.GetString(data, "pin")
 	state, _ := jsonparser.GetInt(data, "code")

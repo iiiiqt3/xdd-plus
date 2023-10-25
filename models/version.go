@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var version = "v13.2"
+var version = "v13.3"
 var describe = "修复新号不进入容器"
 var AppName = "xdd"
 var pname = pname1()
