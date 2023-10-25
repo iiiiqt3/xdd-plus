@@ -8,7 +8,6 @@ import (
 var smsList = make(map[int]chan string)
 var phoneList = make(map[int]string)
 var RiskList = make(map[int]bool)
-var Nark string
 
 func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 
@@ -53,7 +52,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 				phone := phoneList[sender.UserID]
 				phoneList[sender.UserID] = ""
 				deal = true
-				go RabbitSendCode(phone, n, sender)
+				go RabbitSendCode("mck", phone, n, sender)
 			default:
 				logs.Info("报错了")
 				return
@@ -73,7 +72,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			case "Rabbit":
 				phoneList[sender.UserID] = n
 				deal = true
-				go RabbitSendSMS(n, sender)
+				go RabbitSendSMS("mck", n, sender)
 			default:
 				logs.Info("报错了")
 				return
