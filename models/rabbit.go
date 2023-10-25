@@ -20,7 +20,7 @@ func RabbitGetJdQrImg(sender *Sender) {
 		logs.Error("RabbitUrl or RabbitToken is empty")
 		return
 	}
-	get := httplib.Post(fmt.Sprintf("%s/api/BeanQrCode?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+	get := httplib.Post(fmt.Sprintf("%s/bot/GenQrCode?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	bytes, _ := get.Bytes()
 	logs.Info(string(bytes))
 	code, _ := jsonparser.GetInt(bytes, "code")
@@ -58,13 +58,11 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 
 	for {
 		time.Sleep(time.Second * time.Duration(5))
-		get := httplib.Post(fmt.Sprintf("%s/api/QrCheck?token=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+		get := httplib.Post(fmt.Sprintf("%s/bot/QrCheck?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 		marshal, _ := json.Marshal(struct {
 			QRCodeKey string `json:"QRCodeKey"`
-			Qlkey     string `json:"qlkey"`
 		}{
 			QRCodeKey: cookie,
-			Qlkey:     strconv.Itoa(0),
 		},
 		)
 		get.Body(marshal)

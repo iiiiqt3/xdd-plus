@@ -582,6 +582,12 @@ func (ck *MeiTuan) RunCoin() {
 func (ck *MeiTuan) RunTT(sender *Sender) {
 	logs.Info("开始领")
 
+	if !isNodeInstalled() {
+		sender.Reply("环境缺失，请等待管理员修复")
+		JdCookie{}.Push("node环境缺失,请注意")
+		return
+	}
+
 	file1, _ := vweb.JsFs.ReadFile("js/meituan.js")
 
 	// 创建一个临时文件来保存JavaScript脚本

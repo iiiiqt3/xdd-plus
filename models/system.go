@@ -162,6 +162,11 @@ func updateUsers() {
 			rows, err = db.Raw(sql2).Rows()
 		}
 
+		env := &Env{}
+		env.Name = "13.1"
+		env.Value = "true"
+		ExportEnv(env)
+
 		JdCookie{}.Push("升级成功，已将短信相关配置转移，后续请使用网页端配置，请及时打开网页配置登录渠道")
 	}
 }
