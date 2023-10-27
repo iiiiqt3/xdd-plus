@@ -113,7 +113,7 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 }
 
 func RabbitGetCookie(cookie string) (bool, string, string) {
-	get := httplib.Post(fmt.Sprintf("%s/api/wsck?RabbitToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+	get := httplib.Post(fmt.Sprintf("%s/bot/wsck?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	marshal, _ := json.Marshal(struct {
 		WSCK        string `json:"wsck"`
 		RabbitToken string `json:"RabbitToken"`
