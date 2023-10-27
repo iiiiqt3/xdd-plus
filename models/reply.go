@@ -160,6 +160,8 @@ func SendWxMsg(uid string, msg string) {
 		req.Body(string(marshal))
 		s, _ := req.String()
 		logs.Info(s)
+	case "inner":
+
 	default:
 		logs.Info("尚未配置")
 	}

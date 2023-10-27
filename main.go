@@ -20,6 +20,7 @@ import (
 var theme = ""
 
 var query = ""
+var friedns openwechat.Friends
 
 type Result struct {
 	Code    int         `json:"code"`
@@ -206,7 +207,12 @@ func main() {
 	// 注册消息处理函数
 	bot.MessageHandler = func(msg *openwechat.Message) {
 		if msg.IsText() && msg.Content == "ping" {
+
 			msg.ReplyText("pong")
+
+			name := msg.FromUserName
+			id := friedns.GetByUsername(name).User.ID()
+			msg.ReplyText(id)
 		}
 	}
 	// 注册登陆二维码回调
@@ -218,11 +224,13 @@ func main() {
 	err := bot.PushLogin(reloadStorage, openwechat.NewRetryLoginOption())
 
 	// 获取登陆的用户
-	//self, err := bot.GetCurrentUser()
+	self, err := bot.GetCurrentUser()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+
+	friedns, err = self.Friends()
 
 	// 阻塞主goroutine, 直到发生异常或者用户主动退出
 	bot.Block()
