@@ -211,8 +211,9 @@ func main() {
 			msg.ReplyText("pong")
 
 			name := msg.FromUserName
-			id := friedns.GetByUsername(name).User.NickName
-			msg.ReplyText(id)
+			id := friedns.GetByUsername(name).User
+			id.Detail()
+			//msg.ReplyText(id)
 
 		}
 	}
