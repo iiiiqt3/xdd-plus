@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/google/uuid"
 )
 
 var sysConfig SystemConfig
@@ -50,6 +51,13 @@ func initSysConfig() {
 	ListConfig()
 	updateConfig()
 	updateUsers()
+}
+
+func tempToken() {
+	u := uuid.New()
+	s := u.String()
+	SaveCache("AdminToken", s)
+	logs.Info("您的临时Token为:" + s)
 }
 
 func ListConfig() SystemConfig {

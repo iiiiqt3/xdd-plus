@@ -19,6 +19,8 @@ Jdcurl: http://127.0.0.1:5801
 Invalid: #自定义失效回复放空默认
 Query: #自定义查询空回复，放空默认
 Query1: #自定义下方自定义，放空默认
+UserName: #用户名
+PassWord: #密码
 theme:  
 static: ./static
 master: 

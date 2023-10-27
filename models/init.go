@@ -39,6 +39,7 @@ func init() {
 	//go initOrder(branchHelpOrderQueue, "jd_qmckd_branchHelp", "jd_qmckd_inviteIdArr_expand")
 	//initRepos()
 	initWX()
+	tempToken()
 }
 
 func initNolan() {
