@@ -211,8 +211,9 @@ func main() {
 			msg.ReplyText("pong")
 
 			name := msg.FromUserName
-			id := friedns.GetByUsername(name).User.ID()
+			id := friedns.GetByUsername(name).User.NickName
 			msg.ReplyText(id)
+
 		}
 	}
 	// 注册登陆二维码回调
