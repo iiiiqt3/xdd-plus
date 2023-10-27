@@ -1,6 +1,6 @@
 module github.com/cdle/xdd
 
-go 1.18
+go 1.20
 
 replace github.com/willf/bitset v1.2.0 => github.com/bits-and-blooms/bitset v1.2.0
 

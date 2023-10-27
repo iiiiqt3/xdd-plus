@@ -218,11 +218,11 @@ func main() {
 	err := bot.PushLogin(reloadStorage, openwechat.NewRetryLoginOption())
 
 	// 获取登陆的用户
-	self, err := bot.GetCurrentUser()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	//self, err := bot.GetCurrentUser()
+	//if err != nil {
+	//	fmt.Println(err)
+	//	return
+	//}
 
 	// 阻塞主goroutine, 直到发生异常或者用户主动退出
 	bot.Block()
