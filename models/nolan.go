@@ -35,12 +35,6 @@ func NolanGetJdQrImg(sender *Sender) {
 
 		//sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
 		sender.Reply(fmt.Sprintf("https://qr.m.jd.com/p?k=%s", key))
-
-		//lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
-		//url, _ := jsonparser.GetString(lj, "code")
-		//logs.Info(url)
-		//sender.Reply(NolanLJToKL(url, "京东快捷登录"))
-
 		logs.Info(key)
 		//if Config.QQID == 764763903 {
 		//	SendQQMsg(QQMessage{

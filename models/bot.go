@@ -334,6 +334,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			{
 				if strings.Contains(msg, "口令") {
 					sender.Reply(KLtoLJ(msg))
+					sender.Reply(LJtoKL("https://lzkj-isv.isvjcloud.com/lzclient/cjwx/common/openJDApp.html?actlink=openapp.jdmobile://virtual?params={\"category\":\"jump\",\"des\":\"scanLogin\",\"key\":\"AAEAIC7o7uvtQDO6vdYl4liag5G4fngqZbK2Vt83LyAbnmhF\",\"sourceType\":\"JSHOP_SOURCE_TYPE\",\"sourceValue\":\"JSHOP_SOURCE_VALUE\",\"M_sourceFrom\":\"mxz\",\"msf_type\":\"auto\"}"))
 				}
 			}
 

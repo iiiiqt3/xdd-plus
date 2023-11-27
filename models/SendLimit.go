@@ -8,6 +8,7 @@ type Limit struct {
 	ID       int `gorm:"column:ID;primaryKey"`
 	Number   int
 	ActiveAt string
+	CreateAt int64
 	Typ      int
 	Num      int
 }
@@ -32,6 +33,27 @@ func getLimit(uid int, typ int) bool {
 		begin := db.Begin()
 		begin.Create(&Limit{
 			ActiveAt: time.Now().Format("2006-01-02"),
+			Typ:      typ,
+			Number:   uid,
+			Num:      1,
+		})
+		begin.Commit()
+		return true
+	}
+}
+
+func getLimitByTime(uid int, typ int, leaf int64) bool {
+	if Config.Lim == 0 {
+		return true
+	}
+	u := &Limit{}
+	err := db.Where("number = ? and typ = ? and create_at > ?", uid, typ, time.Now().Unix()).First(&u).Error
+	if err == nil {
+		return false
+	} else {
+		begin := db.Begin()
+		begin.Create(&Limit{
+			CreateAt: time.Now().Unix() + leaf,
 			Typ:      typ,
 			Number:   uid,
 			Num:      1,
