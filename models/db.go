@@ -43,6 +43,7 @@ func initDB() {
 		&BakJdCookie{},
 		&MeiTuan{},
 		&Auth{},
+		&Limit{},
 		//&LoginSelectType{},
 	)
 

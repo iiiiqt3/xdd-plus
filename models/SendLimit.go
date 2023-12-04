@@ -43,9 +43,6 @@ func getLimit(uid int, typ int) bool {
 }
 
 func getLimitByTime(uid int, typ int, leaf int64) bool {
-	if Config.Lim == 0 {
-		return true
-	}
 	u := &Limit{}
 	err := db.Where("number = ? and typ = ? and create_at > ?", uid, typ, time.Now().Unix()).First(&u).Error
 	if err == nil {
