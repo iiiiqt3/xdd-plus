@@ -630,18 +630,22 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 }
 
 func replexQuan(info string) string {
-	re := regexp.MustCompile(`\d+减\d+`)
-	matches := re.FindAllString(info, -1)
-	msgs := []string{
-		fmt.Sprintf("领卷完成共计领卷%d张,明细如下:\n", len(matches)),
+	func replexQuan(info string, sender *Sender) string {
+		re := regexp.MustCompile(`账号\[\d+\].*?\d+减\d+`)
+		matches := re.FindAllString(info, -1)
+		msgs := []string{
+		fmt.Sprintf("领卷完成共计领卷%d张,明细如下:", len(matches)),
 	}
-	for _, match := range matches {
-		msgs = append(msgs, match)
-	}
-	if len(matches) > 10 {
-		return strings.Join(msgs, "、\t")
+		for _, match := range matches {
+		parts := strings.SplitN(match, ":", 2)
+		var replacedMsg string
+		if sender.Type == "wx" || sender.Type == "wxg" {
+		replacedMsg = "[红包]" + parts[1]
 	} else {
-
+		replacedMsg = "🧧" + parts[1]
+	}
+		msgs = append(msgs, replacedMsg)
+	}
 		return strings.Join(msgs, "\n")
 	}
 
