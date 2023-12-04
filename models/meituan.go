@@ -624,7 +624,7 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 		return
 	}
 	//输出脚本执行结果
-	//logs.Info(string(output))
+	logs.Info(string(output))
 	sender.Reply(replexQuan(string(output), sender))
 
 }
