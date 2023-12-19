@@ -5,14 +5,16 @@ import (
 	"time"
 )
 
-//静态变量区
+// 静态变量区
 var branchHelpOrderNum = 0
 var branchHelpOrderQueue = &OrderQueue{}
 
 type Order struct {
-	id     int
-	name   string
-	Sender *Sender
+	id       int
+	name     string
+	Sender   *Sender
+	taskName string
+	envs     []Env
 }
 
 type OrderQueue struct {
@@ -43,9 +45,7 @@ func initOrder(activity *OrderQueue, activityName string, inviteIdName string) {
 		}
 
 		fmt.Printf("Processing order %d: %s\n", order.id, order.name)
-		runTask(&Task{Path: fmt.Sprintf("%s.js", activityName), Envs: []Env{
-			{Name: inviteIdName, Value: order.name},
-		}}, order.Sender)
+		runTask(&Task{Path: order.taskName, Envs: order.envs}, order.Sender)
 		order.Sender.Reply(fmt.Sprintf("订单ID:%d已完成", order.id))
 
 	}

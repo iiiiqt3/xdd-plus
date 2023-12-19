@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/beego/beego/v2/client/httplib"
+	"github.com/buger/jsonparser"
 	"math/rand"
 	"net/url"
 	"os"
@@ -206,6 +208,7 @@ var codeSignals = []CodeSignal{
 			}
 		},
 	},
+
 	{
 		Command: []string{"取消监听"},
 		Admin:   true,
@@ -228,6 +231,20 @@ var codeSignals = []CodeSignal{
 			} else {
 				return "不在监听范围"
 			}
+		},
+	},
+	{
+		Command: []string{"GPT", "GPT4"},
+		Handle: func(sender *Sender) interface{} {
+			//todo 接入GPT4
+			post := httplib.Post("https://ningmengguorou.top:94/v1/chat/completions")
+			post.Header("Authorization", "Bearer Fk-JN3e78X3CNCe4FL8HQPiBHWKwpiMtCFgtpA5")
+			post.Header("Content-Type", "application/json")
+			post.Body(fmt.Sprintf("{\n  \"model\": \"gpt-4-1106-preview\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"%s\"\n    }\n  ]\n}", sender.Contents[0:]))
+			bytes, _ := post.Bytes()
+			logs.Info(string(bytes))
+			val, _ := jsonparser.GetString(bytes, "choices", "[0]", "message", "content")
+			return val
 		},
 	},
 	{
