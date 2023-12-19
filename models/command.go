@@ -237,8 +237,10 @@ var codeSignals = []CodeSignal{
 		Command: []string{"GPT", "GPT4"},
 		Handle: func(sender *Sender) interface{} {
 			//todo 接入GPT4
-			post := httplib.Post("https://ningmengguorou.top:94/v1/chat/completions")
-			post.Header("Authorization", "Bearer Fk-JN3e78X3CNCe4FL8HQPiBHWKwpiMtCFgtpA5")
+			url := GetEnv("gpt")
+			token := GetEnv("gpt_token")
+			post := httplib.Post(url)
+			post.Header("Authorization", token)
 			post.Header("Content-Type", "application/json")
 			post.Body(fmt.Sprintf("{\n  \"model\": \"gpt-4-1106-preview\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"%s\"\n    }\n  ]\n}", sender.Contents[0:]))
 			bytes, _ := post.Bytes()
