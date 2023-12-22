@@ -47,7 +47,7 @@ func initOrder(activity *OrderQueue) {
 	}
 }
 
-func getNewOrder() *OrderQueue {
+func getNewOrderQueue() *OrderQueue {
 	var order = &OrderQueue{}
 	initOrder(order)
 	return order
