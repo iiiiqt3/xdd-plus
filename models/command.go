@@ -23,6 +23,7 @@ import (
 type CodeSignal struct {
 	Command []string
 	Admin   bool
+	Coin    int
 	Handle  func(sender *Sender) interface{}
 }
 

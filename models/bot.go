@@ -210,6 +210,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					if codeSignals[i].Admin && !sender.IsAdmin {
 						return "你没有权限操作"
 					}
+					if codeSignals[i].Coin > 0 {
+						RemCoin(sender.UserID, codeSignals[i].Coin)
+					}
+
 					return codeSignals[i].Handle(sender)
 				}()
 			}
