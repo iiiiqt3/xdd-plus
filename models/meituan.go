@@ -629,7 +629,7 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 }
 
 func replexQuan(info string, sender *Sender) string {
-	re := regexp.MustCompile(`账号\[\d+\].*?\d+减\d+`)
+	re := regexp.MustCompile(`账号\[\d+\].*?:\s*(.*?减\d+)`)
 	matches := re.FindAllString(info, -1)
 	msgs := []string{
 		fmt.Sprintf("领卷完成共计领卷%d张,明细如下:", len(matches)),
