@@ -312,7 +312,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			}
 
 			{
-				if msg == "美团领劵" || msg == "美团领券" {
+				if msg == "美团领卷" || msg == "美团领券" {
 					meiTuans := GetMeiTuan(sender)
 					if len(meiTuans) > 0 {
 
