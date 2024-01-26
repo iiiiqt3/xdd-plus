@@ -231,6 +231,7 @@ type MeiTuan struct {
 	ExpireTime string  `gorm:"column:ExpireTime"`
 	UUID       string  `gorm:"column:UUID"`
 	AcToken    string  `gorm:"column:AcToken"`
+	Auto       string  `gorm:"column:Available;default:false" validate:"oneof=true false"`
 }
 
 type MBody struct {
@@ -461,11 +462,17 @@ func UpLine(token string, sender *Sender) bool {
 			tx.Commit()
 			sender.Reply(fmt.Sprintf("美团账号新增成功:%s", Username))
 		} else {
-			tuan.Updates(MeiTuan{UpdateAt: Date(), Token: token, QQ: sender.UserID, WeiXin: sender.WxId})
+			tuan.Updates(MeiTuan{UpdateAt: Date(), Available: True, Token: token, QQ: sender.UserID, WeiXin: sender.WxId})
 			sender.Reply("美团账号更新成功")
 		}
 		return true
 	}
+}
+
+func getMeiTuans() []MeiTuan {
+	var ck []MeiTuan
+	db.Find(&ck)
+	return ck
 }
 
 func getMeiTuan(id string) (*MeiTuan, error) {
@@ -909,6 +916,22 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 			return
 		}
 
+	}
+}
+
+func CheckMTList() {
+	tuans := getMeiTuans()
+	for i, tuan := range tuans {
+		if !tuan.CheckDownLine() {
+			tuan.Updates(MeiTuan{
+				Available: False,
+				LoseAt:    Date(),
+			})
+			tuans[i] = tuan
+			SendWxMsg(tuan.WeiXin, fmt.Sprintf("美团账号:%s已失效", tuan.Nickname))
+			WeiXin := getWeiXinId(Config.QQID)
+			SendWxMsg(WeiXin, fmt.Sprintf("美团账号:%s已失效", tuan.Nickname))
+		}
 	}
 }
 

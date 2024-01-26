@@ -527,6 +527,15 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"美团检测"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			CheckMTList()
+			return "检测完成"
+		},
+	},
+
+	{
 		Command: []string{"升级", "更新", "update", "upgrade"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
