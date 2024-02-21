@@ -15,6 +15,32 @@ type QQController struct {
 	BaseController
 }
 
+type LLMessage struct {
+	SelfId      int    `json:"self_id"`
+	UserId      int    `json:"user_id"`
+	Time        int    `json:"time"`
+	MessageId   int64  `json:"message_id"`
+	RealId      string `json:"real_id"`
+	MessageType string `json:"message_type"`
+	Sender      struct {
+		UserId   int    `json:"user_id"`
+		Nickname string `json:"nickname"`
+		Card     string `json:"card"`
+		Role     string `json:"role"`
+	} `json:"sender"`
+	RawMessage string `json:"raw_message"`
+	Font       int    `json:"font"`
+	SubType    string `json:"sub_type"`
+	Message    []struct {
+		Data struct {
+			Text string `json:"text"`
+		} `json:"data"`
+		Type string `json:"type"`
+	} `json:"message"`
+	PostType string `json:"post_type"`
+	GroupId  int    `json:"group_id"`
+}
+
 type CqMessage struct {
 	PostType    string `json:"post_type"`
 	MessageType string `json:"message_type"`
@@ -50,6 +76,7 @@ func (c *QQController) Echo() {
 	if err != nil {
 		panic(err)
 	}
+
 	models.WsInit(ws, 1)
 
 	for {
@@ -60,8 +87,10 @@ func (c *QQController) Echo() {
 			logs.Info("read:", err)
 			break
 		}
+
 		logs.Info("recv: %s , %d", message, mt)
-		var msg CqMessage
+
+		var msg LLMessage
 		err = json.Unmarshal(message, &msg)
 		if err != nil {
 			logs.Info("change:", err)
@@ -72,14 +101,13 @@ func (c *QQController) Echo() {
 	}
 }
 
-func HandleQQMessage(msg CqMessage) {
+func HandleQQMessage(msg LLMessage) {
 	if msg.PostType == "message" {
-		logs.Info("接收到信息" + msg.Message)
+		logs.Info("接收到信息" + msg.RawMessage)
 		if msg.MessageType == "private" {
-			models.ListenQQPrivateMessage(msg.UserID, msg.Message)
+			models.ListenQQPrivateMessage(msg.UserId, msg.RawMessage)
 		} else if msg.MessageType == "group" {
-			models.ListenQQGroupMessage(msg.UserID, msg.GroupID, msg.Message)
+			models.ListenQQGroupMessage(msg.UserId, msg.GroupId, msg.RawMessage)
 		}
 	}
-
 }
