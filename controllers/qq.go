@@ -60,7 +60,7 @@ func (c *QQController) Echo() {
 			logs.Info("read:", err)
 			break
 		}
-		//logs.Info("recv: %s , %d", message, mt)
+		logs.Info("recv: %s , %d", message, mt)
 		var msg CqMessage
 		err = json.Unmarshal(message, &msg)
 		if err != nil {
