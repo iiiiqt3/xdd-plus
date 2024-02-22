@@ -335,6 +335,7 @@ func CookieOK(ck *JdCookie) bool {
 		}
 		return true
 	}
+	logs.Info("第一个接口失效，切换到第二接口")
 	//(&JdCookie{}).Push("第一个接口失效，切换到第二个接口，可能黑IP")
 	return av2(ck)
 }
