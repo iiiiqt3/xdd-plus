@@ -172,6 +172,18 @@ func main() {
 		//vweb.Router("/api/loginselect", &controllers.AccountController{}, "post,delete:CreateOrUpdateLoginSelect")
 	}
 
+	//zero.RunAndBlock(&zero.Config{
+	//	NickName:      []string{"bot"},
+	//	CommandPrefix: "/",
+	//	SuperUsers:    []int64{764763903},
+	//	Driver: []zero.Driver{
+	//		// 正向 WS
+	//		driver.NewWebSocketClient("ws://127.0.0.1:6700", ""),
+	//		// 反向 WS
+	//		driver.NewWebSocketServer(16, "ws://127.0.0.1:6701", ""),
+	//	},
+	//}, nil)
+
 	if models.Config.Static == "" {
 		models.Config.Static = "./static"
 	}

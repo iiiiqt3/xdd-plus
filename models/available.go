@@ -341,23 +341,19 @@ func CookieOK(ck *JdCookie) bool {
 
 func av2(ck *JdCookie) bool {
 	cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
-	req := httplib.Get(`https://m.jingxi.com/user/info/GetJDUserBaseInfo?_=1629334995401&sceneval=2&g_login_type=1&g_ty=ls`)
-	req.Header("User-Agent", ua)
-	req.Header("Host", "m.jingxi.com")
-	req.Header("Accept", "*/*")
-	req.Header("Connection", "keep-alive")
-	req.Header("Accept-Language", "zh-cn")
-	req.Header("Accept-Encoding", "gzip, deflate, br")
-	req.Header("Referer", "https://st.jingxi.com/my/userinfo.html?&ptag=7205.12.4")
+	req := httplib.Get(`https://plogin.m.jd.com/cgi-bin/ml/islogin`)
+	req.Header("User-Agent", "jdapp;iPhone;10.1.2;15.0;network/wifi;Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1")
+	req.Header("Referer", "https://h5.m.jd.com/")
 	req.Header("Cookie", cookie)
 	data, err := req.Bytes()
 	if err != nil {
+		logs.Info("接口报错")
 		return true
 	}
-	if ck.Nickname == "" {
-		ck.Nickname, _ = jsonparser.GetString(data, "nickname")
-		ck.Update("Nickname", ck.Nickname)
-		logs.Info("开始补齐NickName")
+	val, _ := jsonparser.GetInt(data, "IsLogin")
+	if val == 1 {
+		return true
+	} else {
+		return false
 	}
-	return !strings.Contains(string(data), "login")
 }
