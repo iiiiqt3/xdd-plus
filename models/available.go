@@ -351,6 +351,7 @@ func av2(ck *JdCookie) bool {
 		logs.Info("接口报错")
 		return true
 	}
+	logs.Info(string(data))
 	val, _ := jsonparser.GetInt(data, "IsLogin")
 	if val == 1 {
 		return true
