@@ -352,8 +352,8 @@ func av2(ck *JdCookie) bool {
 		return true
 	}
 	logs.Info(string(data))
-	val, _ := jsonparser.GetInt(data, "islogin")
-	if val == 1 {
+	val, _ := jsonparser.GetString(data, "islogin")
+	if val == "1" {
 		return true
 	} else {
 		return false
