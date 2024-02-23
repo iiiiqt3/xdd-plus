@@ -631,7 +631,11 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 	}
 	//输出脚本执行结果
 	logs.Info(string(output))
-	sender.Reply(replexQuan(string(output), sender))
+	if sender.WxId == "auto" {
+		logs.Info("自动领卷成功")
+	} else {
+		sender.Reply(replexQuan(string(output), sender))
+	}
 
 }
 
@@ -1018,4 +1022,17 @@ func Meituan_getck(sender *Sender) {
 	png, _ = qrcode.Encode("https://passport.meituan.com/useraccount/ilogin?", qrcode.Medium, 256)
 	sender.SendImg(png)
 	sender.Reply("请微信识别或扫描二维码，登录之后点击微信右上角的 ... 点击下面投诉旁边的复制链接发送给机器人")
+}
+
+// 美团自动领卷
+func Meituan_Auto() {
+	JdCookie{}.Push("美团自动领卷开始")
+	tuans := getMeiTuans()
+	for _, tuan := range tuans {
+		if tuan.Auto == True {
+			if tuan.CheckDownLine() {
+				tuan.RunTT(&Sender{Type: "wx", WxId: "auto"})
+			}
+		}
+	}
 }
