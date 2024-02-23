@@ -231,7 +231,7 @@ type MeiTuan struct {
 	ExpireTime string  `gorm:"column:ExpireTime"`
 	UUID       string  `gorm:"column:UUID"`
 	AcToken    string  `gorm:"column:AcToken"`
-	Auto       string  `gorm:"column:Available;default:false" validate:"oneof=true false"`
+	Auto       string  `gorm:"column:Auto;default:false" validate:"oneof=true false"`
 }
 
 type MBody struct {
