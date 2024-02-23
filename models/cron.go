@@ -40,7 +40,7 @@ func initCron() {
 	logs.Info(Config.QQID)
 	//每天定时1点执行美团自动领卷
 	if Config.QQID == 764763903 {
-		c.AddFunc("6 14 * * ?", Meituan_Auto)
+		c.AddFunc("17 14 * * ?", Meituan_Auto)
 	}
 
 	c.AddFunc(strconv.Itoa(rand.Intn(59))+" "+strconv.Itoa(rand.Intn(24))+" * * ?", getAuthFlag)
