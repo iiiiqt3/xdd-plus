@@ -37,6 +37,7 @@ func initCron() {
 		UpdateRwskey()
 	})
 
+	logs.Info(Config.QQID)
 	//每天定时1点执行美团自动领卷
 	if Config.QQID == 764763903 {
 		c.AddFunc("0 0 14 * * ?", Meituan_Auto)
