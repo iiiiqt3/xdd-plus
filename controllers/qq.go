@@ -31,7 +31,6 @@ type LLMessage struct {
 	RawMessage string `json:"raw_message"`
 	Font       int    `json:"font"`
 	SubType    string `json:"sub_type"`
-	Message    string `json:"message"`
 	PostType   string `json:"post_type"`
 	GroupId    int    `json:"group_id"`
 }
@@ -83,7 +82,7 @@ func (c *QQController) Echo() {
 			break
 		}
 
-		logs.Info("recv: %s , %d", message, mt)
+		//logs.Info("recv: %s , %d", message, mt)
 
 		var msg LLMessage
 		err = json.Unmarshal(message, &msg)

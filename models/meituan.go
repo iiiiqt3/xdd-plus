@@ -1035,4 +1035,5 @@ func Meituan_Auto() {
 			}
 		}
 	}
+	JdCookie{}.Push("美团自动领卷结束")
 }
