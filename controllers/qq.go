@@ -31,14 +31,9 @@ type LLMessage struct {
 	RawMessage string `json:"raw_message"`
 	Font       int    `json:"font"`
 	SubType    string `json:"sub_type"`
-	Message    []struct {
-		Data struct {
-			Text string `json:"text"`
-		} `json:"data"`
-		Type string `json:"type"`
-	} `json:"message"`
-	PostType string `json:"post_type"`
-	GroupId  int    `json:"group_id"`
+	Message    string `json:"message"`
+	PostType   string `json:"post_type"`
+	GroupId    int    `json:"group_id"`
 }
 
 type CqMessage struct {
