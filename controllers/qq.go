@@ -82,7 +82,7 @@ func (c *QQController) Echo() {
 			break
 		}
 
-		//logs.Info("recv: %s , %d", message, mt)
+		logs.Info("recv: %s , %d", message, mt)
 
 		var msg LLMessage
 		err = json.Unmarshal(message, &msg)

@@ -630,6 +630,7 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 		return
 	}
 	//输出脚本执行结果
+
 	logs.Info(string(output))
 	if sender.WxId == "auto" {
 		logs.Info("自动领卷成功")
