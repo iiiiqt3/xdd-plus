@@ -105,7 +105,7 @@ func (sender *Sender) SendImg(msg []byte) {
 			}{
 				MessageType: "group",
 				GroupID:     sender.ChatID,
-				Message:     fmt.Sprintf("[CQ:at,qq=%d][CQ:cardimage,file=base64://%s,type=show]", sender.UserID, base64.StdEncoding.EncodeToString(msg)),
+				Message:     fmt.Sprintf("[CQ:at,qq=%d][CQ:image,file=base64://%s,type=show]", sender.UserID, base64.StdEncoding.EncodeToString(msg)),
 			},
 			Echo: "",
 		})
