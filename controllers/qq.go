@@ -27,15 +27,10 @@ type LLMessage struct {
 		Nickname string `json:"nickname"`
 		Card     string `json:"card"`
 	} `json:"sender"`
-	RawMessage string `json:"raw_message"`
-	Font       int    `json:"font"`
-	SubType    string `json:"sub_type"`
-	Message    []struct {
-		Data struct {
-			Text string `json:"text"`
-		} `json:"data"`
-		Type string `json:"type"`
-	} `json:"message"`
+	RawMessage    string `json:"raw_message"`
+	Font          int    `json:"font"`
+	SubType       string `json:"sub_type"`
+	Message       string `json:"message"`
 	MessageFormat string `json:"message_format"`
 	PostType      string `json:"post_type"`
 	GroupId       int    `json:"group_id"`
@@ -108,12 +103,11 @@ func (c *QQController) Echo() {
 
 func HandleQQMessage(msg LLMessage) {
 	if msg.PostType == "message" {
-
-		logs.Info("接收到信息" + msg.Message[0].Data.Text)
+		logs.Info("接收到信息" + msg.RawMessage)
 		if msg.MessageType == "private" {
-			models.ListenQQPrivateMessage(msg.UserId, msg.Message[0].Data.Text)
+			models.ListenQQPrivateMessage(msg.UserId, msg.RawMessage)
 		} else if msg.MessageType == "group" {
-			models.ListenQQGroupMessage(msg.UserId, msg.GroupId, msg.Message[0].Data.Text)
+			models.ListenQQGroupMessage(msg.UserId, msg.GroupId, msg.RawMessage)
 		}
 	}
 }
