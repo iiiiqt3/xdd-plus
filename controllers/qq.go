@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/buger/jsonparser"
 	"github.com/cdle/xdd/models"
 	"github.com/gorilla/websocket"
 )
@@ -86,6 +87,11 @@ func (c *QQController) Echo() {
 		if err != nil {
 			logs.Info("read:", err)
 			break
+		}
+		val, _ := jsonparser.GetString(message, "echo")
+		if val == "user_id" {
+			//忽略跳过
+			return
 		}
 
 		logs.Info("recv: %s , %d", message, mt)
