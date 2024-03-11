@@ -202,7 +202,6 @@ var codeSignals = []CodeSignal{
 					return "未设置拉群目标！"
 				}
 			}
-			return "未配置相关参数"
 		},
 	},
 	{
