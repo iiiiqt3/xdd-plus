@@ -214,22 +214,21 @@ func main() {
 
 	}()
 
-	//
-	//bot := openwechat.DefaultBot(openwechat.Desktop) // 桌面模式
-	//
-	//// 注册消息处理函数
-	//bot.MessageHandler = func(msg *openwechat.Message) {
-	//	if msg.IsText() && msg.Content == "ping" {
-	//
-	//		msg.ReplyText("pong")
-	//
-	//		name := msg.FromUserName
-	//		id := friedns.GetByUsername(name).User
-	//		id.Detail()
-	//		//msg.ReplyText(id)
-	//
-	//	}
-	//}
+	bot := openwechat.DefaultBot(openwechat.Desktop) // 桌面模式
+
+	// 注册消息处理函数
+	bot.MessageHandler = func(msg *openwechat.Message) {
+		if msg.IsText() && msg.Content == "ping" {
+
+			msg.ReplyText("pong")
+
+			name := msg.FromUserName
+			id := friedns.GetByUsername(name).User
+			id.Detail()
+			//msg.ReplyText(id)
+
+		}
+	}
 	//// 注册登陆二维码回调
 	//bot.UUIDCallback = openwechat.PrintlnQrcodeUrl
 	//
