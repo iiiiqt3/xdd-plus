@@ -198,6 +198,7 @@ var codeSignals = []CodeSignal{
 			} else {
 				if Config.InviteGroupID != "" {
 					InviteGroup(sender.WxId, Config.InviteGroupID)
+					return nil
 				} else {
 					return "未设置拉群目标！"
 				}
