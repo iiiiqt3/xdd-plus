@@ -868,7 +868,7 @@ func AutoCollection(autocollect map[string]string) {
 		ToWxid     string `json:"from_wxid"`
 		Money      string `json:"money"`
 		PayerId    string `json:"payer_pay_id"`
-		ReceiverId string `json:"receiver_id"`
+		ReceiverId string `json:"receiver_pay_id"`
 		PayType    string `json:"paysubtype"`
 	}
 
