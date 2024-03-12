@@ -208,17 +208,20 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"拉群"},
 		Handle: func(sender *Sender) interface{} {
-			if sender.IsAdmin {
-				Config.InviteGroupID = sender.WxGroupId
-				return "已将此群设为拉群目标"
-			} else {
-				if Config.InviteGroupID != "" {
-					InviteGroup(sender.WxId, Config.InviteGroupID)
-					return nil
+			if sender.Type == "wx" {
+				if sender.IsAdmin {
+					Config.InviteGroupID = sender.WxGroupId
+					return "已将此群设为拉群目标"
 				} else {
-					return "未设置拉群目标！"
+					if Config.InviteGroupID != "" {
+						InviteGroup(sender.WxId, Config.InviteGroupID)
+						return nil
+					} else {
+						return "未设置拉群目标！"
+					}
 				}
 			}
+
 		},
 	},
 	{
