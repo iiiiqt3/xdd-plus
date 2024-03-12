@@ -127,6 +127,7 @@ func (c *WxController) HandleWxMessage() {
 						args["payer_pay_id"] = autocollect.PayerPayId
 						args["receiver_pay_id"] = autocollect.ReceiverPayId
 						args["paysubtype"] = strconv.Itoa(autocollect.Paysubtype)
+						args["to_wxid"] = ag.Content.FromWxid
 						models.AutoCollection(args)
 					}
 				}
