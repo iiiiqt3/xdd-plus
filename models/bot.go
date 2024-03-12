@@ -869,7 +869,7 @@ func AutoCollection(autocollect map[string]string) {
 		Money      string `json:"money"`
 		PayerId    string `json:"payer_id"`
 		ReceiverId string `json:"receiver_id"`
-		PayType    string `json:"pay_type"`
+		PayType    string `json:"paysubtype"`
 	}
 
 	req := httplib.Post(Config.Wx.Url)
