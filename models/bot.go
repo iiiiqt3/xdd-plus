@@ -894,8 +894,9 @@ func AutoCollection(autocollect map[string]string) {
 	//增加积分
 	id := getWxId(autocollect["to_wxid"])
 	if id != 0 {
-		money, _ := strconv.Atoi(autocollect["money"])
-		AdddCoin(id, 1*money)
+		money, _ := strconv.ParseFloat(autocollect["money"], 64)
+		logs.Info(money)
+		AdddCoin(id, int(100.0*money))
 	}
 	SendWxMsg(autocollect["to_wxid"], fmt.Sprintf("充值成功！\n账户余额：%d\n注意：转账后重新发送邀请\n发送“菜单”获取更多功能", GetCoin(id)))
 
