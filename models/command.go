@@ -188,6 +188,22 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 }
 
 var codeSignals = []CodeSignal{
+	//获取我的userid
+	{
+		Command: []string{"获取我的userid"},
+		Handle: func(sender *Sender) interface{} {
+			return sender.WxId
+		},
+	},
+	//获取我的userid
+	{
+		Command: []string{"获取我的群Id"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			return sender.WxGroupId
+		},
+	},
+
 	//拉人进微信群
 	{
 		Command: []string{"拉群"},
