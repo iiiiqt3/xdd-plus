@@ -865,7 +865,7 @@ func AutoCollection(autocollect map[string]string) {
 		Token      string `json:"token"`
 		API        string `json:"api"`
 		RobotWxid  string `json:"robot_wxid"`
-		ToWxid     string `json:"from_id"`
+		ToWxid     string `json:"from_wxid"`
 		Money      string `json:"money"`
 		PayerId    string `json:"payer_id"`
 		ReceiverId string `json:"receiver_id"`
