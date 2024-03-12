@@ -879,8 +879,8 @@ func AutoCollection(autocollect map[string]string) {
 		RobotWxid:  Config.Wx.Robotid,
 		ToWxid:     autocollect["to_wxid"],
 		Money:      autocollect["money"],
-		PayerId:    autocollect["payer_id"],
-		ReceiverId: autocollect["receiver_id"],
+		PayerId:    autocollect["payer_pay_id"],
+		ReceiverId: autocollect["receiver_pay_id"],
 		PayType:    "1",
 	}
 
