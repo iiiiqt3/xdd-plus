@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"bytes"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
@@ -115,14 +118,18 @@ func (c *WxController) HandleWxMessage() {
 		case 2000:
 			if ag.Content.RobotWxid == models.Config.Wx.Robotid {
 				logs.Info("接收到转账" + ag.Content.Msg)
-				if models.Config.Autocollection {
+				if models.IsAutoAgreeAutocollection() {
 					autocollect := &AutocollectMessageBody{}
 					err := json.Unmarshal([]byte(ag.Content.Msg), autocollect)
 					if err == nil {
-						AutoCollection(autocollect)
+						args := make(map[string]string)
+						args["money"] = autocollect.Money
+						args["payer_pay_id"] = autocollect.PayerPayId
+						args["receiver_pay_id"] = autocollect.ReceiverPayId
+						args["paysubtype"] = strconv.Itoa(autocollect.Paysubtype)
+						models.AutoCollection(args)
 					}
 				}
-
 			}
 		}
 
@@ -138,10 +145,6 @@ func (c *WxController) HandleWxMessage() {
 
 		}
 	}
-}
-
-func AutoCollection(autocollect *AutocollectMessageBody) {
-
 }
 
 func AgreeFriendVerify(args interface{}) {
@@ -168,4 +171,16 @@ func AgreeFriendVerify(args interface{}) {
 			models.SendWxMsg(arg["uid"], welcome)
 		}
 	}
+}
+
+func u2s(form string) (to string, err error) {
+	bs, err := hex.DecodeString(strings.Replace(form, `\u`, ``, -1))
+	if err != nil {
+		return
+	}
+	for i, bl, br, r := 0, len(bs), bytes.NewReader(bs), uint16(0); i < bl; i += 2 {
+		binary.Read(br, binary.BigEndian, &r)
+		to += string(r)
+	}
+	return
 }

@@ -44,6 +44,15 @@ func IsAutoAgreeFriendVerify() bool {
 	return true
 }
 
+func IsAutoAgreeAutocollection() bool {
+	env := &Env{}
+	db.Where("name = ?", "Autocollection").First(env)
+	if env.Value == "" {
+		return false
+	}
+	return true
+}
+
 func UseAgreeMsg() bool {
 	env := &Env{}
 	db.Where("name = ?", "AgreeMsg").First(env)

@@ -221,7 +221,7 @@ var codeSignals = []CodeSignal{
 					}
 				}
 			}
-
+			return nil
 		},
 	},
 	{
@@ -1594,6 +1594,30 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			UnExportEnv(&Env{
 				Name: "AutoAgree",
+			})
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"开启微信自动收款"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			env := &Env{
+				Name:  "Autocollection",
+				Value: "1",
+			}
+			ExportEnv(env)
+			sender.Reply("操作成功")
+			return nil
+		},
+	},
+	{
+		Command: []string{"关闭微信自动收款"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			UnExportEnv(&Env{
+				Name: "Autocollection",
 			})
 			sender.Reply("操作成功")
 			return nil
