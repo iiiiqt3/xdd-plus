@@ -59,7 +59,4 @@ func initNolan() {
 func initWX() {
 	env := GetEnv("WxGroupID")
 	Config.WXGroupID = env
-	//Autocollection
-	env = GetEnv("Autocollection")
-	Config.Autocollection = env
 }
