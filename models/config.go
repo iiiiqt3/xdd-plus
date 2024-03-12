@@ -41,7 +41,7 @@ type Yaml struct {
 	QQGroupID           string `yaml:"qqgid"`
 	WXGroupID           string `yaml:"wxgid"`
 	InviteGroupID       string
-	Autocollection      bool
+	Autocollection      string
 	DefaultPriority     int    `yaml:"default_priority"`
 	NoGhproxy           bool   `yaml:"no_ghproxy"`
 	QbotPublicMode      bool   `yaml:"qbot_public_mode"`
