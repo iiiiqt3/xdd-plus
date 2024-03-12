@@ -898,6 +898,6 @@ func AutoCollection(autocollect map[string]string) {
 		logs.Info(money)
 		AdddCoin(id, int(100.0*money))
 	}
-	SendWxMsg(autocollect["to_wxid"], fmt.Sprintf("充值成功！\n账户余额：%d\n注意：转账后重新发送邀请\n发送“菜单”获取更多功能", GetCoin(id)))
+	SendWxMsg(autocollect["to_wxid"], fmt.Sprintf("充值成功！\n账户余额：%d\n发送“菜单”获取更多功能", GetCoin(id)))
 
 }
