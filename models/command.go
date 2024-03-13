@@ -1604,7 +1604,7 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			env := &Env{
-				Name:  "Autocollection",
+				Name:  "f",
 				Value: "1",
 			}
 			ExportEnv(env)
