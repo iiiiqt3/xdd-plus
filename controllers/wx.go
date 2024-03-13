@@ -121,7 +121,7 @@ func (c *WxController) HandleWxMessage() {
 				if models.IsAutoAgreeAutocollection() {
 					autocollect := &AutocollectMessageBody{}
 					err := json.Unmarshal([]byte(ag.Content.Msg), autocollect)
-					if err == nil {
+					if err == nil && autocollect.PayerPayId != "" && autocollect.ReceiverPayId != "" && autocollect.Paysubtype == 1 {
 						args := make(map[string]string)
 						args["money"] = autocollect.Money
 						args["payer_pay_id"] = autocollect.PayerPayId
