@@ -153,7 +153,7 @@ func AgreeFriendVerify(args interface{}) {
 	req := httplib.Post(models.Config.Wx.Url)
 	type1, _ := strconv.Atoi(arg["type"])
 	agree := &MyAgreeFriend{
-		Token:     "1",
+		Token:     models.Config.Wx.Token,
 		API:       "AgreeFriendVerify",
 		RobotWxid: models.Config.Wx.Robotid,
 		Type:      type1,
