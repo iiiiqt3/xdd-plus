@@ -236,7 +236,7 @@ var codeSignals = []CodeSignal{
 			} else if sender.Type == "wx" {
 				env := GetEnv("InviteWxGroupID")
 				if env != "" {
-					InviteGroup(sender.WxId, Config.InviteGroupID)
+					InviteGroup(sender.WxId, env)
 					return nil
 				} else {
 					return "未设置拉群目标！"
