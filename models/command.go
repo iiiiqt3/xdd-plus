@@ -230,12 +230,12 @@ var codeSignals = []CodeSignal{
 			if sender.Type == "wx" {
 				if sender.IsAdmin {
 					ExportEnv(&Env{
-						Name:  "WxGroupID",
+						Name:  "InviteWxGroupID",
 						Value: sender.WxGroupId,
 					})
 					return "已将此群设为拉群目标"
 				} else {
-					env := GetEnv("WxGroupID")
+					env := GetEnv("InviteWxGroupID")
 					if env != "" {
 						InviteGroup(sender.WxId, Config.InviteGroupID)
 						return nil
