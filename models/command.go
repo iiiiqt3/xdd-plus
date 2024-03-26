@@ -227,23 +227,22 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"拉群"},
 		Handle: func(sender *Sender) interface{} {
-			if sender.Type == "wx" {
-				if sender.IsAdmin {
-					ExportEnv(&Env{
-						Name:  "InviteWxGroupID",
-						Value: sender.WxGroupId,
-					})
-					return "已将此群设为拉群目标"
+			if sender.IsAdmin && sender.Type == "wx" {
+				ExportEnv(&Env{
+					Name:  "InviteWxGroupID",
+					Value: sender.WxGroupId,
+				})
+				return "已将此群设为拉群目标"
+			} else if sender.Type == "wx" {
+				env := GetEnv("InviteWxGroupID")
+				if env != "" {
+					InviteGroup(sender.WxId, Config.InviteGroupID)
+					return nil
 				} else {
-					env := GetEnv("InviteWxGroupID")
-					if env != "" {
-						InviteGroup(sender.WxId, Config.InviteGroupID)
-						return nil
-					} else {
-						return "未设置拉群目标！"
-					}
+					return "未设置拉群目标！"
 				}
 			}
+
 			return nil
 		},
 	},
