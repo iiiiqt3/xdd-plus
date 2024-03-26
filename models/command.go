@@ -195,6 +195,25 @@ var codeSignals = []CodeSignal{
 			return sender.WxId
 		},
 	},
+
+	// https://pp.iaka.cn/api/ajax.php?act=search&name=短剧名称 通过api写出搜剧代码，识别命令搜据，并解析空格后的剧名进行api查询并返回查询结果
+	{
+		Command: []string{"搜剧"},
+		Handle: func(sender *Sender) interface{} {
+			if len(sender.Contents) == 0 {
+				return "请输入剧名"
+			}
+			name := sender.Contents[0]
+			url := fmt.Sprintf("https://pp.iaka.cn/api/ajax.php?act=search&name=%s", url.QueryEscape(name))
+			req := httplib.Get(url)
+			req.Header("User-Agent", browser.Random())
+			bytes, err := req.Bytes()
+			if err != nil {
+				return err.Error()
+			}
+			return string(bytes)
+		},
+	},
 	//获取我的userid
 	{
 		Command: []string{"获取我的群Id"},
@@ -210,10 +229,14 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			if sender.Type == "wx" {
 				if sender.IsAdmin {
-					Config.InviteGroupID = sender.WxGroupId
+					ExportEnv(&Env{
+						Name:  "WxGroupID",
+						Value: sender.WxGroupId,
+					})
 					return "已将此群设为拉群目标"
 				} else {
-					if Config.InviteGroupID != "" {
+					env := GetEnv("WxGroupID")
+					if env != "" {
 						InviteGroup(sender.WxId, Config.InviteGroupID)
 						return nil
 					} else {
