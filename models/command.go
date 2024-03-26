@@ -227,7 +227,7 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"拉群"},
 		Handle: func(sender *Sender) interface{} {
-			if sender.IsAdmin && sender.Type == "wx" {
+			if sender.IsAdmin && sender.Type == "wxg" {
 				ExportEnv(&Env{
 					Name:  "InviteWxGroupID",
 					Value: sender.WxGroupId,
