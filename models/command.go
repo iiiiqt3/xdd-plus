@@ -241,6 +241,8 @@ var codeSignals = []CodeSignal{
 				} else {
 					return "未设置拉群目标！"
 				}
+			} else {
+				return "非微信渠道"
 			}
 
 			return nil
