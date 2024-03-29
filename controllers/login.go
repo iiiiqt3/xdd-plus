@@ -317,7 +317,7 @@ func init() {
 	}()
 }
 
-//Query 查询
+// Query 查询
 func (c *LoginController) Query() {
 	if v := c.GetSession("jd_token"); v == nil {
 		c.Ctx.WriteString("重新获取二维码")
