@@ -92,13 +92,6 @@ func (c *QQController) Echo() {
 				logs.Info("read:", err)
 				return
 			}
-			//val, _ := jsonparser.GetString(message, "echo")
-			//if val == "user_id" {
-			//	//忽略跳过
-			//	return
-			//}
-
-			//logs.Info("recv: %s , %d", message, mt)
 
 			var msg LLMessage
 			err = json.Unmarshal(message, &msg)
