@@ -5,7 +5,6 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 	"github.com/gorilla/websocket"
-	"time"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -78,11 +77,11 @@ func (c *QQController) Echo() {
 
 	// Start a goroutine to send heartbeat messages
 	for {
-		time.Sleep(30 * time.Second) // Send a heartbeat every 30 seconds
-		if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
-			logs.Info("heartbeat:", err)
-			return
-		}
+		//time.Sleep(30 * time.Second) // Send a heartbeat every 30 seconds
+		//if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
+		//	logs.Info("heartbeat:", err)
+		//	return
+		//}
 
 		//messageType int, p []byte, err error
 		nt, message, err := ws.ReadMessage()
