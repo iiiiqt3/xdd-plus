@@ -90,7 +90,7 @@ func (c *QQController) Echo() {
 			mt = nt
 			if err != nil {
 				logs.Info("read:", err)
-				break
+				return
 			}
 			//val, _ := jsonparser.GetString(message, "echo")
 			//if val == "user_id" {
