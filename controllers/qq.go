@@ -77,32 +77,30 @@ func (c *QQController) Echo() {
 	models.WsInit(ws, 1)
 
 	// Start a goroutine to send heartbeat messages
-	go func() {
-		for {
-			time.Sleep(30 * time.Second) // Send a heartbeat every 30 seconds
-			if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
-				logs.Info("heartbeat:", err)
-				return
-			}
-
-			//messageType int, p []byte, err error
-			nt, message, err := ws.ReadMessage()
-			mt = nt
-			if err != nil {
-				logs.Info("read:", err)
-				return
-			}
-
-			var msg LLMessage
-			err = json.Unmarshal(message, &msg)
-			if err != nil {
-				logs.Info("change:", err)
-				break
-			}
-			go HandleQQMessage(msg)
-
+	for {
+		time.Sleep(30 * time.Second) // Send a heartbeat every 30 seconds
+		if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
+			logs.Info("heartbeat:", err)
+			return
 		}
-	}()
+
+		//messageType int, p []byte, err error
+		nt, message, err := ws.ReadMessage()
+		mt = nt
+		if err != nil {
+			logs.Info("read:", err)
+			return
+		}
+
+		var msg LLMessage
+		err = json.Unmarshal(message, &msg)
+		if err != nil {
+			logs.Info("change:", err)
+			break
+		}
+		go HandleQQMessage(msg)
+
+	}
 
 }
 
