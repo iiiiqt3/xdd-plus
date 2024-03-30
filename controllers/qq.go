@@ -90,6 +90,7 @@ func (c *QQController) Echo() {
 			logs.Info("read:", err)
 			return
 		}
+		logs.Info(message)
 
 		var msg LLMessage
 		err = json.Unmarshal(message, &msg)
