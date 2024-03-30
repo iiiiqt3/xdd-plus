@@ -20,12 +20,13 @@ type LLMessage struct {
 	UserId      int    `json:"user_id"`
 	Time        int    `json:"time"`
 	MessageId   int    `json:"message_id"`
-	RealId      string `json:"real_id"`
+	RealId      int    `json:"real_id"`
 	MessageType string `json:"message_type"`
 	Sender      struct {
 		UserId   int    `json:"user_id"`
 		Nickname string `json:"nickname"`
 		Card     string `json:"card"`
+		Role     string `json:"role"`
 	} `json:"sender"`
 	RawMessage    string `json:"raw_message"`
 	Font          int    `json:"font"`
