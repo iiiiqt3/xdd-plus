@@ -107,11 +107,11 @@ func (c *WxController) HandleWxMessage() {
 
 	case "EventPrivateChat":
 		ag := &WxMessage{}
-		err := json.Unmarshal(data, ag)
+		json.Unmarshal(data, ag)
 		switch ag.Content.Type {
 		case 1:
 			if ag.Content.RobotWxid == models.Config.Wx.Robotid {
-				logs.Info(err)
+				//logs.Info(err)
 				logs.Info("接收到信息" + ag.Content.Msg)
 				models.ListenWXTempPrivateMessage(ag.Content.FromWxid, ag.Content.Msg)
 			}
@@ -136,12 +136,9 @@ func (c *WxController) HandleWxMessage() {
 
 	case "EventGroupChat":
 		ag := &WxMessage{}
-		err := json.Unmarshal(data, ag)
+		json.Unmarshal(data, ag)
 		if ag.Content.RobotWxid == models.Config.Wx.Robotid {
-
-			logs.Info(err)
 			logs.Info("接收到微信群信息" + ag.Content.Msg)
-			logs.Info(ag.Content.FromGroup)
 			models.ListenWXGroupMessage(ag.Content.FromWxid, ag.Content.FromGroup, ag.Content.Msg)
 
 		}

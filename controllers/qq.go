@@ -71,6 +71,7 @@ func (c *QQController) Echo() {
 	if err != nil {
 		panic(err)
 	}
+	logs.Info("ws接入成功")
 
 	models.WsInit(ws, 1)
 
