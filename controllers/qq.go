@@ -5,6 +5,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 	"github.com/gorilla/websocket"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -75,31 +76,41 @@ func (c *QQController) Echo() {
 
 	models.WsInit(ws, 1)
 
-	for {
-		//messageType int, p []byte, err error
-		nt, message, err := ws.ReadMessage()
-		mt = nt
-		if err != nil {
-			logs.Info("read:", err)
-			break
+	// Start a goroutine to send heartbeat messages
+	go func() {
+		for {
+			time.Sleep(30 * time.Second) // Send a heartbeat every 30 seconds
+			if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
+				logs.Info("heartbeat:", err)
+				return
+			}
+
+			//messageType int, p []byte, err error
+			nt, message, err := ws.ReadMessage()
+			mt = nt
+			if err != nil {
+				logs.Info("read:", err)
+				break
+			}
+			//val, _ := jsonparser.GetString(message, "echo")
+			//if val == "user_id" {
+			//	//忽略跳过
+			//	return
+			//}
+
+			//logs.Info("recv: %s , %d", message, mt)
+
+			var msg LLMessage
+			err = json.Unmarshal(message, &msg)
+			if err != nil {
+				logs.Info("change:", err)
+				break
+			}
+			go HandleQQMessage(msg)
+
 		}
-		//val, _ := jsonparser.GetString(message, "echo")
-		//if val == "user_id" {
-		//	//忽略跳过
-		//	return
-		//}
+	}()
 
-		//logs.Info("recv: %s , %d", message, mt)
-
-		var msg LLMessage
-		err = json.Unmarshal(message, &msg)
-		if err != nil {
-			logs.Info("change:", err)
-			break
-		}
-		go HandleQQMessage(msg)
-
-	}
 }
 
 func HandleQQMessage(msg LLMessage) {
