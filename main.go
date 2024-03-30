@@ -162,7 +162,7 @@ func main() {
 	if models.Config.VIP {
 		web.Router("/wx/receive", &controllers.WxController{}, "post:HandleWxMessage")
 		web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
-		web.Router("/qq/v11", &controllers.QQController{}, "get,post:Echo")
+		web.Router("/onebot/v11", &controllers.QQController{}, "get,post:Echo")
 		web.Router("/api/envs", &controllers.AccountController{}, "get:ListEnvs")
 		web.Router("/api/envs", &controllers.AccountController{}, "post:CreateOrUpdateEnv")
 		web.Router("/api/config", &controllers.ConfigController{}, "get:ListConfig")
