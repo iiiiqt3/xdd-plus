@@ -18,6 +18,11 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 )
 
+var replies = map[string]string{}
+var tytnum = 0
+var loginList = make(map[int]chan string)
+var meituanList = make(map[int]chan string)
+
 var SendQQ = func(qq int, msg interface{}) {
 
 	switch msg.(type) {
@@ -37,6 +42,7 @@ var SendQQ = func(qq int, msg interface{}) {
 		})
 	}
 }
+
 var SendQQGroup = func(gid int, qq int, msg interface{}) {
 	switch msg.(type) {
 	case string:
@@ -55,33 +61,6 @@ var SendQQGroup = func(gid int, qq int, msg interface{}) {
 		})
 		//SendQQMsg(QQMessage{GroupID: gid, Message: msg.(string)})
 	}
-}
-
-type ArkResData struct {
-	Status uint   `json:"status"`
-	Mode   string `json:"mode"`
-}
-
-type ArkRes struct {
-	Success bool       `json:"success"`
-	Message string     `json:"message"`
-	Data    ArkResData `json:"data"`
-}
-
-type ViVoData struct {
-	Autologin  int    `json:"autologin"`
-	Gsalt      string `json:"gsalt"`
-	GUID       string `json:"guid"`
-	Lsid       string `json:"lsid"`
-	NeedAuth   int    `json:"need_auth"`
-	ReturnPage string `json:"return_page"`
-	RsaModulus string `json:"rsa_modulus"`
-}
-
-type ViVoRes struct {
-	Data    ViVoData `json:"data"`
-	ErrCode int      `json:"err_code"`
-	ErrMsg  string   `json:"err_msg"`
 }
 
 var ListenQQPrivateMessage = func(uid int, msg string) {
@@ -119,13 +98,6 @@ var ListenQQGroupMessage = func(uid int, gid int, msg string) {
 		}
 	}
 }
-
-var replies = map[string]string{}
-var tytlist = make(map[string]int)
-var tytno = 0
-var tytnum = 0
-var loginList = make(map[int]chan string)
-var meituanList = make(map[int]chan string)
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
