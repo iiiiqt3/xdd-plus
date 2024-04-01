@@ -73,22 +73,15 @@ func (c *QQController) Echo() {
 		panic(err)
 	}
 	logs.Info("ws接入成功")
-
 	models.WsInit(ws, 1)
 
-	// Start a goroutine to send heartbeat messages
 	for {
-		//time.Sleep(30 * time.Second) // Send a heartbeat every 30 seconds
-		//if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
-		//	logs.Info("heartbeat:", err)
-		//	return
-		//}
-
 		//messageType int, p []byte, err error
 		nt, message, err := ws.ReadMessage()
 		mt = nt
 		if err != nil {
-			logs.Info("read:", err)
+			//logs.Info("read:", err)
+			logs.Info("ws连接已断开")
 			return
 		}
 		logs.Info(string(message))
