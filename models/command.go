@@ -950,29 +950,6 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-		Command: []string{"详细查询", "query"},
-		Handle: func(sender *Sender) interface{} {
-			if sender.IsAdmin {
-				sender.handleJdCookies(func(ck *JdCookie) {
-					time.Sleep(time.Second * time.Duration(Config.Later))
-					sender.Reply(ck.Query1())
-				})
-			} else {
-				if getLimit(sender.UserID, 1) {
-					time.Sleep(time.Second * time.Duration(Config.Later))
-					sender.handleJdCookies(func(ck *JdCookie) {
-						sender.Reply(ck.Query1())
-					})
-				} else {
-					sender.Reply(fmt.Sprintf("鉴于东哥对接口限流，为了不影响大家的任务正常运行，即日起每日限流%d次，已超过今日限制", Config.Lim))
-				}
-			}
-
-			return nil
-		},
-	},
-
-	{
 		Command: []string{"发送", "通知", "notify", "send"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {

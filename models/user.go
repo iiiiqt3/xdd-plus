@@ -1,6 +1,8 @@
 package models
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"github.com/beego/beego/v2/core/logs"
 	"math/rand"
@@ -86,7 +88,26 @@ func GetCoin(uid int) int {
 
 func getWxId(wxid string) int {
 	var u User
-	if db.Where("wxid = ?", wxid).First(&u).Error != nil {
+	var err error
+	maxRetries := 3
+
+	for i := 0; i < maxRetries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+		defer cancel()
+		err = db.WithContext(ctx).Where("wxid = ?", wxid).First(&u).Error
+		if err == nil {
+			break
+		}
+
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			// Handle timeout here, for example log an error and retry
+			logs.Error("Database query timed out. Retrying...")
+			continue
+		}
+	}
+
+	if err != nil {
 		tt := rand.Int()
 		db.Create(&User{
 			Class:    "wx",
@@ -111,7 +132,6 @@ func getUserId(typ string, uid string) string {
 
 	default:
 		logs.Info("错误的渠道来源")
-
 	}
 
 	return ""

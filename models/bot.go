@@ -335,41 +335,11 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 					msgs := []string{
 						fmt.Sprintf("请选择登录渠道:"),
+						fmt.Sprintf("1:扫码登录"),
+						fmt.Sprintf("2:短信登录"),
 					}
-
-					if sysConfig.RabbitUrl != "" && sysConfig.RabbitApiToken != "" && sysConfig.RabbitToken != "" && sysConfig.Rabbit == "1" {
-						msgs = append(msgs, "1:兔子京东扫码")
-					}
-
-					if sysConfig.NolanUrl != "" && sysConfig.NolanToken != "" {
-						msgs = append(msgs, "2:Nolan京东扫码")
-					}
-
-					if sysConfig.BBKJdUrl != "" && sysConfig.BBKToken != "" {
-						msgs = append(msgs, "3:BBK京东扫码")
-					}
-
-					if sysConfig.BBKWxUrl != "" {
-						msgs = append(msgs, "4:BBK微信扫码")
-					}
-
-					if sysConfig.RabbitUrl != "" && sysConfig.RabbitApiToken != "" && sysConfig.RabbitToken != "" {
-						msgs = append(msgs, "5:兔子短信Wskey")
-					}
-
-					if sysConfig.NolanUrl != "" && sysConfig.NolanToken != "" {
-						msgs = append(msgs, "6:Pro短信")
-					}
-
-					if Config.QQID == 764763903 {
-						sender.Reply("请选择登录渠道: \r\n  2:Nolan京东扫码    \r\n  6:Pro短信  \r\n  如需退出请回复'q'退出登录流程")
-					} else if Config.QQID == 413255735 {
-						sender.Reply("请选择登录渠道: \r\n  1:口令登录  \r\n  2.短信登录  \r\n  如需退出请回复'q'退出登录流程")
-					} else {
-						msgs = append(msgs, "如需退出请回复'q'退出登录流程")
-						sender.Reply(strings.Join(msgs, "\n"))
-					}
-
+					msgs = append(msgs, "如需退出请回复'q'退出登录流程")
+					sender.Reply(strings.Join(msgs, "\n"))
 				}
 			}
 
