@@ -36,23 +36,7 @@ func NolanGetJdQrImg(sender *Sender) {
 		//sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
 		sender.Reply(fmt.Sprintf("https://qr.m.jd.com/p?k=%s", key))
 		logs.Info(key)
-		//if Config.QQID == 764763903 {
-		//	SendQQMsg(QQMessage{
-		//		Action: "send_msg",
-		//		QQMsg: struct {
-		//			MessageType string `json:"message_type"`
-		//			UserId      int    `json:"user_id"`
-		//			GroupID     int    `json:"group_id"`
-		//			Message     string `json:"message"`
-		//		}{
-		//			UserId:  sender.UserID,
-		//			GroupID: 0,
-		//			Message: fmt.Sprintf("[CQ:share,url=%s,title=京东快捷登录]", "https://qr.m.jd.com/p?k="+key),
-		//		},
-		//		Echo: "",
-		//	})
-		//
-		//}
+
 		sender.Reply("请使用京东APP扫描,或复制链接用浏览器打开。150秒失效")
 		go NolanGetJDQrStatus(key, sender)
 	} else {

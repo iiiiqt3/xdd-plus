@@ -22,7 +22,7 @@ func RabbitGetJdQrImg(sender *Sender) {
 	}
 	get := httplib.Post(fmt.Sprintf("%s/bot/GenQrCode?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	bytes, _ := get.Bytes()
-	logs.Info(string(bytes))
+	logs.Info(string(bytes) + fmt.Sprintf("%s/bot/GenQrCode?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	code, _ := jsonparser.GetInt(bytes, "code")
 	if code == 0 {
 
