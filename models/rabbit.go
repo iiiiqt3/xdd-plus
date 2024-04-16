@@ -22,18 +22,18 @@ func RabbitGetJdQrImg(sender *Sender) {
 	}
 	get := httplib.Post(fmt.Sprintf("%s/bot/GenQrCode?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	bytes, _ := get.Bytes()
-	logs.Info(string(bytes) + fmt.Sprintf("%s/bot/GenQrCode?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+	logs.Info(string(bytes))
 	code, _ := jsonparser.GetInt(bytes, "code")
 	if code == 0 {
 
 		key, _ := jsonparser.GetString(bytes, "QRCodeKey")
 
 		//返回口令
-		//jcommond, _ := jsonparser.GetString(bytes, "jcommond")
-		//sender.Reply(jcommond)
+		jcommond, _ := jsonparser.GetString(bytes, "jcommond")
+		sender.Reply(jcommond)
 
 		//图片
-		sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
+		//sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
 
 		qr, _ := jsonparser.GetString(bytes, "qr")
 		decodeStr, _ := base64.StdEncoding.DecodeString(qr)
