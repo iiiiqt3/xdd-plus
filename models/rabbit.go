@@ -318,9 +318,6 @@ func RabbitSendCode(ty string, phone string, code string, sender *Sender) {
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 		}
-
-		sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-		(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		smsList[sender.UserID] = nil
 	} else if state == 555 {
 		RiskUrl, _ := jsonparser.GetString(data, "RiskUrl")
