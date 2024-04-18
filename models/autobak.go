@@ -37,9 +37,10 @@ func Reduction() {
 	for _, ck := range cks {
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
 			nck.Updates(JdCookie{
-				PtKey:  ck.PtKey,
-				WsKey:  ck.WsKey,
-				RWskey: ck.RWskey,
+				PtKey:     ck.PtKey,
+				WsKey:     ck.WsKey,
+				RWskey:    ck.RWskey,
+				Available: True,
 			})
 		} else {
 			logs.Info("已删除该pin")
