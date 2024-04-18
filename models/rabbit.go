@@ -323,7 +323,6 @@ func RabbitSendCode(ty string, phone string, code string, sender *Sender) {
 		RiskUrl, _ := jsonparser.GetString(data, "RiskUrl")
 		var png []byte
 		png, _ = qrcode.Encode(RiskUrl, qrcode.Medium, 256)
-
 		sender.SendImg(png)
 		sender.Reply(message)
 		smsList[sender.UserID] = nil
