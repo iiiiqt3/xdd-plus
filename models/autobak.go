@@ -33,7 +33,7 @@ func AutoBak() {
 func Reduction() {
 	var cks []BakJdCookie
 	//寻找Rwskey不为空的数据
-	db.Find(&cks, "RWskey != ?", "")
+	db.Find(&cks, "RWskey != ? and RWskey != ?", "", "null")
 	for _, ck := range cks {
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
 			nck.Updates(JdCookie{
