@@ -267,6 +267,8 @@ func RabbitSendSMS(ty string, phone string, sender *Sender) {
 			if status == 666 || status == 505 {
 				i++
 				sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
+				//休眠2秒钟
+				time.Sleep(time.Second * 2)
 				continue
 			} else {
 				sender.Reply(message)
