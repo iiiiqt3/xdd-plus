@@ -1111,7 +1111,7 @@ func Meituan_Bind(sender *Sender, prefix string, uuid string) bool {
 	}
 	for _, ck := range cks {
 		ck.Updates(MeiTuan{UUID: uuid})
+		sender.Reply(fmt.Sprintf("绑定成功:%s", ck.Nickname))
 	}
-	sender.Reply("绑定成功")
 	return true
 }

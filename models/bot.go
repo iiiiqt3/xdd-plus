@@ -218,9 +218,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 							if len(pre_name) > 1 {
 								bind := Meituan_Bind(sender, pre_name[1], uuid)
 								if !bind {
+									//模糊匹配失败，进入手动匹配模式
 									meiTuans := GetMeiTuan(sender)
 									if len(meiTuans) > 0 {
-
 										//进入队列
 										msg := make(chan string)
 										meituanList[sender.UserID] = msg
