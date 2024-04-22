@@ -1044,7 +1044,8 @@ func Meituan_getRealUrl(url string) string {
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println(err)
-		return
+		logs.Error("获取链接失败")
+		return ""
 	}
 	defer resp.Body.Close()
 
