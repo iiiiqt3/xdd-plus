@@ -224,7 +224,8 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 										//进入队列
 										msg := make(chan string)
 										meituanList[sender.UserID] = msg
-										go MeituanSelect(sender, msg, 3, meiTuans)
+										sender.Contents = []string{uuid}
+										go MeituanSelect(sende, msg, 3, meiTuans)
 
 										msgs := []string{
 											"请回复以下序列号指定账号绑定UUID:",

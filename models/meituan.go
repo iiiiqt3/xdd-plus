@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/skip2/go-qrcode"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -20,7 +21,6 @@ import (
 	"github.com/buger/jsonparser"
 	"github.com/cdle/xdd/vweb"
 	"github.com/google/uuid"
-	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 )
 
@@ -931,9 +931,10 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 			}
 			meituanList[sender.UserID] = nil
 		case 3:
-			sender.Reply("开发中")
 			//UUID绑定
-
+			s := sender.Contents[0]
+			meituans[num].Updates(MeiTuan{UUID: s})
+			sender.Reply(fmt.Sprintf("UUID绑定成功:%s", meituans[num].Nickname))
 			meituanList[sender.UserID] = nil
 		default:
 			sender.Reply("暂无对应的渠道,已经退出流程请重新输入")
