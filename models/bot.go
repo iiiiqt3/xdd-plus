@@ -204,11 +204,41 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					//提取出url
 					re := regexp.MustCompile(`http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+`)
 					match := re.FindString(msg)
+					realUrl := Meituan_getRealUrl(match)
 					//提取UUID
-					uuid := Meituan_getUUID(match)
-					//UUID绑定
+					uuid := Meituan_getUUID(realUrl)
+					//UUID绑定 模糊绑定
 					if uuid != "" {
+						//从realUrl提取inviterGameNickName
+						inviterGameNickName := regexp.MustCompile(`inviterGameNickName=(.*?)&`)
+						inviterGameNickNameMatch := inviterGameNickName.FindStringSubmatch(realUrl)
+						if len(inviterGameNickNameMatch) > 1 {
+							re := regexp.MustCompile(`(.*?)\*\*\*`)
+							pre_name := re.FindStringSubmatch(inviterGameNickNameMatch[1])
+							if len(pre_name) > 1 {
+								bind := Meituan_Bind(sender, pre_name[1], uuid)
+								if !bind {
+									meiTuans := GetMeiTuan(sender)
+									if len(meiTuans) > 0 {
 
+										//进入队列
+										msg := make(chan string)
+										meituanList[sender.UserID] = msg
+										go MeituanSelect(sender, msg, 3, meiTuans)
+
+										msgs := []string{
+											"请回复以下序列号指定账号绑定UUID:",
+										}
+										for i, tuan := range meiTuans {
+											msgs = append(msgs, fmt.Sprintf("%d、%s", i, tuan.Nickname))
+										}
+										sender.Reply(strings.Join(msgs, "\n"))
+									} else {
+										return "查无美团账号"
+									}
+								}
+							}
+						}
 					}
 				}
 			}

@@ -481,10 +481,21 @@ func getMeiTuan(id string) (*MeiTuan, error) {
 }
 
 // 获取美团账号通过用户名前缀
-func GetMeiTuanByPrefix(prefix string) []MeiTuan {
-	var cks []MeiTuan
-	db.Where("nickname like ?", fmt.Sprintf("%s%%", prefix)).Find(&cks)
-	return cks
+func GetMeiTuanByPrefix(prefix string, sender *Sender) []MeiTuan {
+	switch sender.Type {
+	case "qq", "qqg", "tg":
+		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
+			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", QQ), sender.UserID, prefix)
+		})
+	case "wx", "wxg":
+		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
+			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", "WeiXin"), sender.WxId, prefix)
+		})
+	default:
+		return nil
+	}
+	return nil
+
 }
 
 func (ck *MeiTuan) Updates(values interface{}) {
@@ -903,7 +914,7 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 			meituanList[sender.UserID] = nil
 			return
 		}
-		//typ 1 美团50  2 美团领卷  3美团抢卷
+		//typ 1 美团50  2 美团领卷  3美团UUID绑定
 
 		switch typ {
 		case 1:
@@ -921,6 +932,8 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 			meituanList[sender.UserID] = nil
 		case 3:
 			sender.Reply("开发中")
+			//UUID绑定
+
 			meituanList[sender.UserID] = nil
 		default:
 			sender.Reply("暂无对应的渠道,已经退出流程请重新输入")
@@ -1061,9 +1074,7 @@ func Meituan_getRealUrl(url string) string {
 }
 
 // 获取链接中的UUID
-func Meituan_getUUID(url string) string {
-	realUrl := Meituan_getRealUrl(url)
-	//识别连接是苹果还是安卓
+func Meituan_getUUID(realUrl string) string {
 	//提取utm_term的值
 	re := regexp.MustCompile(`utm_term=(.*?)&`)
 	match := re.FindStringSubmatch(realUrl)
@@ -1086,19 +1097,21 @@ func Meituan_getUUID(url string) string {
 			return match[1]
 		}
 	}
+
 	return ""
 }
 
 // 通过姓名前缀绑定UUID
-func Meituan_Bind(sender *Sender, prefix string, uuid string) {
+func Meituan_Bind(sender *Sender, prefix string, uuid string) bool {
 	//获取前缀的美团账号
-	cks := GetMeiTuanByPrefix(prefix)
+	cks := GetMeiTuanByPrefix(prefix, sender)
 	if len(cks) == 0 {
-		sender.Reply("未找到对应的美团账号")
-		return
+		sender.Reply("未找到对应的美团账号,进入手动匹配模式")
+		return false
 	}
 	for _, ck := range cks {
 		ck.Updates(MeiTuan{UUID: uuid})
 	}
 	sender.Reply("绑定成功")
+	return true
 }
