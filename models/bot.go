@@ -197,6 +197,14 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		switch msg {
 		default:
 
+			//美团UUID识别
+			{
+				//识别 http://dpurl.cn/
+				if strings.Contains(msg, "http://dpurl.cn/") {
+					Meituan_getUUID(msg, sender)
+				}
+			}
+
 			//返利识别
 			{
 				matched, _ := regexp.MatchString("^https://item(.m)?.jd.com/(product/)?([0-9]+).html", msg)

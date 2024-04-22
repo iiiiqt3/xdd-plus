@@ -1038,3 +1038,47 @@ func Meituan_Auto() {
 	}
 	JdCookie{}.Push("美团自动领卷结束")
 }
+
+// 获取真实链接
+func Meituan_getRealUrl(url string) string {
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// 获取重定向的URL
+	realURL := resp.Request.URL.String()
+	fmt.Println(realURL)
+	return realURL
+}
+
+// 获取链接中的UUID
+func Meituan_getUUID(url string, sender *Sender) string {
+	realUrl := Meituan_getRealUrl(url)
+	//识别连接是苹果还是安卓
+	//提取utm_term的值
+	re := regexp.MustCompile(`utm_term=(.*?)&`)
+	match := re.FindStringSubmatch(realUrl)
+	str := match[1]
+	if strings.Contains(realUrl, "android") {
+		//安卓提取UUID
+		re := regexp.MustCompile(`000(.*?)&`)
+		match := re.FindStringSubmatch(str)
+		if len(match) > 1 {
+			result := match[1]
+			if len(result) > 3 {
+				return result[:len(result)-3]
+			}
+		}
+	} else {
+		// Iphone提取UUID
+		re := regexp.MustCompile(`G(.*?)2024`)
+		match := re.FindStringSubmatch(str)
+		if len(match) > 1 {
+			return match[1]
+		}
+	}
+	return ""
+}
