@@ -1108,6 +1108,10 @@ func Meituan_Bind(sender *Sender, prefix string, uuid string) bool {
 	if len(cks) == 0 {
 		sender.Reply("未找到对应的美团账号,进入手动匹配模式")
 		return false
+	} else if len(cks) > 1 {
+		sender.Reply("匹配到多个美团账号,进入手动匹配模式")
+		return false
+
 	}
 	for _, ck := range cks {
 		ck.Updates(MeiTuan{UUID: uuid})
