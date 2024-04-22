@@ -480,6 +480,13 @@ func getMeiTuan(id string) (*MeiTuan, error) {
 	return ck, db.Where("id = ?", id).First(ck).Error
 }
 
+// 获取美团账号通过用户名前缀
+func GetMeiTuanByPrefix(prefix string) []MeiTuan {
+	var cks []MeiTuan
+	db.Where("nickname like ?", fmt.Sprintf("%s%%", prefix)).Find(&cks)
+	return cks
+}
+
 func (ck *MeiTuan) Updates(values interface{}) {
 	if ck.ID != 0 {
 		db.Model(ck).Updates(values)
@@ -1054,7 +1061,7 @@ func Meituan_getRealUrl(url string) string {
 }
 
 // 获取链接中的UUID
-func Meituan_getUUID(url string, sender *Sender) string {
+func Meituan_getUUID(url string) string {
 	realUrl := Meituan_getRealUrl(url)
 	//识别连接是苹果还是安卓
 	//提取utm_term的值
@@ -1080,4 +1087,18 @@ func Meituan_getUUID(url string, sender *Sender) string {
 		}
 	}
 	return ""
+}
+
+// 通过姓名前缀绑定UUID
+func Meituan_Bind(sender *Sender, prefix string, uuid string) {
+	//获取前缀的美团账号
+	cks := GetMeiTuanByPrefix(prefix)
+	if len(cks) == 0 {
+		sender.Reply("未找到对应的美团账号")
+		return
+	}
+	for _, ck := range cks {
+		ck.Updates(MeiTuan{UUID: uuid})
+	}
+	sender.Reply("绑定成功")
 }
