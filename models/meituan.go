@@ -485,11 +485,11 @@ func GetMeiTuanByPrefix(prefix string, sender *Sender) []MeiTuan {
 	switch sender.Type {
 	case "qq", "qqg", "tg":
 		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", QQ), sender.UserID, prefix)
+			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", QQ), sender.UserID, fmt.Sprintf("%s%%", prefix))
 		})
 	case "wx", "wxg":
 		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", "WeiXin"), sender.WxId, prefix)
+			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", "WeiXin"), sender.WxId, fmt.Sprintf("%s%%", prefix))
 		})
 	default:
 		return nil
