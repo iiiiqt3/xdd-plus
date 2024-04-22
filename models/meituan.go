@@ -1048,10 +1048,8 @@ func Meituan_getRealUrl(url string) string {
 		return ""
 	}
 	defer resp.Body.Close()
-
 	// 获取重定向的URL
 	realURL := resp.Request.URL.String()
-	fmt.Println(realURL)
 	return realURL
 }
 
@@ -1065,7 +1063,7 @@ func Meituan_getUUID(url string, sender *Sender) string {
 	str := match[1]
 	if strings.Contains(realUrl, "android") {
 		//安卓提取UUID
-		re := regexp.MustCompile(`000(.*)`)
+		re := regexp.MustCompile(`(000.*)`)
 		match := re.FindStringSubmatch(str)
 		if len(match) > 1 {
 			result := match[1]
