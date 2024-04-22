@@ -201,6 +201,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 			{
 				//识别 http://dpurl.cn/
 				if strings.Contains(msg, "http://dpurl.cn/") {
+					//提取出url
+					re := regexp.MustCompile(`http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+`)
+					match := re.FindString(msg)
+					return match
 					Meituan_getUUID(msg, sender)
 				}
 			}
