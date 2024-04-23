@@ -229,25 +229,26 @@ func main() {
 
 		}
 	}
-	//// 注册登陆二维码回调
-	//bot.UUIDCallback = openwechat.PrintlnQrcodeUrl
-	//
-	//// 登陆
-	//reloadStorage := openwechat.NewFileHotReloadStorage("storage.json")
-	//defer reloadStorage.Close()
-	//err := bot.PushLogin(reloadStorage, openwechat.NewRetryLoginOption())
-	//
-	//// 获取登陆的用户
-	//self, err := bot.GetCurrentUser()
-	//if err != nil {
-	//	fmt.Println(err)
-	//	return
-	//}
-	//
-	//friedns, err = self.Friends()
-	//
-	//// 阻塞主goroutine, 直到发生异常或者用户主动退出
-	//bot.Block()
+
+	// 注册登陆二维码回调
+	bot.UUIDCallback = openwechat.PrintlnQrcodeUrl
+
+	// 登陆
+	reloadStorage := openwechat.NewFileHotReloadStorage("storage.json")
+	defer reloadStorage.Close()
+	err := bot.PushLogin(reloadStorage, openwechat.NewRetryLoginOption())
+
+	// 获取登陆的用户
+	self, err := bot.GetCurrentUser()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	friedns, err = self.Friends()
+
+	// 阻塞主goroutine, 直到发生异常或者用户主动退出
+	bot.Block()
 
 	web.Run()
 
