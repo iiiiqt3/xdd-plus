@@ -40,9 +40,9 @@ type Yaml struct {
 	QQID                int    `yaml:"qquid"`
 	QQGroupID           string `yaml:"qqgid"`
 	WXGroupID           string `yaml:"wxgid"`
+	DefaultPriority     int    `yaml:"default_priority"`
 	InviteGroupID       string
 	Autocollection      string
-	DefaultPriority     int    `yaml:"default_priority"`
 	NoGhproxy           bool   `yaml:"no_ghproxy"`
 	QbotPublicMode      bool   `yaml:"qbot_public_mode"`
 	DailyAssetPushCron  string `yaml:"daily_asset_push_cron"`
