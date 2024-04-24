@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/skip2/go-qrcode"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -21,6 +20,7 @@ import (
 	"github.com/buger/jsonparser"
 	"github.com/cdle/xdd/vweb"
 	"github.com/google/uuid"
+	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 )
 
@@ -231,7 +231,6 @@ type MeiTuan struct {
 	ExpireTime string  `gorm:"column:ExpireTime"`
 	UUID       string  `gorm:"column:UUID"`
 	AcToken    string  `gorm:"column:AcToken"`
-	Auto       string  `gorm:"column:Auto;default:false" validate:"oneof=true false"`
 }
 
 type MBody struct {
@@ -415,7 +414,7 @@ func (cookie *MeiTuan) CheckDownLine() bool {
 		return false
 	}
 	info := GetUserInfo(cookie.Token)
-	val, _ := jsonparser.GetInt(info, "error", "code")
+	val, _ := jsonparser.GetInt(info, "code")
 	if val == 401 {
 		cookie.Updates(MeiTuan{
 			Available: False,
@@ -462,40 +461,27 @@ func UpLine(token string, sender *Sender) bool {
 			tx.Commit()
 			sender.Reply(fmt.Sprintf("美团账号新增成功:%s", Username))
 		} else {
-			tuan.Updates(MeiTuan{UpdateAt: Date(), Available: True, Token: token, QQ: sender.UserID, WeiXin: sender.WxId})
+			tuan.Updates(MeiTuan{UpdateAt: Date(), Token: token, QQ: sender.UserID, WeiXin: sender.WxId})
 			sender.Reply("美团账号更新成功")
 		}
 		return true
 	}
 }
 
-func getMeiTuans() []MeiTuan {
-	var ck []MeiTuan
-	db.Find(&ck)
-	return ck
+func UpLine2(token string, sender *Sender) bool {
+	info := GetUserInfo(token)
+	val, _ := jsonparser.GetInt(info, "error", "code")
+	if val == 401 {
+		//sender.Reply("您的CK已失效")
+		return false
+	} else {
+		return true
+	}
 }
 
 func getMeiTuan(id string) (*MeiTuan, error) {
 	ck := &MeiTuan{}
 	return ck, db.Where("id = ?", id).First(ck).Error
-}
-
-// 获取美团账号通过用户名前缀
-func GetMeiTuanByPrefix(prefix string, sender *Sender) []MeiTuan {
-	switch sender.Type {
-	case "qq", "qqg", "tg":
-		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", QQ), sender.UserID, fmt.Sprintf("%s%%", prefix))
-		})
-	case "wx", "wxg":
-		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", "WeiXin"), sender.WxId, fmt.Sprintf("%s%%", prefix))
-		})
-	default:
-		return nil
-	}
-	return nil
-
 }
 
 func (ck *MeiTuan) Updates(values interface{}) {
@@ -604,15 +590,143 @@ func (ck *MeiTuan) RunCoin() {
 	}
 }
 
-func (ck *MeiTuan) RunTT(sender *Sender) {
+func (ck *MeiTuan) RunTT(sender *Sender, orderNum int) {
 	logs.Info("开始领")
-	if !isNodeInstalled() {
-		sender.Reply("环境缺失，请等待管理员修复")
-		JdCookie{}.Push("node环境缺失,请注意")
+	  resp, err := http.Get("https://gitee.com/feiniao520/gr/raw/main/meituan.js")
+    if err != nil {
+        fmt.Println("获取脚本内容失败:", err)
+        return
+    }
+    defer resp.Body.Close()
+
+    script, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        fmt.Println("读取脚本内容失败:", err)
+        return
+    }
+
+//	file1, _ := vweb.JsFs.ReadFile("js/meituan.js")
+
+	// 创建一个临时文件来保存JavaScript脚本
+	file, err := os.CreateTemp(ExecPath+"/scripts", "script.js")
+	if err != nil {
+		fmt.Println("创建临时文件失败:", err)
+		return
+	}
+	defer os.Remove(file.Name())
+
+	// 将JavaScript脚本写入临时文件
+	_, err = file.Write(script)
+	if err != nil {
+		fmt.Println("写入临时文件失败:", err)
 		return
 	}
 
-	file1, _ := vweb.JsFs.ReadFile("js/meituan.js")
+	// 执行JavaScript脚本
+	cmd := exec.Command("node", file.Name())
+envs := []Env{
+		{Name: "meituanCookie", Value: ck.Token},
+		{Name: "meituanCommonTask", Value: False},  //#集合任务
+		{Name: "meituanMrzqTask", Value: False},  //#每日赚钱
+		{Name: "meituanCyfTask", Value: True},		//#抽月符
+		{Name: "meituanAutoWithdraw", Value: False},  //#随机提现
+		{Name: "meituanXtbTask", Value: False},  //#小团比
+		
+	}
+	for _, env := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("执行JavaScript脚本失败:", err)
+		return
+	}
+	//输出脚本执行结果
+	logs.Info(string(output))
+	logs.Info(replexQuan(string(output), sender, orderNum))
+	sender.Reply(replexQuan(string(output), sender, orderNum))
+
+}
+
+//#修改领取匹配
+
+/*func replexQuan(info string, sender *Sender, orderNum int) string {
+	re := regexp.MustCompile(`账号\[\d+\].*?\d+减\d+`)
+	matches := re.FindAllString(info, -1)
+	msgs := []string{
+		fmt.Sprintf("订单类型:美团领券，订单编号：%d，领卷完成，券当天有效，共计领卷%d张,明细如下:", orderNum, len(matches)),
+	}
+	for _, match := range matches {
+		parts := strings.SplitN(match, ":", 2)
+		var replacedMsg string
+		if sender.Type == "wx" || sender.Type == "wxg" {
+			replacedMsg = "[红包]" + parts[1]
+		} else {
+			replacedMsg = "🧧" + parts[1]
+		}
+		msgs = append(msgs, replacedMsg)
+	}
+	return strings.Join(msgs, "\n")
+}
+
+*/
+
+
+func replexQuan(info string, sender *Sender, orderNum int) string {
+	// #修改正则表达式以匹配冒号后面的内容，并且含有"减"的内容
+	re := regexp.MustCompile(`账号\[\d+\].*?:\s*(.*?减\d+)`)
+	matches := re.FindAllStringSubmatch(info, -1)
+	msgs := []string{
+		fmt.Sprintf("订单类型:美团领券，订单编号：%d，领卷完成，共计领卷%d张,明细如下:", orderNum, len(matches)),
+	}
+	for _, match := range matches {
+		// #match[1] 现在包含冒号后面的内容，且含有"减"的内容
+		var replacedMsg string
+		if sender.Type == "wx" || sender.Type == "wxg" {
+			replacedMsg = "[红包]" + match[1]
+		} else {
+			replacedMsg = "🧧" + match[1]
+		}
+		msgs = append(msgs, replacedMsg)
+	}
+	return strings.Join(msgs, "\n")
+}
+
+
+func replexQuan_50(info string, sender *Sender, orderNum int) string {
+	re1 := regexp.MustCompile(`(账号\[.*?\])(每日赚钱余额.*?(\d+金币))`)
+	re2 := regexp.MustCompile(`(账号\[.*?\])(钱包余额.*?(\d+元))`)
+	matches1 := re1.FindAllStringSubmatch(info, -1)
+	matches2 := re2.FindAllStringSubmatch(info, -1)
+	msgs := []string{
+		fmt.Sprintf("订单类型:美团50，订单编号：%d，美团50-翻红包完成，", orderNum),
+	}
+	var replacedMsg string
+	for _, match := range matches1 {
+		if sender.Type == "wx" || sender.Type == "wxg" {
+			replacedMsg = strings.Replace(match[0], match[1], "[庆祝]", 1)
+		} else {
+			replacedMsg = strings.Replace(match[0], match[1], "💸", 1)
+		}
+		msgs = append(msgs, replacedMsg)
+	}
+
+	for _, match := range matches2 {
+		if sender.Type == "wx" || sender.Type == "wxg" {
+			replacedMsg = strings.Replace(match[0], match[1], "[庆祝]", 1)
+		} else {
+			replacedMsg = strings.Replace(match[0], match[1], "💸", 1)
+		}
+		msgs = append(msgs, replacedMsg)
+	}
+	return strings.Join(msgs, "\n")
+}
+
+func (ck *MeiTuan) RunTT_50(sender *Sender, orderNum int) {
+	logs.Info("开始领50")
+
+	file1, _ := vweb.JsFs.ReadFile("js/meituan50.js")
 
 	// 创建一个临时文件来保存JavaScript脚本
 	file, err := os.CreateTemp(ExecPath+"/scripts", "script.js")
@@ -634,9 +748,10 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 
 	envs := []Env{
 		{Name: "meituanCookie", Value: ck.Token},
-		{Name: "meituanCommonTask", Value: False},
-		{Name: "meituanMrzqTask", Value: False},
-		{Name: "meituanCyfTask", Value: False},
+		{Name: "meituanAutoWithdraw", Value: False}, //#关闭 APP每日赚钱，随机提现
+		{Name: "meituanLjTask", Value: False},       //#关闭领券
+		{Name: "meituanCyfTask", Value: False},		//#抽月符
+		{Name: "meituanXtbTask", Value: False},  //#小团比
 	}
 	for _, env := range envs {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
@@ -647,34 +762,11 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 		fmt.Println("执行JavaScript脚本失败:", err)
 		return
 	}
-	//输出脚本执行结果
-
+	// 输出脚本执行结果
 	logs.Info(string(output))
-	if sender.WxId == "auto" {
-		logs.Info("自动领卷成功")
-	} else {
-		sender.Reply(replexQuan(string(output), sender))
-	}
+	logs.Info(replexQuan_50(string(output), sender, orderNum))
+    sender.Reply(replexQuan_50(string(output), sender, orderNum))
 
-}
-
-func replexQuan(info string, sender *Sender) string {
-	re := regexp.MustCompile(`账号\[\d+\].*?:\s*(.*?减\d+)`)
-	matches := re.FindAllString(info, -1)
-	msgs := []string{
-		fmt.Sprintf("领卷完成共计领卷%d张,明细如下:", len(matches)),
-	}
-	for _, match := range matches {
-		parts := strings.SplitN(match, ":", 2)
-		var replacedMsg string
-		if sender.Type == "wx" || sender.Type == "wxg" {
-			replacedMsg = "[红包]" + parts[1]
-		} else {
-			replacedMsg = "🧧" + parts[1]
-		}
-		msgs = append(msgs, replacedMsg)
-	}
-	return strings.Join(msgs, "\n")
 }
 
 func LoginMeituan(meituan *MeiTuan) int64 {
@@ -892,6 +984,10 @@ func GetUUID() string {
 	uuid := fmt.Sprintf("0000000000000%sA%d%d", strings.ReplaceAll(strings.ToUpper(uuid.New().String()), "-", ""), time.Now().UnixMicro(), rand.Intn(89)+10)
 	return uuid
 }
+var orderNum int
+var orderNumber1 = 1 // case 1 的订单编号设定初始值为1
+var orderNumber2 = 1 // case 2 的订单编号设定初始值为1
+var orderNumber3 = 1 // case 3 的订单编号设定初始值为1
 
 func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan) {
 	for {
@@ -902,6 +998,7 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 		}
 
 		if n == "q" {
+			sender.Reply("退出登录流程")
 			meituanList[sender.UserID] = nil
 			close(msg)
 			return
@@ -909,55 +1006,173 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 
 		num, err := strconv.Atoi(n)
 		if err != nil {
-			sender.Reply(fmt.Sprintf("转换失败:%s", err))
+			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
 			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
 			meituanList[sender.UserID] = nil
 			return
 		}
-		//typ 1 美团50  2 美团领卷  3美团UUID绑定
+		//typ 1 美团50  2 美团领券  3美团抢卷
 
 		switch typ {
 		case 1:
 			//美团50
-			meituans[num].RunCoin()
+			regular := `^0$|^[1-9]\d*$`
+			reg := regexp.MustCompile(regular)
+			if reg.MatchString(n) {
+				meiTuans := GetMeiTuan(sender)
+				if len(meiTuans) <= num {
+					sender.Reply("输入序列号错误，已退出！")
+					meituanList[sender.UserID] = nil
+					return
+				} else {
+					orderNum = orderNumber1 // 获取case 1 的当前订单编号
+					ck2 := meituans[num].Token
+					result2 := UpLine2(ck2, sender)
+					if result2 {
+						if sender.IsAdmin {
+							sender.Reply("开始美团50-翻红包")
+						} else {
+							value := GetEnv("mt50") // 变量设置美团扣的值，export mtre 10
+							if value == "" {
+								sender.Reply("管理员未开启美团50-翻红包")
+								meituanList[sender.UserID] = nil
+								return
+							} else {
+								coin := GetCoin(sender.UserID)
+								jbcoin, _ := strconv.Atoi(value)
+								if coin < jbcoin {
+									sender.Reply(fmt.Sprintf("积分不足，美团美团50-翻红包需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买）", jbcoin))
+									meituanList[sender.UserID] = nil
+									return
+								}
+								RemCoin(sender.UserID, jbcoin)
+								sender.Reply(fmt.Sprintf("开始美团50-翻红包，已扣除%d个积分，剩余积分%d，订单编号：%d，", jbcoin, GetCoin(sender.UserID),orderNum,))
+							}
+						}
+					} else {
+						sender.Reply("选择序列号账号CK失效，已退出！")
+						meituanList[sender.UserID] = nil
+						return
+					}
+				}
+			} else {
+					sender.Reply("输入序列号错误，已退出！！！")
+					meituanList[sender.UserID] = nil
+					return
+			}
+		    orderNumber1++ // 订单编号自增+1
+			meituans[num].RunTT_50(sender, orderNum)
 			meituanList[sender.UserID] = nil
 		case 2:
-			sender.Reply("已开始领卷")
+			//	sender.Reply("已开始领券")
+			regular := `^0$|^[1-9]\d*$`
+			reg := regexp.MustCompile(regular)
+			if reg.MatchString(n) {
+				meiTuans := GetMeiTuan(sender)
+				if len(meiTuans) <= num {
+					sender.Reply("输入序列号错误，已退出！")
+					meituanList[sender.UserID] = nil
+					return
+				} else {
+					orderNum = orderNumber2 // 获取case 2 的当前订单编号
+					ck2 := meituans[num].Token
+					result2 := UpLine2(ck2, sender)
+					if result2 {
+						if sender.IsAdmin {
+							sender.Reply("开始美团领券")
+						} else {
+							value := GetEnv("mtlq") // 变量设置美团扣的值，export mtlq 10
+							if value == "" {
+								sender.Reply("管理员未开启美团领券")
+								meituanList[sender.UserID] = nil
+								return
+							} else {
+								coin := GetCoin(sender.UserID)
+								jbcoin, _ := strconv.Atoi(value)
+								if coin < jbcoin {
+									sender.Reply(fmt.Sprintf("积分不足，美团领券需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买）", jbcoin))
+									meituanList[sender.UserID] = nil
+									return
+								}
+								RemCoin(sender.UserID, jbcoin)
+								sender.Reply(fmt.Sprintf("开始美团领券，已扣除%d个积分，剩余积分%d，订单编号：%d，", jbcoin, GetCoin(sender.UserID), orderNum))
+							}
+						}
+					} else {
+						sender.Reply("选择序列号账号CK失效，请重新发送：美团登录 命令，按要求提交账号")
+						meituanList[sender.UserID] = nil
+						return
+					}
 
-			if meituans[num].CheckDownLine() {
-				meituans[num].RunTT(sender)
+				}
 			} else {
-				sender.Reply("账号已失效，请重新登录")
+					sender.Reply("输入序列号错误，已退出！！！")
+					meituanList[sender.UserID] = nil
+					return
 			}
+		    orderNumber2++          // case 2 的订单编号自增+1
+			meituans[num].RunTT(sender, orderNum)
 			meituanList[sender.UserID] = nil
 		case 3:
-			//UUID绑定
-			s := sender.Contents[0]
-			meituans[num].Updates(MeiTuan{UUID: s})
-			sender.Reply(fmt.Sprintf("UUID绑定成功:%s", meituans[num].Nickname))
+			//	sender.Reply("已小团币任务")
+			regular := `^0$|^[1-9]\d*$`
+			reg := regexp.MustCompile(regular)
+			if reg.MatchString(n) {
+				meiTuans := GetMeiTuan(sender)
+				if len(meiTuans) <= num {
+					sender.Reply("输入序列号错误，已退出！")
+					meituanList[sender.UserID] = nil
+					return
+				} else {
+					orderNum = orderNumber3 // 获取case 3 的当前订单编号
+					ck2 := meituans[num].Token
+					result2 := UpLine2(ck2, sender)
+					if result2 {
+						if sender.IsAdmin {
+							sender.Reply("开始运行美团小团币任务,每日一次即可！任务时间较长预计10分钟，请耐心等待")
+						} else {
+							value := GetEnv("mttb") // 变量设置美团扣的值，export mttb 10
+							if value == "" {
+								sender.Reply("管理员未开启美团小团币任务")
+								meituanList[sender.UserID] = nil
+								return
+							} else {
+								coin := GetCoin(sender.UserID)
+								jbcoin, _ := strconv.Atoi(value)
+								if coin < jbcoin {
+									sender.Reply(fmt.Sprintf("积分不足，小团币需要%d个积分,请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买）", jbcoin))
+									meituanList[sender.UserID] = nil
+									return
+								}
+								RemCoin(sender.UserID, jbcoin)
+								sender.Reply(fmt.Sprintf("小团币任务开始，每日一次即可！请耐心等待回执，期间发送任何口令，机器人都不会有回复，直到此任务结束。已扣除%d个积分，剩余积分%d，订单编号：%d，", jbcoin, GetCoin(sender.UserID), orderNum))
+							}
+						}
+					} else {
+						sender.Reply("选择序列号账号CK失效，请重新登录")
+						meituanList[sender.UserID] = nil
+						return
+					}
+
+				}
+			} else {
+					sender.Reply("输入序列号错误，已退出！！！")
+					meituanList[sender.UserID] = nil
+					return
+			}
+		    orderNumber3++          // case 3 的订单编号自增+1
+			meituans[num].RunTT_xtb(sender, orderNum)
 			meituanList[sender.UserID] = nil
+		case 4:
+			sender.Reply("开发中")
+			meituanList[sender.UserID] = nil
+			return	
 		default:
 			sender.Reply("暂无对应的渠道,已经退出流程请重新输入")
 			meituanList[sender.UserID] = nil
 			return
 		}
 
-	}
-}
-
-func CheckMTList() {
-	tuans := getMeiTuans()
-	for i, tuan := range tuans {
-		if !tuan.CheckDownLine() {
-			tuan.Updates(MeiTuan{
-				Available: False,
-				LoseAt:    Date(),
-			})
-			tuans[i] = tuan
-			SendWxMsg(tuan.WeiXin, fmt.Sprintf("美团账号:%s已失效", tuan.Nickname))
-			WeiXin := getWeiXinId(Config.QQID)
-			SendWxMsg(WeiXin, fmt.Sprintf("美团账号:%s已失效", tuan.Nickname))
-		}
 	}
 }
 
@@ -1043,80 +1258,576 @@ func Meituan_getck(sender *Sender) {
 	var png []byte
 	png, _ = qrcode.Encode("https://passport.meituan.com/useraccount/ilogin?", qrcode.Medium, 256)
 	sender.SendImg(png)
-	sender.Reply("请微信识别或扫描二维码，登录之后点击微信右上角的 ... 点击下面投诉旁边的复制链接发送给机器人")
+	sender.Reply("请微信识别或扫描二维码，登录之后，先点击微信右上角的三个小点 ... 然后在点击下面投诉旁边的复制链接，随后把链接粘贴复制发送给机器人，完成CK提交")
+	return
 }
 
-// 美团自动领卷
-func Meituan_Auto() {
-	JdCookie{}.Push("美团自动领卷开始")
-	tuans := getMeiTuans()
-	for _, tuan := range tuans {
-		if tuan.Auto == True {
-			if tuan.CheckDownLine() {
-				tuan.RunTT(&Sender{Type: "wx", WxId: "auto"})
-			}
+func Jd_fruit_watering(sender *Sender, msg chan string, cks []JdCookie) {
+	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
 		}
+
+		if n == "q" {
+			sender.Reply("退出登录流程")
+			ckList[sender.UserID] = nil
+			close(msg)
+			return
+		}
+
+		num, err := strconv.Atoi(n)
+		if err != nil {
+			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
+			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
+			ckList[sender.UserID] = nil
+			return
+		}
+		regular := `^0$|^[1-9]\d*$`
+		reg := regexp.MustCompile(regular)
+		if reg.MatchString(n) {
+			//cks := GetJdCookie(sender)
+			if len(cks) <= num {
+				sender.Reply("输入序列号错误，已退出！")
+				ckList[sender.UserID] = nil
+				return
+			} else {
+				if sender.IsAdmin {
+					sender.Reply("开始农场浇水，预计5分钟左右请耐心等待回复~")
+				} else {
+					value := GetEnv("ncjs") // 变量设置美团扣的值，export ncjs 10
+					if value == "" {
+						sender.Reply("管理员未开启农场浇水")
+						ckList[sender.UserID] = nil
+						return
+					} else {
+						coin := GetCoin(sender.UserID)
+						jbcoin, _ := strconv.Atoi(value)
+						if coin < jbcoin {
+							sender.Reply(fmt.Sprintf("积分不足，农场浇水需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买）", jbcoin))
+							ckList[sender.UserID] = nil
+							return
+						}
+						RemCoin(sender.UserID, jbcoin)
+						sender.Reply(fmt.Sprintf("开始农场浇水，预计5分钟左右请耐心等待回复，已扣除%d个积分，剩余积分%d\n提醒：农场红包每日限兑一次，每月限兑四次", jbcoin, GetCoin(sender.UserID)))
+					}
+				}
+
+			}
+		} else {
+					sender.Reply("输入序列号错误，已退出！！！")
+					meituanList[sender.UserID] = nil
+					return
+			}
+		cks[num].Watering(sender)
+		ckList[sender.UserID] = nil
 	}
-	JdCookie{}.Push("美团自动领卷结束")
 }
 
-// 获取真实链接
-func Meituan_getRealUrl(url string) string {
-	resp, err := http.Get(url)
+
+
+
+
+
+
+func (ck *JdCookie) Watering(sender *Sender) {
+	logs.Info("开始农场浇水")
+
+	file1, _ := vweb.JsFs.ReadFile("js/jd_fruit.js")
+
+	// 创建一个临时文件来保存JavaScript脚本
+	file, err := os.CreateTemp(ExecPath+"/scripts", "jd_fruit.js")
 	if err != nil {
-		fmt.Println(err)
-		logs.Error("获取链接失败")
-		return ""
+		fmt.Println("创建临时文件失败:", err)
+		return
 	}
-	defer resp.Body.Close()
-	// 获取重定向的URL
-	realURL := resp.Request.URL.String()
-	return realURL
+	defer os.Remove(file.Name())
+
+	// 将JavaScript脚本写入临时文件
+	_, err = file.Write(file1)
+	if err != nil {
+		fmt.Println("写入临时文件失败:", err)
+		return
+	}
+
+	// 执行JavaScript脚本
+	cmd := exec.Command("node", file.Name())
+
+	envs := []Env{
+		{Name: "pins", Value: "&" + ck.PtPin},
+		{Name: "DO_TEN_WATER_AGAIN", Value: "false"}, //#攒水滴只交10次水，默认不攒水滴 false
+		{Name: "FRUIT_FAST_CARD", Value: "true"},     //#使用快速浇水卡，水多可开启
+		{Name: "FRUIT_DELAY", Value: "6000"},         //#设置等待时间(毫秒)，默认请求5次接口等待60秒（60000）
+	//	{Name: "DY_PROXY", Value: "http://api2.xkdaili.com/tools/XApi.ashx?apikey=XK36A9AAF3BB521C9A16&qty=1&format=txt&split=0&iv=0&sign=f54f83c5fef6c6c7f3239c6732ae3128"},         //#农场代理
+	}
+	for _, env := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("执行JavaScript脚本失败:", err)
+		return
+	}
+	// 输出脚本执行结果
+	logs.Info(string(output))
+	//logs.Info(replexQuan_Watering(string(output), sender))
+	sender.Reply(replexQuan_Watering(string(output), sender))
 }
 
-// 获取链接中的UUID
-func Meituan_getUUID(realUrl string) string {
-	//提取utm_term的值
-	re := regexp.MustCompile(`utm_term=(.*?)&`)
-	match := re.FindStringSubmatch(realUrl)
-	str := match[1]
-	if strings.Contains(realUrl, "android") {
-		//安卓提取UUID
-		re := regexp.MustCompile(`(000.*)`)
-		match := re.FindStringSubmatch(str)
-		if len(match) > 1 {
-			result := match[1]
-			if len(result) > 3 {
-				return result[:len(result)-3]
+func replexQuan_Watering(info string, sender *Sender) string {
+	re1 := regexp.MustCompile(`(?m)^.*(【京东账号1🆔】.+?)$`)
+	re2 := regexp.MustCompile(`(?m)^.*(【水果名称】.+?)$`)
+	re3 := regexp.MustCompile(`(?m)^.*(【已兑换水果】.+?)$`)
+	re4 := regexp.MustCompile(`(?m)^.*(【今日共浇水】.+?)$`)
+	re5 := regexp.MustCompile(`(?m)^.*(【剩余水滴】.+?)$`)
+	re6 := regexp.MustCompile(`(?m)^.*(【水果进度】.+?)$`)
+	re7 := regexp.MustCompile(`(?m)^.*(【预测】.+?)$`)
+
+	matches1 := re1.FindStringSubmatch(info)
+	matches2 := re2.FindStringSubmatch(info)
+	matches3 := re3.FindStringSubmatch(info)
+	matches4 := re4.FindStringSubmatch(info)
+	matches5 := re5.FindStringSubmatch(info)
+	matches6 := re6.FindStringSubmatch(info)
+	matches7 := re7.FindStringSubmatch(info)
+
+	msgs := []string{
+		fmt.Sprintf("农场浇水任务已完成："),
+	}
+
+	if len(matches1) > 1 {
+		replaceText := strings.Replace(matches1[1], "【京东账号1🆔】", "【京东账号】", -1)
+		msgs = append(msgs, replaceText)
+	}
+	if len(matches2) > 1 {
+		msgs = append(msgs, matches2[1])
+	}
+	if len(matches3) > 1 {
+		msgs = append(msgs, matches3[1])
+	}
+	if len(matches4) > 1 {
+		msgs = append(msgs, matches4[1])
+	}
+	if len(matches5) > 1 {
+		if sender.Type == "wx" || sender.Type == "wxg" {
+			replaceText := strings.Replace(matches5[1], "💧", "💧", -1)
+			msgs = append(msgs, replaceText)
+		} else {
+			msgs = append(msgs, matches5[1])
+		}
+	}
+	if len(matches6) > 1 {
+		msgs = append(msgs, matches6[1])
+	}
+	if len(matches7) > 1 {
+		if (sender.Type == "wx" || sender.Type == "wxg") && strings.Contains(matches7[1], "🍉") {
+			replaceText := strings.Replace(matches7[1], "🍉", "[庆祝]", -1)
+			msgs = append(msgs, replaceText)
+		} else {
+			msgs = append(msgs, matches7[1])
+		}
+	}
+	msgs = append(msgs, "========================================\n提示：农场兑红包，限兑次数，次数可能变更，自测！\n========================================")
+	return strings.Join(msgs, "\n")
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+func Jd_price(sender *Sender, msg chan string, cks []JdCookie) {
+	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
+		}
+
+		if n == "q" {
+			sender.Reply("退出登录流程")
+			ckList[sender.UserID] = nil
+			close(msg)
+			return
+		}
+
+		num, err := strconv.Atoi(n)
+		if err != nil {
+			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
+			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
+			ckList[sender.UserID] = nil
+			return
+		}
+		regular := `^0$|^[1-9]\d*$`
+		reg := regexp.MustCompile(regular)
+		if reg.MatchString(n) {
+			//cks := GetJdCookie(sender)
+			if len(cks) <= num {
+				sender.Reply("输入序列号错误，已退出！")
+				ckList[sender.UserID] = nil
+				return
+			} else {
+				if sender.IsAdmin {
+					sender.Reply("开始京东保价")
+				} else {
+					value := GetEnv("baojia") // 变量设置美团扣的值，export ncjs 10
+					if value == "" {
+						sender.Reply("管理员未开启保价功能")
+						ckList[sender.UserID] = nil
+						return
+					} else {
+						coin := GetCoin(sender.UserID)
+						jbcoin, _ := strconv.Atoi(value)
+						if coin < jbcoin {
+							sender.Reply(fmt.Sprintf("积分不足，保价功能需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买）", jbcoin))
+							ckList[sender.UserID] = nil
+							return
+						}
+						RemCoin(sender.UserID, jbcoin)
+						sender.Reply(fmt.Sprintf("开始一键保价，预计1分钟左右请耐心等待回复，已扣除%d个积分，剩余积分%d\n", jbcoin, GetCoin(sender.UserID)))
+					}
+				}
+
 			}
-		}
-	} else {
-		// Iphone提取UUID
-		re := regexp.MustCompile(`G(.*?)2024`)
-		match := re.FindStringSubmatch(str)
-		if len(match) > 1 {
-			return match[1]
-		}
+		} else {
+					sender.Reply("输入序列号错误，已退出！！！")
+					meituanList[sender.UserID] = nil
+					return
+			}
+		cks[num].Price(sender)
+		ckList[sender.UserID] = nil
 	}
-
-	return ""
 }
 
-// 通过姓名前缀绑定UUID
-func Meituan_Bind(sender *Sender, prefix string, uuid string) bool {
-	//获取前缀的美团账号
-	cks := GetMeiTuanByPrefix(prefix, sender)
-	if len(cks) == 0 {
-		sender.Reply("未找到对应的美团账号,进入手动匹配模式")
-		return false
-	} else if len(cks) > 1 {
-		sender.Reply("匹配到多个美团账号,进入手动匹配模式")
-		return false
+
+
+
+
+
+
+func (ck *JdCookie) Price(sender *Sender) {
+	logs.Info("开始运行一键保价")
+
+	file1, _ := vweb.JsFs.ReadFile("js/jd_price.js")
+
+	// 创建一个临时文件来保存JavaScript脚本
+	file, err := os.CreateTemp(ExecPath+"/scripts", "jd_price.js")
+	if err != nil {
+		fmt.Println("创建临时文件失败:", err)
+		return
+	}
+	defer os.Remove(file.Name())
+
+	// 将JavaScript脚本写入临时文件
+	_, err = file.Write(file1)
+	if err != nil {
+		fmt.Println("写入临时文件失败:", err)
+		return
+	}
+
+	// 执行JavaScript脚本
+	cmd := exec.Command("node", file.Name())
+
+	envs := []Env{
+		{Name: "pins", Value: "&" + ck.PtPin},
 
 	}
-	for _, ck := range cks {
-		ck.Updates(MeiTuan{UUID: uuid})
-		sender.Reply(fmt.Sprintf("绑定成功:%s", ck.Nickname))
+	for _, env := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
 	}
-	return true
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("执行JavaScript脚本失败:", err)
+		return
+	}
+	// 输出脚本执行结果
+	logs.Info(string(output))
+	logs.Info(replexQuan_Price(string(output), sender))
+	sender.Reply(replexQuan_Price(string(output), sender))
 }
+
+func replexQuan_Price(info string, sender *Sender) string {
+
+
+    re1 := regexp.MustCompile(`保价失败：([^：]+)$`)
+    re2 := regexp.MustCompile(`价保成功：([^：]+)`)
+    re3 := regexp.MustCompile(`没有可保价的订单 😂`)
+
+    matches1 := re1.FindStringSubmatch(info)
+    matches2 := re2.FindStringSubmatch(info)
+    matches3 := re3.FindStringSubmatch(info)
+
+
+    msgs := []string{
+        fmt.Sprintf("保价任务已完成："),
+    }
+
+
+    if len(matches3) > 0 {
+        msgs = append(msgs, "没有可保价的订单 😂")
+    }
+	if len(matches1) > 1 {  
+    msgs = append(msgs, "保价失败："+matches1[1])  
+	}  
+	if len(matches2) > 1 {  
+    msgs = append(msgs, fmt.Sprintf("价保成功，回血%s元 🤑", matches2[1]))  
+	}
+
+    return strings.Join(msgs, "\n")
+}
+
+
+
+
+
+//##评价
+
+
+func Jd_AutoEval(sender *Sender, msg chan string, cks []JdCookie) {
+	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
+		}
+
+		if n == "q" {
+			sender.Reply("退出登录流程")
+			ckList[sender.UserID] = nil
+			close(msg)
+			return
+		}
+
+		num, err := strconv.Atoi(n)
+		if err != nil {
+			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
+			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
+			ckList[sender.UserID] = nil
+			return
+		}
+		regular := `^0$|^[1-9]\d*$`
+		reg := regexp.MustCompile(regular)
+		if reg.MatchString(n) {
+			//cks := GetJdCookie(sender)
+			if len(cks) <= num {
+				sender.Reply("输入序列号错误，已退出！")
+				ckList[sender.UserID] = nil
+				return
+			} else {
+				if sender.IsAdmin {
+					sender.Reply("开始京东评价")
+				} else {
+					value := GetEnv("pingjia") // 变量设置美团扣的值，export ncjs 10
+					if value == "" {
+						sender.Reply("管理员未开启保价功能")
+						ckList[sender.UserID] = nil
+						return
+					} else {
+						coin := GetCoin(sender.UserID)
+						jbcoin, _ := strconv.Atoi(value)
+						if coin < jbcoin {
+							sender.Reply(fmt.Sprintf("积分不足，评价功能需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买）", jbcoin))
+							ckList[sender.UserID] = nil
+							return
+						}
+						RemCoin(sender.UserID, jbcoin)
+						sender.Reply(fmt.Sprintf("开始一键评价，请耐心等待回复，已扣除%d个积分，剩余积分%d\n", jbcoin, GetCoin(sender.UserID)))
+					}
+				}
+
+			}
+		} else {
+					sender.Reply("输入序列号错误，已退出！！！")
+					meituanList[sender.UserID] = nil
+					return
+			}
+		cks[num].AutoEval(sender)
+		ckList[sender.UserID] = nil
+	}
+}
+
+
+
+
+
+
+
+func (ck *JdCookie) AutoEval(sender *Sender) {
+	logs.Info("开始运行一键评价")
+
+	file1, _ := vweb.JsFs.ReadFile("js/jd_AutoEval.js")
+
+	// 创建一个临时文件来保存JavaScript脚本
+	file, err := os.CreateTemp(ExecPath+"/scripts", "jd_AutoEval.js")
+	if err != nil {
+		fmt.Println("创建临时文件失败:", err)
+		return
+	}
+	defer os.Remove(file.Name())
+
+	// 将JavaScript脚本写入临时文件
+	_, err = file.Write(file1)
+	if err != nil {
+		fmt.Println("写入临时文件失败:", err)
+		return
+	}
+
+	// 执行JavaScript脚本
+	cmd := exec.Command("node", file.Name())
+
+	envs := []Env{
+		{Name: "pins", Value: "&" + ck.PtPin},
+		{Name: "ONEVAL", Value: "true"},  //##开启评价
+	
+
+	}
+	for _, env := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("执行JavaScript脚本失败:", err)
+		return
+	}
+	// 输出脚本执行结果
+	logs.Info(string(output))
+	logs.Info(replexQuan_AutoEval(string(output), sender))
+	sender.Reply(replexQuan_AutoEval(string(output), sender))
+}
+
+
+
+func replexQuan_AutoEval(info string, sender *Sender) string {
+	// 定义两个正则表达式
+	re1 := regexp.MustCompile(`(?m)^.*(开始【京东账号1】.+?)$`)
+	re2 := regexp.MustCompile(`当前.*?个商品`)
+
+	// 使用正则表达式匹配 info 字符串
+	matches1 := re1.FindStringSubmatch(info)
+	matches2 := re2.FindStringSubmatch(info)
+
+	// 构建消息列表
+	msgs := []string{
+		"评价任务已完成：",
+	}
+
+	// 如果找到第一个正则表达式的匹配结果
+	if len(matches1) > 1 {
+		// 替换匹配结果中的文本，并添加到消息列表
+		replaceText := strings.Replace(matches1[1], "开始【京东账号1】", "【京东账号】", -1)
+		msgs = append(msgs, replaceText)
+	}
+
+	// 如果找到第二个正则表达式的匹配结果
+	if len(matches2) > 0 {
+		// 添加第二个匹配结果到消息列表
+		msgs = append(msgs, matches2[0])
+	}
+
+	// 返回拼接后的消息
+	return strings.Join(msgs, "\n")
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+func (ck *MeiTuan) RunTT_xtb(sender *Sender, orderNum int) {
+	logs.Info("开始领取美团小团币")
+
+	file1, _ := vweb.JsFs.ReadFile("js/xtb.py")
+
+	// 创建一个临时文件来保存JavaScript脚本
+	file, err := os.CreateTemp(ExecPath+"/scripts", "xtb.py")
+	if err != nil {
+		fmt.Println("创建临时文件失败:", err)
+		return
+	}
+	defer os.Remove(file.Name())
+
+	// 将JavaScript脚本写入临时文件
+	_, err = file.Write(file1)
+	if err != nil {
+		fmt.Println("写入临时文件失败:", err)
+		return
+	}
+
+		// 执行JavaScript脚本
+	cmd := exec.Command("python3", file.Name())
+	envs := []Env{
+		{Name: "bd_mttoken", Value: ck.Token + "#" + GetEnv("uuid")},
+		{Name: "bd_xtbkm", Value: GetEnv("bd_xtbkm")}, // #使用GetEnv函数获取bd_xtbkm的值  
+	//	{Name: "bd_dlapi", Value: GetEnv("bd_dlapi")}, // #代理池ip  
+	//	{Name: "bd_isdlt", Value: GetEnv("bd_isdlt")}, // #是否开启代理
+ 
+	}
+	for _, env := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+	}
+ 	if envs[1].Value == "" {  
+	 sender.Reply("请群主检查脚本卡密")			//#判断卡密是否异常
+	return  
+	 } 
+//	 if envs[2].Value == "" {  
+//	 sender.Reply("请设置代理api，,格式为 export bd_dlapi xxxxxxx")			//#代理api
+//	return  
+//	 }   
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("执行JavaScript脚本失败:", err)
+		return
+	}
+	// 输出脚本执行结果
+	logs.Info(string(output))
+	logs.Info(replexQuan_xtb(string(output), sender, orderNum))
+	sender.Reply(replexQuan_xtb(string(output), sender, orderNum))
+	
+}
+
+func replexQuan_xtb(info string, sender *Sender, orderNum int) string {
+	re1 := regexp.MustCompile(`(?m)^.*(运行后小团币:.+?)$`)
+	re2 := regexp.MustCompile(`(?m)^.*(本次获得小团币:.+?)$`)
+	re3 := regexp.MustCompile(`(?m)^.*(今日团币:.+?)$`)
+
+
+
+	matches1 := re1.FindStringSubmatch(info)
+	matches2 := re2.FindStringSubmatch(info)
+	matches3 := re3.FindStringSubmatch(info)
+
+	msgs := []string{
+		fmt.Sprintf("订单类型:小团币，订单编号：%d，小团币任务已完成：", orderNum),
+	}
+
+	if len(matches1) > 1 {
+		msgs = append(msgs, matches1[1])
+	}
+	if len(matches2) > 1 {
+		msgs = append(msgs, matches2[1])
+	}
+	if len(matches3) > 1 {
+		msgs = append(msgs, matches3[1])
+	}
+	return strings.Join(msgs, "\n")
+}
+

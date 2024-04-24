@@ -118,7 +118,7 @@ func NolanLJToKL(lj string, title string) string {
 
 }
 
-// 随机slice数组
+//随机slice数组
 func randShuffle(slice []JdCookie) {
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(slice), func(i, j int) {

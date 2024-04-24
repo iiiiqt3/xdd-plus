@@ -10,6 +10,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/skip2/go-qrcode"
+	"gorm.io/gorm"
 )
 
 func NolanGetJdQrImg(sender *Sender) {
@@ -32,12 +33,43 @@ func NolanGetJdQrImg(sender *Sender) {
 		var png []byte
 		png, _ = qrcode.Encode("https://qr.m.jd.com/p?k="+key, qrcode.Medium, 256)
 		sender.SendImg(png)
+		value := GetEnv("dlkl") // 变量设置登录变量值，export dlkl 开
+		if value == "开" {
+			sender.Reply("请使用京东APP扫描登录或复制链接用浏览器打开或复制口令打开京东app，150秒失效\n口令模式只支持安卓用户，苹果用户无法使用")
+			sender.Reply(LJtoKL("https://lzkj-isv.isvjcloud.com/lzclient/cjwx/common/openJDApp.html?actlink=openapp.jdmobile://virtual?params={\"category\":\"jump\",\"des\":\"scanLogin\",\"key\":\"AAEAIC7o7uvtQDO6vdYl4liag5G4fngqZbK2Vt83LyAbnmhF\",\"sourceType\":\"JSHOP_SOURCE_TYPE\",\"sourceValue\":\"JSHOP_SOURCE_VALUE\",\"M_sourceFrom\":\"mxz\",\"msf_type\":\"auto\"}"))
+			sender.Reply(fmt.Sprintf("https://qr.m.jd.com/p?k=%s", key))
+		} else {
+			sender.Reply(fmt.Sprintf("https://qr.m.jd.com/p?k=%s", key))
+			sender.Reply("请使用京东APP扫描或复制链接用浏览器打开，150秒失效")
+		}
 
 		//sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
-		sender.Reply(fmt.Sprintf("https://qr.m.jd.com/p?k=%s", key))
-		logs.Info(key)
+		//sender.Reply(fmt.Sprintf("https://qr.m.jd.com/p?k=%s", key))
 
-		sender.Reply("请使用京东APP扫描,或复制链接用浏览器打开。150秒失效")
+		//lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
+		//url, _ := jsonparser.GetString(lj, "code")
+		//logs.Info(url)
+		//sender.Reply(NolanLJToKL(url, "京东快捷登录"))
+
+		logs.Info(key)
+		//if Config.QQID == 764763903 {
+		//	SendQQMsg(QQMessage{
+		//		Action: "send_msg",
+		//		QQMsg: struct {
+		//			MessageType string `json:"message_type"`
+		//			UserId      int    `json:"user_id"`
+		//			GroupID     int    `json:"group_id"`
+		//			Message     string `json:"message"`
+		//		}{
+		//			UserId:  sender.UserID,
+		//			GroupID: 0,
+		//			Message: fmt.Sprintf("[CQ:share,url=%s,title=京东快捷登录]", "https://qr.m.jd.com/p?k="+key),
+		//		},
+		//		Echo: "",
+		//	})
+		//
+		//}
+		//sender.Reply("请使用京东APP扫描,或复制链接用浏览器打开。150秒失效")
 		go NolanGetJDQrStatus(key, sender)
 	} else {
 		logs.Info(string(bytes))
@@ -88,9 +120,16 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				Available: True,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True})
-				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+				date := Date()
+				UpdateAt2 := nck.UpdateAt
+				result6 := Addcoin(UpdateAt2, sender)
+				if result6 {
+					nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True, UpdateAt: date})
+				} else {
+					nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True})
+				}
+				sender.Reply(fmt.Sprintf("扫码登录成功:%s", pin))
+				(&JdCookie{}).Push(fmt.Sprintf("来自扫码登录的更新:%s", pin))
 			} else {
 				NewJdCookie(&ck)
 				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
@@ -98,6 +137,7 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 					ck.Update(QQ, sender.UserID)
 				}
 				sender.Reply(fmt.Sprintf(msg))
+				Recoin(sender)
 				sender.Reply(ck.Query())
 				(&JdCookie{}).Push(msg)
 			}
@@ -187,9 +227,16 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 			PtKey: ptkey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
-			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
+			date := Date()
+			UpdateAt2 := nck.UpdateAt
+			result6 := Addcoin(UpdateAt2, sender)
+			if result6 {
+				nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True, UpdateAt: date})
+			} else {
+				nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
+			}
+			sender.Reply(fmt.Sprintf("短信登录成功,可以继续登录下一个账号:%s", pin))
+			(&JdCookie{}).Push(fmt.Sprintf("来自短信的更新:%s", pin))
 		} else {
 			NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
@@ -197,6 +244,7 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 				ck.Update(QQ, sender.UserID)
 			}
 			sender.Reply(fmt.Sprintf(msg))
+			Recoin(sender)
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 		}
@@ -223,7 +271,7 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 				//smsList[sender.UserID] = nil
 			} else {
 				smsList[sender.UserID] = nil
-				sender.Reply("你的账号需要验证才能登陆，请晚上20点后再次尝试验证")
+				sender.Reply("你的账号可能触发了电话语音验证，请在京东官方app登录验证后再次尝试，或者使用：扫码 指令 提交试试，如果仍然无法登陆，请晚上20点以后再次尝试")
 			}
 		} else {
 			smsList[sender.UserID] = nil
@@ -252,7 +300,14 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			PtKey: ptkey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
+			date := Date()
+			UpdateAt2 := nck.UpdateAt
+			result6 := Addcoin(UpdateAt2, sender)
+			if result6 {
+				nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True, UpdateAt: date})
+			} else {
+				nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
+			}
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
@@ -262,6 +317,7 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 				ck.Update(QQ, sender.UserID)
 			}
 			sender.Reply(fmt.Sprintf(msg))
+			Recoin(sender)
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 
@@ -281,5 +337,98 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			(&JdCookie{}).Push("Pro短信登录异常" + message)
 			return
 		}
+	}
+}
+
+func CompareDates(updateAt string) int {
+	updateTime, err := time.Parse("2006-01-02", updateAt)
+	if err != nil {
+		fmt.Println("无效的 UpdateAt 日期格式")
+	}
+	date := Date()
+	dateTime, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		fmt.Println("无效的日期格式")
+	}
+	// 获取更新ck早三天的时间，此处三天是包含了当日所以-2
+	earlierTime := dateTime.AddDate(0, 0, -2)
+
+	if updateTime.Before(earlierTime) {
+		return -1 // 更新ck时间比三天前的日期更早
+	} else if updateTime.After(earlierTime) && updateTime.Before(earlierTime.AddDate(0, 0, 3)) {
+		return -2 // 更新ck时间比三天前的日期晚但不足三天
+	} else if updateTime.After(earlierTime) {
+		return 1 // 更新ck时间比三天前的日期更晚
+	}
+	return 0 // 更新ck时间等于三天前的日期
+}
+
+func Addcoin(updateAt2 string, sender *Sender) bool {
+	var Class2 string
+	if sender.Type == "tgg" {
+		Class2 = "tg"
+	}
+	if sender.Type == "qqg" {
+		Class2 = "qq"
+	}
+	var u User
+	ntime := time.Now()
+	err := db.Where("number = ?", sender.UserID).First(&u).Error
+	if err != nil {
+		u = User{
+			Class:    Class2,
+			Number:   sender.UserID,
+			Coin:     1,
+			ActiveAt: ntime,
+		}
+		if err := db.Create(&u).Error; err != nil {
+			fmt.Println("数据库创建失败")
+		}
+	}
+
+	result := CompareDates(updateAt2)
+	switch result {
+	case -1, 0:
+		coin := 10 //奖励积分数量
+		db.Model(&u).Updates(map[string]interface{}{
+			"coin": gorm.Expr(fmt.Sprintf("coin+%d", coin)),
+		})
+		u.Coin += coin
+		sender.Reply(fmt.Sprintf("登录成功奖励%d个积分，积分余额%d。", coin, u.Coin))
+		return true
+	default:
+		sender.Reply(fmt.Sprintf("三日内登录奖励积分已发放，无法重复获取，积分余额%d。", u.Coin))
+		return false
+	}
+}
+
+func Recoin(sender *Sender) {
+	var Class2 string // 定义变量以存储修改后的 sender.Type 值
+	if sender.Type == "tgg" {
+		Class2 = "tg"
+	}
+	if sender.Type == "qqg" {
+		Class2 = "qq"
+	}
+	var u User
+	ntime := time.Now()
+	err := db.Where("number = ?", sender.UserID).First(&u).Error
+	if err != nil {
+		u = User{
+			Class:    Class2,
+			Number:   sender.UserID,
+			Coin:     30, //奖励积分数量
+			ActiveAt: ntime,
+		}
+		sender.Reply(fmt.Sprintf("登录成功奖励%d个积分，积分余额%d。", u.Coin, u.Coin))
+		if err := db.Create(&u).Error; err != nil {
+		}
+	} else {
+		coin := 30 //奖励积分数量
+		db.Model(&u).Updates(map[string]interface{}{
+			"coin": gorm.Expr(fmt.Sprintf("coin+%d", coin)),
+		})
+		u.Coin += coin
+		sender.Reply(fmt.Sprintf("登录成功奖励%d个积分，积分余额%d。", coin, u.Coin))
 	}
 }
