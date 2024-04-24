@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
+	"github.com/buger/jsonparser"
 )
 
 type Asset struct {
@@ -85,7 +86,7 @@ func getToTalBean(cookie string, totalBean chan TotalBean) {
 	req.Header("Referer", "https://wqs.jd.com/my/jingdou/my.shtml?sceneval=2")
 	req.Header("Cookie", cookie)
 	data, _ := req.Bytes()
-	//logs.Info(string(data))
+	logs.Info(string(data))
 	json.Unmarshal(data, &a)
 	totalBean <- a
 }
@@ -142,7 +143,68 @@ func CompletePush() {
 	}
 }
 
+
 func (ck *JdCookie) Query() string {
+    msgs := []string{}
+    if CookieOK(ck) {
+        msgs = append(msgs, fmt.Sprintf("账号昵称：%v", ck.Nickname))
+        msgs = append(msgs, fmt.Sprintf("用户等级：%v", ck.UserLevel))
+        msgs = append(msgs, fmt.Sprintf("等级名称：%v", ck.LevelName))
+        msgs = append(msgs, fmt.Sprintf("绑定userID：%v", ck.QQ))
+        msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
+        cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
+          encodedCookie := url.QueryEscape(cookie) // 对cookie进行URL编码
+    //    queryURL := "http://180.167.44.58:8081/jd/Query?token=123456a&cookie=" + encodedCookie
+
+        url := GetEnv("url")
+        urlToekn := GetEnv("token")
+        if url == "" || urlToekn == ""{  
+            // 处理URL为空的情况，例如记录错误或退出程序 
+			msgs = append(msgs, "查询异常，请通知管理员！") 
+			(&JdCookie{}).Push("设置Y查询的url和token")
+        } else {
+				queryURL := fmt.Sprintf("%s?token=%s&cookie=%s", url, urlToekn,encodedCookie)
+				//  logs.Info(queryURL)
+				req := httplib.Get(queryURL)
+				req.Header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+				data, err := req.Bytes()
+				if err != nil {
+					msgs = append(msgs, fmt.Sprintf("查询失败: %s", err.Error()))
+				} else {
+					responseData := string(data)
+					msgs = append(msgs, responseData)
+				}
+		}	
+    } else {
+        msgs = append(msgs, []string{
+            "提醒：该账号已过期，请重新登录",
+        }...)
+    }
+    ck.PtPin, _ = url.QueryUnescape(ck.PtPin)
+    if Config.Query1 != "" {
+        msgs = append(msgs, Config.Query1)
+    }
+    return strings.Join(msgs, "\n")
+}
+
+
+func (ck *JdCookie) Query2() string {
+	name := "qncx.js"
+	envs := []Env{{Name: "pins", Value: "&" + ck.PtPin}}
+	msg := runTask(&Task{Path: name, Envs: envs}, &Sender{})
+	//log.Info(msg)
+	if !strings.Contains(msg, "cookies") {
+		msg = fmt.Sprintf("账号昵称：%s\n绑定QQ: %v\n用户等级：%v\n等级名称：%v\n优先级: %v\n%s", ck.Nickname, ck.QQ, ck.UserLevel, ck.LevelName, ck.Priority, msg)
+	} else if CookieOK(ck) {
+		msg = fmt.Sprintf("查询失败\n账号: %s\n备注: %s\n%s", ck.PtPin, ck.Note, msg)
+	} else {
+		msg = fmt.Sprintf("失效账号\n账号: %s\n备注: %s", ck.PtPin, ck.Note)
+	}
+	return msg
+}
+
+
+func (ck *JdCookie) Query1() string {
 
 	msgs := []string{
 		fmt.Sprintf("账号昵称：%s", ck.Nickname),
@@ -166,9 +228,10 @@ func (ck *JdCookie) Query() string {
 	}
 	asset := Asset{}
 	if CookieOK(ck) {
-		//msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
-		//msgs = append(msgs, fmt.Sprintf("用户等级：%v", ck.UserLevel))
-		//msgs = append(msgs, fmt.Sprintf("等级名称：%v", ck.LevelName))
+		msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
+		msgs = append(msgs, fmt.Sprintf("用户等级：%v", ck.UserLevel))
+		msgs = append(msgs, fmt.Sprintf("等级名称：%v", ck.LevelName))
+		msgs = append(msgs, fmt.Sprintf("绑定userID：%v", ck.QQ))
 
 		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
 		if ck.UpdateAt != "" {
@@ -340,6 +403,28 @@ type JingXiDetail struct {
 	Amount      int    `json:"amount"`
 	Createdate  string `json:"createdate"`
 	Visibleinfo string `json:"visibleinfo"`
+}
+
+func getJingXiBeanDeatil(cookie string) []JingXiDetail {
+	req := httplib.Get(fmt.Sprintf("https://m.jingxi.com/activeapi/queryuserjingdoudetail?_=%t&sceneval=2&g_login_type=1&g_ty=ls&pagesize=15&type=16", time.Now().UnixMilli()))
+	req.Header("User-Agent", "jdpingou;android;5.5.0;11;network/wifi;model/M2102K1C;appBuild/18299;partner/lcjx11;session/110;pap/JA2019_3111789;brand/Xiaomi;Mozilla/5.0 (Linux; Android 11; M2102K1C Build/RKQ1.201112.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/92.0.4515.159 Mobile Safari/537.36")
+	req.Header("Host", "m.jingxi.com")
+	req.Header("Accept", "*/*")
+	req.Header("Accept-Encoding", "gzip, deflate, br")
+	req.Header("Accept-Language", "zh-CN,zh-Hans;q=0.9")
+	req.Header("Referer", "https://st.jingxi.com/")
+	req.Header("Cookie", cookie)
+	if sysConfig.ProxyUrl != "" {
+		proxy := func(req *http.Request) (*url.URL, error) {
+			u, _ := url.ParseRequestURI(sysConfig.ProxyUrl)
+			return u, nil
+		}
+		req.SetProxy(proxy)
+	}
+	resp, _ := req.Bytes()
+	a := JingXiBeanDetails{}
+	json.Unmarshal(resp, &a)
+	return a.Detail
 }
 
 type RedList struct {
@@ -623,4 +708,32 @@ func jsGold(cookie string, state chan int64) { //
 	data, _ := req.Bytes()
 	json.Unmarshal(data, &a)
 	state <- int64(a.Data.BalanceVO.GoldBalance)
+}
+
+func jdzz(cookie string, state chan int64) { //
+	req := httplib.Get(`https://api.m.jd.com/client.action?functionId=interactTaskIndex&body={}&client=wh5&clientVersion=9.1.0`)
+	req.Header("Host", "api.m.jd.com")
+	req.Header("Accept-Language", "zh-cn")
+	req.Header("Accept-Encoding", "gzip, deflate, br")
+	req.Header("Referer", "http://wq.jd.com/wxapp/pages/hd-interaction/index/index")
+	req.Header("User-Agent", ua)
+	req.Header("cookie", cookie)
+	req.Header("Content-Type", "application/json")
+	data, _ := req.Bytes()
+	mmc, _ := jsonparser.GetString(data, "data", "totalNum")
+	state <- int64(Int(mmc))
+}
+
+func jxGcFuncName(cookie string, body string, _stk string) *httplib.BeegoHTTPRequest {
+	now := time.Now()
+	duration, _ := time.ParseDuration("48h")
+	req := httplib.Get(fmt.Sprintf(`https://m.jingxi.com/dreamfactory/%s?zone=dream_factory&pin=&sharePin=&shareType=&materialTuanPin=&materialTuanId=&source=&sceneval=2&g_login_type=1&_time=%s&_=%s&_ste=1&_stk=%s`, body, fmt.Sprint(now.Unix()), fmt.Sprint(now.Add(duration).Unix()), _stk))
+	req.Header("Host", "api.m.jd.com")
+	req.Header("Accept-Language", "zh-cn")
+	req.Header("Accept-Encoding", "gzip, deflate, br")
+	req.Header("Referer", "http://wq.jd.com/wxapp/pages/hd-interaction/index/index")
+	req.Header("User-Agent", ua)
+	req.Header("cookie", cookie)
+	req.Header("Content-Type", "application/json")
+	return req
 }

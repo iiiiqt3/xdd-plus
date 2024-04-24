@@ -335,7 +335,6 @@ func CookieOK(ck *JdCookie) bool {
 		}
 		return true
 	}
-	//logs.Info("第一个接口失效，切换到第二接口")
 	//(&JdCookie{}).Push("第一个接口失效，切换到第二个接口，可能黑IP")
 	return av2(ck)
 }
@@ -351,7 +350,7 @@ func av2(ck *JdCookie) bool {
 		logs.Info("接口报错")
 		return true
 	}
-	//logs.Info(string(data))
+	logs.Info(string(data))
 	val, _ := jsonparser.GetString(data, "islogin")
 	if val == "1" {
 		return true

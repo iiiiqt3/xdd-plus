@@ -32,15 +32,13 @@ func AutoBak() {
 
 func Reduction() {
 	var cks []BakJdCookie
-	//寻找Rwskey不为空的数据
-	db.Find(&cks, "RWskey != ? and RWskey != ?", "", "null")
+	db.Find(&cks)
 	for _, ck := range cks {
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
 			nck.Updates(JdCookie{
-				PtKey:     ck.PtKey,
-				WsKey:     ck.WsKey,
-				RWskey:    ck.RWskey,
-				Available: True,
+				PtKey:  ck.PtKey,
+				WsKey:  ck.WsKey,
+				RWskey: ck.RWskey,
 			})
 		} else {
 			logs.Info("已删除该pin")
