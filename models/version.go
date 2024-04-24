@@ -12,11 +12,11 @@ import (
 	"time"
 )
 
-var version = "v13.5"
+var version = "v14.0"
 var describe = "修复新号不进入容器"
 var AppName = "xdd"
 var pname = pname1()
-var UpdateUrl = "https://update.smxy.xyz"
+var UpdateUrl = "https://upt.xy.xyz"
 var notify = true
 
 func pname1() string {
