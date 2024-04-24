@@ -24,19 +24,19 @@ func init() {
 	zh_translations.RegisterDefaultTranslations(validate, trans)
 }
 
-// BaseController 基础控制器
+//BaseController 基础控制器
 type BaseController struct {
 	beego.Controller
 	PtPin  string
 	Master bool
 }
 
-// NextPrepare 下一个准备
+//NextPrepare 下一个准备
 type NextPrepare interface {
 	NextPrepare()
 }
 
-// Prepare 准备
+//Prepare 准备
 func (c *BaseController) Prepare() {
 	// c.Ctx.ResponseWriter.Header().Add("Master-IP-Address", models.GetMasteraddr())
 	if app, ok := c.AppController.(NextPrepare); ok {
@@ -44,7 +44,7 @@ func (c *BaseController) Prepare() {
 	}
 }
 
-// Response 响应
+//Response 响应
 func (c *BaseController) Response(ps ...interface{}) { //数据、信息、状态码
 	rsp := struct {
 		//状态码
@@ -74,7 +74,7 @@ func (c *BaseController) Response(ps ...interface{}) { //数据、信息、状�
 	c.StopRun()
 }
 
-// ResponseError 响应错误
+//ResponseError 响应错误
 func (c *BaseController) ResponseError(ps ...interface{}) *BaseController {
 	if ps[0] == nil {
 		return c
@@ -104,7 +104,7 @@ func (c *BaseController) ResponseError(ps ...interface{}) *BaseController {
 	return nil
 }
 
-// Logined 登录
+//Logined 登录
 func (c *BaseController) Logined() *BaseController {
 	if v := c.GetSession("token"); v == nil {
 		c.Ctx.Redirect(302, "/")
@@ -117,7 +117,7 @@ func (c *BaseController) Logined() *BaseController {
 	return c
 }
 
-// Validate 表单验证
+//Validate 表单验证
 func (c *BaseController) Validate(ps interface{}) *BaseController {
 	c.ResponseError(json.Unmarshal(c.Ctx.Input.CopyBody(10000000), ps), http.StatusBadRequest)
 	if err := validate.Struct(ps); err != nil {
@@ -128,7 +128,7 @@ func (c *BaseController) Validate(ps interface{}) *BaseController {
 	return c
 }
 
-// GetPathInt64
+//GetPathInt64
 func (c *BaseController) GetPathInt64(v string) int64 {
 	r := c.Ctx.Input.Param(":" + v)
 	if r == "" {
@@ -139,7 +139,7 @@ func (c *BaseController) GetPathInt64(v string) int64 {
 	return int64(i)
 }
 
-// GetPathInt
+//GetPathInt
 func (c *BaseController) GetPathInt(v string) int {
 	r := c.Ctx.Input.Param(":" + v)
 	if r == "" {
@@ -150,7 +150,7 @@ func (c *BaseController) GetPathInt(v string) int {
 	return i
 }
 
-// GetPathInt32
+//GetPathInt32
 func (c *BaseController) GetPathInt32(v string) int32 {
 	r := c.Ctx.Input.Param(":" + v)
 	if r == "" {
@@ -161,7 +161,7 @@ func (c *BaseController) GetPathInt32(v string) int32 {
 	return int32(i)
 }
 
-// GetQueryInt64
+//GetQueryInt64
 func (c *BaseController) GetQueryInt64(v string) int64 {
 	r := c.GetString(v)
 	if r == "" {
@@ -172,7 +172,7 @@ func (c *BaseController) GetQueryInt64(v string) int64 {
 	return int64(i)
 }
 
-// GetQueryInt
+//GetQueryInt
 func (c *BaseController) GetQueryInt(v string) int {
 	r := c.GetString(v)
 	if r == "" {
@@ -183,7 +183,7 @@ func (c *BaseController) GetQueryInt(v string) int {
 	return i
 }
 
-// GetQueryInt32
+//GetQueryInt32
 func (c *BaseController) GetQueryInt32(v string) int32 {
 	r := c.GetString(v)
 	if r == "" {

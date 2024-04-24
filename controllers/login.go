@@ -317,7 +317,7 @@ func init() {
 	}()
 }
 
-// Query 查询
+//Query 查询
 func (c *LoginController) Query() {
 	if v := c.GetSession("jd_token"); v == nil {
 		c.Ctx.WriteString("重新获取二维码")
@@ -577,17 +577,17 @@ func (c *LoginController) SMSLogin() {
 							UpdateAt: time.Now().Local().Format("2006-01-02"),
 						})
 					}
-					msg := fmt.Sprintf("来自短信的更新,账号：%s,QQ: %v", nck.PtPin, qq)
+					msg := fmt.Sprintf("来自APP的更新,账号：%s,QQ: %v", nck.PtPin, qq)
 					ck.Push(ck.Query())
 					(&models.JdCookie{}).Push(msg)
 
 				} else {
 					models.NewJdCookie(ck)
 					if qq != "" {
-						msg := fmt.Sprintf("来自短信的添加,账号：%s,QQ: %v", ck.PtPin, qq)
+						msg := fmt.Sprintf("来自APP的添加,账号：%s,QQ: %v", ck.PtPin, qq)
 						(&models.JdCookie{}).Push(msg)
 					} else {
-						msg := fmt.Sprintf("来自短信的添加,账号：%s", ck.PtPin)
+						msg := fmt.Sprintf("来自APP的添加,账号：%s", ck.PtPin)
 						(&models.JdCookie{}).Push(msg)
 					}
 					ck.Push(ck.Query())
