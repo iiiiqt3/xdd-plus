@@ -4,6 +4,8 @@ type Env struct {
 	ID    int
 	Name  string `gorm:"unique"`
 	Value string
+	Note string
+	
 }
 
 func InitEnv() {
@@ -44,7 +46,7 @@ func IsAutoAgreeFriendVerify() bool {
 	return true
 }
 
-func IsAutoAgreeAutocollection() bool {
+	func IsAutoAgreeAutocollection() bool {
 	env := &Env{}
 	db.Where("name = ?", "Autocollection").First(env)
 	if env.Value == "" {
@@ -52,6 +54,7 @@ func IsAutoAgreeAutocollection() bool {
 	}
 	return true
 }
+
 
 func UseAgreeMsg() bool {
 	env := &Env{}
