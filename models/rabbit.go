@@ -29,12 +29,21 @@ func RabbitGetJdQrImg(sender *Sender) {
 		key, _ := jsonparser.GetString(bytes, "QRCodeKey")
 
 		//返回口令
-		jcommond, _ := jsonparser.GetString(bytes, "jcommond")
-		sender.Reply(jcommond + " 请复制口令到京东APP打开")
+		//jcommond, _ := jsonparser.GetString(bytes, "jcommond")
+		//sender.Reply(jcommond)
+
+		//图片
+		sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
 
 		qr, _ := jsonparser.GetString(bytes, "qr")
 		decodeStr, _ := base64.StdEncoding.DecodeString(qr)
 		sender.SendImg(decodeStr)
+
+		//口令转
+		//lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
+		//url, _ := jsonparser.GetString(lj, "code")
+		//logs.Info(url)
+		//sender.Reply(NolanLJToKL(url, "京东快捷登录"))
 
 		sender.Reply("请使用京东APP扫描，150秒失效")
 		go RabbitGetJDQrStatus(key, sender)
@@ -267,8 +276,6 @@ func RabbitSendSMS(ty string, phone string, sender *Sender) {
 			if status == 666 || status == 505 {
 				i++
 				sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
-				//休眠2秒钟
-				time.Sleep(time.Second * 2)
 				continue
 			} else {
 				sender.Reply(message)
@@ -307,7 +314,14 @@ func RabbitSendCode(ty string, phone string, code string, sender *Sender) {
 			WsKey: wskey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			nck.Updates(JdCookie{WsKey: wskey, QQ: sender.UserID, PtKey: ptkey})
+			date := Date()
+			UpdateAt2 := nck.UpdateAt
+			result6 := Addcoin(UpdateAt2, sender)
+			if result6 {
+				nck.Updates(JdCookie{WsKey: wskey, QQ: sender.UserID, PtKey: ptkey, Available: True, UpdateAt: date})
+			} else {
+				nck.Updates(JdCookie{WsKey: wskey, QQ: sender.UserID, PtKey: ptkey, Available: True})
+			}
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
@@ -320,11 +334,18 @@ func RabbitSendCode(ty string, phone string, code string, sender *Sender) {
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 		}
+
+
 		smsList[sender.UserID] = nil
+		go func() {
+			Save <- &JdCookie{}
+		}()
+		return
 	} else if state == 555 {
 		RiskUrl, _ := jsonparser.GetString(data, "RiskUrl")
 		var png []byte
 		png, _ = qrcode.Encode(RiskUrl, qrcode.Medium, 256)
+
 		sender.SendImg(png)
 		sender.Reply(message)
 		smsList[sender.UserID] = nil
