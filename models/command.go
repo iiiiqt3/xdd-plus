@@ -2,20 +2,22 @@ package models
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	browser "github.com/EDDYCJY/fake-useragent"
-	"github.com/beego/beego/v2/client/httplib"
-	"github.com/buger/jsonparser"
 	"math/rand"
 	"net/url"
 	"os"
-	"regexp"
+	"math"
+	"encoding/json"
+ 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
+	"bytes"
+	"os/exec"
+	browser "github.com/EDDYCJY/fake-useragent"
+	"github.com/beego/beego/v2/client/httplib"
+	"github.com/buger/jsonparser"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/google/uuid"
 	"github.com/skip2/go-qrcode"
@@ -25,7 +27,6 @@ import (
 type CodeSignal struct {
 	Command []string
 	Admin   bool
-	Coin    int
 	Handle  func(sender *Sender) interface{}
 }
 
@@ -108,6 +109,7 @@ func (sender *Sender) SendImg(msg []byte) {
 				MessageType: "group",
 				GroupID:     sender.ChatID,
 				Message:     fmt.Sprintf("[CQ:at,qq=%d][CQ:image,file=base64://%s,type=show]", sender.UserID, base64.StdEncoding.EncodeToString(msg)),
+			
 			},
 			Echo: "",
 		})
@@ -187,67 +189,78 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 	return nil
 }
 
-var codeSignals = []CodeSignal{
-	//获取我的userid
-	{
-		Command: []string{"获取我的userid"},
-		Handle: func(sender *Sender) interface{} {
-			return sender.WxId
-		},
-	},
+	var codeSignals = []CodeSignal{
 
-	// https://pp.iaka.cn/api/ajax.php?act=search&name=短剧名称 通过api写出搜剧代码，识别命令搜据，并解析空格后的剧名进行api查询并返回查询结果
-	{
-		Command: []string{"搜剧"},
-		Handle: func(sender *Sender) interface{} {
-			if len(sender.Contents) == 0 {
-				return "请输入剧名"
-			}
-			name := sender.Contents[0]
-			url := fmt.Sprintf("https://pp.iaka.cn/api/ajax.php?act=search&name=%s", url.QueryEscape(name))
-			req := httplib.Get(url)
-			req.Header("User-Agent", browser.Random())
-			bytes, err := req.Bytes()
-			if err != nil {
-				return err.Error()
-			}
-			return string(bytes)
-		},
-	},
-	//获取我的userid
-	{
-		Command: []string{"获取我的群Id"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			return sender.WxGroupId
-		},
-	},
-
+	
 	//拉人进微信群
-	{
+	{  
+	Command: []string{"拉群"},  
+	Handle: func(sender *Sender) interface{} {  
+		if sender.Type == "wxg" { // 如果是群聊消息  
+			if sender.IsAdmin { // 如果是管理员  
+				ExportEnv(&Env{
+						Name:  "InviteWxGroupID",
+						Value: sender.WxGroupId,
+					})
+					return "已将此群设为拉群目标" 
+			} else { // 如果不是管理员  
+				return "只有管理员可以设置拉群目标"  
+			}  
+		} else if sender.Type == "wx" { // 如果是私聊消息  
+			if sender.IsAdmin { // 如果是管理员  
+				return "管理员请不要对机器人私聊此命令"  
+			} else { // 如果不是管理员  
+				env := GetEnv("InviteWxGroupID")
+					if env != "" {
+						InviteGroup(sender.WxId, env)
+						return nil
+					} else {
+						return "未设置拉群目标！"
+					}
+			}  
+		} else { // 如果不是微信群聊或私聊消息  
+			sender.Reply("请添加微信机器人回复 拉群，加入群聊 ")  
+			return nil  
+		}  
+		},  
+	},
+
+
+
+
+
+
+
+
+
+{
 		Command: []string{"拉群"},
 		Handle: func(sender *Sender) interface{} {
-			if sender.IsAdmin && sender.Type == "wxg" {
-				ExportEnv(&Env{
-					Name:  "InviteWxGroupID",
-					Value: sender.WxGroupId,
-				})
-				return "已将此群设为拉群目标"
-			} else if sender.Type == "wx" {
-				env := GetEnv("InviteWxGroupID")
-				if env != "" {
-					InviteGroup(sender.WxId, env)
-					return nil
+			if sender.Type == "wx" {
+				if sender.IsAdmin {
+					ExportEnv(&Env{
+						Name:  "WxGroupID",
+						Value: sender.WxGroupId,
+					})
+					return "已将此群设为拉群目标"
 				} else {
-					return "未设置拉群目标！"
+					env := GetEnv("WxGroupID")
+					if env != "" {
+						InviteGroup(sender.WxId, Config.InviteGroupID)
+						return nil
+					} else {
+						return "未设置拉群目标！"
+					}
 				}
-			} else {
-				return "错误指令"
 			}
-
 			return nil
 		},
 	},
+
+
+
+
+
 	{
 		Command: []string{"监听微信群"},
 		Admin:   true,
@@ -295,24 +308,174 @@ var codeSignals = []CodeSignal{
 			}
 		},
 	},
-	{
-		Command: []string{"GPT", "GPT4"},
-		Handle: func(sender *Sender) interface{} {
-			//todo 接入GPT4
-			url := GetEnv("gpt")
-			token := GetEnv("gpt_token")
-			post := httplib.Post(url)
-			post.Header("Authorization", token)
-			post.Header("Content-Type", "application/json")
-			post.Body(fmt.Sprintf("{\n  \"model\": \"gpt-4-1106-preview\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"%s\"\n    }\n  ]\n}", sender.Contents[0:]))
-			bytes, _ := post.Bytes()
-			logs.Info(string(bytes))
-			val, _ := jsonparser.GetString(bytes, "choices", "[0]", "message", "content")
-			return val
+
+		{
+		  Command: []string{"GPT", "GPT4", "gpt"},
+		    Handle: func(sender *Sender) interface{} {
+
+			coin := GetCoin(sender.UserID)
+			   if coin <=200 {
+			   	return "为避免接口滥用，积分小于200将无法使用gpt服务"
+		    }
+		        // 将内容连接成一个字符串
+		        content := strings.Join(sender.Contents, " ")
+		
+		        // 修剪内容中的空格
+		        content = strings.TrimSpace(content)
+		
+		        // 检查是否提供了非空内容
+		        if content == "" {
+		            return "请输入正确的格式命令和内容中间有个空格，例如： GPT 群主帅吗"
+		        }
+		
+		        // todo: 接入GPT-4
+		        url := GetEnv("gpt")
+		        token := GetEnv("gpt_token")
+		        post := httplib.Post(url)
+		        post.Header("Authorization", token)
+		        post.Header("Content-Type", "application/json")
+		        post.Body(fmt.Sprintf("{\n  \"model\": \"gpt-4-1106-preview\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"%s\"\n    }\n  ]\n}", content))
+		        bytes, _ := post.Bytes()
+		        logs.Info(string(bytes))
+		        val, _ := jsonparser.GetString(bytes, "choices", "[0]", "message", "content")
+		
+		        return val
+		    },
 		},
+
+		{
+	    Command: []string{"记录ck", "提交ck","记录CK", "提交CK"},
+	    Handle: func(sender *Sender) interface{} {
+	        // 检查命令参数是否符合格式
+	        if len(sender.Contents) != 3 {
+	            sender.Reply("格式错误！！正确格式为：记录ck 你的ck 备注 活动代号 ，4个参数之间用空格链接，如提示错误请自查" )
+	            return nil
+	        }
+	
+	        // 获取命令参数
+	        value := sender.Contents[0]
+	        remarks := sender.Contents[1]
+	        env_name := sender.Contents[2]
+	
+	        // 获取扣积分设置
+	        value3 := GetEnv(env_name)
+	
+	        // 检查是否开启了小团币功能
+	        if value3 == "" {
+	            sender.Reply(fmt.Sprintf("%s未开启添加功能", env_name))
+	        } else {
+	            // 获取用户的积分
+	            coin := GetCoin(sender.UserID)
+	            jbcoin, _ := strconv.Atoi(value3)
+	
+	            // 检查用户积分是否足够
+	            if coin < jbcoin {
+	                sender.Reply(fmt.Sprintf("积分不足，%s需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买", env_name, jbcoin))
+	            } else {
+	                // 执行记录植白说账号的脚本
+	                cmd := exec.Command("python3", "scripts/record.py", value, remarks, env_name)
+	                var stdout, stderr bytes.Buffer
+	                cmd.Stdout = &stdout
+	                cmd.Stderr = &stderr                
+	
+	                // 执行命令
+	                err := cmd.Run()
+	                // 检查脚本执行结果
+	                if err == nil {
+	                	// 检查标准输出是否包含'记录成功'
+	                	outputStr := stdout.String()
+	                	if strings.Contains(outputStr, "记录成功") {
+	                    // 扣除用户积分
+	                    RemCoin(sender.UserID, jbcoin)
+	                    sender.Reply(fmt.Sprintf("添加%s账号，已扣除%d个积分，剩余积分%d", env_name, jbcoin, GetCoin(sender.UserID)))
+	                    sender.Reply("记录成功。")
+	                } else {
+	                    errorMsg := fmt.Sprintf("提示信息：%s", outputStr)
+	                    sender.Reply(errorMsg)
+	                }
+	                } else {
+	                	// 输出错误信息
+	                	errorMsg := fmt.Sprintf("错误信息：%s", stderr.String())
+	                	sender.Reply(errorMsg)
+                        }
+	            }
+	        }
+	
+	        return nil
+	    },
 	},
+
+
+
+
+	
 	{
-		Command: []string{"短信登录", "短信登陆"},
+	    Command: []string{"更新ck"},
+	    Handle: func(sender *Sender) interface{} {
+	        // 检查命令参数是否符合格式
+	        if len(sender.Contents) != 3 {
+	            sender.Reply("格式错误！！正确格式为：更新ck 你的ck 备注 活动代号")
+	            return nil
+	        }
+	
+	        // 获取命令参数
+	        value := sender.Contents[0]
+	        remarks := sender.Contents[1]
+	        env_name := sender.Contents[2]
+	
+	        // 获取扣积分设置
+	        value3 := GetEnv("up" + env_name)
+	
+	        // 检查是否开启了小团币功能
+	        if value3 == "" {
+	            sender.Reply(fmt.Sprintf("%s未开启更新功能", env_name))
+	        } else {
+	            // 获取用户的积分
+	            coin := GetCoin(sender.UserID)
+	            jbcoin, _ := strconv.Atoi(value3)
+	
+	            // 检查用户积分是否足够
+	            if coin < jbcoin {
+	                sender.Reply(fmt.Sprintf("积分不足，%s更新需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买", env_name, jbcoin))
+	            } else {
+	                // 执行记录植白说账号的脚本
+	                cmd := exec.Command("python3", "scripts/updata.py", value, remarks, env_name)
+	                var stdout, stderr bytes.Buffer
+	                cmd.Stdout = &stdout
+	                cmd.Stderr = &stderr                
+	
+	                // 执行命令
+	                err := cmd.Run()
+	                // 检查脚本执行结果
+	                if err == nil {
+	                	// 检查标准输出是否包含'更新成功'
+	                	outputStr := stdout.String()
+	                	if strings.Contains(outputStr, "更新成功") {
+	                    // 扣除用户积分
+	                    RemCoin(sender.UserID, jbcoin)
+	                    sender.Reply(fmt.Sprintf("更新%s账号，已扣除%d个积分，剩余积分%d", env_name, jbcoin, GetCoin(sender.UserID)))
+	                    sender.Reply("更新成功。")
+	                } else {
+	                    errorMsg := fmt.Sprintf("提示信息：%s", outputStr)
+	                    sender.Reply(errorMsg)
+	                }
+	                } else {
+	                	// 输出错误信息
+	                	errorMsg := fmt.Sprintf("错误信息：%s", stderr.String())
+	                	sender.Reply(errorMsg)
+                        }
+	            }
+	        }
+	
+	        return nil
+	    },
+	},
+
+
+	
+	
+/*	{
+		Command: []string{"登12录", "登34陆"},
 		Handle: func(sender *Sender) interface{} {
 			c2 := make(chan string)
 			smsList[sender.UserID] = c2
@@ -322,129 +485,18 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	//{
-	//    Command: []string{"记录ck", "提交ck"},
-	//    Handle: func(sender *Sender) interface{} {
-	//        // 检查命令参数是否符合格式
-	//        if len(sender.Contents) != 3 {
-	//            sender.Reply("格式错误！！正确格式为：记录ck 你的ck 备注 活动代号 \n例：\n记录ck we7sid-3d589f44c776253c 锋57box-1 Box57" )
-	//            return nil
-	//        }
-	//
-	//        // 获取命令参数
-	//        value := sender.Contents[0]
-	//        remarks := sender.Contents[1]
-	//        env_name := sender.Contents[2]
-	//
-	//        // 获取扣积分设置
-	//        value3 := GetEnv(env_name)
-	//
-	//        // 检查是否开启了记录功能
-	//        if value3 == "" {
-	//            sender.Reply(fmt.Sprintf("%s未开启添加功能", env_name))
-	//        } else {
-	//            // 获取用户的积分
-	//            coin := GetCoin(sender.UserID)
-	//            jbcoin, _ := strconv.Atoi(value3)
-	//
-	//            // 检查用户积分是否足够
-	//            if coin < jbcoin {
-	//                sender.Reply(fmt.Sprintf("积分不足，%s需要%d个积分，请登录京东账号获取奖励（或私聊群主积分卡）", env_name, jbcoin))
-	//            } else {
-	//                // 执行记录的脚本
-	//                cmd := exec.Command("python3", "scripts/record.py", value, remarks, env_name)
-	//                var stdout, stderr bytes.Buffer
-	//                cmd.Stdout = &stdout
-	//                cmd.Stderr = &stderr
-	//
-	//                // 执行命令
-	//                err := cmd.Run()
-	//                // 检查脚本执行结果
-	//                if err == nil {
-	//                	// 检查标准输出是否包含'记录成功'
-	//                	outputStr := stdout.String()
-	//                	if strings.Contains(outputStr, "记录成功") {
-	//                    // 扣除用户积分
-	//                    RemCoin(sender.UserID, jbcoin)
-	//                    sender.Reply(fmt.Sprintf("添加%s账号，已扣除%d个积分，剩余积分%d", env_name, jbcoin, GetCoin(sender.UserID)))
-	//                    sender.Reply("记录成功。")
-	//                } else {
-	//                    errorMsg := fmt.Sprintf("提示信息：%s", outputStr)
-	//                    sender.Reply(errorMsg)
-	//                }
-	//                } else {
-	//                	// 输出错误信息
-	//                	errorMsg := fmt.Sprintf("错误信息：%s", stderr.String())
-	//                	sender.Reply(errorMsg)
-	//                    }
-	//            }
-	//        }
-	//
-	//        return nil
-	//    },
-	//},
+*/
 
-	//{
-	//    Command: []string{"更新ck"},
-	//    Handle: func(sender *Sender) interface{} {
-	//        // 检查命令参数是否符合格式
-	//        if len(sender.Contents) != 3 {
-	//            sender.Reply("格式错误！！正确格式为：更新ck 你的ck 备注 活动代号")
-	//            return nil
-	//        }
-	//
-	//        // 获取命令参数
-	//        value := sender.Contents[0]
-	//        remarks := sender.Contents[1]
-	//        env_name := sender.Contents[2]
-	//
-	//        // 获取扣积分设置
-	//        value3 := GetEnv("up" + env_name)
-	//
-	//        // 检查是否开启了更新功能
-	//        if value3 == "" {
-	//            sender.Reply(fmt.Sprintf("%s未开启更新功能", env_name))
-	//        } else {
-	//            // 获取用户的积分
-	//            coin := GetCoin(sender.UserID)
-	//            jbcoin, _ := strconv.Atoi(value3)
-	//
-	//            // 检查用户积分是否足够
-	//            if coin < jbcoin {
-	//                sender.Reply(fmt.Sprintf("积分不足，%s更新需要%d个积分，请登录京东账号获取奖励（或私聊群主积分卡）", env_name, jbcoin))
-	//            } else {
-	//                // 执行记更新的脚本
-	//                cmd := exec.Command("python3", "scripts/updata.py", value, remarks, env_name)
-	//                var stdout, stderr bytes.Buffer
-	//                cmd.Stdout = &stdout
-	//                cmd.Stderr = &stderr
-	//
-	//                // 执行命令
-	//                err := cmd.Run()
-	//                // 检查脚本执行结果
-	//                if err == nil {
-	//                	// 检查标准输出是否包含'更新成功'
-	//                	outputStr := stdout.String()
-	//                	if strings.Contains(outputStr, "更新成功") {
-	//                    // 扣除用户积分
-	//                    RemCoin(sender.UserID, jbcoin)
-	//                    sender.Reply(fmt.Sprintf("更新%s账号，已扣除%d个积分，剩余积分%d", env_name, jbcoin, GetCoin(sender.UserID)))
-	//                    sender.Reply("更新成功。")
-	//                } else {
-	//                    errorMsg := fmt.Sprintf("提示信息：%s", outputStr)
-	//                    sender.Reply(errorMsg)
-	//                }
-	//                } else {
-	//                	// 输出错误信息
-	//                	errorMsg := fmt.Sprintf("错误信息：%s", stderr.String())
-	//                	sender.Reply(errorMsg)
-	//                    }
-	//            }
-	//        }
-	//
-	//        return nil
-	//    },
-	//},
+	{
+		Command: []string{"登录", "登陆"},
+		Handle: func(sender *Sender) interface{} {
+			c3 := make(chan string)
+			smsList[sender.UserID] = c3
+	//		sender.Reply("请输入手机号")
+			go SmsSelect(sender, c3, "Rabbit")
+			return nil
+		},
+	},
 
 	{
 		Command: []string{"删掉"},
@@ -522,6 +574,134 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
+{
+
+ 	Command: []string{"我的plus","我的PLUS" },
+        Handle: func(sender *Sender) interface{} {
+            sender.handleJdCookies(func(ck *JdCookie) {
+                cc := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey,ck.PtPin)
+                rsp := cmd(fmt.Sprintf(`python3 ./jd_plus_score.py "%s"`, cc), &Sender{})
+                sender.Reply(rsp)
+            })
+
+            return nil
+        },
+    },
+
+/*
+	    {  
+			 Command: []string{ "我的排名"},   
+			 Handle: func(sender *Sender) interface{} {    
+			 // 从发送者中获取用户的 QQ 号码    
+			 userQQ := sender.UserID    
+			   
+			 // 初始化变量，用于存储用户的排名和用户是否拥有 JD Cookie    
+			 var userRanking int    
+			 var hasCookie bool    
+			   
+			 // 获取所有的 JD Cookie    
+			 allCookies := GetJdCookies(func(sb *gorm.DB) *gorm.DB {  
+			 return sb.Where(fmt.Sprintf("%s = ? ", Available), True)  
+			 })    
+			   
+			 // 遍历所有的 JD Cookie    
+			 for i, cookie := range allCookies {  
+			 // 检查当前的 JD Cookie 是否属于该用户且可用  
+			 if cookie.QQ == userQQ  {  
+			 // 如果用户有可用的 JD Cookie，设置排名为当前遍历的索引值加一（因为索引从零开始）  
+			 userRanking = i + 1  
+			 hasCookie = true  
+			 break  
+			 }  
+			 }  
+			   
+			 // 检查用户是否有 JD Cookie    
+				// 检查用户是否有 JD Cookie  
+				if hasCookie {  
+					// 如果用户有 JD Cookie，回复他们的排名信息  
+					replyMessage := fmt.Sprintf("您优先级最高的账号排名是第 %d 位", userRanking)  
+					sender.Reply(replyMessage)  
+				} else {  
+					// 如果用户没有 JD Cookie，通知他们  
+					sender.Reply("您尚未绑定 JD Cookie，无法查询排名。")  
+				}  
+		  
+		
+				return nil // 返回 nil，因为没有需要返回的结果
+				},
+						
+						
+			},
+
+*/
+
+
+		{
+		
+		Command: []string{"我的排名"},
+		Handle: func(sender *Sender) interface{} {
+		    // 从发送者中获取用户的 QQ 号码
+		    userQQ := sender.UserID
+		
+		    // 初始化变量，用于存储用户的排名、用户名和优先级，以及用户是否拥有 JD Cookie
+		    var userRankings []struct {
+		        Rank     int
+		        Username string
+		        Priority int
+		    }
+		    var hasCookie bool
+		
+		    // 获取所有的 JD Cookie
+		    allCookies := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+		        return sb.Where(fmt.Sprintf("%s = ? ", Available), True)
+		    })
+		
+		    // 遍历所有的 JD Cookie
+		    for i, cookie := range allCookies {
+		        // 检查当前的 JD Cookie 是否属于该用户且可用
+		        if cookie.QQ == userQQ {
+		            // 如果用户有可用的 JD Cookie，添加排名、用户名和优先级到用户排名列表
+		            userRankings = append(userRankings, struct {
+		                Rank     int
+		                Username string
+		                Priority int
+		            }{
+		                Rank:     i + 1,
+		                Username: cookie.Nickname,
+		                Priority: cookie.Priority,
+		            })
+		            hasCookie = true
+		        }
+		    }
+		
+		    // 检查用户是否有 JD Cookie
+		    if hasCookie {
+		        // 如果用户有 JD Cookie，构造回复消息
+		        var replyMessage string
+		        if len(userRankings) == 1 {
+		            replyMessage = fmt.Sprintf("您的用户名：%s，优先级：%d ，排名是第 %d 位",  userRankings[0].Username, userRankings[0].Priority,userRankings[0].Rank)
+		        } else {
+		            replyMessage = "您账号排名信息："
+		            for idx, ranking := range userRankings {
+		                replyMessage += fmt.Sprintf("\n%d、用户名：%s，优先级：%d ，排名：%d 位", idx+1, ranking.Username, ranking.Priority, ranking.Rank)
+		            }
+		        }
+		        sender.Reply(replyMessage)
+		    } else {
+		        // 如果用户没有 JD Cookie，通知他们
+		        sender.Reply("您账号可能失效，或者尚未登录，无法查询排名。")
+		    }
+		
+		    return nil // 返回 nil，因为没有需要返回的结果
+		},
+		
+		},
+
+
+
+
+		
+	
 	{
 		Command: []string{"微信扫码"},
 		Handle: func(sender *Sender) interface{} {
@@ -538,23 +718,160 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	{
-		Command: []string{"N京东扫码"},
+
+{
+		Command: []string{"扫码"},
+		
 		Handle: func(sender *Sender) interface{} {
+		if sender.IsAdmin {
+		sender.Reply("开始京东扫码登录")
+		  } else {
+			value := GetEnv("sm")
+				if value == "" {
+					return "未开启扫码登录"
+							} else {
+						coin := GetCoin(sender.UserID)
+							jbcoin, _ := strconv.Atoi(value)
+								if coin < jbcoin {
+								return fmt.Sprintf("扫码登录需要%d个积分,请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买", jbcoin)
+									}
+									
+									RemCoin(sender.UserID, jbcoin)
+									sender.Reply(fmt.Sprintf("扫码即将开始，已扣除%d个积分,剩余%d", jbcoin,  GetCoin(sender.UserID)))
+								}
+							}
+
 			NolanGetJdQrImg(sender)
+			//sender.Reply("渠道升级，预计今晚修复完成")
 			return nil
 		},
 	},
 
+
 	{
+		Command: []string{"农场浇水", "浇水农场"},
+		Handle: func(sender *Sender) interface{} {
+			id := sender.UserID
+			var idType string
+			if sender.Type == "tg" {
+				idType = Telegram
+			} else {
+				idType = QQ
+			}
+			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
+			})
+
+			if len(cks) > 0 {
+
+				//进入队列
+				msg := make(chan string)
+				ckList[sender.UserID] = msg
+				go Jd_fruit_watering(sender, msg, cks)
+				msgs := []string{
+					"请回复以下序列号指定账号运行任务，如需退出请回复'q'退出登录流程：",
+				}
+				for i, ck := range cks {
+					msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
+				}
+				sender.Reply(strings.Join(msgs, "\n"))
+			} else {
+				sender.Reply("在线账号已全部失效，请对机器人发送“登录”")
+				return nil
+			}
+			return nil
+		},
+	},
+
+
+	{
+		Command: []string{"一键保价","一键价保"},
+		Handle: func(sender *Sender) interface{} {
+			id := sender.UserID
+			var idType string
+			if sender.Type == "tg" {
+				idType = Telegram
+			} else {
+				idType = QQ
+			}
+			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
+			})
+
+			if len(cks) > 0 {
+
+				//进入队列
+				msg := make(chan string)
+				ckList[sender.UserID] = msg
+				go Jd_price(sender, msg, cks)
+			
+				msgs := []string{
+					"请回复以下序列号指定账号运行任务，如需退出请回复'q'退出登录流程：",
+				}
+				for i, ck := range cks {
+					msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
+				}
+				sender.Reply(strings.Join(msgs, "\n"))
+			} else {
+				sender.Reply("在线账号已全部失效，请对机器人发送“登录”")
+				return nil
+			}
+			return nil
+		},
+	},
+
+
+{
+		Command: []string{"一键评价"},
+		Handle: func(sender *Sender) interface{} {
+			id := sender.UserID
+			var idType string
+			if sender.Type == "tg" {
+				idType = Telegram
+			} else {
+				idType = QQ
+			}
+			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
+			})
+
+			if len(cks) > 0 {
+
+				//进入队列
+				msg := make(chan string)
+				ckList[sender.UserID] = msg
+				go Jd_AutoEval(sender, msg, cks)
+			
+				msgs := []string{
+					"请回复以下序列号指定账号运行任务，如需退出请回复'q'退出登录流程：",
+				}
+				for i, ck := range cks {
+					msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
+				}
+				sender.Reply(strings.Join(msgs, "\n"))
+			} else {
+				sender.Reply("在线账号已全部失效，请对机器人发送“登录”")
+				return nil
+			}
+			return nil
+		},
+	},
+
+
+
+
+		
+
+
+{
 		Command: []string{"sign", "打卡", "签到"},
 		Handle: func(sender *Sender) interface{} {
-			if sender.Type == "tgg" {
-				sender.Type = "tg"
-			}
-			if sender.Type == "qqg" {
-				sender.Type = "qq"
-			}
+		//	if sender.Type == "tgg" {
+		//		sender.Type = "tg"
+		//	}
+		//	if sender.Type == "qqg" {
+		//		sender.Type = "qq"
+		//	}
 			zero, _ := time.ParseInLocation("2006-01-02", time.Now().Local().Format("2006-01-02"), time.Local)
 			var u User
 			var ntime = time.Now()
@@ -573,34 +890,71 @@ var codeSignals = []CodeSignal{
 					return err.Error()
 				}
 			} else {
-				if zero.Unix() > u.ActiveAt.Unix() {
+				if first || zero.Unix() > u.ActiveAt.Unix() {
 					first = true
-				} else {
-					return fmt.Sprintf("你打过卡了，积分余额%d。", u.Coin)
+			} else {
+				    return fmt.Sprintf("你打过卡了，积分余额%d。", u.Coin)
 				}
+
 			}
 			if first {
 				db.Model(User{}).Select("count(id) as total").Where("active_at > ?", zero).Pluck("total", &total)
-				coin := 1
-				if total[0]%3 == 0 {
-					coin = 2
+				coin := 5
+				if total[0] == 0 {
+					coin = 20
 				}
-				if total[0]%13 == 0 {
+				if total[0] == 1 {
+					coin = 18
+				}
+				if total[0] == 2 {
+					coin = 16
+				}
+				if total[0] == 3 {
+					coin = 14
+				}
+				if total[0] == 4 {
+					coin = 12
+				}
+				if total[0] == 5 {
+					coin = 10
+				}
+				if total[0] == 6 {
 					coin = 8
 				}
-				db.Model(&u).Updates(map[string]interface{}{
+				if total[0] == 7 {
+					coin = 6
+				}
+				
+				if total[0] == 50 {
+					coin = 10
+				}
+				if total[0] == 100 {
+					coin = 20
+				}
+				if total[0]%14 == 13 {
+					coin = 6
+				}
+				
+ 				db.Model(&u).Updates(map[string]interface{}{
 					"active_at": ntime,
 					"coin":      gorm.Expr(fmt.Sprintf("coin+%d", coin)),
 				})
 				u.Coin += coin
 				sender.Reply(fmt.Sprintf("你是打卡第%d人，奖励%d个积分，积分余额%d。", total[0]+1, coin, u.Coin))
 				ReturnCoin(sender)
-				return ""
+		//		return ""
 			}
 			return nil
 		},
 	},
-	{
+
+
+
+
+
+
+	
+/*	{
 		Command: []string{"清零"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -612,23 +966,101 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	{
-		Command: []string{"更新优先级", "更新车位"},
+{
+		Command: []string{"更新优先级", "更新车位", "ces"},
 		Handle: func(sender *Sender) interface{} {
 			coin := GetCoin(sender.UserID)
+			var total int64
+			db.Model(&JdCookie{QQ: sender.UserID}).Where(fmt.Sprintf("QQ = %d", sender.UserID)).Count(&total)
+			var intNum int = int(total)
+			coin = coin / intNum
 			t := time.Now()
-			if t.Weekday().String() == "Monday" && int(t.Hour()) <= 10 {
+			sender.Reply("提醒：如果你有多个账号，优先级会被平分到所有账户 ，5秒后开始优先级更新")
+			time.Sleep(time.Second * 5)
+			if t.Weekday().String() == "Monday" && int(t.Hour()) <= 22 {
 				sender.handleJdCookies(func(ck *JdCookie) {
-					ck.Update(Priority, coin)
+					ck.Update(Priority, ck.Priority+coin)
 				})
-				sender.Reply("优先级已更新")
+				sender.Reply("优先级已做累积更新，")
 				ClearCoin(sender.UserID)
 			} else {
-				sender.Reply("你错过时间了呆瓜,下周一10点前再来吧.")
+				sender.Reply("你错过时间了呆瓜,下周一23点前再来吧，友情提醒：优先级更新会平分账号")
 			}
 			return nil
 		},
 	},
+
+*/
+
+   
+   
+   {  
+     Command: []string{"更新优先级", "更新车位", "车位更新", "优先级更新"},
+	Handle: func(sender *Sender) interface{} {
+    if sender.IsAdmin {
+        sender.Reply("管理员请不要使用此命令")
+    } else {
+        // 检查命令参数
+        if len(sender.Contents) < 1 { // 至少应该有两个参数
+            sender.Reply("请在命令后面带入你需要更新的数字, 例如: 更新车位 100")
+            return nil
+        }
+
+        // 提取积分值
+        userCoinStr := sender.Contents[0]
+        userCoin, err := strconv.ParseInt(userCoinStr, 10, 64)
+        if err != nil || userCoin <= 0 {
+            sender.Reply("输入的积分值无效，请确保输入的是一个正整数。")
+            return nil
+        }
+
+        // 获取用户当前积分
+        coin := GetCoin(sender.UserID)
+        if int(userCoin) > int(coin) {
+            sender.Reply("你输入的数字，超过你拥有的积分")
+            return nil
+        }
+
+        // 获取数据库中的ck数量
+        var total int64
+        // db.Model(&JdCookie{QQ: sender.UserID}).Where(fmt.Sprintf("QQ = %d", sender.UserID)).Count(&total)
+
+        db.Model(&JdCookie{QQ: sender.UserID}).Where(fmt.Sprintf("QQ = %d AND %s = ?", sender.UserID, Available), True).Count(&total)
+
+        var intNum int = int(total)
+        logs.Info(intNum)
+        if intNum == 0 {
+            sender.Reply("你没有任何ck可以更新，或者你的ck全部失效。")
+            return nil
+        }
+        var coin1 int = int(math.Round(float64(userCoin) / float64(intNum)))
+        logs.Info(coin1)
+
+        // 更新ck的优先级
+        // t := time.Now()
+        // if t.Weekday().String() == "Monday" && int(t.Hour()) <= 23 {
+        sender.handleJdCookies(func(ck *JdCookie) {
+            ck.Update(Priority, ck.Priority+coin1)
+        })
+
+        sender.Reply("正在更新未失效账号的优先级，请稍后。")
+
+        RemCoin(sender.UserID, int(userCoin))
+        time.Sleep(time.Second * 2)
+        // 发送回复消息
+        var tcoin int
+        tcoin = GetCoin(sender.UserID)
+        sender.Reply(fmt.Sprintf("未失效账号优先级已做累积更新，并扣除了相应的积分，当前剩余积分%d", tcoin))
+        // return nil
+        // } else {
+        // sender.Reply("你错过时间了呆瓜,请每周一23点前再来吧，友情提醒：优先级更新会平分未失效的账号")
+        // }
+        }
+        return nil
+       
+    },
+}, 
+
 
 	{
 		Command: []string{"XDD专用还愿CK指令，慎用！"},
@@ -653,7 +1085,7 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-		Command: []string{"coin", "积分"},
+		Command: []string{"余额", "积分", "我的积分"},
 		Handle: func(sender *Sender) interface{} {
 			return fmt.Sprintf("积分:%d", GetCoin(sender.UserID))
 		},
@@ -668,14 +1100,55 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-		Command: []string{"绑定微信"},
+	Command: []string{"绑定微信","微信绑定"},
 		Handle: func(sender *Sender) interface{} {
-			sender.Reply("请复制发送给Wx机器人")
+		if sender.Type == "wx" || sender.Type == "wxg"{
+			sender.Reply("请对QQ机器人发送指令，得到绑定码，把绑定码发给微信机器人，打通QQ、微信 ，app客户端，三端查询和积分打卡系统")
+			return nil
+			} else {
+			sender.Reply("请复制发送给Wx机器人完成绑定，添加后可回复 拉群 入群加入微信群聊，绑定后打通QQ、微信 ，app客户端，三端查询和积分打卡系统")
+			}
 			return makeWxId(sender.UserID, "DXWX"+getMd5String1(strconv.Itoa(sender.UserID)))
 		},
 	},
 
+
+
 	{
+		Command: []string{"授权"},
+		//Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			value3 := GetEnv("sqelm")
+			if value3 == "" {
+					sender.Reply("管理员未开启授权添加功能sqelm")
+				} else {
+					coin := GetCoin(sender.UserID)
+					jbcoin, _ := strconv.Atoi(value3)
+					if coin < jbcoin {
+						sender.Reply(fmt.Sprintf("积分不足，添加授权需要%d个积分,请登录京东账号获取奖励（或私聊群主积分卡）", jbcoin))
+					} else {
+						RemCoin(sender.UserID, jbcoin)
+						sender.Reply(fmt.Sprintf("添加授权，已扣除%d个积分，剩余积分%d", jbcoin, GetCoin(sender.UserID)))
+						ctt := sender.JoinContens()
+						auth := AddAuth(ctt)		
+						if auth {
+						return "授权成功"
+						} else {
+							return "授权失败"
+						}
+						}
+					}
+			return nil
+		},
+	},
+
+
+
+
+
+
+
+/*	{
 		Command: []string{"授权"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -688,7 +1161,7 @@ var codeSignals = []CodeSignal{
 			}
 		},
 	},
-
+*/
 	{
 		Command: []string{"取消授权"},
 		Admin:   true,
@@ -708,15 +1181,6 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			initCookie()
-			return "检测完成"
-		},
-	},
-
-	{
-		Command: []string{"美团检测"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			CheckMTList()
 			return "检测完成"
 		},
 	},
@@ -796,7 +1260,20 @@ var codeSignals = []CodeSignal{
 			str := ""
 			sender.Contents = sender.Contents[0:]
 			sender.handleJdCookies(func(ck *JdCookie) {
-				str = str + fmt.Sprintf("账号：%s (%s) QQ：%d \n", ck.Nickname, ck.PtPin, ck.QQ)
+				str = str + fmt.Sprintf("账号：%s (%s) QQ：%d 优先级：%d \n", ck.Nickname, ck.PtPin, ck.QQ, ck.Priority)
+			})
+			return str
+		},
+	},
+
+
+		{
+		Command: []string{"我的优先级"},
+	
+		Handle: func(sender *Sender) interface{} {
+			str := ""
+			sender.handleJdCookies(func(ck *JdCookie) {
+				str = str + fmt.Sprintf("昵称：%s 用户名：%s QQ：%d 优先级：%d \n", ck.Nickname, ck.PtPin, ck.QQ, ck.Priority)
 			})
 			return str
 		},
@@ -852,7 +1329,7 @@ var codeSignals = []CodeSignal{
 			})
 			xk := 0
 			for _, ck := range cks {
-				rt := fmt.Sprintf("你的账号【%s】已过期，请对机器人发（登录）重新上车", ck.Nickname)
+				rt := fmt.Sprintf("你的账号【%s】已过期，请对机器人发（登录）重新上", ck.Nickname)
 				time.Sleep(time.Second * time.Duration(Config.Later))
 				time.Sleep(time.Duration(rand.Intn(1000)+2000) * time.Millisecond)
 				ck.Push(rt)
@@ -863,10 +1340,12 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+
 	{
-		Command: []string{"查询", "query"},
+		Command: []string{"查22询", "query"},
 		Handle: func(sender *Sender) interface{} {
-			sender.Reply("正在为您查询，请耐心等待")
+			sender.Reply("正在为您查询，请耐心等待,需要查询更加全面的信息，请使用 ：我的资产 口令")
 			switch sender.Type {
 			case "wx":
 				sender.handleJdCookies(func(ck *JdCookie) {
@@ -950,6 +1429,43 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"我的2资产", "query"},
+		Handle: func(sender *Sender) interface{} {
+		sender.Reply("正在为您查询，请耐心等待,如报错可使用 查询 口令确认ck是否失效")
+			if sender.IsAdmin {
+				sender.handleJdCookies(func(ck *JdCookie) {
+					time.Sleep(time.Second * time.Duration(Config.Later))
+					sender.Reply(ck.Query1())
+				})
+			} else {
+				if getLimit(sender.UserID, 1) {
+					time.Sleep(time.Second * time.Duration(Config.Later))
+					sender.handleJdCookies(func(ck *JdCookie) {
+						sender.Reply(ck.Query1())
+					})
+				} else {
+					sender.Reply(fmt.Sprintf("鉴于东哥对接口限流，为了不影响大家的任务正常运行，即日起每日限流%d次，已超过今日限制", Config.Lim))
+				}
+			}
+
+			return nil
+		},
+	},
+    {
+        Command: []string{"我的资产", "查询"},
+        
+        Handle: func(sender *Sender) interface{} {    
+        sender.Reply("正在为您查询，请耐心等待,")    
+                         
+                sender.handleJdCookies(func(ck *JdCookie) {
+                     sender.Reply(ck.Query())
+                })
+            
+            return nil
+        },
+    },
+
+	{
 		Command: []string{"发送", "通知", "notify", "send"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -997,83 +1513,175 @@ var codeSignals = []CodeSignal{
 				//sender.Contents = sender.Contents[1:]
 				logs.Info(sender.Contents[1:])
 				AdddCoin(qq, Int(sender.Contents[1]))
-				sender.Reply(fmt.Sprintf("%d已增加%d枚互助值。", qq, Int(sender.Contents[1])))
+				sender.Reply(fmt.Sprintf("%d已增加%d枚积分。", qq, Int(sender.Contents[1])))
 			}
 			return nil
 		},
 	},
-	{
-		Command: []string{"我要钱", "给点钱", "我干", "给我钱", "给我", "我要"},
-		Handle: func(sender *Sender) interface{} {
-			if getLimit(sender.UserID, 2) {
-				cost := Int(sender.JoinContens())
-				if cost <= 0 {
-					cost = 1
-				}
-				if !sender.IsAdmin {
-					if cost > 1 {
-						return "您只能获得1互助值"
-					} else {
-						AddCoin(sender.UserID)
-						return "获得1互助值"
-					}
-				} else {
-					AdddCoin(sender.UserID, cost)
-					sender.Reply(fmt.Sprintf("你获得%d枚互助值。", cost))
-				}
-			} else {
-				return "超过今日限制"
-			}
 
-			return nil
-		},
+
+		
+	{    
+ 	 Command: []string{"转账"},    
+  	 Admin:   false,    
+    	 Handle: func(sender *Sender) interface{} {    
+  	   // 获取发送者的QQ号    
+        qq := sender.UserID    
+    
+        logs.Info(qq)    
+    
+        if len(sender.Contents) < 2 {    
+            sender.Reply("请输入正确的指令格式，如: 转账 [对方userid号] [积分数量]，例如：转账  2345 100，表示你给2345给12345转了100积分，转账将扣除10%手续费，关于 userid获取方法，发送指令：用户信息")    
+            return nil    
+        }    
+    
+        // 获取接收转账的QQ号    
+        toQQStr := sender.Contents[0]    
+        toQQ, err := strconv.Atoi(toQQStr)    
+        if err != nil {    
+            sender.Reply("无效的QQ号。")    
+            return nil    
+        }    
+
+
+    
+  
+        // 获取转账的积分数量    
+        coinStr := sender.Contents[1]    
+        coin, err := strconv.Atoi(coinStr)    
+        if err != nil {    
+            sender.Reply("请输入正确的积分数量。")    
+            return nil    
+        }    
+    
+        // 检查积分    
+        senderCoins := GetCoin(qq)    
+        if senderCoins < coin {    
+            sender.Reply("积分不足，无法完成转账。")    
+            return nil    
+        }    
+		// 检查积分是否为负数  
+    	   if coin < 0 {  
+  	   sender.Reply("积分不能为负数。")  
+  		 return nil  
+		}
+        // 调用函数执行转账操作    
+        RemCoin(qq, coin)    
+        reCoins := int(float64(coin) * 0.9) // 计算接收者实际得到的积分，取整数部分
+        receivedCoins := int(float64(coin) * 0.9) // 计算接收者实际得到的积分，取整数部分
+	   AdddCoin(toQQ, receivedCoins)
+
+		senderCoinsAfter := GetCoin(qq)
+		receivedCoins = GetCoin(toQQ)
+        // 回复消息给发送者    
+        sender.Reply(fmt.Sprintf("你已向%d转账%d枚积分，剩余积分：%d；扣除手续费后对方获得：%d积分，对方积分余额为：%d", toQQ, coin, senderCoinsAfter, reCoins,receivedCoins))    
+    
+        return nil    
+    	  },    
 	},
+
+
+	
 	{
-		Command: []string{"梭哈", "拼了", "梭了"},
-		Handle: func(sender *Sender) interface{} {
-			if Config.GAMEOPEN {
+		Command: []string{"踩雷", "拼了"},  
+			Handle: func(sender *Sender) interface{} {  
+    				u := &User{}  
+  
+   					 cost := Int(sender.JoinContens())  
+  				
+  					  if cost < 0 {  
+  				      return "不允许输入负数"  
+   					 }  
+  
+  					  if cost <= 0 || cost > 100000000000000 {  
+    			  	//  cost = 1  
 
-				u := &User{}
-				cost := GetCoin(sender.UserID)
-
-				if cost <= 0 || cost > 10000 {
-					cost = 1
-				}
-
+    			  	 return "请在命令后面带入正整数：例如为：踩雷 30"
+   			 }  
+				
 				if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < cost {
-					return "互助值不足，先去打卡吧。"
+					return "哎呀积分不够了，快去搞点积分吧？=> 请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买"
 				} else {
-					sender.Reply(fmt.Sprintf("你使用%d枚互助值。", cost))
+					currentBalance := GetCoin(sender.UserID) - cost
+					sender.Reply(fmt.Sprintf("你使用%d枚积分，使用后积分余额%d", cost,currentBalance))
 				}
 				baga := 0
-				if u.Coin > 100000 {
+				if u.Coin > 100000000000 {
 					baga = u.Coin
 					cost = u.Coin
 				}
 				r := time.Now().Nanosecond() % 10
 				if r < 7 || baga > 0 {
-					sender.Reply(fmt.Sprintf("很遗憾你失去了%d枚互助值。", cost))
+					currentBalance := GetCoin(sender.UserID) - cost
+					sender.Reply(fmt.Sprintf("很遗憾你失去了%d枚积分，当前积分余额%d", cost, currentBalance))
 					cost = -cost
 				} else {
 					if r == 9 {
-						cost *= 4
-						sender.Reply(fmt.Sprintf("恭喜你4倍暴击获得%d枚互助值，20秒后自动转入余额。", cost))
-						time.Sleep(time.Second * 20)
+						cost *= 2
+						
+						sender.Reply(fmt.Sprintf("恭喜你2倍暴击获得%d枚积分，2秒后自动转入余额。", cost))
+						time.Sleep(time.Second * 2)
+					} else 
+					if r == 8 {
+						cost *=1 
+						sender.Reply(fmt.Sprintf("恭喜你暴击获得%d枚积分，2秒后自动转入余额。", cost))
+						time.Sleep(time.Second * 2)
+							
 					} else {
-						sender.Reply(fmt.Sprintf("很幸运你获得%d枚互助值，10秒后自动转入余额。", cost))
-						time.Sleep(time.Second * 10)
+						sender.Reply(fmt.Sprintf("很幸运你获得%d枚积分，2秒后自动转入余额。", cost))
+						time.Sleep(time.Second * 2)
 					}
-					sender.Reply(fmt.Sprintf("%d枚互助值已到账。", cost))
+					currentBalance := GetCoin(sender.UserID) + cost
+					sender.Reply(fmt.Sprintf("%d枚积分已到账，当前积分余额%d", cost, currentBalance))
 				}
 				db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", cost)))
-			} else {
-				return "该功能已禁用"
-			}
+				return nil
+			},
+		},
 
+			
+
+
+		
+
+/*			{
+		Command: []string{"翻翻乐","赌一把"},
+		Handle: func(sender *Sender) interface{} {
+
+			cost := Int(sender.JoinContens())
+			if cost <= 0 || cost > 20 {
+				cost = 20
+			}
+			u := &User{}
+			if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < cost {
+				return "你个穷逼，积分不足20，努力赚取积分吧"
+			}
+			baga := 0
+			if u.Coin > 1000000000000 {
+				baga = u.Coin
+				cost = u.Coin
+			}
+			r := time.Now().Nanosecond() % 10
+			if r < 6 || baga > 0 {
+				sender.Reply(fmt.Sprintf("很遗憾你失去了%d枚积分。", cost))
+				cost = -cost
+			} else {
+				if r == 9 {
+					cost *= 2
+					sender.Reply(fmt.Sprintf("恭喜你幸运暴击x2获得%d枚积分，2秒后自动转入余额。", cost))
+					time.Sleep(time.Second * 2)
+				} else {
+					sender.Reply(fmt.Sprintf("很幸运你获得%d枚积分，2秒后自动转入余额。", cost))
+					time.Sleep(time.Second * 2)
+				}
+				sender.Reply(fmt.Sprintf("%d枚积分已到账。", cost))
+			}
+			db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", cost)))
 			return nil
 		},
 	},
 
+*/
 	//{
 	//	Command: []string{"按许愿币更新排名"},
 	//	Admin:   true,
@@ -1092,46 +1700,7 @@ var codeSignals = []CodeSignal{
 	//		return "已更新排行"
 	//	},
 	//},
-	{
-		Command: []string{"赌一把"},
-		Handle: func(sender *Sender) interface{} {
-			if Config.GAMEOPEN {
-				cost := Int(sender.JoinContens())
-				if cost <= 0 || cost > 10000 {
-					cost = 1
-				}
-				u := &User{}
-				if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < cost {
-					return "互助值不足，先去打卡吧。"
-				}
-				baga := 0
-				if u.Coin > 100000 {
-					baga = u.Coin
-					cost = u.Coin
-				}
-				r := time.Now().Nanosecond() % 10
-				if r < 6 || baga > 0 {
-					sender.Reply(fmt.Sprintf("很遗憾你失去了%d枚互助值。", cost))
-					cost = -cost
-				} else {
-					if r == 9 {
-						cost *= 2
-						sender.Reply(fmt.Sprintf("恭喜你幸运暴击获得%d枚互助值，20秒后自动转入余额。", cost))
-						time.Sleep(time.Second * 20)
-					} else {
-						sender.Reply(fmt.Sprintf("很幸运你获得%d枚互助值，10秒后自动转入余额。", cost))
-						time.Sleep(time.Second * 10)
-					}
-					sender.Reply(fmt.Sprintf("%d枚互助值已到账。", cost))
-				}
-				db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", cost)))
-			} else {
-				return "该功能已禁用"
-			}
-
-			return nil
-		},
-	},
+	
 	{
 		Command: []string{"许愿", "愿望", "wish", "hope", "want"},
 		Handle: func(sender *Sender) interface{} {
@@ -1172,7 +1741,7 @@ var codeSignals = []CodeSignal{
 			u := &User{}
 			if err := tx.Where("number = ?", sender.UserID).First(u).Error; err != nil {
 				tx.Rollback()
-				return "互助值不足，先去打卡吧。"
+				return "积分不足，先去打卡吧。"
 			}
 			w := &Wish{
 				Content:    ct,
@@ -1181,7 +1750,7 @@ var codeSignals = []CodeSignal{
 			}
 			if u.Coin < cost {
 				tx.Rollback()
-				return fmt.Sprintf("互助值不足，需要%d个互助值。", cost)
+				return fmt.Sprintf("积分不足，需要%d个积分。", cost)
 			}
 			if err := tx.Create(w).Error; err != nil {
 				tx.Rollback()
@@ -1193,7 +1762,7 @@ var codeSignals = []CodeSignal{
 			}
 			tx.Commit()
 			(&JdCookie{}).Push(fmt.Sprintf("有人许愿%s，愿望id为%d。", w.Content, w.ID))
-			return fmt.Sprintf("收到愿望，已扣除%d个互助值。", cost)
+			return fmt.Sprintf("收到愿望，已扣除%d个积分。", cost)
 		},
 	},
 	{
@@ -1279,8 +1848,62 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
+
+    // https://pp.iaka.cn/api/ajax.php?act=search&name=短剧名称 通过api写出搜剧代码，识别命令搜据，并解析空格后的剧名进行api查询并返回查询结果
+
+
+
+
+
+
+
+
+{
+    Command: []string{"搜剧","短剧"},
+    Handle: func(sender *Sender) interface{} {
+        if len(sender.Contents) == 0 {
+            return "请输入正确的指令比如：搜剧 我能异世界穿梭"
+        }
+        name := sender.Contents[0]
+        searchURL := fmt.Sprintf("https://pp.iaka.cn/api/ajax.php?act=search&name=%s", url.QueryEscape(name))
+        req := httplib.Get(searchURL)
+        req.Header("User-Agent", browser.Random())
+        bytes, err := req.Bytes()
+        if err != nil {
+            return err.Error()
+        }
+        
+        // 解析JSON响应
+        var response map[string]interface{}
+        if err = json.Unmarshal(bytes, &response); err != nil {
+            return err.Error()
+        }
+        
+        // 检查返回的code是否为0
+        code, ok := response["code"].(string)
+        if !ok || code != "0" {
+            return "未找到相关剧集"
+        }
+        
+        // 提取链接
+        data, ok := response["data"].([]interface{})
+        if !ok || len(data) == 0 {
+            return "未找到相关剧集"
+        }
+        firstData := data[0].(map[string]interface{})
+        episodeURL, ok := firstData["url"].(string)
+        if !ok {
+            return "未找到相关剧集链接"
+        }
+        
+        return episodeURL
+    },
+},
+
+
+	
 	{
-		Command: []string{"cmd", "command", "命令"},
+		Command: []string{"cmd", "command"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			ct := sender.JoinContens()
@@ -1339,6 +1962,7 @@ var codeSignals = []CodeSignal{
 			if len(sender.Contents) >= 2 {
 				env.Name = sender.Contents[0]
 				env.Value = strings.Join(sender.Contents[1:], " ")
+			
 			} else if len(sender.Contents) == 1 {
 				ss := regexp.MustCompile(`^([^'"=]+)=['"]?([^=]+?)['"]?$`).FindStringSubmatch(sender.Contents[0])
 				if len(ss) != 3 {
@@ -1346,6 +1970,7 @@ var codeSignals = []CodeSignal{
 				}
 				env.Name = ss[1]
 				env.Value = ss[2]
+			
 			} else {
 				return "???"
 			}
@@ -1402,6 +2027,39 @@ var codeSignals = []CodeSignal{
 			return "你很无语吗？"
 		},
 	},
+	
+	{    
+    	Command: []string{"祈祷", "祈愿", "祈福"},    
+  	  Handle: func(sender *Sender) interface{} {    
+        today := time.Now().Format("2006-01-02") // 获取今天的日期    
+        lastPrayDate, ok := mx[sender.UserID] // 检查用户上次祈福的日期    
+  
+        if ok && lastPrayDate.Format("2006-01-02") == today { // 如果用户今天已经祈福过    
+            return "你今天已经祈福过了，明天再来吧。"    
+        }    
+  
+        
+        if time.Now().Unix() % 2 == 0 {  
+             
+            mx[sender.UserID] = time.Now()   
+            return "祈福诚意不足，祈福失败，不增加积分。"    
+        } else {  
+            mx[sender.UserID] = time.Now()  
+            if db.Model(User{}).Where("number = ? ", sender.UserID).Update(    
+                "coin", gorm.Expr(fmt.Sprintf("coin + %d", 3)),    
+            ).RowsAffected == 0 {    
+                return "先去打卡吧你。"    
+            }    
+            return "祈福成功，愿你事事顺心如意，积分+3，"    
+        } 
+           
+   	 }, 
+   	    
+	},
+			
+	
+/*  #注释掉原有的祈福代码
+	
 	{
 		Command: []string{"祈祷", "祈愿", "祈福"},
 		Handle: func(sender *Sender) interface{} {
@@ -1414,9 +2072,41 @@ var codeSignals = []CodeSignal{
 			).RowsAffected == 0 {
 				return "先去打卡吧你。"
 			}
-			return "互助值+1"
+			return "积分+1"
 		},
 	},
+
+
+
+
+
+		{  
+		 Command: []string{"祈祷", "祈愿", "祈福"},  
+		 Handle: func(sender *Sender) interface{} {  
+		 today := time.Now().Format("2006-01-02") // 获取今天的日期  
+		 lastPrayDate, ok := mx[sender.UserID] // 检查用户上次祈福的日期  
+		  
+		 if ok && lastPrayDate.Format("2006-01-02") == today { // 如果用户今天已经祈福过  
+		 return "你今天已经祈福过了，明天再来吧。"  
+		 }  
+		  
+		 mx[sender.UserID] = time.Now() // 更新用户的上次祈福日期为今天  
+		 if db.Model(User{}).Where("number = ? ", sender.UserID).Update(  
+		 "coin", gorm.Expr(fmt.Sprintf("coin + %d", 1)),  
+		 ).RowsAffected == 0 {  
+		 return "先去打卡吧你。"  
+		 }  
+		 return "祈福成功，愿你事事顺心如意，积分+1，"  
+		 
+		 },  
+	 },
+		
+	*/
+
+
+
+
+	
 	{
 		Command: []string{"reply", "回复"},
 		Admin:   true,
@@ -1525,6 +2215,45 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+  {
+		Command: []string{"删除账号", "账号删除"},
+		Handle: func(sender *Sender) interface{} {
+			id := sender.UserID
+			var idType string
+			if sender.Type == "tg" {
+				idType = Telegram
+			} else {
+				idType = QQ
+			}
+			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+				//return sb.Where(fmt.Sprintf("%s = ?", idType), id)
+				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, False)
+			})
+
+			if len(cks) > 0 {
+				msg := make(chan string)
+				ckList[sender.UserID] = msg
+				go Delete_jdck(sender, msg, cks)
+				msgs := []string{
+					"请回复以下序列号删除指定失效账号，如需退出请回复'q'退出登录流程：",
+				}
+				for i, ck := range cks {
+					msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
+				}
+				sender.Reply(strings.Join(msgs, "\n"))
+			} else {
+				sender.Reply("无失效账号，新增账号请对机器人发送“登录”")
+				return nil
+			}
+			return nil
+		},
+	},
+
+
+
+
+
+	
 	{
 		Command: []string{"删除WCK"},
 		Admin:   true,
@@ -1596,7 +2325,7 @@ var codeSignals = []CodeSignal{
 				db.Model(User{}).Where("number = ?", sender.UserID).Updates(map[string]interface{}{
 					"coin": gorm.Expr(fmt.Sprintf("coin - %d", cost)),
 				})
-				return fmt.Sprintf("转账成功，扣除手续费%d枚互助值。", cost)
+				return fmt.Sprintf("转账成功，扣除手续费%d枚积分。", cost)
 			}
 			if amount > 10000 {
 				return "单笔转账限额10000。"
@@ -1615,7 +2344,7 @@ var codeSignals = []CodeSignal{
 			if !sender.IsAdmin {
 				if amount <= cost {
 					tx.Rollback()
-					return fmt.Sprintf("转账失败，手续费需要%d个互助值。", cost)
+					return fmt.Sprintf("转账失败，手续费需要%d个积分。", cost)
 				}
 				real = amount - cost
 			} else {
@@ -1725,12 +2454,14 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-	{
+
+
+		{
 		Command: []string{"开启微信自动收款"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			env := &Env{
-				Name:  "f",
+				Name:  "Autocollection",
 				Value: "1",
 			}
 			ExportEnv(env)
@@ -1780,6 +2511,23 @@ var codeSignals = []CodeSignal{
 			return fmt.Sprintf("用户ID：%d", sender.UserID)
 		},
 	},
+
+	 //获取我的userid
+    {
+        Command: []string{"我的微信号"}, 
+        Handle: func(sender *Sender) interface{} {
+            return sender.WxId
+        },
+    },
+
+    //获取我的wxGroupId
+    {
+        Command: []string{"微信群号"},
+        Handle: func(sender *Sender) interface{} {
+            return sender.WxGroupId
+        },
+    },
+	
 	{
 		Command: []string{"设置欢迎语"},
 		Admin:   true,
@@ -1855,7 +2603,7 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
-		Command: []string{"回填微信"},
+		Command: []string{"回填微信","微信回填"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			cks := GetJdCookies()
@@ -1880,15 +2628,181 @@ var codeSignals = []CodeSignal{
 		},
 	},
 	{
-		Command: []string{"美团登录", "登录美团", "美团登陆"},
+		Command: []string{"美团登录", "登录美团", "美团扫码", "美团登陆"},
 		Handle: func(sender *Sender) interface{} {
 			Meituan_getck(sender)
 			return nil
 		},
 	},
+
+
+
+
+
+
+
+
+	{
+  	  Command: []string{"猜数字", "数字游戏"},
+   		 Handle: func(sender *Sender) interface{} {
+        // 获取游戏所需硬币数量和用户当前硬币数量
+        value := GetEnv("csz")
+        jbcoin, _ := strconv.Atoi(value)
+        coin := GetCoin(sender.UserID)
+
+        // 检查用户硬币是否足够
+        maxGuessTimesStr := GetEnv("cszcs")
+        if maxGuessTimesStr == "" {
+            sender.Reply("管理员未设置游戏次数，变量名称为cszcs")
+            return nil
+        }
+
+        maxGuessTimes, err := strconv.Atoi(maxGuessTimesStr)
+        if err != nil {
+            sender.Reply("无法将游戏次数转换为整数")
+            return nil
+        }
+
+        if coin < jbcoin*maxGuessTimes {
+            // 如果硬币不足，发送消息并退出游戏
+            sender.Reply("积分不够本次游戏，已退出游戏，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买")
+            return nil
+        }
+
+        // 创建通道并关联到ckList映射中的用户ID
+        msg := make(chan string)
+        ckList[sender.UserID] = msg
+
+        // 设置最大猜测次数并启动猜数字游戏
+        go Guess_Number(sender, msg, maxGuessTimes)
+
+        // 如果硬币足够，发送游戏规则消息
+        message := fmt.Sprintf("猜数字规则：游戏次数%d次，每次猜扣%d积分，猜中奖励300积分，游戏过程中存在5个地雷猜中直接扣100积分，结束游戏。\n请回复0-100内数字猜测，中途如需退出游戏回复'q'退出流程：", maxGuessTimes, jbcoin)
+        sender.Reply(message)
+
+        // 返回nil表示函数执行完毕
+        return nil
+    },
+},
+
+
+}
+			
+func Guess_Number(sender *Sender, msg chan string, maxGuessCount int) {
+    // 生成主要数字
+    number := rand.Intn(101)
+    
+    // 生成唯一的地雷数字
+
+    landmines := make([]int, 5)
+    
+    // 生成两个位于40到60之间的地雷数字
+    landmines[0] = rand.Intn(21) + 40
+    landmines[1] = rand.Intn(21) + 40
+    
+    // 生成其他三个地雷数字
+    for i := 2; i < 5; i++ {
+        // 生成地雷数字
+        landmine := rand.Intn(101)
+        
+        // 检查地雷数字是否与主要数字相同
+        for landmine == number {
+            landmine = rand.Intn(101)
+        }
+        
+        // 检查地雷数字是否与先前生成的地雷相同
+        for j := 0; j < i; j++ {
+            if landmine == landmines[j] {
+                // 重新生成地雷数字
+                landmine = rand.Intn(101)
+                j = -1 // 重新检查新生成的地雷数字与之前的地雷数字是否相同
+            }
+        }
+        
+        landmines[i] = landmine
+    }
+
+    guessCount := 0
+    value := GetEnv("csz")
+
+    if value == "" {
+        sender.Reply("管理员未开启猜数字游戏")
+        ckList[sender.UserID] = nil
+        return
+    }
+
+    for {
+        n, ok := <-msg
+        if !ok {
+            break
+        }
+        if n == "q" {
+            sender.Reply("已退出猜数字游戏")
+            ckList[sender.UserID] = nil
+            close(msg)
+            return
+        }
+
+        guess, err := strconv.Atoi(n)
+
+        coin := GetCoin(sender.UserID)
+        jbcoin, _ := strconv.Atoi(value)
+        if coin < jbcoin {
+            sender.Reply(fmt.Sprintf("积分不足，每次猜测需要%d个积分，退出游戏！", jbcoin))
+            ckList[sender.UserID] = nil
+            return
+        }
+        
+        if err != nil || guess < 0 || guess > 100 {
+            sender.Reply(fmt.Sprintf("输入错误，请重新输入0-100内数字，退出请回复q,剩余猜测次数：%d次，已扣除%d个积分，剩余积分%d", maxGuessCount-guessCount, jbcoin, GetCoin(sender.UserID)))
+            continue
+        }
+        guessCount++
+        RemCoin(sender.UserID, jbcoin)
+        
+        hitMine := false
+        for _, mine := range landmines {
+            if guess == mine {
+                hitMine = true
+                break
+            }
+        }
+        if hitMine {
+            RemCoin(sender.UserID, 100)
+            sender.Reply(fmt.Sprintf("很抱歉，你运气太差了，踩中了地雷！扣除了100个积分，游戏结束。剩余积分：%d，地雷数字是：%v", GetCoin(sender.UserID), landmines))
+            ckList[sender.UserID] = nil
+            close(msg)
+            return
+        } else if guess > number {
+            sender.Reply(fmt.Sprintf("输入的数字太大了，请重新输入，剩余猜测次数：%d次，已扣除%d个积分，剩余积分%d", maxGuessCount-guessCount, jbcoin, GetCoin(sender.UserID)))
+        } else if guess < number {
+            sender.Reply(fmt.Sprintf("输入的数字太小了，请重新输入，剩余猜测次数：%d次，已扣除%d个积分，剩余积分%d", maxGuessCount-guessCount, jbcoin, GetCoin(sender.UserID)))
+        } else {
+            coin2 := 300 //奖励积分数量
+            AdddCoin(sender.UserID, coin2)
+            sender.Reply(fmt.Sprintf("恭喜你猜中了！很幸运的避开了地雷数字，你一共猜了%d次，奖励%d个积分，剩余积分%d，其中地雷数字是：%v", guessCount, coin2, GetCoin(sender.UserID), landmines))
+            ckList[sender.UserID] = nil
+            close(msg)
+            return
+        }
+
+        if guessCount >= maxGuessCount {
+            sender.Reply(fmt.Sprintf("猜数字游戏次数已用完，游戏结束，答案是%d，祝你下次好运！地雷数字是：%v", number, landmines))
+            ckList[sender.UserID] = nil
+            close(msg)
+            return
+        }
+    }
 }
 
-func InviteGroup(uid string, gid string) {
+
+//  var mx = map[int]bool{}  
+
+var mx = map[int]time.Time{} // 存储用户上次祈福的日期  
+
+
+
+	func InviteGroup(uid string, gid string) {
 	type AutoGenerated1 struct {
 		Token     string `json:"token"`
 		API       string `json:"api"`
@@ -1914,7 +2828,8 @@ func InviteGroup(uid string, gid string) {
 	logs.Info(s)
 }
 
-var mx = map[int]bool{}
+
+
 
 func GetPinList(qq string) []string {
 	cks := []JdCookie{}
@@ -2002,17 +2917,60 @@ func ReturnCoin(sender *Sender) {
 			"coin", gorm.Expr(fmt.Sprintf("coin + %d", w.Coin)),
 		).RowsAffected == 0 {
 			tx.Rollback()
-			sender.Reply("愿望未达成退还互助值失败。")
+			sender.Reply("愿望未达成退还积分失败。")
 			return
 		}
-		sender.Reply(fmt.Sprintf("愿望未达成退还%d枚互助值。", w.Coin))
+		sender.Reply(fmt.Sprintf("愿望未达成退还%d枚积分。", w.Coin))
 		if tx.Model(&w).Update(
 			"status", 1,
 		).RowsAffected == 0 {
 			tx.Rollback()
-			sender.Reply("愿望未达成退还互助值失败。")
+			sender.Reply("愿望未达成退还积分失败。")
 			return
 		}
 	}
 	tx.Commit()
+}
+
+
+
+
+func Delete_jdck(sender *Sender, msg chan string, cks []JdCookie) {
+	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
+		}
+		if n == "q" {
+			sender.Reply("退出流程")
+			ckList[sender.UserID] = nil
+			close(msg)
+			return
+		}
+		num, err := strconv.Atoi(n)
+
+		
+		if err != nil {
+			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
+			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
+			ckList[sender.UserID] = nil
+			return
+		}
+		regular := `^0$|^[1-9]\d*$`
+		reg := regexp.MustCompile(regular)
+		if reg.MatchString(n) {
+			//cks := GetJdCookie(sender)
+			if len(cks) < num {
+				sender.Reply("输入序列号错误，已退出！")
+				ckList[sender.UserID] = nil
+				return
+			}
+		}
+		ck := cks[num]
+        ck.Removes(ck.PtPin)
+		//db.Model(cks).Where(PtPin+" = ?", ck.PtPin).Delete(cks[num].PtPin)
+		sender.Reply(fmt.Sprintf("已删除账号%s", cks[num].Nickname))
+		ckList[sender.UserID] = nil
+	}
 }
