@@ -18,6 +18,7 @@ type User struct {
 	ActiveAt time.Time
 	Coin     int
 	Wxid     string `gorm:"column:wxid;"`
+	Nickname string `gorm:"column:nickname;"`
 	QQ       string `gorm:"column:qq;"`
 	Telegram string `gorm:"column:telegram;"`
 	IsAdmin  bool   `gorm:"column:isAdmin;"`
