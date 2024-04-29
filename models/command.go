@@ -21,6 +21,12 @@ import (
 	"gorm.io/gorm"
 )
 
+var ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 SP-engine/2.14.0 main%2F1.0 baiduboxapp/11.18.0.16 (Baidu; P2 13.3.1) NABar/0.0"
+
+func GetUserAgent() string {
+	return ua
+}
+
 type CodeSignal struct {
 	Command []string
 	Admin   bool
@@ -1664,4 +1670,34 @@ func ReturnCoin(sender *Sender) {
 		}
 	}
 	tx.Commit()
+}
+
+func Count() string {
+	zs := 0
+	yx := 0
+	wx := 0
+	tl := 0
+	ts := 0
+	tc := 0
+	dt := Date()
+	cks := GetJdCookies()
+	for _, ck := range cks {
+		zs++
+		if ck.Available == True {
+			yx++
+		} else {
+			wx++
+		}
+		if ck.CreateAt == dt {
+			tc++
+		}
+		if ck.LoseAt == dt {
+			tl++
+		}
+		if ck.UpdateAt == dt {
+			ts++
+		}
+	}
+
+	return fmt.Sprintf("总数%d,有效%d,无效%d,今日失效%d,今日更新%d,今日新增%d", zs, yx, wx, tl, ts, tc)
 }
