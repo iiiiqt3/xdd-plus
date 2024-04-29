@@ -191,7 +191,7 @@ func deleteDuplicateWxidUsers() {
 
 		//查询jd_cookie是否存在对应的number有的话写入wxid
 		var jdCookie JdCookie
-		if db.Where("number = ?", user.Number).First(&jdCookie).Error == nil {
+		if db.Where("qq = ?", user.Number).First(&jdCookie).Error == nil {
 			db.Model(jdCookie).Updates(map[string]interface{}{
 				"Wxid": user.Wxid,
 			})
