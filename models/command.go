@@ -213,6 +213,7 @@ var codeSignals = []CodeSignal{
 			return string(bytes)
 		},
 	},
+
 	//获取我的userid
 	{
 		Command: []string{"获取我的群Id"},
@@ -247,6 +248,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//监听微信群
 	{
 		Command: []string{"监听微信群"},
@@ -271,6 +273,7 @@ var codeSignals = []CodeSignal{
 			}
 		},
 	},
+
 	//取消监听
 	{
 		Command: []string{"取消监听"},
@@ -296,6 +299,7 @@ var codeSignals = []CodeSignal{
 			}
 		},
 	},
+
 	//短信登陆
 	{
 		Command: []string{"短信登录", "短信登陆"},
@@ -307,6 +311,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//停止助力
 	{
 		Command: []string{"停助力", "停止助力"},
@@ -320,6 +325,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//生成卡密
 	{
 		Command: []string{"生成卡密"},
@@ -335,6 +341,7 @@ var codeSignals = []CodeSignal{
 			return "非VIP用户"
 		},
 	},
+
 	//状态
 	{
 		Command: []string{"status", "状态"},
@@ -343,6 +350,7 @@ var codeSignals = []CodeSignal{
 			return Count()
 		},
 	},
+
 	//py执行口令
 	{
 		Command: []string{"跑"},
@@ -363,6 +371,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//微信扫码
 	{
 		Command: []string{"微信扫码"},
@@ -371,6 +380,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//R京东扫码
 	{
 		Command: []string{"R京东扫码"},
@@ -379,6 +389,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//N京东扫码
 	{
 		Command: []string{"N京东扫码"},
@@ -387,6 +398,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//打卡
 	{
 		Command: []string{"sign", "打卡", "签到"},
@@ -442,6 +454,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//清零
 	{
 		Command: []string{"清零"},
@@ -454,6 +467,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//更新优先级
 	{
 		Command: []string{"更新优先级", "更新车位"},
@@ -472,6 +486,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//XDD专用还愿CK指令
 	{
 		Command: []string{"XDD专用还愿CK指令，慎用！"},
@@ -483,6 +498,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//备份CK
 	{
 		Command: []string{"备份CK"},
@@ -494,6 +510,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//查询积分
 	{
 		Command: []string{"coin", "积分"},
@@ -501,6 +518,7 @@ var codeSignals = []CodeSignal{
 			return fmt.Sprintf("积分:%d", GetCoin(sender.UserID))
 		},
 	},
+
 	//绑定微信
 	{
 		Command: []string{"绑定微信"},
@@ -509,6 +527,7 @@ var codeSignals = []CodeSignal{
 			return makeWxId(sender.UserID, "DXWX"+getMd5String1(strconv.Itoa(sender.UserID)))
 		},
 	},
+
 	//授权
 	{
 		Command: []string{"授权"},
@@ -523,6 +542,7 @@ var codeSignals = []CodeSignal{
 			}
 		},
 	},
+
 	//取消授权
 	{
 		Command: []string{"取消授权"},
@@ -537,6 +557,7 @@ var codeSignals = []CodeSignal{
 			}
 		},
 	},
+
 	//开始检测
 	{
 		Command: []string{"开始检测"},
@@ -546,6 +567,7 @@ var codeSignals = []CodeSignal{
 			return "检测完成"
 		},
 	},
+
 	//检测美团
 	{
 		Command: []string{"美团检测"},
@@ -555,6 +577,7 @@ var codeSignals = []CodeSignal{
 			return "检测完成"
 		},
 	},
+
 	//更新
 	{
 		Command: []string{"升级", "更新", "update", "upgrade"},
@@ -568,6 +591,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//重启
 	{
 		Command: []string{"重启", "reload", "restart", "reboot"},
@@ -578,6 +602,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//更新账号
 	{
 		Command: []string{"更新账号"},
@@ -589,6 +614,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//更新Rwskey
 	{
 		Command: []string{"Rwskey更新", "更新Rwskey"},
@@ -600,6 +626,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//导出所有账号
 	{
 		Command: []string{"导出所有账号"},
@@ -624,6 +651,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//查Q
 	{
 		Command: []string{"查Q", "CQ"},
@@ -637,6 +665,7 @@ var codeSignals = []CodeSignal{
 			return str
 		},
 	},
+
 	//备注
 	{
 		Command: []string{"备注", "bz"},
@@ -658,6 +687,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//设置掉线通知
 	{
 		Command: []string{"设置掉线通知", "掉线通知"},
@@ -679,6 +709,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//通知过期账号
 	{
 		Command: []string{"通知过期账号", "通知失效账号"},
@@ -701,6 +732,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//查询
 	{
 		Command: []string{"查询", "query"},
 		Handle: func(sender *Sender) interface{} {
@@ -786,6 +819,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//发送通知
 	{
 		Command: []string{"发送", "通知", "notify", "send"},
@@ -805,6 +839,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//设置管理员
 	{
 		Command: []string{"设置管理员"},
@@ -815,6 +850,7 @@ var codeSignals = []CodeSignal{
 			return "已设置管理员"
 		},
 	},
+
 	//取消管理员
 	{
 		Command: []string{"取消管理员"},
@@ -825,6 +861,7 @@ var codeSignals = []CodeSignal{
 			return "已取消管理员"
 		},
 	},
+
 	//QQ转账
 	{
 		Command: []string{"QQ转账"},
@@ -841,6 +878,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//运行脚本
 	{
 		Command: []string{"run", "执行"},
@@ -868,6 +906,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//设置优先级
 	{
 		Command: []string{"优先级", "priority"},
@@ -884,6 +923,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//绑定QQ
 	{
 		Command: []string{"绑定"},
@@ -899,6 +939,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//命令
 	{
 		Command: []string{"cmd", "command", "命令"},
@@ -912,6 +953,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//管理后台
 	{
 		Command: []string{"管理后台"},
@@ -923,6 +965,7 @@ var codeSignals = []CodeSignal{
 			return "你的临时授权码为：" + s
 		},
 	},
+
 	//获取环境变量
 	{
 		Command: []string{"环境变量", "environments", "envs"},
@@ -939,6 +982,7 @@ var codeSignals = []CodeSignal{
 			return strings.Join(rt, "\n")
 		},
 	},
+
 	//获取环境变量
 	{
 		Command: []string{"get-env", "env", "e"},
@@ -954,6 +998,7 @@ var codeSignals = []CodeSignal{
 			return fmt.Sprintf("环境变量的值为：" + value)
 		},
 	},
+
 	//设置环境变量
 	{
 		Command: []string{"set-env", "se", "export"},
@@ -982,6 +1027,7 @@ var codeSignals = []CodeSignal{
 			return "操作成功"
 		},
 	},
+
 	//删除环境变量
 	{
 		Command: []string{"unset-env", "ue", "unexport", "de"},
@@ -993,6 +1039,7 @@ var codeSignals = []CodeSignal{
 			return "操作成功"
 		},
 	},
+
 	//回复
 	{
 		Command: []string{"reply", "回复"},
@@ -1006,6 +1053,7 @@ var codeSignals = []CodeSignal{
 			return "操作成功"
 		},
 	},
+
 	//更新指定
 	{
 		Command: []string{"更新指定"},
@@ -1045,6 +1093,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//更新指定R
 	{
 		Command: []string{"更新指定R"},
@@ -1091,6 +1140,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//删除
 	{
 		Command: []string{"删除", "clean"},
@@ -1103,6 +1153,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//删除WCK
 	{
 		Command: []string{"删除WCK"},
@@ -1115,6 +1166,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//清空WCK
 	{
 		Command: []string{"清空WCK"},
@@ -1124,6 +1176,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
 	//清理过期账号
 	{
 		Command: []string{"清理过期账号"},
@@ -1136,6 +1189,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//转账
 	{
 		Command: []string{"转账"},
 		Handle: func(sender *Sender) interface{} {
@@ -1199,6 +1254,8 @@ var codeSignals = []CodeSignal{
 			return fmt.Sprintf("转账成功，你的余额%d，他的余额%d，手续费%d。", s.Coin-amount, r.Coin+real, cost)
 		},
 	},
+
+	//导出
 	{
 		Command: []string{"献祭", "导出"},
 		Admin:   true,
@@ -1209,6 +1266,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//关闭私聊查询
 	{
 		Command: []string{"关闭私聊查询"},
 		Admin:   true,
@@ -1222,6 +1281,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//开启私聊查询
 	{
 		Command: []string{"开启私聊查询"},
 		Admin:   true,
@@ -1234,6 +1295,7 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
+	//关闭群聊查询
 	{
 		Command: []string{"关闭群聊查询"},
 		Admin:   true,
@@ -1247,6 +1309,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//开启私聊查询
 	{
 		Command: []string{"开启私聊查询"},
 		Admin:   true,
@@ -1258,6 +1322,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//开启微信自动好友
 	{
 		Command: []string{"开启微信自动好友"},
 		Admin:   true,
@@ -1271,6 +1337,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//关闭微信自动好友
 	{
 		Command: []string{"关闭微信自动好友"},
 		Admin:   true,
@@ -1282,6 +1350,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//开启微信自动收款
 	{
 		Command: []string{"开启微信自动收款"},
 		Admin:   true,
@@ -1295,6 +1365,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//关闭微信自动收款
 	{
 		Command: []string{"关闭微信自动收款"},
 		Admin:   true,
@@ -1306,6 +1378,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//设置微信口令
 	{
 		Command: []string{"设置微信口令"},
 		Admin:   true,
@@ -1320,6 +1394,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//关闭微信口令
 	{
 		Command: []string{"关闭微信口令"},
 		Admin:   true,
@@ -1331,12 +1407,16 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//用户信息
 	{
 		Command: []string{"用户信息"},
 		Handle: func(sender *Sender) interface{} {
 			return fmt.Sprintf("用户ID：%d", sender.UserID)
 		},
 	},
+
+	//设置欢迎语
 	{
 		Command: []string{"设置欢迎语"},
 		Admin:   true,
@@ -1351,6 +1431,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//取消欢迎语
 	{
 		Command: []string{"取消欢迎语"},
 		Admin:   true,
@@ -1362,6 +1444,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//设置signUrl
 	{
 		Command: []string{"设置signUrl"},
 		Admin:   true,
@@ -1376,6 +1460,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//取消signUrl
 	{
 		Command: []string{"取消signUrl"},
 		Admin:   true,
@@ -1387,6 +1473,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//设置代理
 	{
 		Command: []string{"设置代理"},
 		Admin:   true,
@@ -1401,6 +1489,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//导出wskey
 	{
 		Command: []string{"导出wskey"},
 		Admin:   true,
@@ -1411,6 +1501,8 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+
+	//回填微信
 	{
 		Command: []string{"回填微信"},
 		Admin:   true,
@@ -1436,6 +1528,8 @@ var codeSignals = []CodeSignal{
 
 		},
 	},
+
+	//美团登录
 	{
 		Command: []string{"美团登录", "登录美团", "美团登陆"},
 		Handle: func(sender *Sender) interface{} {
