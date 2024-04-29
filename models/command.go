@@ -7,7 +7,6 @@ import (
 	"fmt"
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/buger/jsonparser"
 	"math/rand"
 	"net/url"
 	"os"
@@ -248,6 +247,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+	//监听微信群
 	{
 		Command: []string{"监听微信群"},
 		Admin:   true,
@@ -271,6 +271,7 @@ var codeSignals = []CodeSignal{
 			}
 		},
 	},
+	//取消监听
 	{
 		Command: []string{"取消监听"},
 		Admin:   true,
@@ -295,22 +296,7 @@ var codeSignals = []CodeSignal{
 			}
 		},
 	},
-	{
-		Command: []string{"GPT", "GPT4"},
-		Handle: func(sender *Sender) interface{} {
-			//todo 接入GPT4
-			url := GetEnv("gpt")
-			token := GetEnv("gpt_token")
-			post := httplib.Post(url)
-			post.Header("Authorization", token)
-			post.Header("Content-Type", "application/json")
-			post.Body(fmt.Sprintf("{\n  \"model\": \"gpt-4-1106-preview\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"%s\"\n    }\n  ]\n}", sender.Contents[0:]))
-			bytes, _ := post.Bytes()
-			logs.Info(string(bytes))
-			val, _ := jsonparser.GetString(bytes, "choices", "[0]", "message", "content")
-			return val
-		},
-	},
+	//短信登陆
 	{
 		Command: []string{"短信登录", "短信登陆"},
 		Handle: func(sender *Sender) interface{} {
@@ -321,152 +307,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
-	//{
-	//    Command: []string{"记录ck", "提交ck"},
-	//    Handle: func(sender *Sender) interface{} {
-	//        // 检查命令参数是否符合格式
-	//        if len(sender.Contents) != 3 {
-	//            sender.Reply("格式错误！！正确格式为：记录ck 你的ck 备注 活动代号 \n例：\n记录ck we7sid-3d589f44c776253c 锋57box-1 Box57" )
-	//            return nil
-	//        }
-	//
-	//        // 获取命令参数
-	//        value := sender.Contents[0]
-	//        remarks := sender.Contents[1]
-	//        env_name := sender.Contents[2]
-	//
-	//        // 获取扣积分设置
-	//        value3 := GetEnv(env_name)
-	//
-	//        // 检查是否开启了记录功能
-	//        if value3 == "" {
-	//            sender.Reply(fmt.Sprintf("%s未开启添加功能", env_name))
-	//        } else {
-	//            // 获取用户的积分
-	//            coin := GetCoin(sender.UserID)
-	//            jbcoin, _ := strconv.Atoi(value3)
-	//
-	//            // 检查用户积分是否足够
-	//            if coin < jbcoin {
-	//                sender.Reply(fmt.Sprintf("积分不足，%s需要%d个积分，请登录京东账号获取奖励（或私聊群主积分卡）", env_name, jbcoin))
-	//            } else {
-	//                // 执行记录的脚本
-	//                cmd := exec.Command("python3", "scripts/record.py", value, remarks, env_name)
-	//                var stdout, stderr bytes.Buffer
-	//                cmd.Stdout = &stdout
-	//                cmd.Stderr = &stderr
-	//
-	//                // 执行命令
-	//                err := cmd.Run()
-	//                // 检查脚本执行结果
-	//                if err == nil {
-	//                	// 检查标准输出是否包含'记录成功'
-	//                	outputStr := stdout.String()
-	//                	if strings.Contains(outputStr, "记录成功") {
-	//                    // 扣除用户积分
-	//                    RemCoin(sender.UserID, jbcoin)
-	//                    sender.Reply(fmt.Sprintf("添加%s账号，已扣除%d个积分，剩余积分%d", env_name, jbcoin, GetCoin(sender.UserID)))
-	//                    sender.Reply("记录成功。")
-	//                } else {
-	//                    errorMsg := fmt.Sprintf("提示信息：%s", outputStr)
-	//                    sender.Reply(errorMsg)
-	//                }
-	//                } else {
-	//                	// 输出错误信息
-	//                	errorMsg := fmt.Sprintf("错误信息：%s", stderr.String())
-	//                	sender.Reply(errorMsg)
-	//                    }
-	//            }
-	//        }
-	//
-	//        return nil
-	//    },
-	//},
-
-	//{
-	//    Command: []string{"更新ck"},
-	//    Handle: func(sender *Sender) interface{} {
-	//        // 检查命令参数是否符合格式
-	//        if len(sender.Contents) != 3 {
-	//            sender.Reply("格式错误！！正确格式为：更新ck 你的ck 备注 活动代号")
-	//            return nil
-	//        }
-	//
-	//        // 获取命令参数
-	//        value := sender.Contents[0]
-	//        remarks := sender.Contents[1]
-	//        env_name := sender.Contents[2]
-	//
-	//        // 获取扣积分设置
-	//        value3 := GetEnv("up" + env_name)
-	//
-	//        // 检查是否开启了更新功能
-	//        if value3 == "" {
-	//            sender.Reply(fmt.Sprintf("%s未开启更新功能", env_name))
-	//        } else {
-	//            // 获取用户的积分
-	//            coin := GetCoin(sender.UserID)
-	//            jbcoin, _ := strconv.Atoi(value3)
-	//
-	//            // 检查用户积分是否足够
-	//            if coin < jbcoin {
-	//                sender.Reply(fmt.Sprintf("积分不足，%s更新需要%d个积分，请登录京东账号获取奖励（或私聊群主积分卡）", env_name, jbcoin))
-	//            } else {
-	//                // 执行记更新的脚本
-	//                cmd := exec.Command("python3", "scripts/updata.py", value, remarks, env_name)
-	//                var stdout, stderr bytes.Buffer
-	//                cmd.Stdout = &stdout
-	//                cmd.Stderr = &stderr
-	//
-	//                // 执行命令
-	//                err := cmd.Run()
-	//                // 检查脚本执行结果
-	//                if err == nil {
-	//                	// 检查标准输出是否包含'更新成功'
-	//                	outputStr := stdout.String()
-	//                	if strings.Contains(outputStr, "更新成功") {
-	//                    // 扣除用户积分
-	//                    RemCoin(sender.UserID, jbcoin)
-	//                    sender.Reply(fmt.Sprintf("更新%s账号，已扣除%d个积分，剩余积分%d", env_name, jbcoin, GetCoin(sender.UserID)))
-	//                    sender.Reply("更新成功。")
-	//                } else {
-	//                    errorMsg := fmt.Sprintf("提示信息：%s", outputStr)
-	//                    sender.Reply(errorMsg)
-	//                }
-	//                } else {
-	//                	// 输出错误信息
-	//                	errorMsg := fmt.Sprintf("错误信息：%s", stderr.String())
-	//                	sender.Reply(errorMsg)
-	//                    }
-	//            }
-	//        }
-	//
-	//        return nil
-	//    },
-	//},
-
-	{
-		Command: []string{"删掉"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			cost := sender.Contents[0]
-
-			if Config.QQID == 764763903 {
-				DeleteCk(cost, "ck")
-				return "删除成功"
-			}
-			if len(sender.Contents) >= 1 {
-				sender.Reply(fmt.Sprintf("开始删除%s行", cost))
-				rsp := cmd(fmt.Sprintf("python3 ./tou_ck.py %s", cost), &Sender{})
-				sender.Reply(rsp)
-			} else {
-				sender.Reply("请配置开始信息")
-			}
-			return nil
-		},
-	},
-
+	//停止助力
 	{
 		Command: []string{"停助力", "停止助力"},
 		Handle: func(sender *Sender) interface{} {
@@ -479,6 +320,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
+	//生成卡密
 	{
 		Command: []string{"生成卡密"},
 		Admin:   true,
@@ -493,7 +335,7 @@ var codeSignals = []CodeSignal{
 			return "非VIP用户"
 		},
 	},
-
+	//状态
 	{
 		Command: []string{"status", "状态"},
 		Admin:   true,
@@ -501,7 +343,7 @@ var codeSignals = []CodeSignal{
 			return Count()
 		},
 	},
-
+	//py执行口令
 	{
 		Command: []string{"跑"},
 		Admin:   true,
@@ -521,7 +363,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
+	//微信扫码
 	{
 		Command: []string{"微信扫码"},
 		Handle: func(sender *Sender) interface{} {
@@ -529,7 +371,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
+	//R京东扫码
 	{
 		Command: []string{"R京东扫码"},
 		Handle: func(sender *Sender) interface{} {
@@ -537,7 +379,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
+	//N京东扫码
 	{
 		Command: []string{"N京东扫码"},
 		Handle: func(sender *Sender) interface{} {
@@ -545,7 +387,7 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
+	//打卡
 	{
 		Command: []string{"sign", "打卡", "签到"},
 		Handle: func(sender *Sender) interface{} {
