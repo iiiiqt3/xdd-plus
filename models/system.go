@@ -49,7 +49,6 @@ type SystemConfig struct {
 
 func initSysConfig() {
 	ListConfig()
-	updateConfig()
 	updateUsers()
 }
 
@@ -95,86 +94,17 @@ func SaveSysConfig(config SystemConfig) string {
 	return "保存成功"
 }
 
-func updateConfig() {
-	env := GetEnv("11.6")
-	if env == "" {
-		logs.Info("开始更新")
-
-		var sys SystemConfig
-
-		sys.RabbitUrl = GetEnv("RabbitUrl")
-		sys.RabbitApiToken = GetEnv("RabbitApiToken")
-		sys.RabbitToken = GetEnv("RabbitToken")
-
-		sys.NolanUrl = GetEnv("NolanUrl")
-		sys.NolanToken = GetEnv("NolanToken")
-
-		sys.BBKToken = GetEnv("BBKToken")
-		sys.BBKJdUrl = GetEnv("BBKJdUrl")
-		sys.ProxyUrl = GetEnv("proxy")
-		SaveSysConfig(sys)
-
-		env := &Env{}
-		env.Name = "11.6"
-		env.Value = "true"
-		ExportEnv(env)
-
-		//UnExportEnv(&Env{Name: "RabbitUrl"})
-		//UnExportEnv(&Env{Name: "RabbitApiToken"})
-		//UnExportEnv(&Env{Name: "RabbitToken"})
-		//UnExportEnv(&Env{Name: "NolanUrl"})
-		//UnExportEnv(&Env{Name: "NolanToken"})
-		//UnExportEnv(&Env{Name: "BBKToken"})
-		//UnExportEnv(&Env{Name: "BBKJdUrl"})
-
-		//todo UserId转换为WxId
-
-		JdCookie{}.Push("升级成功，已将短信相关配置转移，后续请使用网页端配置，请及时打开网页配置登录渠道")
-	}
-}
-
 func updateUsers() {
-	env := GetEnv("13.1")
+	env := GetEnv("14.5")
 	if env == "" {
 		logs.Info("开始更新")
-		//todo
-		JdCookie{}.Push("正在进行用户结构改造，请勿关闭程序")
-		sql := "UPDATE users SET qq = number"
-		// 在Exec方法中在sql 后面可以使用多个参数作为占位的补充
-		// 例如需要name=?，则写法可以使用util.Db.Exec(sql,"张三").Error
-		err := db.Exec(sql).Error
-		if err != nil {
-			logs.Info(err.Error())
-		}
-		sql1 := "UPDATE users SET qq = \"\" WHERE LENGTH(qq)>13"
-
-		err = db.Exec(sql1).Error
-		if err != nil {
-			logs.Info(err.Error())
-		}
-
-		sql2 := "SELECT id,wxid FROM (SELECT * FROM users ORDER BY active_at DESC LIMIT 10000 ) t WHERE wxid != \"\"  GROUP BY wxid HAVING COUNT(1)>1  \n"
-		rows, err := db.Raw(sql2).Rows()
-		if err != nil {
-			logs.Error(err.Error())
-		}
-		// 遍历查询结果
-		for rows.Next() {
-			var user User
-			err := db.ScanRows(rows, &user)
-			if err != nil {
-				logs.Error(err.Error())
-			}
-			db.Delete(user).Commit()
-			logs.Info("删除用户:" + user.Wxid)
-			rows, err = db.Raw(sql2).Rows()
-		}
-
+		//todo 删除重复的WxId
+		deleteDuplicateWxidUsers()
 		env := &Env{}
-		env.Name = "13.1"
+		env.Name = "14.5"
 		env.Value = "true"
 		ExportEnv(env)
 
-		JdCookie{}.Push("升级成功，已将短信相关配置转移，后续请使用网页端配置，请及时打开网页配置登录渠道")
+		JdCookie{}.Push("升级成功，已完成用户结构改造")
 	}
 }

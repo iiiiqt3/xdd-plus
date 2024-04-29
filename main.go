@@ -225,6 +225,7 @@ func main() {
 			name := msg.FromUserName
 			id := friedns.GetByUsername(name).User
 			id.Detail()
+
 			//msg.ReplyText(id)
 
 		}

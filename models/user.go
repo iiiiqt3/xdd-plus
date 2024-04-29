@@ -176,3 +176,37 @@ func getWeiXinId(QQid int) string {
 	}
 	return u.Wxid
 }
+
+func deleteDuplicateWxidUsers() {
+	var users []User
+	db.Find(&users)
+
+	seen := make(map[string]bool)
+	for _, user := range users {
+		// 判断wxid是否为空
+		if user.Wxid == "" {
+			continue
+		}
+
+		//查询jd_cookie是否存在对应的number有的话写入wxid
+		var jdCookie JdCookie
+		if db.Where("number = ?", user.Number).First(&jdCookie).Error == nil {
+			db.Model(jdCookie).Updates(map[string]interface{}{
+				"Wxid": user.Wxid,
+			})
+		}
+
+		if _, ok := seen[user.Wxid]; ok {
+			// wxid已经存在，删除这个用户
+			//判断用户coin是否为0是的话删除否则保留
+			if user.Coin == 0 {
+				db.Delete(&user)
+			} else {
+				JdCookie{}.Push(fmt.Sprintf("用户 %d 的微信ID %s 重复，但是积分不为0，已保留", user.Number, user.Wxid))
+			}
+		} else {
+			// wxid不存在，将其添加到seen map中
+			seen[user.Wxid] = true
+		}
+	}
+}
