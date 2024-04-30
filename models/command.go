@@ -7,6 +7,7 @@ import (
 	"fmt"
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
+	"github.com/buger/jsonparser"
 	"math/rand"
 	"net/url"
 	"os"
@@ -1574,8 +1575,13 @@ func getFriends() {
 	marshal, _ := json.Marshal(reply)
 	logs.Info(string(marshal))
 	req.Body(string(marshal))
-	s, _ := req.String()
-	logs.Info(s)
+	s, _ := req.Bytes()
+	list, _, _, _ := jsonparser.Get(s, "data", "ReturnJson")
+	jsonparser.ArrayEach(list, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
+		var wxUser WxUser
+		json.Unmarshal(value, &wxUser)
+		db.Create(&wxUser)
+	})
 
 }
 

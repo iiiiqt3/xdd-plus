@@ -44,7 +44,7 @@ func initDB() {
 		&MeiTuan{},
 		&Auth{},
 		&Limit{},
-		//&LoginSelectType{},
+		&WxUser{},
 	)
 
 	keys = make(map[string]bool)

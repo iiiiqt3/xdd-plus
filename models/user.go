@@ -24,6 +24,18 @@ type User struct {
 	IsAdmin  bool   `gorm:"column:isAdmin;"`
 }
 
+type WxUser struct {
+	WxNum    string `json:"wx_num"`
+	Avatar   string `json:"avatar"`
+	City     string `json:"city"`
+	Country  string `json:"country"`
+	Nickname string `json:"nickname"`
+	Province string `json:"province"`
+	Note     string `json:"note"`
+	Sex      int    `json:"sex"`
+	Wxid     string `json:"wxid"`
+}
+
 func ClearCoin(uid int) int {
 	var u User
 	if db.Where("number = ?", uid).First(&u).Error != nil {
