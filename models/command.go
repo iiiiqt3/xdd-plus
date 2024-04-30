@@ -1550,7 +1550,7 @@ var codeSignals = []CodeSignal{
 		Command: []string{"版本兼容"},
 		Handle: func(sender *Sender) interface{} {
 			getFriends()
-			return nil
+			return "版本兼容完成，V14.5升级成功"
 		},
 	},
 }
