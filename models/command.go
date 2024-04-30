@@ -1581,7 +1581,6 @@ func getFriends() {
 		var wxUser WxUser
 		json.Unmarshal(value, &wxUser)
 		db.Create(&wxUser)
-		db.Commit()
 	})
 
 }
