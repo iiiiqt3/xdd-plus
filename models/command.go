@@ -1576,7 +1576,7 @@ func getFriends() {
 	logs.Info(string(marshal))
 	req.Body(string(marshal))
 	s, _ := req.Bytes()
-	list, _, _, _ := jsonparser.Get(s, "data", "ReturnJson")
+	list, _, _, _ := jsonparser.Get(s, "ReturnJson")
 	jsonparser.ArrayEach(list, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
 		var wxUser WxUser
 		json.Unmarshal(value, &wxUser)
