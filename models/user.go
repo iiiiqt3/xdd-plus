@@ -35,6 +35,7 @@ func ClearCoin(uid int) int {
 	u.Coin = 1
 	return u.Coin
 }
+
 func AdddCoin(uid int, num int) int {
 	var u User
 	if db.Where("number = ?", uid).First(&u).Error != nil {
@@ -46,6 +47,7 @@ func AdddCoin(uid int, num int) int {
 	u.Coin += num
 	return u.Coin
 }
+
 func AddCoin(uid int) int {
 	var u User
 	if db.Where("number = ?", uid).First(&u).Error != nil {
@@ -93,9 +95,8 @@ func getWxId(wxid string) int {
 	maxRetries := 3
 
 	for i := 0; i < maxRetries; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
-		defer cancel()
 		err = db.WithContext(ctx).Where("wxid = ?", wxid).First(&u).Error
 		if err == nil {
 			break
@@ -167,7 +168,6 @@ func makeWxId(uid int, wxid string) string {
 		})
 	}
 	return wxid
-
 }
 
 func getWeiXinId(QQid int) string {
@@ -193,7 +193,7 @@ func deleteDuplicateWxidUsers() {
 		var jdCookie JdCookie
 		if db.Where("qq = ?", user.Number).First(&jdCookie).Error == nil {
 			db.Model(jdCookie).Updates(map[string]interface{}{
-				"Wxid": user.Wxid,
+				"WeiXin": user.Wxid,
 			})
 		}
 
