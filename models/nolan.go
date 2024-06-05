@@ -88,7 +88,7 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				Available: True,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True})
+				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True, WeiXin: sender.WxId})
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 			} else {
@@ -253,7 +253,7 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			PtKey: ptkey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True})
+			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True, WeiXin: sender.WxId})
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {

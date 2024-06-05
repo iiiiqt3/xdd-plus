@@ -426,7 +426,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								ck.Telegram = sender.UserID
 							}
 							if nck, err := GetJdCookie(ck.PtPin); err == nil {
-								nck.Updates(JdCookie{PtKey: ptKey})
+								nck.Updates(JdCookie{PtKey: ptKey, WeiXin: sender.WxId})
 								if nck.WsKey == "" || len(nck.WsKey) == 0 {
 									if sender.IsQQ() {
 										ck.Update(QQ, ck.QQ)

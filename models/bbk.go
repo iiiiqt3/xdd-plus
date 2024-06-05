@@ -60,7 +60,7 @@ func BBKGetWxQrStatus(cookie string, sender *Sender) {
 			} else {
 				if ptPin != "" || ptKey != "" {
 					if nck, err := GetJdCookie(ck.PtPin); err == nil {
-						nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptKey})
+						nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptKey, WeiXin: sender.WxId})
 						sender.Reply(fmt.Sprintf("登录成功:%s", ptPin))
 						(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", ptPin))
 					} else {
@@ -138,7 +138,7 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 				RWskey: rwskey,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey})
+				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, WeiXin: sender.WxId})
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 			} else {
