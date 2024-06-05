@@ -115,33 +115,20 @@ type JdCookie struct {
 	LevelName string `gorm:"column:LevelName"`
 }
 
-var UserLevel = "UserLevel"
-var LevelName = "LevelName"
-var ScanedAt = "ScanedAt"
-var LoseAt = "LoseAt"
-var CreateAt = "CreateAt"
 var Note = "Note"
 var Available = "Available"
-var UnAvailable = "UnAvailable"
 var PtKey = "PtKey"
 var PtPin = "PtPin"
 var Content = "Content"
 var WsKey = "WsKey"
-var Address = "Address"
 var Priority = "Priority"
-var Nickname = "Nickname"
-var BeanNum = "BeanNum"
-var Pool = "Pool"
 var True = "true"
 var False = "false"
 var QQ = "QQ"
 var RWSKEY = "RWsKey"
-var PushPlus = "PushPlus"
 var Save chan *JdCookie
 var ExecPath string
 var Telegram = "Telegram"
-var Tyt = "Tyt"
-var Dig = "Dig"
 
 func Date() string {
 	return time.Now().Local().Format("2006-01-02")

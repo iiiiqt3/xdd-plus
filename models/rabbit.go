@@ -81,7 +81,7 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 				RWskey: data,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Updates(JdCookie{RWskey: data, QQ: sender.UserID, PtKey: ptkey})
+				nck.Updates(JdCookie{RWskey: data, QQ: sender.UserID, PtKey: ptkey, WeiXin: sender.WxId})
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 			} else {
@@ -89,6 +89,7 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
 				if sender.IsQQ() || sender.IsQQ() {
 					ck.Update(QQ, sender.UserID)
+					ck.Update("WeiXin", sender.WxId)
 				}
 				sender.Reply(fmt.Sprintf(msg))
 				sender.Reply(ck.Query())
@@ -307,7 +308,7 @@ func RabbitSendCode(ty string, phone string, code string, sender *Sender) {
 			WsKey: wskey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			nck.Updates(JdCookie{WsKey: wskey, QQ: sender.UserID, PtKey: ptkey})
+			nck.Updates(JdCookie{WsKey: wskey, QQ: sender.UserID, PtKey: ptkey, WeiXin: sender.WxId})
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
@@ -315,6 +316,7 @@ func RabbitSendCode(ty string, phone string, code string, sender *Sender) {
 			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
 			if sender.IsQQ() || sender.IsQQ() {
 				ck.Update(QQ, sender.UserID)
+				ck.Update("WeiXin", sender.WxId)
 			}
 			sender.Reply(fmt.Sprintf(msg))
 			sender.Reply(ck.Query())

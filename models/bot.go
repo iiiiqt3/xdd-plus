@@ -130,20 +130,20 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 	if msgs[1].(string) == "wx" || msgs[1].(string) == "wxg" {
 		sender.UserID = getWxId(msgs[2].(string))
+		sender.WxId = msgs[2].(string)
 	} else {
 		sender.UserID = msgs[2].(int)
 	}
+
 	if len(msgs) >= 4 && sender.Type != "wxg" {
 		sender.ChatID = msgs[3].(int)
-	}
-	if sender.Type == "wx" {
-		sender.WxId = msgs[2].(string)
 	}
 
 	if sender.Type == "wxg" {
 		sender.WxId = msgs[2].(string)
 		sender.WxGroupId = msgs[3].(string)
 	}
+
 	if sender.Type == "tgg" {
 		sender.MessageID = msgs[4].(int)
 		sender.Username = msgs[5].(string)
