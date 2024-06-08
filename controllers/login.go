@@ -580,6 +580,9 @@ func (c *LoginController) SMSLogin() {
 					msg := fmt.Sprintf("来自短信的更新,账号：%s,QQ: %v", nck.PtPin, qq)
 					ck.Push(ck.Query())
 					(&models.JdCookie{}).Push(msg)
+					go func() {
+						models.Save <- &models.JdCookie{}
+					}()
 
 				} else {
 					models.NewJdCookie(ck)
@@ -591,6 +594,9 @@ func (c *LoginController) SMSLogin() {
 						(&models.JdCookie{}).Push(msg)
 					}
 					ck.Push(ck.Query())
+					go func() {
+						models.Save <- &models.JdCookie{}
+					}()
 
 				}
 
