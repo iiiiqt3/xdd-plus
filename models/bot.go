@@ -22,6 +22,7 @@ var replies = map[string]string{}
 var tytnum = 0
 var loginList = make(map[int]chan string)
 var meituanList = make(map[int]chan string)
+var ckList = make(map[int]chan string)
 
 var SendQQ = func(qq int, msg interface{}) {
 
@@ -172,6 +173,11 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 	if meituanList[sender.UserID] != nil {
 		c2 := meituanList[sender.UserID]
+		c2 <- msg
+		return nil
+	}
+	if ckList[sender.UserID] != nil {
+		c2 := ckList[sender.UserID]
 		c2 <- msg
 		return nil
 	}
