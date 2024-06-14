@@ -1046,6 +1046,7 @@ func Meituan_getck(sender *Sender) {
 	sender.Reply("请微信识别或扫描二维码，登录之后点击微信右上角的 ... 点击下面投诉旁边的复制链接发送给机器人")
 }
 
+
 // 美团自动领卷
 func Meituan_Auto() {
 	JdCookie{}.Push("美团自动领卷开始")
@@ -1058,6 +1059,405 @@ func Meituan_Auto() {
 		}
 	}
 	JdCookie{}.Push("美团自动领卷结束")
+}
+func Jd_fruit_watering(sender *Sender, msg chan string, cks []JdCookie) {
+	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
+		}
+
+		if n == "q" {
+			sender.Reply("退出登录流程")
+			ckList[sender.UserID] = nil
+			close(msg)
+			return
+		}
+
+		num, err := strconv.Atoi(n)
+		if err != nil {
+			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
+			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
+			ckList[sender.UserID] = nil
+			return
+		}
+		regular := `^0$|^[1-9]\d*$`
+		reg := regexp.MustCompile(regular)
+		if reg.MatchString(n) {
+			//cks := GetJdCookie(sender)
+			if len(cks) <= num {
+				sender.Reply("输入序列号错误，已退出！")
+				ckList[sender.UserID] = nil
+				return
+			} else {
+				if sender.IsAdmin {
+					sender.Reply("开始农场浇水，预计5分钟左右请耐心等待回复~")
+				} else {
+					value := GetEnv("ncjs") // 变量设置美团扣的值，export ncjs 10
+					if value == "" {
+						sender.Reply("管理员未开启农场浇水")
+						ckList[sender.UserID] = nil
+						return
+					} else {
+						coin := GetCoin(sender.UserID)
+						jbcoin, _ := strconv.Atoi(value)
+						if coin < jbcoin {
+							sender.Reply(fmt.Sprintf("积分不足，农场浇水需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买）", jbcoin))
+							ckList[sender.UserID] = nil
+							return
+						}
+						RemCoin(sender.UserID, jbcoin)
+						sender.Reply(fmt.Sprintf("开始农场浇水，预计5分钟左右请耐心等待回复，已扣除%d个积分，剩余积分%d\n提醒：农场红包每日限兑一次，每月限兑四次", jbcoin, GetCoin(sender.UserID)))
+					}
+				}
+
+			}
+		} else {
+			sender.Reply("输入序列号错误，已退出！！")
+			ckList[sender.UserID] = nil
+			return
+		}
+		cks[num].Watering(sender)
+		ckList[sender.UserID] = nil
+	}
+}
+
+func (ck *JdCookie) Watering(sender *Sender) {
+	logs.Info("开始农场浇水")
+	jsFilePath := ExecPath + "/scripts/jd_fruit.js"
+	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {
+		logs.Error("JavaScript 文件不存在: %v", err)
+		return
+	}
+	cmd := exec.Command("node", jsFilePath)
+	envs := map[string]string{
+		"pins": "&" + ck.PtPin,
+		"DO_TEN_WATER_AGAIN": "false",
+		"FRUIT_FAST_CARD":    "true",
+		"FRUIT_DELAY":        "6000",
+	}
+
+	for key, value := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	// 输出环境变量以进行调试
+	for _, env := range cmd.Env {
+		logs.Info("环境变量: %s", env)
+	}
+
+	// 获取并输出脚本执行结果
+	output, err := cmd.CombinedOutput()
+	logs.Info("脚本输出: %s", string(output))
+
+	if err != nil && strings.TrimSpace(string(output)) == "" {
+		logs.Error("执行 JavaScript 脚本失败: %v", err)
+		return
+	}
+
+	sender.Reply(replexQuan_Watering(string(output), sender))
+}
+
+func replexQuan_Watering(info string, sender *Sender) string {
+	re1 := regexp.MustCompile(`(?m)^.*(【京东账号1🆔】.+?)$`)
+	re2 := regexp.MustCompile(`(?m)^.*(【水果名称】.+?)$`)
+	re3 := regexp.MustCompile(`(?m)^.*(【已兑换水果】.+?)$`)
+	re4 := regexp.MustCompile(`(?m)^.*(【今日共浇水】.+?)$`)
+	re5 := regexp.MustCompile(`(?m)^.*(【剩余水滴】.+?)$`)
+	re6 := regexp.MustCompile(`(?m)^.*(【水果进度】.+?)$`)
+	re7 := regexp.MustCompile(`(?m)^.*(【预测】.+?)$`)
+	re8 := regexp.MustCompile(`(?m)^.*(【数据异常】.+?)$`)
+
+	matches1 := re1.FindStringSubmatch(info)
+	matches2 := re2.FindStringSubmatch(info)
+	matches3 := re3.FindStringSubmatch(info)
+	matches4 := re4.FindStringSubmatch(info)
+	matches5 := re5.FindStringSubmatch(info)
+	matches6 := re6.FindStringSubmatch(info)
+	matches7 := re7.FindStringSubmatch(info)
+	matches8 := re8.FindStringSubmatch(info)
+
+	msgs := []string{
+		fmt.Sprintf("农场浇水任务已完成："),
+	}
+
+	if len(matches1) > 1 {
+		replaceText := strings.Replace(matches1[1], "【京东账号1🆔】", "【京东账号】", -1)
+		msgs = append(msgs, replaceText)
+	}
+	if len(matches2) > 1 {
+		msgs = append(msgs, matches2[1])
+	}
+	if len(matches3) > 1 {
+		msgs = append(msgs, matches3[1])
+	}
+	if len(matches4) > 1 {
+		msgs = append(msgs, matches4[1])
+	}
+	if len(matches5) > 1 {
+		if sender.Type == "wx" || sender.Type == "wxg" {
+			replaceText := strings.Replace(matches5[1], "💧", "💧", -1)
+			msgs = append(msgs, replaceText)
+		} else {
+			msgs = append(msgs, matches5[1])
+		}
+	}
+	if len(matches6) > 1 {
+		msgs = append(msgs, matches6[1])
+	}
+	if len(matches7) > 1 {
+		if (sender.Type == "wx" || sender.Type == "wxg") && strings.Contains(matches7[1], "🍉") {
+			replaceText := strings.Replace(matches7[1], "🍉", "[庆祝]", -1)
+			msgs = append(msgs, replaceText)
+		} else {
+			msgs = append(msgs, matches7[1])
+		}
+	}
+	if len(matches8) > 1 {
+		msgs = append(msgs, matches8[1])
+	}
+	msgs = append(msgs, "=================\n提示：农场兑红包，每月限兑4次数，次数可能变更，自测！\n=================")
+	return strings.Join(msgs, "\n")
+}
+
+func Jd_price(sender *Sender, msg chan string, cks []JdCookie) {
+	for {
+		n, ok := <-msg
+		//说明发送方关闭了channel
+		if !ok {
+			break
+		}
+
+		if n == "q" {
+			sender.Reply("退出登录流程")
+			ckList[sender.UserID] = nil
+			close(msg)
+			return
+		}
+
+		num, err := strconv.Atoi(n)
+		if err != nil {
+			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
+			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
+			ckList[sender.UserID] = nil
+			return
+		}
+		regular := `^0$|^[1-9]\d*$`
+		reg := regexp.MustCompile(regular)
+		if reg.MatchString(n) {
+			//cks := GetJdCookie(sender)
+			if len(cks) <= num {
+				sender.Reply("输入序列号错误，已退出！")
+				ckList[sender.UserID] = nil
+				return
+			} else {
+				if sender.IsAdmin {
+					sender.Reply("开始京东保价")
+				} else {
+					value := GetEnv("baojia") // 变量设置美团扣的值，export baojia=15
+					if value == "" {
+						sender.Reply("管理员未开启保价功能")
+						ckList[sender.UserID] = nil
+						return
+					} else {
+						coin := GetCoin(sender.UserID)
+						jbcoin, _ := strconv.Atoi(value)
+						if coin < jbcoin {
+							sender.Reply(fmt.Sprintf("积分不足，保价功能需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买）", jbcoin))
+							ckList[sender.UserID] = nil
+							return
+						}
+						RemCoin(sender.UserID, jbcoin)
+						sender.Reply(fmt.Sprintf("开始一键保价，预计1分钟左右请耐心等待回复，已扣除%d个积分，剩余积分%d\n", jbcoin, GetCoin(sender.UserID)))
+					}
+				}
+
+			}
+		} else {
+					sender.Reply("输入序列号错误，已退出！！！")
+					meituanList[sender.UserID] = nil
+					return
+			}
+		cks[num].Price(sender)
+		ckList[sender.UserID] = nil
+	}
+}
+
+func (ck *JdCookie) Price(sender *Sender) {
+	logs.Info("开始运行一键保价")
+
+	// 指定 JavaScript 脚本文件路径
+	jsFilePath := ExecPath + "/scripts/jd_OnceApply.js"
+
+	// 检查 JavaScript 文件是否存在
+	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {
+		logs.Error("JavaScript 文件不存在: %v", err)
+		return
+	}
+
+	// 执行 JavaScript 脚本
+	cmd := exec.Command("node", jsFilePath)
+
+	envs := []Env{
+		{Name: "pins", Value: "&" + ck.PtPin},
+
+	}
+	for _, env := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+	}
+
+	output, err := cmd.CombinedOutput()
+	logs.Info("脚本输出: %s", string(output))
+
+	if err != nil && strings.TrimSpace(string(output)) == "" {
+		logs.Error("执行 JavaScript 脚本失败: %v", err)
+		return
+	}
+	sender.Reply(replexQuan_Price(string(output), sender))
+}
+
+func replexQuan_Price(info string, sender *Sender) string {
+
+
+    re1 := regexp.MustCompile(`保价失败：([^：]+)$`)
+    re2 := regexp.MustCompile(`价保成功：([^：]+)`)
+    re3 := regexp.MustCompile(`没有可保价的订单 😂`)
+
+    matches1 := re1.FindStringSubmatch(info)
+    matches2 := re2.FindStringSubmatch(info)
+    matches3 := re3.FindStringSubmatch(info)
+
+
+    msgs := []string{
+        fmt.Sprintf("保价任务已完成："),
+    }
+
+
+    if len(matches3) > 0 {
+        msgs = append(msgs, "没有可保价的订单 😂")
+    }
+	if len(matches1) > 1 {  
+    msgs = append(msgs, "保价失败："+matches1[1])  
+	}  
+	if len(matches2) > 1 {  
+    msgs = append(msgs, fmt.Sprintf("价保成功，回血%s元 🤑", matches2[1]))  
+	}
+
+    return strings.Join(msgs, "\n")
+}
+
+func Jd_AutoEval(sender *Sender, msg chan string, cks []JdCookie) {
+	for {
+		n, ok := <-msg
+		if !ok {
+			break
+		}
+
+		if n == "q" {
+			sender.Reply("退出登录流程")
+			ckList[sender.UserID] = nil
+			close(msg)
+			return
+		}
+
+		num, err := strconv.Atoi(n)
+		if err != nil {
+			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
+			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
+			ckList[sender.UserID] = nil
+			return
+		}
+		regular := `^0$|^[1-9]\d*$`
+		reg := regexp.MustCompile(regular)
+		if reg.MatchString(n) {
+			//cks := GetJdCookie(sender)
+			if len(cks) <= num {
+				sender.Reply("输入序列号错误，已退出！")
+				ckList[sender.UserID] = nil
+				return
+			} else {
+				if sender.IsAdmin {
+					sender.Reply("开始京东评价")
+				} else {
+					value := GetEnv("pingjia") // 变量设置美团扣的值，export pingjia=15
+					if value == "" {
+						sender.Reply("管理员未开启保价功能")
+						ckList[sender.UserID] = nil
+						return
+					} else {
+						coin := GetCoin(sender.UserID)
+						jbcoin, _ := strconv.Atoi(value)
+						if coin < jbcoin {
+							sender.Reply(fmt.Sprintf("积分不足，评价功能需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买）", jbcoin))
+							ckList[sender.UserID] = nil
+							return
+						}
+						RemCoin(sender.UserID, jbcoin)
+						sender.Reply(fmt.Sprintf("开始一键评价，请耐心等待回复，已扣除%d个积分，剩余积分%d\n", jbcoin, GetCoin(sender.UserID)))
+					}
+				}
+
+			}
+		} else {
+					sender.Reply("输入序列号错误，已退出！！！")
+					meituanList[sender.UserID] = nil
+					return
+			}
+		cks[num].AutoEval(sender)
+		ckList[sender.UserID] = nil
+	}
+}
+
+func (ck *JdCookie) AutoEval(sender *Sender) {
+	logs.Info("开始运行一键评价")
+	jsFilePath := ExecPath + "/scripts/jd_AutoEval.js"
+	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {
+		logs.Error("JavaScript 文件不存在: %v", err)
+		return
+	}
+	cmd := exec.Command("node", jsFilePath)
+	envs := []Env{
+		{Name: "pins", Value: "&" + ck.PtPin},
+		{Name: "ONEVAL", Value: "true"},  //##开启评价
+
+	}
+	for _, env := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
+	}
+
+	output, err := cmd.CombinedOutput()
+	logs.Info("脚本输出: %s", string(output))
+
+	if err != nil && strings.TrimSpace(string(output)) == "" {
+		logs.Error("执行 JavaScript 脚本失败: %v", err)
+		return
+	}
+	sender.Reply(replexQuan_AutoEval(string(output), sender))
+}
+
+
+
+func replexQuan_AutoEval(info string, sender *Sender) string {
+	re1 := regexp.MustCompile(`(?m)^.*(开始【京东账号1】.+?)$`)
+	re2 := regexp.MustCompile(`当前.*?个商品`)
+
+	// 使用正则表达式匹配 info 字符串
+	matches1 := re1.FindStringSubmatch(info)
+	matches2 := re2.FindStringSubmatch(info)
+
+	msgs := []string{
+		"当前评价任务如下：",
+	}
+	if len(matches1) > 1 {
+		replaceText := strings.Replace(matches1[1], "开始【京东账号1】", "【京东账号】", -1)
+		msgs = append(msgs, replaceText)
+	}
+	if len(matches2) > 0 {
+		msgs = append(msgs, matches2[0])
+	}
+	msgs = append(msgs, "======评价任务已完成======")
+	return strings.Join(msgs, "\n")
 }
 
 // 获取真实链接

@@ -568,19 +568,20 @@ func (c *LoginController) SMSLogin() {
 							PtKey:    ptKey,
 							PtPin:    ptPin,
 							QQ:       atoi,
+							Available:       "true",
 							UpdateAt: time.Now().Local().Format("2006-01-02"),
 						})
 					} else {
 						ck.Updates(models.JdCookie{
 							PtKey:    ptKey,
 							PtPin:    ptPin,
+							Available:       "true",
 							UpdateAt: time.Now().Local().Format("2006-01-02"),
 						})
 					}
 					msg := fmt.Sprintf("来自短信的更新,账号：%s,QQ: %v", nck.PtPin, qq)
 					ck.Push(ck.Query())
 					(&models.JdCookie{}).Push(msg)
-
 				} else {
 					models.NewJdCookie(ck)
 					if qq != "" {
@@ -591,8 +592,10 @@ func (c *LoginController) SMSLogin() {
 						(&models.JdCookie{}).Push(msg)
 					}
 					ck.Push(ck.Query())
-
 				}
+				go func() {
+						models.Save <- &models.JdCookie{}
+					}()
 
 				result := Result{
 					Data:    "null",
