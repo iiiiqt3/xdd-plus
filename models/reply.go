@@ -24,7 +24,8 @@ type QQMessage struct {
 		GroupID     int    `json:"group_id"`
 		Message     string `json:"message"`
 	} `json:"params"`
-	Echo string `json:"echo"`
+	Echo      string `json:"echo"`
+	MessageId int    `json:"message_id"`
 }
 
 func SendWxImg(uid string, file []byte) {

@@ -5,6 +5,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 	"github.com/gorilla/websocket"
+	"regexp"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -105,6 +106,13 @@ func HandleQQMessage(msg LLMessage) {
 			models.ListenQQPrivateMessage(msg.UserId, msg.RawMessage)
 		} else if msg.MessageType == "group" {
 			models.ListenQQGroupMessage(msg.UserId, msg.GroupId, msg.RawMessage)
+			//撤回手机号码
+			regular := `^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$`
+			reg := regexp.MustCompile(regular)
+			if reg.MatchString(msg.RawMessage) {
+				logs.Info("识别为手机号，进行撤回")
+				models.DeleteQQGroup(msg.MessageId)
+			}
 		}
 	}
 }
