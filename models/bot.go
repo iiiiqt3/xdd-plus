@@ -64,13 +64,6 @@ var SendQQGroup = func(gid int, qq int, msg interface{}) {
 	}
 }
 
-var DeleteQQGroup = func(msgid int) {
-	SendQQMsg(QQMessage{
-		Action:    "delete_msg",
-		MessageId: msgid,
-	})
-}
-
 var ListenQQPrivateMessage = func(uid int, msg string) {
 	//if strings.Contains(msg, "绑定微信") {
 	//	SendQQ(uid, handleMessage(msg, "qq", int(uid)))

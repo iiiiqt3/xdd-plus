@@ -111,7 +111,7 @@ func HandleQQMessage(msg LLMessage) {
 			reg := regexp.MustCompile(regular)
 			if reg.MatchString(msg.RawMessage) {
 				logs.Info("识别为手机号，进行撤回")
-				models.DeleteQQGroup(msg.MessageId)
+				models.DeleteQQMsg(msg.MessageId)
 			}
 		}
 	}

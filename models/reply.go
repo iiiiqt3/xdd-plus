@@ -135,3 +135,15 @@ func SendQQMsg(msg QQMessage) {
 	msgchan <- marshal
 
 }
+
+func DeleteQQMsg(msgid int) {
+	marshal, _ := json.Marshal(struct {
+		Action    string `json:"action"`
+		MessageId int    `json:"message_id"`
+	}{
+		Action:    "delete_msg",
+		MessageId: msgid,
+	})
+	logs.Info(string(marshal))
+	msgchan <- marshal
+}
