@@ -30,23 +30,29 @@ func LJtoKL(url string) string {
 	}
 	body, _ := ioutil.ReadAll(data.Body)
 	logs.Info("响应内容:", string(body))
+
+	// 解析 JSON 响应
 	var response map[string]interface{}
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		logs.Error("解析 JSON 失败:", err)
 		return "解析失败"
 	}
+
+	// 提取 code 字段
 	if code, exists := response["code"].(string); exists {
 		decodedString := decodeUnicode(code)
+		// 替换 [jApp]【ZACK口令】 为 【复制打开JDapp】
+		decodedString = strings.Replace(decodedString, "[jApp]【ZACK口令】", "【复制打开JDapp】", -1)
 		return decodedString
 	} else {
 		return "未找到 code 字段"
 	}
 }
 
+// decodeUnicode 将 Unicode 转义序列解码为字符串
 func decodeUnicode(s string) string {
-	decodedStr := strings.ReplaceAll(s, `\u`, "")
-	r, err := strconv.Unquote(`"` + decodedStr + `"`)
+	r, err := strconv.Unquote(`"` + s + `"`)
 	if err != nil {
 		logs.Error("Unicode 解码失败:", err)
 		return "解码失败"
