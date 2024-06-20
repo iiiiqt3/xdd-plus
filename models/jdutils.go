@@ -13,24 +13,54 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"encoding/json"
+	"strconv"
 )
 
 func LJtoKL(url string) string {
-	rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+	rsp := httplib.Post("https://jd.zack.xin/api/jd/ulink.php")
 	rsp.Param("url", url)
 	rsp.Param("type", "kl")
-	//rsp.Body(fmt.Sprintf(`url=%s&type=hy`, msg))
+	rsp.Param("u", "jApp")
+	rsp.Param("model", "json")
 	data, err := rsp.Response()
 	if err != nil {
+		logs.Error("请求失败:", err)
 		return "口令转换失败"
 	}
 	body, _ := ioutil.ReadAll(data.Body)
-	logs.Info(string(body))
-	if strings.Contains(string(body), "口令转换失败") {
-		return "口令转换失败"
-	} else {
-		return string(body)
+	logs.Info("响应内容:", string(body))
+
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		logs.Error("解析 JSON 失败:", err)
+		return "解析失败"
 	}
+	if code, exists := response["code"].(string); exists {
+		decodedString := decodeUnicode(code)
+		decodedString = strings.Replace(decodedString, "[jApp]【ZACK口令】", "【复制打开JDapp】", -1)
+		return decodedString
+	} else {
+		return "未找到 code 字段"
+	}
+}
+
+func decodeUnicode(s string) string {
+	var result strings.Builder
+	for len(s) > 0 {
+		if strings.HasPrefix(s, `\u`) && len(s) >= 6 {
+			r, err := strconv.ParseInt(s[2:6], 16, 32)
+			if err == nil {
+				result.WriteRune(rune(r))
+				s = s[6:]
+				continue
+			}
+		}
+		result.WriteByte(s[0])
+		s = s[1:]
+	}
+	return result.String()
 }
 
 func LJtoLJ(url string) []byte {
@@ -53,26 +83,37 @@ func LJtoLJ(url string) []byte {
 }
 
 func KLtoLJ(kl string) string {
-	rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+	rsp := httplib.Post("https://jd.zack.xin/api/jd/ulink.php")
 	rsp.Param("url", kl)
-	rsp.Param("type", "hy")
-	//rsp.Body(fmt.Sprintf(`url=%s&type=hy`, msg))
+	rsp.Param("type", "kl")
+	rsp.Param("u", "jApp")
+	rsp.Param("model", "json")
 	data, err := rsp.Response()
-
 	if err != nil {
+		logs.Error("请求失败:", err)
 		return "口令转换失败"
 	}
 	body, _ := ioutil.ReadAll(data.Body)
-	if strings.Contains(string(body), "口令转换失败") {
-		return "口令转换失败"
+	logs.Info("响应内容:", string(body))
+
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		logs.Error("解析 JSON 失败:", err)
+		return "解析失败"
+	}
+
+	if code, exists := response["code"].(string); exists {
+		decodedString := decodeUnicode(code)
+		return decodedString
 	} else {
-		return string(body)
+		return "未找到 code 字段"
 	}
 }
 
 func NolanKlToLj(kl string) string {
 
-	resp, err := http.Post("https://api.nolanstore.top/JComExchange", "application/json", strings.NewReader(fmt.Sprintf("{\n  \"code\": \"%s\"\n}", kl)))
+	resp, err := http.Post("https://api.nolanstore.cc/JComExchange", "application/json", strings.NewReader(fmt.Sprintf("{\n  \"code\": \"%s\"\n}", kl)))
 	if err != nil {
 		logs.Info("post请求失败 error: %+v", err)
 
@@ -118,7 +159,7 @@ func NolanLJToKL(lj string, title string) string {
 
 }
 
-// 随机slice数组
+//随机slice数组
 func randShuffle(slice []JdCookie) {
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(slice), func(i, j int) {
