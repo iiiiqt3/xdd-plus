@@ -31,18 +31,14 @@ func LJtoKL(url string) string {
 	body, _ := ioutil.ReadAll(data.Body)
 	logs.Info("响应内容:", string(body))
 
-	// 解析 JSON 响应
 	var response map[string]interface{}
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		logs.Error("解析 JSON 失败:", err)
 		return "解析失败"
 	}
-
-	// 提取 code 字段
 	if code, exists := response["code"].(string); exists {
 		decodedString := decodeUnicode(code)
-		// 替换 [jApp]【ZACK口令】 为 【复制打开JDapp】
 		decodedString = strings.Replace(decodedString, "[jApp]【ZACK口令】", "【复制打开JDapp】", -1)
 		return decodedString
 	} else {
@@ -50,14 +46,21 @@ func LJtoKL(url string) string {
 	}
 }
 
-// decodeUnicode 将 Unicode 转义序列解码为字符串
 func decodeUnicode(s string) string {
-	r, err := strconv.Unquote(`"` + s + `"`)
-	if err != nil {
-		logs.Error("Unicode 解码失败:", err)
-		return "解码失败"
+	var result strings.Builder
+	for len(s) > 0 {
+		if strings.HasPrefix(s, `\u`) && len(s) >= 6 {
+			r, err := strconv.ParseInt(s[2:6], 16, 32)
+			if err == nil {
+				result.WriteRune(rune(r))
+				s = s[6:]
+				continue
+			}
+		}
+		result.WriteByte(s[0])
+		s = s[1:]
 	}
-	return r
+	return result.String()
 }
 
 func LJtoLJ(url string) []byte {
@@ -80,20 +83,31 @@ func LJtoLJ(url string) []byte {
 }
 
 func KLtoLJ(kl string) string {
-	rsp := httplib.Post("http://jd.zack.xin/api/jd/ulink.php")
+	rsp := httplib.Post("https://jd.zack.xin/api/jd/ulink.php")
 	rsp.Param("url", kl)
-	rsp.Param("type", "hy")
-	//rsp.Body(fmt.Sprintf(`url=%s&type=hy`, msg))
+	rsp.Param("type", "kl")
+	rsp.Param("u", "jApp")
+	rsp.Param("model", "json")
 	data, err := rsp.Response()
-
 	if err != nil {
+		logs.Error("请求失败:", err)
 		return "口令转换失败"
 	}
 	body, _ := ioutil.ReadAll(data.Body)
-	if strings.Contains(string(body), "口令转换失败") {
-		return "口令转换失败"
+	logs.Info("响应内容:", string(body))
+
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		logs.Error("解析 JSON 失败:", err)
+		return "解析失败"
+	}
+
+	if code, exists := response["code"].(string); exists {
+		decodedString := decodeUnicode(code)
+		return decodedString
 	} else {
-		return string(body)
+		return "未找到 code 字段"
 	}
 }
 
