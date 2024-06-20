@@ -87,7 +87,7 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 			} else {
 				NewJdCookie(&ck)
 				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-				if sender.IsQQ() || sender.IsQQ() {
+				if sender.IsQQ() || sender.isWX() {
 					ck.Update(QQ, sender.UserID)
 					ck.Update("WeiXin", sender.WxId)
 				}
