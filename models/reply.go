@@ -163,7 +163,7 @@ func AutoAgreeFriedns(flag string) {
 			Flag    string `json:"flag"`
 		} `json:"params"`
 	}{
-		Action: "set_friend_add_request ",
+		Action: "set_friend_add_request",
 		QQMsg: struct {
 			Approve string `json:"approve"`
 			Remark  string `json:"remark"`
