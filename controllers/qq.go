@@ -23,6 +23,7 @@ type LLMessage struct {
 	MessageId   int    `json:"message_id"`
 	RealId      int    `json:"real_id"`
 	MessageType string `json:"message_type"`
+	RequestType string `json:"request_type"`
 	Sender      struct {
 		UserId   int    `json:"user_id"`
 		Nickname string `json:"nickname"`
@@ -113,6 +114,10 @@ func HandleQQMessage(msg LLMessage) {
 				logs.Info("识别为手机号，进行撤回")
 				models.DeleteQQMsg(msg.MessageId)
 			}
+		}
+	} else if msg.PostType == "post_type" {
+		if msg.RequestType == "friend" {
+			models.AutoAgreeFriedns()
 		}
 	}
 }
