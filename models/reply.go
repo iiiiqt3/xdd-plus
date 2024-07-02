@@ -153,3 +153,15 @@ func DeleteQQMsg(msgid int) {
 	logs.Info(string(marshal))
 	msgchan <- marshal
 }
+
+func AutoAgreeFriedns() {
+	marshal, _ := json.Marshal(struct {
+		Approve string `json:"approve"`
+		Remark  string `json:"remark"`
+	}{
+		Approve: "true",
+		Remark:  "",
+	})
+	logs.Info(string(marshal))
+	msgchan <- marshal
+}
