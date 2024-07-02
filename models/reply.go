@@ -156,9 +156,11 @@ func DeleteQQMsg(msgid int) {
 
 func AutoAgreeFriedns() {
 	marshal, _ := json.Marshal(struct {
+		Action  string `json:"action"`
 		Approve string `json:"approve"`
 		Remark  string `json:"remark"`
 	}{
+		Action:  ".handle_quick_operation",
 		Approve: "true",
 		Remark:  "",
 	})
