@@ -37,6 +37,7 @@ type LLMessage struct {
 	MessageFormat string `json:"message_format"`
 	PostType      string `json:"post_type"`
 	GroupId       int    `json:"group_id"`
+	Flag          string `json:"flag"`
 }
 
 type CqMessage struct {
@@ -117,7 +118,8 @@ func HandleQQMessage(msg LLMessage) {
 		}
 	} else if msg.PostType == "post_type" {
 		if msg.RequestType == "friend" {
-			models.AutoAgreeFriedns()
+			logs.Info(msg.Flag)
+			models.AutoAgreeFriedns(msg.Flag)
 		}
 	}
 }
