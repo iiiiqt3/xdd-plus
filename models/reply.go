@@ -154,15 +154,25 @@ func DeleteQQMsg(msgid int) {
 	msgchan <- marshal
 }
 
-func AutoAgreeFriedns() {
+func AutoAgreeFriedns(flag string) {
 	marshal, _ := json.Marshal(struct {
-		Action  string `json:"action"`
-		Approve string `json:"approve"`
-		Remark  string `json:"remark"`
+		Action string `json:"action"`
+		QQMsg  struct {
+			Approve string `json:"approve"`
+			Remark  string `json:"remark"`
+			Flag    string `json:"flag"`
+		} `json:"params"`
 	}{
-		Action:  ".handle_quick_operation",
-		Approve: "true",
-		Remark:  "",
+		Action: "set_friend_add_request ",
+		QQMsg: struct {
+			Approve string `json:"approve"`
+			Remark  string `json:"remark"`
+			Flag    string `json:"flag"`
+		}{
+			Approve: "true",
+			Remark:  "",
+			Flag:    flag,
+		},
 	})
 	logs.Info(string(marshal))
 	msgchan <- marshal
