@@ -37,35 +37,30 @@ func createKey(num int, value int) string {
 }
 
 func useKey(id string, use int) string {
-	if getLimitByTime(use, 1, 600) {
-		var u Key
-		err := db.Where("Token = ?", id).First(&u).Error
-		if err == nil {
-			if u.Use != true {
-				var user = &User{}
-				err := db.Where("Number = ?", use).First(&user).Error
-				if err != nil {
-					db.Create(&User{
-						Class:    "qq",
-						Number:   use,
-						Coin:     u.Value,
-						ActiveAt: time.Now(),
-					})
-				} else {
-					user.Coin += u.Value
-					db.Where("Number = ?", use).Updates(user)
-				}
-				u.UseBy = use
-				u.Use = true
-				db.Where("Token = ?", id).Updates(u)
-				return fmt.Sprintf("使用成功,积分增加%d", u.Value)
+	var u Key
+	err := db.Where("Token = ?", id).First(&u).Error
+	if err == nil {
+		if u.Use != true {
+			var user = &User{}
+			err := db.Where("Number = ?", use).First(&user).Error
+			if err != nil {
+				db.Create(&User{
+					Class:    "qq",
+					Number:   use,
+					Coin:     u.Value,
+					ActiveAt: time.Now(),
+				})
 			} else {
-				return "卡密已被使用"
+				user.Coin += u.Value
+				db.Where("Number = ?", use).Updates(user)
 			}
+			u.UseBy = use
+			u.Use = true
+			db.Where("Token = ?", id).Updates(u)
+			return fmt.Sprintf("使用成功,积分增加%d", u.Value)
+		} else {
+			return "卡密已被使用"
 		}
-		return "查无此卡"
-	} else {
-		return "限制了"
 	}
-
+	return "查无此卡"
 }

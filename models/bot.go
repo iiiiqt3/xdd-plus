@@ -19,7 +19,6 @@ import (
 )
 
 var replies = map[string]string{}
-var tytnum = 0
 var loginList = make(map[int]chan string)
 var meituanList = make(map[int]chan string)
 var ckList = make(map[int]chan string)
@@ -60,14 +59,10 @@ var SendQQGroup = func(gid int, qq int, msg interface{}) {
 			},
 			Echo: "user_id",
 		})
-		//SendQQMsg(QQMessage{GroupID: gid, Message: msg.(string)})
 	}
 }
 
 var ListenQQPrivateMessage = func(uid int, msg string) {
-	//if strings.Contains(msg, "绑定微信") {
-	//	SendQQ(uid, handleMessage(msg, "qq", int(uid)))
-	//}
 	SendQQ(uid, handleMessage(msg, "qq", uid))
 }
 
@@ -256,13 +251,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				b2 := matched || strings.Contains(msg, "https://u.jd.com/")
 				if b2 {
 					return Get_powerful_link(msg)
-				}
-			}
-
-			//绑定QQ
-			{
-				if strings.HasPrefix(msg, "DXWX") {
-					return setWxId(msg, sender.WxId)
 				}
 			}
 
