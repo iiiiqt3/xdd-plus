@@ -136,21 +136,6 @@ func getWxId(wxid string) int {
 	}
 }
 
-func getUserId(typ string, uid string) string {
-	switch typ {
-	case "qq", "qqg":
-
-	case "wx", "wxg":
-
-	case "tg":
-
-	default:
-		logs.Info("错误的渠道来源")
-	}
-
-	return ""
-}
-
 func setWxId(uid string, wxid string) string {
 	var u User
 	db.Where("wxid = ? and class = ?", wxid, "wx").Delete(&u)

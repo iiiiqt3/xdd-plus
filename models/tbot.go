@@ -104,7 +104,7 @@ func SendTgImg(uid int, file []byte) {
 	if b == nil || uid == 0 {
 		return
 	}
-	b.Send(&tb.User{ID: uid}, tb.Photo{
+	b.Send(&tb.User{ID: uid}, &tb.Photo{
 		File: tb.File{
 			FileURL: img,
 		},
