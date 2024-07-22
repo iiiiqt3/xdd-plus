@@ -58,7 +58,6 @@ type Yaml struct {
 	SMSAddress          string `yaml:"SMSAddress"`
 	IsAddFriend         bool   `yaml:"IsAddFriend"`
 	Lim                 int    `yaml:"Lim"`
-	Tyt                 int    `yaml:"Tyt"`
 	IFC                 bool   `yaml:"IFC"`
 	Later               int    `yaml:"Later"`
 	Jdcurl              string `yaml:"Jdcurl"`
@@ -148,9 +147,6 @@ func initConfig() {
 	}
 	if Config.NoGhproxy {
 		GhProxy = ""
-	}
-	if Config.Tyt == 0 {
-		Config.Tyt = 8
 	}
 
 	if Config.Wx.Model == "" {
