@@ -258,7 +258,7 @@ func handleElm(filePath string) (firstLine string, err error) {
 
 	// 关闭文件后重新打开进行写入
 	file.Close()
-	err = os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644)
+	err = os.WriteFile(models.ExecPath+"/elm/"+filePath, []byte(strings.Join(lines, "\n")), 0644)
 	if err != nil {
 		return "", err
 	}
