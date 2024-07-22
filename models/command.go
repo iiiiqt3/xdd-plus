@@ -119,6 +119,8 @@ func (sender *Sender) SendImg(msg []byte) {
 		})
 	case "tg":
 		SendTgImg(sender.UserID, msg)
+	case "tgg":
+		SendTggImg(sender.ChatID, sender.UserID, msg, sender.MessageID, sender.Username)	
 	case "wx":
 		SendWxImg(sender.WxId, msg)
 	case "wxg":

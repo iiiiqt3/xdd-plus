@@ -104,7 +104,7 @@ func SendTgImg(uid int, file []byte) {
 	if b == nil || uid == 0 {
 		return
 	}
-	b.Send(&tb.User{ID: uid}, tb.Photo{
+	b.Send(&tb.User{ID: uid}, &tb.Photo{
 		File: tb.File{
 			FileURL: img,
 		},
@@ -119,6 +119,43 @@ func SendTggMsg(gid int, uid int, msg string, mid int, unm string) {
 		b.Send(&tb.Chat{ID: int64(gid)}, fmt.Sprintf("@%s %s", unm, msg))
 	} else {
 		b.Send(&tb.Chat{ID: int64(gid)}, msg, &tb.SendOptions{ReplyTo: &tb.Message{ID: mid}})
+	}
+
+}
+
+func SendTggImg(gid int, uid int, file []byte, mid int, unm string) {
+	unix := time.Now().Unix()
+
+	filename := ExecPath + fmt.Sprintf("/static/%d.jpg", unix)
+
+	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		logs.Warn("zqdyj.txt失败，", err)
+	}
+	f.Write(file)
+	f.Close()
+
+	img := uploadImg(filename)
+	logs.Info(img)
+
+	os.Remove(filename)
+
+	if b == nil || uid == 0 {
+		return
+	}
+	if unm != "" {
+		b.Send(&tb.Chat{ID: int64(gid)}, &tb.Photo{
+			File: tb.File{
+				FileURL: img,
+			},
+			Caption: fmt.Sprintf("@%s", unm),
+		})
+	} else {
+		b.Send(&tb.Chat{ID: int64(gid)}, &tb.Photo{
+			File: tb.File{
+				FileURL: img,
+			},
+		}, &tb.SendOptions{ReplyTo: &tb.Message{ID: mid}})
 	}
 
 }
