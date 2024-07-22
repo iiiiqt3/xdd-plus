@@ -139,6 +139,7 @@ func (c *WxController) HandleWxMessage() {
 						default:
 							//不予处理
 						}
+						return
 					}
 				}
 				logs.Info("接收到转账" + ag.Content.Msg)
