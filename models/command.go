@@ -194,6 +194,20 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 }
 
 var codeSignals = []CodeSignal{
+
+	//饿充值
+	{
+		Command: []string{"饿充值"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			msg := make(chan string)
+			ElmList[sender.UserID] = msg
+			go ELMSelect(sender, msg, 0)
+			return "请对我转帐（1元，5元或者10元），1元=100币。请勿转其他金额，仅支持1,5,10"
+
+		},
+	},
+
 	//获取我的userid
 	{
 		Command: []string{"获取我的userid"},

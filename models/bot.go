@@ -22,6 +22,7 @@ var replies = map[string]string{}
 var tytnum = 0
 var loginList = make(map[int]chan string)
 var meituanList = make(map[int]chan string)
+var ElmList = make(map[int]chan string)
 var ckList = make(map[int]chan string)
 
 var SendQQ = func(qq int, msg interface{}) {
@@ -130,7 +131,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	//logs.Info(msgs[2].(string))
 
 	if msgs[1].(string) == "wx" || msgs[1].(string) == "wxg" {
-		sender.UserID = getWxId(msgs[2].(string))
+		sender.UserID = GetWxid(msgs[2].(string))
 		sender.WxId = msgs[2].(string)
 	} else {
 		sender.UserID = msgs[2].(int)
@@ -173,6 +174,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 
 	if meituanList[sender.UserID] != nil {
 		c2 := meituanList[sender.UserID]
+		c2 <- msg
+		return nil
+	}
+
+	if ElmList[sender.UserID] != nil {
+		c2 := ElmList[sender.UserID]
 		c2 <- msg
 		return nil
 	}
@@ -594,7 +601,7 @@ func AutoCollection(autocollect map[string]string) {
 	s, _ := req.String()
 	logs.Info(s)
 	//增加积分
-	id := getWxId(autocollect["to_wxid"])
+	id := GetWxid(autocollect["to_wxid"])
 	if id != 0 {
 		money, _ := strconv.ParseFloat(autocollect["money"], 64)
 		logs.Info(money)

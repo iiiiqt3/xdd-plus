@@ -101,7 +101,7 @@ func GetCoin(uid int) int {
 	return u.Coin
 }
 
-func getWxId(wxid string) int {
+func GetWxid(wxid string) int {
 	var u User
 	var err error
 	maxRetries := 3
