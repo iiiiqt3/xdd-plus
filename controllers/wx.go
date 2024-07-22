@@ -126,7 +126,7 @@ func (c *WxController) HandleWxMessage() {
 					autocollect := &AutocollectMessageBody{}
 					err := json.Unmarshal([]byte(ag.Content.Msg), autocollect)
 					if err == nil && autocollect.PayerPayId != "" && autocollect.ReceiverPayId != "" && autocollect.Paysubtype == 1 {
-						receiveMoney(autocollect, ag)
+						receiveMoney(autocollect, ag, 1)
 						switch autocollect.Money {
 						case "1.00":
 							switchMoney(ag, "1.txt")
@@ -147,7 +147,7 @@ func (c *WxController) HandleWxMessage() {
 					autocollect := &AutocollectMessageBody{}
 					err := json.Unmarshal([]byte(ag.Content.Msg), autocollect)
 					if err == nil && autocollect.PayerPayId != "" && autocollect.ReceiverPayId != "" && autocollect.Paysubtype == 1 {
-						receiveMoney(autocollect, ag)
+						receiveMoney(autocollect, ag, 0)
 					}
 				}
 			}
@@ -176,14 +176,18 @@ func switchMoney(ag *WxMessage, filePath string) {
 	models.ElmList[models.GetWxid(ag.Content.FromWxid)] = nil
 }
 
-func receiveMoney(autocollect *AutocollectMessageBody, ag *WxMessage) {
+func receiveMoney(autocollect *AutocollectMessageBody, ag *WxMessage, typ int) {
 	args := make(map[string]string)
 	args["money"] = autocollect.Money
 	args["payer_pay_id"] = autocollect.PayerPayId
 	args["receiver_pay_id"] = autocollect.ReceiverPayId
 	args["paysubtype"] = strconv.Itoa(autocollect.Paysubtype)
 	args["to_wxid"] = ag.Content.FromWxid
-	models.AutoCollection(args)
+	if typ == 0 {
+		models.AutoCollectionAndAddCoin(args)
+	} else if typ == 1 {
+		models.AutoCollection(args)
+	}
 }
 
 func AgreeFriendVerify(args interface{}) {
