@@ -93,8 +93,8 @@ func humanType(ctx context.Context, sel, input string) error {
 
 func login() {
 	// Replace with your own usernum, passwd, and notes
-	usernum := "18065858679"
-	passwd := "764763903a"
+	usernum := ""
+	passwd := ""
 	notes := "yourNotes"
 
 	log.Printf("正在登录 %s %s 的账号", notes, usernum)
