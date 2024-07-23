@@ -126,7 +126,6 @@ func (c *WxController) HandleWxMessage() {
 					autocollect := &AutocollectMessageBody{}
 					err := json.Unmarshal([]byte(ag.Content.Msg), autocollect)
 					if err == nil && autocollect.PayerPayId != "" && autocollect.ReceiverPayId != "" && autocollect.Paysubtype == 1 {
-						receiveMoney(autocollect, ag, 1)
 						switch autocollect.Money {
 						case "1.00":
 							switchMoney(ag, "1.txt")
@@ -138,7 +137,9 @@ func (c *WxController) HandleWxMessage() {
 							switchMoney(ag, "10.txt")
 						default:
 							//不予处理
+							return
 						}
+						receiveMoney(autocollect, ag, 1)
 						return
 					}
 				}
