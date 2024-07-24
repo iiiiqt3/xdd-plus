@@ -129,10 +129,8 @@ func (c *WxController) HandleWxMessage() {
 						switch autocollect.Money {
 						case "1.00":
 							switchMoney(ag, "1.txt")
-							return
 						case "5.00":
 							switchMoney(ag, "5.txt")
-							return
 						case "10.00":
 							switchMoney(ag, "10.txt")
 						default:
