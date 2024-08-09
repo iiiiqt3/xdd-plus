@@ -380,15 +380,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	//微信扫码
-	{
-		Command: []string{"微信扫码"},
-		Handle: func(sender *Sender) interface{} {
-			BBKGetWxQrImg(sender)
-			return nil
-		},
-	},
-
 	//R京东扫码
 	{
 		Command: []string{"R京东扫码"},
@@ -607,18 +598,6 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			sender.Reply("重启程序")
 			Daemon()
-			return nil
-		},
-	},
-
-	//更新账号
-	{
-		Command: []string{"更新账号"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("更新所有账号")
-			logs.Info("更新所有账号")
-			updateCookie()
 			return nil
 		},
 	},
@@ -1059,46 +1038,6 @@ var codeSignals = []CodeSignal{
 				return "操作失败"
 			}
 			return "操作成功"
-		},
-	},
-
-	//更新指定
-	{
-		Command: []string{"更新指定"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				if len(ck.WsKey) > 0 {
-					var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-					rsp := getKey(pinky)
-					if len(rsp) > 0 {
-						if strings.Contains(rsp, "fake") {
-							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
-						}
-						ptKey := FetchJdCookieValue("pt_key", rsp)
-						ptPin := FetchJdCookieValue("pt_pin", rsp)
-						ck := JdCookie{
-							PtKey: ptKey,
-							PtPin: ptPin,
-						}
-						if nck, err := GetJdCookie(ck.PtPin); err == nil {
-							nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-							msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-							sender.Reply(msg)
-							logs.Info(msg)
-						} else {
-							sender.Reply("转换失败")
-						}
-					} else {
-						sender.Reply("转换失败")
-						//sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
-					}
-				} else {
-					sender.Reply(fmt.Sprintf("Wskey为空，%s", ck.Nickname))
-				}
-
-			})
-			return nil
 		},
 	},
 
