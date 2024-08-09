@@ -134,15 +134,6 @@ func main() {
 		}
 	})
 
-	//for prefix, staticDir := range StaticDir {
-	//	if strings.HasPrefix(r.URL.Path, prefix) {
-	//		file := staticDir + r.URL.Path[len(prefix):]
-	//		http.ServeFile(w, r, file)
-	//		w.started = true
-	//		return
-	//	}
-	//}
-
 	//vweb.Router("/api/login/cookie", &controllers.LoginController{}, "get:Cookie")
 	web.Router("/api/login/admin", &controllers.LoginController{}, "post:IsAdmin")
 	web.Router("/api/login/cklogin", &controllers.LoginController{}, "post:CkLogin")
@@ -166,19 +157,8 @@ func main() {
 
 		//vweb.Router("/api/loginselect", &controllers.AccountController{}, "get:ListLoginSelect")
 		//vweb.Router("/api/loginselect", &controllers.AccountController{}, "post,delete:CreateOrUpdateLoginSelect")
-	}
 
-	//zero.RunAndBlock(&zero.Config{
-	//	NickName:      []string{"bot"},
-	//	CommandPrefix: "/",
-	//	SuperUsers:    []int64{764763903},
-	//	Driver: []zero.Driver{
-	//		// 正向 WS
-	//		driver.NewWebSocketClient("ws://127.0.0.1:6700", ""),
-	//		// 反向 WS
-	//		driver.NewWebSocketServer(16, "ws://127.0.0.1:6701", ""),
-	//	},
-	//}, nil)
+	}
 
 	if models.Config.Static == "" {
 		models.Config.Static = "./static"
@@ -210,22 +190,23 @@ func main() {
 
 	}()
 
-	bot := openwechat.DefaultBot(openwechat.Desktop) // 桌面模式
+	//bot := openwechat.DefaultBot(openwechat.Desktop) // 桌面模式
+	//
+	//// 注册消息处理函数
+	//bot.MessageHandler = func(msg *openwechat.Message) {
+	//	if msg.IsText() && msg.Content == "ping" {
+	//
+	//		msg.ReplyText("pong")
+	//
+	//		name := msg.FromUserName
+	//		id := friedns.GetByUsername(name).User
+	//		id.Detail()
+	//
+	//		//msg.ReplyText(id)
+	//
+	//	}
+	//}
 
-	// 注册消息处理函数
-	bot.MessageHandler = func(msg *openwechat.Message) {
-		if msg.IsText() && msg.Content == "ping" {
-
-			msg.ReplyText("pong")
-
-			name := msg.FromUserName
-			id := friedns.GetByUsername(name).User
-			id.Detail()
-
-			//msg.ReplyText(id)
-
-		}
-	}
 	//
 	//// 注册登陆二维码回调
 	//bot.UUIDCallback = openwechat.PrintlnQrcodeUrl
