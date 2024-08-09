@@ -143,7 +143,6 @@ func main() {
 	//	}
 	//}
 
-	web.Router("/api/login/query", &controllers.LoginController{}, "get:Query")
 	//vweb.Router("/api/login/cookie", &controllers.LoginController{}, "get:Cookie")
 	web.Router("/api/login/admin", &controllers.LoginController{}, "post:IsAdmin")
 	web.Router("/api/login/cklogin", &controllers.LoginController{}, "post:CkLogin")
