@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
@@ -212,79 +211,6 @@ func GetAuthKey() {
 	post.Param("master", Config.Master)
 	post.Param("uid", Config.QQGroupID)
 	post.Bytes()
-}
-
-func updateCookie() {
-	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where(fmt.Sprintf("%s != ? and %s != ? ", WsKey, WsKey), "null", "")
-	})
-	xx := 0
-	yy := 0
-	(&JdCookie{}).Push("开始定时更新转换Wskey")
-	for i, ck := range cks {
-		if i == len(cks)/2 {
-			(&JdCookie{}).Push("Wskey已更新二分一")
-		}
-		time.Sleep(time.Duration(1) * time.Second)
-		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-		rsp := getKey(pinky)
-		if strings.Contains(rsp, "错误") {
-			yy++
-			ck.Updates(JdCookie{WsKey: "null", Available: False})
-			ck.Push(fmt.Sprintf("Wskey失效账号，%s，请联系管理员", ck.PtPin))
-			(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，%s", ck.PtPin))
-		} else {
-			ptKey := FetchJdCookieValue("pt_key", rsp)
-			ptPin := FetchJdCookieValue("pt_pin", rsp)
-			ck1 := JdCookie{
-				PtKey: ptKey,
-				PtPin: ptPin,
-			}
-			if ptPin != "" && ptKey != "" {
-				if nck, err := GetJdCookie(ck1.PtPin); err == nil {
-					xx++
-					nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-					msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
-					logs.Info(msg)
-				} else {
-					yy++
-					ck1.Update(Available, False)
-					(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", ck.PtPin))
-				}
-			} else {
-				yy++
-				(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
-			}
-		}
-	}
-	go func() {
-		Save <- &JdCookie{}
-	}()
-	(&JdCookie{}).Push(fmt.Sprintf("所有CK转换完成，共%d个,转换失败个数共%d个", xx, yy))
-}
-
-func CheckWskeyOK(ck *JdCookie) (bool, string) {
-	if len(ck.WsKey) > 0 {
-		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-		rsp := getKey(pinky)
-		if strings.Contains(rsp, "fake") {
-			return false, "失效账号"
-		} else {
-			ptKey := FetchJdCookieValue("pt_key", rsp)
-			ptPin := FetchJdCookieValue("pt_pin", rsp)
-			ck1 := JdCookie{
-				PtKey: ptKey,
-				PtPin: ptPin,
-			}
-			if ptPin != "" || ptKey != "" {
-				return CookieOK(&ck1), "转换成功"
-			} else {
-				(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
-				return false, "转换超时，请稍后再试或者联系管理员"
-			}
-		}
-	}
-	return false, "帐号不含wskey"
 }
 
 func CookieOK(ck *JdCookie) bool {

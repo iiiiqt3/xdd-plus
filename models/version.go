@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var version = "v14.5"
-var describe = "修复新号不进入容器"
+var version = "v100.0"
+var describe = "重构"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
