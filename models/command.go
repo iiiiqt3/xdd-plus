@@ -194,6 +194,7 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 }
 
 var codeSignals = []CodeSignal{
+
 	//获取我的userid
 	{
 		Command: []string{"获取我的userid"},
