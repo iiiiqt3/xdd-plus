@@ -235,7 +235,6 @@ func (ck *JdCookie) Query() string {
 			}
 			page++
 		}
-		//msgs = append(msgs, fmt.Sprintf("当前京豆：%d京豆", to.Base.JdNum))
 		ysd := int(time.Now().Add(24*time.Hour).Unix()) * 1000
 		if rps := <-rpc; len(rps) != 0 {
 			for _, rp := range rps {
@@ -328,18 +327,6 @@ func getJingBeanBalanceDetail(page int, cookie string) []BeanDetail {
 	}
 	json.Unmarshal(data, &a)
 	return a.DetailList
-}
-
-type JingXiBeanDetails struct {
-	Detail []JingXiDetail `json:"detail"`
-	Ret    int            `json:"ret"`
-	Retmsg string         `json:"retmsg"`
-}
-
-type JingXiDetail struct {
-	Amount      int    `json:"amount"`
-	Createdate  string `json:"createdate"`
-	Visibleinfo string `json:"visibleinfo"`
 }
 
 type RedList struct {
