@@ -827,28 +827,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	//设置管理员
-	{
-		Command: []string{"设置管理员"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			ctt := sender.JoinContens()
-			db.Create(&UserAdmin{Content: ctt})
-			return "已设置管理员"
-		},
-	},
-
-	//取消管理员
-	{
-		Command: []string{"取消管理员"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			ctt := sender.JoinContens()
-			RemoveUserAdmin(ctt)
-			return "已取消管理员"
-		},
-	},
-
 	//QQ转账
 	{
 		Command: []string{"QQ转账"},
