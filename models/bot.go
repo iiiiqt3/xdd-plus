@@ -148,11 +148,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	if sender.UserID == Config.TelegramUserID || sender.UserID == int(Config.QQID) {
 		sender.IsAdmin = true
 	}
-	if sender.IsAdmin == false {
-		if IsUserAdmin(strconv.Itoa(sender.UserID)) {
-			sender.IsAdmin = true
-		}
-	}
 
 	if loginList[sender.UserID] != nil {
 		c2 := loginList[sender.UserID]

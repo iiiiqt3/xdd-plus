@@ -17,12 +17,6 @@ type WxConfig struct {
 	Token   string
 }
 
-type FanLi struct {
-	Appid    string
-	Appkey   string
-	Union_id string
-}
-
 type Yaml struct {
 	Containers          []Container
 	Tasks               []Task
@@ -116,8 +110,6 @@ func initConfig() {
 		}
 		f.Close()
 	}
-	//title, _ := ioutil.ReadFile(ExecPath + "/conf/title.conf")
-	//Config.Title = string(title)
 
 	content, err := ioutil.ReadFile(ExecPath + "/conf/config.yaml")
 	if err != nil {

@@ -7,6 +7,12 @@ import (
 	"github.com/buger/jsonparser"
 )
 
+type FanLi struct {
+	Appid    string
+	Appkey   string
+	Union_id string
+}
+
 var powerful = "https://api.jingpinku.com/get_powerful_link/api"
 
 func Get_powerful_link(content string) string {
