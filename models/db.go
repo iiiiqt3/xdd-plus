@@ -37,7 +37,6 @@ func initDB() {
 		&User{},
 		&Env{},
 		&Token{},
-		&UserAdmin{},
 		&Cache{},
 		&Key{},
 		&BakJdCookie{},
