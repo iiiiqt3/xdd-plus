@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+var msgchan = make(chan []byte)
+
 func init() {
 	killp()
 	for _, arg := range os.Args {
@@ -19,7 +21,7 @@ func init() {
 	}
 	ExecPath, _ = filepath.Abs(filepath.Dir(os.Args[0]))
 	logs.Info("当前%s", ExecPath)
-	InitChan()
+	go WriteMsg(msgchan)
 	initConfig()
 	initDB()
 	initSysConfig()
