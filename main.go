@@ -73,6 +73,21 @@ func main() {
 		}
 	})
 
+	web.Get("/noteice", func(ctx *context.Context) {
+		models.JdCookie{}.Push("饿了么已重启" + time.Now().Format("2006-01-02 15:04:05"))
+		result := AuthResult{
+			Flag:    true,
+			Data:    "null",
+			Code:    20000,
+			Message: "操作成功",
+		}
+		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		ctx.WriteString(string(jsons))
+	})
+
 	web.Get("/count", func(ctx *context.Context) {
 		ctx.WriteString(models.Count())
 	})
