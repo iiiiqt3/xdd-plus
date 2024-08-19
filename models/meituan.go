@@ -955,8 +955,6 @@ func CheckMTList() {
 			})
 			tuans[i] = tuan
 			SendWxMsg(tuan.WeiXin, fmt.Sprintf("美团账号:%s已失效", tuan.Nickname))
-			WeiXin := getWeiXinId(Config.QQID)
-			SendWxMsg(WeiXin, fmt.Sprintf("美团账号:%s已失效", tuan.Nickname))
 		}
 	}
 }
@@ -1046,7 +1044,6 @@ func Meituan_getck(sender *Sender) {
 	sender.Reply("请微信识别或扫描二维码，登录之后点击微信右上角的 ... 点击下面投诉旁边的复制链接发送给机器人")
 }
 
-
 // 美团自动领卷
 func Meituan_Auto() {
 	JdCookie{}.Push("美团自动领卷开始")
@@ -1132,7 +1129,7 @@ func (ck *JdCookie) Watering(sender *Sender) {
 	}
 	cmd := exec.Command("node", jsFilePath)
 	envs := map[string]string{
-		"pins": "&" + ck.PtPin,
+		"pins":               "&" + ck.PtPin,
 		"DO_TEN_WATER_AGAIN": "false",
 		"FRUIT_FAST_CARD":    "true",
 		"FRUIT_DELAY":        "6000",
@@ -1275,10 +1272,10 @@ func Jd_price(sender *Sender, msg chan string, cks []JdCookie) {
 
 			}
 		} else {
-					sender.Reply("输入序列号错误，已退出！！！")
-					meituanList[sender.UserID] = nil
-					return
-			}
+			sender.Reply("输入序列号错误，已退出！！！")
+			meituanList[sender.UserID] = nil
+			return
+		}
 		cks[num].Price(sender)
 		ckList[sender.UserID] = nil
 	}
@@ -1301,7 +1298,6 @@ func (ck *JdCookie) Price(sender *Sender) {
 
 	envs := []Env{
 		{Name: "pins", Value: "&" + ck.PtPin},
-
 	}
 	for _, env := range envs {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", env.Name, env.Value))
@@ -1319,32 +1315,29 @@ func (ck *JdCookie) Price(sender *Sender) {
 
 func replexQuan_Price(info string, sender *Sender) string {
 
+	re1 := regexp.MustCompile(`保价失败：([^：]+)$`)
+	re2 := regexp.MustCompile(`价保成功：([^：]+)`)
+	re3 := regexp.MustCompile(`没有可保价的订单 😂`)
 
-    re1 := regexp.MustCompile(`保价失败：([^：]+)$`)
-    re2 := regexp.MustCompile(`价保成功：([^：]+)`)
-    re3 := regexp.MustCompile(`没有可保价的订单 😂`)
+	matches1 := re1.FindStringSubmatch(info)
+	matches2 := re2.FindStringSubmatch(info)
+	matches3 := re3.FindStringSubmatch(info)
 
-    matches1 := re1.FindStringSubmatch(info)
-    matches2 := re2.FindStringSubmatch(info)
-    matches3 := re3.FindStringSubmatch(info)
-
-
-    msgs := []string{
-        fmt.Sprintf("保价任务已完成："),
-    }
-
-
-    if len(matches3) > 0 {
-        msgs = append(msgs, "没有可保价的订单 😂")
-    }
-	if len(matches1) > 1 {  
-    msgs = append(msgs, "保价失败："+matches1[1])  
-	}  
-	if len(matches2) > 1 {  
-    msgs = append(msgs, fmt.Sprintf("价保成功，回血%s元 🤑", matches2[1]))  
+	msgs := []string{
+		fmt.Sprintf("保价任务已完成："),
 	}
 
-    return strings.Join(msgs, "\n")
+	if len(matches3) > 0 {
+		msgs = append(msgs, "没有可保价的订单 😂")
+	}
+	if len(matches1) > 1 {
+		msgs = append(msgs, "保价失败："+matches1[1])
+	}
+	if len(matches2) > 1 {
+		msgs = append(msgs, fmt.Sprintf("价保成功，回血%s元 🤑", matches2[1]))
+	}
+
+	return strings.Join(msgs, "\n")
 }
 
 func Jd_AutoEval(sender *Sender, msg chan string, cks []JdCookie) {
@@ -1400,10 +1393,10 @@ func Jd_AutoEval(sender *Sender, msg chan string, cks []JdCookie) {
 
 			}
 		} else {
-					sender.Reply("输入序列号错误，已退出！！！")
-					meituanList[sender.UserID] = nil
-					return
-			}
+			sender.Reply("输入序列号错误，已退出！！！")
+			meituanList[sender.UserID] = nil
+			return
+		}
 		cks[num].AutoEval(sender)
 		ckList[sender.UserID] = nil
 	}
@@ -1419,7 +1412,7 @@ func (ck *JdCookie) AutoEval(sender *Sender) {
 	cmd := exec.Command("node", jsFilePath)
 	envs := []Env{
 		{Name: "pins", Value: "&" + ck.PtPin},
-		{Name: "ONEVAL", Value: "true"},  //##开启评价
+		{Name: "ONEVAL", Value: "true"}, //##开启评价
 
 	}
 	for _, env := range envs {
@@ -1435,8 +1428,6 @@ func (ck *JdCookie) AutoEval(sender *Sender) {
 	}
 	sender.Reply(replexQuan_AutoEval(string(output), sender))
 }
-
-
 
 func replexQuan_AutoEval(info string, sender *Sender) string {
 	re1 := regexp.MustCompile(`(?m)^.*(开始【京东账号1】.+?)$`)

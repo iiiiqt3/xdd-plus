@@ -19,10 +19,7 @@ func (ck JdCookie) Push(msg string) {
 		go SendQQ(Config.QQID, msg)
 		go qywxNotify(&QywxConfig{QywxKey: Config.QywxKey, Content: msg})
 		go SendTgMsg(Config.TelegramUserID, msg)
-		WeiXin := getWeiXinId(Config.QQID)
-		if WeiXin != "找不到对应的微信ID" {
-			go SendWxMsg(WeiXin, msg)
-		}
+		//todo 重构微信管理员推送
 
 	}
 }

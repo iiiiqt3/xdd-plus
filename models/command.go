@@ -1427,33 +1427,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	//回填微信
-	{
-		Command: []string{"回填微信"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			cks := GetJdCookies()
-			xx := 0
-			successCount := 0
-			for i := range cks {
-				if cks[i].QQ != 0 {
-					//logs.Info(cks[i].QQ)
-					WeiXin := getWeiXinId(cks[i].QQ)
-					if WeiXin != "找不到对应的微信ID" {
-						ck := cks[i]
-						ck.Updates(JdCookie{WeiXin: WeiXin})
-						successCount++
-					}
-					xx++
-				}
-				time.Sleep(500 * time.Millisecond)
-			}
-			(&JdCookie{}).Push(fmt.Sprintf("回填微信完成，共处理%d个数据，回填成功：%d个", xx, successCount))
-			return nil
-
-		},
-	},
-
 	//美团登录
 	{
 		Command: []string{"美团登录", "登录美团", "美团登陆"},
