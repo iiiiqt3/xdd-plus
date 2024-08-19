@@ -22,12 +22,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 SP-engine/2.14.0 main%2F1.0 baiduboxapp/11.18.0.16 (Baidu; P2 13.3.1) NABar/0.0"
-
-func GetUserAgent() string {
-	return ua
-}
-
 type CodeSignal struct {
 	Command []string
 	Admin   bool
@@ -1443,110 +1437,111 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-	{
-		Command: []string{"农场浇水", "浇水农场"},
-		Handle: func(sender *Sender) interface{} {
-			id := sender.UserID
-			var idType string
-			if sender.Type == "tg" {
-				idType = Telegram
-			} else {
-				idType = QQ
-			}
-			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-			})
 
-			if len(cks) > 0 {
-				//进入队列
-				msg := make(chan string)
-				ckList[sender.UserID] = msg
-				go Jd_fruit_watering(sender, msg, cks)
-				msgs := []string{
-					"请回复以下序列号指定账号运行任务，如需退出请回复'q'退出运行流程：",
-				}
-				for i, ck := range cks {
-					msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
-				}
-				sender.Reply(strings.Join(msgs, "\n"))
-			} else {
-				sender.Reply("在线账号已全部失效，请对机器人发送“登录”")
-				return nil
-			}
-			return nil
-		},
-	},
-	{
-		Command: []string{"一键保价", "一键价保"},
-		Handle: func(sender *Sender) interface{} {
-			id := sender.UserID
-			var idType string
-			if sender.Type == "tg" {
-				idType = Telegram
-			} else {
-				idType = QQ
-			}
-			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-			})
+	//{
+	//	Command: []string{"农场浇水", "浇水农场"},
+	//	Handle: func(sender *Sender) interface{} {
+	//		id := sender.UserID
+	//		var idType string
+	//		if sender.Type == "tg" {
+	//			idType = Telegram
+	//		} else {
+	//			idType = QQ
+	//		}
+	//		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+	//			return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
+	//		})
+	//
+	//		if len(cks) > 0 {
+	//			//进入队列
+	//			msg := make(chan string)
+	//			ckList[sender.UserID] = msg
+	//			go Jd_fruit_watering(sender, msg, cks)
+	//			msgs := []string{
+	//				"请回复以下序列号指定账号运行任务，如需退出请回复'q'退出运行流程：",
+	//			}
+	//			for i, ck := range cks {
+	//				msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
+	//			}
+	//			sender.Reply(strings.Join(msgs, "\n"))
+	//		} else {
+	//			sender.Reply("在线账号已全部失效，请对机器人发送“登录”")
+	//			return nil
+	//		}
+	//		return nil
+	//	},
+	//},
+	//{
+	//	Command: []string{"一键保价", "一键价保"},
+	//	Handle: func(sender *Sender) interface{} {
+	//		id := sender.UserID
+	//		var idType string
+	//		if sender.Type == "tg" {
+	//			idType = Telegram
+	//		} else {
+	//			idType = QQ
+	//		}
+	//		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+	//			return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
+	//		})
+	//
+	//		if len(cks) > 0 {
+	//
+	//			//进入队列
+	//			msg := make(chan string)
+	//			ckList[sender.UserID] = msg
+	//			go Jd_price(sender, msg, cks)
+	//
+	//			msgs := []string{
+	//				"请回复以下序列号指定账号运行任务，如需退出请回复'q'退出登录流程：",
+	//			}
+	//			for i, ck := range cks {
+	//				msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
+	//			}
+	//			sender.Reply(strings.Join(msgs, "\n"))
+	//		} else {
+	//			sender.Reply("在线账号已全部失效，请对机器人发送“登录”")
+	//			return nil
+	//		}
+	//		return nil
+	//	},
+	//},
+	//{
+	//	Command: []string{"一键评价", "自动评价"},
+	//	Handle: func(sender *Sender) interface{} {
+	//		id := sender.UserID
+	//		var idType string
+	//		if sender.Type == "tg" {
+	//			idType = Telegram
+	//		} else {
+	//			idType = QQ
+	//		}
+	//		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+	//			return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
+	//		})
+	//
+	//		if len(cks) > 0 {
+	//
+	//			//进入队列
+	//			msg := make(chan string)
+	//			ckList[sender.UserID] = msg
+	//			go Jd_AutoEval(sender, msg, cks)
+	//
+	//			msgs := []string{
+	//				"请回复以下序列号指定账号运行任务，如需退出请回复'q'退出登录流程：",
+	//			}
+	//			for i, ck := range cks {
+	//				msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
+	//			}
+	//			sender.Reply(strings.Join(msgs, "\n"))
+	//		} else {
+	//			sender.Reply("在线账号已全部失效，请对机器人发送“登录”")
+	//			return nil
+	//		}
+	//		return nil
+	//	},
+	//},
 
-			if len(cks) > 0 {
-
-				//进入队列
-				msg := make(chan string)
-				ckList[sender.UserID] = msg
-				go Jd_price(sender, msg, cks)
-
-				msgs := []string{
-					"请回复以下序列号指定账号运行任务，如需退出请回复'q'退出登录流程：",
-				}
-				for i, ck := range cks {
-					msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
-				}
-				sender.Reply(strings.Join(msgs, "\n"))
-			} else {
-				sender.Reply("在线账号已全部失效，请对机器人发送“登录”")
-				return nil
-			}
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"一键评价", "自动评价"},
-		Handle: func(sender *Sender) interface{} {
-			id := sender.UserID
-			var idType string
-			if sender.Type == "tg" {
-				idType = Telegram
-			} else {
-				idType = QQ
-			}
-			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-			})
-
-			if len(cks) > 0 {
-
-				//进入队列
-				msg := make(chan string)
-				ckList[sender.UserID] = msg
-				go Jd_AutoEval(sender, msg, cks)
-
-				msgs := []string{
-					"请回复以下序列号指定账号运行任务，如需退出请回复'q'退出登录流程：",
-				}
-				for i, ck := range cks {
-					msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
-				}
-				sender.Reply(strings.Join(msgs, "\n"))
-			} else {
-				sender.Reply("在线账号已全部失效，请对机器人发送“登录”")
-				return nil
-			}
-			return nil
-		},
-	},
 	//{
 	//	Command: []string{"失效账号", "账号删除"},
 	//	Handle: func(sender *Sender) interface{} {
