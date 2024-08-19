@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -604,6 +603,13 @@ func (ck *MeiTuan) RunCoin() {
 	}
 }
 
+// 检查是否已安装Node.js
+func isNodeInstalled() bool {
+	cmd := exec.Command("node", "-v")
+	err := cmd.Run()
+	return err == nil
+}
+
 func (ck *MeiTuan) RunTT(sender *Sender) {
 	logs.Info("开始领")
 	if !isNodeInstalled() {
@@ -728,8 +734,6 @@ func setHeader(req *httplib.BeegoHTTPRequest) {
 	req.Header("User-Agent", getUA())
 
 }
-
-//utm_medium=android;uuid=%s;token=%s;mt_c_token=%s;
 
 func taskList(meituan *MeiTuan) {
 	//声明对象
@@ -959,83 +963,6 @@ func CheckMTList() {
 	}
 }
 
-func getNodeVersion() {
-
-	// 执行 `node -v` 命令
-	cmd := exec.Command("node", "-v")
-	output, err := cmd.Output()
-
-	if err != nil {
-		// 执行命令时发生错误，可能是因为未安装Node.js或命令不可用
-		fmt.Println("未安装Node.js环境")
-		return
-	}
-
-	// 检查输出是否包含Node.js的版本号
-	nodeVersion := strings.TrimSpace(string(output))
-	if strings.HasPrefix(nodeVersion, "v") {
-		fmt.Println("已安装Node.js环境，版本号:", nodeVersion)
-	} else {
-		fmt.Println("已安装Node.js环境，但无法确定版本号")
-	}
-}
-
-// 检查是否已安装Node.js
-func isNodeInstalled() bool {
-	cmd := exec.Command("node", "-v")
-	err := cmd.Run()
-	return err == nil
-}
-
-// 下载和安装Node.js
-func installNode() error {
-	// 根据操作系统选择合适的下载链接
-	downloadURL := ""
-	switch os := runtime.GOOS; os {
-	case "darwin":
-		downloadURL = "https://nodejs.org/dist/{version}/node-{version}-darwin-x64.tar.gz"
-	case "linux":
-		downloadURL = "https://nodejs.org/dist/{version}/node-{version}-linux-x64.tar.gz"
-	case "windows":
-		downloadURL = "https://nodejs.org/dist/{version}/node-{version}-win-x64.zip"
-	default:
-		return fmt.Errorf("不支持的操作系统：%s", os)
-	}
-
-	// 替换下载链接中的"{version}"占位符为实际的版本号
-	downloadURL = strings.Replace(downloadURL, "{version}", "v16.8.0", 1)
-
-	// 执行下载和安装命令
-	cmd := exec.Command("curl", "-o", "node.tar.gz", downloadURL)
-	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	// 解压缩下载的文件
-	cmd = exec.Command("tar", "-xzf", "node.tar.gz")
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	// 将解压后的Node.js二进制文件移动到适当的位置
-	cmd = exec.Command("mv", "node-{version}", "/usr/local/node")
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	// 添加Node.js二进制文件路径到环境变量
-	cmd = exec.Command("export", "PATH=$PATH:/usr/local/node/bin")
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // 美团登录
 func Meituan_getck(sender *Sender) {
 	var png []byte
@@ -1044,19 +971,6 @@ func Meituan_getck(sender *Sender) {
 	sender.Reply("请微信识别或扫描二维码，登录之后点击微信右上角的 ... 点击下面投诉旁边的复制链接发送给机器人")
 }
 
-// 美团自动领卷
-func Meituan_Auto() {
-	JdCookie{}.Push("美团自动领卷开始")
-	tuans := getMeiTuans()
-	for _, tuan := range tuans {
-		if tuan.Auto == True {
-			if tuan.CheckDownLine() {
-				tuan.RunTT(&Sender{Type: "wx", WxId: "auto"})
-			}
-		}
-	}
-	JdCookie{}.Push("美团自动领卷结束")
-}
 func Jd_fruit_watering(sender *Sender, msg chan string, cks []JdCookie) {
 	for {
 		n, ok := <-msg
