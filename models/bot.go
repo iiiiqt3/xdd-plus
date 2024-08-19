@@ -53,10 +53,14 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	//logs.Info(msgs[2].(string))
 
 	if msgs[1].(string) == "wx" || msgs[1].(string) == "wxg" {
+
 		sender.UserID = getWxId(msgs[2].(string))
 		sender.WxId = msgs[2].(string)
+
 	} else {
+
 		sender.UserID = msgs[2].(int)
+
 	}
 
 	if len(msgs) >= 4 && sender.Type != "wxg" {
