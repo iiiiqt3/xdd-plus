@@ -87,8 +87,6 @@ func (c *QQController) Echo() {
 			logs.Info("ws连接已断开")
 			return
 		}
-		logs.Info(string(message))
-
 		var msg LLMessage
 		err = json.Unmarshal(message, &msg)
 		if err != nil {
