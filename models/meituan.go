@@ -1,10 +1,12 @@
 package models
 
 import (
+	rand2 "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/skip2/go-qrcode"
+	"io"
 	"math/rand"
 	"net/http"
 	"os"
@@ -392,7 +394,6 @@ func NewBody(acToken string, uuid string, data string, ProtocolId int) MBody {
 }
 
 func getUA() string {
-	rand.Seed(time.Now().UnixNano())
 	androidVersion := strconv.Itoa(rand.Intn(3)+10) + ".0"                                                // 随机生成 Android 版本号
 	chromeVersion := strconv.Itoa(rand.Intn(11)+80) + ".0." + strconv.Itoa(rand.Intn(1001)+4000) + ".210" // 随机生成 Chrome 版本号
 	uaString := fmt.Sprintf("Mozilla/5.0 (Linux; Android %s; %s) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/%s Mobile Safari/537.36 TitansX/12.9.1 KNB/1.2.0 android/%s mt/com.sankuai.meituan/12.9.209 App/10120/12.9.209 MeituanGroup/12.9.209",
@@ -404,7 +405,6 @@ func getModel() string {
 	// 实现获取设备型号的逻辑
 	// 返回设备型号字符串
 	models := []string{"M2012K10C", "22041211AC", "ABR-AL80", "AGT-AN00", "M2011K2C"}
-	rand.Seed(time.Now().UnixNano())
 	return models[rand.Intn(len(models))]
 }
 
@@ -478,7 +478,7 @@ func getMeiTuan(id string) (*MeiTuan, error) {
 	return ck, db.Where("id = ?", id).First(ck).Error
 }
 
-// 获取美团账号通过用户名前缀
+// GetMeiTuanByPrefix 获取美团账号通过用户名前缀
 func GetMeiTuanByPrefix(prefix string, sender *Sender) []MeiTuan {
 	switch sender.Type {
 	case "qq", "qqg", "tg":
@@ -492,20 +492,18 @@ func GetMeiTuanByPrefix(prefix string, sender *Sender) []MeiTuan {
 	default:
 		return nil
 	}
-	return nil
-
 }
 
-func (ck *MeiTuan) Updates(values interface{}) {
-	if ck.ID != 0 {
-		db.Model(ck).Updates(values)
+func (cookie *MeiTuan) Updates(values interface{}) {
+	if cookie.ID != 0 {
+		db.Model(cookie).Updates(values)
 		return
 	}
 }
 
-func (ck *MeiTuan) Update(column string, value interface{}) {
-	if ck.ID != 0 {
-		db.Model(ck).Update(column, value)
+func (cookie *MeiTuan) Update(column string, value interface{}) {
+	if cookie.ID != 0 {
+		db.Model(cookie).Update(column, value)
 		return
 	}
 }
@@ -533,33 +531,32 @@ func GetMeiTuan(sender *Sender) []MeiTuan {
 	default:
 		return nil
 	}
-	return nil
 }
 
-func (ck *MeiTuan) Query() string {
+func (cookie *MeiTuan) Query() string {
 	msgs := []string{
-		fmt.Sprintf("账号昵称：%s", ck.Nickname),
+		fmt.Sprintf("账号昵称：%s", cookie.Nickname),
 	}
-	if ck.Note != "" {
-		msgs = append(msgs, fmt.Sprintf("账号备注：%s", ck.Note))
+	if cookie.Note != "" {
+		msgs = append(msgs, fmt.Sprintf("账号备注：%s", cookie.Note))
 	}
 
-	if ck.CheckDownLine() {
-		if ck.UpdateAt != "" {
-			parse1, _ := time.Parse("2006-01-02", ck.UpdateAt)
+	if cookie.CheckDownLine() {
+		if cookie.UpdateAt != "" {
+			parse1, _ := time.Parse("2006-01-02", cookie.UpdateAt)
 			logs.Info(parse1)
 			msgs = append(msgs, fmt.Sprintf("最后更新时间：%s", parse1.Format("2006-01-02")))
 		}
-		if ck.CoinToken == "" {
+		if cookie.CoinToken == "" {
 			msgs = append(msgs, "暂无赚金币数据")
 		} else {
-			msgs = append(msgs, fmt.Sprintf("赚金币余额:%f", ck.CashToken))
-			msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
-			msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", ck.CoinToken))
-			msgs = append(msgs, fmt.Sprintf("赚金币过期时间:%s", ck.CoinToken))
+			msgs = append(msgs, fmt.Sprintf("赚金币余额:%f", cookie.CashToken))
+			msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", cookie.CoinToken))
+			msgs = append(msgs, fmt.Sprintf("赚金币金币:%s", cookie.CoinToken))
+			msgs = append(msgs, fmt.Sprintf("赚金币过期时间:%s", cookie.CoinToken))
 		}
 	} else {
-		parse1, _ := time.Parse("2006-01-02", ck.LoseAt)
+		parse1, _ := time.Parse("2006-01-02", cookie.LoseAt)
 		msgs = append(msgs, fmt.Sprintf("提醒：该账号已过期，请重新登录,失效时间:%s", parse1.Format("2006-01-02")))
 	}
 
@@ -591,14 +588,14 @@ func GetUserInfo(token string) []byte {
 
 }
 
-func (ck *MeiTuan) RunCoin() {
-	ck.UUID = GetUUID()
-	meituan := LoginMeituan(ck)
+func (cookie *MeiTuan) RunCoin() {
+	cookie.UUID = GetUUID()
+	meituan := LoginMeituan(cookie)
 	if meituan != 0 {
 		logs.Info("登录失败")
 		return
 	} else {
-		taskList(ck)
+		taskList(cookie)
 	}
 }
 
@@ -609,7 +606,7 @@ func isNodeInstalled() bool {
 	return err == nil
 }
 
-func (ck *MeiTuan) RunTT(sender *Sender) {
+func (cookie *MeiTuan) RunTT(sender *Sender) {
 	logs.Info("开始领")
 	if !isNodeInstalled() {
 		sender.Reply("环境缺失，请等待管理员修复")
@@ -638,7 +635,7 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 	cmd := exec.Command("node", file.Name())
 
 	envs := []Env{
-		{Name: "meituanCookie", Value: ck.Token},
+		{Name: "meituanCookie", Value: cookie.Token},
 		{Name: "meituanCommonTask", Value: False},
 		{Name: "meituanMrzqTask", Value: False},
 		{Name: "meituanCyfTask", Value: False},
@@ -707,7 +704,7 @@ func gen16() string {
 
 func randStringBytesCrypto(n int) (string, error) {
 	b := make([]byte, n)
-	_, err := rand.Read(b)
+	_, err := rand2.Read(b)
 	if err != nil {
 		return "", err
 	}
@@ -785,7 +782,7 @@ func taskList(meituan *MeiTuan) {
 			GoShoping(mBody, cookie)
 			logs.Info(fmt.Sprintf("完成任务:%s", title))
 			time.Sleep(time.Second * time.Duration(rand.Intn(6)+5))
-			mBody1 := NewBody(meituan.AcToken, meituan.UUID, fmt.Sprintf("{\n    \"taskId\" : %d,\n    \"externalStr\" : \"{\\\"cityId\\\":-1}\"\n  }"), 1005)
+			mBody1 := NewBody(meituan.AcToken, meituan.UUID, fmt.Sprintf("{\n    \"taskId\" : %d,\n    \"externalStr\" : \"{\\\"cityId\\\":-1}\"\n  }", s.Id), 1005)
 			GoShoping(mBody1, cookie)
 			logs.Info(fmt.Sprintf("领取%s任务奖励成功", title))
 		}
@@ -889,11 +886,10 @@ func GoShoping(body MBody, cookie string) string {
 
 }
 
-// 随机固定UUID
+// GetUUID 随机固定UUID
 func GetUUID() string {
-	rand.Seed(time.Now().UnixNano())
-	uuid := fmt.Sprintf("0000000000000%sA%d%d", strings.ReplaceAll(strings.ToUpper(uuid.New().String()), "-", ""), time.Now().UnixMicro(), rand.Intn(89)+10)
-	return uuid
+	muuid := fmt.Sprintf("0000000000000%sA%d%d", strings.ReplaceAll(strings.ToUpper(uuid.New().String()), "-", ""), time.Now().UnixMicro(), rand.Intn(89)+10)
+	return muuid
 }
 
 func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan) {
@@ -962,7 +958,7 @@ func CheckMTList() {
 	}
 }
 
-// 美团登录
+// Meituan_getck 美团登录
 func Meituan_getck(sender *Sender) {
 	var png []byte
 	png, _ = qrcode.Encode("https://passport.meituan.com/useraccount/ilogin?", qrcode.Medium, 256)
@@ -970,7 +966,7 @@ func Meituan_getck(sender *Sender) {
 	sender.Reply("请微信识别或扫描二维码，登录之后点击微信右上角的 ... 点击下面投诉旁边的复制链接发送给机器人")
 }
 
-// 获取真实链接
+// Meituan_getRealUrl 获取真实链接
 func Meituan_getRealUrl(url string) string {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -984,7 +980,7 @@ func Meituan_getRealUrl(url string) string {
 	return realURL
 }
 
-// 获取链接中的UUID
+// Meituan_getUUID 获取链接中的UUID
 func Meituan_getUUID(realUrl string) string {
 	//提取utm_term的值
 	re := regexp.MustCompile(`utm_term=(.*?)&`)

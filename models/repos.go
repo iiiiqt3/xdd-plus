@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -82,7 +83,7 @@ func (rp *Repo) cpConfig() {
 }
 
 func (rp *Repo) addTask() {
-	dir_list, e := io.ReadDir(rp.path)
+	dir_list, e := os.ReadDir(rp.path)
 	if e != nil {
 		return
 	}

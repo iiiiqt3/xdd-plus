@@ -110,7 +110,7 @@ func initConfig() {
 		f.Close()
 	}
 
-	content, err := io.ReadFile(ExecPath + "/conf/config.yaml")
+	content, err := os.ReadFile(ExecPath + "/conf/config.yaml")
 	if err != nil {
 		logs.Warn("解析config.yaml读取错误: %v", err)
 	}

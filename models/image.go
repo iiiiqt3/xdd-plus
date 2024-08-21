@@ -30,7 +30,7 @@ var (
 func strtoimg(str string) []byte {
 	log.Info("开始转换图片")
 	text := strings.Split(str, "\n")
-	fontBytes, err := io.ReadFile(*fontfile)
+	fontBytes, err := os.ReadFile(*fontfile)
 	if err != nil {
 		log.Println(err)
 		return nil
