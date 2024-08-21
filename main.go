@@ -11,6 +11,7 @@ import (
 	"github.com/cdle/xdd/controllers"
 	"github.com/cdle/xdd/models"
 	"github.com/eatmoreapple/openwechat"
+	"io"
 	"os"
 	"strings"
 	"time"
