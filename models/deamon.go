@@ -2,12 +2,11 @@ package models
 
 import (
 	"fmt"
+	"github.com/beego/beego/v2/core/logs"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
-
-	"github.com/beego/beego/v2/adapter/logs"
 )
 
 func Daemon() {
