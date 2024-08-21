@@ -74,7 +74,19 @@ func main() {
 	})
 
 	web.Get("/noteice", func(ctx *context.Context) {
-		models.JdCookie{}.Push("饿了么已重启" + time.Now().Format("2006-01-02 15:04:05"))
+
+		// Check for the X-Forwarded-For header, which is used by proxies
+		xForwardedFor := ctx.Input.Header("X-Forwarded-For")
+		if xForwardedFor != "" {
+			// The X-Forwarded-For header can contain multiple IP addresses, the first one is the client's IP
+			ips := strings.Split(xForwardedFor, ",")
+			models.JdCookie{}.Push("饿了么已重启" + time.Now().Format("2006-01-02 15:04:05") + strings.TrimSpace(ips[0]))
+		} else {
+			// Check for the X-Real-IP header, which is used by some proxies
+			xRealIP := ctx.Input.Header("X-Real-IP")
+			models.JdCookie{}.Push("饿了么已重启" + time.Now().Format("2006-01-02 15:04:05") + xRealIP)
+		}
+
 		result := AuthResult{
 			Flag:    true,
 			Data:    "null",
@@ -85,6 +97,7 @@ func main() {
 		if errs != nil {
 			fmt.Println(errs.Error())
 		}
+
 		ctx.WriteString(string(jsons))
 	})
 
