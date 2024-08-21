@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	browser "github.com/EDDYCJY/fake-useragent"
+	"io"
 	"net/url"
 
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"regexp"
@@ -27,7 +27,7 @@ func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
 	if err == nil {
 		defer f.Close()
-		data, _ := ioutil.ReadAll(f)
+		data, _ := io.ReadAll(f)
 		ss := regexp.MustCompile("`([^`]+)`\\s*=>\\s*`([^`]+)`").FindAllStringSubmatch(string(data), -1)
 		for _, s := range ss {
 			replies[s[1]] = s[2]
@@ -58,9 +58,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		sender.WxId = msgs[2].(string)
 
 	} else {
-
 		sender.UserID = msgs[2].(int)
-
 	}
 
 	if len(msgs) >= 4 && sender.Type != "wxg" {
@@ -383,7 +381,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						rsp.Header.Get("Content-Type")
 					}
 					if strings.Contains(ctp, "text") || strings.Contains(ctp, "json") {
-						data, _ := ioutil.ReadAll(rsp.Body)
+						data, _ := io.ReadAll(rsp.Body)
 						return string(data)
 					}
 					return rsp

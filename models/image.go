@@ -13,7 +13,6 @@ import (
 	"image"
 	"image/draw"
 	"image/png"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -31,7 +30,7 @@ var (
 func strtoimg(str string) []byte {
 	log.Info("开始转换图片")
 	text := strings.Split(str, "\n")
-	fontBytes, err := ioutil.ReadFile(*fontfile)
+	fontBytes, err := io.ReadFile(*fontfile)
 	if err != nil {
 		log.Println(err)
 		return nil

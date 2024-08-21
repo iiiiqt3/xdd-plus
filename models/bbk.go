@@ -6,7 +6,6 @@ import (
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
-	"io/ioutil"
 	"strings"
 	"time"
 )
@@ -20,7 +19,7 @@ func BBKGetJdQrImg(sender *Sender) {
 	response, _ := get.Response()
 	cookies := response.Cookies()
 	ck := cookies[0].Name + "=" + cookies[0].Value
-	all, _ := ioutil.ReadAll(response.Body)
+	all, _ := io.ReadAll(response.Body)
 
 	key, _ := jsonparser.GetString(all, "data", "qrUrl")
 	sender.Reply(NolanLJToKL(key, "京东快捷登录"))

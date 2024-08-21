@@ -2,19 +2,18 @@ package models
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
-	"encoding/json"
-	"strconv"
 )
 
 func LJtoKL(url string) string {
@@ -28,7 +27,7 @@ func LJtoKL(url string) string {
 		logs.Error("请求失败:", err)
 		return "口令转换失败"
 	}
-	body, _ := ioutil.ReadAll(data.Body)
+	body, _ := io.ReadAll(data.Body)
 	logs.Info("响应内容:", string(body))
 
 	var response map[string]interface{}
@@ -73,7 +72,7 @@ func LJtoLJ(url string) []byte {
 	if err != nil {
 		return []byte("口令转换失败")
 	}
-	body, _ := ioutil.ReadAll(data.Body)
+	body, _ := io.ReadAll(data.Body)
 	logs.Info(string(body))
 	if strings.Contains(string(body), "口令转换失败") {
 		return []byte("口令转换失败")
@@ -93,7 +92,7 @@ func KLtoLJ(kl string) string {
 		logs.Error("请求失败:", err)
 		return "口令转换失败"
 	}
-	body, _ := ioutil.ReadAll(data.Body)
+	body, _ := io.ReadAll(data.Body)
 	logs.Info("响应内容:", string(body))
 
 	var response map[string]interface{}
@@ -119,7 +118,7 @@ func NolanKlToLj(kl string) string {
 
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logs.Info("读取Body失败 error: %+v", err)
 
@@ -145,7 +144,7 @@ func NolanLJToKL(lj string, title string) string {
 		}
 	}(resp.Body)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logs.Info("读取Body失败 error: %+v", err)
 
@@ -159,7 +158,7 @@ func NolanLJToKL(lj string, title string) string {
 
 }
 
-//随机slice数组
+// 随机slice数组
 func randShuffle(slice []JdCookie) {
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(slice), func(i, j int) {

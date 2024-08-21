@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
@@ -83,7 +82,7 @@ func (rp *Repo) cpConfig() {
 }
 
 func (rp *Repo) addTask() {
-	dir_list, e := ioutil.ReadDir(rp.path)
+	dir_list, e := io.ReadDir(rp.path)
 	if e != nil {
 		return
 	}
@@ -94,7 +93,7 @@ func (rp *Repo) addTask() {
 			if err != nil {
 				continue
 			}
-			data, _ := ioutil.ReadAll(f)
+			data, _ := io.ReadAll(f)
 			f.Close()
 			res := regexp.MustCompile(`([\d\-,\*]+ [\d\-,\*]+ [\d\-,\*]+ [*]+ [*]+)[\s\S]+Env[(]['"]([^'"]+)['"][)]`).FindStringSubmatch(string(data))
 			if len(res) > 0 {

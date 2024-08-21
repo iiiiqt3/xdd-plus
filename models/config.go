@@ -2,7 +2,6 @@ package models
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/beego/beego/v2/client/httplib"
@@ -100,7 +99,7 @@ func initConfig() {
 		if err != nil {
 			logs.Warn(err)
 		}
-		s, _ := ioutil.ReadAll(f)
+		s, _ := io.ReadAll(f)
 		if len(s) == 0 {
 			logs.Info("下载配置%s", name)
 			r, err := httplib.Get(GhProxy + "https://raw.githubusercontent.com/764763903a/xdd-plus/main/conf/demo_" + name).Response()
@@ -111,7 +110,7 @@ func initConfig() {
 		f.Close()
 	}
 
-	content, err := ioutil.ReadFile(ExecPath + "/conf/config.yaml")
+	content, err := io.ReadFile(ExecPath + "/conf/config.yaml")
 	if err != nil {
 		logs.Warn("解析config.yaml读取错误: %v", err)
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/skip2/go-qrcode"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -584,7 +583,7 @@ func GetUserInfo(token string) []byte {
 	req.Header.Add("Accept-Language", "zh-CN,zh-Hans;q=0.9")
 	res, _ := http.DefaultClient.Do(req)
 	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 
 	fmt.Println(res)
 	fmt.Println(string(body))

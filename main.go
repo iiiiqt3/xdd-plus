@@ -11,7 +11,6 @@ import (
 	"github.com/cdle/xdd/controllers"
 	"github.com/cdle/xdd/models"
 	"github.com/eatmoreapple/openwechat"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -155,7 +154,7 @@ func main() {
 		}
 		f, err := os.Open(models.Config.Theme)
 		if err == nil {
-			d, _ := ioutil.ReadAll(f)
+			d, _ := io.ReadAll(f)
 			theme = string(d)
 			ctx.WriteString(string(d))
 			return
