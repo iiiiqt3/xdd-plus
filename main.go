@@ -36,7 +36,10 @@ type AuthResult struct {
 
 func main() {
 
-	logs.SetLogger(logs.AdapterFile, "{\"filename\":\"logs/xdd.log\", \"level\":6}")
+	err := logs.SetLogger(logs.AdapterFile, "{\"filename\":\"logs/xdd.log\", \"level\":6}")
+	if err != nil {
+		return
+	}
 
 	go func() {
 		models.Save <- &models.JdCookie{}
@@ -162,7 +165,6 @@ func main() {
 		}
 	})
 
-	//vweb.Router("/api/login/cookie", &controllers.LoginController{}, "get:Cookie")
 	web.Router("/api/login/admin", &controllers.LoginController{}, "post:IsAdmin")
 	web.Router("/api/login/cklogin", &controllers.LoginController{}, "post:CkLogin")
 	web.Router("/api/login/smslogin", &controllers.LoginController{}, "post:SMSLogin")
@@ -191,7 +193,6 @@ func main() {
 		models.Config.Static = "./static"
 	}
 	web.BConfig.WebConfig.StaticDir["/static"] = models.Config.Static
-
 	web.BConfig.AppName = models.AppName
 	web.BConfig.WebConfig.AutoRender = false
 	web.BConfig.CopyRequestBody = true
