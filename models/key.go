@@ -2,7 +2,7 @@ package models
 
 import (
 	"fmt"
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"strings"
 	"time"
 )
@@ -18,7 +18,7 @@ type Key struct {
 func createKey(num int, value int) string {
 	var str []string
 	for i := 0; i < num; i++ {
-		id := uuid.NewV4()
+		id := uuid.New()
 		ids := "XDD" + id.String()
 		var u Key
 		u = Key{

@@ -32,7 +32,6 @@ require (
 require (
 	github.com/eatmoreapple/openwechat v1.4.6
 	github.com/gorilla/websocket v1.5.0
-	github.com/satori/go.uuid v1.2.0
 )
 
 require (
