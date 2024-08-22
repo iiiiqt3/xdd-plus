@@ -2,8 +2,6 @@ module github.com/cdle/xdd
 
 go 1.21
 
-replace github.com/willf/bitset v1.2.0 => github.com/bits-and-blooms/bitset v1.2.0
-
 require (
 	github.com/EDDYCJY/fake-useragent v0.2.0
 	github.com/PuerkitoBio/goquery v1.8.0 // indirect
