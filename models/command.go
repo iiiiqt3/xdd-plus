@@ -398,12 +398,6 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"sign", "打卡", "签到"},
 		Handle: func(sender *Sender) interface{} {
-			if sender.Type == "tgg" {
-				sender.Type = "tg"
-			}
-			if sender.Type == "qqg" {
-				sender.Type = "qq"
-			}
 			zero, _ := time.ParseInLocation("2006-01-02", time.Now().Local().Format("2006-01-02"), time.Local)
 			var u User
 			var ntime = time.Now()
@@ -511,15 +505,6 @@ var codeSignals = []CodeSignal{
 		Command: []string{"coin", "积分"},
 		Handle: func(sender *Sender) interface{} {
 			return fmt.Sprintf("积分:%d", GetCoin(sender.UserID))
-		},
-	},
-
-	//绑定微信
-	{
-		Command: []string{"绑定微信"},
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("请复制发送给Wx机器人")
-			return makeWxId(sender.UserID, "DXWX"+getMd5String1(strconv.Itoa(sender.UserID)))
 		},
 	},
 

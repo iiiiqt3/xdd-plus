@@ -6,10 +6,6 @@ type Env struct {
 	Value string
 }
 
-func InitEnv() {
-
-}
-
 func ExportEnv(env *Env) {
 	value := env.Value
 	if err := db.Where("name = ?", env.Name).First(env).Error; err != nil {
