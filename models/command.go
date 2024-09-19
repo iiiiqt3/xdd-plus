@@ -248,8 +248,6 @@ var codeSignals = []CodeSignal{
 			} else {
 				return "错误指令"
 			}
-
-			return nil
 		},
 	},
 
@@ -402,7 +400,7 @@ var codeSignals = []CodeSignal{
 			var u User
 			var ntime = time.Now()
 			var first = false
-			total := []int{}
+			var total []int
 			err := db.Where("number = ?", sender.UserID).First(&u).Error
 			if err != nil {
 				first = true
@@ -841,7 +839,7 @@ var codeSignals = []CodeSignal{
 					return nil
 				}
 			}
-			envs := []Env{}
+			var envs []Env
 			if pins != "" {
 				envs = append(envs, Env{
 					Name:  "pins",
@@ -917,7 +915,7 @@ var codeSignals = []CodeSignal{
 		Command: []string{"环境变量", "environments", "envs"},
 		Admin:   true,
 		Handle: func(_ *Sender) interface{} {
-			rt := []string{}
+			var rt []string
 			envs := GetEnvs()
 			if len(envs) == 0 {
 				return "未设置任何环境变量"
@@ -1653,7 +1651,7 @@ func InviteGroup(uid string, gid string) {
 }
 
 func GetPinList(qq string) []string {
-	cks := []JdCookie{}
+	var cks []JdCookie
 	var pins []string
 	db.Where(fmt.Sprintf("QQ = %s", qq)).Find(&cks)
 	if len(cks) > 0 {
@@ -1667,7 +1665,7 @@ func GetPinList(qq string) []string {
 }
 
 func getUserNameList(qq string) []string {
-	cks := []JdCookie{}
+	var cks []JdCookie
 	var names []string
 	db.Where(fmt.Sprintf("QQ = %s", qq)).Find(&cks)
 	t, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
@@ -1696,7 +1694,7 @@ func getUserNameList(qq string) []string {
 }
 
 func LimitJdCookie(cks []JdCookie, a string) []JdCookie {
-	ncks := []JdCookie{}
+	var ncks []JdCookie
 	if s := strings.Split(a, "-"); len(s) == 2 {
 		for i := range cks {
 			if i+1 >= Int(s[0]) && i+1 <= Int(s[1]) {
@@ -1728,7 +1726,7 @@ func LimitJdCookie(cks []JdCookie, a string) []JdCookie {
 
 func ReturnCoin(sender *Sender) {
 	tx := db.Begin()
-	ws := []Wish{}
+	var ws []Wish
 	if err := tx.Where("status = 0 and user_number = ?", sender.UserID).Find(&ws).Error; err != nil {
 		tx.Rollback()
 		sender.Reply(err.Error())

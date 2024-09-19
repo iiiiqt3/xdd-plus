@@ -5,16 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/beego/beego/v2/core/logs"
+	"gorm.io/gorm"
 	"math/rand"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type User struct {
 	ID       int
-	Number   int `gorm:"unique"`
-	Class    string
+	Number   int    `gorm:"unique"`
+	Class    string `gorm:"column:class;"`
 	ActiveAt time.Time
 	Coin     int
 	Wxid     string `gorm:"column:wxid;"`

@@ -75,7 +75,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		sender.Username = msgs[5].(string)
 		sender.ReplySenderUserID = msgs[6].(int)
 	}
-	if sender.UserID == Config.TelegramUserID || sender.UserID == int(Config.QQID) {
+	if sender.UserID == Config.TelegramUserID || sender.UserID == Config.QQID {
 		sender.IsAdmin = true
 	}
 
@@ -112,7 +112,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 					if codeSignals[i].Coin > 0 {
 						RemCoin(sender.UserID, codeSignals[i].Coin)
 					}
-
 					return codeSignals[i].Handle(sender)
 				}()
 			}
@@ -128,7 +127,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				//识别 http://dpurl.cn/
 				if strings.Contains(msg, "http://dpurl.cn/") {
 					//提取出url
-					re := regexp.MustCompile(`http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+`)
+					re := regexp.MustCompile(`https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+`)
 					match := re.FindString(msg)
 					realUrl := Meituan_getRealUrl(match)
 					//提取UUID
@@ -370,7 +369,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 				if strings.Contains(msg, "妹") && time.Now().Unix()%10 == 0 {
 					v = "https://pics4.baidu.com/feed/d833c895d143ad4bfee5f874cfdcbfa9a60f069b.jpeg?token=8a8a0e1e20d4626cd31c0b838d9e4c1a"
 				}
-				if regexp.MustCompile(`^https{0,1}://[^\x{4e00}-\x{9fa5}\n\r\s]{3,}$`).FindString(v) != "" {
+				if regexp.MustCompile(`^https?://[^\x{4e00}-\x{9fa5}\n\r\s]{3,}$`).FindString(v) != "" {
 					url := v
 					rsp, err := httplib.Get(url).Response()
 					if err != nil {
