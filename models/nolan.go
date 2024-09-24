@@ -18,8 +18,6 @@ func NolanGetJdQrImg(sender *Sender) {
 		return
 	}
 
-	//http://192.168.195.53:5016/qr/GetQRKey
-	//https://qr.m.jd.com/p?k=${qrcode_info.value.QRCodeKey
 	get := httplib.Post(fmt.Sprintf("%s/qr/GetQRKey", sysConfig.NolanUrl))
 	get.Header("Content-Type", "application/json")
 	get.Body(fmt.Sprintf("{\n  \"botApitoken\": \"%s\"\n}", sysConfig.NolanToken))

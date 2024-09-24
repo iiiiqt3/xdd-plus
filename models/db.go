@@ -121,13 +121,13 @@ var PtPin = "PtPin"
 var Content = "Content"
 var WsKey = "WsKey"
 var Priority = "Priority"
+var WXID = "wxid"
 var True = "true"
 var False = "false"
 var QQ = "QQ"
 var RWSKEY = "RWsKey"
 var Save chan *JdCookie
 var ExecPath string
-var Telegram = "Telegram"
 
 func Date() string {
 	return time.Now().Local().Format("2006-01-02")

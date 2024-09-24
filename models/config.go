@@ -80,8 +80,6 @@ var Balance = "balance"
 var Parallel = "parallel"
 var Vip = "vip"
 var GhProxy = "https://ghproxy.com/"
-var Cdle = false
-
 var Config Yaml
 
 func initConfig() {
@@ -117,9 +115,6 @@ func initConfig() {
 	err = yaml.Unmarshal(content, &Config)
 	if err != nil {
 		logs.Warn("解析config.yaml出错: %v", err)
-	}
-	if ExecPath == "/Users/cdle/Desktop/xdd" || Config.NoAdmin {
-		Cdle = true
 	}
 	if Config.Note == "" {
 		Config.Note = "pin"

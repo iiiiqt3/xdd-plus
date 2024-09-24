@@ -18,6 +18,7 @@ type User struct {
 	Coin     int
 	Wxid     string `gorm:"column:wxid;"`
 	Nickname string `gorm:"column:nickname;"`
+	UosId    string `gorm:"column:uosid;"`
 	QQ       string `gorm:"column:qq;"`
 	Telegram string `gorm:"column:telegram;"`
 	IsAdmin  bool   `gorm:"column:isAdmin;"`

@@ -7,8 +7,7 @@ import (
 	"regexp"
 )
 
-var version = "v100.0"
-var describe = "重构"
+var version = "v1.0"
 var AppName = "xdd"
 var pname = pname1()
 var UpdateUrl = "https://update.smxy.xyz"
@@ -72,45 +71,3 @@ func GetNewVersion() {
 		}
 	}
 }
-
-//
-//func Update(sender *Sender) error {
-//	logs.Info("检查更新" + version)
-//	sender.Reply("小滴滴开始检查更新")
-//	value, err := httplib.Get(UpdateUrl + "/version1").String()
-//	if err != nil {
-//		return errors.New("获取版本号失败")
-//	} else {
-//		if strings.Contains(version, value) {
-//			return errors.New("小滴滴已是最新版啦")
-//		} else {
-//			logs.Info("开始更新")
-//			sender.Reply("小滴滴开始更新程序")
-//			logs.Info(UpdateUrl + "/github.com/cdle/xdd-linux-" + runtime.GOARCH)
-//			req := httplib.Get(UpdateUrl + "/github.com/cdle/xdd-linux-" + runtime.GOARCH)
-//			req.SetTimeout(time.Minute*5, time.Minute*5)
-//			data, err := req.Bytes()
-//
-//			filename := ExecPath + "/" + AppName
-//			logs.Info(filename)
-//			if err = os.RemoveAll(filename); err != nil {
-//				return errors.New("删除旧程序错误")
-//			}
-//			if f, err := os.OpenFile(filename, syscall.O_CREAT, 0777); err != nil {
-//				return errors.New("创建程序错误")
-//			} else {
-//				_, err := f.Write(data)
-//				f.Close()
-//				if err != nil {
-//					des := err.Error()
-//					if err = os.WriteFile(filename, data, 777); err != nil {
-//						return errors.New("写入程序错误" + des)
-//					}
-//				}
-//			}
-//			sender.Reply("更新完成，马上重启")
-//			logs.Info("更新成功")
-//		}
-//		return nil
-//	}
-//}
