@@ -120,7 +120,6 @@ var Priority = "Priority"
 var WXID = "wxid"
 var True = "true"
 var False = "false"
-var QQ = "QQ"
 var RWSKEY = "RWsKey"
 var Save chan *JdCookie
 var ExecPath string

@@ -3,7 +3,6 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
@@ -86,15 +85,14 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				Available: True,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, Available: True, WeiXin: sender.WxId})
+				nck.Updates(JdCookie{RWskey: rwskey, UserId: sender.UserID, PtKey: ptkey, Available: True})
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 			} else {
 				NewJdCookie(&ck)
 				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
 				if sender.IsQQ() || sender.isWX() {
-					ck.Update(QQ, sender.UserID)
-					ck.Update("WeiXin", sender.WxId)
+					ck.Update("UserId", sender.UserID)
 				}
 				sender.Reply(fmt.Sprintf(msg))
 				sender.Reply(ck.Query())
@@ -157,7 +155,7 @@ func NolanSendSMS(phone string, sender *Sender) {
 	success, _ := jsonparser.GetBoolean(data, "success")
 	//status, _ := jsonparser.GetInt(data, "data", "status")
 	if success {
-		logs.Info(strconv.Itoa(sender.UserID))
+		logs.Info(sender.UserID)
 		sender.Reply("请输入6位验证码：")
 		return
 	} else {
@@ -186,15 +184,14 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 			PtKey: ptkey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True, WeiXin: sender.WxId})
+			nck.Updates(JdCookie{UserId: sender.UserID, PtKey: ptkey, Available: True})
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
 			NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
 			if sender.IsQQ() || sender.isWX() {
-				ck.Update(QQ, sender.UserID)
-				ck.Update("WeiXin", sender.WxId)
+				ck.Update("UserId", sender.UserID)
 			}
 			sender.Reply(fmt.Sprintf(msg))
 			sender.Reply(ck.Query())
@@ -252,14 +249,13 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			PtKey: ptkey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			nck.Updates(JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True, WeiXin: sender.WxId})
+			nck.Updates(JdCookie{UserId: sender.UserID, PtKey: ptkey, Available: True})
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
 			NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-			ck.Update(QQ, sender.UserID)
-			ck.Update("WeiXin", sender.WxId)
+			ck.Update("UserId", sender.UserID)
 			sender.Reply(fmt.Sprintf(msg))
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
