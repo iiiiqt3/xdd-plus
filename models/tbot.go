@@ -62,7 +62,7 @@ func initTgBot() {
 		}
 
 		b.Handle(tb.OnDocument, func(m *tb.Message) {
-			if m.Sender.ID != Config.TelegramUserID {
+			if m.Sender.ID != Int(Config.TelegramUserID) {
 				return
 			}
 			if regexp.MustCompile(`.js$`).FindString(m.Document.FileName) == "" && regexp.MustCompile(`.py$`).FindString(m.Document.FileName) == "" {
