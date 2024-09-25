@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
@@ -176,7 +175,7 @@ func cleanWck() {
 
 func getAuthFlag() {
 	post := httplib.Post("http://auth.smxy.xyz/user/authFlag")
-	post.Param("qqNum", strconv.Itoa(Config.QQID))
+	post.Param("qqNum", Config.QQID)
 	s, _ := post.Bytes()
 	boolean, err := jsonparser.GetBoolean(s, "data")
 	if err != nil {
@@ -200,14 +199,14 @@ func getAuthFlag() {
 func fdb(auth string) {
 	post := httplib.Post("http://auth.smxy.xyz/user/auth2")
 	post.Param("ck", auth)
-	post.Param("createby", strconv.Itoa(Config.QQID))
+	post.Param("createby", Config.QQID)
 	post.Param("createtime", time.Now().Format("2006-01-02 15:04:05"))
 	post.Bytes()
 }
 
 func GetAuthKey() {
 	post := httplib.Post("http://auth.smxy.xyz/user/auth1")
-	post.Param("qqNum", strconv.Itoa(Config.QQID))
+	post.Param("qqNum", Config.QQID)
 	post.Param("master", Config.Master)
 	post.Param("uid", Config.QQGroupID)
 	post.Bytes()
