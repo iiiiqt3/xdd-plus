@@ -1,6 +1,6 @@
 package models
 
-var ElmList = make(map[int]chan string)
+var ElmList = make(map[string]chan string)
 
 func ELMSelect(sender *Sender, msg chan string, typ int) {
 	for {

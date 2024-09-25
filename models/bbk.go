@@ -61,7 +61,7 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 				RWskey: rwskey,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Updates(JdCookie{RWskey: rwskey, QQ: sender.UserID, PtKey: ptkey, WeiXin: sender.WxId})
+				nck.Updates(JdCookie{RWskey: rwskey, UserId: sender.UserID, PtKey: ptkey})
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 			} else {
