@@ -71,7 +71,7 @@ func (c *LoginController) GetUserPin() {
 		return
 	}
 	qq := c.GetString("QQ")
-	if strings.EqualFold(qq, strconv.Itoa(models.Config.QQID)) {
+	if strings.EqualFold(qq, models.Config.QQID) {
 		return
 	}
 	pins := models.GetPinList(qq)
@@ -145,7 +145,7 @@ func (c *LoginController) CkLogin() {
 		ck := &models.JdCookie{
 			PtKey:    key,
 			PtPin:    pin,
-			QQ:       qq,
+			UserId:   strconv.Itoa(qq),
 			Note:     bz,
 			PushPlus: push,
 		}
@@ -222,24 +222,19 @@ func (c *LoginController) SMSLogin() {
 		ptKey := FetchJdCookieValue("pt_key", cookie)
 		ptPin := FetchJdCookieValue("pt_pin", cookie)
 		ck := &models.JdCookie{
-			PtKey: ptKey,
-			PtPin: ptPin,
-			QQ:    0,
-		}
-		if qq != "" {
-			ck.QQ, _ = strconv.Atoi(qq)
+			PtKey:  ptKey,
+			PtPin:  ptPin,
+			UserId: qq,
 		}
 
 		if ptKey != "" && ptPin != "" {
 			if models.CookieOK(ck) {
 				if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
 					if qq != "" && len(qq) > 6 {
-						//ck.Update(models.QQ, qq)
-						atoi, _ := strconv.Atoi(qq)
 						ck.Updates(models.JdCookie{
 							PtKey:     ptKey,
 							PtPin:     ptPin,
-							QQ:        atoi,
+							UserId:    qq,
 							Available: "true",
 							UpdateAt:  time.Now().Local().Format("2006-01-02"),
 						})

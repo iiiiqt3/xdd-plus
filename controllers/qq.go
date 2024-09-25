@@ -18,14 +18,14 @@ type QQController struct {
 
 type LLMessage struct {
 	SelfId      int    `json:"self_id"`
-	UserId      int    `json:"user_id"`
+	UserId      string `json:"user_id"`
 	Time        int    `json:"time"`
 	MessageId   int    `json:"message_id"`
 	RealId      int    `json:"real_id"`
 	MessageType string `json:"message_type"`
 	RequestType string `json:"request_type"`
 	Sender      struct {
-		UserId   int    `json:"user_id"`
+		UserId   string `json:"user_id"`
 		Nickname string `json:"nickname"`
 		Card     string `json:"card"`
 		Role     string `json:"role"`
