@@ -78,14 +78,14 @@ func initTgBot() {
 	}()
 }
 
-func SendTgMsg(uid int, msg string) {
-	if b == nil || uid == 0 {
+func SendTgMsg(uid string, msg string) {
+	if b == nil || uid == "" {
 		return
 	}
-	b.Send(&tb.User{ID: uid}, msg)
+	b.Send(&tb.User{ID: Int(uid)}, msg)
 }
 
-func SendTgImg(uid int, file []byte) {
+func SendTgImg(uid string, file []byte) {
 	unix := time.Now().Unix()
 
 	filename := ExecPath + fmt.Sprintf("/static/%d.jpg", unix)
@@ -101,18 +101,18 @@ func SendTgImg(uid int, file []byte) {
 
 	os.Remove(filename)
 
-	if b == nil || uid == 0 {
+	if b == nil || uid == "" {
 		return
 	}
-	b.Send(&tb.User{ID: uid}, &tb.Photo{
+	b.Send(&tb.User{ID: Int(uid)}, &tb.Photo{
 		File: tb.File{
 			FileURL: img,
 		},
 	})
 }
 
-func SendTggMsg(gid int, uid int, msg string, mid int, unm string) {
-	if b == nil || uid == 0 {
+func SendTggMsg(gid int, uid string, msg string, mid int, unm string) {
+	if b == nil || uid == "" {
 		return
 	}
 	if unm != "" {

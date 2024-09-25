@@ -19,9 +19,9 @@ import (
 )
 
 var replies = map[string]string{}
-var loginList = make(map[int]chan string)
-var meituanList = make(map[int]chan string)
-var ckList = make(map[int]chan string)
+var loginList = make(map[string]chan string)
+var meituanList = make(map[string]chan string)
+var ckList = make(map[string]chan string)
 
 func InitReplies() {
 	f, err := os.Open(ExecPath + "/conf/reply.php")
@@ -45,28 +45,20 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	head := args[0]
 	contents := args[1:]
 	sender := &Sender{
-		UserID:   0,
+		UserID:   "",
 		Type:     msgs[1].(string),
 		Contents: contents,
 	}
 	//logs.Info(msgs[1])
 	//logs.Info(msgs[2].(string))
 
-	if msgs[1].(string) == "wx" || msgs[1].(string) == "wxg" {
-
-		sender.UserID = getWxId(msgs[2].(string))
-		sender.WxId = msgs[2].(string)
-
-	} else {
-		sender.UserID = msgs[2].(int)
-	}
+	sender.UserID = msgs[2].(string)
 
 	if len(msgs) >= 4 && sender.Type != "wxg" {
 		sender.ChatID = msgs[3].(int)
 	}
 
 	if sender.Type == "wxg" {
-		sender.WxId = msgs[2].(string)
 		sender.WxGroupId = msgs[3].(string)
 	}
 
@@ -75,7 +67,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		sender.Username = msgs[5].(string)
 		sender.ReplySenderUserID = msgs[6].(int)
 	}
-	if sender.UserID == Config.TelegramUserID || sender.UserID == Config.QQID {
+	if Int(sender.UserID) == Config.TelegramUserID || Int(sender.UserID) == Config.QQID {
 		sender.IsAdmin = true
 	}
 
@@ -324,11 +316,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						PtPin: ptPin,
 					}
 					if CookieOK(&ck) {
-						if sender.IsQQ() || sender.isWX() {
-							ck.QQ = sender.UserID
-						} else if sender.IsTG() {
-							ck.Telegram = sender.UserID
-						}
+						ck.UserId = sender.UserID
 						if HasKey(ck.PtKey) {
 							sender.Reply(fmt.Sprintf("重复提交"))
 						} else {
@@ -336,7 +324,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								nck.Updates(JdCookie{PtKey: ptKey})
 								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 								if sender.IsQQ() {
-									ck.Update(QQ, ck.QQ)
+									ck.Update(QQ, ck.UserId)
 								}
 								sender.Reply(fmt.Sprintf(msg))
 								(&JdCookie{}).Push(msg)
@@ -345,7 +333,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								NewJdCookie(&ck)
 								msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
 								if sender.IsQQ() {
-									ck.Update(QQ, ck.QQ)
+									ck.Update(QQ, ck.UserId)
 								}
 								sender.Reply(fmt.Sprintf(msg))
 								sender.Reply(ck.Query())
@@ -425,12 +413,11 @@ func AutoCollection(autocollect map[string]string) {
 	s, _ := req.String()
 	logs.Info(s)
 	//增加积分
-	id := getWxId(autocollect["to_wxid"])
-	if id != 0 {
+	if autocollect["to_wxid"] != "" {
 		money, _ := strconv.ParseFloat(autocollect["money"], 64)
 		logs.Info(money)
-		AdddCoin(id, int(100.0*money))
+		AdddCoin(autocollect["to_wxid"], int(100.0*money))
 	}
-	SendWxMsg(autocollect["to_wxid"], fmt.Sprintf("充值成功！\n账户余额：%d\n发送“菜单”获取更多功能", GetCoin(id)))
+	SendWxMsg(autocollect["to_wxid"], fmt.Sprintf("充值成功！\n账户余额：%d\n发送“菜单”获取更多功能", GetCoin(autocollect["to_wxid"])))
 
 }

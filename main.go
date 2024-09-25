@@ -224,9 +224,7 @@ func main() {
 		// 注册消息处理函数
 		bot.MessageHandler = func(msg *openwechat.Message) {
 			if msg.IsText() && msg.IsSendByFriend() {
-
 				models.ListenUOSWXPrivateMessage(msg)
-
 			}
 		}
 

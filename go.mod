@@ -28,7 +28,7 @@ require (
 )
 
 require (
-	github.com/eatmoreapple/openwechat v1.4.6
+	github.com/eatmoreapple/openwechat v1.4.7
 	github.com/gorilla/websocket v1.5.0
 )
 

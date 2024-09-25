@@ -31,8 +31,7 @@ type CodeSignal struct {
 }
 
 type Sender struct {
-	WxId              string
-	UserID            int
+	UserID            string
 	ChatID            int
 	GroupId           int
 	WxGroupId         string
@@ -74,9 +73,9 @@ func (sender *Sender) Reply(msg string) {
 	case "qqg":
 		SendQQGroup(sender.ChatID, sender.UserID, msg)
 	case "wx":
-		SendWxMsg(sender.WxId, msg)
+		SendWxMsg(sender.UserID, msg)
 	case "wxg":
-		SendWxGroupMsg(sender.WxId, sender.WxGroupId, msg)
+		SendWxGroupMsg(sender.UserID, sender.WxGroupId, msg)
 	}
 }
 
@@ -87,7 +86,7 @@ func (sender *Sender) SendImg(msg []byte) {
 			Action: "send_msg",
 			QQMsg: struct {
 				MessageType string `json:"message_type"`
-				UserId      int    `json:"user_id"`
+				UserId      string `json:"user_id"`
 				GroupID     int    `json:"group_id"`
 				Message     string `json:"message"`
 			}{
@@ -102,7 +101,7 @@ func (sender *Sender) SendImg(msg []byte) {
 			Action: "send_msg",
 			QQMsg: struct {
 				MessageType string `json:"message_type"`
-				UserId      int    `json:"user_id"`
+				UserId      string `json:"user_id"`
 				GroupID     int    `json:"group_id"`
 				Message     string `json:"message"`
 			}{
@@ -115,7 +114,7 @@ func (sender *Sender) SendImg(msg []byte) {
 	case "tg":
 		SendTgImg(sender.UserID, msg)
 	case "wx":
-		SendWxImg(sender.WxId, msg)
+		SendWxImg(sender.UserID, msg)
 	case "wxg":
 		SendWxImg(sender.WxGroupId, msg)
 
@@ -146,14 +145,14 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 	if !sender.IsAdmin || a == "" {
 		for i := range cks {
 			if strings.Contains(sender.Type, "qq") || strings.Contains(sender.Type, "wx") {
-				if cks[i].QQ == sender.UserID {
+				if cks[i].UserId == sender.UserID {
 					if !ok {
 						ok = true
 					}
 					handle(&cks[i])
 				}
 			} else if strings.Contains(sender.Type, "tg") {
-				if cks[i].Telegram == sender.UserID {
+				if cks[i].UserId == sender.UserID {
 					if !ok {
 						ok = true
 					}
@@ -194,7 +193,7 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"获取我的userid"},
 		Handle: func(sender *Sender) interface{} {
-			return sender.WxId
+			return sender.UserID
 		},
 	},
 
@@ -239,7 +238,7 @@ var codeSignals = []CodeSignal{
 			} else if sender.Type == "wx" {
 				env := GetEnv("InviteWxGroupID")
 				if env != "" {
-					InviteGroup(sender.WxId, env)
+					InviteGroup(sender.UserID, env)
 					return nil
 				} else {
 					return "未设置拉群目标！"
@@ -317,7 +316,7 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"停助力", "停止助力"},
 		Handle: func(sender *Sender) interface{} {
-			if sender.UserID == 995336676 || sender.IsAdmin {
+			if sender.UserID == "995336676" || sender.IsAdmin {
 				rsp := cmd(fmt.Sprintf(`bash stop.sh`), &Sender{})
 				return rsp
 			} else {
@@ -405,7 +404,7 @@ var codeSignals = []CodeSignal{
 				first = true
 				u = User{
 					Class:    sender.Type,
-					Number:   sender.UserID,
+					UserId:   sender.UserID,
 					Coin:     1,
 					ActiveAt: ntime,
 				}
@@ -625,7 +624,7 @@ var codeSignals = []CodeSignal{
 			str := ""
 			sender.Contents = sender.Contents[0:]
 			sender.handleJdCookies(func(ck *JdCookie) {
-				str = str + fmt.Sprintf("账号：%s (%s) QQ：%d \n", ck.Nickname, ck.PtPin, ck.QQ)
+				str = str + fmt.Sprintf("账号：%s (%s) QQ：%d \n", ck.Nickname, ck.PtPin, ck.UserId)
 			})
 			return str
 		},
@@ -717,7 +716,7 @@ var codeSignals = []CodeSignal{
 						sender.Reply(ck.Query())
 					})
 				} else {
-					list := getUserNameList(strconv.Itoa(sender.UserID))
+					list := getUserNameList(sender.UserID)
 					if list == nil {
 						if Config.Query != "" {
 							return Config.Query
@@ -750,7 +749,7 @@ var codeSignals = []CodeSignal{
 						sender.Reply(ck.Query())
 					})
 				} else {
-					list := getUserNameList(strconv.Itoa(sender.UserID))
+					list := getUserNameList(sender.UserID)
 					if list == nil {
 						if Config.Query != "" {
 							return Config.Query
@@ -810,7 +809,7 @@ var codeSignals = []CodeSignal{
 		Command: []string{"QQ转账"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
-			qq := Int(sender.Contents[0])
+			qq := sender.Contents[0]
 			logs.Info(qq)
 			if len(sender.Contents) > 1 {
 				//sender.Contents = sender.Contents[1:]
@@ -876,7 +875,7 @@ var codeSignals = []CodeSignal{
 				sender.Contents = sender.Contents[1:]
 				sender.handleJdCookies(func(ck *JdCookie) {
 					ck.Update(QQ, qq)
-					sender.Reply(fmt.Sprintf("已设置账号%s的QQ为%v。", ck.Nickname, ck.QQ))
+					sender.Reply(fmt.Sprintf("已设置账号%s的QQ为%v。", ck.Nickname, ck.UserId))
 				})
 			}
 			return nil
@@ -1107,7 +1106,7 @@ var codeSignals = []CodeSignal{
 					return "转账金额必须大于等于1。"
 				}
 			}
-			if sender.UserID == sender.ReplySenderUserID {
+			if Int(sender.UserID) == sender.ReplySenderUserID {
 				db.Model(User{}).Where("number = ?", sender.UserID).Updates(map[string]interface{}{
 					"coin": gorm.Expr(fmt.Sprintf("coin - %d", cost)),
 				})
@@ -1583,14 +1582,6 @@ var codeSignals = []CodeSignal{
 	//	},
 	//},
 
-	//版本兼容
-	{
-		Command: []string{"版本兼容"},
-		Handle: func(sender *Sender) interface{} {
-			getFriends()
-			return "版本兼容完成，V14.5升级成功"
-		},
-	},
 }
 
 func InviteGroup(uid string, gid string) {
@@ -1676,7 +1667,7 @@ func LimitJdCookie(cks []JdCookie, a string) []JdCookie {
 			for _, x := range xx {
 				if fmt.Sprint(i+1) == x[1] {
 					ncks = append(ncks, cks[i])
-				} else if strconv.Itoa(cks[i].QQ) == x[1] {
+				} else if cks[i].UserId == x[1] {
 					ncks = append(ncks, cks[i])
 				}
 			}

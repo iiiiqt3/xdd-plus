@@ -102,11 +102,11 @@ var Float64 = func(s string) float64 {
 
 func DailyAssetsPush() {
 	for _, ck := range GetJdCookies() {
-		if (ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil) || ck.PushPlus != "" {
+		if (ck.UserId != "" && Config.QQID != 0 && SendQQ != nil) || ck.PushPlus != "" {
 			msg := ck.Query()
 
-			if ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
-				SendQQ(ck.QQ, msg)
+			if ck.UserId != "" && Config.QQID != 0 && SendQQ != nil {
+				SendQQ(ck.UserId, msg)
 			}
 			if ck.PushPlus != "" {
 				pushPlus(ck.PushPlus, msg)
@@ -118,7 +118,7 @@ func DailyAssetsPush() {
 
 func CompletePush() {
 	for _, ck := range GetJdCookies() {
-		if (ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil) || ck.PushPlus != "" {
+		if (ck.UserId != "" && Config.QQID != 0 && SendQQ != nil) || ck.PushPlus != "" {
 			flag := false
 			var msg1 []string
 			var fruit = make(chan string)
@@ -130,8 +130,8 @@ func CompletePush() {
 			}
 			time.Sleep(time.Second * 30)
 			if flag {
-				if ck.QQ != 0 && Config.QQID != 0 && SendQQ != nil {
-					SendQQ(ck.QQ, strings.Join(msg1, "\n"))
+				if ck.UserId != "" && Config.QQID != 0 && SendQQ != nil {
+					SendQQ(ck.UserId, strings.Join(msg1, "\n"))
 				}
 				if ck.PushPlus != "" {
 					pushPlus(ck.PushPlus, strings.Join(msg1, "\n"))

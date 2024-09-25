@@ -5,9 +5,9 @@ import (
 	"regexp"
 )
 
-var smsList = make(map[int]chan string)
-var phoneList = make(map[int]string)
-var RiskList = make(map[int]bool)
+var smsList = make(map[string]chan string)
+var phoneList = make(map[string]string)
+var RiskList = make(map[string]bool)
 
 func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 

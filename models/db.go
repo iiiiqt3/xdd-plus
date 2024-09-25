@@ -43,7 +43,6 @@ func initDB() {
 		&MeiTuan{},
 		&Auth{},
 		&Limit{},
-		&WxUser{},
 	)
 
 	keys = make(map[string]bool)
@@ -103,13 +102,10 @@ type JdCookie struct {
 	Available string `gorm:"column:Available;default:true" validate:"oneof=true false"`
 	Nickname  string `gorm:"column:Nickname"`
 	BeanNum   string `gorm:"column:BeanNum"`
-	QQ        int    `gorm:"column:QQ"`
-	WeiXin    string `gorm:"column:WeiXin"`
+	UserId    string `gorm:"column:UserId"`
 	PushPlus  string `gorm:"column:PushPlus"`
 	WxPush    string `gorm:"column:WxPush"`
-	Telegram  int    `gorm:"column:Telegram"`
 	Pool      string `gorm:"-"`
-	UserID    int    `gorm:"column:UserId"`
 	UserLevel string `gorm:"column:UserLevel"`
 	LevelName string `gorm:"column:LevelName"`
 }

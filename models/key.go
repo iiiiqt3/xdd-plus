@@ -11,7 +11,7 @@ type Key struct {
 	Expiration time.Time
 	Token      string
 	Use        bool
-	UseBy      int
+	UseBy      string
 	Value      int
 }
 
@@ -36,7 +36,7 @@ func createKey(num int, value int) string {
 	return strings.Join(str, "\n")
 }
 
-func useKey(id string, use int) string {
+func useKey(id string, use string) string {
 	var u Key
 	err := db.Where("Token = ?", id).First(&u).Error
 	if err == nil {
@@ -46,7 +46,7 @@ func useKey(id string, use int) string {
 			if err != nil {
 				db.Create(&User{
 					Class:    "qq",
-					Number:   use,
+					UserId:   use,
 					Coin:     u.Value,
 					ActiveAt: time.Now(),
 				})

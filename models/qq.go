@@ -12,7 +12,7 @@ type QQMessage struct {
 	Action string `json:"action"`
 	QQMsg  struct {
 		MessageType string `json:"message_type"`
-		UserId      int    `json:"user_id"`
+		UserId      string `json:"user_id"`
 		GroupID     int    `json:"group_id"`
 		Message     string `json:"message"`
 	} `json:"params"`
@@ -20,7 +20,7 @@ type QQMessage struct {
 	MessageId int    `json:"message_id"`
 }
 
-var SendQQ = func(qq int, msg interface{}) {
+var SendQQ = func(qq string, msg interface{}) {
 
 	switch msg.(type) {
 	case string:
@@ -28,7 +28,7 @@ var SendQQ = func(qq int, msg interface{}) {
 			Action: "send_msg",
 			QQMsg: struct {
 				MessageType string `json:"message_type"`
-				UserId      int    `json:"user_id"`
+				UserId      string `json:"user_id"`
 				GroupID     int    `json:"group_id"`
 				Message     string `json:"message"`
 			}{
@@ -40,30 +40,30 @@ var SendQQ = func(qq int, msg interface{}) {
 	}
 }
 
-var SendQQGroup = func(gid int, qq int, msg interface{}) {
+var SendQQGroup = func(gid int, qq string, msg interface{}) {
 	switch msg.(type) {
 	case string:
 		SendQQMsg(QQMessage{
 			Action: "send_msg",
 			QQMsg: struct {
 				MessageType string `json:"message_type"`
-				UserId      int    `json:"user_id"`
+				UserId      string `json:"user_id"`
 				GroupID     int    `json:"group_id"`
 				Message     string `json:"message"`
 			}{
 				GroupID: gid,
-				Message: fmt.Sprintf("[CQ:at,qq=%d]", qq) + msg.(string),
+				Message: fmt.Sprintf("[CQ:at,qq=%s]", qq) + msg.(string),
 			},
 			Echo: "user_id",
 		})
 	}
 }
 
-var ListenQQPrivateMessage = func(uid int, msg string) {
+var ListenQQPrivateMessage = func(uid string, msg string) {
 	SendQQ(uid, handleMessage(msg, "qq", uid))
 }
 
-var ListenQQGroupMessage = func(uid int, gid int, msg string) {
+var ListenQQGroupMessage = func(uid string, gid int, msg string) {
 	if strings.Contains(Config.QQGroupID, strconv.Itoa(gid)) {
 		if Config.QbotPublicMode {
 			SendQQGroup(gid, uid, handleMessage(msg, "qqg", uid, gid))
