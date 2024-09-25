@@ -221,7 +221,7 @@ type MeiTuan struct {
 	Available  string  `gorm:"column:Available;default:true" validate:"oneof=true false"`
 	Nickname   string  `gorm:"column:Nickname"`
 	UserId     string  `gorm:"column:UserId"`
-	QQ         int     `gorm:"column:QQ"`
+	QQ         string  `gorm:"column:QQ"`
 	WeiXin     string  `gorm:"column:WeiXin"`
 	PushPlus   string  `gorm:"column:PushPlus"`
 	WxPush     string  `gorm:"column:WxPush"`
@@ -447,7 +447,7 @@ func UpLine(token string, sender *Sender) bool {
 				Nickname:  Username,
 				UserId:    strconv.FormatInt(id, 10),
 				QQ:        sender.UserID,
-				WeiXin:    sender.WxId,
+				WeiXin:    sender.UserID,
 				PushPlus:  "",
 				WxPush:    "",
 				Telegram:  0,
@@ -460,7 +460,7 @@ func UpLine(token string, sender *Sender) bool {
 			tx.Commit()
 			sender.Reply(fmt.Sprintf("美团账号新增成功:%s", Username))
 		} else {
-			tuan.Updates(MeiTuan{UpdateAt: Date(), Available: True, Token: token, QQ: sender.UserID, WeiXin: sender.WxId})
+			tuan.Updates(MeiTuan{UpdateAt: Date(), Available: True, Token: token, QQ: sender.UserID, WeiXin: sender.UserID})
 			sender.Reply("美团账号更新成功")
 		}
 		return true
@@ -487,7 +487,7 @@ func GetMeiTuanByPrefix(prefix string, sender *Sender) []MeiTuan {
 		})
 	case "wx", "wxg":
 		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", "WeiXin"), sender.WxId, fmt.Sprintf("%s%%", prefix))
+			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", "WeiXin"), sender.UserID, fmt.Sprintf("%s%%", prefix))
 		})
 	default:
 		return nil
@@ -526,7 +526,7 @@ func GetMeiTuan(sender *Sender) []MeiTuan {
 		})
 	case "wx", "wxg":
 		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ?  ", "WeiXin"), sender.WxId)
+			return sb.Where(fmt.Sprintf("%s = ?  ", "WeiXin"), sender.UserID)
 		})
 	default:
 		return nil
@@ -652,7 +652,7 @@ func (cookie *MeiTuan) RunTT(sender *Sender) {
 	//输出脚本执行结果
 
 	logs.Info(string(output))
-	if sender.WxId == "auto" {
+	if sender.UserID == "auto" {
 		logs.Info("自动领卷成功")
 	} else {
 		sender.Reply(replexQuan(string(output), sender))
