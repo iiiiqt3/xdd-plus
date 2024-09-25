@@ -29,8 +29,8 @@ type Yaml struct {
 	UserAgent           string `yaml:"user_agent"`
 	Theme               string
 	TelegramBotToken    string `yaml:"telegram_bot_token"`
-	TelegramUserID      int    `yaml:"telegram_user_id"`
-	QQID                int    `yaml:"qquid"`
+	TelegramUserID      string `yaml:"telegram_user_id"`
+	QQID                string `yaml:"qquid"`
 	QQGroupID           string `yaml:"qqgid"`
 	WXGroupID           string `yaml:"wxgid"`
 	InviteGroupID       string

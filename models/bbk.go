@@ -67,9 +67,7 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 			} else {
 				NewJdCookie(&ck)
 				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-				if sender.IsQQ() || sender.IsQQ() {
-					ck.Update(QQ, sender.UserID)
-				}
+				ck.Update("UserId", sender.UserID)
 				sender.Reply(fmt.Sprintf(msg))
 				sender.Reply(ck.Query())
 				(&JdCookie{}).Push(msg)

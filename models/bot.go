@@ -67,7 +67,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		sender.Username = msgs[5].(string)
 		sender.ReplySenderUserID = msgs[6].(int)
 	}
-	if Int(sender.UserID) == Config.TelegramUserID || Int(sender.UserID) == Config.QQID {
+	if sender.UserID == Config.TelegramUserID || sender.UserID == Config.QQID {
 		sender.IsAdmin = true
 	}
 
@@ -324,7 +324,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								nck.Updates(JdCookie{PtKey: ptKey})
 								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 								if sender.IsQQ() {
-									ck.Update(QQ, ck.UserId)
+									ck.Update("UserId", ck.UserId)
 								}
 								sender.Reply(fmt.Sprintf(msg))
 								(&JdCookie{}).Push(msg)
@@ -333,7 +333,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 								NewJdCookie(&ck)
 								msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
 								if sender.IsQQ() {
-									ck.Update(QQ, ck.UserId)
+									ck.Update("UserId", ck.UserId)
 								}
 								sender.Reply(fmt.Sprintf(msg))
 								sender.Reply(ck.Query())

@@ -480,18 +480,9 @@ func getMeiTuan(id string) (*MeiTuan, error) {
 
 // GetMeiTuanByPrefix 获取美团账号通过用户名前缀
 func GetMeiTuanByPrefix(prefix string, sender *Sender) []MeiTuan {
-	switch sender.Type {
-	case "qq", "qqg", "tg":
-		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", QQ), sender.UserID, fmt.Sprintf("%s%%", prefix))
-		})
-	case "wx", "wxg":
-		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", "WeiXin"), sender.UserID, fmt.Sprintf("%s%%", prefix))
-		})
-	default:
-		return nil
-	}
+	return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
+		return sb.Where(fmt.Sprintf("%s = ? and nickname like ? ", "UserId"), sender.UserID, fmt.Sprintf("%s%%", prefix))
+	})
 }
 
 func (cookie *MeiTuan) Updates(values interface{}) {
@@ -519,18 +510,9 @@ func GetMTCookies(sbs ...func(sb *gorm.DB) *gorm.DB) []MeiTuan {
 }
 
 func GetMeiTuan(sender *Sender) []MeiTuan {
-	switch sender.Type {
-	case "qq", "qqg", "tg":
-		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ?  ", QQ), sender.UserID)
-		})
-	case "wx", "wxg":
-		return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ?  ", "WeiXin"), sender.UserID)
-		})
-	default:
-		return nil
-	}
+	return GetMTCookies(func(sb *gorm.DB) *gorm.DB {
+		return sb.Where(fmt.Sprintf("%s = ?  ", "UserId"), sender.UserID)
+	})
 }
 
 func (cookie *MeiTuan) Query() string {

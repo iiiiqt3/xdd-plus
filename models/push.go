@@ -9,11 +9,11 @@ import (
 func (ck JdCookie) Push(msg string) {
 	//todo 推送改造用userid取得通知
 	if ck.PtPin != "" {
-		go SendQQ(ck.QQ, msg)
+		go SendQQ(ck.UserId, msg)
 		go pushPlus(ck.PushPlus, msg)
-		go SendTgMsg(ck.Telegram, msg)
-		if ck.WeiXin != "" {
-			go SendWxMsg(ck.WeiXin, msg)
+		go SendTgMsg(ck.UserId, msg)
+		if ck.UserId != "" {
+			go SendWxMsg(ck.UserId, msg)
 		}
 	} else {
 		go SendQQ(Config.QQID, msg)

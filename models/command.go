@@ -874,7 +874,7 @@ var codeSignals = []CodeSignal{
 			if len(sender.Contents) > 1 {
 				sender.Contents = sender.Contents[1:]
 				sender.handleJdCookies(func(ck *JdCookie) {
-					ck.Update(QQ, qq)
+					ck.Update("UserId", qq)
 					sender.Reply(fmt.Sprintf("已设置账号%s的QQ为%v。", ck.Nickname, ck.UserId))
 				})
 			}
