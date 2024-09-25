@@ -27,10 +27,7 @@ require (
 	gorm.io/gorm v1.21.13
 )
 
-require (
-	github.com/eatmoreapple/openwechat v1.4.7
-	github.com/gorilla/websocket v1.5.0
-)
+require github.com/gorilla/websocket v1.5.0
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect

@@ -10,7 +10,6 @@ import (
 	"github.com/beego/beego/v2/server/web/filter/cors"
 	"github.com/cdle/xdd/controllers"
 	"github.com/cdle/xdd/models"
-	"github.com/eatmoreapple/openwechat"
 	"io"
 	"os"
 	"strings"
@@ -20,7 +19,6 @@ import (
 var theme = ""
 
 var query = ""
-var friedns openwechat.Friends
 
 type Result struct {
 	Code    int         `json:"code"`
@@ -216,40 +214,6 @@ func main() {
 		time.Sleep(time.Second * 4)
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 	}()
-
-	if models.Config.VIP {
-
-		bot := openwechat.DefaultBot(openwechat.Desktop) // 桌面模式
-
-		// 注册消息处理函数
-		bot.MessageHandler = func(msg *openwechat.Message) {
-			if msg.IsText() && msg.IsSendByFriend() {
-				models.ListenUOSWXPrivateMessage(msg)
-			}
-		}
-
-		// 注册登陆二维码回调
-		bot.UUIDCallback = openwechat.PrintlnQrcodeUrl
-
-		// 登陆
-		reloadStorage := openwechat.NewFileHotReloadStorage("storage.json")
-		defer reloadStorage.Close()
-		err := bot.PushLogin(reloadStorage, openwechat.NewRetryLoginOption())
-
-		// 获取登陆的用户
-		self, err := bot.GetCurrentUser()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		friedns, err = self.Friends()
-
-		// 阻塞主goroutine, 直到发生异常或者用户主动退出
-
-		bot.Block()
-
-	}
 
 	web.Run()
 
