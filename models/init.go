@@ -6,7 +6,6 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -40,7 +39,7 @@ func init() {
 
 func initNolan() {
 
-	s, _ := httplib.Get(fmt.Sprintf("http://auth.smxy.xyz/user/auth3?qqNum=%s&version=%s", strconv.Itoa(Config.QQID), Config.Version)).String()
+	s, _ := httplib.Get(fmt.Sprintf("http://auth.smxy.xyz/user/auth3?qqNum=%s&version=%s", Config.QQID, Config.Version)).String()
 	contains := strings.Contains(s, "true")
 	logs.Info(s)
 	if contains {

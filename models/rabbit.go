@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
@@ -81,14 +80,13 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 				RWskey: data,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				nck.Updates(JdCookie{RWskey: data, QQ: sender.UserID, PtKey: ptkey, WeiXin: sender.WxId})
+				nck.Updates(JdCookie{RWskey: data, UserId: sender.UserID, PtKey: ptkey})
 				sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 				(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 			} else {
 				NewJdCookie(&ck)
 				msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-				ck.Update(QQ, sender.UserID)
-				ck.Update("WeiXin", sender.WxId)
+				ck.Update("UserId", sender.UserID)
 				sender.Reply(fmt.Sprintf(msg))
 				sender.Reply(ck.Query())
 				(&JdCookie{}).Push(msg)
@@ -236,7 +234,7 @@ func RabbitSendSMS(ty string, phone string, sender *Sender) {
 		sender.Reply(message)
 	}
 	if success {
-		logs.Info(strconv.Itoa(sender.UserID))
+		logs.Info(sender.UserID)
 		sender.Reply("请输入6位验证码：")
 		return
 	} else {
@@ -306,15 +304,14 @@ func RabbitSendCode(ty string, phone string, code string, sender *Sender) {
 			WsKey: wskey,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			nck.Updates(JdCookie{WsKey: wskey, QQ: sender.UserID, PtKey: ptkey, WeiXin: sender.WxId})
+			nck.Updates(JdCookie{WsKey: wskey, UserId: sender.UserID, PtKey: ptkey})
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
 		} else {
 			NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
 			if sender.IsQQ() || sender.IsQQ() {
-				ck.Update(QQ, sender.UserID)
-				ck.Update("WeiXin", sender.WxId)
+				ck.Update("UserId", sender.UserID)
 			}
 			sender.Reply(fmt.Sprintf(msg))
 			sender.Reply(ck.Query())
