@@ -6,7 +6,6 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
@@ -59,7 +58,7 @@ func (c *UserController) GetUserInfo() {
 
 func (c *UserController) GetUserPin() {
 	qq := c.GetString("QQ")
-	if strings.EqualFold(qq, strconv.Itoa(models.Config.QQID)) {
+	if strings.EqualFold(qq, models.Config.QQID) {
 		result := Result{
 			Data:    "null",
 			Code:    1,
