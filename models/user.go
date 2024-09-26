@@ -3,13 +3,14 @@ package models
 import (
 	"fmt"
 	"gorm.io/gorm"
+	"time"
 )
 
 type User struct {
 	ID       int
 	UserId   string `gorm:"unique"`
 	Class    string `gorm:"column:class;"`
-	ActiveAt string `gorm:"column:activeAt;"`
+	ActiveAt time.Time
 	Coin     int
 	IsAdmin  bool `gorm:"column:isAdmin;"`
 }
