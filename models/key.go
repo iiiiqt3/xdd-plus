@@ -48,7 +48,7 @@ func useKey(id string, use string) string {
 					Class:    "qq",
 					UserId:   use,
 					Coin:     u.Value,
-					ActiveAt: Date(),
+					ActiveAt: time.Now(),
 				})
 			} else {
 				user.Coin += u.Value
