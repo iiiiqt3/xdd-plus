@@ -61,12 +61,12 @@ func runTask(task *Task, sender *Sender) string {
 		path = task.Git + "/" + task.Name
 	} else {
 		slice := strings.Split(task.Path, "/")
-		len := len(slice)
-		if len == 0 {
+		l := len(slice)
+		if l == 0 {
 			logs.Warn("取法识别的文件名")
 			return ""
 		}
-		task.Name = slice[len-1]
+		task.Name = slice[l-1]
 		path = ExecPath + "/scripts/" + task.Name
 		if strings.Contains(task.Path, "http") {
 			f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
@@ -74,11 +74,11 @@ func runTask(task *Task, sender *Sender) string {
 				logs.Warn("打开%s失败，", path, err)
 				return ""
 			}
-			url := task.Path
-			if strings.Contains(url, "raw.githubusercontent.com") {
-				url = GhProxy + url
+			u := task.Path
+			if strings.Contains(u, "raw.githubusercontent.com") {
+				u = GhProxy + u
 			}
-			r, err := httplib.Get(url).Response()
+			r, err := httplib.Get(u).Response()
 			if err != nil {
 				logs.Warn("下载%s失败，", task.Path, err)
 			}
@@ -196,12 +196,12 @@ func runMeituan(task *Task, sender *Sender) string {
 		path = task.Git + "/" + task.Name
 	} else {
 		slice := strings.Split(task.Path, "/")
-		len := len(slice)
-		if len == 0 {
+		l := len(slice)
+		if l == 0 {
 			logs.Warn("取法识别的文件名")
 			return ""
 		}
-		task.Name = slice[len-1]
+		task.Name = slice[l-1]
 		path = ExecPath + "/scripts/" + task.Name
 		if strings.Contains(task.Path, "http") {
 			f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
@@ -209,11 +209,11 @@ func runMeituan(task *Task, sender *Sender) string {
 				logs.Warn("打开%s失败，", path, err)
 				return ""
 			}
-			url := task.Path
-			if strings.Contains(url, "raw.githubusercontent.com") {
-				url = GhProxy + url
+			u := task.Path
+			if strings.Contains(u, "raw.githubusercontent.com") {
+				u = GhProxy + u
 			}
-			r, err := httplib.Get(url).Response()
+			r, err := httplib.Get(u).Response()
 			if err != nil {
 				logs.Warn("下载%s失败，", task.Path, err)
 			}

@@ -45,7 +45,7 @@ func initTgBot() {
 				if tgg == nil {
 					tgg = m.Chat
 				}
-				var rid int = 0
+				var rid = 0
 				if m.ReplyTo != nil {
 					rid = m.ReplyTo.Sender.ID
 				}

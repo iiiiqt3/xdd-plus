@@ -107,7 +107,7 @@ func (sender *Sender) SendImg(msg []byte) {
 			}{
 				MessageType: "group",
 				GroupID:     sender.ChatID,
-				Message:     fmt.Sprintf("[CQ:at,qq=%d][CQ:image,file=base64://%s,type=show]", sender.UserID, base64.StdEncoding.EncodeToString(msg)),
+				Message:     fmt.Sprintf("[CQ:at,qq=%s][CQ:image,file=base64://%s,type=show]", sender.UserID, base64.StdEncoding.EncodeToString(msg)),
 			},
 			Echo: "",
 		})
@@ -624,7 +624,7 @@ var codeSignals = []CodeSignal{
 			str := ""
 			sender.Contents = sender.Contents[0:]
 			sender.handleJdCookies(func(ck *JdCookie) {
-				str = str + fmt.Sprintf("账号：%s (%s) QQ：%d \n", ck.Nickname, ck.PtPin, ck.UserId)
+				str = str + fmt.Sprintf("账号：%s (%s) QQ：%s \n", ck.Nickname, ck.PtPin, ck.UserId)
 			})
 			return str
 		},
@@ -731,7 +731,7 @@ var codeSignals = []CodeSignal{
 						sender.Reply(str)
 						query := GetEnv("query")
 						//https://qladmin.smxy.xyz/query#/?id=1095916117
-						url := fmt.Sprintf("%squery#/?id=%d", query, sender.UserID)
+						url := fmt.Sprintf("%squery#/?id=%s", query, sender.UserID)
 						if query != "" {
 							sender.Reply("请扫描二维码查看")
 							var png []byte
@@ -815,7 +815,7 @@ var codeSignals = []CodeSignal{
 				//sender.Contents = sender.Contents[1:]
 				logs.Info(sender.Contents[1:])
 				AdddCoin(qq, Int(sender.Contents[1]))
-				sender.Reply(fmt.Sprintf("%d已增加%d枚互助值。", qq, Int(sender.Contents[1])))
+				sender.Reply(fmt.Sprintf("%s已增加%d枚互助值。", qq, Int(sender.Contents[1])))
 			}
 			return nil
 		},
@@ -1314,7 +1314,7 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"用户信息"},
 		Handle: func(sender *Sender) interface{} {
-			return fmt.Sprintf("用户ID：%d", sender.UserID)
+			return fmt.Sprintf("用户ID：%s", sender.UserID)
 		},
 	},
 

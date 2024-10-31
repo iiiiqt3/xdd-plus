@@ -7,7 +7,6 @@ import (
 )
 
 func (ck JdCookie) Push(msg string) {
-	//todo 推送改造用userid取得通知
 	if ck.PtPin != "" {
 		go SendQQ(ck.UserId, msg)
 		go pushPlus(ck.PushPlus, msg)
