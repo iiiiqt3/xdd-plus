@@ -102,7 +102,7 @@ func (c *QQController) Echo() {
 }
 
 func HandleQQMessage(msg LLMessage) {
-	if msg.PostType == "message_sent" {
+	if msg.PostType == "message" {
 		logs.Info("接收到信息" + msg.RawMessage)
 		if msg.MessageType == "private" {
 			models.ListenQQPrivateMessage(string(msg.UserId), msg.RawMessage)
