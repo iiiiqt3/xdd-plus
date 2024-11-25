@@ -26,10 +26,10 @@ type LLMessage struct {
 	MessageType string      `json:"message_type"`
 	RequestType string      `json:"request_type"`
 	Sender      struct {
-		UserId   string `json:"user_id"`
-		Nickname string `json:"nickname"`
-		Card     string `json:"card"`
-		Role     string `json:"role"`
+		UserId   json.Number `json:"user_id"`
+		Nickname string      `json:"nickname"`
+		Card     string      `json:"card"`
+		Role     string      `json:"role"`
 	} `json:"sender"`
 	RawMessage    string `json:"raw_message"`
 	Font          int    `json:"font"`
@@ -61,7 +61,7 @@ type CqMessage struct {
 		Role     string `json:"role"`
 		Sex      string `json:"sex"`
 		Title    string `json:"title"`
-		UserID   int    `json:"user_id"`
+		UserID   string `json:"user_id"`
 	} `json:"sender"`
 	MessageID int         `json:"message_id"`
 	Anonymous interface{} `json:"anonymous"`
