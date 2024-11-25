@@ -24,7 +24,7 @@ func init() {
 	initConfig()
 	initDB()
 	initSysConfig()
-	go initVersion()
+	//go initVersion()
 	initContainer()
 	initCron()
 	go initTgBot()

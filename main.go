@@ -153,10 +153,6 @@ func main() {
 		web.Router("/api/envs", &controllers.AccountController{}, "post:CreateOrUpdateEnv")
 		web.Router("/api/config", &controllers.ConfigController{}, "get:ListConfig")
 		web.Router("/api/config", &controllers.ConfigController{}, "post:CreateOrUpdateConfig")
-
-		//vweb.Router("/api/loginselect", &controllers.AccountController{}, "get:ListLoginSelect")
-		//vweb.Router("/api/loginselect", &controllers.AccountController{}, "post,delete:CreateOrUpdateLoginSelect")
-
 	}
 
 	if models.Config.Static == "" {
