@@ -22,6 +22,7 @@ type LLMessage struct {
 	Time        int    `json:"time"`
 	MessageId   int    `json:"message_id"`
 	RealId      int    `json:"real_id"`
+	MessageSeq  int    `json:"message_seq"`
 	MessageType string `json:"message_type"`
 	RequestType string `json:"request_type"`
 	Sender      struct {
