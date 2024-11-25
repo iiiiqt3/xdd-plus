@@ -17,14 +17,14 @@ type QQController struct {
 }
 
 type LLMessage struct {
-	SelfId      int         `json:"self_id"`
-	UserId      json.Number `json:"user_id"`
-	Time        int         `json:"time"`
-	MessageId   int         `json:"message_id"`
-	RealId      int         `json:"real_id"`
-	MessageSeq  int         `json:"message_seq"`
-	MessageType string      `json:"message_type"`
-	RequestType string      `json:"request_type"`
+	SelfId      int    `json:"self_id"`
+	UserId      string `json:"user_id"`
+	Time        int    `json:"time"`
+	MessageId   int    `json:"message_id"`
+	RealId      int    `json:"real_id"`
+	MessageSeq  int    `json:"message_seq"`
+	MessageType string `json:"message_type"`
+	RequestType string `json:"request_type"`
 	Sender      struct {
 		UserId   string `json:"user_id"`
 		Nickname string `json:"nickname"`
@@ -61,7 +61,7 @@ type CqMessage struct {
 		Role     string `json:"role"`
 		Sex      string `json:"sex"`
 		Title    string `json:"title"`
-		UserID   int    `json:"user_id"`
+		UserID   string `json:"user_id"`
 	} `json:"sender"`
 	MessageID int         `json:"message_id"`
 	Anonymous interface{} `json:"anonymous"`
@@ -105,9 +105,9 @@ func HandleQQMessage(msg LLMessage) {
 	if msg.PostType == "message_sent" {
 		logs.Info("接收到信息" + msg.RawMessage)
 		if msg.MessageType == "private" {
-			models.ListenQQPrivateMessage(string(msg.UserId), msg.RawMessage)
+			models.ListenQQPrivateMessage(msg.UserId, msg.RawMessage)
 		} else if msg.MessageType == "group" {
-			models.ListenQQGroupMessage(string(msg.UserId), msg.GroupId, msg.RawMessage)
+			models.ListenQQGroupMessage(msg.UserId, msg.GroupId, msg.RawMessage)
 			//撤回手机号码
 			regular := `^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$`
 			reg := regexp.MustCompile(regular)
