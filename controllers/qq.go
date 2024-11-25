@@ -53,15 +53,15 @@ type CqMessage struct {
 	Message     string `json:"message"`
 	RawMessage  string `json:"raw_message"`
 	Sender      struct {
-		Age      int         `json:"age"`
-		Area     string      `json:"area"`
-		Card     string      `json:"card"`
-		Level    string      `json:"level"`
-		Nickname string      `json:"nickname"`
-		Role     string      `json:"role"`
-		Sex      string      `json:"sex"`
-		Title    string      `json:"title"`
-		UserID   json.Number `json:"user_id"`
+		Age      int    `json:"age"`
+		Area     string `json:"area"`
+		Card     string `json:"card"`
+		Level    string `json:"level"`
+		Nickname string `json:"nickname"`
+		Role     string `json:"role"`
+		Sex      string `json:"sex"`
+		Title    string `json:"title"`
+		UserID   int    `json:"user_id"`
 	} `json:"sender"`
 	MessageID int         `json:"message_id"`
 	Anonymous interface{} `json:"anonymous"`
