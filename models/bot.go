@@ -88,6 +88,7 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		c2 <- msg
 		return nil
 	}
+
 	if ckList[sender.UserID] != nil {
 		c2 := ckList[sender.UserID]
 		c2 <- msg

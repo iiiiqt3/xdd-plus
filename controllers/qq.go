@@ -90,6 +90,7 @@ func (c *QQController) Echo() {
 		var msg LLMessage
 		err = json.Unmarshal(message, &msg)
 		if err != nil {
+			logs.Info(message)
 			logs.Info("change:", err)
 			break
 		}
