@@ -3196,19 +3196,18 @@ default:
 		},
 	},
 
-	/*	{
-			Command: []string{"升级", "更新", "update", "upgrade"},
-			Admin:   true,
-			Handle: func(sender *Sender) interface{} {
-				if err := Update(sender); err != nil {
-					return err.Error()
-				}
-				sender.Reply("重启程序")
-				Daemon()
-				return nil
-			},
+	{
+		Command: []string{"升级", "更新", "update", "upgrade"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			if err := Update(sender); err != nil {
+				return err.Error()
+			}
+			sender.Reply("重启程序")
+			Daemon()
+			return nil
 		},
-	*/
+	},
 	{
 		Command: []string{"重启", "reload", "restart", "reboot"},
 		Admin:   true,

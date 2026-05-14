@@ -2,22 +2,19 @@ package models
 
 import (
 	"errors"
-	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"os"
+	"os/exec"
 	"regexp"
-	
-	"runtime"
 	"strings"
-	"syscall"
-	"time"
 )
 
 var version = "v14.0"
 var describe = "修复新号不进入容器"
 var AppName = "xdd"
 var pname = pname1()
-var UpdateUrl = "https://upte.xy.xyz"
+var GitRepo = "http://180.152.5.230:5699/feiniao/xdd.git"
+var GitBranch = "master"
 var notify = true
 
 func pname1() string {
@@ -37,85 +34,130 @@ func pname1() string {
 	}
 	return pname
 }
+
+func getGitRepo() string {
+	value := GetEnv("gitRepo")
+	if value != "" {
+		return value
+	}
+	return GitRepo
+}
+
+func getGitBranch() string {
+	value := GetEnv("gitBranch")
+	if value != "" {
+		return value
+	}
+	return GitBranch
+}
+
+func getRemoteHeadHash() (string, error) {
+	cmd := exec.Command("git", "ls-remote", getGitRepo(), "HEAD")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	fields := strings.Fields(string(output))
+	if len(fields) == 0 {
+		return "", errors.New("无法解析远程HEAD")
+	}
+	return fields[0], nil
+}
+
+func getLocalHeadHash() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = ExecPath
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+func checkGitUpdate() bool {
+	remoteHash, err := getRemoteHeadHash()
+	if err != nil {
+		logs.Info("获取远程版本失败: %v", err)
+		return false
+	}
+	localHash, err := getLocalHeadHash()
+	if err != nil {
+		logs.Info("获取本地版本失败: %v", err)
+		return false
+	}
+	logs.Info("远程版本: %s, 本地版本: %s", remoteHash[:8], localHash[:8])
+	return remoteHash != localHash
+}
+
 func initVersion() {
 	Config.Version = version
-	logs.Info("检查更新" + version)
-	value := GetEnv("updateUrl")
-	if value != "" {
-		UpdateUrl = value
-	}
-	value, err := httplib.Get(UpdateUrl + "/version1").String()
-	if err != nil {
-		logs.Info("更新版本的失败")
-	} else {
-		// name := AppName + "_" + runtime.GOOS + "_" + runtime.GOARCH
-		logs.Info(value)
-		logs.Info(version)
-		if value != version {
-			logs.Info("小滴滴检测到新版本：" + value)
-			(&JdCookie{}).Push("小滴滴检测到新版本：" + value)
-		}
+	logs.Info("检查更新 " + version)
+	if checkGitUpdate() {
+		logs.Info("小滴滴检测到新版本")
+		(&JdCookie{}).Push("小滴滴检测到新版本")
 	}
 }
 
 func GetNewVersion() {
 	if notify {
 		Config.Version = version
-		logs.Info("检查更新" + version)
-		value := GetEnv("updateUrl")
-		if value != "" {
-			UpdateUrl = value
-		}
-		value, err := httplib.Get(UpdateUrl + "/version1").String()
-		if err != nil {
-			logs.Info("更新版本的失败")
-		} else {
-			if value != version {
-				notify = false
-				logs.Info("小滴滴检测到新版本：" + value)
-				(&JdCookie{}).Push("小滴滴检测到新版本：" + value)
-			}
+		logs.Info("检查更新 " + version)
+		if checkGitUpdate() {
+			notify = false
+			logs.Info("小滴滴检测到新版本")
+			(&JdCookie{}).Push("小滴滴检测到新版本")
 		}
 	}
 }
 
 func Update(sender *Sender) error {
-	logs.Info("检查更新" + version)
+	logs.Info("开始git更新检查")
 	sender.Reply("小滴滴开始检查更新")
-	value, err := httplib.Get(UpdateUrl + "/version1").String()
-	if err != nil {
-		return errors.New("获取版本号失败")
-	} else {
-		if strings.Contains(version, value) {
-			return errors.New("小滴滴已是最新版啦")
-		} else {
-			logs.Info("开始更新")
-			sender.Reply("小滴滴开始更新程序")
-			logs.Info(UpdateUrl + "/github.com/cdle/xdd-linux-" + runtime.GOARCH)
-			req := httplib.Get(UpdateUrl + "/github.com/cdle/xdd-linux-" + runtime.GOARCH)
-			req.SetTimeout(time.Minute*5, time.Minute*5)
-			data, err := req.Bytes()
 
-			filename := ExecPath + "/" + AppName
-			logs.Info(filename)
-			if err = os.RemoveAll(filename); err != nil {
-				return errors.New("删除旧程序错误")
-			}
-			if f, err := os.OpenFile(filename, syscall.O_CREAT, 0777); err != nil {
-				return errors.New("创建程序错误")
-			} else {
-				_, err := f.Write(data)
-				f.Close()
-				if err != nil {
-					des := err.Error()
-					if err = os.WriteFile(filename, data, 777); err != nil {
-						return errors.New("写入程序错误" + des)
-					}
-				}
-			}
-			sender.Reply("更新完成，马上重启")
-			logs.Info("更新成功")
-		}
-		return nil
+	if !checkGitUpdate() {
+		return errors.New("小滴滴已是最新版啦")
 	}
+
+	sender.Reply("正在拉取最新源码...")
+	logs.Info("git fetch %s %s", getGitRepo(), getGitBranch())
+	cmd := exec.Command("git", "fetch", getGitRepo(), getGitBranch())
+	cmd.Dir = ExecPath
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logs.Warn("git fetch失败: %s, %v", string(output), err)
+		return errors.New("拉取源码失败: " + string(output))
+	}
+	logs.Info("git fetch成功")
+
+	cmd = exec.Command("git", "reset", "--hard", "FETCH_HEAD")
+	cmd.Dir = ExecPath
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		logs.Warn("git reset失败: %s, %v", string(output), err)
+		return errors.New("重置代码失败: " + string(output))
+	}
+	logs.Info("git reset成功: %s", string(output))
+
+	sender.Reply("正在编译最新源码...")
+	newBinary := ExecPath + "/" + AppName + "_new"
+	cmd = exec.Command("go", "build", "-o", newBinary, "main.go")
+	cmd.Dir = ExecPath
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		logs.Warn("编译失败: %s, %v", string(output), err)
+		return errors.New("编译失败: " + string(output))
+	}
+	logs.Info("编译成功")
+
+	oldBinary := ExecPath + "/" + AppName
+	if err = os.Remove(oldBinary); err != nil {
+		logs.Warn("删除旧程序失败: %v", err)
+	}
+	if err = os.Rename(newBinary, oldBinary); err != nil {
+		return errors.New("替换程序失败: " + err.Error())
+	}
+
+	sender.Reply("更新完成，马上重启")
+	logs.Info("更新成功")
+	return nil
 }
