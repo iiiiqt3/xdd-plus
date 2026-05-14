@@ -51,6 +51,27 @@ func getGitBranch() string {
 	return GitBranch
 }
 
+func isGitRepo() bool {
+	_, err := os.Stat(ExecPath + "/.git")
+	return err == nil
+}
+
+func ensureGitRepo() error {
+	if isGitRepo() {
+		return nil
+	}
+	logs.Info("目录不是git仓库，执行git init")
+	cmd := exec.Command("git", "init")
+	cmd.Dir = ExecPath
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logs.Warn("git init失败: %s, %v", string(output), err)
+		return errors.New("git init失败: " + string(output))
+	}
+	logs.Info("git init成功")
+	return nil
+}
+
 func getRemoteHeadHash() (string, error) {
 	cmd := exec.Command("git", "ls-remote", getGitRepo(), "HEAD")
 	output, err := cmd.Output()
@@ -74,25 +95,28 @@ func getLocalHeadHash() (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-func checkGitUpdate() bool {
+func checkGitUpdate() (bool, error) {
 	remoteHash, err := getRemoteHeadHash()
 	if err != nil {
-		logs.Info("获取远程版本失败: %v", err)
-		return false
+		return false, err
 	}
 	localHash, err := getLocalHeadHash()
 	if err != nil {
-		logs.Info("获取本地版本失败: %v", err)
-		return false
+		return false, err
 	}
 	logs.Info("远程版本: %s, 本地版本: %s", remoteHash[:8], localHash[:8])
-	return remoteHash != localHash
+	return remoteHash != localHash, nil
 }
 
 func initVersion() {
 	Config.Version = version
 	logs.Info("检查更新 " + version)
-	if checkGitUpdate() {
+	hasUpdate, err := checkGitUpdate()
+	if err != nil {
+		logs.Info("版本检查失败: %v", err)
+		return
+	}
+	if hasUpdate {
 		logs.Info("小滴滴检测到新版本")
 		(&JdCookie{}).Push("小滴滴检测到新版本")
 	}
@@ -102,7 +126,12 @@ func GetNewVersion() {
 	if notify {
 		Config.Version = version
 		logs.Info("检查更新 " + version)
-		if checkGitUpdate() {
+		hasUpdate, err := checkGitUpdate()
+		if err != nil {
+			logs.Info("版本检查失败: %v", err)
+			return
+		}
+		if hasUpdate {
 			notify = false
 			logs.Info("小滴滴检测到新版本")
 			(&JdCookie{}).Push("小滴滴检测到新版本")
@@ -114,8 +143,16 @@ func Update(sender *Sender) error {
 	logs.Info("开始git更新检查")
 	sender.Reply("小滴滴开始检查更新")
 
-	if !checkGitUpdate() {
+	hasUpdate, checkErr := checkGitUpdate()
+	if checkErr != nil {
+		logs.Warn("版本检查失败，跳过比对直接更新: %v", checkErr)
+		sender.Reply("版本检查失败，直接尝试拉取更新...")
+	} else if !hasUpdate {
 		return errors.New("小滴滴已是最新版啦")
+	}
+
+	if err := ensureGitRepo(); err != nil {
+		return errors.New("初始化git仓库失败: " + err.Error())
 	}
 
 	sender.Reply("正在拉取最新源码...")
