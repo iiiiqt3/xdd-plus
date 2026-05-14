@@ -1,0 +1,909 @@
+package models
+
+import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"math/rand"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/beego/beego/v2/core/logs"
+)
+
+// ==================== 接口基础配置 ====================
+
+const (
+	WxLoginBaseURL = ""
+	HTTPTimeout    = 15 * time.Second
+)
+
+func getWxLoginBaseURL() string {
+	if WxLoginBaseURL != "" {
+		return WxLoginBaseURL
+	}
+	return Config.WxProtocol.LoginBaseURL
+}
+
+func getWxDeviceName() string {
+	if Config.WxProtocol.DeviceName != "" {
+		return Config.WxProtocol.DeviceName
+	}
+	return "Xiaomi-M2012K11AC"
+}
+
+func getWxScanLoginCost() int {
+	if Config.WxProtocol.ScanLoginCost > 0 {
+		return Config.WxProtocol.ScanLoginCost
+	}
+	return 2000
+}
+
+func getWxScanLoginCoin() int {
+	return getWxScanLoginCost()
+}
+
+// wxLoginRequest 通用 POST 请求封装
+func wxLoginRequest(path string, reqBody interface{}) ([]byte, error) {
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("构造请求失败：%s", err.Error())
+	}
+
+	url := getWxLoginBaseURL() + path
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败：%s", err.Error())
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: HTTPTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("请求接口失败：%s", err.Error())
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取响应失败：%s", err.Error())
+	}
+
+	logs.Info("wxLoginRequest [POST %s] 响应: %s", path, string(body))
+	return body, nil
+}
+
+// ==================== 接口响应结构体 ====================
+
+// WxLoginCodeResp 获取登录二维码响应
+type WxLoginCodeResp struct {
+	Status  bool `json:"status"`
+	Success bool `json:"success"`
+	Data    struct {
+		QrBase64 string `json:"qrbase64"`
+		Uuid     string `json:"uuid"`
+	} `json:"data"`
+	Message string `json:"message"`
+}
+
+// WxLoginStatusResp 检查扫码状态响应
+// 两种返回格式：
+// 等待扫码/确认: {"status":true,"code":0/1,"data":{"status":0/1,"nickname":"..."}}
+// 登录成功:     {"status":true,"code":2,"user":{"wxid":"...","nickname":"..."}}
+type WxLoginStatusResp struct {
+	Status bool   `json:"status"`
+	Code   int    `json:"code"` // 0=等待扫码 1=已扫码待确认 2=登录成功
+	Msg    string `json:"msg"`
+	Data   struct {
+		Uuid        string `json:"uuid"`
+		Status      int    `json:"status"`
+		Nickname    string `json:"nickname"`
+		Wxid        string `json:"wxid"`
+		HeadImg     string `json:"headimgurl"`
+		ExpiredTime int    `json:"expiredtime"`
+	} `json:"data"`
+	User struct {
+		Wxid     string `json:"wxid"`
+		Nickname string `json:"nickname"`
+		Avatar   string `json:"avatar"`
+	} `json:"user"`
+	Message string `json:"message"`
+}
+
+// WxLoginAgainResp 重新登录响应
+type WxLoginAgainResp struct {
+	Status  bool `json:"status"`
+	Success bool `json:"success"`
+	Data    struct {
+		QrBase64 string `json:"qrbase64"`
+		Uuid     string `json:"uuid"`
+	} `json:"data"`
+	Message string `json:"message"`
+}
+
+// WxLogoutResp 登出响应
+type WxLogoutResp struct {
+	Status  bool   `json:"status"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// ==================== 核心功能函数 ====================
+
+// WXID_USER_STATUS 查询所有微信设备状态（管理员专用）
+func WXID_USER_STATUS(sender *Sender) {
+	sender.Reply("⏳ 正在获取微信设备状态，请稍候...")
+
+	url := getWxLoginBaseURL() + "/api/v1/wx/user/status"
+	client := &http.Client{Timeout: HTTPTimeout}
+	resp, err := client.Get(url)
+	if err != nil {
+		sender.Reply("❌ 请求设备列表失败：" + err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		sender.Reply("❌ 读取设备列表失败：" + err.Error())
+		return
+	}
+
+	logs.Info("wxLoginGetRequest [GET /api/v1/wx/user/status] 响应: %s", string(body))
+
+	var result struct {
+		Status bool `json:"status"`
+		Data   map[string]struct {
+			Wxid        string `json:"wxid"`
+			Avatar      string `json:"avatar"`
+			Nickname    string `json:"nickname"`
+			Device      string `json:"device"`
+			Survival    int    `json:"survival"` // 1=在线 0=掉线
+			LoginDate   int64  `json:"loginDate"`
+			RefreshDate int64  `json:"refreshDate"`
+		} `json:"data"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		sender.Reply("❌ 解析设备列表失败：" + err.Error())
+		return
+	}
+
+	if !result.Status {
+		sender.Reply("❌ 获取设备列表失败：" + result.Message)
+		return
+	}
+
+	if len(result.Data) == 0 {
+		sender.Reply("📭 当前没有微信设备")
+		return
+	}
+
+	// 构建设备列表消息
+	var msg strings.Builder
+	onlineCount := 0
+	offlineCount := 0
+	for _, info := range result.Data {
+		if info.Survival == 1 {
+			onlineCount++
+		} else {
+			offlineCount++
+		}
+	}
+	msg.WriteString(fmt.Sprintf("📋 微信设备状态（共 %d 个，在线 %d / 离线 %d）：\n", len(result.Data), onlineCount, offlineCount))
+
+	i := 1
+	for wxid, info := range result.Data {
+		loginTime := time.Unix(info.LoginDate, 0).Format("01-02 15:04")
+		refreshTime := time.Unix(info.RefreshDate, 0).Format("01-02 15:04")
+
+		// 在线状态标识
+		survivalTag := "🟢 在线"
+		if info.Survival != 1 {
+			survivalTag = "🔴 掉线"
+		}
+
+		msg.WriteString(fmt.Sprintf("\n%d. %s (%s)\n   🆔 %s\n   📱 %s\n   💡 登录：%s | 刷新：%s\n",
+			i, info.Nickname, survivalTag, wxid, info.Device, loginTime, refreshTime))
+		i++
+	}
+
+	sender.Reply(msg.String())
+}
+
+// WXID_MY_STATUS 普通用户查询自己的微信设备在线状态
+func WXID_MY_STATUS(sender *Sender) {
+	wxid := sender.WxId
+	if wxid == "" {
+		sender.Reply("❌ 无法获取你的微信号，请确认通过微信端发送此命令")
+		return
+	}
+
+	sender.Reply("⏳ 正在查询你的设备状态...")
+
+	url := getWxLoginBaseURL() + "/api/v1/wx/user/status"
+	client := &http.Client{Timeout: HTTPTimeout}
+	resp, err := client.Get(url)
+	if err != nil {
+		sender.Reply("❌ 请求设备列表失败：" + err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		sender.Reply("❌ 读取设备列表失败：" + err.Error())
+		return
+	}
+
+	var result struct {
+		Status bool `json:"status"`
+		Data   map[string]struct {
+			Wxid        string `json:"wxid"`
+			Avatar      string `json:"avatar"`
+			Nickname    string `json:"nickname"`
+			Device      string `json:"device"`
+			Survival    int    `json:"survival"`
+			LoginDate   int64  `json:"loginDate"`
+			RefreshDate int64  `json:"refreshDate"`
+		} `json:"data"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		sender.Reply("❌ 解析设备列表失败：" + err.Error())
+		return
+	}
+
+	if !result.Status {
+		sender.Reply("❌ 获取设备列表失败：" + result.Message)
+		return
+	}
+
+	info, ok := result.Data[wxid]
+	if !ok {
+		sender.Reply("📭 你尚未扫码登录，当前无设备信息")
+		return
+	}
+
+	loginTime := time.Unix(info.LoginDate, 0).Format("2006-01-02 15:04")
+	refreshTime := time.Unix(info.RefreshDate, 0).Format("2006-01-02 15:04")
+
+	survivalTag := "🟢 在线"
+	tip := ""
+	if info.Survival != 1 {
+		survivalTag = "🔴 掉线"
+		tip = "\n💡 设备已掉线，可发送「微信重新登录」或「微信唤醒登录」重新激活"
+	}
+
+	sender.Reply(fmt.Sprintf("📱 你的微信设备状态：\n\n👤 昵称：%s\n🆔 %s\n📊 状态：%s\n📱 设备：%s\n⏰ 登录：%s\n🔄 刷新：%s\n%s",
+		info.Nickname, wxid, survivalTag, info.Device, loginTime, refreshTime, tip))
+}
+
+// checkWxDeviceOnline 检查指定 wxid 是否在在线设备列表中
+// 调用 /api/v1/wx/user/status 接口，返回 data 是 map[wxid]DeviceInfo 格式
+func checkWxDeviceOnline(wxid string) (bool, error) {
+	url := getWxLoginBaseURL() + "/api/v1/wx/user/status"
+	client := &http.Client{Timeout: HTTPTimeout}
+	resp, err := client.Get(url)
+	if err != nil {
+		return false, fmt.Errorf("请求设备列表失败：%s", err.Error())
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, fmt.Errorf("读取设备列表失败：%s", err.Error())
+	}
+
+	var result struct {
+		Status bool                   `json:"status"`
+		Data   map[string]interface{} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return false, fmt.Errorf("解析设备列表失败：%s", err.Error())
+	}
+
+	if !result.Status {
+		return false, fmt.Errorf("获取设备列表失败")
+	}
+
+	// 检查目标 wxid 是否在在线设备中
+	_, ok := result.Data[wxid]
+	return ok, nil
+}
+
+// WxScanLoginCost 扫码登录消耗积分（已迁移至配置文件，此处保留兼容）
+
+// WXID_CODE 获取登录二维码 —— 新设备登录
+// 流程：先检查积分 >= 2000 → 获取二维码 → 扫码成功后才扣积分
+func WXID_CODE(sender *Sender) {
+	cost := getWxScanLoginCoin()
+	// 管理员也扣积分，统一检查
+	coin := GetCoin(sender.UserID)
+	if coin < cost {
+		sender.Reply(fmt.Sprintf("❌ 积分不足，扫码登录需要 %d 个积分，当前积分 %d\n💡 请私聊机器人转账充值，1元=100积分", cost, coin))
+		return
+	}
+
+	// 风险确认
+	sender.Reply("⚠️ 此功能不会泄露聊天记录，仅仅作为取code用，但是可能会存在封号的概率，请谨慎考虑。\n\n无异议请回复 y  继续流程，回复 q 退出。")
+
+	go func() {
+		msgChan := make(chan string)
+		ckList[sender.UserID] = msgChan
+		defer delete(ckList, sender.UserID)
+
+		select {
+		case input := <-msgChan:
+			upper := strings.ToUpper(input)
+			if upper == "Q" {
+				sender.Reply("✅ 已退出扫码登录流程")
+				return
+			}
+			if upper != "Y" {
+				sender.Reply("⚠️ 无效输入，已退出扫码登录流程")
+				return
+			}
+		case <-time.After(60 * time.Second):
+			sender.Reply("⏰ 确认超时，已退出扫码登录流程")
+			return
+		}
+
+		sender.Reply("⏳ 正在获取登录二维码，请稍候...")
+
+		reqBody := map[string]interface{}{
+			"DeviceID":   "device_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			"DeviceName": getWxDeviceName(),
+			"DeviceType": "car",
+			"Proxy": map[string]string{
+				"ProxyIp":       "",
+				"ProxyPassword": "",
+				"ProxyUser":     "",
+			},
+		}
+
+		body, err := wxLoginRequest("/api/v1/wx/login/code", reqBody)
+		if err != nil {
+			sender.Reply("❌ " + err.Error())
+			return
+		}
+
+		var result WxLoginCodeResp
+		if err := json.Unmarshal(body, &result); err != nil {
+			sender.Reply("❌ 解析响应失败：" + err.Error())
+			return
+		}
+
+		if !result.Status || !result.Success {
+			sender.Reply("❌ 获取二维码失败：" + result.Message)
+			return
+		}
+
+		// 发送二维码图片
+		if err := sendBase64Image(sender, result.Data.QrBase64); err != nil {
+			logs.Error("发送二维码图片失败: %s", err.Error())
+			return
+		}
+
+		cost := getWxScanLoginCoin()
+		sender.Reply(fmt.Sprintf("✅ 二维码已发送，请使用微信扫码登录。\n💡 扫码后请稍等片刻，系统将自动检测登录状态...\n⚠️ 扫码登录成功后将扣除 %d 积分", cost))
+
+		// 异步轮询扫码状态，成功后扣积分
+		go pollLoginStatus(sender, result.Data.Uuid, true)
+	}()
+}
+
+// WXID_RELOGIN 重新登录 —— 自动读取发指令用户的 wxid
+func WXID_RELOGIN(sender *Sender) {
+	wxid := sender.WxId
+	if wxid == "" {
+		sender.Reply("❌ 无法获取你的微信号，请确认通过微信端发送此命令")
+		return
+	}
+
+	// 检查该用户是否已扫码登录（是否在在线设备中）
+	online, err := checkWxDeviceOnline(wxid)
+	if err != nil {
+		sender.Reply("❌ " + err.Error())
+		return
+	}
+	if !online {
+		sender.Reply("❌ 你尚未扫码登录，请先发送「微信扫码登录」完成登录")
+		return
+	}
+
+	sender.Reply("⏳ 正在为你的账号 [" + wxid + "] 重新获取登录二维码...")
+
+	reqBody := map[string]interface{}{
+		"wxid": wxid,
+		"Proxy": map[string]string{
+			"ProxyIp":       "",
+			"ProxyPassword": "",
+			"ProxyUser":     "",
+		},
+	}
+
+	body, err := wxLoginRequest("/api/v1/wx/login/again", reqBody)
+	if err != nil {
+		sender.Reply("❌ " + err.Error())
+		return
+	}
+
+	var result WxLoginAgainResp
+	if err := json.Unmarshal(body, &result); err != nil {
+		sender.Reply("❌ 解析响应失败：" + err.Error())
+		return
+	}
+
+	// again 接口可能不返回 success 字段，只检查 status
+	if !result.Status {
+		sender.Reply("❌ 重新登录失败：" + result.Message)
+		return
+	}
+
+	// 发送二维码图片
+	if err := sendBase64Image(sender, result.Data.QrBase64); err != nil {
+		logs.Error("发送二维码图片失败: %s", err.Error())
+		return
+	}
+
+	sender.Reply("✅ 重新登录二维码已发送，请使用微信扫码。\n💡 扫码后请稍等片刻，系统将自动检测登录状态...")
+
+	// 异步轮询扫码状态（重新登录不扣积分）
+	if result.Data.Uuid != "" {
+		go pollLoginStatus(sender, result.Data.Uuid, false)
+	}
+}
+
+// WXID_WAKE_LOGIN 唤醒登录 —— 自动读取发指令用户的 wxid
+func WXID_WAKE_LOGIN(sender *Sender) {
+	wxid := sender.WxId
+	if wxid == "" {
+		sender.Reply("❌ 无法获取你的微信号，请确认通过微信端发送此命令")
+		return
+	}
+
+	// 检查该用户是否已扫码登录（是否在在线设备中）
+	online, err := checkWxDeviceOnline(wxid)
+	if err != nil {
+		sender.Reply("❌ " + err.Error())
+		return
+	}
+	if !online {
+		sender.Reply("❌ 你尚未扫码登录，请先发送「微信扫码登录」完成登录")
+		return
+	}
+
+	// 第一步：唤醒设备
+	sender.Reply("⏳ 正在唤醒 [" + wxid + "] ...")
+
+	awakeBody := map[string]string{
+		"wxid": wxid,
+	}
+
+	body, err := wxLoginRequest("/api/v1/wx/login/awake", awakeBody)
+	if err != nil {
+		sender.Reply("❌ 唤醒失败：" + err.Error())
+		return
+	}
+
+	var awakeResult struct {
+		Status  bool   `json:"status"`
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &awakeResult); err != nil {
+		sender.Reply("❌ 解析唤醒响应失败：" + err.Error())
+		return
+	}
+
+	// awake 接口只返回 status，不返回 success 字段
+	if !awakeResult.Status {
+		sender.Reply("❌ 唤醒设备失败：" + awakeResult.Message)
+		return
+	}
+
+	sender.Reply("✅ [" + wxid + "] 设备已唤醒，正在获取登录二维码...")
+
+	// 第二步：二次登录获取二维码
+	twiceBody := map[string]string{
+		"wxid": wxid,
+	}
+
+	body, err = wxLoginRequest("/api/v1/wx/login/twice", twiceBody)
+	if err != nil {
+		sender.Reply("❌ 获取唤醒登录二维码失败：" + err.Error())
+		return
+	}
+
+	var twiceResult struct {
+		Status  bool `json:"status"`
+		Success bool `json:"success"`
+		Data    struct {
+			QrBase64 string `json:"qrbase64"`
+			Uuid     string `json:"uuid"`
+		} `json:"data"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &twiceResult); err != nil {
+		sender.Reply("❌ 解析唤醒登录响应失败：" + err.Error())
+		return
+	}
+
+	// twice 接口可能不返回 success 字段，只检查 status
+	if !twiceResult.Status {
+		sender.Reply("❌ 唤醒登录失败：" + twiceResult.Message)
+		return
+	}
+
+	if twiceResult.Data.QrBase64 != "" {
+		if err := sendBase64Image(sender, twiceResult.Data.QrBase64); err != nil {
+			logs.Error("发送二维码图片失败: %s", err.Error())
+			return
+		}
+		sender.Reply("✅ [" + wxid + "] 唤醒登录二维码已发送，请使用微信扫码。\n💡 扫码后请稍等片刻，系统将自动检测登录状态...")
+		if twiceResult.Data.Uuid != "" {
+			go pollLoginStatus(sender, twiceResult.Data.Uuid, false)
+		}
+	} else {
+		sender.Reply("✅ [" + wxid + "] 唤醒登录请求已发送成功！\n💡 请检查设备端登录状态。")
+	}
+}
+
+// WXID_LOGOUT 登出账号 —— 自动读取发指令用户的 wxid
+func WXID_LOGOUT(sender *Sender) {
+	wxid := sender.WxId
+	if wxid == "" {
+		sender.Reply("❌ 无法获取你的微信号，请确认通过微信端发送此命令")
+		return
+	}
+
+	// 检查该用户是否已扫码登录（是否在在线设备中）
+	online, err := checkWxDeviceOnline(wxid)
+	if err != nil {
+		sender.Reply("❌ " + err.Error())
+		return
+	}
+	if !online {
+		sender.Reply("❌ 你尚未扫码登录，无需登出")
+		return
+	}
+
+	sender.Reply("⏳ 正在登出 [" + wxid + "] ...")
+
+	reqBody := map[string]string{
+		"wxid": wxid,
+	}
+
+	body, err := wxLoginRequest("/api/v1/wx/login/logout", reqBody)
+	if err != nil {
+		sender.Reply("❌ " + err.Error())
+		return
+	}
+
+	var result WxLogoutResp
+	if err := json.Unmarshal(body, &result); err != nil {
+		sender.Reply("❌ 解析响应失败：" + err.Error())
+		return
+	}
+
+	// logout 接口可能不返回 success 字段，只检查 status
+	if result.Status {
+		sender.Reply("✅ [" + wxid + "] 已成功登出！")
+	} else {
+		sender.Reply("❌ [" + wxid + "] 登出失败：" + result.Message)
+	}
+}
+
+// WXID_DELETE 删除用户的微信设备数据（从数据库删除wxid）
+// 支持 wx 私聊和群聊发送，需要用户二次确认
+func WXID_DELETE(sender *Sender) {
+	wxid := sender.WxId
+	if wxid == "" {
+		wxid = getWeiXinId(sender.UserID)
+	}
+	wxid = strings.TrimSpace(wxid)
+	if wxid == "" || wxid == "找不到对应的微信ID" {
+		sender.Reply("❌ 无法获取你的微信ID，请先确认已绑定微信")
+		return
+	}
+
+	statusRaw, err := getWxUserStatusRaw()
+	if err != nil {
+		sender.Reply("❌ " + err.Error())
+		return
+	}
+
+	matchedWxid := ""
+	for key, info := range statusRaw.Data {
+		if strings.TrimSpace(key) == wxid || strings.TrimSpace(info.Wxid) == wxid {
+			matchedWxid = key
+			if strings.TrimSpace(info.Wxid) != "" {
+				matchedWxid = info.Wxid
+			}
+			break
+		}
+	}
+	if matchedWxid == "" {
+		matchedWxid = wxid
+	}
+
+	// 请求用户确认
+	sender.Reply(fmt.Sprintf("⚠️ 确认要删除微信设备 [%s] 吗？\n此操作将从数据库中移除你的微信记录，删除后需重新扫码登录。\n\n回复 y 继续删除，回复 q 退出。", matchedWxid))
+
+	go func() {
+		msgChan := make(chan string)
+		ckList[sender.UserID] = msgChan
+		defer delete(ckList, sender.UserID)
+
+		select {
+		case input := <-msgChan:
+			upper := strings.ToUpper(input)
+			if upper == "Q" {
+				sender.Reply("✅ 已退出删除操作")
+				return
+			}
+			if upper != "Y" {
+				sender.Reply("⚠️ 无效输入，已退出删除操作")
+				return
+			}
+		case <-time.After(60 * time.Second):
+			sender.Reply("⏰ 确认超时，已取消删除操作")
+			return
+		}
+
+		sender.Reply("⏳ 正在删除 [" + matchedWxid + "] 的设备数据...")
+
+		body, err := wxLoginRequest("/api/v1/wx/user/delete", map[string]interface{}{"wxids": []string{matchedWxid}})
+		if err != nil {
+			sender.Reply("❌ " + err.Error())
+			return
+		}
+
+		var result WxLogoutResp
+		if err := json.Unmarshal(body, &result); err != nil {
+			sender.Reply("❌ 解析响应失败：" + err.Error())
+			return
+		}
+
+		if result.Status {
+			var u User
+			if db.Where("number = ?", sender.UserID).First(&u).Error == nil {
+				db.Model(&u).Update("wxid", "")
+			}
+			sender.Reply("✅ [" + matchedWxid + "] 的设备数据已成功删除！\n如需重新使用，请发送【微信扫码登录】")
+		} else {
+			sender.Reply("❌ [" + matchedWxid + "] 删除失败：" + result.Message)
+		}
+	}()
+}
+
+// ==================== 辅助函数 ====================
+
+// sendBase64Image 将 base64 编码的图片发送给用户
+// 接口返回的格式为 "data:image/jpg;base64,XXXXX"，需要先去掉前缀再解码
+func sendBase64Image(sender *Sender, base64Data string) error {
+	// 去掉 "data:image/xxx;base64," 前缀
+	if idx := strings.Index(base64Data, ","); idx != -1 {
+		base64Data = base64Data[idx+1:]
+	}
+
+	base64Data = strings.TrimSpace(base64Data)
+	if base64Data == "" {
+		sender.Reply("⚠️ 二维码数据为空，请重试")
+		return fmt.Errorf("base64 数据为空")
+	}
+
+	// 解码 base64 为图片字节
+	imgBytes, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil {
+		// 接口返回的 base64 可能没有标准填充，尝试补充
+		imgBytes, err = base64.RawStdEncoding.DecodeString(base64Data)
+		if err != nil {
+			logs.Error("base64解码失败: %s (数据长度: %d)", err.Error(), len(base64Data))
+			sender.Reply("⚠️ 二维码图片解码失败，请重试")
+			return err
+		}
+	}
+
+	if len(imgBytes) == 0 {
+		sender.Reply("⚠️ 二维码解码后数据为空，请重试")
+		return fmt.Errorf("解码后数据为空")
+	}
+
+	// 调用 sender.SendImg 发送图片字节
+	sender.SendImg(imgBytes)
+	return nil
+}
+
+// pollLoginStatus 异步轮询扫码状态
+// deductCoin: 是否在登录成功后扣除积分
+func pollLoginStatus(sender *Sender, uuid string, deductCoin bool) {
+	const (
+		maxRetries = 60              // 最多轮询 60 次
+		interval   = 3 * time.Second // 每 3 秒检查一次
+		timeout    = 3 * time.Minute // 总超时 3 分钟
+	)
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	timeoutCh := time.After(timeout)
+
+	for i := 0; i < maxRetries; i++ {
+		select {
+		case <-ticker.C:
+			status, err := checkLoginStatus(uuid)
+			if err != nil {
+				logs.Warn("检查扫码状态失败: %s", err.Error())
+				continue
+			}
+
+			switch status.Code {
+			case 0:
+				// 等待扫码，不做提示（避免刷屏）
+				continue
+			case 1:
+				sender.Reply("📱 已扫描二维码，请在手机上点击「确认登录」...")
+			case 2:
+				// 登录成功 — 优先从 User 字段取，兼容 Data 字段
+				nickname := status.User.Nickname
+				wxid := status.User.Wxid
+				if nickname == "" {
+					nickname = status.Data.Nickname
+				}
+				if wxid == "" {
+					wxid = status.Data.Wxid
+				}
+				if nickname == "" {
+					nickname = "微信用户"
+				}
+
+				// 登录成功，扣除积分
+				if deductCoin {
+					cost := getWxScanLoginCoin()
+					RemCoin(sender.UserID, cost)
+					sender.Reply(fmt.Sprintf("🎉 登录成功！已扣除 %d 积分，剩余积分 %d\n\n👤 昵称：%s\n🆔 微信ID：%s", cost, GetCoin(sender.UserID), nickname, wxid))
+				} else {
+					sender.Reply(fmt.Sprintf("🎉 登录成功！\n\n👤 昵称：%s\n🆔 微信ID：%s", nickname, wxid))
+				}
+				return
+			default:
+				// 其他状态（可能是错误状态）
+				if status.Msg != "" && status.Code > 2 {
+					sender.Reply(fmt.Sprintf("⚠️ 登录异常：%s\n💡 请重新发送「微信扫码登录」获取新二维码", status.Msg))
+					return
+				}
+			}
+		case <-timeoutCh:
+			sender.Reply("⏰ 扫码超时（3分钟），二维码已失效。\n💡 请重新发送「微信扫码登录」获取新二维码")
+			return
+		}
+	}
+
+	sender.Reply("⏰ 扫码检测超时，二维码已失效。\n💡 请重新发送「微信扫码登录」获取新二维码")
+}
+
+// ==================== 微信掉线定时推送 ====================
+
+// CheckWxOfflineAndNotify 检查所有微信设备在线状态，给掉线用户推送通知
+func CheckWxOfflineAndNotify() {
+	CheckWxOfflineAndNotifyWithChannels(NotifyChannels{Web: true, App: true, Robot: true}, nil)
+}
+
+func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string) {
+	logs.Info("开始执行微信掉线检测推送...")
+
+	url := getWxLoginBaseURL() + "/api/v1/wx/user/status"
+	client := &http.Client{Timeout: HTTPTimeout}
+	resp, err := client.Get(url)
+	if err != nil {
+		logs.Error("微信掉线检测：请求设备列表失败：%s", err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logs.Error("微信掉线检测：读取设备列表失败：%s", err.Error())
+		return
+	}
+
+	var result struct {
+		Status bool `json:"status"`
+		Data   map[string]struct {
+			Wxid        string `json:"wxid"`
+			Avatar      string `json:"avatar"`
+			Nickname    string `json:"nickname"`
+			Device      string `json:"device"`
+			Survival    int    `json:"survival"`
+			LoginDate   int64  `json:"loginDate"`
+			RefreshDate int64  `json:"refreshDate"`
+		} `json:"data"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		logs.Error("微信掉线检测：解析设备列表失败：%s", err.Error())
+		return
+	}
+
+	if !result.Status {
+		logs.Error("微信掉线检测：获取设备列表失败：%s", result.Message)
+		return
+	}
+
+	if len(result.Data) == 0 {
+		logs.Info("微信掉线检测：当前没有微信设备，跳过推送")
+		return
+	}
+
+	offlineCount := 0
+
+	for wxid, info := range result.Data {
+		if len(wxIDs) > 0 {
+			found := false
+			for _, wid := range wxIDs {
+				if wid == wxid {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+		if info.Survival != 1 {
+			offlineCount++
+			logs.Info("微信掉线检测：用户 %s (%s) 已掉线，正在推送通知", info.Nickname, wxid)
+
+			loginTime := time.Unix(info.LoginDate, 0).Format("01-02 15:04")
+			refreshTime := time.Unix(info.RefreshDate, 0).Format("01-02 15:04")
+
+			notifyMsg := fmt.Sprintf(
+				"⚠️ 你的微信协议已掉线，将会影响协议本的执行，请发送 【微信唤醒登陆】或者【微信重新登陆】上线。\n\n"+
+					"📋 你的设备信息：\n"+
+					"👤 %s (🔴 掉线)\n"+
+					"🆔 %s\n"+
+					"📱 %s\n"+
+					"💡 登录：%s | 刷新：%s",
+				info.Nickname, wxid, info.Device, loginTime, refreshTime,
+			)
+			if channels.Robot {
+				go SendWxMsg(wxid, notifyMsg)
+			}
+			var user User
+			if db.Where("wxid = ?", wxid).First(&user).Error == nil {
+				CreateSystemWebNotification("微信协议掉线提醒", notifyMsg, NotifyCategoryWx, NotifySourceWx, user.Number, channels)
+			}
+
+			if offlineCount >= 2 {
+				delay := 3 + rand.Intn(3)
+				time.Sleep(time.Duration(delay) * time.Second)
+			}
+		}
+	}
+
+	logs.Info("微信掉线检测推送完成，共 %d 个设备，%d 个掉线已推送通知", len(result.Data), offlineCount)
+}
+
+// checkLoginStatus 检查扫码状态
+func checkLoginStatus(uuid string) (*WxLoginStatusResp, error) {
+	reqBody := map[string]string{
+		"uuid": uuid,
+	}
+
+	body, err := wxLoginRequest("/api/v1/wx/login/status", reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	var result WxLoginStatusResp
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("解析状态响应失败：%s", err.Error())
+	}
+
+	return &result, nil
+}

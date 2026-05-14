@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户中心登录</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --text: #f8fbff;
+            --muted: rgba(226, 232, 240, 0.72);
+            --line: rgba(255, 255, 255, 0.16);
+            --cyan: #22d3ee;
+            --blue: #3b82f6;
+            --violet: #8b5cf6;
+        }
+        html { min-height: 100%; background: #050816; }
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background:
+                radial-gradient(circle at 12% 18%, rgba(34, 211, 238, 0.34), transparent 28%),
+                radial-gradient(circle at 82% 16%, rgba(139, 92, 246, 0.32), transparent 30%),
+                radial-gradient(circle at 68% 86%, rgba(236, 72, 153, 0.22), transparent 28%),
+                linear-gradient(135deg, #050816 0%, #0f172a 48%, #111827 100%);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+            background-size: 42px 42px;
+            mask-image: radial-gradient(circle at center, #000 0%, transparent 72%);
+        }
+        .shell {
+            position: relative;
+            width: 100%;
+            max-width: 440px;
+            z-index: 1;
+        }
+        .card {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.045));
+            border: 1px solid var(--line);
+            border-radius: 28px;
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            box-shadow: 0 26px 80px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.16);
+            padding: clamp(28px, 4vw, 40px);
+        }
+        .card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(135deg, rgba(34,211,238,0.14), transparent 35%, rgba(139,92,246,0.12));
+            opacity: .72;
+            border-radius: 28px;
+        }
+        .card > * { position: relative; z-index: 1; }
+        .logo { text-align: center; margin-bottom: 28px; }
+        .logo h1 { font-size: 30px; font-weight: 900; letter-spacing: -0.04em; margin-bottom: 6px; text-shadow: 0 18px 48px rgba(34, 211, 238, 0.18); }
+        .logo p { color: var(--muted); font-size: 13px; line-height: 1.6; }
+        .form { display: none; }
+        .form.active { display: block; animation: formIn .28s ease both; }
+        @keyframes formIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .title { font-size: clamp(20px, 3vw, 24px); font-weight: 900; letter-spacing: -0.03em; margin-bottom: 6px; }
+        .subtitle { color: var(--muted); margin-bottom: 22px; font-size: 13px; line-height: 1.7; }
+        .field { margin-bottom: 14px; }
+        .field label { display:block; font-size: 13px; color: rgba(226,232,240,0.78); margin-bottom: 7px; font-weight: 700; }
+        .field input {
+            width: 100%;
+            height: 48px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.13);
+            background: rgba(2, 6, 23, 0.36);
+            color: #fff;
+            padding: 0 14px;
+            outline: none;
+            font-size: 15px;
+            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+        .field input:focus {
+            border-color: rgba(34, 211, 238, 0.72);
+            background: rgba(2, 6, 23, 0.52);
+            box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12), 0 10px 28px rgba(34, 211, 238, 0.08);
+        }
+        .field input::placeholder { color: rgba(226,232,240,0.36); }
+        .field small { display:block; margin-top: 6px; color: rgba(226,232,240,0.52); line-height: 1.7; }
+        .btn {
+            width: 100%;
+            min-height: 50px;
+            border: none;
+            border-radius: 16px;
+            margin-top: 8px;
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--cyan), var(--blue) 45%, var(--violet));
+            color: #fff;
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: .02em;
+            box-shadow: 0 18px 34px rgba(59, 130, 246, 0.32);
+            transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+        }
+        .btn:hover { transform: translateY(-2px); filter: saturate(1.08); box-shadow: 0 22px 42px rgba(59, 130, 246, 0.4); }
+        .btn:active { transform: translateY(0); }
+        .btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+        .message { min-height: 22px; font-size: 13px; margin-top: 12px; color: #fde68a; line-height: 1.6; }
+        .message.error { color: #fecaca; }
+        .message.success { color: #bbf7d0; }
+        .switch-line {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .switch-line a {
+            color: var(--cyan);
+            cursor: pointer;
+            font-weight: 700;
+            text-decoration: none;
+            transition: color .15s ease;
+        }
+        .switch-line a:hover { color: #fff; }
+        .admin-link {
+            text-align: center;
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .admin-link a {
+            color: rgba(226,232,240,0.42);
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: color .15s ease;
+        }
+        .admin-link a:hover { color: rgba(226,232,240,0.72); }
+        @media (max-width: 480px) {
+            body { padding: 12px; }
+            .shell { max-width: 100%; }
+            .card { border-radius: 22px; padding: 24px; }
+            .field input { height: 46px; }
+            .btn { min-height: 48px; }
+            .logo h1 { font-size: 26px; }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <div class="card">
+        <div class="logo">
+            <h1>用户中心</h1>
+            <p>登录或注册网页账号</p>
+        </div>
+
+        <div class="form active" id="form-login">
+            <div class="title">登录</div>
+            <div class="subtitle">使用你注册的网页账号登录</div>
+            <div class="field"><label>登录账号</label><input id="loginUsername" placeholder="例如：user_001"></div>
+            <div class="field"><label>登录密码</label><input id="loginPassword" type="password" placeholder="请输入登录密码"></div>
+            <button class="btn" id="loginBtn" type="button" onclick="submitLogin()">登录</button>
+            <div class="message" id="loginMsg"></div>
+            <div class="switch-line">还没有账号？<a onclick="showForm('register')">立即注册</a></div>
+            <div class="switch-line">忘记密码？<a onclick="showForm('reset')">重置密码</a></div>
+        </div>
+
+        <div class="form" id="form-register">
+            <div class="title">注册</div>
+            <div class="subtitle">先给机器人发送【账号注册】，获取一次性绑定ID后再注册</div>
+            <div class="field"><label>网页登录账号</label><input id="registerUsername" placeholder="3-32位，小写字母/数字/_/./-"></div>
+            <div class="field"><label>网页登录密码</label><input id="registerPassword" type="password" placeholder="至少6位"></div>
+            <div class="field"><label>注册绑定ID</label><input id="registerBindCode" placeholder="填写机器人返回的注册绑定ID"><small>请先给机器人发送【账号注册】获取随机绑定ID。绑定ID一次性使用，过期后需要重新获取。</small></div>
+            <button class="btn" id="registerBtn" type="button" onclick="submitRegister()">注册并进入用户中心</button>
+            <div class="message" id="registerMsg"></div>
+            <div class="switch-line">已有账号？<a onclick="showForm('login')">返回登录</a></div>
+        </div>
+
+        <div class="form" id="form-reset">
+            <div class="title">忘记密码</div>
+            <div class="subtitle">如果忘记密码，请给机器人发送【忘记密码】获取一组重置验证码。输入验证码后会自动填充用户名，你只需要重新设置密码即可。</div>
+            <div class="field"><label>重置验证码</label><input id="resetCode" placeholder="填写机器人返回的6位数字验证码" onblur="verifyResetCode()"><small>请先给机器人发送【忘记密码】获取验证码。验证码30分钟内有效，仅可使用一次。</small></div>
+            <div class="field"><label>网页登录账号</label><input id="resetUsername" placeholder="验证验证码后自动填充" readonly></div>
+            <div class="field"><label>新密码</label><input id="resetPassword" type="password" placeholder="请输入新的登录密码"></div>
+            <div class="field"><label>确认新密码</label><input id="resetPasswordConfirm" type="password" placeholder="请再次输入新的登录密码"></div>
+            <button class="btn" id="resetVerifyBtn" type="button" onclick="verifyResetCode()">验证验证码</button>
+            <button class="btn" id="resetBtn" type="button" onclick="submitResetPassword()">重置密码</button>
+            <div class="message" id="resetMsg"></div>
+            <div class="switch-line">想起来了？<a onclick="showForm('login')">返回登录</a></div>
+        </div>
+
+        <div class="admin-link"><a onclick="window.location.href='/admin/login'">管理后台入口</a></div>
+    </div>
+</div>
+<script>
+function showForm(name) {
+    document.querySelectorAll('.form').forEach(el => el.classList.remove('active'));
+    document.getElementById('form-' + name).classList.add('active');
+}
+
+function setMessage(id, text, type) {
+    const el = document.getElementById(id);
+    el.className = 'message' + (type ? ' ' + type : '');
+    el.textContent = text || '';
+}
+
+async function verifyResetCode() {
+    const code = document.getElementById('resetCode').value.trim();
+    const btn = document.getElementById('resetVerifyBtn');
+    if (!code) {
+        setMessage('resetMsg', '请先填写重置验证码', 'error');
+        return;
+    }
+    btn.disabled = true;
+    btn.textContent = '验证中...';
+    setMessage('resetMsg', '');
+    try {
+        const body = 'code=' + encodeURIComponent(code);
+        const resp = await fetch('/api/login/reset/info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body
+        });
+        const data = await resp.json();
+        if (data.code === 0) {
+            document.getElementById('resetUsername').value = (data.data && data.data.username) || '';
+            setMessage('resetMsg', '验证码有效，已自动填充用户名，请设置新密码', 'success');
+            return;
+        }
+        document.getElementById('resetUsername').value = '';
+        setMessage('resetMsg', data.msg || '验证码校验失败', 'error');
+    } catch (e) {
+        document.getElementById('resetUsername').value = '';
+        setMessage('resetMsg', '网络错误，请稍后重试', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '验证验证码';
+    }
+}
+
+async function submitResetPassword() {
+    const code = document.getElementById('resetCode').value.trim();
+    const username = document.getElementById('resetUsername').value.trim();
+    const password = document.getElementById('resetPassword').value;
+    const confirm = document.getElementById('resetPasswordConfirm').value;
+    if (!code) {
+        setMessage('resetMsg', '请先填写重置验证码', 'error');
+        return;
+    }
+    if (!username) {
+        setMessage('resetMsg', '请先验证验证码并自动填充用户名', 'error');
+        return;
+    }
+    if (!password || !confirm) {
+        setMessage('resetMsg', '请完整填写新密码和确认密码', 'error');
+        return;
+    }
+    if (password !== confirm) {
+        setMessage('resetMsg', '两次输入的新密码不一致', 'error');
+        return;
+    }
+    const btn = document.getElementById('resetBtn');
+    btn.disabled = true;
+    btn.textContent = '重置中...';
+    setMessage('resetMsg', '');
+    try {
+        const body = 'code=' + encodeURIComponent(code) + '&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
+        const resp = await fetch('/api/login/reset/password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body
+        });
+        const data = await resp.json();
+        if (data.code === 0) {
+            setMessage('resetMsg', data.msg || '密码重置成功', 'success');
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('resetPassword').value = '';
+            document.getElementById('resetPasswordConfirm').value = '';
+            document.getElementById('resetCode').value = '';
+            setTimeout(() => {
+                document.getElementById('resetUsername').value = '';
+                showForm('login');
+            }, 700);
+            return;
+        }
+        setMessage('resetMsg', data.msg || '密码重置失败', 'error');
+    } catch (e) {
+        setMessage('resetMsg', '网络错误，请稍后重试', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '重置密码';
+    }
+}
+
+async function submitLogin() {
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!username || !password) {
+        setMessage('loginMsg', '请填写账号和密码', 'error');
+        return;
+    }
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.textContent = '登录中...';
+    setMessage('loginMsg', '');
+    try {
+        const body = 'type=user&account=' + encodeURIComponent(username) + '&pin=' + encodeURIComponent(password);
+        const resp = await fetch('/api/login/admin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body
+        });
+        const text = (await resp.text()).trim();
+        if (text === '登录') {
+            setMessage('loginMsg', '登录成功，正在进入用户中心...', 'success');
+            setTimeout(() => { window.location.href = '/portal'; }, 500);
+            return;
+        }
+        let data = {};
+        try { data = JSON.parse(text); } catch (e) {}
+        setMessage('loginMsg', data.msg || '登录失败', 'error');
+    } catch (e) {
+        setMessage('loginMsg', '网络错误，请稍后重试', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '登录';
+    }
+}
+
+async function submitRegister() {
+    const username = document.getElementById('registerUsername').value.trim();
+    const password = document.getElementById('registerPassword').value;
+    const bindCode = document.getElementById('registerBindCode').value.trim();
+    if (!username || !password || !bindCode) {
+        setMessage('registerMsg', '请完整填写注册信息', 'error');
+        return;
+    }
+    const btn = document.getElementById('registerBtn');
+    btn.disabled = true;
+    btn.textContent = '提交中...';
+    setMessage('registerMsg', '');
+    try {
+        const body = 'username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password) + '&bindCode=' + encodeURIComponent(bindCode);
+        const resp = await fetch('/api/login/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body
+        });
+        const data = await resp.json();
+        if (data.code === 0) {
+            setMessage('registerMsg', data.msg + '，正在进入用户中心...', 'success');
+            setTimeout(() => { window.location.href = '/portal'; }, 600);
+            return;
+        }
+        setMessage('registerMsg', data.msg || '注册失败', 'error');
+    } catch (e) {
+        setMessage('registerMsg', '网络错误，请稍后重试', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '注册并进入用户中心';
+    }
+}
+</script>
+</body>
+</html>

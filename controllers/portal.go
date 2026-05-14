@@ -1,0 +1,425 @@
+package controllers
+
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/cdle/xdd/models"
+	"github.com/cdle/xdd/vweb"
+)
+
+type PortalController struct {
+	BaseController
+}
+
+func (c *PortalController) NextPrepare() {
+	c.PortalLogined()
+}
+
+func (c *PortalController) Index() {
+	file, err := vweb.WebFs.ReadFile("html/portal.html")
+	if err != nil {
+		c.Ctx.WriteString("portal page not found")
+		return
+	}
+	c.Ctx.WriteString(string(file))
+}
+
+func (c *PortalController) Dashboard() {
+	if c.PortalAccount == nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "登录状态失效，请重新登录"}
+		c.ServeJSON()
+		return
+	}
+	data, err := models.GetPortalDashboard(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data}
+	c.ServeJSON()
+}
+
+func (c *PortalController) Profile() {
+	if c.PortalAccount == nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "登录状态失效，请重新登录"}
+		c.ServeJSON()
+		return
+	}
+	data, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data}
+	c.ServeJSON()
+}
+
+func (c *PortalController) Activities() {
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": models.GetPortalActivities()}
+	c.ServeJSON()
+}
+
+func (c *PortalController) Projects() {
+	projects, err := models.GetPortalProjects(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": projects}
+	c.ServeJSON()
+}
+
+func (c *PortalController) CreateProject() {
+	var req struct {
+		ActivityID string            `json:"activityId"`
+		Inputs     map[string]string `json:"inputs"`
+		Remarks    string            `json:"remarks"`
+		Months     int               `json:"months"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	msg, err := models.PortalCreateProject(c.PortalUserID, req.ActivityID, req.Inputs, req.Remarks, req.Months)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
+	c.ServeJSON()
+}
+
+func (c *PortalController) RenewProject() {
+	var req struct {
+		ActivityID string `json:"activityId"`
+		Remarks    string `json:"remarks"`
+		Months     int    `json:"months"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	msg, err := models.PortalRenewProject(c.PortalUserID, req.ActivityID, req.Remarks, req.Months)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
+	c.ServeJSON()
+}
+
+func (c *PortalController) DeleteProject() {
+	var req struct {
+		ActivityID string `json:"activityId"`
+		Remarks    string `json:"remarks"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	msg, err := models.PortalDeleteProject(c.PortalUserID, req.ActivityID, req.Remarks)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
+	c.ServeJSON()
+}
+
+func (c *PortalController) UpdateProject() {
+	var req struct {
+		ActivityID string `json:"activityId"`
+		Remarks    string `json:"remarks"`
+		CkValue    string `json:"ckValue"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	msg, err := models.PortalUpdateProject(c.PortalUserID, req.ActivityID, req.Remarks, req.CkValue)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
+	c.ServeJSON()
+}
+
+func (c *PortalController) QueryIncome() {
+	var req struct {
+		ActivityID string `json:"activityId"`
+		Remarks    string `json:"remarks"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	data, err := models.PortalQueryProjectIncome(c.PortalUserID, req.ActivityID, req.Remarks)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": "查询成功"}
+	c.ServeJSON()
+}
+
+func (c *PortalController) RedeemKey() {
+	var req struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	msg, balance, err := models.PortalRedeemKey(c.PortalUserID, req.Token)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": msg, "balance": balance}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg, "balance": balance}
+	c.ServeJSON()
+}
+
+func (c *PortalController) CheckIn() {
+	msg, err := models.PortalCheckIn(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
+	c.ServeJSON()
+}
+
+func (c *PortalController) Pray() {
+	msg, err := models.PortalPray(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
+	c.ServeJSON()
+}
+
+func (c *PortalController) WxStatus() {
+	data, err := models.GetPortalWxStatus(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": "查询成功"}
+	c.ServeJSON()
+}
+
+func (c *PortalController) WxScanLogin() {
+	data, err := models.PortalWxScanLogin(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": data.Message}
+	c.ServeJSON()
+}
+
+func (c *PortalController) WxDevices() {
+	data, err := models.GetPortalWxDevices(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": "查询成功"}
+	c.ServeJSON()
+}
+
+func (c *PortalController) WxAddDevice() {
+	var req struct {
+		Wxid string `json:"wxid"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	data, err := models.AddPortalWxDevice(c.PortalUserID, req.Wxid)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": "添加成功"}
+	c.ServeJSON()
+}
+
+func (c *PortalController) WxRemoveDevice() {
+	var req struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	if err := models.RemovePortalWxDevice(c.PortalUserID, req.ID); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "删除成功"}
+	c.ServeJSON()
+}
+
+func (c *PortalController) WxRelogin() {
+	data, err := models.PortalWxRelogin(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": data.Message}
+	c.ServeJSON()
+}
+
+func (c *PortalController) WxWakeLogin() {
+	data, err := models.PortalWxWakeLogin(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": data.Message}
+	c.ServeJSON()
+}
+
+func (c *PortalController) WxLogout() {
+	data, err := models.PortalWxLogout(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": data.Message}
+	c.ServeJSON()
+}
+
+func (c *PortalController) SubmitFeedback() {
+	var req struct {
+		Type    string `json:"type"`
+		Title   string `json:"title"`
+		Content string `json:"content"`
+		Contact string `json:"contact"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	title := strings.TrimSpace(req.Title)
+	content := strings.TrimSpace(req.Content)
+	contact := strings.TrimSpace(req.Contact)
+	if title == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "主题不能为空"}
+		c.ServeJSON()
+		return
+	}
+	if content == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "详细内容不能为空"}
+		c.ServeJSON()
+		return
+	}
+	if err := models.CreateAppFeedback(c.PortalUserID, req.Type, title, content, contact, "app"); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "提交成功，管理员会在后台处理"}
+	c.ServeJSON()
+}
+
+func (c *PortalController) WxDelete() {
+	data, err := models.PortalWxDelete(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": data.Message}
+	c.ServeJSON()
+}
+
+func (c *PortalController) WxPollLogin() {
+	var req struct {
+		UUID       string `json:"uuid"`
+		DeductCoin bool   `json:"deductCoin"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	data, err := models.PortalWxPollLogin(c.PortalUserID, req.UUID, req.DeductCoin)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": data.Message}
+	c.ServeJSON()
+}
+
+func (c *PortalController) Notifications() {
+	category := c.GetString("category")
+	page := c.GetQueryInt("page")
+	limit := c.GetQueryInt("limit")
+	includeContent := c.GetString("includeContent") == "1"
+	list, total, unread := models.GetPortalNotifications(c.PortalUserID, category, page, limit)
+	if includeContent {
+		for i := range list {
+			if item, err := models.GetPortalNotificationPreview(c.PortalUserID, list[i].ID); err == nil && item != nil {
+				list[i].Content = item.Content
+			}
+		}
+	}
+	unreadStats := models.GetPortalNotificationUnreadStats(c.PortalUserID)
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"list":        list,
+			"total":       total,
+			"unread":      unread,
+			"unreadStats": unreadStats,
+		},
+	}
+	c.ServeJSON()
+}
+
+func (c *PortalController) NotificationDetail() {
+	id := c.GetQueryInt("id")
+	item, err := models.GetPortalNotificationDetail(c.PortalUserID, id)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": item}
+	c.ServeJSON()
+}

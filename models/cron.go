@@ -1,0 +1,87 @@
+// cron.go
+package models
+
+import (
+	"fmt"
+	"github.com/beego/beego/v2/adapter/logs"
+	"github.com/robfig/cron/v3"
+	"math/rand"
+	"strconv"
+)
+
+var c *cron.Cron
+
+// initCron 初始化定时任务（新增禁用过期CK任务）
+func initCron() {
+	c = cron.New()
+	// 已移除每日资产推送和每日完成推送功能
+	// if Config.DailyAssetPushCron != "" {
+	// 	_, err := c.AddFunc(Config.DailyAssetPushCron, DailyAssetsPush)
+	// 	if err != nil {
+	// 		logs.Warn("资产推送任务失败：%v", err)
+	// 	} else {
+	// 		logs.Info("资产推送任务就绪")
+	// 	}
+	// }
+	// if Config.DailyCompletePush != "" {
+	// 	c.AddFunc(Config.DailyCompletePush, CompletePush)
+	// }
+
+	// 随机时间执行getAuthFlag
+	c.AddFunc(strconv.Itoa(rand.Intn(59))+" "+strconv.Itoa(rand.Intn(24))+" * * ?", getAuthFlag)
+	// 随机分钟、每7小时5点开始执行GetAuthKey
+	c.AddFunc(strconv.Itoa(rand.Intn(59))+" 10 5/7 * ?", GetAuthKey)
+
+	// 原有定时任务
+	c.AddFunc("0 10 * * 3,5", AutoBak)           // 自动备份（每周三、五10点）
+	c.AddFunc("59 23 * * ?", Daemon)             // 自动重启xdd（每天23点59分）
+	c.AddFunc("0 8-20/1 * * ?", GetNewVersion)   // 检查新版本（每天8-20点每小时0分）
+	c.AddFunc("0 0 * * ?", ResetOrderNumber)     // 重置编号（每天0点）
+	c.AddFunc("49 11 * * ?", CX_jd_OnceApply_cx) // 保价查询（每天11点49分）
+	c.AddFunc("40 15 */3 * ?", CX_jd_fruit_new_cx) // 新农场查询通知（每3天15点40分）
+	c.AddFunc("10 14 */4 * ?", CX_jd_dwapp_cx)   // 话费兑换通知（每4天14点10分）
+	c.AddFunc("5 0,6,12,18 * * ?", UpAutoCookie) // 账密自动登录更新ck（每天0、6、12、18点5分）
+	c.AddFunc("30 8,18 * * ?", initCookie)       // 账号检测（每天8、18点30分）
+	c.AddFunc("59 58 23 L * ?", ClearAllContinuousSignIns) // 连续打卡次数清0（每月最后一日23点58分59秒）
+	c.AddFunc("10 9 * * ?",HandleNews) // 新闻推送
+	c.AddFunc("5 12 * * ?", CheckWxOfflineAndNotify) // 微信掉线检测推送（每天16点）
+	
+	
+	c.AddFunc("15 10 * * ?", func() {	CheckExpiringCKs(2, nil)})    //记录ck2天开始通知
+	
+	c.AddFunc("5 */4 * * *", func() {            // wskey转换（每4小时5分）
+		fmt.Println("开始wskey转换")
+		updateCookie()
+		UpdateRwskey()
+	})
+	c.AddFunc("58 23,8 * * *", func() {          // 导出指定账号（每天23、8点58分）
+		logs.Info("开始导出 jd_fcwb_help 账号")
+		Exportck("jd_fcwb_help")
+		Exportck("jd_joyzbj_help")
+		Exportck("jd_zzhb_new_help")
+		Exportck("jd_farmnew_code_help")
+	})
+	c.AddFunc("59 23 * * *", func() {            // 导出农场共享账号（每天23点59分）
+		logs.Info("开始导出 jd_farmshare.js 账号")
+		Exportck("jd_farmshare")
+		Exportck_huanjing("jd_zlyhl")
+	})
+
+	// ===== 核心新增：每天凌晨1点检查并禁用过期CK（月扣活动） =====
+		c.AddFunc("20 23 * * ?", DisableExpiredCKsCronWrapper)
+
+	// ===== 过期30天通知+删除：每天检查一次 =====
+	c.AddFunc("30 12 * * ?", func() { NotifyDeleteExpiredCKs(nil) })
+
+	// 启动所有定时任务
+	c.Start()
+	logs.Info("所有定时任务已启动，包含过期CK禁用任务")
+}
+
+// StopCron 停止定时任务（备用）
+func StopCron() {
+	if c != nil {
+		c.Stop()
+		logs.Info("定时任务已停止")
+	}
+}

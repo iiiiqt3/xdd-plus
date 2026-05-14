@@ -1,0 +1,2314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户中心</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-base: #f1f5f9;
+            --bg-card: rgba(255, 255, 255, 0.82);
+            --bg-card-strong: rgba(255, 255, 255, 0.95);
+            --glass-border: rgba(148, 163, 184, 0.18);
+            --glass-border-hover: rgba(0, 229, 255, 0.35);
+            --cyan: #0891b2;
+            --cyan-dim: rgba(8, 145, 178, 0.10);
+            --purple: #7c3aed;
+            --purple-dim: rgba(124, 58, 237, 0.10);
+            --pink: #db2777;
+            --pink-dim: rgba(219, 39, 119, 0.09);
+            --green: #0d9488;
+            --green-dim: rgba(13, 148, 136, 0.10);
+            --amber: #d97706;
+            --amber-dim: rgba(217, 119, 6, 0.10);
+            --red: #dc2626;
+            --red-dim: rgba(220, 38, 38, 0.10);
+            --text: #1e293b;
+            --text-dim: rgba(30, 41, 59, 0.55);
+            --text-muted: rgba(30, 41, 59, 0.30);
+            --radius: 18px;
+            --glow-cyan: 0 0 20px rgba(8,145,178,0.10), 0 6px 28px rgba(0,0,0,0.08);
+        }
+        html { min-height: 100%; background: var(--bg-base); }
+        body {
+            min-height: 100vh; min-height: 100dvh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-base);
+            color: var(--text);
+            overflow-x: hidden;
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                radial-gradient(ellipse 70% 55% at 12% 18%, rgba(8,145,178,0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 50% at 88% 25%, rgba(124,58,237,0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 55% 45% at 55% 90%, rgba(219,39,119,0.04) 0%, transparent 70%),
+                var(--bg-base);
+        }
+        body::after {
+            content: "";
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(8,145,178,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(8,145,178,0.04) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse 110% 95% at 50% 0%, #000 0%, transparent 72%);
+        }
+        .layout { position: relative; z-index: 1; display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+
+        /* ===== 侧边栏 ===== */
+        .sidebar {
+            position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto;
+            background: rgba(255,255,255,0.94);
+            border-right: 1px solid var(--glass-border);
+            padding: 20px 13px;
+            display: flex; flex-direction: column; gap: 6px;
+            box-shadow: 4px 0 28px rgba(0,0,0,0.06);
+        }
+        .sidebar::-webkit-scrollbar { width: 0; }
+        .brand {
+            padding: 16px 14px; border-radius: 16px; margin-bottom: 10px;
+            background: linear-gradient(145deg, rgba(8,145,178,0.08), rgba(124,58,237,0.08));
+            border: 1px solid var(--glass-border);
+            position: relative; overflow: hidden;
+        }
+        .brand::before {
+            content: ""; position: absolute; top: -60%; left: -60%;
+            width: 220%; height: 220%;
+            background: conic-gradient(from 0deg, transparent 0%, rgba(8,145,178,0.05) 20%, transparent 40%);
+            opacity: 0; transition: opacity 0.6s ease;
+        }
+        .brand:hover::before { opacity: 1; animation: brandSpin 10s linear infinite; }
+        @keyframes brandSpin { to { transform: rotate(360deg); } }
+        .brand h1 {
+            position: relative; z-index: 1;
+            font-size: 22px; font-weight: 900; letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--cyan), var(--purple), var(--pink));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .brand p { position: relative; z-index: 1; color: var(--text-dim); font-size: 11.5px; line-height: 1.7; margin-top: 5px; }
+
+        .menu-group { margin-top: 8px; }
+        .menu-group-title {
+            color: var(--text-muted); font-size: 10.5px; font-weight: 800;
+            margin: 0 10px 5px; letter-spacing: 0.14em; text-transform: uppercase;
+        }
+        .menu { display: grid; gap: 3px; }
+        .menu button {
+            display: flex; align-items: center; gap: 9px;
+            min-height: 44px; border: 1px solid transparent; border-radius: 11px;
+            padding: 0 15px; background: transparent;
+            color: var(--text-dim); cursor: pointer;
+            font-size: 14.5px; font-weight: 800;
+            transition: all 0.2s ease;
+        }
+        .menu button::before {
+            content: ""; width: 5px; height: 5px; border-radius: 50%;
+            background: var(--text-muted); transition: all 0.2s ease; flex-shrink: 0;
+        }
+        .menu button:hover { background: rgba(8,145,178,0.06); color: var(--text); border-color: var(--glass-border); }
+        .menu button:hover::before { background: var(--cyan); box-shadow: 0 0 8px rgba(8,145,178,0.4); }
+        .menu button.active {
+            background: linear-gradient(135deg, var(--cyan-dim), var(--purple-dim));
+            color: var(--cyan); border-color: rgba(8,145,178,0.25);
+            box-shadow: var(--glow-cyan);
+        }
+        .menu button.active::before { background: var(--cyan); box-shadow: 0 0 10px rgba(8,145,178,0.4), 0 0 22px rgba(8,145,178,0.18); }
+
+        /* ===== 主内容 ===== */
+        .main { min-width: 0; padding: 22px; }
+        .topbar {
+            display: flex; justify-content: space-between; align-items: center; gap: 16px;
+            margin-bottom: 16px; padding: 16px 22px 14px; border-radius: var(--radius);
+            background: var(--bg-card); border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            box-shadow: var(--glow-cyan);
+        }
+        .topbar h2 {
+            font-size: clamp(20px, 3vw, 30px); font-weight: 900;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .topbar .muted { color: var(--text-dim); font-size: 12px; line-height: 1.45; margin-top: 2px; }
+
+        /* ===== 按钮 ===== */
+        .btn {
+            border: none; border-radius: 12px; cursor: pointer;
+            padding: 10px 18px; min-height: 40px;
+            font-size: 13px; font-weight: 800; color: #fff;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            box-shadow: 0 2px 12px rgba(8,145,178,0.18), 0 4px 14px rgba(0,0,0,0.08);
+            transition: all 0.22s ease; position: relative; overflow: hidden;
+        }
+        .btn::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+            opacity: 0; transition: opacity 0.22s ease;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 24px rgba(8,145,178,0.25), 0 6px 22px rgba(0,0,0,0.12); }
+        .btn:hover::after { opacity: 1; }
+        .btn:active { transform: translateY(0); }
+        .btn.secondary { background: var(--bg-card-strong); color: var(--text); border: 1px solid var(--glass-border); box-shadow: none; }
+        .btn.secondary:hover { border-color: var(--glass-border-hover); box-shadow: var(--glow-cyan); }
+        .btn.small { padding: 6px 12px; min-height: 30px; font-size: 12px; border-radius: 9px; }
+        .btn.danger { background: linear-gradient(135deg, var(--red), #991b1b); box-shadow: 0 2px 12px rgba(220,38,38,0.18); }
+        .btn.danger:hover { box-shadow: 0 4px 24px rgba(220,38,38,0.28); }
+        .btn.accent { background: linear-gradient(135deg, var(--amber), #b45309); box-shadow: 0 2px 12px rgba(217,119,6,0.18); color: #fff; }
+        .btn.accent:hover { box-shadow: 0 4px 24px rgba(217,119,6,0.28); }
+
+        /* ===== 卡片 ===== */
+        .grid-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .card {
+            padding: 18px; border-radius: var(--radius);
+            background: rgba(255,255,255,0.92); border: 1px solid var(--glass-border);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            transition: all 0.25s ease; position: relative; overflow: hidden;
+        }
+        .card::before {
+            content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, var(--cyan), var(--purple), var(--pink));
+            opacity: 0; transition: opacity 0.25s ease;
+        }
+        .card:hover::before { opacity: 1; }
+        .card:hover { border-color: var(--glass-border-hover); box-shadow: var(--glow-cyan); transform: translateY(-2px); }
+        .card h3 { font-size: 12.5px; color: var(--text-dim); margin-bottom: 8px; font-weight: 700; }
+        .card .value { font-size: clamp(22px, 3vw, 30px); font-weight: 950; color: var(--text); letter-spacing: -0.03em; word-break: break-word; }
+
+        /* ===== 面板 ===== */
+        .panel { display: none; }
+        .panel.active { display: block; animation: panelIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .panel.active > .section > .section-header.panel-duplicate-title { display: none; }
+        @keyframes panelIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        /* ===== 状态卡片 ===== */
+        .status-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+        .status-card {
+            padding: 16px; border-radius: var(--radius);
+            background: rgba(255,255,255,0.92); border: 1px solid var(--glass-border);
+            transition: all 0.25s ease;
+        }
+        .status-card:hover { border-color: var(--glass-border-hover); }
+        .status-card:nth-child(1):hover { box-shadow: 0 0 18px rgba(13,148,136,0.10); border-color: rgba(13,148,136,0.25); }
+        .status-card:nth-child(2):hover { box-shadow: 0 0 18px rgba(217,119,6,0.10); border-color: rgba(217,119,6,0.25); }
+        .status-card:nth-child(3):hover { box-shadow: 0 0 18px rgba(220,38,38,0.10); border-color: rgba(220,38,38,0.25); }
+        .status-card h4 { font-size: 12.5px; color: var(--text-dim); margin-bottom: 8px; font-weight: 700; }
+        .status-card .num { font-size: 28px; font-weight: 950; color: var(--text); }
+
+        /* ===== 仪表盘重新设计 ===== */
+        .dash-hero-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+        .dash-hero-item {
+            position: relative; overflow: hidden;
+            border-radius: 16px; padding: 24px 22px;
+            color: #fff; cursor: default;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .dash-hero-item:hover { transform: translateY(-3px); box-shadow: 0 12px 36px rgba(0,0,0,0.15); }
+        .dash-hero-item .hero-bg-icon {
+            position: absolute; right: -8px; bottom: -12px;
+            font-size: 72px; opacity: 0.12; line-height: 1; pointer-events: none;
+        }
+        .dash-hero-item .hero-label { font-size: 13px; font-weight: 700; opacity: 0.85; margin-bottom: 6px; }
+        .dash-hero-item .hero-value { font-size: 36px; font-weight: 950; letter-spacing: -0.04em; line-height: 1.15; }
+        .dash-hero-item .hero-sub { font-size: 11.5px; opacity: 0.6; margin-top: 8px; }
+        .hero-cyan-grad { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%); }
+        .hero-green-grad { background: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%); }
+        .hero-amber-grad { background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%); }
+
+        .dash-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .dash-info-card {
+            padding: 20px; border-radius: var(--radius);
+            background: rgba(255,255,255,0.92); border: 1px solid var(--glass-border);
+            transition: all 0.25s ease;
+        }
+        .dash-info-card:hover { border-color: var(--glass-border-hover); box-shadow: var(--glow-cyan); }
+        .dash-info-card .card-title {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 15px; font-weight: 900; color: var(--text);
+            margin-bottom: 16px; padding-bottom: 12px;
+            border-bottom: 1px solid rgba(148,163,184,0.10);
+        }
+        .dash-info-card .card-title .title-icon {
+            width: 32px; height: 32px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+        }
+        .dash-profile-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(148,163,184,0.06); font-size: 13px; }
+        .dash-profile-row:last-child { border-bottom: none; }
+        .dash-profile-row .pr-label { color: var(--text-dim); font-weight: 600; }
+        .dash-profile-row .pr-value { color: var(--text); font-weight: 700; text-align: right; word-break: break-word; max-width: 60%; }
+        .dash-wx-indicator { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+        .dash-wx-indicator.online { background: var(--green-dim); color: var(--green); }
+        .dash-wx-indicator.offline { background: var(--red-dim); color: var(--red); }
+        .dash-wx-indicator.bound { background: var(--cyan-dim); color: var(--cyan); }
+        .dash-wx-indicator.unbound { background: rgba(0,0,0,0.03); color: var(--text-muted); }
+        .dash-wx-detail { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed rgba(148,163,184,0.08); font-size: 12.5px; }
+        .dash-wx-detail:last-child { border-bottom: none; }
+        .dash-wx-detail span { color: var(--text-dim); }
+        .dash-wx-detail strong { color: var(--text); font-weight: 700; }
+
+        .dash-wx-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;
+        }
+        .dash-wx-mini {
+            display: flex; flex-direction: column; gap: 7px; padding: 12px 14px;
+            border-radius: 12px; background: rgba(0,0,0,0.02); border: 1px solid rgba(148,163,184,0.10);
+            transition: all 0.2s ease; position: relative;
+        }
+        .dash-wx-mini:hover { border-color: var(--glass-border-hover); background: rgba(0,0,0,0.04); }
+        .dash-wx-mini.primary-mini { border-color: rgba(8,145,178,0.22); background: rgba(8,145,178,0.04); }
+        .dash-wx-mini .mini-head {
+            display: flex; align-items: center; gap: 6px;
+        }
+        .dash-wx-mini .mini-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+        .dash-wx-mini .mini-dot.online-dot { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+        .dash-wx-mini .mini-dot.offline-dot { background: #94a3b8; }
+        .dash-wx-mini .mini-name { font-size: 13px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+        .dash-wx-mini .mini-badge {
+            font-size: 9.5px; padding: 1px 6px; border-radius: 999px; font-weight: 700; flex-shrink: 0;
+        }
+        .dash-wx-mini .mini-badge.primary-tag { background: var(--cyan-dim); color: var(--cyan); }
+        .dash-wx-mini .mini-badge.online-tag { background: rgba(34,197,94,0.12); color: #16a34a; }
+        .dash-wx-mini .mini-badge.offline-tag { background: rgba(148,163,184,0.12); color: #64748b; }
+        .dash-wx-mini .mini-row {
+            display: flex; justify-content: space-between; align-items: center; font-size: 11px;
+        }
+        .dash-wx-mini .mini-row .mini-label { color: var(--text-dim); flex-shrink: 0; }
+        .dash-wx-mini .mini-row .mini-val { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 6px; text-align: right; }
+        .dash-expired-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;
+            background: var(--red-dim); color: var(--red);
+        }
+
+        /* ===== 信息网格 ===== */
+        .meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; line-height: 1.8; font-size: 13px; }
+        .meta-grid div { color: var(--text-dim); }
+        .meta-grid strong { color: var(--text); font-weight: 700; }
+
+        /* ===== Tabs ===== */
+        .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+        .tabs button {
+            border: 1px solid var(--glass-border); background: var(--bg-card);
+            color: var(--text-dim); border-radius: 999px; padding: 7px 16px;
+            font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all 0.2s ease;
+        }
+        .tabs button.active { background: var(--cyan-dim); color: var(--cyan); border-color: rgba(8,145,178,0.25); box-shadow: 0 0 12px rgba(8,145,178,0.08); }
+
+        /* ===== 表格 ===== */
+        .table-wrap { overflow: auto; -webkit-overflow-scrolling: touch; }
+        .table-wrap::before { content: "← 左右滑动查看完整内容 →"; display: none; color: var(--text-muted); font-size: 12px; padding: 0 0 8px; text-align: center; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 900px; }
+        th { background: rgba(8,145,178,0.05); color: var(--text-dim); font-weight: 800; font-size: 12px; }
+        td { color: var(--text); font-size: 12.5px; }
+        th, td { padding: 12px 12px; border-bottom: 1px solid rgba(148,163,184,0.10); text-align: left; vertical-align: middle; }
+        tbody tr { transition: background 0.18s ease; }
+        tbody tr:hover td { background: rgba(8,145,178,0.04); }
+        .project-group-row td { background: rgba(8,145,178,0.02); }
+        .group-detail-row td { background: rgba(255,255,255,0.55); padding: 0; }
+        .group-detail-card { padding: 14px 16px; }
+        .group-count { font-weight: 800; color: var(--cyan); }
+        .account-subtable { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 680px; }
+        .account-subtable th, .account-subtable td { padding: 10px 10px; font-size: 12px; }
+
+        /* ===== Tags ===== */
+        .tag {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800;
+            border: 1px solid transparent; white-space: nowrap;
+        }
+        .tag.active { background: var(--green-dim); color: var(--green); border-color: rgba(34,211,238,0.22); }
+        .tag.expiring { background: var(--amber-dim); color: var(--amber); border-color: rgba(245,158,11,0.22); }
+        .tag.expired { background: var(--red-dim); color: var(--red); border-color: rgba(244,63,94,0.22); }
+        .tag.gray { background: rgba(0,0,0,0.03); color: var(--text-muted); border-color: rgba(255,255,255,0.06); }
+        .tag.notice { background: var(--cyan-dim); color: var(--cyan); border-color: rgba(8,145,178,0.18); }
+        .tag.admin { background: var(--purple-dim); color: var(--purple); border-color: rgba(124,58,237,0.18); }
+        .tag.unread { background: var(--red-dim); color: var(--red); border-color: rgba(220,38,38,0.18); }
+        .tag.top { background: rgba(230,162,60,0.12); color: #b45309; border-color: rgba(230,162,60,0.24); }
+
+        .notify-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-bottom: 16px; }
+        .notify-summary-card { padding: 18px; border-radius: var(--radius); background: rgba(255,255,255,0.92); border: 1px solid var(--glass-border); transition: all 0.25s ease; }
+        .notify-summary-card:hover { border-color: var(--glass-border-hover); box-shadow: var(--glow-cyan); transform: translateY(-2px); }
+        .notify-summary-card span { display: block; color: var(--text-dim); font-size: 12px; font-weight: 800; margin-bottom: 8px; }
+        .notify-summary-card strong { display: block; color: var(--text); font-size: 28px; font-weight: 950; letter-spacing: -0.03em; }
+        .notify-layout { display: grid; grid-template-columns: 230px minmax(0,1fr); gap: 14px; align-items: start; }
+        .notify-filter-card { padding: 16px; border-radius: var(--radius); background: rgba(255,255,255,0.92); border: 1px solid var(--glass-border); position: sticky; top: 18px; }
+        .notify-filter-title { color: var(--text); font-size: 14px; font-weight: 900; margin-bottom: 12px; }
+        .notify-filter-group { display: grid; gap: 8px; margin-bottom: 16px; }
+        .notify-filter-group button { border: 1px solid var(--glass-border); background: rgba(255,255,255,0.72); color: var(--text-dim); border-radius: 12px; padding: 9px 12px; cursor: pointer; text-align: left; font-size: 12.5px; font-weight: 800; transition: all 0.2s ease; }
+        .notify-filter-group button.active, .notify-filter-group button:hover { background: var(--cyan-dim); color: var(--cyan); border-color: rgba(8,145,178,0.25); }
+        .notify-list { display: grid; gap: 10px; }
+        .notify-item { padding: 16px; border-radius: var(--radius); background: rgba(255,255,255,0.94); border: 1px solid var(--glass-border); cursor: pointer; transition: all 0.22s ease; }
+        .notify-item:hover { border-color: var(--glass-border-hover); box-shadow: var(--glow-cyan); transform: translateY(-2px); }
+        .notify-item.unread { border-color: rgba(220,38,38,0.18); background: linear-gradient(135deg, rgba(220,38,38,0.035), rgba(255,255,255,0.96)); }
+        .notify-item.top { border-color: rgba(230,162,60,0.28); background: linear-gradient(135deg, rgba(230,162,60,0.08), rgba(255,255,255,0.96)); }
+        .notify-item-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+        .notify-title { color: var(--text); font-weight: 950; font-size: 15px; line-height: 1.45; word-break: break-word; }
+        .notify-time { color: var(--text-muted); font-size: 11.5px; white-space: nowrap; }
+        .notify-meta { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+        .notify-empty { padding: 42px 18px; text-align: center; color: var(--text-muted); border: 1px dashed var(--glass-border); border-radius: var(--radius); background: rgba(255,255,255,0.58); }
+        .notify-detail-content { white-space: pre-wrap; line-height: 1.9; color: var(--text); font-size: 14px; padding: 14px; border-radius: 14px; background: rgba(8,145,178,0.04); border: 1px solid rgba(8,145,178,0.08); }
+        .notify-pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 0 2px; color: var(--text-muted); font-size: 13px; }
+        .notify-pager .btn[disabled] { opacity: 0.45; cursor: not-allowed; transform: none; }
+        .notify-popup-modal { max-width: 640px; border-radius: 26px; background: radial-gradient(circle at 20% 0%, rgba(8,145,178,0.16), transparent 34%), rgba(255,255,255,0.98); border: 1px solid rgba(8,145,178,0.18); box-shadow: 0 24px 90px rgba(8,145,178,0.18), 0 18px 70px rgba(0,0,0,0.16); }
+        .notify-popup-modal .modal-title { font-size: 22px; color: var(--primary); }
+        .notify-popup-modal .notify-detail-content { font-size: 15px; background: linear-gradient(135deg, rgba(8,145,178,0.08), rgba(255,255,255,0.88)); border-color: rgba(8,145,178,0.16); }
+        .notify-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 999px; background: var(--red); color: #fff; font-size: 10px; font-weight: 900; margin-left: 6px; }
+        .dash-notice-card { margin-bottom: 20px; overflow: hidden; position: relative; }
+        .dash-notice-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .dash-notice-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 950; color: var(--text); }
+        .dash-notice-title .pulse-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--red); box-shadow: 0 0 0 0 rgba(220,38,38,0.36); animation: noticePulse 1.6s infinite; }
+        @keyframes noticePulse { 70% { box-shadow: 0 0 0 10px rgba(220,38,38,0); } 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); } }
+        .dash-notice-viewport { height: 196px; overflow: hidden; border-radius: 15px; background: linear-gradient(135deg, rgba(220,38,38,0.045), rgba(8,145,178,0.045)); border: 1px solid rgba(8,145,178,0.10); }
+        .dash-notice-track { display: grid; gap: 10px; padding: 10px; animation: noticeRoll 24s linear infinite; }
+        .dash-notice-viewport:hover .dash-notice-track { animation-play-state: paused; }
+        @keyframes noticeRoll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+        .dash-notice-item { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 10px; align-items: flex-start; min-height: 78px; padding: 11px 12px; border-radius: 12px; background: rgba(255,255,255,0.86); border: 1px solid rgba(148,163,184,0.10); cursor: pointer; }
+        .dash-notice-item:hover { border-color: var(--glass-border-hover); box-shadow: 0 4px 16px rgba(8,145,178,0.12); }
+        .dash-notice-item .level { color: var(--red); font-weight: 950; font-size: 12px; white-space: nowrap; padding-top: 2px; }
+        .dash-notice-item .content { min-width: 0; }
+        .dash-notice-item .title { color: var(--text); font-weight: 900; font-size: 13.5px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dash-notice-item .summary { color: var(--text-dim); font-size: 12px; line-height: 1.65; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+        .dash-notice-item .time { color: var(--text-muted); font-size: 11px; white-space: nowrap; padding-top: 2px; }
+        .dash-notice-empty { padding: 26px 12px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+        /* ===== 活动列表 ===== */
+        .activities-list { display: grid; gap: 1px; }
+        .activity-row {
+            display: grid; grid-template-columns: minmax(0,1.2fr) minmax(140px,0.75fr) minmax(160px,0.85fr) auto;
+            gap: 14px; align-items: center; padding: 18px;
+            background: rgba(255,255,255,0.92); border: 1px solid transparent;
+            border-bottom: 1px solid rgba(148,163,184,0.10);
+            transition: all 0.25s ease;
+        }
+        .activity-row:nth-child(odd) { background: rgba(255,255,255,0.92); }
+        .activity-row:nth-child(even) { background: rgba(8,145,178,0.02); }
+        .activity-row:hover { background: rgba(8,145,178,0.04) !important; border-color: var(--glass-border-hover); }
+        .activity-title { font-size: 16px; font-weight: 900; color: var(--text); margin-bottom: 6px; letter-spacing: -0.02em; }
+        .activity-desc { color: rgba(30,41,59,0.5); font-size: 11.5px; line-height: 1.65; word-break: break-word; }
+
+        /* ===== 微信 ===== */
+        .wx-intro-box {
+            background: linear-gradient(135deg, rgba(8,145,178,0.04), rgba(124,58,237,0.04));
+            border: 1px solid var(--glass-border); border-radius: var(--radius);
+            padding: 20px 22px; margin-bottom: 20px; transition: all 0.3s ease;
+        }
+        .wx-intro-box summary {
+            font-size: 15px; font-weight: 900; color: var(--text); cursor: pointer;
+            display: flex; align-items: center; gap: 8px; user-select: none;
+        }
+        .wx-intro-box summary::after { content: "▾"; margin-left: auto; font-size: 12px; transition: transform 0.25s; color: var(--text-dim); }
+        .wx-intro-box[open] summary::after { transform: rotate(180deg); }
+        .wx-intro-content { margin-top: 14px; font-size: 13px; color: var(--text-dim); line-height: 1.9; }
+        .wx-intro-content h5 { font-size: 13.5px; font-weight: 800; color: var(--text); margin: 14px 0 6px; }
+        .wx-intro-content h5:first-child { margin-top: 0; }
+        .wx-intro-content ul { padding-left: 18px; margin: 4px 0; }
+        .wx-intro-content li { margin-bottom: 3px; }
+        .wx-intro-content li::marker { color: var(--cyan); }
+
+        .wx-device-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+        .wx-device-card {
+            padding: 18px; border-radius: var(--radius);
+            background: rgba(255,255,255,0.92); border: 1px solid var(--glass-border);
+            transition: all 0.25s ease; position: relative;
+        }
+        .wx-device-card:hover { border-color: var(--glass-border-hover); box-shadow: 0 0 18px rgba(124,58,237,0.06); }
+        .wx-device-card.primary { border-color: rgba(8,145,178,0.25); background: linear-gradient(135deg, rgba(8,145,178,0.03), rgba(255,255,255,0.92)); }
+        .wx-device-card.offline-card { opacity: 0.75; }
+        .wx-device-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .wx-device-badge {
+            display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+            border-radius: 999px; font-size: 10.5px; font-weight: 800;
+        }
+        .wx-device-badge.primary-badge { background: var(--cyan-dim); color: var(--cyan); }
+        .wx-device-badge.secondary-badge { background: rgba(0,0,0,0.04); color: var(--text-muted); }
+        .wx-device-badge.online-badge { background: var(--green-dim); color: var(--green); }
+        .wx-device-badge.offline-badge { background: var(--red-dim); color: var(--red); }
+        .wx-device-nickname { font-size: 15px; font-weight: 900; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .wx-device-remove {
+            margin-left: auto; width: 28px; height: 28px; border-radius: 8px; border: 1px solid transparent;
+            background: transparent; cursor: pointer; color: var(--text-muted); font-size: 14px;
+            display: flex; align-items: center; justify-content: center; transition: all 0.18s;
+        }
+        .wx-device-remove:hover { background: rgba(220,38,38,0.08); color: var(--red); border-color: rgba(220,38,38,0.20); }
+        .wx-device-detail { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed rgba(148,163,184,0.08); font-size: 12px; }
+        .wx-device-detail:last-child { border-bottom: none; }
+        .wx-device-detail span { color: var(--text-dim); }
+        .wx-device-detail strong { color: var(--text); font-weight: 700; text-align: right; word-break: break-word; }
+
+        .wx-add-bar {
+            display: flex; gap: 10px; align-items: center; margin-bottom: 20px;
+            padding: 16px; border-radius: var(--radius);
+            background: rgba(255,255,255,0.92); border: 1px dashed var(--glass-border);
+        }
+        .wx-add-bar input {
+            flex: 1; min-width: 0; padding: 10px 14px; border: 1px solid var(--glass-border);
+            border-radius: 10px; font-size: 13px; outline: none; background: rgba(255,255,255,0.6);
+            color: var(--text); transition: border-color 0.2s;
+        }
+        .wx-add-bar input:focus { border-color: var(--cyan); }
+        .wx-add-bar .btn { white-space: nowrap; padding: 10px 18px; font-size: 13px; }
+
+        .wx-feature-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+        .wx-menu-card {
+            padding: 18px; border-radius: var(--radius); cursor: pointer;
+            background: rgba(255,255,255,0.92); border: 1px solid var(--glass-border);
+            transition: all 0.25s ease; position: relative; overflow: hidden;
+        }
+        .wx-menu-card::before {
+            content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, var(--cyan), var(--purple));
+            opacity: 0; transition: opacity 0.25s ease;
+        }
+        .wx-menu-card:hover { border-color: var(--glass-border-hover); transform: translateY(-3px); box-shadow: 0 0 20px rgba(124,58,237,0.10); }
+        .wx-menu-card:hover::before { opacity: 1; }
+        .wx-menu-card strong { display: block; color: var(--cyan); font-size: 14px; margin-bottom: 8px; font-weight: 900; }
+        .wx-menu-card span { display: block; color: var(--text-dim); font-size: 12px; line-height: 1.7; }
+
+        .wx-empty-state {
+            text-align: center; padding: 40px 20px; color: var(--text-muted);
+            border: 1px dashed var(--glass-border); border-radius: var(--radius);
+            background: rgba(255,255,255,0.5);
+        }
+        .wx-empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+        .wx-empty-state p { font-size: 13px; line-height: 1.8; }
+
+        /* ===== 任务 ===== */
+        .task-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+        .task-box {
+            padding: 20px; border-radius: var(--radius);
+            background: rgba(255,255,255,0.92); border: 1px solid var(--glass-border);
+            transition: all 0.25s ease;
+        }
+        .task-box:hover { border-color: var(--glass-border-hover); }
+        .task-box h3 { font-size: 15px; font-weight: 900; color: var(--text); margin-bottom: 8px; }
+        .task-box p { color: var(--text-dim); line-height: 1.8; font-size: 12.5px; margin: 10px 0 16px; }
+
+        /* ===== Toast ===== */
+        .toast {
+            position: fixed; left: 50%; top: max(14px, env(safe-area-inset-top)); transform: translateX(-50%) translateY(-120px);
+            z-index: 9999; min-width: 220px; max-width: min(480px, calc(100vw - 24px));
+            padding: 12px 18px; border-radius: 14px; font-size: 13px; line-height: 1.6;
+            box-shadow: 0 8px 36px rgba(0,0,0,0.60); text-align: center;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease; opacity: 0;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.success { background: linear-gradient(135deg, #ecfdf5, #d1fae5); color: #065f46; border: 1px solid rgba(6,95,70,0.15); }
+        .toast.error   { background: linear-gradient(135deg, #fef2f2, #fee2e2); color: #991b1b; border: 1px solid rgba(153,27,27,0.15); }
+        .toast.info    { background: linear-gradient(135deg, #f0f9ff, #e0f2fe); color: #075985; border: 1px solid rgba(7,89,133,0.12); }
+
+        /* ===== Modal ===== */
+        .modal-mask {
+            display: none; position: fixed; inset: 0; z-index: 8000;
+            background: rgba(0,0,0,0.70); padding: 24px;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        }
+        .modal-mask.show { display: flex; animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal {
+            width: min(880px, 100%); max-height: min(90vh, calc(100dvh - 32px)); overflow: auto;
+            background: rgba(255,255,255,0.97); border: 1px solid var(--glass-border);
+            border-radius: 22px; padding: 22px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.04), 0 12px 70px rgba(0,0,0,0.10);
+            animation: modalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes modalIn { from { opacity: 0; transform: translateY(18px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; }
+        .modal-header h3 { font-size: 20px; font-weight: 900; color: var(--text); letter-spacing: -0.02em; }
+        .modal-close {
+            border: 1px solid var(--glass-border); background: rgba(0,0,0,0.03);
+            width: 34px; height: 34px; border-radius: 10px; font-size: 18px;
+            cursor: pointer; color: var(--text-dim); line-height: 1;
+            transition: all 0.18s ease;
+        }
+        .modal-close:hover { background: rgba(220,38,38,0.08); color: var(--red); border-color: rgba(220,38,38,0.20); }
+
+        /* ===== 表单 ===== */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+        .field label { display: block; margin-bottom: 5px; font-size: 12px; color: var(--text-dim); font-weight: 700; }
+        .field input, .field textarea {
+            width: 100%; border: 1px solid var(--glass-border); border-radius: 11px;
+            background: rgba(255,255,255,0.035); color: var(--text);
+            padding: 10px 13px; outline: none; font-size: 13.5px;
+            transition: all 0.2s ease;
+        }
+        .field input:focus, .field textarea:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(8,145,178,0.10); }
+        .field textarea { min-height: 76px; resize: vertical; }
+        .field.full { grid-column: 1 / -1; }
+        .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+        .muted { color: var(--text-dim); }
+        .project-modal-meta {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+        }
+        .project-modal-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 12px; border-radius: 999px;
+            background: rgba(8,145,178,0.08); border: 1px solid rgba(8,145,178,0.12);
+            color: var(--cyan); font-size: 12.5px; font-weight: 700;
+        }
+        .project-modal-guide {
+            margin-bottom: 14px; padding: 16px 18px;
+            background: linear-gradient(180deg, rgba(124,58,237,0.08), rgba(219,39,119,0.05));
+            border: 1px solid rgba(124,58,237,0.14); border-radius: 16px;
+        }
+        .project-modal-guide strong {
+            display: block; margin-bottom: 8px; color: var(--text); font-size: 13px; font-weight: 800;
+        }
+        .project-modal-guide .guide-text {
+            color: var(--text-dim); font-size: 12.5px; line-height: 1.78;
+            white-space: pre-wrap; word-break: break-word;
+            overflow-wrap: anywhere;
+            max-height: none;
+        }
+        .field-help {
+            margin-top: 6px; color: var(--text-dim); font-size: 12px; line-height: 1.55;
+        }
+        .ck-edit-panel { display: grid; gap: 12px; }
+        .ck-edit-notice {
+            padding: 12px 14px; border-radius: 14px;
+            background: linear-gradient(135deg, rgba(8,145,178,0.08), rgba(124,58,237,0.06));
+            border: 1px solid rgba(8,145,178,0.12); color: var(--text-dim);
+            font-size: 12.5px; line-height: 1.75;
+        }
+        .ck-field-list { display: grid; gap: 10px; }
+        .ck-field-row {
+            display: grid; grid-template-columns: minmax(120px, 0.34fr) minmax(0, 1fr); gap: 10px;
+            align-items: stretch; padding: 12px; border-radius: 14px;
+            background: rgba(248,250,252,0.82); border: 1px solid var(--glass-border);
+        }
+        .ck-field-name {
+            display: flex; flex-direction: column; gap: 6px; justify-content: center;
+            color: var(--text); font-size: 13px; font-weight: 900; word-break: break-word;
+        }
+        .ck-field-name span { color: var(--text-dim); font-size: 11.5px; font-weight: 700; line-height: 1.45; }
+        .ck-preview-box {
+            white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
+            padding: 11px 12px; border-radius: 12px; background: rgba(241,245,249,0.82);
+            border: 1px dashed rgba(148,163,184,0.28); color: var(--text-dim);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.65;
+        }
+        .field input::placeholder, .field textarea::placeholder { color: rgba(30,41,59,0.42); }
+        pre.income-box {
+            margin-top: 14px; white-space: pre-wrap; word-break: break-word;
+            background: rgba(241,245,249,0.8); border: 1px solid var(--glass-border);
+            border-radius: 13px; padding: 14px; color: var(--text);
+            font-size: 12.5px; line-height: 1.7; max-height: 48vh; overflow: auto;
+        }
+        .empty { color: var(--text-muted); text-align: center; padding: 28px 10px; font-size: 13px; }
+
+        /* ===== 自定义滚动条 ===== */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.15); border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,229,255,0.30); }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 1200px) {
+            .grid-cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
+            .status-grid, .wx-status-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+            .task-grid { grid-template-columns: 1fr; }
+            .activity-row { grid-template-columns: 1fr; }
+            .dash-hero-strip { grid-template-columns: repeat(2, 1fr); }
+            .dash-info-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 860px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar {
+                position: sticky; top: 0; height: auto; max-height: none;
+                z-index: 100; border-right: none;
+                border-bottom: 1px solid var(--glass-border);
+                padding: 10px 12px 6px;
+                flex-direction: row; flex-wrap: wrap; align-items: center;
+                gap: 6px 8px;
+            }
+            .brand { display: none; }
+            .menu-group { margin: 0; display: contents; }
+            .menu-group-title { display: none; }
+            .menu { display: contents; }
+            .menu button { flex: 0 0 auto; min-height: 38px; padding: 0 13px; white-space: nowrap; font-size: 14px; font-weight: 800; border-radius: 10px; gap: 5px; }
+            .menu button::before { width: 5px; height: 5px; }
+            .main { padding: 14px; }
+            .grid-cards, .status-grid, .meta-grid, .form-grid, .wx-status-grid, .wx-feature-grid, .notify-summary-grid { grid-template-columns: 1fr; }
+            .notify-layout { grid-template-columns: 1fr; }
+            .notify-filter-card { position: static; }
+            .dash-hero-strip { grid-template-columns: 1fr; }
+            .dash-info-grid { grid-template-columns: 1fr; }
+            .topbar { flex-direction: column; align-items: stretch; padding: 14px 16px; margin-bottom: 14px; }
+            .topbar > div:last-child { width: 100%; }
+            .topbar > div:last-child .btn { flex: 1 1 140px; }
+            .section-header { flex-direction: column; align-items: flex-start; }
+            #panel-projects > .section > .section-header,
+            #panel-activities > .section > .section-header,
+            #panel-tasks > .section > .section-header,
+            #panel-notifications > .section > .section-header { display: none; }
+            .table-wrap::before { display: block; }
+            table { min-width: 700px; }
+            .account-subtable { min-width: 600px; }
+            .activity-row .btn { width: 100%; }
+
+            /* 手机端项目表格 → 卡片布局 */
+            #panel-projects .table-wrap { overflow: visible; }
+            #panel-projects table, #panel-projects thead, #panel-projects tbody, #panel-projects th, #panel-projects td, #panel-projects tr {
+                display: block; min-width: 0; width: 100%;
+            }
+            #panel-projects thead { display: none; }
+            #panel-projects .project-group-row {
+                background: var(--bg-card); border: 1px solid var(--glass-border);
+                border-radius: var(--radius); margin-bottom: 12px; padding: 16px;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            }
+            #panel-projects .project-group-row td {
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 5px 0; border-bottom: none; font-size: 13px;
+            }
+            #panel-projects .project-group-row td::before {
+                content: attr(data-label); font-weight: 800; color: var(--text-dim); font-size: 12px; margin-right: 8px; flex-shrink: 0;
+            }
+            #panel-projects .project-group-row td:last-child { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--glass-border); }
+            #panel-projects .project-group-row td:last-child::before { display: none; }
+            #panel-projects .project-group-row td:last-child div { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
+            #panel-projects .project-group-row td:last-child .btn { flex: 1 1 auto; justify-content: center; min-height: 36px; font-size: 13px; }
+            #panel-projects .group-detail-row { margin-bottom: 12px; }
+            #panel-projects .group-detail-row td { padding: 0; background: transparent; }
+            #panel-projects .group-detail-card { padding: 0; }
+            #panel-projects .account-subtable,
+            #panel-projects .account-subtable thead,
+            #panel-projects .account-subtable tbody,
+            #panel-projects .account-subtable th,
+            #panel-projects .account-subtable td,
+            #panel-projects .account-subtable tr {
+                display: block; min-width: 0; width: 100%;
+            }
+            #panel-projects .account-subtable thead { display: none; }
+            #panel-projects .account-subtable tr {
+                background: var(--bg-card); border: 1px solid var(--glass-border);
+                border-radius: 14px; margin-bottom: 10px; padding: 14px;
+            }
+            #panel-projects .account-subtable td {
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 4px 0; border-bottom: none; font-size: 12.5px;
+            }
+            #panel-projects .account-subtable td::before {
+                content: attr(data-label); font-weight: 800; color: var(--text-dim); font-size: 11.5px; margin-right: 8px; flex-shrink: 0;
+            }
+            #panel-projects .account-subtable td:last-child { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--glass-border); }
+            #panel-projects .account-subtable td:last-child::before { display: none; }
+            #panel-projects .account-subtable td:last-child div { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
+            #panel-projects .account-subtable td:last-child .btn { flex: 1 1 auto; justify-content: center; min-height: 36px; font-size: 13px; }
+        }
+        @media (max-width: 560px) {
+            .main { padding: 10px; }
+            .sidebar { padding: 8px 10px 4px; gap: 5px 7px; }
+            .menu button { min-height: 36px; padding: 0 10px; font-size: 13px; font-weight: 800; border-radius: 9px; }
+            .card, .task-box, .wx-menu-card, .status-card, .wx-card { border-radius: 14px; padding: 14px; }
+            .activity-row { padding: 14px; }
+            .grid-cards, .status-grid, .wx-status-grid, .task-grid, .wx-feature-grid { gap: 10px; }
+            .topbar { padding: 12px 14px; margin-bottom: 10px; }
+            .topbar h2 { font-size: 20px; line-height: 1.2; }
+            .topbar .muted { font-size: 11.5px; line-height: 1.5; margin-top: 6px; color: rgba(30,41,59,0.46); }
+            .btn { width: 100%; justify-content: center; }
+            .btn.small { width: auto; min-width: 60px; }
+            .tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+            .tabs button { flex: 0 0 auto; }
+            .modal-mask { align-items: flex-end; padding: 4px; }
+            .modal { width: calc(100vw - 8px); border-radius: 18px 18px 14px 14px; padding: 14px; max-height: calc(100dvh - 8px); }
+            .project-modal-meta { gap: 6px; margin-bottom: 10px; }
+            .project-modal-chip { font-size: 12px; padding: 6px 10px; }
+            .project-modal-guide { margin-bottom: 12px; padding: 12px 13px; }
+            .project-modal-guide strong { font-size: 12.5px; margin-bottom: 6px; }
+            .project-modal-guide .guide-text { font-size: 12px; line-height: 1.6; }
+            .field-help { font-size: 11.5px; line-height: 1.5; }
+            .modal-header { margin-bottom: 10px; }
+            .modal-header h3 { font-size: 17px; line-height: 1.35; flex: 1; }
+            .modal-close { width: 42px; height: 42px; border-radius: 12px; font-size: 22px; }
+            .actions { margin-top: 14px; }
+            .ck-field-row { grid-template-columns: 1fr; padding: 11px; gap: 8px; }
+            .ck-field-name { gap: 4px; }
+            .ck-edit-notice { font-size: 12px; line-height: 1.6; padding: 10px 12px; }
+            .actions .btn { flex: 1 1 100%; }
+            pre.income-box { margin-top: 10px; max-height: 56vh; font-size: 13px; line-height: 1.62; padding: 12px; }
+            #incomeModalDesc { font-size: 13.5px; line-height: 1.6; margin-bottom: 8px; }
+            #wxModalBody img { width: min(200px, 65vw) !important; height: min(200px, 65vw) !important; }
+            .wx-status-line { flex-direction: column; gap: 3px; }
+            .wx-status-line strong { text-align: left; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="toast info" id="toast"></div>
+
+<!-- 项目上车模态框 -->
+<div class="modal-mask" id="projectModalMask">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="projectModalTitle">项目上车</h3>
+            <button class="modal-close" onclick="closeProjectModal()">×</button>
+        </div>
+        <div class="project-modal-meta" id="projectModalMeta"></div>
+        <div class="project-modal-guide" id="projectModalGuide" style="display:none;"></div>
+        <div class="form-grid" id="projectModalFields"></div>
+        <div class="actions">
+            <button class="btn secondary" onclick="closeProjectModal()">取消</button>
+            <button class="btn" onclick="confirmProjectSubmit()">确认上车</button>
+        </div>
+    </div>
+</div>
+
+<!-- 查询收入模态框 -->
+<div class="modal-mask" id="incomeModalMask">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="incomeModalTitle">查询收入</h3>
+            <button class="modal-close" onclick="closeIncomeModal()">×</button>
+        </div>
+        <div class="muted" id="incomeModalDesc">正在查询...</div>
+        <pre class="income-box" id="incomeModalContent">暂无数据</pre>
+        <div class="actions">
+            <button class="btn secondary" onclick="closeIncomeModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 修改 CK 模态框 -->
+<div class="modal-mask" id="editCkModalMask">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="editCkModalTitle">修改 CK</h3>
+            <button class="modal-close" onclick="closeEditCkModal()">×</button>
+        </div>
+        <div class="muted" id="editCkModalDesc" style="margin-bottom:12px;">修改后将立即更新到青龙环境变量</div>
+        <div class="ck-edit-panel">
+            <div class="ck-edit-notice">已按活动配置拆分为字段编辑。请只修改右侧的字段值，字段名和连接符会在保存时自动组合，避免误删。</div>
+            <div class="ck-field-list" id="editCkFields"></div>
+            <div class="field full" id="editCkRawWrap" style="display:none;">
+                <label>原始 CK 值</label>
+                <textarea id="editCkValue" rows="6" placeholder="请输入新的 CK 值" style="font-family:monospace;font-size:13px;"></textarea>
+                <div class="field-help">当前活动无法按字段自动拆分时才会显示这里，请保留字段名和连接符。</div>
+            </div>
+            <div class="field full">
+                <label>保存预览</label>
+                <div class="ck-preview-box" id="editCkPreview">-</div>
+            </div>
+        </div>
+        <div class="actions">
+            <button class="btn secondary" onclick="closeEditCkModal()">取消</button>
+            <button class="btn" onclick="saveProjectCk()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 通知详情模态框 -->
+<div class="modal-mask" id="notifyModalMask">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="notifyModalTitle">通知详情</h3>
+            <button class="modal-close" onclick="closeNotifyModal()">×</button>
+        </div>
+        <div class="notify-meta" id="notifyModalMeta" style="margin-bottom:14px;"></div>
+        <div class="notify-detail-content" id="notifyModalContent"></div>
+        <div class="actions">
+            <button class="btn secondary" onclick="closeNotifyModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 微信协议模态框 -->
+<div class="modal-mask" id="wxModalMask">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="wxModalTitle">微信协议操作</h3>
+            <button class="modal-close" onclick="closeWxModal()">×</button>
+        </div>
+        <div class="muted" id="wxModalDesc" style="margin-bottom:16px;line-height:1.8;"></div>
+        <div id="wxModalBody"></div>
+        <div class="actions" id="wxModalActions">
+            <button class="btn secondary" onclick="closeWxModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 投稿与反馈模态框 -->
+<div class="modal-mask" id="feedbackModalMask">
+    <div class="modal" style="max-width:520px;">
+        <div class="modal-header">
+            <h3>📝 投稿与反馈</h3>
+            <button class="modal-close" onclick="closeFeedbackModal()">×</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+                <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">反馈类型</label>
+                <select id="feedbackType" style="width:100%;padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;">
+                    <option value="bug反馈">🐛 Bug反馈</option>
+                    <option value="活动投稿">📢 活动投稿</option>
+                    <option value="建议">💡 建议</option>
+                </select>
+            </div>
+            <div>
+                <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">主题 <span style="color:var(--red);">*</span></label>
+                <input type="text" id="feedbackTitle" placeholder="请输入反馈主题（必填）" style="width:100%;padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;box-sizing:border-box;" />
+            </div>
+            <div>
+                <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">详细内容 <span style="color:var(--red);">*</span></label>
+                <textarea id="feedbackContent" placeholder="请详细描述你的问题或建议（必填）" rows="5" style="width:100%;padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit;"></textarea>
+            </div>
+            <div>
+                <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">联系方式（选填）</label>
+                <input type="text" id="feedbackContact" placeholder="QQ或微信等，方便管理员联系你" style="width:100%;padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;box-sizing:border-box;" />
+            </div>
+        </div>
+        <div class="actions" style="margin-top:16px;">
+            <button class="btn secondary" onclick="closeFeedbackModal()">取消</button>
+            <button class="btn primary" onclick="submitFeedback()" id="feedbackSubmitBtn">提交反馈</button>
+        </div>
+    </div>
+</div>
+
+<div class="layout">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+        <div class="brand">
+            <h1>用户中心</h1>
+            <p id="sidebarDesc">授权管理 · 微信协议 · 积分任务</p>
+        </div>
+        <div class="menu-group">
+            <div class="menu-group-title">主菜单</div>
+            <div class="menu">
+                <button class="active" data-panel="dashboard">⚡ 仪表盘</button>
+                <button data-panel="notifications">🔔 通知中心<span class="notify-badge" id="menuNotifyBadge" style="display:none;">0</span></button>
+                <button data-panel="projects">📦 我的项目</button>
+                <button data-panel="activities">🚀 上车项目</button>
+                <button data-panel="tasks">⭐ 积分任务</button>
+            </div>
+        </div>
+        <div class="menu-group">
+            <div class="menu-group-title">工具</div>
+            <div class="menu">
+                <button data-panel="wx">💬 微信协议</button>
+                <button data-panel="feedback">📝 投稿反馈</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main">
+        <div class="topbar">
+            <div>
+                <h2 id="pageTitle">⚡ 仪表盘</h2>
+                <div class="muted" id="topSummary">正在加载用户信息...</div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn secondary" onclick="refreshCurrentPanel(true)">🔄 刷新</button>
+                <button class="btn danger" onclick="logout()">退出登录</button>
+            </div>
+        </div>
+
+        <!-- ===== 仪表盘 ===== -->
+        <section class="panel active" id="panel-dashboard">
+            <!-- 核心数据英雄条 -->
+            <div class="dash-hero-strip">
+                <div class="dash-hero-item hero-cyan-grad">
+                    <div class="hero-bg-icon">💰</div>
+                    <div class="hero-label">当前积分</div>
+                    <div class="hero-value" id="cardCoin">-</div>
+                    <div class="hero-sub" id="cardNumber">编号 -</div>
+                </div>
+                <div class="dash-hero-item hero-green-grad">
+                    <div class="hero-bg-icon">🚀</div>
+                    <div class="hero-label">可上车项目总数</div>
+                    <div class="hero-value" id="cardAvailableCount">0</div>
+                    <div class="hero-sub">管理员已开启的可上车项目</div>
+                </div>
+                <div class="dash-hero-item hero-green-grad">
+                    <div class="hero-bg-icon">✅</div>
+                    <div class="hero-label">我的有效项目</div>
+                    <div class="hero-value" id="cardActiveCount">0</div>
+                    <div class="hero-sub" id="cardProjects">0 个账号</div>
+                </div>
+                <div class="dash-hero-item hero-amber-grad">
+                    <div class="hero-bg-icon">⏰</div>
+                    <div class="hero-label">我的快到期 / 已失效</div>
+                    <div class="hero-value"><span id="cardExpiringCount">0</span> / <span id="cardExpiredCount">0</span></div>
+                    <div class="hero-sub">仅统计已启用活动下的项目</div>
+                </div>
+            </div>
+
+            <div class="dash-info-card dash-notice-card">
+                <div class="dash-notice-head">
+                    <div class="dash-notice-title"><span class="pulse-dot"></span><span>重要通知滚动提醒</span></div>
+                    <button class="btn small secondary" onclick="document.querySelector('button[data-panel=&quot;notifications&quot;]').click()">查看通知</button>
+                </div>
+                <div class="meta-grid" style="margin-bottom:12px;">
+                    <div>通知总数：<strong id="dashNotifyTotal">0</strong></div>
+                    <div>未读通知：<strong id="dashNotifyUnread" style="color:var(--red);">0</strong></div>
+                </div>
+                <div class="dash-notice-viewport">
+                    <div class="dash-notice-track" id="dashNoticeTrack">
+                        <div class="dash-notice-empty">正在加载重要通知...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 账号信息 + 微信状态 双列 -->
+            <div class="dash-info-grid">
+                <div class="dash-info-card">
+                    <div class="card-title">
+                        <span class="title-icon" style="background:var(--cyan-dim);color:var(--cyan);">👤</span>
+                        账号信息
+                    </div>
+                    <div id="profileBox">
+                        <div class="dash-profile-row"><span class="pr-label">网页账号</span><span class="pr-value" id="cardAccount">-</span></div>
+                        <div class="dash-profile-row"><span class="pr-label">用户编号</span><span class="pr-value" id="profileNumber">-</span></div>
+                        <div class="dash-profile-row"><span class="pr-label">当前积分</span><span class="pr-value" id="profileCoin">-</span></div>
+                        <div class="dash-profile-row"><span class="pr-label">QQ</span><span class="pr-value" id="profileQQ">-</span></div>
+                        <div class="dash-profile-row"><span class="pr-label">微信ID</span><span class="pr-value" id="profileWxid">-</span></div>
+                        <div class="dash-profile-row"><span class="pr-label">用户类别</span><span class="pr-value" id="profileClass">-</span></div>
+                        <div class="dash-profile-row"><span class="pr-label">最近登录</span><span class="pr-value" id="profileLastLogin">-</span></div>
+                        <div class="dash-profile-row"><span class="pr-label">绑定时间</span><span class="pr-value" id="profileBoundAt">-</span></div>
+                    </div>
+                </div>
+                <div class="dash-info-card">
+                    <div class="card-title">
+                        <span class="title-icon" style="background:var(--green-dim);color:var(--green);">💬</span>
+                        微信协议状态
+                    </div>
+                    <div id="wxDashDevices" class="dash-wx-grid">
+                        <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0;grid-column:1/-1;">暂无微信协议设备</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 投稿反馈 ===== -->
+        <section class="panel" id="panel-feedback">
+            <div class="section">
+                <div class="section-header"><h3>📝 投稿与反馈</h3><span class="muted">Bug反馈、活动投稿、建议提交，管理员会及时处理回复</span></div>
+                <div style="max-width:560px;display:flex;flex-direction:column;gap:16px;">
+                    <div>
+                        <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">反馈类型</label>
+                        <select id="feedbackTypePage" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;">
+                            <option value="bug反馈">🐛 Bug反馈 - 发现程序问题或异常</option>
+                            <option value="活动投稿">📢 活动投稿 - 提交新的活动或项目建议</option>
+                            <option value="建议">💡 功能建议 - 对产品改进的想法和建议</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">主题 <span style="color:var(--red);">*</span></label>
+                        <input type="text" id="feedbackTitlePage" placeholder="请输入反馈主题（必填）" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;box-sizing:border-box;" />
+                    </div>
+                    <div>
+                        <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">详细内容 <span style="color:var(--red);">*</span></label>
+                        <textarea id="feedbackContentPage" placeholder="请详细描述你的问题或建议（必填）&#10;&#10;- 如果是 Bug 反馈，请说明复现步骤&#10;- 如果是活动投稿，请提供活动详情&#10;- 如果是建议，请说明你的想法和预期效果" rows="6" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit;line-height:1.6;"></textarea>
+                    </div>
+                    <div>
+                        <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">联系方式（选填）</label>
+                        <input type="text" id="feedbackContactPage" placeholder="QQ或微信等，方便管理员联系你处理反馈" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;box-sizing:border-box;" />
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:4px;">
+                        <button class="btn primary" onclick="submitFeedbackFromPage()" id="feedbackSubmitBtnPage" style="flex:1;padding:12px;font-size:14px;border-radius:10px;">提交反馈</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 我的项目 ===== -->
+        <section class="panel" id="panel-projects">
+            <div class="section">
+                <div class="section-header panel-duplicate-title">
+                    <h3>📦 我的项目</h3>
+                    <span class="muted">按项目聚合，点击展开查看账号明细</span>
+                </div>
+                <div class="tabs">
+                    <button class="active" id="projectTab-active" onclick="switchProjectTab('active')">授权有效中</button>
+                    <button id="projectTab-expired" onclick="switchProjectTab('expired')">授权过期</button>
+                </div>
+                <div class="card table-wrap" style="padding:0;overflow:hidden;">
+                    <table>
+                        <thead><tr><th>项目</th><th>账号数量</th><th>费用</th><th>青龙</th><th>状态统计</th><th>操作</th></tr></thead>
+                        <tbody id="projectsBody"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 上车项目 ===== -->
+        <section class="panel" id="panel-activities">
+            <div class="section">
+                <div class="section-header panel-duplicate-title"><h3>🚀 上车项目</h3><span class="muted">选择项目并填写信息完成上车</span></div>
+                <div class="activities-list" id="activitiesBox"></div>
+            </div>
+        </section>
+
+        <!-- ===== 通知中心 ===== -->
+        <section class="panel" id="panel-notifications">
+            <div class="section">
+                <div class="section-header panel-duplicate-title"><h3>🔔 通知中心</h3><span class="muted">接收网页和 app 后台通知，按来源与分类快速查询</span></div>
+                <div class="notify-summary-grid">
+                    <div class="notify-summary-card"><span>通知总数</span><strong id="notifyTotalCount">0</strong></div>
+                    <div class="notify-summary-card"><span>未读提醒</span><strong id="notifyUnreadCount">0</strong></div>
+                    <div class="notify-summary-card"><span>当前筛选</span><strong id="notifyFilterName" style="font-size:20px;line-height:1.4;">全部</strong></div>
+                </div>
+                <div class="notify-layout">
+                    <div class="notify-filter-card">
+                        <div class="notify-filter-title">消息分类</div>
+                        <div class="notify-filter-group" id="notifyCategoryFilters">
+                            <button class="active" data-category="全部">全部消息</button>
+                            <button data-category="项目授权相关">项目授权相关</button>
+                            <button data-category="活动相关">活动相关</button>
+                            <button data-category="建议反馈类">建议反馈类</button>
+                            <button data-category="微信协议类">微信协议类</button>
+                            <button data-category="京东类">京东类</button>
+                            <button data-category="其他">其他</button>
+                        </div>
+                        <button class="btn secondary" style="width:100%;" onclick="loadNotificationsData()">刷新通知</button>
+                    </div>
+                    <div class="notify-list" id="notifyListBox">
+                        <div class="notify-empty">正在加载通知...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 积分任务 ===== -->
+        <section class="panel" id="panel-tasks">
+            <div class="section">
+                <div class="section-header panel-duplicate-title"><h3>⭐ 积分任务</h3><span class="muted">完成任务获取积分奖励</span></div>
+                <div class="task-grid">
+                    <div class="task-box">
+                        <h3>📅 今日打卡 / 签到</h3>
+                        <p>完成后根据排名和连续打卡天数发放积分奖励，与机器人侧保持一致。</p>
+                        <button class="btn" onclick="runTask('checkin')">立即打卡</button>
+                    </div>
+                    <div class="task-box">
+                        <h3>🙏 祈福拿积分</h3>
+                        <p>每日可尝试一次祈福，成功则获得额外积分；今天已祈福过会直接提示。</p>
+                        <button class="btn" onclick="runTask('pray')">立即祈福</button>
+                    </div>
+                </div>
+                <div class="task-box" style="margin-top:14px;">
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:200px;">
+                            <h3>💰 积分购买</h3>
+                            <p style="margin-bottom:0;">积分不足？点击前往积分购买页面，获取更多积分。<br><span style="color:var(--amber);font-weight:700;">💡 购买后发给机器人或者在下方兑换处填入完成充值</span></p>
+                        </div>
+                        <button class="btn" style="background:linear-gradient(135deg,#0891b2,#7c3aed);" onclick="window.open('http://180.152.5.230:8005/#/','_blank')">前往购买积分</button>
+                    </div>
+                </div>
+                <div class="task-box" style="margin-top:14px;">
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:200px;">
+                            <h3>🎟️ 卡密兑换</h3>
+                            <p style="margin-bottom:12px;">购买卡密后在此输入卡密直接兑换积分，支持普通卡密和赠送卡密。如有异常请联系大师。</p>
+                            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                                <input type="text" id="redeemKeyInput" placeholder="请输入卡密（XDD... 或 ZSKM...）" style="flex:1;min-width:200px;padding:10px 14px;border:1px solid var(--glass-border);border-radius:11px;font-size:13px;outline:none;font-family:monospace;background:rgba(255,255,255,0.035);transition:border-color 0.2s;">
+                                <button class="btn" style="background:linear-gradient(135deg,#0d9488,#0891b2);white-space:nowrap;" onclick="redeemKey()">兑换积分</button>
+                            </div>
+                            <p style="margin-top:8px;font-size:11.5px;color:var(--text-muted);">💡 卡密格式以 XDD 或 ZSKM 开头，每人赠送卡密每批次限用一张</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 微信协议 ===== -->
+        <section class="panel" id="panel-wx">
+            <div class="section">
+                <div class="section-header panel-duplicate-title"><h3>💬 微信协议</h3><span class="muted">管理微信协议设备，查看在线状态</span></div>
+
+                <details class="wx-intro-box" id="wxIntroBox">
+                    <summary>📖 什么是微信协议？</summary>
+                    <div class="wx-intro-content">
+                        <p>微信协议是一种自动化工具，主要用于获取微信小程序的登录凭证（CK）。</p>
+                        <h5>【主要作用】</h5>
+                        <ul>
+                            <li>自动获取小程序 CK，无需手动抓包</li>
+                            <li>CK 通常有有效期，但配合微信协议可保持永不过期</li>
+                            <li>支持微信协议的项目，只需提交微信 ID 即可自动上车</li>
+                        </ul>
+                        <h5>【使用场景】</h5>
+                        <p>如果某个项目标注 "支持微信协议"，你只需要：</p>
+                        <ul>
+                            <li>在此页面扫码或提交微信 ID 绑定设备</li>
+                            <li>在项目中心选择支持微信协议的项目上车</li>
+                            <li>系统会自动通过你的微信协议获取 CK</li>
+                        </ul>
+                        <h5>【注意事项】</h5>
+                        <ul>
+                            <li>需要保持微信在线状态</li>
+                            <li>定期检查设备是否掉线</li>
+                            <li>掉线后需要重新扫码登录</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <div class="wx-device-grid" id="wxDeviceGrid">
+                    <div class="wx-empty-state"><div class="empty-icon">📱</div><p>暂无微信协议设备</p><p style="font-size:11px;">扫码登录或手动添加微信ID开始使用</p></div>
+                </div>
+
+                <div class="wx-add-bar">
+                    <input type="text" id="wxAddInput" placeholder="输入微信ID添加监控（仅显示状态，不参与积分互通）" />
+                    <button class="btn" style="background:linear-gradient(135deg,#0891b2,#7c3aed);" onclick="addWxDevice()">➕ 添加</button>
+                </div>
+
+                <div class="wx-feature-grid">
+                    <div class="wx-menu-card" onclick="wxAction('scan-login')">
+                        <strong>📱 微信扫码登录</strong>
+                        <span>去微信 code 换小程序 CK。扫码成功后将扣除积分，并绑定为主设备。</span>
+                    </div>
+                    <div class="wx-menu-card" onclick="wxAction('wake-login')">
+                        <strong>⚡ 微信唤醒登录</strong>
+                        <span>手机端在线但服务器掉线时使用，唤醒设备后重新扫码确认。</span>
+                    </div>
+                    <div class="wx-menu-card" onclick="wxAction('relogin')">
+                        <strong>🔄 微信重新登录</strong>
+                        <span>微信协议掉线时重新上线设备，不额外扣除积分。</span>
+                    </div>
+                    <div class="wx-menu-card" onclick="wxAction('logout')">
+                        <strong>🚪 微信登出</strong>
+                        <span>退出当前登录中的微信协议主设备。</span>
+                    </div>
+                    <div class="wx-menu-card" onclick="wxAction('delete')">
+                        <strong>🗑️ 微信删除</strong>
+                        <span>删除微信协议主设备数据，再次上线需重新扫码并扣除积分。</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+const state = {
+    dashboard: null,
+    profile: null,
+    projects: [],
+    activities: [],
+    notifications: [],
+    notificationUnread: 0,
+    notificationTotal: 0,
+    notificationUnreadStats: { bySource: {}, byCategory: {} },
+    notifyPage: 1,
+    notifyLimit: 10,
+    popupShownIds: new Set(),
+    notifySource: '全部',
+    notifyCategory: '全部',
+    wxStatus: null,
+    wxDevices: [],
+    currentProjectTab: 'active',
+    currentActivity: null,
+    currentIncomeProject: null,
+    currentPanel: 'dashboard',
+    wxPollTimer: null,
+    wxPollingUuid: '',
+    wxPollingDeduct: false
+};
+
+document.querySelectorAll('.menu button[data-panel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.menu button[data-panel]').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+        btn.classList.add('active');
+        const panel = btn.dataset.panel;
+        state.currentPanel = panel;
+        document.getElementById('panel-' + panel).classList.add('active');
+        syncPanelTitle(panel);
+        refreshCurrentPanel(false);
+    });
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'wxAddInput') {
+        addWxDevice();
+    }
+});
+
+function syncPanelTitle(panel) {
+    const titleMap = {
+        dashboard: '⚡ 仪表盘',
+        projects: '📦 我的项目',
+        activities: '🚀 上车项目',
+        notifications: '🔔 通知中心',
+        tasks: '⭐ 积分任务',
+        wx: '💬 微信协议',
+        feedback: '📝 投稿与反馈'
+    };
+    document.getElementById('pageTitle').textContent = titleMap[panel] || '用户中心';
+}
+
+function toast(message, type = 'info', duration = 2600) {
+    const el = document.getElementById('toast');
+    el.className = 'toast ' + type + ' show';
+    el.textContent = message;
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => { el.classList.remove('show'); }, duration);
+}
+
+async function request(url, options = {}) {
+    const resp = await fetch(url, options);
+    const data = await resp.json();
+    if (data.code !== 0) throw new Error(data.msg || '请求失败');
+    return data;
+}
+
+async function loadDashboardData() {
+    const [dashboard, profile] = await Promise.all([
+        request('/api/portal/dashboard'),
+        request('/api/portal/profile')
+    ]);
+    state.dashboard = dashboard.data;
+    state.profile = profile.data;
+    renderDashboard();
+    request('/api/portal/wx/status').then(function(wxStatus) {
+        state.wxStatus = wxStatus.data;
+        renderDashboard();
+    }).catch(function() {
+        state.wxStatus = null;
+        renderDashboard();
+    });
+    loadWxDevices().catch(function() {});
+}
+
+async function loadProjectData() {
+    const projects = await request('/api/portal/projects');
+    state.projects = projects.data || [];
+    updateDashboardProjectStats();
+    renderDashboard();
+    renderProjects();
+}
+
+async function loadActivitiesData() {
+    const activities = await request('/api/portal/activities');
+    state.activities = activities.data || [];
+    renderActivities();
+}
+
+async function loadNotificationsData(page) {
+    if (page) state.notifyPage = page;
+    const params = new URLSearchParams({ page: String(state.notifyPage || 1), limit: String(state.notifyLimit || 10), includeContent: '1' });
+    if (state.notifyCategory && state.notifyCategory !== '全部') params.set('category', state.notifyCategory);
+    const resp = await request('/api/portal/notifications?' + params.toString());
+    const data = resp.data || {};
+    state.notifications = data.list || [];
+    state.notificationTotal = data.total || 0;
+    state.notificationUnread = data.unread || 0;
+    state.notificationUnreadStats = data.unreadStats || { bySource: {}, byCategory: {} };
+    renderNotifications();
+    renderDashboardNotices();
+}
+
+function renderNotifyFilterLabel(label, count) {
+    const safeLabel = escapeHtml(label);
+    const n = Number(count || 0);
+    return n > 0 ? `${safeLabel}<span class="notify-badge" style="display:inline-flex;">${n > 99 ? '99+' : n}</span>` : safeLabel;
+}
+
+function updateNotificationBadges() {
+    const unread = Number(state.notificationUnread || 0);
+    const badge = document.getElementById('menuNotifyBadge');
+    if (badge) {
+        badge.textContent = unread > 99 ? '99+' : unread;
+        badge.style.display = unread > 0 ? 'inline-flex' : 'none';
+    }
+    const stats = state.notificationUnreadStats || {};
+    const byCategory = stats.byCategory || stats.ByCategory || {};
+    document.querySelectorAll('#notifyCategoryFilters button').forEach(btn => {
+        const category = btn.dataset.category || '全部';
+        const count = category === '全部' ? unread : (byCategory[category] || 0);
+        btn.innerHTML = renderNotifyFilterLabel(category === '全部' ? '全部消息' : category, count);
+    });
+}
+
+function renderNotifications() {
+    const box = document.getElementById('notifyListBox');
+    if (!box) return;
+    document.getElementById('notifyTotalCount').textContent = state.notificationTotal || 0;
+    document.getElementById('notifyUnreadCount').textContent = state.notificationUnread || 0;
+    const filterName = state.notifyCategory && state.notifyCategory !== '全部' ? state.notifyCategory : '全部';
+    document.getElementById('notifyFilterName').textContent = filterName;
+    updateNotificationBadges();
+    const list = (state.notifications || []).slice().sort((a, b) => Number(!!b.isTop) - Number(!!a.isTop));
+    if (!list.length) {
+        box.innerHTML = '<div class="notify-empty">当前筛选下暂无通知。</div>';
+        renderNotifyPagination();
+        return;
+    }
+    box.innerHTML = list.map(item => `
+        <div class="notify-item ${item.isRead ? '' : 'unread'} ${item.isTop ? 'top' : ''}" onclick="openNotificationDetail(${item.id})">
+            <div class="notify-item-head">
+                <div class="notify-title">${item.isTop ? '<span class="tag top" style="margin-right:6px;">置顶</span>' : ''}${escapeHtml(item.title || '-')}</div>
+                <div class="notify-time">${formatPortalTime(item.createdAt)}</div>
+            </div>
+            <div class="notify-meta">
+                ${item.isTop ? '<span class="tag top">置顶通知</span>' : ''}
+                <span class="tag ${item.isRead ? 'gray' : 'unread'}">${item.isRead ? '已读' : '未读'}</span>
+                <span class="tag notice">${escapeHtml(item.category || '其他')}</span>
+                ${item.displayType === 'popup' ? '<span class="tag expiring">滚动</span>' : ''}
+            </div>
+        </div>`).join('');
+    renderNotifyPagination();
+}
+
+function renderNotifyPagination() {
+    const box = document.getElementById('notifyListBox');
+    if (!box) return;
+    const total = Number(state.notificationTotal || 0);
+    const limit = Number(state.notifyLimit || 10);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const page = Math.min(Math.max(1, Number(state.notifyPage || 1)), totalPages);
+    const pager = document.createElement('div');
+    pager.className = 'notify-pager';
+    pager.innerHTML = `
+        <button class="btn secondary small" ${page <= 1 ? 'disabled' : ''} onclick="loadNotificationsData(${page - 1})">上一页</button>
+        <span>第 ${page} / ${totalPages} 页 · 共 ${total} 条</span>
+        <button class="btn secondary small" ${page >= totalPages ? 'disabled' : ''} onclick="loadNotificationsData(${page + 1})">下一页</button>`;
+    box.appendChild(pager);
+}
+
+function renderDashboardNotices() {
+    const box = document.getElementById('dashNoticeTrack');
+    if (!box) return;
+    const important = (state.notifications || [])
+        .filter(item => item.isTop || item.displayType === 'popup' || !item.isRead)
+        .sort((a, b) => Number(!!b.isTop) - Number(!!a.isTop))
+        .slice(0, 6);
+    if (!important.length) {
+        box.style.animation = 'none';
+        box.innerHTML = '<div class="dash-notice-empty">暂无新的重要通知，后续提醒会在这里滚动展示。</div>';
+        return;
+    }
+    const list = important.length === 1 ? important : important.concat(important);
+    box.style.animation = important.length === 1 ? 'none' : '';
+    box.innerHTML = list.map(item => {
+        const detail = item.content || item.detailContent || '正在加载通知具体内容...';
+        return `
+        <div class="dash-notice-item" onclick="openNotificationDetail(${item.id})">
+            <div class="level">${item.isTop ? '置顶' : (item.displayType === 'popup' ? '重要' : '未读')}</div>
+            <div class="content">
+                <div class="title">${escapeHtml(item.title || '-')}</div>
+                <div class="summary" data-notice-summary="${item.id}">${escapeHtml(detail)}</div>
+            </div>
+            <div class="time">${formatPortalTime(item.createdAt)}</div>
+        </div>`;
+    }).join('');
+}
+
+async function loadDashboardNoticeContents() {
+    const important = (state.notifications || []).filter(item => item.isTop || item.displayType === 'popup' || !item.isRead).slice(0, 6);
+    await Promise.all(important.map(async item => {
+        if (item.content || item.detailContent) return;
+        try {
+            const resp = await request('/api/portal/notification?id=' + encodeURIComponent(item.id) + '&preview=1');
+            const detail = resp.data || {};
+            item.detailContent = detail.content || '';
+            document.querySelectorAll('[data-notice-summary="' + item.id + '"]').forEach(el => {
+                el.textContent = item.detailContent || item.source || item.category || '';
+            });
+        } catch (e) {}
+    }));
+}
+
+async function openNotificationDetail(id, isPopup = false) {
+    try {
+        const resp = await request('/api/portal/notification?id=' + encodeURIComponent(id));
+        const item = resp.data || {};
+        document.getElementById('notifyModalTitle').textContent = item.title || '通知详情';
+        const modal = document.querySelector('#notifyModalMask .modal');
+        if (modal) modal.classList.toggle('notify-popup-modal', !!isPopup);
+        document.getElementById('notifyModalMeta').innerHTML = `
+            ${item.isTop ? '<span class="tag top">置顶通知</span>' : ''}
+            <span class="tag notice">${escapeHtml(item.category || '-')}</span>
+            <span class="tag admin">${escapeHtml(item.source || '-')}</span>
+            <span class="tag gray">${formatPortalTime(item.createdAt)}</span>
+            <span class="tag gray">点击 ${item.clickCount || 0}</span>`;
+        document.getElementById('notifyModalContent').textContent = item.content || '';
+        document.getElementById('notifyModalMask').classList.add('show');
+        await loadNotificationsData();
+    } catch (err) {
+        toast(err.message || '读取通知失败', 'error');
+    }
+}
+
+function closeNotifyModal() {
+    document.getElementById('notifyModalMask').classList.remove('show');
+    const modal = document.querySelector('#notifyModalMask .modal');
+    if (modal) modal.classList.remove('notify-popup-modal');
+}
+
+function bindNotificationFilters() {
+    document.querySelectorAll('#notifyCategoryFilters button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#notifyCategoryFilters button').forEach(x => x.classList.remove('active'));
+            btn.classList.add('active');
+            state.notifyCategory = btn.dataset.category || '全部';
+            state.notifyPage = 1;
+            loadNotificationsData(1).catch(err => toast(err.message || '加载失败', 'error'));
+        });
+    });
+}
+
+function formatNotifyChannels(channels) {
+    return String(channels || '').replace('webapp', 'APP/网页').replace('web', '网页').replace('app', 'App').replace('robot', '机器人').replace(/,/g, ' / ') || 'APP/网页';
+}
+
+function formatPortalTime(value) {
+    if (!value) return '-';
+    try { return new Date(value).toLocaleString('zh-CN'); } catch (e) { return value; }
+}
+
+async function refreshCurrentPanel(showToast = true) {
+    try {
+        switch (state.currentPanel) {
+            case 'projects':   await loadProjectData(); break;
+            case 'activities': await loadActivitiesData(); break;
+            case 'notifications': await loadNotificationsData(); break;
+            case 'tasks':      await loadDashboardData(); break;
+            case 'wx':         await loadWxDevices(); break;
+            case 'dashboard':
+            default:           await loadDashboardData(); break;
+        }
+        if (showToast) toast('当前模块已刷新', 'success');
+    } catch (err) {
+        toast(err.message || '加载失败', 'error');
+    }
+}
+
+async function initialLoad() {
+    try {
+        const [dashboard, profile] = await Promise.all([
+            request('/api/portal/dashboard'),
+            request('/api/portal/profile')
+        ]);
+        state.dashboard = dashboard.data;
+        state.profile = profile.data;
+        renderDashboard();
+        loadProjectData().catch(err => toast(err.message || '加载项目失败', 'error'));
+        loadActivitiesData().catch(err => toast(err.message || '加载活动失败', 'error'));
+        loadNotificationsData(1).catch(err => toast(err.message || '加载通知失败', 'error'));
+        loadWxDevices().catch(function() {});
+        request('/api/portal/wx/status').then(function(wxStatus) {
+            state.wxStatus = wxStatus.data;
+            renderDashboard();
+        }).catch(function() {
+            state.wxStatus = null;
+            renderDashboard();
+        });
+    } catch (err) {
+        toast(err.message || '加载失败', 'error');
+    }
+}
+
+function updateDashboardProjectStats() {
+    if (!state.dashboard) state.dashboard = {};
+    const list = state.projects || [];
+    state.dashboard.projectCount = list.length;
+    state.dashboard.activeCount = list.filter(item => item.bizStatus === 'active' || !item.expireDate).length;
+    state.dashboard.expiringCount = list.filter(item => item.bizStatus === 'expiring').length;
+    state.dashboard.expiredCount = list.filter(item => item.bizStatus === 'expired').length;
+    state.dashboard.availableCount = state.dashboard.availableCount ?? (state.activities || []).length;
+}
+
+function renderDashboard() {
+    const d = state.dashboard || {};
+    document.getElementById('cardCoin').textContent = d.coin ?? '-';
+    document.getElementById('cardNumber').textContent = '编号 ' + (d.number ?? '-');
+    const availableEl = document.getElementById('cardAvailableCount');
+    if (availableEl) availableEl.textContent = d.availableCount ?? (state.activities || []).length ?? 0;
+    document.getElementById('cardProjects').textContent = (d.projectCount ?? 0) + ' 个账号';
+    document.getElementById('cardActiveCount').textContent = d.activeCount ?? 0;
+    document.getElementById('cardExpiringCount').textContent = d.expiringCount ?? 0;
+    document.getElementById('cardExpiredCount').textContent = d.expiredCount ?? 0;
+    const dashNotifyTotal = document.getElementById('dashNotifyTotal');
+    const dashNotifyUnread = document.getElementById('dashNotifyUnread');
+    if (dashNotifyTotal) dashNotifyTotal.textContent = d.notificationTotal ?? state.notificationTotal ?? 0;
+    if (dashNotifyUnread) dashNotifyUnread.textContent = d.notificationUnread ?? state.notificationUnread ?? 0;
+    state.notificationTotal = d.notificationTotal ?? state.notificationTotal;
+    state.notificationUnread = d.notificationUnread ?? state.notificationUnread;
+    updateNotificationBadges();
+    document.getElementById('topSummary').textContent =
+        `积分 ${d.coin ?? '-'} · 账号 ${d.username || '-'} · 编号 ${d.number || '-'} · 可上车 ${d.availableCount ?? 0} · 我的有效 ${d.activeCount || 0} · 快到期 ${d.expiringCount || 0} · 已失效 ${d.expiredCount || 0}`;
+
+    // 账号信息
+    const user = state.profile?.user || {};
+    const account = state.profile?.account || {};
+    document.getElementById('cardAccount').textContent = d.username || account.Username || account.username || '-';
+    document.getElementById('profileNumber').textContent = user.Number || '-';
+    document.getElementById('profileCoin').textContent = user.Coin ?? '-';
+    document.getElementById('profileQQ').textContent = user.QQ || '-';
+    document.getElementById('profileWxid').textContent = user.Wxid || '-';
+    document.getElementById('profileClass').textContent = user.Class || '-';
+    document.getElementById('profileLastLogin').textContent = d.lastLoginAt || '-';
+    document.getElementById('profileBoundAt').textContent = d.boundAt || '-';
+
+    // 微信状态指示器
+    const devices = state.wxDevices || [];
+    const container = document.getElementById('wxDashDevices');
+    if (devices.length === 0) {
+        container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0;grid-column:1/-1;">暂无微信协议设备</div>';
+    } else {
+        container.innerHTML = devices.map(function(d) {
+            var dotClass = d.online ? 'online-dot' : 'offline-dot';
+            var cardClass = 'dash-wx-mini' + (d.isPrimary ? ' primary-mini' : '');
+            var badgeHtml = d.isPrimary ? '<span class="mini-badge primary-tag">主</span>' : '';
+            var statusText = d.online ? '在线' : '离线';
+            var statusClass = d.online ? 'online-tag' : 'offline-tag';
+            return '<div class="' + cardClass + '">' +
+                '<div class="mini-head">' +
+                    '<span class="mini-dot ' + dotClass + '"></span>' +
+                    '<span class="mini-name" title="' + escapeAttr(d.nickname || d.wxid) + '">' + escapeHtml(d.nickname || d.wxid) + '</span>' +
+                    '<span class="mini-badge ' + statusClass + '">' + statusText + '</span>' +
+                    badgeHtml +
+                '</div>' +
+                '<div class="mini-row"><span class="mini-label">微信ID</span><span class="mini-val" title="' + escapeAttr(d.wxid) + '">' + escapeHtml(d.wxid) + '</span></div>' +
+                '<div class="mini-row"><span class="mini-label">设备</span><span class="mini-val">' + escapeHtml(d.device || '-') + '</span></div>' +
+                '<div class="mini-row"><span class="mini-label">登录</span><span class="mini-val">' + escapeHtml(d.loginTime || '-') + '</span></div>' +
+                '<div class="mini-row"><span class="mini-label">刷新</span><span class="mini-val">' + escapeHtml(d.refreshTime || '-') + '</span></div>' +
+                '</div>';
+        }).join('');
+    }
+}
+
+function switchProjectTab(tab) {
+    state.currentProjectTab = tab;
+    document.getElementById('projectTab-active').classList.toggle('active', tab === 'active');
+    document.getElementById('projectTab-expired').classList.toggle('active', tab === 'expired');
+    renderProjects();
+}
+
+function getFilteredProjects() {
+    const list = state.projects || [];
+    if (state.currentProjectTab === 'expired') {
+        return list.filter(item => item.bizStatus === 'expired');
+    }
+    return list.filter(item => item.bizStatus === 'active' || item.bizStatus === 'expiring');
+}
+
+function getGroupedProjects() {
+    const list = getFilteredProjects();
+    const map = new Map();
+    list.forEach(item => {
+        const key = `${item.activityId}__${item.activityName}__${item.qingLongConfig}__${item.priceText}`;
+        if (!map.has(key)) {
+            map.set(key, {
+                key, activityId: item.activityId, activityName: item.activityName,
+                qingLongConfig: item.qingLongConfig, priceText: item.priceText,
+                items: [], activeCount: 0, expiringCount: 0, expiredCount: 0
+            });
+        }
+        const group = map.get(key);
+        group.items.push(item);
+        if (item.bizStatus === 'active') group.activeCount++;
+        if (item.bizStatus === 'expiring') group.expiringCount++;
+        if (item.bizStatus === 'expired') group.expiredCount++;
+    });
+    return Array.from(map.values());
+}
+
+function renderProjects() {
+    const tbody = document.getElementById('projectsBody');
+    const groups = getGroupedProjects();
+    if (!groups.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty">${state.currentProjectTab === 'expired' ? '暂无已过期项目。' : '暂无授权有效中的项目。'}</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = groups.map(group => {
+        const summary = `有效 ${group.activeCount} · 快到期 ${group.expiringCount} · 过期 ${group.expiredCount}`;
+        const itemRows = group.items.map(item => `
+            <tr>
+                <td data-label="备注名">${escapeHtml(item.displayName || '-')}</td>
+                <td data-label="授权到期">${item.expireDate ? `<span class="tag ${item.bizStatus === 'expiring' ? 'expiring' : (item.bizStatus === 'expired' ? 'expired' : 'active')}">${escapeHtml(item.expireDate)}</span>` : '<span class="tag gray">长期/未记录</span>'}</td>
+                <td data-label="业务状态">${renderBizTag(item)}</td>
+                <td data-label="当前状态"><span class="tag ${item.status === 0 ? 'active' : 'gray'}">${escapeHtml(item.statusText || '-')}</span></td>
+                <td>${renderDetailActions(item)}</td>
+            </tr>`).join('');
+        return `
+            <tr class="project-group-row">
+                <td data-label="项目">${escapeHtml(group.activityName || '-')}</td>
+                <td data-label="账号数量"><span class="group-count">${group.items.length} 个账号</span></td>
+                <td data-label="费用">${escapeHtml(group.priceText || '-')}</td>
+                <td data-label="青龙">${escapeHtml(group.qingLongConfig || '-')}</td>
+                <td data-label="状态统计">${summary}</td>
+                <td>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn small secondary" onclick="queryGroupIncome('${escapeJs(group.activityId)}','${escapeJs(group.activityName)}')">查询</button>
+                        <button class="btn small" id="toggle-btn-${escapeAttr(group.key)}" onclick="toggleGroupDetail('${escapeJs(group.key)}')">展开账号</button>
+                    </div>
+                </td>
+            </tr>
+            <tr class="group-detail-row" id="group-detail-${escapeAttr(group.key)}" style="display:none;">
+                <td colspan="6">
+                    <div class="group-detail-card">
+                        <div class="muted" style="margin-bottom:10px;">展开后可查看每个账号明细。修改、删除、续费、查询收入都在这一层处理。</div>
+                        <table class="account-subtable">
+                            <thead><tr><th>备注名</th><th>授权到期</th><th>业务状态</th><th>当前状态</th><th>操作</th></tr></thead>
+                            <tbody>${itemRows}</tbody>
+                        </table>
+                    </div>
+                </td>
+            </tr>`;
+    }).join('');
+}
+
+function renderDetailActions(item) {
+    const actions = [];
+    actions.push(`<button class="btn small secondary" onclick="queryIncome('${escapeJs(item.activityId)}','${escapeJs(item.remark)}','${escapeJs(item.displayName || item.activityName)}')">查询收入</button>`);
+    if (canRenewProject(item)) {
+        actions.push(`<button class="btn small" onclick="renewProject('${escapeJs(item.activityId)}','${escapeJs(item.remark)}')">续费</button>`);
+    }
+    actions.push(`<button class="btn small accent" onclick="editProjectCk('${escapeJs(item.activityId)}','${escapeJs(item.remark)}','${escapeJs(item.displayName || item.activityName)}')">修改</button>`);
+    actions.push(`<button class="btn small danger" onclick="deleteProject('${escapeJs(item.activityId)}','${escapeJs(item.remark)}','${escapeJs(item.displayName || item.activityName)}')">删除</button>`);
+    return `<div style="display:flex;gap:8px;flex-wrap:wrap;">${actions.join('')}</div>`;
+}
+
+function canRenewProject(item) {
+    if (!item) return false;
+    const activity = (state.activities || []).find(x => String(x.id) === String(item.activityId));
+    if (activity && activity.isMonthlyDeduct === true) return true;
+    if (item.isMonthlyDeduct === true) return true;
+    if (typeof item.priceText === 'string' && item.priceText.indexOf('每月') !== -1) return true;
+    if (item.expireDate) return true;
+    return false;
+}
+
+function renderBizTag(item) {
+    const cls = item.bizStatus === 'expired' ? 'expired' : (item.bizStatus === 'expiring' ? 'expiring' : 'active');
+    const tail = item.bizStatus === 'expiring' && item.daysLeft > 0 ? `（${item.daysLeft}天）` : '';
+    return `<span class="tag ${cls}">${escapeHtml(item.bizStatusText || '-')} ${tail}</span>`;
+}
+
+function getActivityDisplayById(activityId) {
+    const found = (state.activities || []).find(item => String(item.id) === String(activityId));
+    if (!found) return '';
+    return `${found.name}${found.isMonthlyDeduct ? `（每月 ${found.monthlyCoin} 积分）` : `（扣除 ${found.needCoin} 积分）`}`;
+}
+
+function toggleGroupDetail(groupKey) {
+    const row = document.getElementById(`group-detail-${groupKey}`);
+    if (!row) return;
+    const btn = document.getElementById(`toggle-btn-${groupKey}`);
+    if (row.style.display === 'none' || row.style.display === '') {
+        row.style.display = 'table-row';
+        if (btn) btn.textContent = '收起账号';
+    } else {
+        row.style.display = 'none';
+        if (btn) btn.textContent = '展开账号';
+    }
+}
+
+function renderActivities() {
+    const box = document.getElementById('activitiesBox');
+    if (!state.activities.length) {
+        box.innerHTML = '<div class="empty">暂无活动配置。</div>';
+        return;
+    }
+    box.innerHTML = state.activities.map(item => `
+        <div class="activity-row">
+            <div>
+                <div class="activity-title">${escapeHtml(item.name)}</div>
+                <div class="activity-desc">环境变量：${escapeHtml(item.envKey)} · 青龙容器：${escapeHtml(item.qingLongConfig || '默认容器')}</div>
+                ${item.guide ? `<div class="activity-desc" style="margin-top:8px;white-space:pre-wrap;line-height:1.7;color:rgba(30,41,59,0.68);">玩法摘要：${escapeHtml(item.guide.length > 88 ? item.guide.slice(0, 88) + '...' : item.guide)}</div>` : ''}
+            </div>
+            <div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <span class="tag" style="background:var(--cyan-dim);color:var(--cyan);border-color:rgba(8,145,178,0.22);">编号 ${item.id}</span>
+                    <span class="tag ${item.isMonthlyDeduct ? 'expiring' : 'active'}">${item.isMonthlyDeduct ? '按月授权' : '一次性上车'}</span>
+                    <span class="tag" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(124,58,237,0.22);">${item.isMonthlyDeduct ? `每月 ${item.monthlyCoin} 积分` : `扣除 ${item.needCoin} 积分`}</span>
+                </div>
+            </div>
+            <div class="muted" style="font-size:11.5px;line-height:1.55;">点击上车后，再填写字段与备注信息</div>
+            <div><button class="btn" onclick="openProjectModal('${escapeJs(item.id)}')">🚀 上车</button></div>
+        </div>
+    `).join('');
+}
+
+function openProjectModal(activityId) {
+    const item = (state.activities || []).find(x => String(x.id) === String(activityId));
+    if (!item) { toast('未找到活动信息', 'error'); return; }
+    state.currentActivity = item;
+    document.getElementById('projectModalTitle').textContent = `上车项目：${item.name}`;
+    const meta = document.getElementById('projectModalMeta');
+    meta.innerHTML = `
+        <span class="project-modal-chip">${escapeHtml(item.isMonthlyDeduct ? `每月扣 ${item.monthlyCoin} 积分` : `一次扣 ${item.needCoin} 积分`)}</span>
+        <span class="project-modal-chip">青龙容器：${escapeHtml(item.qingLongConfig || '默认容器')}</span>
+    `;
+    const guide = document.getElementById('projectModalGuide');
+    const guideText = String(item.guide || '').trim();
+    if (guideText) {
+        guide.style.display = 'block';
+        guide.innerHTML = `
+            <strong>玩法和说明：</strong>
+            <div class="guide-text">${escapeHtml(guideText)}</div>
+        `;
+    } else {
+        guide.style.display = 'none';
+        guide.innerHTML = '';
+    }
+    const fields = document.getElementById('projectModalFields');
+    const built = [];
+    (item.inputFields || []).forEach((field, index, arr) => {
+        const prompt = String(field?.prompt || field?.key || '');
+        const fullClass = arr.length === 1 ? ' full' : '';
+        built.push(`
+            <div class="field${fullClass}">
+                <label>${escapeHtml(prompt)}</label>
+                <input data-modal-field-key="${escapeAttr(field.key)}" placeholder="${escapeAttr(prompt)}">
+            </div>`);
+    });
+    built.push(`
+        <div class="field">
+            <label>用户备注名</label>
+            <input data-modal-field-key="__remarks" placeholder="请输入唯一备注名，不要带/">
+        </div>`);
+    if (item.isMonthlyDeduct) {
+        built.push(`
+            <div class="field">
+                <label>授权月数</label>
+                <input data-modal-field-key="__months" placeholder="如 1 / 3 / 6">
+            </div>`);
+    }
+    fields.innerHTML = built.join('');
+    document.getElementById('projectModalMask').classList.add('show');
+}
+
+function closeProjectModal() {
+    document.getElementById('projectModalMask').classList.remove('show');
+    state.currentActivity = null;
+}
+
+async function confirmProjectSubmit() {
+    const item = state.currentActivity;
+    if (!item) return;
+    const inputs = {};
+    document.querySelectorAll('[data-modal-field-key]').forEach(input => {
+        inputs[input.dataset.modalFieldKey] = input.value.trim();
+    });
+    const remarks = inputs.__remarks || '';
+    const months = parseInt(inputs.__months || '0', 10) || 0;
+    delete inputs.__remarks;
+    delete inputs.__months;
+    const confirmText = `确认提交【${getActivityDisplayById(item.id)}】吗？${remarks ? `\n备注名：${remarks}` : ''}${months ? `\n授权月数：${months}` : ''}`;
+    if (!window.confirm(confirmText)) return;
+    try {
+        const resp = await request('/api/portal/project', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activityId: item.id, inputs, remarks, months })
+        });
+        toast(resp.msg || '上车成功', 'success');
+        closeProjectModal();
+        await loadActivitiesData();
+        await loadProjectData();
+        if (state.currentPanel === 'dashboard') await loadDashboardData();
+    } catch (err) {
+        toast(err.message || '提交失败', 'error');
+    }
+}
+
+async function renewProject(activityId, remarks) {
+    const months = window.prompt('请输入续费月数（1-12）', '1');
+    if (!months) return;
+    const monthNum = parseInt(months, 10) || 0;
+    const title = getActivityDisplayById(activityId);
+    if (!window.confirm(`确认续费【${title || activityId}】${monthNum}个月吗？`)) return;
+    try {
+        const resp = await request('/api/portal/project/renew', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activityId, remarks, months: monthNum })
+        });
+        toast(resp.msg || '续费成功', 'success');
+        await loadProjectData();
+        if (state.currentPanel === 'dashboard') await loadDashboardData();
+    } catch (err) {
+        toast(err.message || '续费失败', 'error');
+    }
+}
+
+async function deleteProject(activityId, remarks, activityName) {
+    if (!window.confirm(`确认删除【${activityName}】这条项目记录吗？`)) return;
+    try {
+        const resp = await request('/api/portal/project/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activityId, remarks })
+        });
+        toast(resp.msg || '删除成功', 'success');
+        await loadProjectData();
+        if (state.currentPanel === 'dashboard') await loadDashboardData();
+    } catch (err) {
+        toast(err.message || '删除失败', 'error');
+    }
+}
+
+state.editCkInfo = null;
+function getCkTemplateFields(template) {
+    const fields = [];
+    const seen = new Set();
+    String(template || '').replace(/\{\{\.([^}]+)\}\}/g, function(_, key) {
+        if (!seen.has(key)) {
+            seen.add(key);
+            fields.push(key);
+        }
+        return '';
+    });
+    return fields;
+}
+
+function splitCkValueByTemplate(template, value) {
+    const fieldKeys = getCkTemplateFields(template);
+    if (!fieldKeys.length) return null;
+    const source = String(value || '');
+    const placeholders = [];
+    let cursor = 0;
+    String(template || '').replace(/\{\{\.([^}]+)\}\}/g, function(match, key, offset) {
+        placeholders.push({ key, prefix: String(template || '').slice(cursor, offset) });
+        cursor = offset + match.length;
+        return match;
+    });
+    const suffix = String(template || '').slice(cursor);
+    let pos = 0;
+    const result = {};
+    for (let i = 0; i < placeholders.length; i++) {
+        const part = placeholders[i];
+        if (part.prefix) {
+            if (source.slice(pos, pos + part.prefix.length) !== part.prefix) return null;
+            pos += part.prefix.length;
+        }
+        const nextText = i + 1 < placeholders.length ? placeholders[i + 1].prefix : suffix;
+        let end = source.length;
+        if (nextText) {
+            end = source.indexOf(nextText, pos);
+            if (end < 0) return null;
+        }
+        result[part.key] = source.slice(pos, end);
+        pos = end;
+    }
+    if (suffix) {
+        if (source.slice(pos, pos + suffix.length) !== suffix) return null;
+        pos += suffix.length;
+    }
+    if (pos !== source.length) return null;
+    return result;
+}
+
+function buildCkValueFromInputs(template) {
+    const rawWrap = document.getElementById('editCkRawWrap');
+    if (rawWrap && rawWrap.style.display !== 'none') {
+        return (document.getElementById('editCkValue').value || '').trim();
+    }
+    let result = String(template || '');
+    document.querySelectorAll('[data-edit-ck-key]').forEach(input => {
+        const key = input.dataset.editCkKey || '';
+        result = result.split('{{.' + key + '}}').join(input.value.trim());
+    });
+    return result.trim();
+}
+
+function updateEditCkPreview() {
+    const info = state.editCkInfo || {};
+    const preview = document.getElementById('editCkPreview');
+    if (!preview) return;
+    preview.textContent = buildCkValueFromInputs(info.ckTemplate || '') || '-';
+}
+
+function editProjectCk(activityId, remarks, displayName) {
+    const item = (state.projects || []).find(x => String(x.activityId) === String(activityId) && x.remark === remarks);
+    const activity = (state.activities || []).find(x => String(x.id) === String(activityId));
+    const fields = (item?.inputFields && item.inputFields.length ? item.inputFields : (activity?.inputFields || []));
+    const ckTemplate = item?.ckTemplate || activity?.ckTemplate || '';
+    const envValue = item ? (item.envValue || '') : '';
+    const parsed = splitCkValueByTemplate(ckTemplate, envValue);
+    const fieldKeys = getCkTemplateFields(ckTemplate);
+    const visibleFields = fields.filter(field => fieldKeys.includes(String(field.key || '')));
+    state.editCkInfo = { activityId, remarks, displayName, ckTemplate };
+    document.getElementById('editCkModalTitle').textContent = `修改 CK：${displayName || activityId}`;
+    document.getElementById('editCkModalDesc').textContent = `当前备注：${remarks}，修改后将立即生效`;
+    document.getElementById('editCkValue').value = envValue;
+    const list = document.getElementById('editCkFields');
+    const rawWrap = document.getElementById('editCkRawWrap');
+    if (parsed && visibleFields.length) {
+        rawWrap.style.display = 'none';
+        list.style.display = 'grid';
+        list.innerHTML = visibleFields.map(field => {
+            const key = String(field.key || '');
+            const prompt = String(field.prompt || key);
+            return `
+                <div class="ck-field-row">
+                    <div class="ck-field-name">${escapeHtml(key)}<span>${escapeHtml(prompt)}</span></div>
+                    <div class="field">
+                        <input data-edit-ck-key="${escapeAttr(key)}" value="${escapeAttr(parsed[key] || '')}" placeholder="请输入${escapeAttr(key)}的值" oninput="updateEditCkPreview()">
+                    </div>
+                </div>`;
+        }).join('');
+    } else {
+        list.style.display = 'none';
+        list.innerHTML = '';
+        rawWrap.style.display = 'block';
+        toast('当前 CK 格式无法自动拆分，已切换为原始编辑模式', 'info');
+    }
+    updateEditCkPreview();
+    document.getElementById('editCkModalMask').classList.add('show');
+}
+function closeEditCkModal() {
+    document.getElementById('editCkModalMask').classList.remove('show');
+    state.editCkInfo = null;
+}
+async function saveProjectCk() {
+    const info = state.editCkInfo;
+    if (!info) return;
+    const ckValue = buildCkValueFromInputs(info.ckTemplate || '');
+    if (!ckValue) { toast('CK 值不能为空', 'error'); return; }
+    const emptyField = Array.from(document.querySelectorAll('[data-edit-ck-key]')).find(input => !input.value.trim());
+    if (emptyField) {
+        toast(`${emptyField.dataset.editCkKey || '字段'}不能为空`, 'error');
+        emptyField.focus();
+        return;
+    }
+    try {
+        const resp = await request('/api/portal/project/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activityId: info.activityId, remarks: info.remarks, ckValue })
+        });
+        toast(resp.msg || '更新成功', 'success');
+        closeEditCkModal();
+        await loadProjectData();
+    } catch (err) {
+        toast(err.message || '更新失败', 'error');
+    }
+}
+
+async function queryIncome(activityId, remarks, activityName) {
+    state.currentIncomeProject = { activityId, remarks, activityName };
+    document.getElementById('incomeModalTitle').textContent = `查询收入：${activityName}`;
+    document.getElementById('incomeModalDesc').textContent = '正在调用查询脚本，请稍候...';
+    document.getElementById('incomeModalContent').textContent = '加载中...';
+    document.getElementById('incomeModalMask').classList.add('show');
+    try {
+        const resp = await request('/api/portal/project/income', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activityId, remarks })
+        });
+        document.getElementById('incomeModalDesc').textContent = resp.msg || '查询成功';
+        document.getElementById('incomeModalContent').textContent = resp.data || '暂无查询结果';
+    } catch (err) {
+        document.getElementById('incomeModalDesc').textContent = '查询失败';
+        document.getElementById('incomeModalContent').textContent = err.message || '查询失败';
+    }
+}
+
+async function queryGroupIncome(activityId, activityName) {
+    const list = (state.projects || []).filter(item => String(item.activityId) === String(activityId) && (state.currentProjectTab === 'expired' ? item.bizStatus === 'expired' : (item.bizStatus === 'active' || item.bizStatus === 'expiring')));
+    document.getElementById('incomeModalTitle').textContent = `批量查询：${activityName}`;
+    document.getElementById('incomeModalDesc').textContent = `正在依次查询 ${list.length} 个账号...`;
+    document.getElementById('incomeModalContent').textContent = '开始查询...';
+    document.getElementById('incomeModalMask').classList.add('show');
+    const outputs = [];
+    for (const item of list) {
+        outputs.push(`【${item.displayName || item.activityName}】查询中...`);
+        document.getElementById('incomeModalContent').textContent = outputs.join('\n\n');
+        try {
+            const resp = await request('/api/portal/project/income', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activityId, remarks: item.remark })
+            });
+            outputs[outputs.length - 1] = `【${item.displayName || item.activityName}】\n${resp.data || '暂无查询结果'}`;
+        } catch (err) {
+            outputs[outputs.length - 1] = `【${item.displayName || item.activityName}】\n查询失败：${err.message || '未知错误'}`;
+        }
+        document.getElementById('incomeModalContent').textContent = outputs.join('\n\n');
+    }
+    document.getElementById('incomeModalDesc').textContent = `查询完成，共 ${list.length} 个账号结果如下：`;
+}
+
+function closeIncomeModal() {
+    document.getElementById('incomeModalMask').classList.remove('show');
+    state.currentIncomeProject = null;
+}
+
+async function wxAction(type) {
+    const map = {
+        'scan-login': { url: '/api/portal/wx/scan-login', confirm: '确认开始微信扫码登录吗？扫码成功后将扣积分，请注意有概率封号，谨慎考虑。' },
+        'wake-login': { url: '/api/portal/wx/wake-login', confirm: '确认执行微信唤醒登录吗？' },
+        'relogin':    { url: '/api/portal/wx/relogin',    confirm: '确认执行微信重新登录吗？' },
+        'logout':     { url: '/api/portal/wx/logout',     confirm: '确认执行微信登出吗？' },
+        'delete':     { url: '/api/portal/wx/delete',     confirm: '确认删除当前微信协议设备数据吗？删除后需要重新扫码登录。' }
+    };
+    const cfg = map[type];
+    if (!cfg) return;
+    if (!window.confirm(cfg.confirm)) return;
+    try {
+        const resp = await request(cfg.url, { method: 'POST' });
+        const data = resp.data || {};
+        toast(resp.msg || data.message || '操作成功', 'success');
+        if (data.qrBase64) {
+            openWxQrModal(type, data);
+        } else {
+            await loadDashboardData();
+            await loadWxDevices();
+        }
+    } catch (err) {
+        toast(err.message || '操作失败', 'error');
+    }
+}
+
+function openWxQrModal(type, data) {
+    clearWxPoll();
+    state.wxPollingUuid = data.uuid || '';
+    state.wxPollingDeduct = type === 'scan-login';
+    document.getElementById('wxModalTitle').textContent = type === 'scan-login' ? '微信扫码登录' : '微信协议登录二维码';
+    document.getElementById('wxModalDesc').textContent = data.message || '请使用微信扫码后等待系统确认。';
+    document.getElementById('wxModalBody').innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:14px;align-items:center;">
+            <img src="${escapeAttr(data.qrBase64 || '')}" alt="登录二维码" style="width:260px;height:260px;border-radius:18px;border:1px solid var(--glass-border);background:rgba(0,0,0,0.3);padding:10px;" />
+            <div class="muted">扫码后页面会自动轮询登录状态，无需手动刷新。</div>
+        </div>`;
+    document.getElementById('wxModalMask').classList.add('show');
+    state.wxPollTimer = setInterval(() => pollWxLoginStatus(), 3000);
+}
+
+async function pollWxLoginStatus() {
+    if (!state.wxPollingUuid) return;
+    try {
+        const resp = await request('/api/portal/wx/poll-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uuid: state.wxPollingUuid, deductCoin: state.wxPollingDeduct })
+        });
+        const data = resp.data || {};
+        document.getElementById('wxModalDesc').textContent = data.message || resp.msg || '等待处理...';
+        if (!data.needPoll) {
+            clearWxPoll();
+            toast(data.message || '登录成功', 'success');
+            if (data.status) state.wxStatus = data.status;
+            closeWxModal();
+            await loadDashboardData();
+            await loadWxDevices();
+        }
+    } catch (err) {
+        clearWxPoll();
+        document.getElementById('wxModalDesc').textContent = err.message || '登录状态查询失败';
+    }
+}
+
+function clearWxPoll() {
+    if (state.wxPollTimer) { clearInterval(state.wxPollTimer); state.wxPollTimer = null; }
+    state.wxPollingUuid = '';
+    state.wxPollingDeduct = false;
+}
+
+function closeWxModal() {
+    clearWxPoll();
+    document.getElementById('wxModalMask').classList.remove('show');
+}
+
+async function loadWxDevices() {
+    try {
+        const resp = await request('/api/portal/wx/devices');
+        state.wxDevices = resp.data || [];
+        renderWxDevices();
+        renderDashboard();
+    } catch (err) {
+        state.wxDevices = [];
+        renderWxDevices();
+    }
+}
+
+function renderWxDevices() {
+    const grid = document.getElementById('wxDeviceGrid');
+    const devices = state.wxDevices || [];
+    if (devices.length === 0) {
+        grid.innerHTML = '<div class="wx-empty-state"><div class="empty-icon">📱</div><p>暂无微信协议设备</p><p style="font-size:11px;">扫码登录或手动添加微信ID开始使用</p></div>';
+        return;
+    }
+    grid.innerHTML = devices.map(function(d) {
+        var isOnline = d.online;
+        var cardClass = 'wx-device-card' + (d.isPrimary ? ' primary' : '') + (isOnline ? '' : ' offline-card');
+        var badgeHtml = '';
+        if (d.isPrimary) {
+            badgeHtml = '<span class="wx-device-badge primary-badge">⭐ 主设备</span>';
+        } else {
+            badgeHtml = '<span class="wx-device-badge secondary-badge">📋 监控</span>';
+        }
+        badgeHtml += '<span class="wx-device-badge ' + (isOnline ? 'online-badge' : 'offline-badge') + '">' + (isOnline ? '🟢 在线' : '🔴 离线') + '</span>';
+        var removeBtn = '';
+        if (!d.isPrimary) {
+            removeBtn = '<button class="wx-device-remove" onclick="removeWxDevice(' + d.id + ')" title="移除监控">✕</button>';
+        }
+        return '<div class="' + cardClass + '">' +
+            '<div class="wx-device-header">' + badgeHtml + '<span class="wx-device-nickname" title="' + escapeAttr(d.wxid) + '">' + escapeHtml(d.nickname || d.wxid) + '</span>' + removeBtn + '</div>' +
+            '<div class="wx-device-detail"><span>微信ID</span><strong>' + escapeHtml(d.wxid) + '</strong></div>' +
+            '<div class="wx-device-detail"><span>设备</span><strong>' + escapeHtml(d.device || '-') + '</strong></div>' +
+            '<div class="wx-device-detail"><span>登录时间</span><strong>' + escapeHtml(d.loginTime || '-') + '</strong></div>' +
+            '<div class="wx-device-detail"><span>刷新时间</span><strong>' + escapeHtml(d.refreshTime || '-') + '</strong></div>' +
+            '</div>';
+    }).join('');
+}
+
+async function addWxDevice() {
+    var input = document.getElementById('wxAddInput');
+    var wxid = (input.value || '').trim();
+    if (!wxid) { toast('请输入微信ID', 'error'); return; }
+    try {
+        await request('/api/portal/wx/add-device', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wxid: wxid })
+        });
+        input.value = '';
+        toast('添加成功', 'success');
+        await loadWxDevices();
+    } catch (err) {
+        toast(err.message || '添加失败', 'error');
+    }
+}
+
+async function removeWxDevice(id) {
+    if (!window.confirm('确认移除该微信协议设备监控吗？')) return;
+    try {
+        await request('/api/portal/wx/remove-device', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        });
+        toast('已移除', 'success');
+        await loadWxDevices();
+    } catch (err) {
+        toast(err.message || '移除失败', 'error');
+    }
+}
+
+function openFeedbackModal() {
+    document.getElementById('feedbackType').value = 'bug反馈';
+    document.getElementById('feedbackTitle').value = '';
+    document.getElementById('feedbackContent').value = '';
+    document.getElementById('feedbackContact').value = '';
+    document.getElementById('feedbackModalMask').classList.add('show');
+}
+
+function closeFeedbackModal() {
+    document.getElementById('feedbackModalMask').classList.remove('show');
+}
+
+async function submitFeedback() {
+    const type = document.getElementById('feedbackType').value;
+    const title = (document.getElementById('feedbackTitle').value || '').trim();
+    const content = (document.getElementById('feedbackContent').value || '').trim();
+    const contact = (document.getElementById('feedbackContact').value || '').trim();
+
+    if (!title) { toast('请输入反馈主题', 'error'); return; }
+    if (!content) { toast('请输入详细内容', 'error'); return; }
+
+    const btn = document.getElementById('feedbackSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = '提交中...';
+
+    try {
+        const resp = await request('/api/portal/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, title, content, contact })
+        });
+        toast(resp.msg || '提交成功，感谢你的反馈！', 'success');
+        closeFeedbackModal();
+    } catch (err) {
+        toast(err.message || '提交失败，请稍后重试', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '提交反馈';
+    }
+}
+
+async function submitFeedbackFromPage() {
+    const type = document.getElementById('feedbackTypePage').value;
+    const title = (document.getElementById('feedbackTitlePage').value || '').trim();
+    const content = (document.getElementById('feedbackContentPage').value || '').trim();
+    const contact = (document.getElementById('feedbackContactPage').value || '').trim();
+
+    if (!title) { toast('请输入反馈主题', 'error'); return; }
+    if (!content) { toast('请输入详细内容', 'error'); return; }
+
+    const btn = document.getElementById('feedbackSubmitBtnPage');
+    btn.disabled = true;
+    btn.textContent = '提交中...';
+
+    try {
+        const resp = await request('/api/portal/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, title, content, contact })
+        });
+        toast(resp.msg || '提交成功，感谢你的反馈！', 'success');
+        document.getElementById('feedbackTitlePage').value = '';
+        document.getElementById('feedbackContentPage').value = '';
+        document.getElementById('feedbackContactPage').value = '';
+    } catch (err) {
+        toast(err.message || '提交失败，请稍后重试', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '提交反馈';
+    }
+}
+
+async function runTask(type) {
+    const label = type === 'pray' ? '祈福' : '打卡';
+    const url = type === 'pray' ? '/api/portal/pray' : '/api/portal/checkin';
+    if (!window.confirm(`确认立即执行【${label}】吗？`)) return;
+    try {
+        const resp = await request(url, { method: 'POST' });
+        toast(resp.msg || '操作成功', 'success');
+        await loadDashboardData();
+    } catch (err) {
+        toast(err.message || '操作失败', 'error');
+    }
+}
+
+async function redeemKey() {
+    const input = document.getElementById('redeemKeyInput');
+    const token = (input?.value || '').trim();
+    if (!token) { toast('请输入卡密', 'error'); input.focus(); return; }
+    try {
+        const resp = await request('/api/portal/redeem-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+        });
+        if (resp.code === 0) {
+            toast(resp.msg || '兑换成功', 'success', 6000);
+            input.value = '';
+            await loadDashboardData();
+        } else {
+            toast(resp.msg || '兑换失败', 'error', 6000);
+        }
+    } catch (err) {
+        toast(err.message || '兑换失败，请稍后重试，如有异常请联系大师', 'error', 6000);
+    }
+}
+
+async function logout() {
+    try {
+        await request('/api/login/logout', { method: 'POST' });
+        window.location.href = '/portal/login';
+    } catch (err) {
+        toast(err.message || '退出失败', 'error');
+    }
+}
+
+function escapeHtml(text) {
+    return String(text ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function escapeAttr(text) { return escapeHtml(text); }
+function escapeJs(text) { return String(text ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+initialLoad();
+bindNotificationFilters();
+</script>
+</body>
+</html>

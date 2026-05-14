@@ -1,0 +1,54 @@
+package models
+
+import (
+	"time"
+)
+
+type Limit struct {
+	ID       int `gorm:"column:ID;primaryKey"`
+	Number   int
+	ActiveAt string
+	CreateAt int64
+	Typ      int
+	Num      int
+}
+
+func getLimit(uid int, typ int) bool {
+	if Config.Lim == 0 {
+		return true
+	}
+	u := &Limit{}
+	err := db.Where("number = ? and typ = ? and active_at = ?", uid, typ, time.Now().Format("2006-01-02")).First(&u).Error
+	if err == nil {
+		//logs.Info(u.Number)
+		if u.Num < Config.Lim {
+			db.Where("ID = ?", u.ID).Updates(&Limit{
+				Num: u.Num + 1,
+			})
+			return true
+		} else {
+			return false
+		}
+	} else {
+		begin := db.Begin()
+		begin.Create(&Limit{
+			ActiveAt: time.Now().Format("2006-01-02"),
+			Typ:      typ,
+			Number:   uid,
+			Num:      1,
+		})
+		begin.Commit()
+		return true
+	}
+}
+
+func getLimitByTime(uid int, typ int, leaf int64) bool {
+	
+	u := &Limit{}
+	err := db.Where("number = ? and typ = ? and create_at > ?", uid, typ, time.Now().Unix()).First(&u).Error
+	if err == nil {
+		return false
+	} else {
+		return true
+	}
+}
