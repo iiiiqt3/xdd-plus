@@ -134,17 +134,13 @@ func initCookie() {
 	
 // #加入 password 为 NULL 或为空字符串的条件
 
-//	return sb.Where(fmt.Sprintf("%s >= ? AND %s = ? AND (%s IS NULL OR %s = '')", Priority, Available, Password, Password), 0, True)
 	
 	})
 	xj := 0
 	for _, ck := range cks {
-	//	time.Sleep(time.Second * time.Duration(Config.Later))
-	//	time.Sleep(time.Duration(rand.Intn(3000)+1000) * time.Millisecond)
 		if ck.Available == True && !CookieOK(&ck) {
 			//todo 通知账号失效
 			ck.Updates(JdCookie{Available: False})
-	//		time.Sleep(time.Second * time.Duration(Config.Later))
     		     time.Sleep(time.Duration(rand.Intn(3000)+1000) * time.Millisecond)
 	//		time.Sleep(time.Second)   //#时间改成1秒
 			ck.Push(fmt.Sprintf("1、失效账号，%s，你的账号%s已过期，快发送【密码登录】提交账号把。", ck.PtPin,ck.Nickname))
@@ -229,59 +225,7 @@ func GetAuthKey() {
 }
 
 
-/*
-func updateCookie() {
-	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where(fmt.Sprintf("%s != ? and %s != ? ", WsKey, WsKey), "null", "")
-	})
-	xx := 0
-	yy := 0
-	(&JdCookie{}).Push("开始定时更新转换Wskey")
-	for i, ck := range cks {
-		if i == len(cks)/2 {
-			(&JdCookie{}).Push("Wskey已更新二分一")
-		}
-		time.Sleep(time.Duration(1) * time.Second)
-		var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-		rsp := getKey(pinky)
-		if strings.Contains(rsp, "错误") {
-			yy++
-			ck.Updates(JdCookie{WsKey: "null", Available: False})
-			ck.Push(fmt.Sprintf("Wskey失效账号，%s，请联系管理员", ck.PtPin))
-			(&JdCookie{}).Push(fmt.Sprintf("Wskey失效，%s", ck.PtPin))
-		} else {
-			ptKey := FetchJdCookieValue("pt_key", rsp)
-			ptPin := FetchJdCookieValue("pt_pin", rsp)
-			ck1 := JdCookie{
-				PtKey: ptKey,
-				PtPin: ptPin,
-			}
-			if ptPin != "" && ptKey != "" {
-				if nck, err := GetJdCookie(ck1.PtPin); err == nil {
-					xx++
-					nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-					msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
-					logs.Info(msg)
-				} else {
-					yy++
-					ck1.Update(Available, False)
-					(&JdCookie{}).Push(fmt.Sprintf("查无匹配得ptpin，%s", ck.PtPin))
-				}
-			} else {
-				yy++
-				(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
-			}
-		}
-	}
-	go func() {
-		Save <- &JdCookie{}
-	}()
-	(&JdCookie{}).Push(fmt.Sprintf("所有CK转换完成，共%d个,转换失败个数共%d个", xx, yy))
-}
 
-
-
-*/
 
 
 func updateCookie() {

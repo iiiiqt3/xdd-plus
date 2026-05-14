@@ -14,19 +14,6 @@ var c *cron.Cron
 // initCron 初始化定时任务（新增禁用过期CK任务）
 func initCron() {
 	c = cron.New()
-	// 已移除每日资产推送和每日完成推送功能
-	// if Config.DailyAssetPushCron != "" {
-	// 	_, err := c.AddFunc(Config.DailyAssetPushCron, DailyAssetsPush)
-	// 	if err != nil {
-	// 		logs.Warn("资产推送任务失败：%v", err)
-	// 	} else {
-	// 		logs.Info("资产推送任务就绪")
-	// 	}
-	// }
-	// if Config.DailyCompletePush != "" {
-	// 	c.AddFunc(Config.DailyCompletePush, CompletePush)
-	// }
-
 	// 随机时间执行getAuthFlag
 	c.AddFunc(strconv.Itoa(rand.Intn(59))+" "+strconv.Itoa(rand.Intn(24))+" * * ?", getAuthFlag)
 	// 随机分钟、每7小时5点开始执行GetAuthKey

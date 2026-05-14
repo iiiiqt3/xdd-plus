@@ -8,14 +8,17 @@ import (
 	"github.com/cdle/xdd/vweb"
 )
 
+// PortalController 门户控制器，处理用户门户相关的所有页面和API请求
 type PortalController struct {
 	BaseController
 }
 
+// NextPrepare 前置处理，验证门户用户登录状态
 func (c *PortalController) NextPrepare() {
 	c.PortalLogined()
 }
 
+// Index 返回门户首页HTML页面
 func (c *PortalController) Index() {
 	file, err := vweb.WebFs.ReadFile("html/portal.html")
 	if err != nil {
@@ -25,6 +28,7 @@ func (c *PortalController) Index() {
 	c.Ctx.WriteString(string(file))
 }
 
+// Dashboard 获取门户仪表盘数据，包含用户概览信息
 func (c *PortalController) Dashboard() {
 	if c.PortalAccount == nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "登录状态失效，请重新登录"}
@@ -41,6 +45,7 @@ func (c *PortalController) Dashboard() {
 	c.ServeJSON()
 }
 
+// Profile 获取用户个人资料信息
 func (c *PortalController) Profile() {
 	if c.PortalAccount == nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "登录状态失效，请重新登录"}
@@ -57,11 +62,13 @@ func (c *PortalController) Profile() {
 	c.ServeJSON()
 }
 
+// Activities 获取门户活动列表
 func (c *PortalController) Activities() {
 	c.Data["json"] = map[string]interface{}{"code": 0, "data": models.GetPortalActivities()}
 	c.ServeJSON()
 }
 
+// Projects 获取用户的项目列表
 func (c *PortalController) Projects() {
 	projects, err := models.GetPortalProjects(c.PortalUserID)
 	if err != nil {
@@ -73,6 +80,7 @@ func (c *PortalController) Projects() {
 	c.ServeJSON()
 }
 
+// CreateProject 创建新项目，选择活动并配置参数
 func (c *PortalController) CreateProject() {
 	var req struct {
 		ActivityID string            `json:"activityId"`
@@ -95,6 +103,7 @@ func (c *PortalController) CreateProject() {
 	c.ServeJSON()
 }
 
+// RenewProject 续费已有项目
 func (c *PortalController) RenewProject() {
 	var req struct {
 		ActivityID string `json:"activityId"`
@@ -116,6 +125,7 @@ func (c *PortalController) RenewProject() {
 	c.ServeJSON()
 }
 
+// DeleteProject 删除指定项目
 func (c *PortalController) DeleteProject() {
 	var req struct {
 		ActivityID string `json:"activityId"`
@@ -136,6 +146,7 @@ func (c *PortalController) DeleteProject() {
 	c.ServeJSON()
 }
 
+// UpdateProject 更新项目配置，如修改Cookie值
 func (c *PortalController) UpdateProject() {
 	var req struct {
 		ActivityID string `json:"activityId"`
@@ -157,6 +168,7 @@ func (c *PortalController) UpdateProject() {
 	c.ServeJSON()
 }
 
+// QueryIncome 查询项目收益情况
 func (c *PortalController) QueryIncome() {
 	var req struct {
 		ActivityID string `json:"activityId"`
@@ -177,6 +189,7 @@ func (c *PortalController) QueryIncome() {
 	c.ServeJSON()
 }
 
+// RedeemKey 使用兑换码兑换余额
 func (c *PortalController) RedeemKey() {
 	var req struct {
 		Token string `json:"token"`
@@ -196,6 +209,7 @@ func (c *PortalController) RedeemKey() {
 	c.ServeJSON()
 }
 
+// CheckIn 每日签到，获取签到奖励
 func (c *PortalController) CheckIn() {
 	msg, err := models.PortalCheckIn(c.PortalUserID)
 	if err != nil {
@@ -207,6 +221,7 @@ func (c *PortalController) CheckIn() {
 	c.ServeJSON()
 }
 
+// Pray 祈祷功能，随机获取奖励
 func (c *PortalController) Pray() {
 	msg, err := models.PortalPray(c.PortalUserID)
 	if err != nil {
@@ -218,6 +233,7 @@ func (c *PortalController) Pray() {
 	c.ServeJSON()
 }
 
+// WxStatus 查询微信机器人连接状态
 func (c *PortalController) WxStatus() {
 	data, err := models.GetPortalWxStatus(c.PortalUserID)
 	if err != nil {
@@ -229,6 +245,7 @@ func (c *PortalController) WxStatus() {
 	c.ServeJSON()
 }
 
+// WxScanLogin 微信扫码登录功能
 func (c *PortalController) WxScanLogin() {
 	data, err := models.PortalWxScanLogin(c.PortalUserID)
 	if err != nil {
@@ -240,6 +257,7 @@ func (c *PortalController) WxScanLogin() {
 	c.ServeJSON()
 }
 
+// WxDevices 获取微信设备列表
 func (c *PortalController) WxDevices() {
 	data, err := models.GetPortalWxDevices(c.PortalUserID)
 	if err != nil {
@@ -251,6 +269,7 @@ func (c *PortalController) WxDevices() {
 	c.ServeJSON()
 }
 
+// WxAddDevice 添加微信设备
 func (c *PortalController) WxAddDevice() {
 	var req struct {
 		Wxid string `json:"wxid"`
@@ -270,6 +289,7 @@ func (c *PortalController) WxAddDevice() {
 	c.ServeJSON()
 }
 
+// WxRemoveDevice 移除微信设备
 func (c *PortalController) WxRemoveDevice() {
 	var req struct {
 		ID int `json:"id"`
@@ -288,6 +308,7 @@ func (c *PortalController) WxRemoveDevice() {
 	c.ServeJSON()
 }
 
+// WxRelogin 微信重新登录
 func (c *PortalController) WxRelogin() {
 	data, err := models.PortalWxRelogin(c.PortalUserID)
 	if err != nil {
@@ -299,6 +320,7 @@ func (c *PortalController) WxRelogin() {
 	c.ServeJSON()
 }
 
+// WxWakeLogin 微信唤醒登录
 func (c *PortalController) WxWakeLogin() {
 	data, err := models.PortalWxWakeLogin(c.PortalUserID)
 	if err != nil {
@@ -310,6 +332,7 @@ func (c *PortalController) WxWakeLogin() {
 	c.ServeJSON()
 }
 
+// WxLogout 微信退出登录
 func (c *PortalController) WxLogout() {
 	data, err := models.PortalWxLogout(c.PortalUserID)
 	if err != nil {
@@ -321,6 +344,7 @@ func (c *PortalController) WxLogout() {
 	c.ServeJSON()
 }
 
+// SubmitFeedback 提交用户反馈
 func (c *PortalController) SubmitFeedback() {
 	var req struct {
 		Type    string `json:"type"`

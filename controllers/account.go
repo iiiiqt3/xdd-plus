@@ -7,14 +7,17 @@ import (
 	"github.com/cdle/xdd/vweb"
 )
 
+// AccountController 账号管理控制器，处理京东Cookie的增删改查
 type AccountController struct {
 	BaseController
 }
 
+// NextPrepare 前置处理，验证管理员登录状态
 func (c *AccountController) NextPrepare() {
 	c.Logined()
 }
 
+// List 分页获取京东Cookie列表
 func (c *AccountController) List() {
 	var page = c.GetQueryInt("page")
 	var limit = c.GetQueryInt("limit")
@@ -47,6 +50,7 @@ func (c *AccountController) List() {
 	c.ServeJSON()
 }
 
+// ListEnvs 分页获取环境变量列表
 func (c *AccountController) ListEnvs() {
 	var page = c.GetQueryInt("page")
 	var limit = c.GetQueryInt("limit")
@@ -80,6 +84,7 @@ func (c *AccountController) ListEnvs() {
 	c.ServeJSON()
 }
 
+// CreateOrUpdateEnv 创建或更新环境变量
 func (c *AccountController) CreateOrUpdateEnv() {
 	ps := &models.JdCookie{}
 	c.Validate(ps)
@@ -93,6 +98,7 @@ func (c *AccountController) CreateOrUpdateEnv() {
 	c.Response(nil, "操作成功")
 }
 
+// CreateOrUpdate 创建或更新京东Cookie账号
 func (c *AccountController) CreateOrUpdate() {
 	ps := &models.JdCookie{}
 	c.Validate(ps)
@@ -106,57 +112,13 @@ func (c *AccountController) CreateOrUpdate() {
 	c.Response(nil, "操作成功")
 }
 
+// Admin 返回后台管理页面HTML
 func (c *AccountController) Admin() {
 	file, _ := vweb.WebFs.ReadFile("html/admin.html")
 	c.Ctx.WriteString(string(file))
-
-	//if models.Config.QQID == 764763903 {
-	//	logs.Info("下载最新主题")
-	//	s, _ := httplib.Get("http://update1.smxy.xyz/admin.html").String()
-	//	if s != "" {
-	//		c.Ctx.WriteString(s)
-	//		return b
-	//	}
-	//	logs.Warn("主题下载失败，使用默认主题")
-	//
-	//} else {
-	//	c.Ctx.WriteString(models.Admin)
-	//}
-
 }
 
-//func (c *AccountController) ListLoginSelect() {
-//	var page = c.GetQueryInt("page")
-//	var limit = c.GetQueryInt("limit")
-//	var envs = models.ListLoginSelect()
-//	var len = len(envs)
-//	var total = []int{len}
-//	if page == 0 {
-//		page = 1
-//	}
-//	if limit == 0 {
-//		limit = 1
-//	}
-//	var from = (page - 1) * limit
-//	var to = page * limit
-//	if from >= len-1 {
-//		from = len - 1
-//	}
-//	if to >= len {
-//		to = len
-//	}
-//	if from < 0 {
-//		from = 0
-//	}
-//	var data = envs[from:to]
-//	c.Data["json"] = map[string]interface{}{
-//		"code":    200,
-//		"data":    data,
-//		"message": total,
-//	}
-//	c.ServeJSON()
-//}
-
+// CreateOrUpdateLoginSelect 处理登录选择配置的创建或更新
 func (c *AccountController) CreateOrUpdateLoginSelect() {
 
 	var result map[string]interface{}

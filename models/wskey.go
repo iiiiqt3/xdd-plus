@@ -28,19 +28,7 @@ func getKey(WSCK string) string {
 	return ptKey
 }
 
-/*
-下面是sign接口
-*/
-
-//func getSelfSign(sign string) string {
-//	req := httplib.Post(sign)
-//	req.Param("body", "{}")
-//	req.Param("functionId", "genToken")
-//	data, _ := req.Bytes()
-//	getString, _ := jsonparser.GetString(data, "data", "convertUrl")
-//	return getString
-//}
-
+// getNewSign 获取新的签名token，用于京东wskey登录
 func getNewSign(sign string) string {
 	req := httplib.Post(sign)
 	req.Body("{\n  \"body\": {\"url\": \"https://plogin.m.jd.com/jd-mlogin/static/html/appjmp_blank.html\"},\n  \"fn\": \"genToken\"\n}")
@@ -51,13 +39,13 @@ func getNewSign(sign string) string {
 
 }
 
+// getTokenKey 通过wskey获取京东tokenKey，用于生成Cookie
 func getTokenKey(sign string, WSCK string) (string, error) {
 
 	var tokenKey string
 	var i = 0
 	for {
 		i++
-		//s := getSelfSign(sign)
 		s := getNewSign(sign)
 		str := `https://api.m.jd.com/client.action?` + s + "&functionId=genToken"
 		req := httplib.Post(str)
@@ -102,8 +90,6 @@ func appjmp(tokenKey string) (string, error) {
 		return "", err
 	}
 	cookies := strings.Join(rsp.Header.Values("Set-Cookie"), " ")
-	//ptKey := FetchJdCookieValue("pt_key", cookies)
-	//logs.Info(cookies)
 	return cookies, nil
 }
 
@@ -138,12 +124,6 @@ func LoginSelect(sender *Sender, msg chan string) {
                 switch num {
                 case 1:
                     loginList[sender.UserID] = nil
-        //            value := GetEnv("grouplogin")
-       //             if value == "" && (sender.Type == "qqg" || sender.Type == "wxg") {
-       //                 logs.Error("se grouplogin")
-        //                sender.Reply("密码登录请添加本机器人好友后，私聊登录，避免信息泄露")
-          //              return
-            //        }
                     Auto := &UserSession{}
                     Autojdck(sender, Auto)
                 case 2:
@@ -158,7 +138,6 @@ func LoginSelect(sender *Sender, msg chan string) {
                     smsList[sender.UserID] = c2
 
                     sender.Reply("上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密")
-                   // sender.Reply("请输入手机号")
 
                     go SmsSelect(sender, c2, "Nolan")
                 case 3:

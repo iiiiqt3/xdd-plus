@@ -540,7 +540,6 @@ func CheckExpiringCKs(expireThresholdDays int, sender *Sender) {
 
 	if sender != nil {
 		logs.Info("===== [手动触发] 用户【%d】检查结束: %s =====", sender.UserID, resultMsg)
-		//		sender.Reply(resultMsg)
 		(&JdCookie{}).Push(resultMsg)
 	} else {
 		logs.Info("===== [定时任务] 检查结束: %s =====", resultMsg)

@@ -310,7 +310,6 @@ func handleAccountChoice(sender *Sender, msg chan string, cks []JdCookie, select
 // 通用任务处理器
 func JdTaskHandler(sender *Sender, taskName string, envVar string, scriptPath string, envs map[string]string, outputParser func(string, *Sender) string) {
 	if sender.IsAdmin {
-		//  sender.Reply(fmt.Sprintf("开始%s", taskName))
 	} else {
 		value := GetEnv(envVar)
 		if value == "" {
@@ -321,11 +320,9 @@ func JdTaskHandler(sender *Sender, taskName string, envVar string, scriptPath st
 		coin := GetCoin(sender.UserID)
 		jbcoin, _ := strconv.Atoi(value)
 		if coin < jbcoin {
-			//  sender.Reply(fmt.Sprintf("积分不足，%s功能需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者联系群主购买", taskName, jbcoin))
 			return
 		}
 		RemCoin(sender.UserID, jbcoin)
-		//  sender.Reply(fmt.Sprintf("开始%s，已扣除%d个积分，剩余积分%d，请耐心等待。", taskName, jbcoin, GetCoin(sender.UserID)))
 	}
 
 	ExecuteTask(sender, taskName, scriptPath, envs, outputParser)
@@ -437,7 +434,6 @@ func replexQuan_newWatering(info string, sender *Sender) string {
 	matches4 := re4.FindStringSubmatch(info)
 	matches5 := re5.FindStringSubmatch(info)
 	matches6 := re6.FindStringSubmatch(info)
-	//    matches7 := re7.FindStringSubmatch(info)
 	matches8 := re8.FindStringSubmatch(info)
 	msgs := []string{
 		fmt.Sprintf("新农场浇水任务已完成："),
@@ -467,10 +463,6 @@ func replexQuan_newWatering(info string, sender *Sender) string {
 			msgs = append(msgs, matches6[1])
 		}
 	}
-	//    if len(matches7) > 1 {
-	// 如果匹配到“还未选择种植目标”，返回相应信息
-	//        return "你的账号可能还未种植水果，或者你种植了水果，未手动选择奖品，已帮你种植并选择了奖品"
-	//    }
 	if len(matches8) > 1 {
 		// 如果匹配到“黑号”，返回相应信息
 		return "新农场都进不去了，浇什么水，，如果你京东APP能进入农场，说明IP黑了，请重新执行"
@@ -834,50 +826,7 @@ func run_fcwb_help_Task1(sender *Sender, envVars map[string]string, FileName str
 	return replexQuan_fcwb_help1(string(output), sender, FileName)
 }
 
-/*
-func replexQuan_fcwb_help(info string, sender *Sender, FileName string) string {
-    // 定义正则表达式，匹配成功助力的条目和使用的总账号数
-    reSuccess := regexp.MustCompile(`助力成功`)
-    reTotalAccounts := regexp.MustCompile(`共使用(\d+)个账号`)
-    // 找到所有成功助力的条目
-    successMatches := reSuccess.FindAllString(info, -1)
-    successfulHelps := len(successMatches)  // 成功助力的数量
-    // 找到总账号数
-    totalMatch := reTotalAccounts.FindStringSubmatch(info)
-    totalAccounts := 0
-    if len(totalMatch) > 1 {
-        totalAccounts, _ = strconv.Atoi(totalMatch[1])  // 转换为整数
-    }
-    coinToDeduct := successfulHelps * 8 // 每个成功助力账号扣除10积分
-    msgs := []string{}
 
-    if successfulHelps > 0 {
-        RemCoin(sender.UserID, coinToDeduct) // 扣除积分
-        msgs = append(msgs, fmt.Sprintf("成功助力%d个账号，扣除%d积分，剩余%d积分", successfulHelps, coinToDeduct, GetCoin(sender.UserID))) // 构建反馈消息
-    } else {
-        msgs = append(msgs, "未找到成功助力的账号")
-    }
-    // 删除 jdCookie.txt 前面的行并返回剩余行数
-    if totalAccounts > 0 {
-        cookieFilePath := ExecPath + "/scripts/" + FileName + ".txt" // 生成 cookie 文件路径
-        remainingLinesCount, err := removeLinesFromFile(cookieFilePath, totalAccounts) // 使用生成的路径
-        if err != nil {
-            msgs = append(msgs, "删除 " + cookieFilePath + " 行数时出错：" + err.Error())
-        } else {
-            msgs = append(msgs, fmt.Sprintf("删除已使用的%d个号，剩余%d个号", totalAccounts, remainingLinesCount))
-        }
-    } else {
-        msgs = append(msgs, "未找到总账号数信息，未删除 " + FileName + ".txt 行数")
-    }
-    msgs = append(msgs, fmt.Sprintf("===%s任务已完成===", FileName))
-    go SendTgMsg(Config.TelegramUserID, strings.Join(msgs, "\n"))
-    return strings.Join(msgs, "\n")
-
-
-
-}
-
-*/
 
 // ## 原本农场助力正常的代码
 func replexQuan_fcwb_help_zz(info string, sender *Sender, FileName string) string {
@@ -1164,41 +1113,7 @@ func removeLinesFromFile(filePath string, linesToRemove int) (int, error) {
 	return len(remainingLines), nil
 }
 
-/*
 
-
-
-// 删除文件的前几行，并返回剩余的行数
-func removeLinesFromFile(filePath string, linesToRemove int) (int, error) {
-    // 读取文件内容
-    input, err := os.ReadFile(filePath)
-    if err != nil {
-        return 0, err
-    }
-
-    // 将内容按行分割
-    lines := strings.Split(string(input), "\n")
-
-    // 确保要删除的行数不超过现有行数
-    if linesToRemove > len(lines) {
-        linesToRemove = len(lines)
-    }
-
-    // 删除前面的指定行数
-    remainingLines := lines[linesToRemove:]
-
-    // 将剩余的行写回文件
-    output := strings.Join(remainingLines, "\n")
-    err = os.WriteFile(filePath, []byte(output), 0644)  // 使用 os.WriteFile 来写文件
-    if err != nil {
-        return 0, err
-    }
-
-    // 返回剩余的行数
-    return len(remainingLines), nil
-}
-
-*/
 
 // 新版农场推送
 func CX_jd_fruit_new_cx() {
@@ -1306,8 +1221,6 @@ func CX_jd_OnceApply_cx() {
 						logs.Info(encodedPin)
 						msgToSend := strings.Join(msgs, "\n")
 						cks[i].Push(msgToSend)
-						//		SendWxGroupMsg("1", "21086228291@chatroom", msgToSend)
-						//		SendQQGroup(955812631, 1, msgToSend)
 						time.Sleep(time.Duration(rand.Intn(13000)+8000) * time.Millisecond) //随机暂时8-20s
 					}
 				}
@@ -1375,7 +1288,6 @@ func Delete_jdck(sender *Sender, msg chan string, cks []JdCookie) {
 		}
 		num, err := strconv.Atoi(n)
 		if err != nil {
-			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
 			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
 			ckList[sender.UserID] = nil
 			return
@@ -1383,7 +1295,6 @@ func Delete_jdck(sender *Sender, msg chan string, cks []JdCookie) {
 		regular := `^0$|^[1-9]\d*$`
 		reg := regexp.MustCompile(regular)
 		if reg.MatchString(n) {
-			//cks := GetJdCookie(sender)
 			if len(cks) <= num {
 				sender.Reply("输入序列号错误，已退出！")
 				ckList[sender.UserID] = nil
@@ -1396,7 +1307,6 @@ func Delete_jdck(sender *Sender, msg chan string, cks []JdCookie) {
 		}
 		ck := cks[num]
 		ck.Removes(ck.PtPin)
-		//db.Model(cks).Where(PtPin+" = ?", ck.PtPin).Delete(cks[num].PtPin)
 		sender.Reply(fmt.Sprintf("已删除账号%s", cks[num].Nickname))
 		ckList[sender.UserID] = nil
 	}

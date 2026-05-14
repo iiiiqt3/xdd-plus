@@ -31,10 +31,8 @@ func initTgBot() {
 			return
 		}
 		handle := func(m *tb.Message) {
-			// fmt.Println(m.Text, m.FromGroup())
 			if !m.FromGroup() {
 				rt := handleMessage(m.Text, "tg", m.Sender.ID)
-				// fmt.Println(rt)
 				switch rt.(type) {
 				case string:
 					b.Send(m.Sender, rt.(string))
@@ -51,7 +49,6 @@ func initTgBot() {
 				}
 
 				rt := handleMessage(m.Text, "tgg", m.Sender.ID, int(m.Chat.ID), m.ID, m.Sender.Username, rid)
-				// fmt.Println(rt)
 				switch rt.(type) {
 				case string:
 					b.Send(m.Chat, rt.(string), &tb.SendOptions{ReplyTo: m})

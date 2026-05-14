@@ -18,11 +18,14 @@ import (
 var query = ""
 var friedns openwechat.Friends
 
+// Result 通用API响应结构体
 type Result struct {
 	Code    int         `json:"code"`
 	Data    interface{} `json:"data"`
 	Message string      `json:"message"`
 }
+
+// AuthResult 认证结果响应结构体
 type AuthResult struct {
 	Flag    bool        `json:"flag"`
 	Code    int         `json:"code"`
@@ -30,14 +33,18 @@ type AuthResult struct {
 	Data    interface{} `json:"data"`
 }
 
+// main 程序入口函数，初始化日志、路由、定时任务并启动Web服务
 func main() {
 
+	// 设置日志输出到文件
 	logs.SetLogger(logs.AdapterFile, "{\"filename\":\"logs/xdd.log\", \"level\":6}")
 
+	// 启动定时保存任务
 	go func() {
 		models.Save <- &models.JdCookie{}
 	}()
 
+	// 微信消息推送API，通过token验证权限
 	token := models.GetEnv("wx_msg_token")
 	web.Post("/api/send_wx_msg", func(ctx *context.Context) {
 		type RequestData struct {
@@ -70,6 +77,7 @@ func main() {
 
 		ctx.Output.Body([]byte("Message sent successfully"))
 	})
+	// 手机号权限验证接口
 	web.Get("/permisson", func(ctx *context.Context) {
 		tel := ctx.Input.Query("phone")
 		logs.Info(tel)
@@ -101,10 +109,12 @@ func main() {
 		}
 	})
 
+	// 在线人数统计接口
 	web.Get("/count", func(ctx *context.Context) {
 		ctx.WriteString(models.Count())
 	})
 
+	// 公告查询接口
 	web.Get("/announcement", func(ctx *context.Context) {
 		result := Result{
 			Data:    models.Config.Title,
@@ -118,6 +128,7 @@ func main() {
 		ctx.WriteString(string(jsons))
 	})
 
+	// VIP用户查询页面，从远程下载最新版本
 	if models.Config.VIP {
 		web.Get("/query", func(ctx *context.Context) {
 			if query != "" {
@@ -135,6 +146,7 @@ func main() {
 		})
 	}
 
+	// 默认首页，返回门户登录页面
 	web.Get("/", func(ctx *context.Context) {
 		file, err := vweb.WebFs.ReadFile("html/portal_login.html")
 		if err != nil {
@@ -144,20 +156,11 @@ func main() {
 		ctx.WriteString(string(file))
 	})
 
-	//for prefix, staticDir := range StaticDir {
-	//	if strings.HasPrefix(r.URL.Path, prefix) {
-	//		file := staticDir + r.URL.Path[len(prefix):]
-	//		http.ServeFile(w, r, file)
-	//		w.started = true
-	//		return
-	//	}
-	//}
-
+	// ===================== 登录相关路由 =====================
 	web.Router("/api/login/qrcode", &controllers.LoginController{}, "get:GetQrcode")
 	web.Router("/api/login/qrcode.png", &controllers.LoginController{}, "get:GetQrcode")
 	web.Router("/api/login/qrcode1", &controllers.LoginController{}, "get:GetQrcode1")
 	web.Router("/api/login/query", &controllers.LoginController{}, "get:Query")
-	//vweb.Router("/api/login/cookie", &controllers.LoginController{}, "get:Cookie")
 	web.Router("/api/login/admin", &controllers.LoginController{}, "post:IsAdmin")
 	web.Router("/api/login/register", &controllers.LoginController{}, "post:RegisterUser")
 	web.Router("/api/login/reset/info", &controllers.LoginController{}, "post:GetResetPasswordInfo")
@@ -172,6 +175,7 @@ func main() {
 	web.Router("/api/getUserPin", &controllers.LoginController{}, "get:GetUserPin")
 	web.Router("/api/account", &controllers.AccountController{}, "get:List")
 	web.Router("/api/account", &controllers.AccountController{}, "post:CreateOrUpdate")
+	// ===================== 门户页面路由 =====================
 	web.Router("/portal/login", &controllers.LoginController{}, "get:PortalLoginPage")
 	web.Router("/portal", &controllers.PortalController{}, "get:Index")
 	web.Router("/api/portal/dashboard", &controllers.PortalController{}, "get:Dashboard")
@@ -199,6 +203,7 @@ func main() {
 	web.Router("/api/portal/notifications", &controllers.PortalController{}, "get:Notifications")
 	web.Router("/api/portal/notification", &controllers.PortalController{}, "get:NotificationDetail")
 	web.Router("/api/portal/feedback", &controllers.PortalController{}, "post:SubmitFeedback")
+	// 管理员登录页面
 	web.Get("/admin/login", func(ctx *context.Context) {
 		file, err := vweb.WebFs.ReadFile("html/admin_login.html")
 		if err != nil {
@@ -316,6 +321,7 @@ func main() {
 	web.Router("/api/admin/jdcrontasks/delete", &controllers.AdminApiController{}, "post:DeleteJdCronTask")
 	web.Router("/api/admin/jdcrontasks/run", &controllers.AdminApiController{}, "post:RunJdCronTask")
 	web.Router("/api/admin/jdcrontasks/stop", &controllers.AdminApiController{}, "post:StopJdCronTask")
+	// VIP用户额外路由：微信消息接收、QQ机器人、环境变量管理、配置管理
 	if models.Config.VIP {
 		web.Router("/wx/receive", &controllers.WxController{}, "post:HandleWxMessage")
 		web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
@@ -325,33 +331,22 @@ func main() {
 		web.Router("/api/config", &controllers.ConfigController{}, "get:ListConfig")
 		web.Router("/api/config", &controllers.ConfigController{}, "post:CreateOrUpdateConfig")
 
-		//vweb.Router("/api/loginselect", &controllers.AccountController{}, "get:ListLoginSelect")
-		//vweb.Router("/api/loginselect", &controllers.AccountController{}, "post,delete:CreateOrUpdateLoginSelect")
-	}
+		}
 
-	//zero.RunAndBlock(&zero.Config{
-	//	NickName:      []string{"bot"},
-	//	CommandPrefix: "/",
-	//	SuperUsers:    []int64{764763903},
-	//	Driver: []zero.Driver{
-	//		// 正向 WS
-	//		driver.NewWebSocketClient("ws://127.0.0.1:6700", ""),
-	//		// 反向 WS
-	//		driver.NewWebSocketServer(16, "ws://127.0.0.1:6701", ""),
-	//	},
-	//}, nil)
-
+	// 设置静态文件目录
 	if models.Config.Static == "" {
 		models.Config.Static = "./static"
 	}
 	web.BConfig.WebConfig.StaticDir["/static"] = models.Config.Static
 
+	// 配置Web服务参数
 	web.BConfig.AppName = models.AppName
 	web.BConfig.WebConfig.AutoRender = false
 	web.BConfig.CopyRequestBody = true
 	web.BConfig.WebConfig.Session.SessionOn = true
 	web.BConfig.WebConfig.Session.SessionGCMaxLifetime = 3600
 	web.BConfig.WebConfig.Session.SessionName = models.AppName
+	// 配置CORS跨域访问
 	web.InsertFilter("*", web.BeforeRouter, cors.Allow(&cors.Options{
 		//允许访问所有源
 		AllowAllOrigins: true,
@@ -366,15 +361,17 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	// 启动后延迟发送启动通知
 	go func() {
 		time.Sleep(time.Second * 4)
 		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
 
 	}()
 
+	// 初始化微信机器人（桌面模式）
 	bot := openwechat.DefaultBot(openwechat.Desktop) // 桌面模式
 
-	// 注册消息处理函数
+	// 注册微信消息处理函数
 	bot.MessageHandler = func(msg *openwechat.Message) {
 		if msg.IsText() && msg.Content == "ping" {
 
@@ -383,30 +380,10 @@ func main() {
 			name := msg.FromUserName
 			id := friedns.GetByUsername(name).User
 			id.Detail()
-			//msg.ReplyText(id)
 
 		}
 	}
-	//// 注册登陆二维码回调
-	//bot.UUIDCallback = openwechat.PrintlnQrcodeUrl
-	//
-	//// 登陆
-	//reloadStorage := openwechat.NewFileHotReloadStorage("storage.json")
-	//defer reloadStorage.Close()
-	//err := bot.PushLogin(reloadStorage, openwechat.NewRetryLoginOption())
-	//
-	//// 获取登陆的用户
-	//self, err := bot.GetCurrentUser()
-	//if err != nil {
-	//	fmt.Println(err)
-	//	return
-	//}
-	//
-	//friedns, err = self.Friends()
-	//
-	//// 阻塞主goroutine, 直到发生异常或者用户主动退出
-	//bot.Block()
-
+	// 启动Web服务，阻塞主线程
 	web.Run()
 
 }

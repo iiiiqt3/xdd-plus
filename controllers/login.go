@@ -20,6 +20,7 @@ import (
 	qrcode "github.com/skip2/go-qrcode"
 )
 
+// LoginController 登录控制器，处理管理员登录、门户登录、CK登录等
 type LoginController struct {
 	BaseController
 }
@@ -52,6 +53,7 @@ type Result struct {
 var JdCookieRunners sync.Map
 var jdua = models.GetUserAgent
 
+// GetUserInfo 根据pin获取京东用户Cookie信息（VIP功能）
 func (c *LoginController) GetUserInfo() {
 	if !models.Config.VIP {
 		return
@@ -96,6 +98,7 @@ func (c *LoginController) GetUserInfo() {
 	}
 }
 
+// GetUserPin 根据QQ号获取关联的京东pin列表（VIP功能）
 func (c *LoginController) GetUserPin() {
 	if !models.Config.VIP {
 		return
@@ -134,6 +137,7 @@ type Cookie struct {
 	ck string
 }
 
+// GetQrcode1 通过第三方API获取京东登录二维码
 func (c *LoginController) GetQrcode1() {
 	rsp, err := httplib.Post("https://api.kukuqaq.com/jd/qrcode").Response()
 	if err != nil {
@@ -151,15 +155,12 @@ func (c *LoginController) GetQrcode1() {
 		}
 	}
 	//jsonByte, _ := json.Marshal(s)
-	//jsonStr := string(jsonByte)
-	//fmt.Printf("%v", jsonStr)
 	//ddd, _ := base64.StdEncoding.DecodeString(s.Data.QqLoginQrcode.Bytes)
-	//c.Ctx.WriteString(`{"url":"` + "url" + `","img":"` + base64.StdEncoding.EncodeToString(ddd) + `"}`) //"data:image/png;base64," +
-	//logs.Info(`{"url":"` + "url" + `","img":"` + s.Data.QqLoginQrcode.Bytes + `"}`)
 	c.Ctx.WriteString(s.Data.QqLoginQrcode.Bytes)
 	return
 }
 
+// GetQrcode 生成京东登录二维码并返回base64图片数据
 func (c *LoginController) GetQrcode() {
 	if v := c.GetSession("jd_token"); v != nil {
 		token := v.(string)
@@ -267,9 +268,7 @@ func init() {
 					bot := vv[2].(string)
 					uid := vv[3].(int)
 					gid := vv[4].(int)
-					// fmt.Println(jd_token, cookie, okl_token)
 					result, ck := CheckLogin(jd_token, cookie, okl_token)
-					// fmt.Println(result)
 					switch result {
 					case "成功":
 						switch bot {
@@ -296,14 +295,12 @@ func init() {
 					default: //失效
 						switch bot {
 						case "qq", "qqg":
-							// ck.Update(models.QQ, uid)
 							if gid != 0 {
 								go models.SendQQGroup(gid, uid, "扫码失败")
 							} else {
 								go models.SendQQ(uid, "扫码失败")
 							}
 						case "tg", "tgg":
-							// ck.Update(models.Telegram, uid)
 							if gid != 0 {
 								go models.SendTggMsg(int(gid), int(uid), "扫码失败", vv[5].(int), vv[6].(string))
 							} else {
@@ -318,7 +315,7 @@ func init() {
 	}()
 }
 
-//Query 查询
+// Query 轮询京东扫码登录状态，获取登录结果Cookie
 func (c *LoginController) Query() {
 	if v := c.GetSession("jd_token"); v == nil {
 		c.Ctx.WriteString("重新获取二维码")
@@ -340,11 +337,8 @@ func (c *LoginController) Query() {
 						ck.Update(models.Note, note)
 					}
 				}
-				// if strings.Contains(models.Config.Master, pin) {
 				c.Ctx.WriteString("登录")
-				// } else {
 				// 	c.Ctx.WriteString("成功")
-				// }
 				return
 			}
 		}
@@ -424,11 +418,8 @@ func CheckLogin(token, cookie, okl_token string) (string, *models.JdCookie) {
 	case 258: //务异常，请稍后重试
 		return "", nil
 	case 264: //出错了，请退出重试
-		// JdCookieRunners.Delete(token)
-		// return sth.Message, nil
 	default:
 		JdCookieRunners.Delete(token)
-		// fmt.Println(sth)
 	}
 	return "", nil
 }
@@ -489,7 +480,7 @@ func resetLoginFails(ip string) {
 
 // ==================== 登录接口 ====================
 
-// GetLoginStatus 检查当前 IP 是否被锁定（供前端轮询）
+// GetLoginStatus 检查当前IP是否被登录锁定（供前端轮询）
 func (c *LoginController) GetLoginStatus() {
 	ip := c.Ctx.Input.IP()
 	locked, remaining := checkLoginLocked(ip)
@@ -533,6 +524,11 @@ func (c *LoginController) RegisterUser() {
 		},
 	}
 	c.ServeJSON()
+}
+
+// SendResetPasswordSms 发送密码重置短信验证码
+func (c *LoginController) SendResetPasswordSms() {
+	// TODO: implement SMS sending logic
 }
 
 func (c *LoginController) GetResetPasswordInfo() {
@@ -582,6 +578,7 @@ func (c *LoginController) ResetPassword() {
 	c.ServeJSON()
 }
 
+// PortalLogout 门户用户退出登录，清除Session
 func (c *LoginController) PortalLogout() {
 	c.DelSession("portal_account_id")
 	c.DelSession("portal_user_number")
@@ -668,6 +665,7 @@ func (c *LoginController) IsAdmin() {
 	c.ServeJSON()
 }
 
+// CkLogin 通过京东Cookie（pt_key+pt_pin）登录，支持新增和更新Cookie
 func (c *LoginController) CkLogin() {
 	pin := c.GetString("pin")
 	key := c.GetString("key")
@@ -675,10 +673,7 @@ func (c *LoginController) CkLogin() {
 	bz := c.GetString("bz")
 	push := c.GetString("push")
 
-	//c.Ctx.WriteString("添加成功")
 	if key != "" && pin != "" {
-		//ptKey := FetchJdCookieValue("pt_key", cookies)
-		//ptPin := FetchJdCookieValue("pt_pin", cookies)
 		ck := &models.JdCookie{
 			PtKey:    key,
 			PtPin:    pin,
@@ -697,26 +692,23 @@ func (c *LoginController) CkLogin() {
 				if !models.HasPin(pin) {
 					models.NewJdCookie(ck)
 					result.Message = fmt.Sprintf("添加成功")
-					//result.Data = ck.Query()
-					jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+					jsons, errs := json.Marshal(result)
 					if errs != nil {
 						fmt.Println(errs.Error())
 					}
 					c.Ctx.WriteString(string(jsons))
 				} else if !models.HasKey(key) {
 					ck, _ := models.GetJdCookie(pin)
-					//更新CK
 					models.UpdateCookie(ck)
 					result.Message = fmt.Sprintf("更新成功")
-					//result.Data = ck.Query()
-					jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+					jsons, errs := json.Marshal(result)
 					if errs != nil {
 						fmt.Println(errs.Error())
 					}
 					c.Ctx.WriteString(string(jsons))
 				}
 				result.Message = "登录成功"
-				jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+				jsons, errs := json.Marshal(result)
 				if errs != nil {
 					fmt.Println(errs.Error())
 				}
@@ -727,7 +719,7 @@ func (c *LoginController) CkLogin() {
 					Code:    1,
 					Message: "CK过期",
 				}
-				jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+				jsons, errs := json.Marshal(result)
 				if errs != nil {
 					fmt.Println(errs.Error())
 				}
@@ -740,7 +732,7 @@ func (c *LoginController) CkLogin() {
 			Code:    2,
 			Message: "ck格式错误",
 		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		jsons, errs := json.Marshal(result)
 		if errs != nil {
 			fmt.Println(errs.Error())
 		}
@@ -749,6 +741,7 @@ func (c *LoginController) CkLogin() {
 
 }
 
+// SMSLogin 短信验证码登录，通过手机号验证码进行门户登录
 func (c *LoginController) SMSLogin() {
 	cookie := c.GetString("ck")
 	qq := c.GetString("qq")
@@ -771,7 +764,6 @@ func (c *LoginController) SMSLogin() {
 			if models.CookieOK(ck) {
 				if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
 					if qq != "" && len(qq) > 6 {
-						//ck.Update(models.QQ, qq)
 						atoi, _ := strconv.Atoi(qq)
 						ck.Updates(models.JdCookie{
 							PtKey:    ptKey,
@@ -870,6 +862,7 @@ func (c *LoginController) SMSLogin() {
 
 }
 
+// WskeyLogin 通过wskey方式登录京东，获取Cookie
 func (c *LoginController) WskeyLogin() {
 	cookie := string(c.Ctx.Input.RequestBody)
 	cookie, _ = url.QueryUnescape(cookie)

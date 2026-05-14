@@ -249,18 +249,7 @@ func (ck *JdCookie) Query() string {
 		} else {
 			msgs = append(msgs, "登录方式：短信登录")
 		}
-		/*
-		            // 添加账号状态
-		   		if ck.Hack == True {
-		      			 if ck.Appoint == True {
-		     		 	 msgs = append(msgs, "账号状态：内测状态")  // 如果 ck.Hack 和 ck.Appoint 都为 True，表示账号为内测状态
-		      		 	} else {
-		      		     msgs = append(msgs, "账号状态：屏蔽状态")  // 如果 ck.Hack 为 True，ck.Appoint 为 False，表示账号为屏蔽状态
-		       			}
-		   			} else {
-		    			   msgs = append(msgs, "账号状态：正常状态")  // 如果 ck.Hack 不为 True，表示账号为正常状态
-		   			}
-		*/
+		
 		// 计算累计挂机时间
 		createdAt, err := time.Parse("2006-01-02", ck.CreateAt)
 		if err != nil {
@@ -271,12 +260,8 @@ func (ck *JdCookie) Query() string {
 			msgs = append(msgs, fmt.Sprintf("累计挂机：%d天", days))
 		}
 		// 获取用户排名并添加到msgs
-		//      rank := GetUserRank(ck.PtPin)
-		//    if rank!= -1 {
 		//      msgs = append(msgs, fmt.Sprintf("用户排名：%d", rank))
-		//} else {
 		//  msgs = append(msgs, "用户排名：获取失败")
-		//       }
 		//
 		msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
 
@@ -326,7 +311,6 @@ func (ck *JdCookie) Query2() string {
 	name := "qncx.js"
 	envs := []Env{{Name: "pins", Value: "&" + ck.PtPin}}
 	msg := runTask(&Task{Path: name, Envs: envs}, &Sender{})
-	//log.Info(msg)
 	if !strings.Contains(msg, "cookies") {
 		msg = fmt.Sprintf("账号昵称：%s\n绑定QQ: %v\n用户等级：%v\n等级名称：%v\n优先级: %v\n%s", ck.Nickname, ck.QQ, ck.UserLevel, ck.LevelName, ck.Priority, msg)
 	} else if CookieOK(ck) {
@@ -375,25 +359,17 @@ func (ck *JdCookie) Query1() string {
 		var rpc = make(chan []RedList)
 		var fruit = make(chan string)
 		var gold = make(chan int64)
-		//		var zjb = make(chan int64)
-		//		var jxzz = make(chan string)
 		var totalbean = make(chan TotalBean)
 		go getToTalBean(cookie, totalbean)
 		go redPacket(cookie, rpc)
 		go initFarm(cookie, fruit)
 		go jsGold(cookie, gold)
-		//		go jdzz(cookie, zjb)
-		//		go jingxiangzhi(cookie, jxzz)
 		today := time.Now().Local().Format("2006-01-02")
 		yestoday := time.Now().Local().Add(-time.Hour * 24).Format("2006-01-02")
 		page := 1
 		end := false
-		//to := <-totalbean
-		//if to.IsPlusVip {
 		//	msgs = append(msgs, fmt.Sprintf("账号信息：%s,京享值:%d", "Plus会员", to.Base.Jvalue))
-		//} else {
 		//	msgs = append(msgs, fmt.Sprintf("账号信息：%s,京享值:%d", "普通会员", to.Base.Jvalue))
-		//}
 		for {
 			if end {
 				msgs = append(msgs, []string{

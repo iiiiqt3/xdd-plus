@@ -508,12 +508,7 @@ func accountInput(sender *Sender, msg chan string, Auto *UserSession) {
 						}
 
 						// 原 Cookie 有效时的逻辑已注释
-						// } else {
-						// 	// 如果 Cookie 有效，跳过登录步骤
-						// 	sender.Reply("当前输入的账号有效，无需重新登录。")
-						// 	smsList[sender.UserID] = nil
-						// 	return
-						// }
+						return
 					}
 				} else {
 					// 如果没有找到对应的 cookies 记录，则要求输入密码
@@ -926,8 +921,6 @@ retryLogin:
 		// 原始验证链接使用：无需编码、无需拼接前缀，直接返回
 		jumpURL := BBKResp.Data
 		// 【备用代码】需要编码+拼接前缀时启用（注释掉上方，解开下方）
-		// encodedJumpURL := url.QueryEscape(BBKResp.Data)
-		// jumpURL := "https://lzkjdz-isv.isvjcloud.com/prod/cc/custom/landing/openAppPage2/?actlink=" + encodedJumpURL
 		
 		sender.Reply(jumpURL)
 		time.Sleep(1 * time.Second)
@@ -1123,240 +1116,7 @@ retryLogin:
 
 
 
-/*  ## 下面的是 直接m.jd.com 返回的ck
 
-// BBK登录API实现
-func BBK_loginAPI(sender *Sender, Auto *UserSession) bool {
-	logs.Info("=== BBK登录开始 ===\n当前登录账号：%s\n当前登录密码：%s\nSocks5配置 - IP：%s，端口：%s，账号：%s，密码：%s",
-		Auto.account, Auto.password, Auto.Socks5_Ip, Auto.Socks5_Port, Auto.Socks5_Account, Auto.Socks5_Password)
-	logs.Info("BBK登录接口地址：%s", "http://8.134.119.94:10066/wangjing/dsLogin")
-
-	retryCount := 0
-	maxRetry := 3
-	// 新增：速度过快的独立重试计数器
-	fastRetryCount := 0
-	maxFastRetry := 3
-
-retryLogin:
-	retryCount++
-	if retryCount > maxRetry {
-		sender.Reply("多次尝试切换代理仍登录失败，请稍后再试（可能当前接口整体不稳定）")
-		logs.Info("=== BBK登录结束（重试次数耗尽，最多重试%d次）===", maxRetry)
-		return true
-	}
-
-	socks5Str := ""
-	if Auto.Socks5_Ip != "" && Auto.Socks5_Port != "" {
-		socks5Str = fmt.Sprintf("%s|%s|%s|%s",
-			Auto.Socks5_Ip,
-			Auto.Socks5_Port,
-			Auto.Socks5_Account,
-			Auto.Socks5_Password)
-		logs.Info("Socks5拼接后字符串：%s", socks5Str)
-	} else {
-		logs.Info("未配置Socks5代理，socks5参数为空字符串")
-		socks5Str = ""
-	}
-
-	params := struct {
-		Account  string `json:"account"`
-		Password string `json:"password"`
-		Socks5   string `json:"socks5"`
-	}{
-		Account:  Auto.account,
-		Password: Auto.password,
-		Socks5:   socks5Str,
-	}
-	logs.Info("BBK登录请求参数：%+v", params)
-
-	jsonData, err := json.Marshal(params)
-	if err != nil {
-		log.Printf("【步骤1：JSON编码失败】BBK登录JSON编码出错: %v", err)
-		sender.Reply("登录请求处理失败（参数格式错误）")
-		logs.Info("=== BBK登录结束（JSON编码失败）===")
-		return true
-	}
-	logs.Info("BBK登录请求JSON数据：%s", string(jsonData))
-
-	req, err := http.NewRequest("POST", "http://8.134.119.94:10066/wangjing/dsLogin", bytes.NewBuffer(jsonData))
-	if err != nil {
-		log.Printf("【步骤2：创建请求失败】BBK登录创建请求出错: %v", err)
-		sender.Reply("登录请求发送失败")
-		logs.Info("=== BBK登录结束（创建请求失败）===")
-		return true
-	}
-
-	req.Header.Set("Content-Type", "application/json;charset=utf-8")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-	logs.Info("BBK登录请求头：Content-Type=%s，User-Agent=%s",
-		req.Header.Get("Content-Type"), req.Header.Get("User-Agent"))
-
-	logs.Info("开始发送BBK登录请求（第%d次尝试），超时时间：60秒", retryCount)
-	client := &http.Client{
-		Timeout: 60 * time.Second,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("【步骤3：发送请求失败】BBK登录接口调用失败: %v", err)
-		sender.Reply(fmt.Sprintf("登录连接超时（第%d次尝试失败）", retryCount))
-		logs.Info("=== BBK登录结束（发送请求失败）===")
-		return true
-	}
-	defer resp.Body.Close()
-
-	logs.Info("【步骤4：接收响应】BBK登录接口响应状态码：%d，状态：%s", resp.StatusCode, resp.Status)
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("【步骤5：读取响应失败】BBK登录读取响应出错: %v", err)
-		sender.Reply("登录响应处理失败")
-		logs.Info("=== BBK登录结束（读取响应失败）===")
-		return true
-	}
-	logs.Info("BBK登录接口响应原始内容：%s（长度：%d字节）", string(body), len(body))
-
-	var BBKResp struct {
-		Code int    `json:"code"`
-		Msg  string `json:"msg"`
-		Data string `json:"data"`
-		Ck   string `json:"ck"`
-	}
-	err = json.Unmarshal(body, &BBKResp)
-	if err != nil {
-		log.Printf("【步骤6：JSON解析失败】BBK登录响应解析失败: %v，原始响应：%s", err, string(body))
-		sender.Reply(fmt.Sprintf("登录失败：%s", string(body)))
-		logs.Info("=== BBK登录结束（JSON解析失败）===")
-		return true
-	}
-
-	logs.Info("【步骤7：处理响应】BBK登录响应 - Code：%d，Msg：%s，Data：%s，CK：%s",
-		BBKResp.Code, BBKResp.Msg, BBKResp.Data, BBKResp.Ck)
-	switch {
-	case BBKResp.Code == 0 && BBKResp.Ck != "":
-		log.Printf("【步骤8：登录成功】BBK登录成功，CK: %s", BBKResp.Ck)
-		Auto.appck = BBKResp.Ck
-		Autockup(Auto.appck, sender, Auto)
-		accountName := strings.TrimPrefix(strings.TrimSuffix(BBKResp.Msg, "]登录成功"), "[")
-		if accountName == BBKResp.Msg {
-			accountName = Auto.account
-		}
-		sender.Reply(fmt.Sprintf("登录成功！账号：%s", accountName))
-		logs.Info("=== BBK登录结束（登录成功）===")
-		return true
-
-	case BBKResp.Code == 0 && BBKResp.Ck == "":
-		log.Printf("【步骤8：登录成功但无CK】BBK登录成功但未返回CK")
-		sender.Reply("登录成功但未获取到登录信息")
-		logs.Info("=== BBK登录结束（登录成功无CK）===")
-		return true
-
-	case BBKResp.Code == 128:
-		log.Printf("【步骤8：需要验证】BBK登录需要验证，链接：%s", BBKResp.Data)
-		jumpURL := BBKResp.Data
-		sender.Reply(jumpURL)
-		time.Sleep(1 * time.Second)
-		sender.Reply("请在200秒内点击上面的地址打开进行安全认证，认证后直接回复【y】即可，退出请输入【q】")
-
-		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB { return sb.Where("Account = ?", Auto.account) })
-		if len(cks) > 0 {
-			cks[0].Update(Smsverify, "true")
-			cks[0].Update(Available, "false")
-		}
-
-// 启动监听用户输入的过程
-		go func() {
-			if smsList[sender.UserID] == nil {
-				smsList[sender.UserID] = make(chan string)
-			}
-			defer delete(smsList, sender.UserID) // 删除消息通道
-			for {
-				select {
-				case msg := <-smsList[sender.UserID]:
-					if msg == "q" || msg == "Q" {
-						sender.Reply("退出手动认证流程")
-						smsList[sender.UserID] = nil
-						return
-					}
-
-					if msg == "y" || msg == "Y" {
-						sender.Reply("开始登录...")
-						loginAPI(sender, Auto)
-						return
-					}
-
-					sender.Reply("无效输入，请回复'y'继续登录，或回复'q'退出。")
-				case <-time.After(200 * time.Second):
-					sender.Reply("操作超时，退出手动认证流程")
-					smsList[sender.UserID] = nil
-					return
-				}
-			}
-		}()
-
-		return true
-
-		
-	// 修正：500错误码-账号存在风险场景（修复case语法错误）
-	case BBKResp.Code == 500 && strings.Contains(BBKResp.Msg, "您的账号存在风险，为了您的账号安全，打开京东商城APP重新登录"):
-		log.Printf("【步骤8：登录失败-账号存在风险】%s", BBKResp.Msg)
-		// 添加指定的回复内容（包含原始提示+解决指引）
-		sender.Reply("请使用京东官方APP登录解除人脸后再次重试，如果仍然不行，应该是狗东搞事，可回复【app下载】使用app提交")
-		logs.Info("=== BBK登录结束（账号存在风险）===")
-		return true
-	
-	case BBKResp.Code == 500 && BBKResp.Msg == "登录失败:undefined":
-		logs.Info("【步骤8：触发重试条件】BBK登录返回：code=500 + msg=登录失败:undefined（第%d次重试）", retryCount)
-		sender.Reply(fmt.Sprintf("登录临时受限，正在切换代理（第%d次重试）...", retryCount))
-
-		newSocks5, err := smartSelectSocks5()
-		if err != nil {
-			logs.Warn("重新选择Socks5代理失败：%v", err)
-			sender.Reply("切换代理失败，无法继续重试")
-			logs.Info("=== BBK登录结束（代理重选失败）===")
-			return true
-		}
-
-		Auto.Socks5_Ip = newSocks5["ip"]
-		Auto.Socks5_Port = newSocks5["port"]
-		Auto.Socks5_Account = newSocks5["account"]
-		Auto.Socks5_Password = newSocks5["password"]
-		logs.Info("重新选择Socks5代理成功：%s:%s（当前该IP已使用%d次）",
-			Auto.Socks5_Ip, Auto.Socks5_Port, countSocks5Usage()[Auto.Socks5_Ip])
-
-		goto retryLogin
-
-	// 修改：模糊匹配Msg中包含“速度过快”，Code=-1
-	case BBKResp.Code == -1 && strings.Contains(BBKResp.Msg, "速度过快"):
-		fastRetryCount++
-		if fastRetryCount > maxFastRetry {
-			logs.Info("【步骤8：速度过快重试耗尽】BBK登录返回包含“速度过快”的提示，已重试%d次，终止重试", maxFastRetry)
-			sender.Reply(fmt.Sprintf("操作速度过快，已重试%d次仍失败，请稍后重新发起登录", maxFastRetry))
-			logs.Info("=== BBK登录结束（速度过快重试耗尽）===")
-			return true
-		}
-
-		logs.Info("【步骤8：速度过快重试】BBK登录返回：code=-1，msg=%s，第%d次重试（最多%d次）", BBKResp.Msg, fastRetryCount, maxFastRetry)
-		sender.Reply(fmt.Sprintf("%s，等待2秒后进行第%d次自动重试（最多%d次）...", BBKResp.Msg, fastRetryCount, maxFastRetry))
-		// 等待2秒后重新发起登录请求
-		time.Sleep(2 * time.Second)
-		goto retryLogin
-
-	default:
-		log.Printf("【步骤8：登录失败】BBK登录失败，错误码: %d, 错误信息: %s", BBKResp.Code, BBKResp.Msg)
-		sender.Reply(fmt.Sprintf("登录失败: %s（错误码：%d）", BBKResp.Msg, BBKResp.Code))
-
-		if strings.Contains(BBKResp.Msg, "账号或密码不正确") {
-			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB { return sb.Where("Account = ?", Auto.account) })
-			if len(cks) > 0 {
-				cks[0].Update("Password", "")
-				cks[0].Update("Account", "")
-				logs.Info("账号密码错误，已清空数据库中存储的密码")
-			}
-		}
-		logs.Info("=== BBK登录结束（登录失败）===")
-		return true
-	}
-}
-*/
 
 
 
@@ -1561,8 +1321,6 @@ func riskVerifyCode(sender *Sender, Auto *UserSession, code string) bool {
 		if ck != "" {
 			Auto.appck = ck
 		}
-		//unescape, _ := url.QueryUnescape(pin)
-		//sender.Reply(fmt.Sprintf("登录成功: %s", unescape))
 		Autockup(Auto.appck, sender, Auto)
 		return true
 	}
@@ -1604,8 +1362,6 @@ func Rabbit_loginAPI(sender *Sender, Auto *UserSession) bool {
 		if ck != "" {
 			Auto.appck = ck
 		}
-		//unescape, _ := url.QueryUnescape(pin)
-		//sender.Reply(fmt.Sprintf("登录成功: %s", unescape))
 		Autockup(Auto.appck, sender, Auto)
 		smsList[sender.UserID] = nil
 		return false
@@ -1860,11 +1616,8 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 	}
 
 	if nck, err := GetJdCookie(ck.PtPin); err == nil {
-	//	date := Date()
-	//	UpdateAt2 := nck.UpdateAt
 		if Auto.isUser {
 			// ========== 注释积分奖励逻辑 - 开始 ==========
-			// result6 := Addcoin(UpdateAt2, sender)
 			// ========== 注释积分奖励逻辑 - 结束 ==========
 			cookieUpdate := JdCookie{
 				RWskey:    "null",
@@ -1884,9 +1637,6 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 				cookieUpdate.Socks5_Password = Auto.Socks5_Password
 			}
 			// ========== 注释积分奖励相关的UpdateAt更新 - 开始 ==========
-			// if result6 {
-			// 	cookieUpdate.UpdateAt = date
-			// }
 			// ========== 注释积分奖励相关的UpdateAt更新 - 结束 ==========
 			switch sender.Type {
 			case "wx", "wxg":
@@ -1899,7 +1649,6 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 			(&JdCookie{}).Push(fmt.Sprintf("来自密码登录成功:%s", pin))
 		} else {
 			// ========== 注释积分奖励逻辑 - 开始 ==========
-			// result7 := AutoAddcoin(UpdateAt2, pin)
 			// ========== 注释积分奖励逻辑 - 结束 ==========
 			cookieUpdate := JdCookie{
 				RWskey:    "null",
@@ -1916,12 +1665,8 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 				cookieUpdate.Socks5_Password = Auto.Socks5_Password
 			}
 			// ========== 注释积分奖励相关的逻辑 - 开始 ==========
-			// if result7 {
-			// 	cookieUpdate.UpdateAt = date
 			// 	(&JdCookie{}).Push(fmt.Sprintf("来自密码自动登录成功:%s，成功发放积分奖励", pin))
-			// } else {
 			// 	(&JdCookie{}).Push(fmt.Sprintf("来自密码自动登录成功:%s，三日内积分已发放", pin))
-			// }
 			// ========== 注释积分奖励相关的逻辑 - 结束 ==========
 			// 新增：保留自动登录成功的推送（无积分相关）
 			(&JdCookie{}).Push(fmt.Sprintf("来自密码自动登录成功:%s", pin))
@@ -1947,7 +1692,6 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 		}
 		sender.Reply(fmt.Sprintf(msg))
 		// ========== 注释积分奖励逻辑 - 开始 ==========
-		// Recoin(sender)
 		// ========== 注释积分奖励逻辑 - 结束 ==========
 		sender.Reply(ck.Query())
 		(&JdCookie{}).Push(msg)
@@ -1959,33 +1703,9 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 }
 
 // ========== 注释积分奖励核心函数 - 开始 ==========
-// func AutoAddcoin(updateAt2 string, pin string) bool {
-// 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-// 		return sb.Where("PtPin = ?", pin)
-// 	})
-// 	if len(cks) == 0 {
-// 		return false
-// 	}
-// 	coninid := cks[0].QQ
-// 	var u User
 
-// 	err := db.Where("number = ?", coninid).First(&u).Error
-// 	if err != nil {
-// 		return false
-// 	}
-// 	result := CompareDates(updateAt2)
-// 	switch result {
-// 	case -1, 0:
 // 		coin := 20 //奖励积分数量
-// 		db.Model(&u).Updates(map[string]interface{}{
 // 			"coin": gorm.Expr(fmt.Sprintf("coin+%d", coin)),
-// 		})
-// 		u.Coin += coin
-// 		return true
-// 	default:
-// 		return false
-// 	}
-// }
 // ========== 注释积分奖励核心函数 - 结束 ==========
 
 func UpAutoCookie() {
@@ -2062,7 +1782,6 @@ func UpAutoCookie() {
 						// 有效账号跳过登录：无延迟（或可选1秒短延迟防高频查询）
 						logs.Info(fmt.Sprintf("IP:%s 账号%sCookie有效，跳过组内延迟", ip, ck.Account))
 						// 可选：添加1秒短延迟（避免连续查询Cookie有效性）
-						// time.Sleep(1 * time.Second)
 					}
 				} else {
 					// 最后一个账号：无论是否登录，都无延迟
@@ -2161,7 +1880,6 @@ func all_UpAutoCookie() {
 						// 有效账号跳过登录：无延迟（或可选1秒短延迟防高频查询）
 						logs.Info(fmt.Sprintf("IP:%s 账号%sCookie有效，跳过组内延迟", ip, ck.Account))
 						// 可选：添加1秒短延迟（避免连续查询Cookie有效性）
-						// time.Sleep(1 * time.Second)
 					}
 				} else {
 					// 最后一个账号：无论是否登录，都无延迟
@@ -2184,85 +1902,7 @@ func all_UpAutoCookie() {
 }
 
 
-/*
-func UpAutoCookie1() {
-	logs.Info("开始密码自动登录检测")
 
-	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where("Account IS NOT NULL AND Account != '' AND Password IS NOT NULL AND Password != '' AND Smsverify = ? AND Socks5_Ip IS NOT NULL AND Socks5_Ip != ''", False).
-			Order("Priority DESC") // 按照优先级降序排列
-	})
-	logs.Info(fmt.Sprintf("需要自动登录账号数量%d个", len(cks)))
-	for _, ck := range cks {
-		time.Sleep(time.Second * time.Duration(Config.Later))
-		time.Sleep(time.Duration(rand.Intn(4000)+1000) * time.Millisecond)
-		if !CookieOK(&ck) {
-			time.Sleep(time.Second)   //#时间改成1秒
-			Auto := &UserSession{}
-			sender2 := &Sender{
-				UserID: 1,
-				Type:   "tg",
-			}
-			Auto.isAuto = true
-			Auto.isUser = false
-			Auto.account = ck.Account
-			Auto.password = ck.Password
-			// 从数据库读取Socks5信息
-			Auto.Socks5_Ip = ck.Socks5_Ip
-			Auto.Socks5_Port = ck.Socks5_Port
-			Auto.Socks5_Account = ck.Socks5_Account
-			Auto.Socks5_Password = ck.Socks5_Password
-			logs.Info("自动登录账号 %s 使用Socks5代理：%s:%s", ck.Account, Auto.Socks5_Ip, Auto.Socks5_Port)
-			loginAPI(sender2, Auto)
-		}
-	}
-	logs.Info("自动登录检测完成")
-	go func() {
-		Save <- &JdCookie{}
-	}()
-}
-
-
-
-
-func UpAutoCookie2() {
-	logs.Info("开始密码自动登录检测")
-	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where("Account IS NOT NULL AND Account != '' AND Password IS NOT NULL AND Password != ''").
-			Order("Priority DESC") // 按照优先级降序排列
-	})
-	logs.Info(fmt.Sprintf("需要自动登录账号数量%d个", len(cks)))
-	(&JdCookie{}).Push(fmt.Sprintf("开始尝试登录所有账密账号，数量%d个", len(cks)))
-	for _, ck := range cks {
-		time.Sleep(time.Second * time.Duration(Config.Later))
-		time.Sleep(time.Duration(rand.Intn(4000)+1000) * time.Millisecond)
-		if !CookieOK(&ck) {
-			time.Sleep(time.Second)   //#时间改成1秒
-			Auto := &UserSession{}
-			sender2 := &Sender{
-				UserID: 1,
-				Type:   "tg",
-			}
-			Auto.isAuto = true
-			Auto.isUser = false
-			Auto.account = ck.Account
-			Auto.password = ck.Password
-			// 从数据库读取Socks5信息
-			Auto.Socks5_Ip = ck.Socks5_Ip
-			Auto.Socks5_Port = ck.Socks5_Port
-			Auto.Socks5_Account = ck.Socks5_Account
-			Auto.Socks5_Password = ck.Socks5_Password
-			logs.Info("自动登录账号 %s 使用Socks5代理：%s:%s", ck.Account, Auto.Socks5_Ip, Auto.Socks5_Port)
-			loginAPI(sender2, Auto)
-		}
-	}
-	logs.Info("自动登录检测完成")
-	(&JdCookie{}).Push("所有账密账号运行完成！")
-	go func() {
-		Save <- &JdCookie{}
-	}()
-}
-*/
 //##所有失效都推送
 func all_initAutoCookie() {
 	(&JdCookie{}).Push("开始密码登录检测")

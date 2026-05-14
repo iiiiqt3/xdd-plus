@@ -19,8 +19,6 @@ func NolanGetJdQrImg(sender *Sender) {
 		return
 	}
 
-	//http://192.168.195.53:5016/qr/GetQRKey
-	//https://qr.m.jd.com/p?k=${qrcode_info.value.QRCodeKey
 	get := httplib.Post(fmt.Sprintf("%s/qr/GetQRKey", sysConfig.NolanUrl))
 	get.Header("Content-Type", "application/json")
 	get.Body(fmt.Sprintf("{\n  \"botApitoken\": \"%s\"\n}", sysConfig.NolanToken))
@@ -43,33 +41,7 @@ func NolanGetJdQrImg(sender *Sender) {
 			sender.Reply("请使用京东APP扫描或复制链接用浏览器打开，150秒失效")
 		}
 
-		//sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
-		//sender.Reply(fmt.Sprintf("https://qr.m.jd.com/p?k=%s", key))
-
-		//lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
-		//url, _ := jsonparser.GetString(lj, "code")
-		//logs.Info(url)
-		//sender.Reply(NolanLJToKL(url, "京东快捷登录"))
-
 		logs.Info(key)
-		//if Config.QQID == 764763903 {
-		//	SendQQMsg(QQMessage{
-		//		Action: "send_msg",
-		//		QQMsg: struct {
-		//			MessageType string `json:"message_type"`
-		//			UserId      int    `json:"user_id"`
-		//			GroupID     int    `json:"group_id"`
-		//			Message     string `json:"message"`
-		//		}{
-		//			UserId:  sender.UserID,
-		//			GroupID: 0,
-		//			Message: fmt.Sprintf("[CQ:share,url=%s,title=京东快捷登录]", "https://qr.m.jd.com/p?k="+key),
-		//		},
-		//		Echo: "",
-		//	})
-		//
-		//}
-		//sender.Reply("请使用京东APP扫描,或复制链接用浏览器打开。150秒失效")
 		go NolanGetJDQrStatus(key, sender)
 	} else {
 		logs.Info(string(bytes))
@@ -97,7 +69,6 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 	}
 	for {
 		time.Sleep(time.Second * time.Duration(5))
-		//http://192.168.195.53:5016/qr/CheckQRKey
 		get := httplib.Post(fmt.Sprintf("%s/qr/CheckQRKey", sysConfig.NolanUrl))
 		get.Header("Content-Type", "application/json")
 		get.Body(fmt.Sprintf("{\n  \"qrkey\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", cookie, sysConfig.NolanToken))
@@ -122,10 +93,7 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
 				// 注释date变量定义 - 修复未使用变量错误，保留代码便于恢复
-				// date := Date()
 				// 注释积分奖励调用 - 禁用积分功能，保留代码便于恢复
-				// UpdateAt2 := nck.UpdateAt
-				// result6 := Addcoin(UpdateAt2, sender)
 
 				// 检查Password是否为空，如果为空则去掉 Smsverify: "false"
 				cookie := JdCookie{
@@ -143,10 +111,6 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 					cookie.Smsverify = "false"
 				}
 
-				// 注释积分结果判断 - 禁用积分相关的UpdateAt更新
-				// if result6 {
-				// 	cookie.UpdateAt = date
-				// }
 				switch sender.Type {
 				case "wx", "wxg":
 					cookie.WeiXin = sender.WxId
@@ -167,7 +131,6 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				}
 				sender.Reply(fmt.Sprintf(msg))
 				// 注释Recoin积分相关调用 - 禁用新增账号的积分奖励
-				// Recoin(sender)
 				sender.Reply(ck.Query())
 				(&JdCookie{}).Push(msg)
 			}
@@ -197,7 +160,6 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 func NolanGetCookie(cookie string) (bool, string, string) {
 	get := httplib.Post(fmt.Sprintf("%s/env/wskey", sysConfig.NolanUrl))
 	get.Header("Content-Type", "application/json")
-	//get.Body(fmt.Sprintf("{\n  \"botApiToken\": \"%s\",\n  \"wskey\": \"%s\"\n}", NolanToken, cookie))
 	get.Body(fmt.Sprintf("{\n  \"botApiToken\": \"%s\",\n  \"wskey\": \"%s\"\n}", sysConfig.NolanToken, cookie))
 	bytes, _ := get.Bytes()
 	msg, _ := jsonparser.GetString(bytes, "msg")
@@ -211,34 +173,7 @@ func NolanGetCookie(cookie string) (bool, string, string) {
 	}
 }
 
-/*
-func NolanSendSMS(phone string, sender *Sender) {
-	if sysConfig.NolanUrl == "" || sysConfig.NolanToken == "" {
-		logs.Error("NolanUrl or NolanToken is empty")
-		return
-	}
 
-	sender.Reply("请耐心等待...")
-	req := httplib.Post(sysConfig.NolanUrl + "/sms/SendSMS")
-	req.Header("content-type", "application/json")
-	sprintf := fmt.Sprintf("{\n  \"phone\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", phone, sysConfig.NolanToken)
-	data, _ := req.Body(sprintf).Bytes()
-	logs.Info(sprintf)
-	logs.Info(string(data))
-	message, _ := jsonparser.GetString(data, "message")
-	success, _ := jsonparser.GetBoolean(data, "success")
-	//status, _ := jsonparser.GetInt(data, "data", "status")
-	if success {
-		logs.Info(strconv.Itoa(sender.UserID))
-		sender.Reply("请输入6位验证码：")
-		return
-	} else {
-		sender.Reply(message)
-		sender.Reply("验证失败，请尝试重新输入手机号码")
-		return
-	}
-}
-*/
 
 func NolanSendSMS(phone string, sender *Sender) bool {
 	sender.Reply("请耐心等待发送验证码...")
@@ -291,12 +226,8 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
 			// 注释date变量定义 - 修复未使用变量错误，保留代码便于恢复
-			// date := Date()
 			// 注释积分奖励调用 - 禁用积分功能，保留代码便于恢复
-			// UpdateAt2 := nck.UpdateAt
-			// result6 := Addcoin(UpdateAt2, sender)
 
-			//			cookie := JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True, Smsverify: "false"}
 			cookie := JdCookie{
 				QQ:        sender.UserID,
 				PtKey:     ptkey,
@@ -311,9 +242,6 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 				cookie.Smsverify = "false"
 			}
 			// 注释积分结果判断 - 禁用积分相关的UpdateAt更新
-			// if result6 {
-			// 	cookie.UpdateAt = date
-			// }
 			switch sender.Type {
 			case "wx", "wxg":
 				cookie.WeiXin = sender.WxId
@@ -334,7 +262,6 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 			}
 			sender.Reply(fmt.Sprintf(msg))
 			// 注释Recoin积分相关调用 - 禁用新增账号的积分奖励
-			// Recoin(sender)
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 		}
@@ -393,12 +320,8 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
 			// 注释date变量定义 - 修复未使用变量错误，保留代码便于恢复
-			// date := Date()
 			// 注释积分奖励调用 - 禁用积分功能，保留代码便于恢复
-			// UpdateAt2 := nck.UpdateAt
-			// result6 := Addcoin(UpdateAt2, sender)
 
-			//			cookie := JdCookie{QQ: sender.UserID, PtKey: ptkey, Available: True, Smsverify: "false"}
 			// 检查Password是否为空，如果为空则去掉 Smsverify: "false"
 			cookie := JdCookie{
 				QQ:        sender.UserID,
@@ -415,9 +338,6 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			}
 
 			// 注释积分结果判断 - 禁用积分相关的UpdateAt更新
-			// if result6 {
-			// 	cookie.UpdateAt = date
-			// }
 			switch sender.Type {
 			case "wx", "wxg":
 				cookie.WeiXin = sender.WxId
@@ -438,7 +358,6 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			}
 			sender.Reply(fmt.Sprintf(msg))
 			// 注释Recoin积分相关调用 - 禁用新增账号的积分奖励
-			// Recoin(sender)
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 

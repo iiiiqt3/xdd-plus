@@ -276,9 +276,6 @@ var Admin = `<html lang="zh-cn">
             data: JSON.stringify(data.field),
             success: function(data) {
                 // 遍历JSON对象的属性并存储到本地缓存中
-                // for (var key in data) {
-                //     localStorage.setItem(key, JSON.stringify(data[key]));
-                // }
                 layer.msg(data)
             },
             error: function(xhr, textStatus, errorThrown) {
@@ -320,19 +317,8 @@ var Admin = `<html lang="zh-cn">
     //
     // 发送ajax请求获取数据
     // $.ajax({
-    //     url: '/api/envs',
-    //     type: 'POST',
-    //     dataType: 'json',
-    //     success: function(data) {
     //         // 遍历JSON对象的属性并存储到本地缓存中
-    //         for (var key in data) {
-    //             localStorage.setItem(key, JSON.stringify(data[key]));
-    //         }
-    //     },
-    //     error: function(xhr, textStatus, errorThrown) {
     //         console.log('请求失败');
-    //     }
-    // });
 
 
 
@@ -489,7 +475,6 @@ var Admin = `<html lang="zh-cn">
     table.render({
         elem: '#envs',
         height: "auto",
-        // url: '/api/envs',
         url: '/api/envs',
         toolbar: 'default',
         response: {
@@ -571,57 +556,23 @@ var Admin = `<html lang="zh-cn">
 
 
     //容器管理
-    // layui.config({
     //     base: 'http://xdd.smxy.xyz/layui/' //配置 layui 第三方扩展组件存放的基础目录
-    // }).extend({
-    //     cardTable: 'cardTable/cardTable'
-    // }).use(['layer', 'form', 'jquery', 'cardTable'], function () {
     //     let form = layui.form;
     //     let $ = layui.jquery;
     //     let layer = layui.layer;
     //     let cardTable = layui.cardTable;
     //
-    //     var currentTable = cardTable.render({
-    //         elem: '#currentTableId',
     //         //此为动态
-    //         //url: '/card.json',
     //         //此为静态
     //         limit: 12, //每页数量默认是每行数量的双倍
     //         linenum: 4, //每行数量 2,3,4,6
-    //         url: 'http://xdd.smxy.xyz/test.json',
-    //         toolbar:'currentTableBar',
-    //     })
     //     // 监听搜索操作
-    //     form.on('submit(data-search-btn)', function (data) {
-    //         queryJson = data.field;
-    //         cardTable.reload("currentTableId", {
-    //             where: queryJson,
-    //         });
-    //         return false;
-    //     });
     //     //卡片单击事件
-    //     currentTable.on('row(currentTableFilter)', function (obj) {
     //         layer.msg("单击事件");
-    //         return false;
-    //     });
     //     //卡片双击事件
-    //     currentTable.on('rowDouble(currentTableFilter)', function (obj) {
     //         layer.msg("双击事件");
-    //         return false;
-    //     });
     //     //toolrow监听事件
-    //     currentTable.on('tool(currentTableFilter)', function (obj) {
-    //         if (obj.event === 'details') {
     //             layer.msg("按钮事件");
-    //         }
-    //         return false;
-    //     });
-    //     form.on('submit(data-btn)', function () {
-    //         var data = cardTable.getAllData("currentTableId");
-    //         layer.msg(JSON.stringify(data));
-    //         return false;
-    //     });
-    // });
 
 
 </script>

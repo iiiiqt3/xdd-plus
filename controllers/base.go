@@ -17,7 +17,6 @@ var validate *validator.Validate
 var trans ut.Translator
 
 func init() {
-	//验证器注册翻译器
 	var zhCh = zh.New()
 	validate = validator.New()
 	var uni = ut.New(zhCh)
@@ -25,7 +24,7 @@ func init() {
 	zh_translations.RegisterDefaultTranslations(validate, trans)
 }
 
-//BaseController 基础控制器
+// BaseController 基础控制器，所有控制器继承此结构体，提供通用功能
 type BaseController struct {
 	beego.Controller
 	PtPin         string
@@ -34,28 +33,24 @@ type BaseController struct {
 	PortalAccount *models.WebUserAccount
 }
 
-//NextPrepare 下一个准备
+// NextPrepare 接口定义，子控制器实现此接口以执行自定义前置处理
 type NextPrepare interface {
 	NextPrepare()
 }
 
-//Prepare 准备
+// Prepare beego生命周期钩子，请求进入时自动调用，执行子控制器的前置处理
 func (c *BaseController) Prepare() {
-	// c.Ctx.ResponseWriter.Header().Add("Master-IP-Address", models.GetMasteraddr())
 	if app, ok := c.AppController.(NextPrepare); ok {
 		app.NextPrepare()
 	}
 }
 
-//Response 响应
-func (c *BaseController) Response(ps ...interface{}) { //数据、信息、状态码
+// Response 统一JSON响应方法，支持可变参数：数据、信息、状态码
+func (c *BaseController) Response(ps ...interface{}) {
 	rsp := struct {
-		//状态码
-		Code int `json:"code"` // 0 成功 1 失败
-		//数据
+		Code int         `json:"code"`
 		Data interface{} `json:"data"`
-		//描述信息
-		Msg string `json:"msg"`
+		Msg  string      `json:"msg"`
 	}{}
 	switch len(ps) {
 	case 3:
@@ -77,37 +72,30 @@ func (c *BaseController) Response(ps ...interface{}) { //数据、信息、状�
 	c.StopRun()
 }
 
-//ResponseError 响应错误
+// ResponseError 响应错误信息，支持多种类型参数（int状态码、error错误、string描述）
 func (c *BaseController) ResponseError(ps ...interface{}) *BaseController {
 	if ps[0] == nil {
 		return c
 	}
-	// var status = http.StatusBadRequest
 	var text = ""
 
 	for _, p := range ps {
 		switch t := p.(type) {
-		case int: //状态码
-			// status = t
+		case int:
 			break
-		case error: //错误
+		case error:
 			text = t.Error()
 			break
-		case string: //字符描述
+		case string:
 			text = t
 			break
 		}
 	}
-	// c.Ctx.ResponseWriter.WriteHeader(status)
-	// if text != "" {
-	// 	c.Ctx.WriteString(text)
-	// }
 	c.Response(nil, text, 1)
-	// c.StopRun()
 	return nil
 }
 
-//Logined 登录
+// Logined 管理员登录验证，未登录则重定向到首页
 func (c *BaseController) Logined() *BaseController {
 	if v := c.GetSession("token"); v == nil {
 		c.Ctx.Redirect(302, "/")
@@ -120,6 +108,7 @@ func (c *BaseController) Logined() *BaseController {
 	return c
 }
 
+// PortalLogined 门户用户登录验证，从Session中恢复用户账号信息
 func (c *BaseController) PortalLogined() *BaseController {
 	v := c.GetSession("portal_account_id")
 	if v == nil {
@@ -175,7 +164,7 @@ func (c *BaseController) PortalLogined() *BaseController {
 	return c
 }
 
-//Validate 表单验证
+// Validate 表单验证，将请求体JSON反序列化到指定结构体并进行校验
 func (c *BaseController) Validate(ps interface{}) *BaseController {
 	c.ResponseError(json.Unmarshal(c.Ctx.Input.CopyBody(10000000), ps), http.StatusBadRequest)
 	if err := validate.Struct(ps); err != nil {
@@ -186,7 +175,7 @@ func (c *BaseController) Validate(ps interface{}) *BaseController {
 	return c
 }
 
-//GetPathInt64
+// GetPathInt64 从URL路径参数中获取int64类型的值
 func (c *BaseController) GetPathInt64(v string) int64 {
 	r := c.Ctx.Input.Param(":" + v)
 	if r == "" {
@@ -197,7 +186,7 @@ func (c *BaseController) GetPathInt64(v string) int64 {
 	return int64(i)
 }
 
-//GetPathInt
+// GetPathInt 从URL路径参数中获取int类型的值
 func (c *BaseController) GetPathInt(v string) int {
 	r := c.Ctx.Input.Param(":" + v)
 	if r == "" {
@@ -208,7 +197,7 @@ func (c *BaseController) GetPathInt(v string) int {
 	return i
 }
 
-//GetPathInt32
+// GetPathInt32 从URL路径参数中获取int32类型的值
 func (c *BaseController) GetPathInt32(v string) int32 {
 	r := c.Ctx.Input.Param(":" + v)
 	if r == "" {
@@ -219,7 +208,7 @@ func (c *BaseController) GetPathInt32(v string) int32 {
 	return int32(i)
 }
 
-//GetQueryInt64
+// GetQueryInt64 从URL查询参数中获取int64类型的值
 func (c *BaseController) GetQueryInt64(v string) int64 {
 	r := c.GetString(v)
 	if r == "" {
@@ -230,7 +219,7 @@ func (c *BaseController) GetQueryInt64(v string) int64 {
 	return int64(i)
 }
 
-//GetQueryInt
+// GetQueryInt 从URL查询参数中获取int类型的值
 func (c *BaseController) GetQueryInt(v string) int {
 	r := c.GetString(v)
 	if r == "" {
@@ -241,7 +230,7 @@ func (c *BaseController) GetQueryInt(v string) int {
 	return i
 }
 
-//GetQueryInt32
+// GetQueryInt32 从URL查询参数中获取int32类型的值
 func (c *BaseController) GetQueryInt32(v string) int32 {
 	r := c.GetString(v)
 	if r == "" {

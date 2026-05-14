@@ -280,22 +280,6 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 
 var codeSignals = []CodeSignal{
 
-	/*
-
-	   {
-	   		Command: []string{"顺风充值","饿了么充值","顺丰充值"},
-	   		Admin:   false,
-	   		Handle: func(sender *Sender) interface{} {
-	   			msg := make(chan string)
-	   			ElmList[sender.UserID] = msg
-	   			go ELMSelect(sender, msg, 0)
-	   				return "您已进入充值流程，请直接私聊微信机器人转帐，仅支持3元，6元，12元，3个档位，1元=100积分。请勿转其他金额。（机器人微信号：Shi0718-c）回复'q'退出流程!"
-
-	   		},
-	   	},
-
-
-	*/
 	//拉人进微信群
 	{
 		Command: []string{"拉1群"},
@@ -333,13 +317,9 @@ var codeSignals = []CodeSignal{
 		Command: []string{"拉群"},
 		Handle: func(sender *Sender) interface{} {
 			// 确定用户ID和类型
-			//   id := sender.UserID
-			//     var idType string
 
 			if sender.Type == "tg" { // 如果是Telegram用户
-				//      idType = Telegram
 			} else { // 如果是QQ用户
-				//     idType = QQ
 			}
 			if sender.Type == "wxg" { // 如果是群聊消息
 				if sender.IsAdmin { // 如果是管理员
@@ -356,12 +336,6 @@ var codeSignals = []CodeSignal{
 					return "管理员请不要对机器人私聊此命令"
 				} else { // 如果不是管理员
 					env := GetEnv("InviteWxGroupID")
-					// 注释掉关于需要账号有效使用密码登录的验证
-					// cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-					//     return sb.Where(fmt.Sprintf("%s =? AND %s =? AND Password IS NOT NULL AND Password!= ''", idType, Available), id, True)
-					// })
-
-					// 如果 len(cks) == 0 的判断被注释掉，直接进入下面的群聊邀请操作
 					if env != "" {
 						if Config.Wx.Model == "qx" {
 							QxInviteGroup(sender.WxId, env)
@@ -452,130 +426,6 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
-	/*
-
-
-			{
-			Command: []string{"AI","ai"},
-		   		 Handle: func(sender *Sender) interface{} {
-
-		        // 检查用户积分
-		        coin := GetCoin(sender.UserID)
-		        if coin <= 50 {
-		            return "为避免接口滥用，积分小于200将无法使用GPT服务"
-		        }
-
-		        // 将用户输入的内容连接成一个字符串
-		        content := strings.Join(sender.Contents, " ")
-
-		        // 修剪内容中的空格
-		        content = strings.TrimSpace(content)
-
-		        // 如果没有输入有效内容，返回提示
-		        if content == "" {
-		            return "请输入正确的格式命令和内容中间有个空格，例如： ai 群主帅吗"
-		        }
-
-		        // 设置目标API URL和Token
-		        url := "https://api.x.ai/v1/chat/completions"
-		        token := "xai-tCIUfzkU7peCQjBEvB9brefn3QVdXzN2wBCSpf7rbwzZJ1Fayifnq8WvAatTkSkRFBQSOnYxtrRwVsKH"
-
-		        // 创建POST请求
-		        post := httplib.Post(url)
-		        post.Header("Authorization", "Bearer " + token)  // 设置Authorization头部
-		        post.Header("Content-Type", "application/json")  // 设置Content-Type为JSON
-
-		        // 构建请求体
-		        post.Body(fmt.Sprintf(`{
-		            "model": "grok-beta",
-		            "messages": [
-		                {
-		                    "role": "system",
-		                    "content": "You are a test assistant."
-		                },
-		                {
-		                    "role": "user",
-		                    "content": "%s"
-		                }
-		            ],
-		            "stream": false,
-		            "temperature": 0
-		        }`, content))
-
-		        // 发送请求并获取响应
-		        bytes, err := post.Bytes()
-		        if err != nil {
-		            return fmt.Sprintf("请求失败：%s", err.Error())
-		        }
-
-		        // 打印返回的原始响应日志
-		        logs.Info(string(bytes))
-
-		        // 从返回的JSON中提取生成的文本内容
-		        val, err := jsonparser.GetString(bytes, "choices", "[0]", "message", "content")
-		        if err != nil {
-		            return "无法解析GPT返回的内容，请稍后再试"
-		        }
-
-		        return val
-		    },
-		},
-
-
-		/*
-
-				{
-				  Command: []string{"GPT", "GPT4", "gpt"},
-				    Handle: func(sender *Sender) interface{} {
-
-					coin := GetCoin(sender.UserID)
-					   if coin <=200 {
-					   	return "为避免接口滥用，积分小于200将无法使用gpt服务"
-				    }
-				        // 将内容连接成一个字符串
-				        content := strings.Join(sender.Contents, " ")
-
-				        // 修剪内容中的空格
-				        content = strings.TrimSpace(content)
-
-				        // 检查是否提供了非空内容
-				        if content == "" {
-				            return "请输入正确的格式命令和内容中间有个空格，例如： GPT 群主帅吗"
-				        }
-
-				        // todo: 接入GPT-4
-				        url := GetEnv("gpt")
-				        token := GetEnv("gpt_token")
-				        post := httplib.Post(url)
-				        post.Header("Authorization", token)
-				        post.Header("Content-Type", "application/json")
-				        post.Body(fmt.Sprintf("{\n  \"model\": \"gpt-4-1106-preview\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"%s\"\n    }\n  ]\n}", content))
-				        bytes, _ := post.Bytes()
-				        logs.Info(string(bytes))
-				        val, _ := jsonparser.GetString(bytes, "choices", "[0]", "message", "content")
-
-				        return val
-				    },
-				},
-
-
-
-			{
-			    Command: []string{"记录ck测试", "提交ck测试"},
-			    Handle: func(sender *Sender) interface{} {
-			        sender.Reply("请输入您的CK值：")
-
-			        c2 := make(chan string)
-			        inputList[sender.UserID] = c2
-			        // 启动记录CK的对话流程
-			        go recordCKInput(sender, c2)
-
-			        return nil
-			    },
-			},
-	
-	*/
 
 	// 更新CK命令（修复语法，和你的结构对齐）
 	{
@@ -912,33 +762,6 @@ default:
 		},
 	},
 
-/*
-
-
-{
-    Command: []string{"登录队列", "排队查询", "登录状态"},
-    Handle: func(sender *Sender) interface{} {
-        queueLen := getQueueLength()
-        status := getQueueStatus()
-        
-        var statusText string
-        if status == "running" {
-            statusText = "🟢 运行中"
-        } else {
-            statusText = "🔴 已停止"
-        }
-        
-        if queueLen == 0 {
-            return fmt.Sprintf("📊 当前登录队列状态：%s\n✅ 队列中暂无等待任务，可以立即密码登录", statusText)
-        } else {
-            estimatedTime := queueLen * 5 // 每个任务5分钟
-            return fmt.Sprintf("📊 当前登录队列状态：%s\n⏳ 排队任务数：%d 个\n🕐 预计等待时间：%d 分钟", 
-                statusText, queueLen, estimatedTime)
-        }
-    },
-},
-*/	
-	
 	{
 		Command: []string{"账密更新"},
 		Admin:   true,
@@ -948,9 +771,7 @@ default:
 			go UpAutoCookie()
 
 			
-	//		go UpAutoCookie_b()
-
-			return nil
+	return nil
 		},
 	},
 
@@ -975,7 +796,6 @@ default:
 		Handle: func(sender *Sender) interface{} {
 			sender.Reply("开始密码检测...")
 			go initAutoCookie()
-			//	sender.Reply("检测完成")
 			return nil
 		},
 	},
@@ -985,7 +805,6 @@ default:
 		Handle: func(sender *Sender) interface{} {
 			sender.Reply("开始密码检测...")
 			go all_initAutoCookie()
-			//	sender.Reply("检测完成")
 			return nil
 		},
 	},
@@ -1005,19 +824,6 @@ default:
 			return nil
 		},
 	},
-
-	/*	{
-			Command: []string{"登录", "登陆"},
-			Handle: func(sender *Sender) interface{} {
-				c3 := make(chan string)
-				smsList[sender.UserID] = c3
-		//		sender.Reply("请输入手机号")
-				go SmsSelect(sender, c3, "Rabbit")
-				return nil
-			},
-		},
-
-	*/
 
 	{
 		Command: []string{"删掉"},
@@ -1451,33 +1257,6 @@ default:
 		},
 	},
 
-/*	{
-		Command: []string{"微信扫码"},
-		Handle: func(sender *Sender) interface{} {
-			BBKGetWxQrImg(sender)
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"R京东扫码"},
-		Handle: func(sender *Sender) interface{} {
-			RabbitGetJdQrImg(sender)
-			return nil
-		},
-	},
-
-
-
-
-
-
-
-*/
-
-
-
-
 {
     Command: []string{"微信协议掉线推送"},
     Admin:   true,
@@ -1595,7 +1374,6 @@ default:
 			}
 
 			NolanGetJdQrImg(sender)
-			//sender.Reply("渠道升级，预计今晚修复完成")
 			return nil
 		},
 	},
@@ -1655,824 +1433,9 @@ default:
     },
 },
 
-	/*
-
-	   {
-	       Command: []string{"sign", "打卡", "签到"},
-	       Handle: func(sender *Sender) interface{} {
-	           // 如果是微信类型，先检查 wxid 是否为空
-	           if sender.Type == "wx" {
-	               var u User
-	               err := db.Where("number = ?", sender.UserID).First(&u).Error
-	               if err != nil {
-	                   // 如果找不到用户，则不再提示
-	                   sender.Reply("未找到用户，请先通过QQ机器人创建账户。")
-	                   return nil // 确保返回一个值
-	               }
-
-	               // 将 u.Number 转换为字符串并检查其长度
-	               numberStr := fmt.Sprintf("%d", u.Number)
-	               if len(numberStr) > 13 {
-	                   // 当 number 大于 13 时，提示用户绑定微信
-	                   sender.Reply("1、请先添加使用QQ机器人：1259420884 【打卡]并创建用户，对QQ机器人发送，【绑定微信】，获得绑定码发给微信，绑定后。可使用微信机器人打卡\n2、提醒：如果你没有使用过QQ机器人，请先在QQ打卡，创建用户后用微信机器人发送 【转账】，按提示把微信机器人积分转移到QQ用户上，否则绑定后微信积分消失，以QQ机器人数据为准，且无法找回")
-	                   return nil // 返回，避免继续执行
-	               }
-	           }
-
-	           // 在其他情况下（包括 wx 类型且 number <= 13），正常执行打卡逻辑
-	           randNum := rand.Intn(100) + 1
-	           msg := make(chan string)
-	           ckList[sender.UserID] = msg
-
-	           // 发送随机数字给用户进行验证
-	           sender.Reply(fmt.Sprintf("请输入打卡验证数字: %d", randNum))
-
-	           go func() {
-	               defer func() {
-	                   // 任务结束后关闭通道并从 ckList 中删除通道
-	                   close(msg)
-	                   delete(ckList, sender.UserID)
-	               }()
-
-	               userInput := <-msg
-	               userNum, err := strconv.Atoi(userInput)
-	               if err != nil {
-	                   sender.Reply("打卡验证失败，已退出流程.")
-	                   return // 这里不需要返回值
-	               }
-
-	               // 验证用户输入的数字
-	               if userNum != randNum {
-	                   sender.Reply("验证失败，我怀疑你是机器人...")
-	                   return // 结束程序，直接返回
-	               }
-
-	               // 获取当前日期的零点时间，判断是否是新的一天
-	               zero, _ := time.ParseInLocation("2006-01-02", time.Now().Local().Format("2006-01-02"), time.Local)
-	               var u User
-	               var ntime = time.Now()
-	               total := []int{}
-	               err = db.Where("number = ?", sender.UserID).First(&u).Error
-	               if err != nil {
-	                   // 创建新用户
-	                   u = User{
-	                       Class:             sender.Type,
-	                       Number:            sender.UserID,
-	                       Coin:              1,
-	                       ActiveAt:          ntime,
-	                       LastSignIn:        ntime,
-	                       ContinuousSignIns: 1, // 设置为1表示首次打卡
-	                       SignInDate:        ntime,
-	                   }
-	                   if err := db.Create(&u).Error; err != nil {
-	                       return // 退出函数
-	                   }
-	               } else {
-	                   // 判断是否今天已经打卡
-	                   if zero.Unix() > u.SignInDate.Unix() {
-	                       // 不是今天打卡，检查是否连续打卡
-	                       if u.LastSignIn.Day()+1 == ntime.Day() && u.LastSignIn.Month() == ntime.Month() && u.LastSignIn.Year() == ntime.Year() {
-	                           u.ContinuousSignIns += 1 // 连续打卡次数 +1
-	                       } else {
-	                           u.ContinuousSignIns = 1 // 如果打卡日期不连续，则重置为1
-	                       }
-	                       u.SignInDate = ntime // 更新当天的打卡时间
-	                   } else {
-	                       sender.Reply(fmt.Sprintf("你打过卡了，当月已连续打卡 %d 天，积分余额%d。", u.ContinuousSignIns, u.Coin))
-	                       return // 直接返回，避免继续执行
-	                   }
-	               }
-
-	               // 每月最后一天 23:59 清零
-	               endOfMonth := time.Date(ntime.Year(), ntime.Month()+1, 1, 0, 0, 0, 0, time.Local).Add(-time.Second)
-	               if ntime.After(endOfMonth) && ntime.Before(endOfMonth.Add(time.Minute)) {
-	                   u.ContinuousSignIns = 0
-	               }
-
-	               // 连续打卡奖励
-	               var bonus int
-	               if u.ContinuousSignIns == 10 {
-	                   bonus = 50
-	               } else if u.ContinuousSignIns == 20 {
-	                   bonus = 150
-	               } else if u.ContinuousSignIns == 30 {
-	                   bonus = 300
-	               }
-
-	               // 如果有奖励，更新用户积分
-	               if bonus > 0 {
-	                   u.Coin += bonus
-	                   sender.Reply(fmt.Sprintf("恭喜！你已连续打卡 %d 天，获得了 %d 积分奖励，当前积分：%d", u.ContinuousSignIns, bonus, u.Coin))
-	               }
-
-	               // 处理每日第几名打卡奖励逻辑
-	               db.Model(User{}).Select("count(id) as total").Where("sign_in_date > ?", zero).Pluck("total", &total)
-
-	               var coin int
-	               if total[0] == 0 {
-	                   coin = 15
-	               } else if total[0] == 1 {
-	                   coin = 14
-	               } else if total[0] == 2 {
-	                   coin = 13
-	               } else if total[0] == 3 {
-	                   coin = 12
-	               } else if total[0] == 4 {
-	                   coin = 11
-	               } else if total[0] == 5 {
-	                   coin = 10
-	               } else if total[0] == 6 {
-	                   coin = 9
-	               } else if total[0] == 7 {
-	                   coin = 8
-	               } else if total[0] == 50 {
-	                   coin = 10
-	               } else if total[0] == 100 {
-	                   coin = 20
-	               } else if total[0]%14 == 13 {
-	                   coin = 10
-	               }
-
-	               // 如果用户不是前7名，给一个随机的积分奖励（2到7之间）
-	               if total[0] > 7 {
-	                   coin = rand.Intn(5) + 1 // 随机给1到5之间的积分
-	               }
-
-	               // 更新用户积分并同步数据库
-	               db.Model(&u).Updates(map[string]interface{}{
-	                   "last_sign_in":         ntime,
-	                   "coin":                 gorm.Expr(fmt.Sprintf("coin+%d", coin + bonus)), // 更新积分时加上奖励积分
-	                   "continuous_sign_ins":  u.ContinuousSignIns,
-	                   "sign_in_date":         ntime,
-	               })
-
-	               u.Coin += coin // 更新内存中的用户积分
-
-	               // 计算下一阶的奖励
-	               nextBonus := 0
-	               daysUntilNextBonus := 0
-	               switch u.ContinuousSignIns {
-	               case 9:
-	                   nextBonus = 50
-	                   daysUntilNextBonus = 1
-	               case 19:
-	                   nextBonus = 150
-	                   daysUntilNextBonus = 1
-	               case 29:
-	                   nextBonus = 300
-	                   daysUntilNextBonus = 1
-	               default:
-	                   if u.ContinuousSignIns < 9 {
-	                       nextBonus = 50
-	                       daysUntilNextBonus = 10 - u.ContinuousSignIns
-	                   } else if u.ContinuousSignIns < 19 {
-	                       nextBonus = 150
-	                       daysUntilNextBonus = 20 - u.ContinuousSignIns
-	                   } else if u.ContinuousSignIns < 29 {
-	                       nextBonus = 300
-	                       daysUntilNextBonus = 30 - u.ContinuousSignIns
-	                   }
-	               }
-	               // 返回打卡信息和提醒
-	               sender.Reply(fmt.Sprintf("\n今日打卡人数：%d人\n奖励随机积分：%d个\n您已连续打卡：%d天\n积分余额总数：%d个\n\n额外奖励：当月继续连续打卡%d天，可获得%d积分奖励。",
-	                   total[0]+1, coin, u.ContinuousSignIns, u.Coin, daysUntilNextBonus, nextBonus))
-
-	               // 在此调用 ReturnCoin 函数
-	               ReturnCoin(sender)
-	           }() // go func() 的结束部分
-
-	           return nil // 结束时返回 nil
-	       },
-	   },
-
-
-	   ## 注释掉原本的打卡代码
-
-
-	   	{
-	   		Command: []string{"sign", "打卡", "签到"},
-	   		Handle: func(sender *Sender) interface{} {
-	   			// 添加类型检查
-	   			if sender.Type == "wx" {
-	   				sender.Reply("微信机器人即将停用，不支持打卡，请前往QQ群打卡，群号：916246295")
-	   				return nil
-	   			} else { // 直接处理其他用户类型
-	   				// 继续打卡逻辑
-	   				randNum := rand.Intn(100) + 1
-	   				msg := make(chan string)
-	   				ckList[sender.UserID] = msg
-
-	   				// 发送随机数字给用户
-	   				sender.Reply(fmt.Sprintf("请输入打卡验证数字: %d", randNum))
-
-	   				go func() {
-	   					defer func() {
-	   						// 任务结束后关闭通道并从 ckList 中删除通道
-	   						close(msg)
-	   						delete(ckList, sender.UserID)
-	   					}()
-
-	   					userInput := <-msg
-	   					userNum, err := strconv.Atoi(userInput)
-	   					if err != nil {
-	   						sender.Reply("打卡验证失败，已退出流程.")
-	   						return // 这里不需要返回值
-	   					}
-
-	   					// 验证用户输入的数字
-	   					if userNum != randNum {
-	   						sender.Reply("验证失败，我怀疑你是机器人...")
-	   						return // 结束程序，直接返回
-	   					}
-
-	   					// 如果输入正确，继续执行打卡逻辑
-	   					zero, _ := time.ParseInLocation("2006-01-02", time.Now().Local().Format("2006-01-02"), time.Local)
-	   					var u User
-	   					var ntime = time.Now()
-	   					first := false
-	   					total := []int{}
-	   					err = db.Where("number = ?", sender.UserID).First(&u).Error
-	   					if err != nil {
-	   						first = true
-	   						u = User{
-	   							Class:    sender.Type,
-	   							Number:   sender.UserID,
-	   							Coin:     1,
-	   							ActiveAt: ntime,
-	   						}
-	   						if err := db.Create(&u).Error; err != nil {
-	   							// 返回 nil 或者记录错误日志
-	   							return
-	   						}
-	   					} else {
-	   						// 检查用户是否首次打卡或今天是否已打卡
-	   						if zero.Unix() > u.ActiveAt.Unix() {
-	   							first = true
-	   						} else {
-	   							sender.Reply(fmt.Sprintf("你打过卡了，积分余额%d。", u.Coin))
-	   							return // 直接返回，避免继续执行
-	   						}
-	   					}
-
-	   					if first {
-	   						db.Model(User{}).Select("count(id) as total").Where("active_at > ?", zero).Pluck("total", &total)
-	   						coin := 5 // 默认奖励积分
-	   						if total[0] == 0 {
-	   							coin = 20
-	   						} else if total[0] == 1 {
-	   							coin = 18
-	   						} else if total[0] == 2 {
-	   							coin = 16
-	   						} else if total[0] == 3 {
-	   							coin = 14
-	   						} else if total[0] == 4 {
-	   							coin = 12
-	   						} else if total[0] == 5 {
-	   							coin = 10
-	   						} else if total[0] == 6 {
-	   							coin = 8
-	   						} else if total[0] == 7 {
-	   							coin = 6
-	   						} else if total[0] == 50 {
-	   							coin = 10
-	   						} else if total[0] == 100 {
-	   							coin = 20
-	   						} else if total[0]%14 == 13 {
-	   							coin = 6
-	   						}
-
-	   						db.Model(&u).Updates(map[string]interface{}{
-	   							"active_at": ntime,
-	   							"coin":      gorm.Expr(fmt.Sprintf("coin+%d", coin)),
-	   						})
-	   						u.Coin += coin
-	   						sender.Reply(fmt.Sprintf("你是打卡第%d人，奖励%d个积分，积分余额%d。", total[0]+1, coin, u.Coin))
-	   						ReturnCoin(sender)
-	   					}
-	   				}()
-
-	   				return nil // 只返回一个值
-	   			}
-	   		},
-	   	},
-
-
-
-
-
-
-	   	   	{
-	   	   		Command: []string{"清零"},
-	   	   		Admin:   true,
-	   	   		Handle: func(sender *Sender) interface{} {
-	   	   			sender.handleJdCookies(func(ck *JdCookie) {
-	   	   				ck.Update(Priority, 1)
-	   	   			})
-	   	   			sender.Reply("优先级已清零")
-	   	   			return nil
-	   	   		},
-	   	   	},
-
-	   	   {
-	   	   		Command: []string{"更新优先级", "更新车位", "ces"},
-	   	   		Handle: func(sender *Sender) interface{} {
-	   	   			coin := GetCoin(sender.UserID)
-	   	   			var total int64
-	   	   			db.Model(&JdCookie{QQ: sender.UserID}).Where(fmt.Sprintf("QQ = %d", sender.UserID)).Count(&total)
-	   	   			var intNum int = int(total)
-	   	   			coin = coin / intNum
-	   	   			t := time.Now()
-	   	   			sender.Reply("提醒：如果你有多个账号，优先级会被平分到所有账户 ，5秒后开始优先级更新")
-	   	   			time.Sleep(time.Second * 5)
-	   	   			if t.Weekday().String() == "Monday" && int(t.Hour()) <= 22 {
-	   	   				sender.handleJdCookies(func(ck *JdCookie) {
-	   	   					ck.Update(Priority, ck.Priority+coin)
-	   	   				})
-	   	   				sender.Reply("优先级已做累积更新，")
-	   	   				ClearCoin(sender.UserID)
-	   	   			} else {
-	   	   				sender.Reply("你错过时间了呆瓜,下周一23点前再来吧，友情提醒：优先级更新会平分账号")
-	   	   			}
-	   	   			return nil
-	   	   		},
-	   	   	},
-
-
-	   	   	 {
-	   	      Command: []string{"更新优先级", "更新车位", "车位更新", "优先级更新", "排名更新","更新排名"},
-	   	       Handle: func(sender *Sender) interface{} {
-	   	           if sender.IsAdmin {
-	   	               sender.Reply("管理员请不要使用此命令")
-	   	               return nil
-	   	           }
-
-	   	           // 检查命令参数
-	   	           if len(sender.Contents) < 1 { // 至少应该有一个参数
-	   	               sender.Reply("请在命令后面带入你需要更新的数字，将扣除相应的积分, 例如: 更新车位 100 注：中间有个空格")
-	   	               return nil
-	   	           }
-
-	   	           // 提取积分值
-	   	           userCoinStr := sender.Contents[0]
-	   	           userCoin, err := strconv.ParseInt(userCoinStr, 10, 64)
-	   	           if err != nil || userCoin <= 0 {
-	   	               sender.Reply("输入的积分值无效，请确保输入的是一个正整数。")
-	   	               return nil
-	   	           }
-
-	   	           // 获取用户当前积分
-	   	           coin := GetCoin(sender.UserID)
-	   	           if int(userCoin) > int(coin) {
-	   	               sender.Reply("你输入的数字，超过你拥有的积分")
-	   	               return nil
-	   	           }
-
-	   	           id := sender.UserID
-	   	           var idType string
-	   	           if sender.Type == "tg" {
-	   	               idType = Telegram
-	   	           } else {
-	   	               idType = QQ
-	   	           }
-
-	   	           cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-	   	               return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-	   	           })
-
-	   	           if len(cks) > 0 {
-	   	               msg := make(chan string)
-	   	               ckList[sender.UserID] = msg
-
-	   	               msgs := []string{
-	   	                   "请回复下面账号序号，选择后将更新优先级，并扣除积分，如需退出请回复'q'退出登录流程：\n --------------------------------",
-	   	               }
-	   	               for i, ck := range cks {
-	   	                   msgs = append(msgs, fmt.Sprintf("%d、%s", i, ck.Nickname))
-	   	               }
-
-	   	               sender.Reply(strings.Join(msgs, "\n"))
-
-	   	               go func() {
-	   	                   defer delete(ckList, sender.UserID) // 删除消息通道
-	   	                   for {
-	   	                       select {
-	   	                       case response := <-msg:
-	   	                           if response == "q" {
-	   	                               sender.Reply("已退出更新流程。")
-	   	                               return
-	   	                           }
-
-	   	                           index, err := strconv.Atoi(response)
-	   	                           if err != nil || index < 0 || index >= len(cks) {
-	   	                               sender.Reply("输入的序列号无效，已退出，请重新执行命令。")
-	   	                              return
-	   	                           }
-
-	   	                           ck := cks[index]
-	   	                           ck.Update(Priority, ck.Priority+int(userCoin))
-	   	                           sender.Reply(fmt.Sprintf("账号:%s的优先级已更新为：%d",ck.Nickname ,ck.Priority))
-
-	   	                           RemCoin(sender.UserID, int(userCoin))
-	   	                           time.Sleep(time.Second * 2)
-
-	   	                           tcoin := GetCoin(sender.UserID)
-	   	                           sender.Reply(fmt.Sprintf("已扣除%d的积分，当前剩余积分%d",int(userCoin), tcoin))
-	   	                           return
-	   	                       }
-
-	   	                   }
-	   	               }()
-
-	   	              return nil
-	   	           } else {
-	   	               sender.Reply("未找到可更新的账号。")
-	   	           }
-
-	   	           return nil
-	   	     	  },
-	   	   	},
-
-
-
-	*/
-
-	/*
-
-	   {
-	       Command: []string{"暂停任务", "任务暂停", "黑号暂停", "暂停黑号", "屏蔽任务", "任务屏蔽"},
-	       Handle: func(sender *Sender) interface{} {
-
-	           // 获取用户的账号列表
-	           id := sender.UserID
-	           var idType string
-	           if sender.Type == "tg" {
-	               idType = Telegram
-	           } else {
-	               idType = QQ
-	           }
-
-	           // 获取用户的有效账号
-	           cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-	               return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-	           })
-
-	           // 如果账号存在，继续流程
-	           if len(cks) > 0 {
-	               msg := make(chan string)
-	               ckList[sender.UserID] = msg
-
-	               // 提示用户操作信息
-	               msgs := []string{
-	                   "\n",
-	                   "1、执行后，账号将会被屏蔽，并且不会参与所有任务\n" ,
-	                   "2、如需切换其他状态，请回复【取消屏蔽】【加入内测】\n" ,
-	               }
-	               sender.Reply(strings.Join(msgs, "\n"))
-	               time.Sleep(time.Second * 1)
-
-	               go func() {
-	                   defer delete(ckList, sender.UserID) // 删除消息通道
-	                   // 提示用户选择账号
-	                   msgs := []string{
-	                       "请回复下面账号序号，选择后将屏蔽任务，如需退出请回复'q'退出登录流程：\n --------------------------------",
-	                   }
-	                   msgs = append(msgs, "0、所有账号") // 添加选择所有账号的选项
-	                   for i, ck := range cks {
-	                       status := "任务正常运行"
-	                       if ck.Hack == True {
-	                           status = "任务屏蔽状态"
-	                       }
-	                       if ck.Hack == True && ck.Appoint != True {
-	                           status = "账号屏蔽状态"
-	                       }
-	                       if ck.Hack == True && ck.Appoint == True {
-	                           status = "账号内测状态"
-	                       }
-	                       msgs = append(msgs, fmt.Sprintf("%d、%s 【%s】", i+1, ck.Nickname, status)) // 序号从1开始
-	                   }
-
-	                   sender.Reply(strings.Join(msgs, "\n"))
-
-	                   // 等待用户输入选择
-	                   response := <-msg
-	                   // 如果用户选择退出
-	                   if response == "q" {
-	                       sender.Reply("已退出屏蔽流程。")
-	                       return
-	                   }
-
-	                   // 解析用户输入的序号
-	                   index, err := strconv.Atoi(response)
-	                   // 如果输入无效，直接退出流程
-	                   if err != nil || (index < 0 || index > len(cks)) {
-	                       sender.Reply("输入的序列号无效，已退出，请重新执行命令。")
-	                       return
-	                   }
-
-	                   if index == 0 {
-	                       // 选择0时，所有账号都执行屏蔽
-	                       for _, ck := range cks {
-	                           ck.Update(Hack, True)  // 设置账号屏蔽
-	                           ck.Update(Appoint, False)  // 设置取消内测
-	                       }
-	                       sender.Reply("所有账号的任务已更新为屏蔽状态。")
-
-	                   } else {
-	                       // 选择账号并更新其优先级为 -1，屏蔽账号
-	                       ck := cks[index-1] // 注意索引调整，因为展示从1开始
-	                       ck.Update(Hack, True)  // 设置账号屏蔽
-	                       ck.Update(Appoint, False)  // 设置取消内测
-	                       status := "账号正常运行"
-	                       if ck.Hack == True && ck.Appoint != True {
-	                           status = "账号屏蔽状态"
-	                       }
-	                       if ck.Hack == True && ck.Appoint == True {
-	                           status = "账号内测状态"
-	                       }
-	                       sender.Reply(fmt.Sprintf("账号:%s的任务状态更新为：%s", ck.Nickname, status))
-	                   }
-
-	                   return // 完成操作后退出
-	               }()
-
-	               return nil
-	           } else {
-	               sender.Reply("账号全部失效。")
-	           }
-
-	           return nil
-	       },
-	   },
-	   {
-	       Command: []string{"恢复任务", "任务恢复", "账号恢复", "恢复账号", "取消屏蔽"},
-	       Handle: func(sender *Sender) interface{} {
-
-	           // 获取用户的账号列表
-	           id := sender.UserID
-	           var idType string
-	           if sender.Type == "tg" {
-	               idType = Telegram
-	           } else {
-	               idType = QQ
-	           }
-
-	           // 获取用户的有效账号
-	           cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-	               return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-	           })
-
-	           // 如果账号存在，继续流程
-	           if len(cks) > 0 {
-	               msg := make(chan string)
-	               ckList[sender.UserID] = msg
-
-	               // 提示用户操作信息
-	               msgs := []string{
-	                   "\n",
-	                   "1、执行后，账号将会恢复正常并参与所有任务\n",
-	                   "2、如需切换其他状态，请回复【屏蔽任务】【加入内测】指令\n",
-	               }
-	               sender.Reply(strings.Join(msgs, "\n"))
-	               time.Sleep(time.Second * 1)
-
-	               go func() {
-	                   defer delete(ckList, sender.UserID) // 删除消息通道
-
-	                   // 提示用户选择账号
-	                   msgs := []string{
-	                       "请回复下面账号序号，选择后将恢复任务，如需退出请回复'q'退出登录流程：\n --------------------------------",
-	                   }
-	                   msgs = append(msgs, "0、所有账号") // 添加选择所有账号的选项
-	                   for i, ck := range cks {
-	                       status := "任务正常运行"
-	                       if ck.Hack == True {
-	                           status = "任务屏蔽状态"
-	                       }
-	                       if ck.Hack == True && ck.Appoint != True {
-	                           status = "账号屏蔽状态"
-	                       }
-	                       if ck.Hack == True && ck.Appoint == True {
-	                           status = "账号内测状态"
-	                       }
-
-	                       msgs = append(msgs, fmt.Sprintf("%d、%s 【%s】", i+1, ck.Nickname, status)) // 序号从1开始
-	                   }
-
-	                   sender.Reply(strings.Join(msgs, "\n"))
-
-	                   // 等待用户输入选择
-	                   response := <-msg
-	                   // 如果用户选择退出
-	                   if response == "q" {
-	                       sender.Reply("已退出恢复流程。")
-	                       return
-	                   }
-
-	                   // 解析用户输入的序号
-	                   index, err := strconv.Atoi(response)
-	                   // 如果输入无效，直接退出流程
-	                   if err != nil || (index < 0 || index > len(cks)) {
-	                       sender.Reply("输入的序列号无效，已退出，请重新执行命令。")
-	                       return
-	                   }
-
-	                   if index == 0 {
-	                       // 选择0时，所有账号都恢复任务
-	                       for _, ck := range cks {
-	                           ck.Update(Hack, False)   // 恢复任务
-	                           ck.Update(Appoint, False) // 恢复账号
-	                       }
-	                       sender.Reply("所有账号的任务已恢复为正常状态。")
-	                   } else {
-	                       // 选择账号并更新其优先级为 1，恢复账号
-	                       ck := cks[index-1] // 注意索引调整，因为展示从1开始
-	                       ck.Update(Hack, False)
-	                       ck.Update(Appoint, False) // 恢复账号
-	                       status := "账号正常运行"
-
-	                       if ck.Hack == True && ck.Appoint != True {
-	                           status = "账号屏蔽状态"
-	                       }
-	                       if ck.Hack == True && ck.Appoint == True {
-	                           status = "账号内测状态"
-
-	                       }
-	                       sender.Reply(fmt.Sprintf("账号:%s的任务状态已恢复为：%s", ck.Nickname, status))
-	                   }
-
-	                   return // 完成操作后退出
-	               }()
-
-	               return nil
-	           } else {
-	               sender.Reply("账号全部失效。")
-	           }
-
-	           return nil
-	       },
-	   },
-
-
-
-
-	   {
-	       Command: []string{"加入内测","内测任务","账号内测"},
-	       Handle: func(sender *Sender) interface{} {
-
-	           // 获取用户的账号列表
-	           id := sender.UserID
-	           var idType string
-	           if sender.Type == "tg" {
-	               idType = Telegram
-	           } else {
-	               idType = QQ
-	           }
-
-	           // 获取用户的有效账号
-	           cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-	               return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-	           })
-
-	           // 如果账号存在，继续流程
-	           if len(cks) > 0 {
-	               msg := make(chan string)
-	               ckList[sender.UserID] = msg
-
-	               // 提示用户操作信息
-	               msgs := []string{
-	                   "\n",
-	                   "1、执行后，账号将会屏蔽，停止跑老脚本，并且被加入内测参与新框架脚本\n",
-	                   "2、如需取消切换其他状态，请直接回复【屏蔽任务】【取消屏蔽】切换\n",
-	               }
-	               sender.Reply(strings.Join(msgs, "\n"))
-	               time.Sleep(time.Second * 1)
-
-	               go func() {
-	       defer delete(ckList, sender.UserID) // 删除消息通道
-	       // 提示用户选择账号
-	       msgs := []string{
-	           "请回复下面账号序号，选择后将屏蔽任务加入内测，如需退出请回复'q'退出登录流程：\n --------------------------------",
-	       }
-	       msgs = append(msgs, "0、所有账号") // 添加选择所有账号的选项
-	       for i, ck := range cks {
-	           // 根据 Hack 和 Appoint 的状态判断显示的文字
-	           status := "正常状态"
-	           if ck.Hack == True && ck.Appoint != True {
-	               status = "屏蔽状态"
-	           } else if ck.Hack == True && ck.Appoint == True {
-	               status = "内测状态"
-	           }
-
-	           // 添加账号和状态到 msgs 中
-	           msgs = append(msgs, fmt.Sprintf("%d、%s 【%s】", i+1, ck.Nickname, status)) // 序号从1开始
-	       }
-
-	       sender.Reply(strings.Join(msgs, "\n"))
-
-	       // 等待用户输入选择
-	       response := <-msg
-	       // 如果用户选择退出
-	       if response == "q" {
-	           sender.Reply("已退出加入内测流程。")
-	           return
-	       }
-
-	       // 解析用户输入的序号
-	       index, err := strconv.Atoi(response)
-	       // 如果输入无效，直接退出流程
-	       if err != nil || (index < 0 || index > len(cks)) {
-	           sender.Reply("输入的序列号无效，已退出，请重新执行命令。")
-	           return
-	       }
-
-	       if index == 0 {
-	           // 选择0时，所有账号都执行加入内测
-	           for _, ck := range cks {
-	               ck.Update(Hack, True)   // 设置账号为屏蔽状态
-	               ck.Update(Appoint, True) // 设置账号为内测状态
-	           }
-	           sender.Reply("所有账号的任务已更新为加入内测状态。")
-	       } else {
-	           // 选择账号并更新其状态为内测
-	           ck := cks[index-1] // 注意索引调整，因为展示从1开始
-	           ck.Update(Hack, True)   // 设置账号为屏蔽状态
-	           ck.Update(Appoint, True) // 设置账号为内测状态
-
-	           status := "正常状态"
-	           if ck.Hack == True && ck.Appoint != True {
-	               status = "屏蔽状态"
-	           } else if ck.Hack == True && ck.Appoint == True {
-	               status = "内测状态"
-	           }
-
-	           sender.Reply(fmt.Sprintf("账号:%s的任务状态更新为：%s", ck.Nickname, status))
-	       }
-
-	       return // 完成操作后退出
-	   }()
-
-	               return nil
-	           } else {
-	               sender.Reply("账号全部失效。")
-	           }
-
-	           return nil
-	       },
-	   },
-
-
 	
 
-
-
-	{
-		Command: []string{"账号状态", "查询账号状态", "查询状态"},
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("正在为您查询有效账号状态，如需切换状态请回复【账号管理】")
-			time.Sleep(time.Second * 1)
-
-			// 获取用户的账号列表
-			id := sender.UserID
-			var idType string
-			if sender.Type == "tg" {
-				idType = Telegram
-			} else {
-				idType = QQ
-			}
-
-			// 获取用户的有效账号
-			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-			})
-
-			// 如果账号存在，直接返回账号状态
-			if len(cks) > 0 {
-				var msgs []string
-				for i, ck := range cks {
-					var status string
-					if ck.Hack == True && ck.Appoint == True {
-						status = "屏蔽&内测状态"
-					} else if ck.Hack == True && ck.Appoint != True {
-						status = "屏蔽状态"
-					} else {
-						status = "正常状态"
-					}
-					msgs = append(msgs, fmt.Sprintf("\n%d、账号:%s 【%s】", i+1, ck.Nickname, status)) // 添加序号
-				}
-
-				// 返回所有有效账号的状态
-				sender.Reply(strings.Join(msgs, "\n"))
-			} else {
-				sender.Reply("账号全部失效。")
-			}
-
-			return nil
-		},
-	},
-
-
-
-*/
+	
 
 
 
@@ -2836,10 +1799,6 @@ default:
 						idType = QQ
 					}
 
-					//			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-					//				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-					//			})
-
 					cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 						return sb.Where(fmt.Sprintf("%s = ?", idType), id)
 					})
@@ -2911,107 +1870,7 @@ default:
 			return nil
 		},
 	},
-/*	{
-		Command: []string{"优先级转积分", "优先级转移积分", "优先级转换积分"},
-		Handle: func(sender *Sender) interface{} {
 
-			// 确定用户ID类型
-			id := sender.UserID
-			var idType string
-			if sender.Type == "tg" {
-				idType = Telegram
-			} else {
-				idType = QQ
-			}
-
-			// 获取当前用户的所有可用账号
-			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-			})
-
-			// 如果没有找到可用账号，直接退出，不进入消息通道
-			if len(cks) == 0 {
-				sender.Reply("未找到可用的账号。")
-				return nil
-			}
-
-			// 创建消息通道
-			msg := make(chan string)
-			ckList[sender.UserID] = msg
-
-			// 引导用户选择账号
-			msgs := []string{
-				"以下是您可用的账号列表，选择一个账号后将进行优先级转积分操作(转化率90%)：\n --------------------------------",
-			}
-			for i, ck := range cks {
-				msgs = append(msgs, fmt.Sprintf("%d、%s (当前优先级：%d)", i, ck.Nickname, ck.Priority))
-			}
-			msgs = append(msgs, "请输入账号序号进行选择，或回复'q'退出：")
-			sender.Reply(strings.Join(msgs, "\n"))
-
-			// 处理用户选择的账号
-			go func() {
-				defer delete(ckList, sender.UserID) // 删除消息通道
-				select {
-				case response := <-msg:
-					if response == "q" {
-						sender.Reply("已退出更新流程。")
-						return
-					}
-
-					// 解析选择的账号序号
-					index, err := strconv.Atoi(response)
-					if err != nil || index < 0 || index >= len(cks) {
-						sender.Reply("输入的序列号无效，已退出，请重新执行命令。")
-						return
-					}
-
-					ck := cks[index]
-
-					// 显示选择的账号并提示输入转换的优先级
-					sender.Reply(fmt.Sprintf("您选择了账号：%s，当前优先级为：%d\n请回复您希望转换成积分的优先级数量：", ck.Nickname, ck.Priority))
-
-					// 处理用户输入的优先级
-					select {
-					case response := <-msg:
-						userPriorityStr := response
-						userPriority, err := strconv.ParseInt(userPriorityStr, 10, 64)
-						if err != nil || userPriority <= 0 {
-							sender.Reply("输入的优先级值无效，请确保输入的是一个正整数。已退出流程。")
-							return
-						}
-
-						// 比对用户输入的优先级和账号优先级
-						if int(userPriority) > int(ck.Priority) {
-							sender.Reply("你输入的优先级数值超过了该账号的优先级。")
-							return
-						}
-
-						// 如果用户输入的优先级等于当前优先级，应该减少1个优先级，并增加优先级 - 1 的积分
-						finalPriority := int(userPriority)
-						finalCoin := int(float64(userPriority) * 0.9) // 优先级转化为积分，乘以0.8并去除小数部分
-						if finalPriority == int(ck.Priority) {
-							finalPriority-- // 优先级减少 1
-							finalCoin--     // 积分减少 1
-						}
-
-						// 扣除账号的优先级并增加积分
-						ck.Update(Priority, ck.Priority-finalPriority) // 减少账号的优先级
-						AdddCoin(sender.UserID, finalCoin)             // 增加用户的积分
-
-						sender.Reply(fmt.Sprintf("账号:%s的优先级已减少，成功转化为积分：%d", ck.Nickname, finalCoin))
-
-						// 提示更新后的积分
-						tcoin := GetCoin(sender.UserID)
-						sender.Reply(fmt.Sprintf("已增加%d积分，当前剩余积分%d ，【%s】的优先级已变更为%d", finalCoin, tcoin, ck.Nickname, ck.Priority))
-					}
-				}
-			}()
-
-			return nil
-		},
-	},
-*/
 	{
 		Command: []string{"XDD专用还愿CK指令，慎用！"},
 		Admin:   true,
@@ -3133,7 +1992,6 @@ default:
 
 	{
 		Command: []string{"授权"},
-		//Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			value3 := GetEnv("sqelm")
 			if value3 == "" {
@@ -3159,20 +2017,7 @@ default:
 		},
 	},
 
-	/*	{
-			Command: []string{"授权"},
-			Admin:   true,
-			Handle: func(sender *Sender) interface{} {
-				ctt := sender.JoinContens()
-				auth := AddAuth(ctt)
-				if auth {
-					return "授权成功"
-				} else {
-					return "授权失败"
-				}
-			},
-		},
-	*/
+	
 	{
 		Command: []string{"取消授权"},
 		Admin:   true,
@@ -3272,7 +2117,6 @@ default:
 		Admin:   false,
 		Handle: func(sender *Sender) interface{} {
 			Exportck("jd_zzhb_new_help")
-			//			Exportck("jd_smq_help")
 			Exportck("jd_farmnew_code_help")
 
 			return "操作成功"
@@ -3315,18 +2159,7 @@ default:
 		},
 	},
 
-	/*	{
-			Command: []string{"我的优先级"},
-
-			Handle: func(sender *Sender) interface{} {
-				str := ""
-				sender.handleJdCookies(func(ck *JdCookie) {
-					str = str + fmt.Sprintf("昵称：%s 用户名：%s QQ：%d 优先级：%d \n", ck.Nickname, ck.PtPin, ck.QQ, ck.Priority)
-				})
-				return str
-			},
-		},
-	*/
+	
 {
     Command: []string{"ip统计"},
     Admin:   true,
@@ -3639,52 +2472,7 @@ default:
 		},
 	},
 
-	/*    		{
-	    Command: []string{"详细查询","奖票查询"},
-	    Handle: func(sender *Sender) interface{} {
-	     sender.Reply("查询中。。。很慢。。主要为了查询玩一玩奖票")
-	        sender.handleJdCookies(func(ck *JdCookie) {
-	            ptk := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
-	            task := &Task{
-	                Path: "qncx.js",
-	                Envs: []Env{
-	                    {Name: "JD_COOKIE", Value: ptk},
-	                },
-	            }
-	            result := runTask(task, sender)
-	            sender.Reply(result)
-	        })
-	        return nil
-	    },
-	},
-
-
-
-
-
-	{
-		Command: []string{"发送", "通知", "notify", "send"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			if len(sender.Contents) < 2 {
-				sender.Reply("发送指令格式错误")
-			} else {
-				rt := strings.Join(sender.Contents[1:], " ")
-				sender.Contents = sender.Contents[0:1]
-
-				if sender.handleJdCookies(func(ck *JdCookie) {
-					time.Sleep(10000 * time.Millisecond)
-					ck.Push(rt)
-
-				}) == nil {
-					return "操作成功"
-				}
-			}
-			return nil
-		},
-	},
-
-	*/
+	
 
 	{
 		Command: []string{"发送", "通知", "notify", "send"},
@@ -3780,33 +2568,7 @@ default:
 
 
 
-/*	{
-		Command: []string{"使用瓶盖"},
-		Handle: func(sender *Sender) interface{} {
-			c2 := make(chan string)
-			inputList[sender.UserID] = c2
-			go HandleKsfUse(sender, c2)
-			return nil
-		},
-	},
 
-
-
-		{
-		Command: []string{"购买瓶盖"},
-		Handle: func(sender *Sender) interface{} {
-			if sender.Type != "wx" {
-	            sender.Reply(fmt.Sprintf("此功能仅支持微信,机器人微信号：Shi0718-c"))
-	            return nil
-	          }	
-			c2 := make(chan string)
-			inputList[sender.UserID] = c2
-			go HandleKsfBuy(sender, c2)
-			return nil
-		},
-	},
-
-	*/
 
 	
 	{
@@ -3835,7 +2597,6 @@ default:
 			qq := Int(sender.Contents[0])
 			logs.Info(qq)
 			if len(sender.Contents) > 1 {
-				//sender.Contents = sender.Contents[1:]
 				logs.Info(sender.Contents[1:])
 				AdddCoin(qq, Int(sender.Contents[1]))
 				sender.Reply(fmt.Sprintf("%d已增加%d枚积分。", qq, Int(sender.Contents[1])))
@@ -4128,129 +2889,7 @@ default:
 	},
 	},
 
-	/*
-
-	   	{
-	   		Command: []string{"踩雷", "拼了"},
-	   			Handle: func(sender *Sender) interface{} {
-	       				u := &User{}
-
-	      					 cost := Int(sender.JoinContens())
-
-	     					  if cost < 0 {
-	     				      return "不允许输入负数"
-	      					 }
-
-
-
-	     					  if cost <= 0 || cost > 100000000000000 {
-	       			  	//  cost = 1
-
-	       			  	 return "请在命令后面带入正整数：例如为：踩雷 30"
-	      			 }
-
-	   				if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < cost {
-	   					return "哎呀积分不够了，快去搞点积分吧？=> 请直接微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者复制网址http://180.152.5.230:8005/到其他浏览器打开购买卡密充值"
-	   				} else {
-	   					currentBalance := GetCoin(sender.UserID) - cost
-	   					sender.Reply(fmt.Sprintf("你使用%d枚积分，使用后积分余额%d", cost,currentBalance))
-	   				}
-	   				baga := 0
-	   				if u.Coin > 100000000000 {
-	   					baga = u.Coin
-	   					cost = u.Coin
-	   				}
-	   				r := time.Now().Nanosecond() % 10
-	   				if r < 7 || baga > 0 {
-	   					currentBalance := GetCoin(sender.UserID) - cost
-	   					sender.Reply(fmt.Sprintf("很遗憾你失去了%d枚积分，当前积分余额%d", cost, currentBalance))
-	   					cost = -cost
-	   				} else {
-	   					if r == 9 {
-	   						cost *= 3
-
-	   						sender.Reply(fmt.Sprintf("恭喜你3倍暴击获得%d枚积分，2秒后自动转入余额。", cost))
-	   						time.Sleep(time.Second * 2)
-	   					} else
-	   					if r == 8 {
-	   						cost *=2
-	   						sender.Reply(fmt.Sprintf("恭喜你2倍暴击获得%d枚积分，2秒后自动转入余额。", cost))
-	   						time.Sleep(time.Second * 2)
-
-	   					} else {
-	   						sender.Reply(fmt.Sprintf("很幸运你获得%d枚积分，2秒后自动转入余额。", cost))
-	   						time.Sleep(time.Second * 2)
-	   					}
-	   					currentBalance := GetCoin(sender.UserID) + cost
-	   					sender.Reply(fmt.Sprintf("%d枚积分已到账，当前积分余额%d", cost, currentBalance))
-	   				}
-	   				db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", cost)))
-	   				return nil
-	   			},
-	   		},
-
-
-
-
-
-
-	   		{
-	   		Command: []string{"翻翻乐","赌一把"},
-	   		Handle: func(sender *Sender) interface{} {
-
-	   			cost := Int(sender.JoinContens())
-	   			if cost <= 0 || cost > 20 {
-	   				cost = 20
-	   			}
-	   			u := &User{}
-	   			if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < cost {
-	   				return "你个穷逼，积分不足20，努力赚取积分吧"
-	   			}
-	   			baga := 0
-	   			if u.Coin > 1000000000000 {
-	   				baga = u.Coin
-	   				cost = u.Coin
-	   			}
-	   			r := time.Now().Nanosecond() % 10
-	   			if r < 6 || baga > 0 {
-	   				sender.Reply(fmt.Sprintf("很遗憾你失去了%d枚积分。", cost))
-	   				cost = -cost
-	   			} else {
-	   				if r == 9 {
-	   					cost *= 2
-	   					sender.Reply(fmt.Sprintf("恭喜你幸运暴击x2获得%d枚积分，2秒后自动转入余额。", cost))
-	   					time.Sleep(time.Second * 2)
-	   				} else {
-	   					sender.Reply(fmt.Sprintf("很幸运你获得%d枚积分，2秒后自动转入余额。", cost))
-	   					time.Sleep(time.Second * 2)
-	   				}
-	   				sender.Reply(fmt.Sprintf("%d枚积分已到账。", cost))
-	   			}
-	   			db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", cost)))
-	   			return nil
-	   		},
-	   	},
-
-	*/
-	//{
-	//	Command: []string{"按许愿币更新排名"},
-	//	Admin:   true,
-	//	Handle: func(sender *Sender) interface{} {
-	//		cookies:= GetJdCookies()
-	//		for i := range cookies {
-	//			cookie := cookies[i]
-	//			if cookie.QQ {
-	//
-	//			}
-	//			cookie.Update(Priority,cookie.)
-	//		}
-	//		sender.handleJdCookies(func(ck *JdCookie) {
-	//			sender.Reply(ck.Query())
-	//		})
-	//		return "已更新排行"
-	//	},
-	//},
-
+	
 	{
 		Command: []string{"许愿", "愿望", "wish", "hope", "want"},
 		Handle: func(sender *Sender) interface{} {
@@ -4449,170 +3088,7 @@ default:
 		},
 	},
 
-	/*
-		{
-			Command: []string{"优先级", "priority"},
-			Admin:   true,
-			Handle: func(sender *Sender) interface{} {
-				priority := Int(sender.Contents[0])
-				if len(sender.Contents) > 1 {
-					sender.Contents = sender.Contents[1:]
-					sender.handleJdCookies(func(ck *JdCookie) {
-						ck.Update(Priority, priority)
-						sender.Reply(fmt.Sprintf("已设置账号%s(%s)的优先级为%d。", ck.PtPin, ck.Nickname, priority))
-					})
-				}
-				return nil
-			},
-		},
-
-			{
-				Command: []string{"绑定"},
-				Handle: func(sender *Sender) interface{} {
-					qq := Int(sender.Contents[0])
-					if len(sender.Contents) > 1 {
-						sender.Contents = sender.Contents[1:]
-						sender.handleJdCookies(func(ck *JdCookie) {
-							ck.Update(QQ, qq)
-							sender.Reply(fmt.Sprintf("已设置账号%s的QQ为%v。", ck.Nickname, ck.QQ))
-						})
-					}
-					return nil
-				},
-			},
-
-
-		{
-			Command: []string{"刷步", "扫码刷步"},
-			Handle: func(sender *Sender) interface{} {
-				value3 := GetEnv("wxsb")
-				if value3 == "" {
-					sender.Reply("扫码刷步功能未开启")
-				} else {
-					coin := GetCoin(sender.UserID)
-					jbcoin, _ := strconv.Atoi(value3)
-					if coin < jbcoin {
-						sender.Reply(fmt.Sprintf("积分不足，扫码刷步需要 %d 个积分，请登录京东账号获取奖励（或群主积分卡）", jbcoin))
-						return nil
-					} else {
-						cmd := exec.Command("node", "scripts/wxsb.js")
-						var out bytes.Buffer
-						cmd.Stdout = &out
-						err := cmd.Run()
-						if err != nil {
-							fmt.Println("脚本异常提示:", err)
-							return nil
-						}
-						scanner := bufio.NewScanner(&out)
-						var suzi, numid, srid, url string
-						suziRegex := regexp.MustCompile(`当前suzi:\s*(\d+)`)
-						numidRegex := regexp.MustCompile(`当前步数:\s*(\d+)`)
-						sridRegex := regexp.MustCompile(`当前id:\s*(\d+)`)
-						urlRegex := regexp.MustCompile(`当前网址:\s*(\S+)`)
-						for scanner.Scan() {
-							line := scanner.Text()
-							fmt.Println(line)
-							if suziMatch := suziRegex.FindStringSubmatch(line); suziMatch != nil {
-								suzi = suziMatch[1]
-							}
-							if numidMatch := numidRegex.FindStringSubmatch(line); numidMatch != nil {
-								numid = numidMatch[1]
-							}
-							if sridMatch := sridRegex.FindStringSubmatch(line); sridMatch != nil {
-								srid = sridMatch[1]
-							}
-							if urlMatch := urlRegex.FindStringSubmatch(line); urlMatch != nil {
-								url = urlMatch[1]
-							}
-						}
-						sender.Reply("请在一分钟内使用微信扫码")
-						sender.SendImg2(url)
-						if err := scanner.Err(); err != nil {
-							fmt.Println("异常提示:", err)
-							return nil
-						}
-						if suzi == "" || numid == "" || srid == "" {
-							fmt.Println("获取参数失败")
-							return nil
-						}
-						// 等待一分钟
-						time.Sleep(60 * time.Second)
-
-						sender.Reply("开始刷步")
-						cmd2 := exec.Command("node", "scripts/wxsb2.js")
-						cmd2.Env = append(os.Environ(),
-							fmt.Sprintf("suzi=%s", suzi),
-							fmt.Sprintf("numid=%s", numid),
-							fmt.Sprintf("srid=%s", srid),
-						)
-						var out2 bytes.Buffer
-						cmd2.Stdout = &out2
-						err2 := cmd2.Run()
-						if err2 != nil {
-							fmt.Println("脚本wxsb2.js异常提示:", err2)
-							return nil
-						}
-						output := out2.String()
-						sender.Reply(output)
-						if strings.Contains(output, "成功") {
-							RemCoin(sender.UserID, jbcoin) // 扣积分
-							sender.Reply(fmt.Sprintf("已扣除 %d 个积分，剩余积分 %d", jbcoin, GetCoin(sender.UserID)))
-						} else {
-							sender.Reply("刷步失败，未扣除积分")
-						}
-
-						return nil
-					}
-				}
-				return nil
-			},
-		},
-
-		// https://pp.iaka.cn/api/ajax.php?act=search&name=短剧名称 通过api写出搜剧代码，识别命令搜据，并解析空格后的剧名进行api查询并返回查询结果
-
-		{
-			Command: []string{"搜剧", "短剧"},
-			Handle: func(sender *Sender) interface{} {
-				if len(sender.Contents) == 0 {
-					return "请输入正确的指令比如：搜剧 我能异世界穿梭"
-				}
-				name := sender.Contents[0]
-				searchURL := fmt.Sprintf("https://pp.iaka.cn/api/ajax.php?act=search&name=%s", url.QueryEscape(name))
-				req := httplib.Get(searchURL)
-				req.Header("User-Agent", browser.Random())
-				bytes, err := req.Bytes()
-				if err != nil {
-					return err.Error()
-				}
-
-				// 解析JSON响应
-				var response map[string]interface{}
-				if err = json.Unmarshal(bytes, &response); err != nil {
-					return err.Error()
-				}
-
-				// 检查返回的code是否为0
-				code, ok := response["code"].(string)
-				if !ok || code != "0" {
-					return "未找到相关剧集"
-				}
-
-				// 提取链接
-				data, ok := response["data"].([]interface{})
-				if !ok || len(data) == 0 {
-					return "未找到相关剧集"
-				}
-				firstData := data[0].(map[string]interface{})
-				episodeURL, ok := firstData["url"].(string)
-				if !ok {
-					return "未找到相关剧集链接"
-				}
-
-				return episodeURL
-			},
-		},
 	
-*/
 	{
 		Command: []string{"cmd", "command"},
 		Admin:   true,
@@ -4750,50 +3226,7 @@ default:
 		},
 	},
 
-	/*  #注释掉原有的祈福代码
-
-	{
-		Command: []string{"祈祷", "祈愿", "祈福"},
-		Handle: func(sender *Sender) interface{} {
-			if _, ok := mx[sender.UserID]; ok {
-				return "你祈祷过啦，等下次我忘记了再来吧。"
-			}
-			mx[sender.UserID] = true
-			if db.Model(User{}).Where("number = ? ", sender.UserID).Update(
-				"coin", gorm.Expr(fmt.Sprintf("coin + %d", 1)),
-			).RowsAffected == 0 {
-				return "先去打卡吧你。"
-			}
-			return "积分+1"
-		},
-	},
-
-
-
-
-
-		{
-		 Command: []string{"祈祷", "祈愿", "祈福"},
-		 Handle: func(sender *Sender) interface{} {
-		 today := time.Now().Format("2006-01-02") // 获取今天的日期
-		 lastPrayDate, ok := mx[sender.UserID] // 检查用户上次祈福的日期
-
-		 if ok && lastPrayDate.Format("2006-01-02") == today { // 如果用户今天已经祈福过
-		 return "你今天已经祈福过了，明天再来吧。"
-		 }
-
-		 mx[sender.UserID] = time.Now() // 更新用户的上次祈福日期为今天
-		 if db.Model(User{}).Where("number = ? ", sender.UserID).Update(
-		 "coin", gorm.Expr(fmt.Sprintf("coin + %d", 1)),
-		 ).RowsAffected == 0 {
-		 return "先去打卡吧你。"
-		 }
-		 return "祈福成功，愿你事事顺心如意，积分+1，"
-
-		 },
-	 },
-
-	*/
+	
 
 	{
 		Command: []string{"reply", "回复"},
@@ -4835,7 +3268,6 @@ default:
 						}
 					} else {
 						sender.Reply("转换失败")
-						//sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
 					}
 				} else {
 					sender.Reply(fmt.Sprintf("Wskey为空，%s", ck.Nickname))
@@ -4881,7 +3313,6 @@ default:
 						}
 					} else {
 						sender.Reply("转换失败")
-						//sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
 					}
 				} else {
 					sender.Reply(fmt.Sprintf("Wskey为空，%s", ck.Nickname))
@@ -5041,7 +3472,6 @@ default:
 				idType = QQ
 			}
 			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-				//return sb.Where(fmt.Sprintf("%s = ?", idType), id)
 				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, False)
 			})
 
@@ -5341,14 +3771,7 @@ default:
 			return nil
 		},
 	},
-	/*	{
-			Command: []string{"用户信息"},
-			Handle: func(sender *Sender) interface{} {
-				return fmt.Sprintf("用户ID：%d", sender.UserID)
-			},
-		},
-
-	*/
+	
 {
     Command: []string{"用户信息", "查询id", "查询ID", "我的ID", "我的信息"},
     Admin:   false,
@@ -5476,7 +3899,6 @@ default:
 			successCount := 0
 			for i := range cks {
 				if cks[i].QQ != 0 {
-					//logs.Info(cks[i].QQ)
 					WeiXin := getWeiXinId(cks[i].QQ)
 					if WeiXin != "找不到对应的微信ID" {
 						ck := cks[i]
@@ -6370,8 +4792,6 @@ func Guess_Number(sender *Sender, msg chan string, maxGuessCount int) {
 	}
 }
 
-//  var mx = map[int]bool{}
-
 var mx = map[int]time.Time{} // 存储用户上次祈福的日期
 // 全局游戏状态变量
 
@@ -6540,7 +4960,6 @@ func Delete_meituan(sender *Sender, msg chan string, meituans []MeiTuan) {
 		}
 		num, err := strconv.Atoi(n)
 		if err != nil {
-			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
 			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
 			meituanList[sender.UserID] = nil
 			return
@@ -6603,17 +5022,8 @@ func PriorityDel() {
 	for i, cookie := range allCookies {
 		// 从第7名（下标6）开始，直到第30名（下标29）
 		if i >= 6 && i <= 20 {
-			// 如果优先级低于1万，跳过扣除
-			//          if cookie.Priority < 10000 {
-			//             continue
-			//          }
-
 			// 扣除500优先级
 			adjustedPriority := cookie.Priority - 160
-			// 如果扣除后的优先级低于1万，设置为1万
-			//            if adjustedPriority < 10000 {
-			//                adjustedPriority = 10000
-			//          }
 
 			// 更新账号的优先级
 			cookie.Priority = adjustedPriority
@@ -6701,196 +5111,7 @@ func handleGrokChat(sender *Sender, msg chan string) {
 	}
 }
 
-/*
-func handleGrokChat(sender *Sender, msg chan string) {
-	defer func() {
-		delete(AiinputList, sender.UserID)
-	}()
-	apiURL := "https://api.siliconflow.cn/v1/chat/completions"
-	token := GetEnv("ai_token")
-	if token == "" {
-        sender.Reply("请先设置ai_token")
-        return
-    }
 
-	messages := []map[string]interface{}{}
-	for {
-		timeout := time.After(300 * time.Second)
-		select {
-		case input, ok := <-msg:
-			if !ok || input == "q" {
-				sender.Reply("您已退出 Ai 连续对话模式。")
-				return
-			}
-
-			messages = append(messages, map[string]interface{}{
-				"role":    "user",
-				"content": input,
-			})
-			requestBody := map[string]interface{}{
-				"model":    "deepseek-ai/DeepSeek-V3",
-				"messages": messages,
-				"stream":   false,
-				"max_tokens": 512,
-				"stop": []string{"null"},
-				"temperature": 0.7,
-				"top_p": 0.7,
-				"top_k": 50,
-				"frequency_penalty": 0.5,
-				"n": 1,
-				"response_format": map[string]interface{}{
-					"type": "text",
-				},
-				"tools": []map[string]interface{}{
-					{
-						"type": "function",
-						"function": map[string]interface{}{
-							"description": "<string>",
-							"name":        "<string>",
-							"parameters":  map[string]interface{}{},
-							"strict":      false,
-						},
-					},
-				},
-			}
-			body, err := json.Marshal(requestBody)
-			if err != nil {
-				sender.Reply("内部服务器错误，无法构建请求。")
-				logs.Error("JSON 序列化错误: %s", err)
-				return
-			}
-			req, err := http.NewRequest("POST", apiURL, strings.NewReader(string(body)))
-			if err != nil {
-				sender.Reply("请求失败，无法创建请求。")
-				logs.Error("创建请求失败: %s", err)
-				return
-			}
-			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
-			req.Header.Add("Content-Type", "application/json")
-			res, err := http.DefaultClient.Do(req)
-			if err != nil {
-				sender.Reply("请求失败，无法从新接口获取响应。")
-				logs.Error("发送请求失败: %s", err)
-				return
-			}
-			defer res.Body.Close()
-			bodyBytes, err := io.ReadAll(res.Body)
-			if err != nil {
-				sender.Reply("解析响应失败，请稍后再试。")
-				logs.Error("读取响应失败: %s", err)
-				return
-			}
-			if res.StatusCode != 200 {
-				sender.Reply(fmt.Sprintf("请求失败，状态码：%d", res.StatusCode))
-				logs.Error("请求失败，状态码: %d, 响应: %s", res.StatusCode, string(bodyBytes))
-				return
-			}
-			var response map[string]interface{}
-			err = json.Unmarshal(bodyBytes, &response)
-			if err != nil {
-				sender.Reply("解析响应失败，请稍后再试。")
-				logs.Error("解析 JSON 响应错误: %s", err)
-				return
-			}
-			choices := response["choices"].([]interface{})
-			if len(choices) == 0 {
-				sender.Reply("未收到有效的响应内容。")
-				return
-			}
-			content := choices[0].(map[string]interface{})["message"].(map[string]interface{})["content"].(string)
-			messages = append(messages, map[string]interface{}{
-				"role":    "assistant",
-				"content": content,
-			})
-			sender.Reply(content)
-		case <-timeout:
-			sender.Reply("操作超时，退出 Ai 连续对话模式。")
-			return
-		}
-	}
-}
-
-
-func handleGrokChat(sender *Sender, msg chan string) {
-	defer func() {
-		delete(AiinputList, sender.UserID)
-	}()
-
-	apiURL := "https://api.x.ai/v1/chat/completions"
-	token := GetEnv("grok_token")
-	if token == "" {
-		sender.Reply("请先设置grok_token")
-		return
-	}
-	messages := []map[string]interface{}{}
-	proxy := func(req *http.Request) (*url.URL, error) {
-		value := GetEnv("ProxyUrl") // 从环境变量中获取代理地址
-		if value == "" {
-			return nil, nil
-		}
-		u, err := url.Parse(value)
-		if err != nil {
-			logs.Error("解析代理URL失败: %s, URL: %s", err, value)
-			return nil, err
-		}
-		return u, nil
-	}
-
-	for {
-		timeout := time.After(120 * time.Second)
-		select {
-		case input, ok := <-msg:
-			if !ok || input == "q" {
-				sender.Reply("您已退出 Ai 连续对话模式。")
-				return
-			}
-			messages = append(messages, map[string]interface{}{
-				"role":    "user",
-				"content": input,
-			})
-			requestBody := map[string]interface{}{
-				"model":    "grok-beta",
-				"messages": messages,
-			}
-			body, err := json.Marshal(requestBody)
-			if err != nil {
-				sender.Reply("内部服务器错误，无法构建请求。")
-				logs.Error("JSON 序列化错误: %s", err)
-				return
-			}
-			post := httplib.Post(apiURL)
-			post.Header("Authorization", fmt.Sprintf("Bearer %s", token))
-			post.Header("Content-Type", "application/json")
-			post.Body(body)
-			post.SetProxy(proxy)
-			post.SetTimeout(30*time.Second, 30*time.Second)
-			bytes, err := post.Bytes()
-			if err != nil {
-				sender.Reply("请求失败，无法从 Grok-Beta 获取响应。")
-				logs.Error("发送 POST 请求失败: %s", err)
-				return
-			}
-			val, err := jsonparser.GetString(bytes, "choices", "[0]", "message", "content")
-			if err != nil {
-				sender.Reply("解析响应失败，请稍后再试。")
-				logs.Error("解析 JSON 响应错误: %s", err)
-				return
-			}
-
-			messages = append(messages, map[string]interface{}{
-				"role":    "assistant",
-				"content": val,
-			})
-
-			sender.Reply(val)
-
-		case <-timeout:
-			sender.Reply("操作超时，退出 Ai 连续对话模式。")
-			return
-		}
-	}
-}
-*/
 //##千寻拉群函数
 
 func QxInviteGroup(uid string, gid string) {

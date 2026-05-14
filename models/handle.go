@@ -21,7 +21,6 @@ func initHandle() {
 		for {
 			get := <-Save
 			if get.Pool == "s" {
-				//initCookie()
 				continue
 			}
 			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
@@ -123,15 +122,7 @@ module.exports = cookies`, cookies))
 			f.Close()
 		     f1.Close() 
 		     f2.Close() // 完成操作后记得关闭文件
-			//WriteHelpJS(cks)
 			go CopyConfigAll()
-			// tmp = []JdCookie{}
-			// for _, ck := range cks {
-			// 	if ck.Hack != True {
-			// 		tmp = append(tmp, ck)
-			// 	}
-			// }
-			// cks = tmp
 			if Config.Mode == Parallel {
 				for i := range Config.Containers {
 					(&Config.Containers[i]).read()
@@ -190,7 +181,6 @@ module.exports = cookies`, cookies))
 									for j := range Config.Containers {
 
 										if Config.Containers[j].Available && Config.Containers[j].Mode == Special {
-										//    logs.Info(fmt.Sprintf("当前洗白容器：%d", Config.Containers[j].Address))
 											Config.Containers[j].cks = append(Config.Containers[j].cks, ck)
 											assigned = true
 											break
@@ -204,9 +194,6 @@ module.exports = cookies`, cookies))
 								continue
 							}
 							// 如果 Hack 为 false，正常进行 Balance 容器分配
-							//j := i % cl
-							//logs.Info(fmt.Sprintf("当前平行容器：%d", Config.Containers[j].Address))
-							//Config.Containers[j].cks = append(Config.Containers[j].cks, ck)
 							j := i % cl
 							targetIdx := balanceIndices[j]  // 通过预存索引获取真实容器位置
 							if !residentCkpin[ck.PtPin] {
@@ -217,7 +204,6 @@ module.exports = cookies`, cookies))
 					// 将分配好的 cookies 写入容器
 					for i := range Config.Containers {
 						if Config.Containers[i].Available {
-						//	logs.Info(fmt.Sprintf("写入容器：%d", Config.Containers[i].Address))
 							if Config.Containers[i].Mode == Balance {
 								// 写入 Balance 模式容器的 cookies
 								(&Config.Containers[i]).write(Config.Containers[i].cks)
@@ -404,7 +390,6 @@ module.exports = cookies`, cookies))
 							Pool: "s",
 						}
 						time.Sleep(time.Minute * 30)
-						// time.Sleep(time.Second * 1)
 					}
 				}()
 				init = false

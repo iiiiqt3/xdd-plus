@@ -10,10 +10,12 @@ import (
 	"strings"
 )
 
+// UserController 用户信息查询控制器
 type UserController struct {
 	BaseController
 }
 
+// GetUserInfo 根据pin获取京东用户Cookie信息
 func (c *UserController) GetUserInfo() {
 
 	pin := c.GetString("pin")
@@ -27,7 +29,7 @@ func (c *UserController) GetUserInfo() {
 			Code:    1,
 			Message: "查无匹配的pin",
 		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		jsons, errs := json.Marshal(result)
 		if errs != nil {
 			fmt.Println(errs.Error())
 		}
@@ -38,7 +40,7 @@ func (c *UserController) GetUserInfo() {
 			Code:    0,
 			Message: "账号过期",
 		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		jsons, errs := json.Marshal(result)
 		if errs != nil {
 			fmt.Println(errs.Error())
 		}
@@ -49,7 +51,7 @@ func (c *UserController) GetUserInfo() {
 			Code:    0,
 			Message: "查询成功",
 		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		jsons, errs := json.Marshal(result)
 		if errs != nil {
 			fmt.Println(errs.Error())
 		}
@@ -57,6 +59,7 @@ func (c *UserController) GetUserInfo() {
 	}
 }
 
+// GetUserPin 根据QQ号获取关联的京东pin列表
 func (c *UserController) GetUserPin() {
 	qq := c.GetString("QQ")
 	if strings.EqualFold(qq, strconv.Itoa(models.Config.QQID)) {
@@ -65,7 +68,7 @@ func (c *UserController) GetUserPin() {
 			Code:    1,
 			Message: "禁止查询他人ID",
 		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		jsons, errs := json.Marshal(result)
 		if errs != nil {
 			fmt.Println(errs.Error())
 		}
@@ -79,7 +82,7 @@ func (c *UserController) GetUserPin() {
 			Code:    1,
 			Message: "查无匹配的pin",
 		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		jsons, errs := json.Marshal(result)
 		if errs != nil {
 			fmt.Println(errs.Error())
 		}
@@ -90,7 +93,7 @@ func (c *UserController) GetUserPin() {
 			Code:    0,
 			Message: "查询成功",
 		}
-		jsons, errs := json.Marshal(result) //转换成JSON返回的是byte[]
+		jsons, errs := json.Marshal(result)
 		if errs != nil {
 			fmt.Println(errs.Error())
 		}

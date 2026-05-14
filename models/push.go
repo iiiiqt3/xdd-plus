@@ -8,37 +8,11 @@ import (
 	"strings"  // 用于字符串判断 (修复 undefined: strings)
 )
 
-/*
+// Push 推送消息到用户，根据用户配置推送到QQ、微信、TG等渠道
+// 推送渠道说明：0所有，1QQ，2微信，3TG，12QQ+微信，13QQ+TG，23微信+TG
 func (ck JdCookie) Push(msg string) {
 	if ck.PtPin != "" {
 		go SendQQ(ck.QQ, msg)
-		//go SendWxMsg()
-		go pushPlus(ck.PushPlus, msg)
-		go SendTgMsg(ck.Telegram, msg)
-		if ck.WeiXin != "" {
-			go SendWxMsg(ck.WeiXin, msg)
-		}
-	} else {
-		go SendQQ(Config.QQID, msg)
-		go qywxNotify(&QywxConfig{QywxKey: Config.QywxKey, Content: msg})
-		go SendTgMsg(Config.TelegramUserID, msg)
-		WeiXin := getWeiXinId(Config.QQID)
-		if WeiXin != "找不到对应的微信ID" {
-			go SendWxMsg(WeiXin, msg)
-		}
-
-	}
-}
-
-*/
-
-//## 0所有，1QQ，2微信，3TG 12QQ+微信  13QQ+TG  23微信+TG
-
-
-func (ck JdCookie) Push(msg string) {
-	if ck.PtPin != "" {
-		go SendQQ(ck.QQ, msg)
-		//go SendWxMsg()
 		go pushPlus(ck.PushPlus, msg)
 		go SendTgMsg(ck.Telegram, msg)
 		if ck.WeiXin != "" {
@@ -98,8 +72,6 @@ func PushByQQ(qq string, msg string) {
 	// 将字符串类型的 number (原逻辑中的 QQ) 转换为 int
 	qqInt, err := strconv.Atoi(user.QQ)
 	if err != nil {
-		// 如果转换失败，记录日志或返回
-		// log.Printf("号码格式错误，无法转换为整数: %s", user.QQ)
 		return
 	}
 

@@ -168,7 +168,6 @@ func BBKGetCookie(cookie string) (bool, string, string) {
 		logs.Error("BBKToken or BBKJdUrl is empty")
 		return false, "", ""
 	}
-	//http://192.168.195.53:5016/env/wskey
 	//http://你的IP:3081/d/convert?pin=xxx&wskey=xxx&token=机器人token
 	pin := FetchJdCookieValue("pin", cookie)
 	rwskey := FetchJdCookieValue("wskey", cookie)

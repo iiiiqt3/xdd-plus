@@ -331,14 +331,6 @@ func TransferRequest(toWxid string, transferid string, money string) error {
 		return fmt.Errorf("转账失败: %s", response.Error)
 	}
 
-	// 积分处理
-	/*moneyValue, _ := strconv.ParseFloat(money, 64)
-	rechargePoints := int(100.0 * moneyValue)
-	AdddCoin(toWxid, rechargePoints)
-
-	// 发送成功消息
-	SendWxMsg(toWxid, fmt.Sprintf("充值成功！充值积分：%d\n充值后账户余额：%d\n注意：没收到请联系群主\n发送“菜单”获取更多功能", rechargePoints, GetCoin(toWxid)))*/
-
 	return nil
 }
 
@@ -465,14 +457,6 @@ func GetGroupMembers(groupID string) {
 
     // 异步处理成员数据，防止阻塞
     go func() {
-        // 假设在这里你会处理返回的成员信息
-        // 例如，遍历成员并踢除违规成员
-        // 下面是伪代码：
-        // for _, member := range groupMembers {
-        //     if isMalicious(member) {
-        //         RemoveGroupMember(groupID, member.UserID)
-        //     }
-        // }
     }()
 }
 

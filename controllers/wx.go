@@ -22,6 +22,7 @@ import (
 	"time"
 )
 
+// WxController 微信机器人控制器，处理微信消息接收和响应
 type WxController struct {
 	BaseController
 }
@@ -177,6 +178,7 @@ type QxAgreeFriend struct {
 	} `json:"data"`
 }
 
+// HandleWxMessage 处理微信消息入口，根据消息事件类型分发到不同的处理逻辑
 func (c *WxController) HandleWxMessage() {
 	data := c.Ctx.Input.RequestBody
 	logs.Info(string(data))
@@ -241,137 +243,7 @@ func (c *WxController) HandleWxMessage() {
 					}
 				}
 
-				/*			case 10008:
-
-
-
-
-							case 10009:
-								// 定义一个结构体 ag 用于接收消息
-								ag := &QXMessage{}
-
-								// 反序列化 data 为 ag 结构体
-								err := json.Unmarshal(data, ag)
-								logs.Info(err)
-
-								// 输出接收到的消息内容
-								logs.Info("接收到信息: " + ag.Data.Data.Msg)
-
-								// 判断消息是否包含 msgBase64
-								if ag.Data.Data.MsgBase64 != "" {
-								// 如果存在 msgBase64，提取并解密它
-								decodedMsg, decodeErr := base64.StdEncoding.DecodeString(ag.Data.Data.MsgBase64)
-								if decodeErr != nil {
-								// 如果解密失败，记录错误并返回
-								logs.Error("解密失败:", decodeErr)
-								return
-								}
-
-								// 将解密后的内容转为字符串
-								decodedStr := string(decodedMsg)
-
-								// 匹配 URL 的正则表达式
-								re := regexp.MustCompile(`<url>(.*?)</url>`)
-								matches := re.FindStringSubmatch(decodedStr)
-
-								// 如果匹配到 URL
-								if len(matches) > 1 {
-								// 提取 URL
-								extractedURL := matches[1]
-								logs.Info("匹配到的 URL: " + extractedURL)
-
-
-								models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, extractedURL)
-								} else {
-								// 如果没有匹配到 URL
-							//	logs.Info("未找到 URL")
-							}
-								} else {
-								// 如果没有 msgBase64 字段，正常处理消息
-								models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
-							}
-
-								// 判断消息是否是来自机器人本身，避免机器人回复自己
-								if ag.Wxid == models.Config.Wx.Robotid {
-								// 调用监听函数处理私聊消息
-								models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
-							}
-
-
-							case 10008:
-								// 定义一个结构体 ag 用于接收消息
-								ag := &QXMessage{}
-
-								// 反序列化 data 为 ag 结构体
-								err := json.Unmarshal(data, ag)
-								logs.Info(err)
-
-								// 输出接收到的消息内容
-								logs.Info("接收到信息: " + ag.Data.Data.Msg)
-
-								// 判断消息是否包含 msgBase64
-								if ag.Data.Data.MsgBase64 != "" {
-								// 如果存在 msgBase64，提取并解密它
-								decodedMsg, decodeErr := base64.StdEncoding.DecodeString(ag.Data.Data.MsgBase64)
-								if decodeErr != nil {
-								// 如果解密失败，记录错误并返回
-								logs.Error("解密失败:", decodeErr)
-								return
-								}
-
-								// 将解密后的内容转为字符串
-								decodedStr := string(decodedMsg)
-
-								// 匹配 URL 的正则表达式
-								re := regexp.MustCompile(`<url>(.*?)</url>`)
-								matches := re.FindStringSubmatch(decodedStr)
-
-								// 如果匹配到 URL
-								if len(matches) > 1 {
-								// 提取 URL
-								extractedURL := matches[1]
-								logs.Info("匹配到的 URL: " + extractedURL)
-
-
-								models.ListenWXGroupMessage(ag.Data.Data.FinalFromWxid, ag.Data.Data.FromWxid, extractedURL)
-								} else {
-								// 如果没有匹配到 URL
-							//	logs.Info("未找到 URL")
-							}
-								} else {
-								// 如果没有 msgBase64 字段，正常处理消息
-								models.ListenWXGroupMessage(ag.Data.Data.FinalFromWxid, ag.Data.Data.FromWxid, ag.Data.Data.Msg)
-							}
-
-								// 判断消息是否是来自机器人本身，避免机器人回复自己
-								if ag.Wxid == models.Config.Wx.Robotid {
-								// 调用监听函数处理私聊消息
-								models.ListenWXGroupMessage(ag.Data.Data.FinalFromWxid, ag.Data.Data.FromWxid, ag.Data.Data.Msg)
-							}
-
-
-							ag := &QXMessage{}
-								err := json.Unmarshal(data, ag)
-								logs.Info(err)
-								logs.Info("接收到信息" + ag.Data.Data.Msg)
-								if ag.Wxid == models.Config.Wx.Robotid {
-									models.ListenWXGroupMessage(ag.Data.Data.FinalFromWxid, ag.Data.Data.FromWxid, ag.Data.Data.Msg)
-								}
-
-
-
-							case 10009:
-								ag := &QXMessage{}
-								err := json.Unmarshal(data, ag)
-								logs.Info(err)
-								logs.Info("接收到信息" + ag.Data.Data.Msg)
-								if ag.Wxid == models.Config.Wx.Robotid {
-								models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
-								}
-
-				*/
-
-			case 10006:
+				case 10006:
 				ag := &QXMoneyMessage{}
 				err := json.Unmarshal(data, ag)
 				logs.Info(err)
@@ -463,7 +335,6 @@ func (c *WxController) HandleWxMessage() {
 			switch ag.Content.Type {
 			case 1:
 				if ag.Content.RobotWxid == models.Config.Wx.Robotid {
-					//logs.Info(err)
 					logs.Info("接收到信息" + ag.Content.Msg)
 					models.ListenWXTempPrivateMessage(ag.Content.FromWxid, ag.Content.Msg)
 				}
@@ -525,6 +396,7 @@ func (c *WxController) HandleWxMessage() {
 	}
 }
 
+// switchMoney 处理饿了么卡密兑换，从文件中读取卡密发送给用户
 func switchMoney(ag *WxMessage, filePath string) {
 	line, err := handleElm(filePath)
 	if err != nil {
@@ -538,6 +410,7 @@ func switchMoney(ag *WxMessage, filePath string) {
 	models.ElmList[models.GetWxid(ag.Content.FromWxid)] = nil
 }
 
+// receiveMoney 处理微信转账收款，支持自动收款和自动收款+充值两种模式
 func receiveMoney(autocollect *AutocollectMessageBody, ag *WxMessage, typ int) {
 	args := make(map[string]string)
 	args["money"] = autocollect.Money
@@ -552,6 +425,7 @@ func receiveMoney(autocollect *AutocollectMessageBody, ag *WxMessage, typ int) {
 	}
 }
 
+// AgreeFriendVerify 自动同意好友验证请求，支持my和qx两种微信框架
 func AgreeFriendVerify(args interface{}) {
 	arg := args.(map[string]string)
 	model := arg["model"]
@@ -608,6 +482,7 @@ func AgreeFriendVerify(args interface{}) {
 	}
 }
 
+// u2s 将Unicode转义字符串转换为普通字符串
 func u2s(form string) (to string, err error) {
 	bs, err := hex.DecodeString(strings.Replace(form, `\u`, ``, -1))
 	if err != nil {
@@ -620,6 +495,7 @@ func u2s(form string) (to string, err error) {
 	return
 }
 
+// handleElm 处理饿了么卡密文件，读取第一行并删除，同时检查库存
 func handleElm(filePath string) (firstLine string, err error) {
 	// 打开文件进行读取
 	file, err := os.Open(models.ExecPath + "/elm/" + filePath)

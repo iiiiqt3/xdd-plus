@@ -473,7 +473,6 @@ func UpLine2(token string, sender *Sender) bool {
 	info := GetUserInfo(token)
 	val, _ := jsonparser.GetInt(info, "error", "code")
 	if val == 401 {
-		//sender.Reply("您的CK已失效")
 		return false
 	} else {
 		return true
@@ -678,26 +677,7 @@ func (ck *MeiTuan) RunTT(sender *Sender) {
 
 //#修改领取匹配
 
-/*func replexQuan(info string, sender *Sender) string {
-	re := regexp.MustCompile(`账号\[\d+\].*?\d+减\d+`)
-	matches := re.FindAllString(info, -1)
-	msgs := []string{
-		fmt.Sprintf("订单类型:美团领券，订单编号：%s，领卷完成，券当天有效，共计领卷%d张,明细如下:", GetEnv("orderNumber2") len(matches)),
-	}
-	for _, match := range matches {
-		parts := strings.SplitN(match, ":", 2)
-		var replacedMsg string
-		if sender.Type == "wx" || sender.Type == "wxg" {
-			replacedMsg = "[红包]" + parts[1]
-		} else {
-			replacedMsg = "🧧" + parts[1]
-		}
-		msgs = append(msgs, replacedMsg)
-	}
-	return strings.Join(msgs, "\n")
-}
 
-*/
 
 func replexQuan(info string, sender *Sender) string {
 	// #修改正则表达式以匹配冒号后面的内容，并且含有"减"的内容
@@ -771,7 +751,6 @@ func setHeader(req *httplib.BeegoHTTPRequest) {
 
 }
 
-//utm_medium=android;uuid=%s;token=%s;mt_c_token=%s;
 
 func taskList(meituan *MeiTuan) {
 	//声明对象
@@ -952,7 +931,6 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 
 		num, err := strconv.Atoi(n)
 		if err != nil {
-			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
 			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
 			meituanList[sender.UserID] = nil
 			return
@@ -962,7 +940,6 @@ func MeituanSelect(sender *Sender, msg chan string, typ int, meituans []MeiTuan)
 		switch typ {
 
 		case 1:
-			//	sender.Reply("已开始领券")
 			regular := `^0$|^[1-9]\d*$`
 			reg := regexp.MustCompile(regular)
 			if reg.MatchString(n) {
@@ -1185,13 +1162,12 @@ func MeituanUuid(sender *Sender, msg chan string, typ string, meituans []MeiTuan
 
 		num, err := strconv.Atoi(n)
 		if err != nil {
-			//sender.Reply(fmt.Sprintf("转换失败:%s", err))
 			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
 			meituanList[sender.UserID] = nil
 			return
 		}
-
-		//添加uuid
+		_ = num
+		_ = typ
 		regular := `^0$|^[1-9]\d*$`
 		reg := regexp.MustCompile(regular)
 		if reg.MatchString(n) {

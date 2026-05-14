@@ -305,9 +305,6 @@ func runMeituan(task *Task, sender *Sender) string {
 			msg += line
 
 		}
-		//if msg != "" {
-		//	sender.Reply(msg)
-		//}
 	}()
 	msg := ""
 	reader := bufio.NewReader(stdout)

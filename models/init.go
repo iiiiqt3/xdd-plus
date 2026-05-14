@@ -28,16 +28,12 @@ func init() {
 	initDB()
 	initSysConfig()
 	go initVersion()
-	//go initUserAgent()
 	initContainer()
 	initHandle()
 	initCron()
 	go initTgBot()
-//	InitReplies()
 	initTask()
 	initNolan()
-	//go initOrder(branchHelpOrderQueue, "jd_qmckd_branchHelp", "jd_qmckd_inviteIdArr_expand")
-	//initRepos()
 	initWX()
 	tempToken()
 	// InitActivityListWithHotReload() 会自动加载 YAML 配置并启动热加载监控
@@ -50,21 +46,7 @@ func init() {
 
 	initiiiiqtTask()
 }
-/*
-func initNolan() {
 
-	s, _ := httplib.Get(fmt.Sprintf("http://159.75.140.129:9801/user/auth3?qqNum=%s&version=%s", strconv.Itoa(Config.QQID), Config.Version)).String()
-	contains := strings.Contains(s, "true")
-	logs.Info(s)
-	if contains {
-		Config.VIP = true
-		logs.Info("VIP验证成功")
-	} else {
-		logs.Info("VIP校验失败")
-	}
-
-}
-*/
 
 func initNolan() {
     Config.VIP = true

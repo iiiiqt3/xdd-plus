@@ -25,6 +25,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+// QQController QQ机器人控制器，通过WebSocket接收和处理QQ消息
 type QQController struct {
 	BaseController
 }

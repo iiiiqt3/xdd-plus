@@ -6,18 +6,20 @@ import (
 	"github.com/cdle/xdd/models"
 )
 
+// ConfigController 系统配置管理控制器
 type ConfigController struct {
 	BaseController
 }
 
+// NextPrepare 前置处理，验证管理员登录状态
 func (c *ConfigController) NextPrepare() {
 	c.Logined()
 }
 
+// ListConfig 获取系统配置列表
 func (c *ConfigController) ListConfig() {
 
 	var config = models.ListConfig()
-	//marshal, _ := json.Unmarshal(config)
 	logs.Info(config)
 
 	c.Data["json"] = map[string]interface{}{
@@ -27,6 +29,7 @@ func (c *ConfigController) ListConfig() {
 	c.ServeJSON()
 }
 
+// CreateOrUpdateConfig 创建或更新系统配置
 func (c *ConfigController) CreateOrUpdateConfig() {
 
 	var sys models.SystemConfig
@@ -36,9 +39,6 @@ func (c *ConfigController) CreateOrUpdateConfig() {
 		c.Ctx.Output.Body([]byte("Invalid JSON data"))
 		return
 	}
-
-	// 处理用户数据
-	// ...
 
 	msg := models.SaveSysConfig(sys)
 	logs.Info(msg)
