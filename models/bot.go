@@ -1099,6 +1099,7 @@ if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是�
 
 	}
 	return nil
+ }
 }
 func runtyt(sender *Sender, code string) {
 	for {
