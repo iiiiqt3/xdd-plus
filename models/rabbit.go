@@ -30,6 +30,7 @@ func RabbitGetJdQrImg(sender *Sender) {
 
 		//返回口令
 		//jcommond, _ := jsonparser.GetString(bytes, "jcommond")
+		//sender.Reply(jcommond)
 
 		//图片
 		sender.Reply(NolanLJToKL("https://qr.m.jd.com/p?k="+key, "京东快捷登录"))
@@ -37,6 +38,12 @@ func RabbitGetJdQrImg(sender *Sender) {
 		qr, _ := jsonparser.GetString(bytes, "qr")
 		decodeStr, _ := base64.StdEncoding.DecodeString(qr)
 		sender.SendImg(decodeStr)
+
+		//口令转
+		//lj := LJtoLJ("https://qr.m.jd.com/p?k=" + key)
+		//url, _ := jsonparser.GetString(lj, "code")
+		//logs.Info(url)
+		//sender.Reply(NolanLJToKL(url, "京东快捷登录"))
 
 		sender.Reply("请使用京东APP扫描，150秒失效")
 		go RabbitGetJDQrStatus(key, sender)
@@ -47,6 +54,7 @@ func RabbitGetJdQrImg(sender *Sender) {
 }
 
 func RabbitGetJDQrStatus(cookie string, sender *Sender) {
+	// {"success":false,"message":"","data":{"ck":"","rwskey":"","accessToken":"","refreshToken":"","roles":[],"img":null,"username":"user","expires":"2023-09-26T15:45:13.3731483+08:00","status":0,"mode":null}}
 
 	for {
 		time.Sleep(time.Second * time.Duration(5))
@@ -221,7 +229,68 @@ func UpdateRwskey() {
 	(&JdCookie{}).Push(fmt.Sprintf("所有CK转换完成，共%d个,转换失败个数共%d个", xx, yy))
 }
 
-// RabbitSendSMS 通过Rabbit平台发送短信验证码
+/*
+func RabbitSendSMS(ty string, phone string, sender *Sender) {
+	sender.Reply("正在验证...")
+	logs.Info(sysConfig.RabbitUrl)
+	var req *httplib.BeegoHTTPRequest
+	if ty == "mck" {
+		req = httplib.Post(fmt.Sprintf("%s/bot/mck/sendSMS?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+	} else if ty == "wskey" {
+		req = httplib.Post(fmt.Sprintf("%s/bot/wskey/sendSMS?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+	}
+	req.Header("content-type", "application/json; charset=utf-8")
+	data, _ := req.Body(`{"Phone":"` + phone + `"}`).Bytes()
+	logs.Info(string(data))
+	message, _ := jsonparser.GetString(data, "message")
+	success, _ := jsonparser.GetBoolean(data, "success")
+	status, _ := jsonparser.GetInt(data, "data", "status")
+	if message != "" && status != 666 {
+		sender.Reply(message)
+	}
+	if success {
+		logs.Info(strconv.Itoa(sender.UserID))
+		sender.Reply("请输入6位验证码：")
+		return
+	} else {
+		sender.Reply("正在进行验证...")
+		i := 1
+		for {
+			i++
+			if ty == "mck" {
+				req = httplib.Post(fmt.Sprintf("%s/bot/mck/AutoCaptcha?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+			} else if ty == "wskey" {
+				req = httplib.Post(fmt.Sprintf("%s/bot/wskey/AutoCaptcha?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
+			}
+			req.Header("content-type", "application/json; charset=utf-8")
+			data, _ := req.Body(`{"Phone":"` + phone + `"}`).Bytes()
+			message, _ := jsonparser.GetString(data, "message")
+			success, _ := jsonparser.GetBoolean(data, "success")
+			status, _ := jsonparser.GetInt(data, "data", "status")
+			if success {
+				sender.Reply("请输入6位验证码：")
+				break
+			}
+			if i > 5 {
+				smsList[sender.UserID] = nil
+				sender.Reply("滑块验证失败,请尝试重新登录")
+				break
+			}
+			if status == 666 || status == 505 {
+				i++
+				sender.Reply(fmt.Sprintf("正在进行第%d次滑块验证...", i))
+				continue
+			} else {
+				sender.Reply(message)
+				smsList[sender.UserID] = nil
+				break
+			}
+
+		}
+	}
+}
+*/
+
 func RabbitSendSMS(ty string, phone string, sender *Sender) bool {
     sender.Reply("正在验证...")
     logs.Info("Rabbit URL:", sysConfig.RabbitUrl)
@@ -328,10 +397,19 @@ func RabbitSendCode(ty string, phone string, code string, sender *Sender) {
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
 			// 注释积分相关变量和调用 - 禁用积分功能，保留代码便于恢复
+			// date := Date()
+			// UpdateAt2 := nck.UpdateAt
+			// result6 := Addcoin(UpdateAt2, sender)
 			
 			// 统一更新逻辑，不再区分积分结果
 			nck.Updates(JdCookie{WsKey: wskey, QQ: sender.UserID, PtKey: ptkey, Available: True, WeiXin: sender.WxId})
-			}
+			
+			// 原积分相关的条件更新逻辑（已注释）
+			// if result6 {
+			// 	nck.Updates(JdCookie{WsKey: wskey, QQ: sender.UserID, PtKey: ptkey, Available: True,  WeiXin: sender.WxId,UpdateAt: date})
+			// } else {
+			// 	nck.Updates(JdCookie{WsKey: wskey, QQ: sender.UserID, PtKey: ptkey, Available: True, WeiXin: sender.WxId})
+			// }
 			
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("登录成功:%s", pin))
