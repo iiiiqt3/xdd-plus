@@ -4,7 +4,7 @@ type UserAdmin struct {
 	ID      int
 	Content string `gorm:"unique"`
 }
-
+//测试
 func IsUserAdmin(id string) bool {
 	user := &UserAdmin{}
 	db.Where(Content+" = ?", id).First(user)
