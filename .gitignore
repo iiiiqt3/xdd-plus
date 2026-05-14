@@ -13,10 +13,12 @@
 # Go 相关
 vendor/
 
-# 配置文件（包含敏感信息）
-conf/config.yaml
-conf/config.yaml-xg
-conf/app.conf
+# 配置文件（包含敏感信息）- 排除整个conf目录，防止更新时覆盖服务器配置
+conf/
+
+# 数据库和临时数据
+*.db
+userid_farmNew.json
 
 # 日志文件
 *.log
