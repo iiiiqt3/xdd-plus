@@ -60,7 +60,7 @@ func CreateAppFeedback(userID int, feedbackType string, title string, content st
 		Status:  "new",
 	}).Error
 }
-#测试推送
+
 func GetAdminAppFeedbacks(search string, page int, limit int, sortField string, sortOrder string) ([]AppFeedback, int64) {
 	if page <= 0 {
 		page = 1
