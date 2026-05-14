@@ -1247,6 +1247,8 @@ func runtyt(sender *Sender, code string) {
 	}
 }
 
+
+
 func AutoCollectionAndAddCoin(autocollect map[string]string) {
 	AutoCollection(autocollect)
 	//增加积分
