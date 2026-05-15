@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -124,7 +125,7 @@ func UpdateAppFeedbackStatus(id int, status string) error {
 	return db.Model(&AppFeedback{}).Where("id = ?", id).Update("status", status).Error
 }
 
-func ProcessAppFeedback(id int, status string, reply string, rewardCoin int, handler string) error {
+func ProcessAppFeedback(id int, status string, reply string, rewardCoin int, handler string, isFirstReply bool, notifyWebApp bool, notifyBot bool) error {
 	if id <= 0 {
 		return fmt.Errorf("反馈ID不能为空")
 	}
@@ -151,7 +152,7 @@ func ProcessAppFeedback(id int, status string, reply string, rewardCoin int, han
 	if rewardCoin > 0 && item.UserID > 0 {
 		AdddCoin(item.UserID, rewardCoin)
 	}
-	if item.UserID > 0 && (reply != "" || rewardCoin > 0) {
+	if isFirstReply && item.UserID > 0 && (reply != "" || rewardCoin > 0) {
 		content := reply
 		if content == "" {
 			content = "你的反馈已处理"
@@ -159,9 +160,33 @@ func ProcessAppFeedback(id int, status string, reply string, rewardCoin int, han
 		if rewardCoin > 0 {
 			content += fmt.Sprintf("\n奖励积分：%d", rewardCoin)
 		}
-		_ = CreateSystemWebNotification("反馈处理结果", content, NotifyCategoryFeedback, NotifySourceFeedback, item.UserID, NotifyChannels{Web: true, App: true})
+		if notifyWebApp {
+			_ = CreateSystemWebNotification("反馈处理结果", content, NotifyCategoryFeedback, NotifySourceFeedback, item.UserID, NotifyChannels{Web: true, App: true})
+		}
+		if notifyBot {
+			pushFeedbackResultToBot(item.UserID, content)
+		}
 	}
 	return nil
+}
+
+func pushFeedbackResultToBot(userID int, content string) {
+	user, err := getPortalUserByNumber(userID)
+	if err != nil || user == nil {
+		return
+	}
+	wxid := strings.TrimSpace(user.Wxid)
+	qqStr := strings.TrimSpace(user.QQ)
+	msg := "【反馈处理结果】\n" + content
+	if wxid != "" {
+		SendWxMsg(wxid, msg)
+	}
+	if qqStr != "" {
+		qq, err := strconv.Atoi(qqStr)
+		if err == nil && qq > 0 {
+			SendQQ(qq, msg)
+		}
+	}
 }
 
 func BatchDeleteAppFeedbacks(ids []int) error {
@@ -221,8 +246,9 @@ func BatchReplyAppFeedbacks(ids []int, reply string, handler string) (int, error
 		}).Error; err != nil {
 			continue
 		}
-		if item.UserID > 0 {
+		if item.UserID > 0 && item.Status == "new" {
 			_ = CreateSystemWebNotification("反馈处理结果", reply, NotifyCategoryFeedback, NotifySourceFeedback, item.UserID, NotifyChannels{Web: true, App: true})
+			pushFeedbackResultToBot(item.UserID, reply)
 		}
 		count++
 	}
@@ -265,8 +291,11 @@ func BatchRewardAppFeedbacks(ids []int, rewardCoin int, handler string) (int, er
 		}
 		if item.UserID > 0 && rewardCoin > 0 {
 			AdddCoin(item.UserID, rewardCoin)
-			content := fmt.Sprintf("你的反馈已处理\n奖励积分：%d", rewardCoin)
-			_ = CreateSystemWebNotification("反馈处理结果", content, NotifyCategoryFeedback, NotifySourceFeedback, item.UserID, NotifyChannels{Web: true, App: true})
+			if item.Status == "new" {
+				content := fmt.Sprintf("你的反馈已处理\n奖励积分：%d", rewardCoin)
+				_ = CreateSystemWebNotification("反馈处理结果", content, NotifyCategoryFeedback, NotifySourceFeedback, item.UserID, NotifyChannels{Web: true, App: true})
+				pushFeedbackResultToBot(item.UserID, content)
+			}
 		}
 		count++
 	}

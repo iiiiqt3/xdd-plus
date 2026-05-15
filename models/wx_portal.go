@@ -128,12 +128,15 @@ func PortalWxScanLogin(userNumber int) (*PortalWxActionResult, error) {
     }, nil
 }
 
-func PortalWxRelogin(userNumber int) (*PortalWxActionResult, error) {
+func PortalWxRelogin(userNumber int, targetWxid ...string) (*PortalWxActionResult, error) {
     user, err := getPortalUserByNumber(userNumber)
     if err != nil {
         return nil, err
     }
     wxid := strings.TrimSpace(user.Wxid)
+    if len(targetWxid) > 0 && strings.TrimSpace(targetWxid[0]) != "" {
+        wxid = strings.TrimSpace(targetWxid[0])
+    }
     if wxid == "" {
         return nil, fmt.Errorf("当前用户未绑定微信ID")
     }
@@ -143,7 +146,7 @@ func PortalWxRelogin(userNumber int) (*PortalWxActionResult, error) {
         return nil, err
     }
     if !online {
-        return nil, fmt.Errorf("你尚未扫码登录，请先执行微信扫码登录")
+        return nil, fmt.Errorf("设备尚未登录，请先执行微信扫码登录")
     }
 
     reqBody := map[string]interface{}{
@@ -168,19 +171,22 @@ func PortalWxRelogin(userNumber int) (*PortalWxActionResult, error) {
 
     qrPayload := normalizePortalQrBase64(result.Data.QrBase64)
     return &PortalWxActionResult{
-        Message:  "重新登录二维码已生成，请扫码确认",
+        Message:  "重新登录二维码已生成，请用手机微信扫码确认",
         QRBase64: qrPayload,
         UUID:     result.Data.Uuid,
         NeedPoll: result.Data.Uuid != "",
     }, nil
 }
 
-func PortalWxWakeLogin(userNumber int) (*PortalWxActionResult, error) {
+func PortalWxWakeLogin(userNumber int, targetWxid ...string) (*PortalWxActionResult, error) {
     user, err := getPortalUserByNumber(userNumber)
     if err != nil {
         return nil, err
     }
     wxid := strings.TrimSpace(user.Wxid)
+    if len(targetWxid) > 0 && strings.TrimSpace(targetWxid[0]) != "" {
+        wxid = strings.TrimSpace(targetWxid[0])
+    }
     if wxid == "" {
         return nil, fmt.Errorf("当前用户未绑定微信ID")
     }
@@ -190,7 +196,7 @@ func PortalWxWakeLogin(userNumber int) (*PortalWxActionResult, error) {
         return nil, err
     }
     if !online {
-        return nil, fmt.Errorf("你尚未扫码登录，请先执行微信扫码登录")
+        return nil, fmt.Errorf("设备尚未登录，请先执行微信扫码登录")
     }
 
     awakeBody := map[string]string{"wxid": wxid}
@@ -239,12 +245,15 @@ func PortalWxWakeLogin(userNumber int) (*PortalWxActionResult, error) {
     }, nil
 }
 
-func PortalWxLogout(userNumber int) (*PortalWxActionResult, error) {
+func PortalWxLogout(userNumber int, targetWxid ...string) (*PortalWxActionResult, error) {
     user, err := getPortalUserByNumber(userNumber)
     if err != nil {
         return nil, err
     }
     wxid := strings.TrimSpace(user.Wxid)
+    if len(targetWxid) > 0 && strings.TrimSpace(targetWxid[0]) != "" {
+        wxid = strings.TrimSpace(targetWxid[0])
+    }
     if wxid == "" {
         return nil, fmt.Errorf("当前用户未绑定微信ID")
     }
@@ -254,7 +263,7 @@ func PortalWxLogout(userNumber int) (*PortalWxActionResult, error) {
         return nil, err
     }
     if !online {
-        return nil, fmt.Errorf("你尚未扫码登录，无需登出")
+        return nil, fmt.Errorf("设备尚未登录，无需登出")
     }
 
     body, err := wxLoginRequest("/api/v1/wx/login/logout", map[string]string{"wxid": wxid})
@@ -273,12 +282,15 @@ func PortalWxLogout(userNumber int) (*PortalWxActionResult, error) {
     return &PortalWxActionResult{Message: "已成功登出", Status: status}, nil
 }
 
-func PortalWxDelete(userNumber int) (*PortalWxActionResult, error) {
+func PortalWxDelete(userNumber int, targetWxid ...string) (*PortalWxActionResult, error) {
     user, err := getPortalUserByNumber(userNumber)
     if err != nil {
         return nil, err
     }
     wxid := strings.TrimSpace(user.Wxid)
+    if len(targetWxid) > 0 && strings.TrimSpace(targetWxid[0]) != "" {
+        wxid = strings.TrimSpace(targetWxid[0])
+    }
     if wxid == "" {
         return nil, fmt.Errorf("当前用户未绑定微信ID")
     }
@@ -314,7 +326,6 @@ func PortalWxDelete(userNumber int) (*PortalWxActionResult, error) {
         return nil, fmt.Errorf("删除失败：%s", result.Message)
     }
 
-    db.Model(&user).Update("wxid", "")
     return &PortalWxActionResult{Message: fmt.Sprintf("设备数据已删除（%s），如需再次上线需重新扫码并扣积分", matchedWxid)}, nil
 }
 

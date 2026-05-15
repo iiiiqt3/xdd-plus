@@ -626,18 +626,24 @@
 
         <div class="modal-overlay hidden" id="feedbackDetailModal">
             <div class="modal" style="max-width:760px;">
-                <div class="modal-header"><h3>反馈详情与处理</h3><span class="modal-close" onclick="closeFeedbackDetailModal()">&times;</span></div>
+                <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;">
+                    <h3>反馈详情与处理</h3>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#64748b;cursor:pointer;"><input type="checkbox" id="feedbackNotifyWebApp" checked> APP/网页</label>
+                        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#64748b;cursor:pointer;"><input type="checkbox" id="feedbackNotifyBot" checked> 机器人</label>
+                        <button class="btn btn-info btn-sm" onclick="closeFeedbackDetailModal()">取消</button>
+                        <button class="btn btn-primary btn-sm" onclick="submitFeedbackProcess()"><i class="fas fa-check"></i> 确认处理</button>
+                    </div>
+                </div>
                 <div style="margin-bottom:16px;">
                     <input type="hidden" id="feedbackDetailId">
+                    <input type="hidden" id="feedbackOriginalStatus" value="">
+                    <div id="feedbackAlreadyProcessedTip" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:8px;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.15);font-size:12px;color:var(--amber);line-height:1.6;">⚠️ 此反馈已处理过，再次编辑保存不会重复通知用户</div>
                     <div id="feedbackDetailContent" style="padding:12px 14px;border:1px solid #ebeef5;border-radius:12px;background:#fafcff;color:#303133;font-size:13px;line-height:1.8;margin-bottom:14px;white-space:pre-wrap;">请选择反馈</div>
                     <div class="form-item"><label>处理状态</label><select id="feedbackProcessStatus"><option value="">请选择状态</option><option value="processed">已处理</option><option value="new">重新打开</option><option value="ignored">不采纳</option></select></div>
                     <div class="form-item"><label>回复内容</label><textarea id="feedbackReply" rows="5" placeholder="请输入回复内容，用户会在通知中心收到"></textarea></div>
                     <div class="form-item"><label>奖励积分</label><input type="number" id="feedbackRewardCoin" min="0" value="0" placeholder="不奖励填写 0"></div>
                     <div class="form-item"><label>处理人</label><input id="feedbackHandler" placeholder="大师" value="大师"></div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-info" onclick="closeFeedbackDetailModal()">取消</button>
-                    <button class="btn btn-primary" onclick="submitFeedbackProcess()"><i class="fas fa-check"></i> 确认处理</button>
                 </div>
             </div>
         </div>
@@ -2161,10 +2167,17 @@ async function openFeedbackDetail(id) {
         const res = await api.get('/api/admin/feedbacks/' + encodeURIComponent(id));
         const f = res.data || {};
         document.getElementById('feedbackDetailId').value = f.id || id;
+        document.getElementById('feedbackOriginalStatus').value = f.status || 'new';
         document.getElementById('feedbackProcessStatus').value = f.status === 'new' ? '' : (f.status || '');
         document.getElementById('feedbackReply').value = f.reply || '';
         document.getElementById('feedbackRewardCoin').value = f.rewardCoin || 0;
         document.getElementById('feedbackHandler').value = f.handler || '大师';
+        var isFirst = (f.status === 'new');
+        document.getElementById('feedbackNotifyWebApp').checked = isFirst;
+        document.getElementById('feedbackNotifyBot').checked = isFirst;
+        document.getElementById('feedbackNotifyWebApp').disabled = !isFirst;
+        document.getElementById('feedbackNotifyBot').disabled = !isFirst;
+        document.getElementById('feedbackAlreadyProcessedTip').style.display = isFirst ? 'none' : 'block';
         var detailLines = [
             '用户编号：' + (f.userId || '-'),
             '类型：' + (f.type || '建议'),
@@ -2197,9 +2210,19 @@ async function submitFeedbackProcess() {
     const reply = document.getElementById('feedbackReply')?.value || '';
     const rewardCoin = parseInt(document.getElementById('feedbackRewardCoin')?.value || '0') || 0;
     const handler = document.getElementById('feedbackHandler')?.value || '管理员';
+    const originalStatus = document.getElementById('feedbackOriginalStatus')?.value || 'new';
+    const notifyWebApp = document.getElementById('feedbackNotifyWebApp')?.checked || false;
+    const notifyBot = document.getElementById('feedbackNotifyBot')?.checked || false;
+    const isFirstReply = (originalStatus === 'new');
     if (!id) return toast('反馈ID无效', 'error');
+    if (!status) return toast('请选择处理状态', 'error');
     try {
-        const res = await api.put('/api/admin/feedbacks/' + encodeURIComponent(id), { id, status, reply, rewardCoin, handler });
+        const res = await api.put('/api/admin/feedbacks/' + encodeURIComponent(id), {
+            id, status, reply, rewardCoin, handler,
+            isFirstReply: isFirstReply,
+            notifyWebApp: isFirstReply && notifyWebApp,
+            notifyBot: isFirstReply && notifyBot
+        });
         toast(res.msg || '反馈已处理', 'success');
         closeFeedbackDetailModal();
         loadFeedbacks();

@@ -310,7 +310,17 @@ func (c *PortalController) WxRemoveDevice() {
 
 // WxRelogin 微信重新登录
 func (c *PortalController) WxRelogin() {
-	data, err := models.PortalWxRelogin(c.PortalUserID)
+	var req struct {
+		Wxid string `json:"wxid"`
+	}
+	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	var data *models.PortalWxActionResult
+	var err error
+	if req.Wxid != "" {
+		data, err = models.PortalWxRelogin(c.PortalUserID, req.Wxid)
+	} else {
+		data, err = models.PortalWxRelogin(c.PortalUserID)
+	}
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -322,7 +332,17 @@ func (c *PortalController) WxRelogin() {
 
 // WxWakeLogin 微信唤醒登录
 func (c *PortalController) WxWakeLogin() {
-	data, err := models.PortalWxWakeLogin(c.PortalUserID)
+	var req struct {
+		Wxid string `json:"wxid"`
+	}
+	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	var data *models.PortalWxActionResult
+	var err error
+	if req.Wxid != "" {
+		data, err = models.PortalWxWakeLogin(c.PortalUserID, req.Wxid)
+	} else {
+		data, err = models.PortalWxWakeLogin(c.PortalUserID)
+	}
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -334,7 +354,17 @@ func (c *PortalController) WxWakeLogin() {
 
 // WxLogout 微信退出登录
 func (c *PortalController) WxLogout() {
-	data, err := models.PortalWxLogout(c.PortalUserID)
+	var req struct {
+		Wxid string `json:"wxid"`
+	}
+	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	var data *models.PortalWxActionResult
+	var err error
+	if req.Wxid != "" {
+		data, err = models.PortalWxLogout(c.PortalUserID, req.Wxid)
+	} else {
+		data, err = models.PortalWxLogout(c.PortalUserID)
+	}
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -380,7 +410,17 @@ func (c *PortalController) SubmitFeedback() {
 }
 
 func (c *PortalController) WxDelete() {
-	data, err := models.PortalWxDelete(c.PortalUserID)
+	var req struct {
+		Wxid string `json:"wxid"`
+	}
+	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	var data *models.PortalWxActionResult
+	var err error
+	if req.Wxid != "" {
+		data, err = models.PortalWxDelete(c.PortalUserID, req.Wxid)
+	} else {
+		data, err = models.PortalWxDelete(c.PortalUserID)
+	}
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()

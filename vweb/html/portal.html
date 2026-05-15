@@ -2049,10 +2049,15 @@ function closeIncomeModal() {
 }
 
 async function wxAction(type) {
+    var primaryWxid = '';
+    var devices = state.wxDevices || [];
+    for (var i = 0; i < devices.length; i++) {
+        if (devices[i].isPrimary) { primaryWxid = devices[i].wxid || ''; break; }
+    }
     var confirmMap = {
         'scan-login': '确认开始「微信扫码登录」？\n\n作用：通过微信扫码绑定主设备，扫码成功后将扣除积分。\n⚠️ 有概率封号，请谨慎考虑。',
         'wake-login': '确认执行「唤醒登录」？\n\n作用：手机端微信在线但服务器显示掉线时，唤醒设备重新扫码确认恢复上线。\n不扣积分。',
-        'relogin':    '确认执行「重新登录」？\n\n作用：设备掉线时尝试重新上线，无需手机操作。\n不扣积分。',
+        'relogin':    '确认执行「重新登录」？\n\n作用：设备掉线时重新上线，需要用手机微信扫码确认。\n不扣积分。',
         'logout':     '确认执行「登出」？\n\n作用：退出当前登录的主设备，设备将变为离线状态。\n不扣积分。',
         'delete':     '⚠️ 确认「删除」主设备？\n\n作用：删除主设备数据，设备将完全移除。\n⚠️ 再次上线需要重新扫码登录并扣除积分！\n\n此操作不可撤销，请确认！'
     };
@@ -2067,7 +2072,8 @@ async function wxAction(type) {
     if (!cfg) return;
     if (!window.confirm(confirmMap[type])) return;
     try {
-        const resp = await request(cfg, { method: 'POST' });
+        var reqBody = primaryWxid ? { wxid: primaryWxid } : {};
+        const resp = await request(cfg, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody) });
         const data = resp.data || {};
         toast(resp.msg || data.message || '操作成功', 'success');
         if (data.qrBase64) {
@@ -2084,7 +2090,7 @@ async function wxAction(type) {
 async function wxActionForDevice(type, wxid) {
     var confirmMap = {
         'wake-login': '确认对监控设备执行「唤醒登录」？\n\n作用：手机端微信在线但服务器显示掉线时，唤醒设备重新扫码确认恢复上线。\n不扣积分。',
-        'relogin':    '确认对监控设备执行「重新登录」？\n\n作用：设备掉线时尝试重新上线，无需手机操作。\n不扣积分。',
+        'relogin':    '确认对监控设备执行「重新登录」？\n\n作用：设备掉线时重新上线，需要用手机微信扫码确认。\n不扣积分。',
         'logout':     '确认对监控设备执行「登出」？\n\n作用：退出当前登录的监控设备，设备将变为离线状态。\n不扣积分。'
     };
     var urlMap = {
@@ -2099,8 +2105,12 @@ async function wxActionForDevice(type, wxid) {
         const resp = await request(cfg, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wxid: wxid }) });
         const data = resp.data || {};
         toast(resp.msg || data.message || '操作成功', 'success');
-        await loadDashboardData();
-        await loadWxDevices();
+        if (data.qrBase64) {
+            openWxQrModal(type, data);
+        } else {
+            await loadDashboardData();
+            await loadWxDevices();
+        }
     } catch (err) {
         toast(err.message || '操作失败', 'error');
     }
@@ -2199,14 +2209,14 @@ function renderWxDevices() {
         if (d.isPrimary) {
             actionBtns = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px dashed rgba(148,163,184,0.12);">' +
                 '<button class="btn small" style="background:linear-gradient(135deg,#0891b2,#06b6d4);font-size:11px;padding:5px 10px;" onclick="wxAction(\'wake-login\')" title="手机在线但服务器掉线时使用，唤醒设备重新扫码确认">⚡ 唤醒</button>' +
-                '<button class="btn small" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);font-size:11px;padding:5px 10px;" onclick="wxAction(\'relogin\')" title="设备掉线时重新上线，不扣积分">🔄 重登</button>' +
+                '<button class="btn small" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);font-size:11px;padding:5px 10px;" onclick="wxAction(\'relogin\')" title="设备掉线时重新上线，需手机扫码确认，不扣积分">🔄 重登</button>' +
                 '<button class="btn small secondary" style="font-size:11px;padding:5px 10px;" onclick="wxAction(\'logout\')" title="退出当前登录的主设备">🚪 登出</button>' +
                 '<button class="btn small danger" style="font-size:11px;padding:5px 10px;" onclick="wxAction(\'delete\')" title="删除主设备数据，再次上线需重新扫码并扣除积分">🗑️ 删除</button>' +
                 '</div>';
         } else {
             actionBtns = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px dashed rgba(148,163,184,0.12);">' +
                 '<button class="btn small" style="background:linear-gradient(135deg,#0891b2,#06b6d4);font-size:11px;padding:5px 10px;" onclick="wxActionForDevice(\'wake-login\',\'' + escapeAttr(d.wxid) + '\')" title="手机在线但服务器掉线时使用，唤醒设备重新扫码确认">⚡ 唤醒</button>' +
-                '<button class="btn small" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);font-size:11px;padding:5px 10px;" onclick="wxActionForDevice(\'relogin\',\'' + escapeAttr(d.wxid) + '\')" title="设备掉线时重新上线，不扣积分">🔄 重登</button>' +
+                '<button class="btn small" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);font-size:11px;padding:5px 10px;" onclick="wxActionForDevice(\'relogin\',\'' + escapeAttr(d.wxid) + '\')" title="设备掉线时重新上线，需手机扫码确认，不扣积分">🔄 重登</button>' +
                 '<button class="btn small secondary" style="font-size:11px;padding:5px 10px;" onclick="wxActionForDevice(\'logout\',\'' + escapeAttr(d.wxid) + '\')" title="退出当前登录的监控设备">🚪 登出</button>' +
                 '<button class="btn small danger" style="font-size:11px;padding:5px 10px;" onclick="confirmDeleteWxDevice(' + d.id + ',\'' + escapeAttr(d.wxid) + '\')" title="删除监控设备，删除后需重新添加">🗑️ 删除</button>' +
                 '</div>';

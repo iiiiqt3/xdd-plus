@@ -317,11 +317,14 @@ func (c *AdminApiController) GetFeedbackDetail() {
 
 func (c *AdminApiController) UpdateFeedbackStatus() {
 	var req struct {
-		ID         int    `json:"id"`
-		Status     string `json:"status"`
-		Reply      string `json:"reply"`
-		RewardCoin int    `json:"rewardCoin"`
-		Handler    string `json:"handler"`
+		ID            int    `json:"id"`
+		Status        string `json:"status"`
+		Reply         string `json:"reply"`
+		RewardCoin    int    `json:"rewardCoin"`
+		Handler       string `json:"handler"`
+		IsFirstReply  bool   `json:"isFirstReply"`
+		NotifyWebApp  bool   `json:"notifyWebApp"`
+		NotifyBot     bool   `json:"notifyBot"`
 	}
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
 	if req.ID <= 0 {
@@ -339,7 +342,7 @@ func (c *AdminApiController) UpdateFeedbackStatus() {
 		return
 	}
 	if req.Reply != "" || req.RewardCoin > 0 || req.Status == "processed" || req.Status == "done" {
-		if err := models.ProcessAppFeedback(req.ID, req.Status, req.Reply, req.RewardCoin, req.Handler); err != nil {
+		if err := models.ProcessAppFeedback(req.ID, req.Status, req.Reply, req.RewardCoin, req.Handler, req.IsFirstReply, req.NotifyWebApp, req.NotifyBot); err != nil {
 			c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 			c.ServeJSON()
 			return
