@@ -39,7 +39,7 @@ func initCron() {
 	c.AddFunc("5 */4 * * *", func() {            // wskey转换（每4小时5分）
 		fmt.Println("开始wskey转换")
 		updateCookie()
-		UpdateRwskey()
+		//UpdateRwskey()
 	})
 	c.AddFunc("58 23,8 * * *", func() {          // 导出指定账号（每天23、8点58分）
 		logs.Info("开始导出 jd_fcwb_help 账号")
