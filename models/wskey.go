@@ -2,7 +2,7 @@ package models
 
 import (
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
+	// "github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"net/http"
 	"net/url"
@@ -113,9 +113,10 @@ func LoginSelect(sender *Sender, msg chan string) {
                 return
             }
 
-            num, err := strconv.Atoi(n)
+            // num, err := strconv.Atoi(n)
+            _, err := strconv.Atoi(n)
             if err != nil {
-                sender.Reply("请输入数字，检测到非数字输入已退出流程!")
+                sender.Reply("当前仅支持短信登录，请直接发送【短信登录】或【登录】进行操作")
                 loginList[sender.UserID] = nil
                 return
             }
