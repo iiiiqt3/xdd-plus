@@ -845,6 +845,7 @@
             <div>
                 <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">反馈类型</label>
                 <select id="feedbackType" style="width:100%;padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;">
+                    <option value="" selected disabled>请选择反馈类型</option>
                     <option value="bug反馈">🐛 Bug反馈</option>
                     <option value="活动投稿">📢 活动投稿</option>
                     <option value="建议">💡 建议</option>
@@ -862,6 +863,9 @@
                 <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">联系方式（选填）</label>
                 <input type="text" id="feedbackContact" placeholder="QQ或微信等，方便管理员联系你" style="width:100%;padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;box-sizing:border-box;" />
             </div>
+        </div>
+        <div style="margin-top:10px;padding:8px 12px;border-radius:8px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);font-size:12px;color:var(--green);line-height:1.6;">
+            🎁 <strong>积分奖励：</strong>提交有效活动投稿或高质量建议，审核通过后可获得积分奖励！
         </div>
         <div class="actions" style="margin-top:16px;">
             <button class="btn secondary" onclick="closeFeedbackModal()">取消</button>
@@ -993,6 +997,7 @@
                     <div>
                         <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">反馈类型</label>
                         <select id="feedbackTypePage" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;">
+                            <option value="" selected disabled>请选择反馈类型</option>
                             <option value="bug反馈">🐛 Bug反馈 - 发现程序问题或异常</option>
                             <option value="活动投稿">📢 活动投稿 - 提交新的活动或项目建议</option>
                             <option value="建议">💡 功能建议 - 对产品改进的想法和建议</option>
@@ -1009,6 +1014,9 @@
                     <div>
                         <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">联系方式（选填）</label>
                         <input type="text" id="feedbackContactPage" placeholder="QQ或微信等，方便管理员联系你处理反馈" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;box-sizing:border-box;" />
+                    </div>
+                    <div style="padding:8px 12px;border-radius:8px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);font-size:12px;color:var(--green);line-height:1.6;">
+                        🎁 <strong>积分奖励：</strong>提交有效活动投稿或高质量建议，审核通过后可获得积分奖励！
                     </div>
                     <div style="display:flex;gap:10px;margin-top:4px;">
                         <button class="btn primary" onclick="submitFeedbackFromPage()" id="feedbackSubmitBtnPage" style="flex:1;padding:12px;font-size:14px;border-radius:10px;">提交反馈</button>
@@ -1147,8 +1155,12 @@
                     </div>
                 </details>
 
+                <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:12px;color:var(--cyan);line-height:1.8;">
+                    💡 <strong>操作提示：</strong>点击设备卡片上的按钮可直接操作｜设备离线时可点击「唤醒」或「重登」恢复｜首次挂主设备请使用下方「📱 微信扫码登录」
+                </div>
+
                 <div class="wx-device-grid" id="wxDeviceGrid">
-                    <div class="wx-empty-state"><div class="empty-icon">📱</div><p>暂无微信协议设备</p><p style="font-size:11px;">扫码登录或手动添加微信ID开始使用</p></div>
+                    <div class="wx-empty-state"><div class="empty-icon">📱</div><p>暂无微信协议设备</p><p style="font-size:11px;">首次使用请点击下方「微信扫码登录」添加主设备</p></div>
                 </div>
 
                 <div class="wx-add-bar">
@@ -1638,12 +1650,15 @@ function renderProjects() {
                         <button class="btn small secondary" onclick="queryGroupIncome('${escapeJs(group.activityId)}','${escapeJs(group.activityName)}')">查询</button>
                         <button class="btn small" id="toggle-btn-${escapeAttr(group.key)}" onclick="toggleGroupDetail('${escapeJs(group.key)}')">展开账号</button>
                     </div>
+                    <div style="margin-top:6px;font-size:11px;color:var(--cyan);font-weight:700;">▼ 展开可修改/续费/删除账号</div>
                 </td>
             </tr>
             <tr class="group-detail-row" id="group-detail-${escapeAttr(group.key)}" style="display:none;">
                 <td colspan="6">
                     <div class="group-detail-card">
-                        <div class="muted" style="margin-bottom:10px;">展开后可查看每个账号明细。修改、删除、续费、查询收入都在这一层处理。</div>
+                        <div style="margin-bottom:10px;padding:8px 12px;border-radius:10px;background:var(--cyan-dim);border:1px solid rgba(8,145,178,0.15);font-size:12px;color:var(--cyan);line-height:1.7;">
+                            💡 每个账号右侧的操作按钮说明：<strong>查询收入</strong> = 查看该账号收益 ｜ <strong>续费</strong> = 延长授权时间 ｜ <strong>修改</strong> = 编辑账号CK数据 ｜ <strong>删除</strong> = 移除该账号（谨慎操作）
+                        </div>
                         <table class="account-subtable">
                             <thead><tr><th>备注名</th><th>授权到期</th><th>业务状态</th><th>当前状态</th><th>操作</th></tr></thead>
                             <tbody>${itemRows}</tbody>
@@ -2034,18 +2049,25 @@ function closeIncomeModal() {
 }
 
 async function wxAction(type) {
-    const map = {
-        'scan-login': { url: '/api/portal/wx/scan-login', confirm: '确认开始微信扫码登录吗？扫码成功后将扣积分，请注意有概率封号，谨慎考虑。' },
-        'wake-login': { url: '/api/portal/wx/wake-login', confirm: '确认执行微信唤醒登录吗？' },
-        'relogin':    { url: '/api/portal/wx/relogin',    confirm: '确认执行微信重新登录吗？' },
-        'logout':     { url: '/api/portal/wx/logout',     confirm: '确认执行微信登出吗？' },
-        'delete':     { url: '/api/portal/wx/delete',     confirm: '确认删除当前微信协议设备数据吗？删除后需要重新扫码登录。' }
+    var confirmMap = {
+        'scan-login': '确认开始「微信扫码登录」？\n\n作用：通过微信扫码绑定主设备，扫码成功后将扣除积分。\n⚠️ 有概率封号，请谨慎考虑。',
+        'wake-login': '确认执行「唤醒登录」？\n\n作用：手机端微信在线但服务器显示掉线时，唤醒设备重新扫码确认恢复上线。\n不扣积分。',
+        'relogin':    '确认执行「重新登录」？\n\n作用：设备掉线时尝试重新上线，无需手机操作。\n不扣积分。',
+        'logout':     '确认执行「登出」？\n\n作用：退出当前登录的主设备，设备将变为离线状态。\n不扣积分。',
+        'delete':     '⚠️ 确认「删除」主设备？\n\n作用：删除主设备数据，设备将完全移除。\n⚠️ 再次上线需要重新扫码登录并扣除积分！\n\n此操作不可撤销，请确认！'
     };
-    const cfg = map[type];
+    var urlMap = {
+        'scan-login': '/api/portal/wx/scan-login',
+        'wake-login': '/api/portal/wx/wake-login',
+        'relogin':    '/api/portal/wx/relogin',
+        'logout':     '/api/portal/wx/logout',
+        'delete':     '/api/portal/wx/delete'
+    };
+    var cfg = urlMap[type];
     if (!cfg) return;
-    if (!window.confirm(cfg.confirm)) return;
+    if (!window.confirm(confirmMap[type])) return;
     try {
-        const resp = await request(cfg.url, { method: 'POST' });
+        const resp = await request(cfg, { method: 'POST' });
         const data = resp.data || {};
         toast(resp.msg || data.message || '操作成功', 'success');
         if (data.qrBase64) {
@@ -2057,6 +2079,37 @@ async function wxAction(type) {
     } catch (err) {
         toast(err.message || '操作失败', 'error');
     }
+}
+
+async function wxActionForDevice(type, wxid) {
+    var confirmMap = {
+        'wake-login': '确认对监控设备执行「唤醒登录」？\n\n作用：手机端微信在线但服务器显示掉线时，唤醒设备重新扫码确认恢复上线。\n不扣积分。',
+        'relogin':    '确认对监控设备执行「重新登录」？\n\n作用：设备掉线时尝试重新上线，无需手机操作。\n不扣积分。',
+        'logout':     '确认对监控设备执行「登出」？\n\n作用：退出当前登录的监控设备，设备将变为离线状态。\n不扣积分。'
+    };
+    var urlMap = {
+        'wake-login': '/api/portal/wx/wake-login',
+        'relogin':    '/api/portal/wx/relogin',
+        'logout':     '/api/portal/wx/logout'
+    };
+    var cfg = urlMap[type];
+    if (!cfg) return;
+    if (!window.confirm(confirmMap[type])) return;
+    try {
+        const resp = await request(cfg, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wxid: wxid }) });
+        const data = resp.data || {};
+        toast(resp.msg || data.message || '操作成功', 'success');
+        await loadDashboardData();
+        await loadWxDevices();
+    } catch (err) {
+        toast(err.message || '操作失败', 'error');
+    }
+}
+
+function confirmDeleteWxDevice(deviceId, wxid) {
+    var ok = window.confirm('⚠️ 确认删除该监控设备？\n\n作用：移除该监控设备的绑定数据。\n⚠️ 如果是主设备删除，再次上线需重新扫码登录并扣除积分！\n\n此操作不可撤销，请确认！');
+    if (!ok) return;
+    removeWxDevice(deviceId);
 }
 
 function openWxQrModal(type, data) {
@@ -2125,7 +2178,7 @@ function renderWxDevices() {
     const grid = document.getElementById('wxDeviceGrid');
     const devices = state.wxDevices || [];
     if (devices.length === 0) {
-        grid.innerHTML = '<div class="wx-empty-state"><div class="empty-icon">📱</div><p>暂无微信协议设备</p><p style="font-size:11px;">扫码登录或手动添加微信ID开始使用</p></div>';
+        grid.innerHTML = '<div class="wx-empty-state"><div class="empty-icon">📱</div><p>暂无微信协议设备</p><p style="font-size:11px;">首次使用请点击下方「微信扫码登录」添加主设备</p></div>';
         return;
     }
     grid.innerHTML = devices.map(function(d) {
@@ -2142,12 +2195,35 @@ function renderWxDevices() {
         if (!d.isPrimary) {
             removeBtn = '<button class="wx-device-remove" onclick="removeWxDevice(' + d.id + ')" title="移除监控">✕</button>';
         }
+        var actionBtns = '';
+        if (d.isPrimary) {
+            actionBtns = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px dashed rgba(148,163,184,0.12);">' +
+                '<button class="btn small" style="background:linear-gradient(135deg,#0891b2,#06b6d4);font-size:11px;padding:5px 10px;" onclick="wxAction(\'wake-login\')" title="手机在线但服务器掉线时使用，唤醒设备重新扫码确认">⚡ 唤醒</button>' +
+                '<button class="btn small" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);font-size:11px;padding:5px 10px;" onclick="wxAction(\'relogin\')" title="设备掉线时重新上线，不扣积分">🔄 重登</button>' +
+                '<button class="btn small secondary" style="font-size:11px;padding:5px 10px;" onclick="wxAction(\'logout\')" title="退出当前登录的主设备">🚪 登出</button>' +
+                '<button class="btn small danger" style="font-size:11px;padding:5px 10px;" onclick="wxAction(\'delete\')" title="删除主设备数据，再次上线需重新扫码并扣除积分">🗑️ 删除</button>' +
+                '</div>';
+        } else {
+            actionBtns = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px dashed rgba(148,163,184,0.12);">' +
+                '<button class="btn small" style="background:linear-gradient(135deg,#0891b2,#06b6d4);font-size:11px;padding:5px 10px;" onclick="wxActionForDevice(\'wake-login\',\'' + escapeAttr(d.wxid) + '\')" title="手机在线但服务器掉线时使用，唤醒设备重新扫码确认">⚡ 唤醒</button>' +
+                '<button class="btn small" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);font-size:11px;padding:5px 10px;" onclick="wxActionForDevice(\'relogin\',\'' + escapeAttr(d.wxid) + '\')" title="设备掉线时重新上线，不扣积分">🔄 重登</button>' +
+                '<button class="btn small secondary" style="font-size:11px;padding:5px 10px;" onclick="wxActionForDevice(\'logout\',\'' + escapeAttr(d.wxid) + '\')" title="退出当前登录的监控设备">🚪 登出</button>' +
+                '<button class="btn small danger" style="font-size:11px;padding:5px 10px;" onclick="confirmDeleteWxDevice(' + d.id + ',\'' + escapeAttr(d.wxid) + '\')" title="删除监控设备，删除后需重新添加">🗑️ 删除</button>' +
+                '</div>';
+        }
+        var tipHtml = '';
+        if (!isOnline) {
+            var tipLabel = d.isPrimary ? '主设备' : '监控设备';
+            tipHtml = '<div style="margin-top:8px;padding:6px 10px;border-radius:8px;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.15);font-size:11px;color:var(--amber);line-height:1.6;">⚠️ ' + tipLabel + '已离线，可点击「唤醒」或「重登」尝试恢复</div>';
+        }
         return '<div class="' + cardClass + '">' +
             '<div class="wx-device-header">' + badgeHtml + '<span class="wx-device-nickname" title="' + escapeAttr(d.wxid) + '">' + escapeHtml(d.nickname || d.wxid) + '</span>' + removeBtn + '</div>' +
             '<div class="wx-device-detail"><span>微信ID</span><strong>' + escapeHtml(d.wxid) + '</strong></div>' +
             '<div class="wx-device-detail"><span>设备</span><strong>' + escapeHtml(d.device || '-') + '</strong></div>' +
             '<div class="wx-device-detail"><span>登录时间</span><strong>' + escapeHtml(d.loginTime || '-') + '</strong></div>' +
             '<div class="wx-device-detail"><span>刷新时间</span><strong>' + escapeHtml(d.refreshTime || '-') + '</strong></div>' +
+            tipHtml +
+            actionBtns +
             '</div>';
     }).join('');
 }
@@ -2186,7 +2262,7 @@ async function removeWxDevice(id) {
 }
 
 function openFeedbackModal() {
-    document.getElementById('feedbackType').value = 'bug反馈';
+    document.getElementById('feedbackType').value = '';
     document.getElementById('feedbackTitle').value = '';
     document.getElementById('feedbackContent').value = '';
     document.getElementById('feedbackContact').value = '';
@@ -2203,6 +2279,7 @@ async function submitFeedback() {
     const content = (document.getElementById('feedbackContent').value || '').trim();
     const contact = (document.getElementById('feedbackContact').value || '').trim();
 
+    if (!type) { toast('请选择反馈类型', 'error'); return; }
     if (!title) { toast('请输入反馈主题', 'error'); return; }
     if (!content) { toast('请输入详细内容', 'error'); return; }
 
@@ -2232,6 +2309,7 @@ async function submitFeedbackFromPage() {
     const content = (document.getElementById('feedbackContentPage').value || '').trim();
     const contact = (document.getElementById('feedbackContactPage').value || '').trim();
 
+    if (!type) { toast('请选择反馈类型', 'error'); return; }
     if (!title) { toast('请输入反馈主题', 'error'); return; }
     if (!content) { toast('请输入详细内容', 'error'); return; }
 

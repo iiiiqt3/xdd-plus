@@ -4608,8 +4608,8 @@ async function loadSysConfig() {
             <div class="config-section">
                 <div class="config-section-title"><i class="fas fa-bullhorn"></i> 活动推送群设置 <span class="tag tag-info" style="font-size:11px;">仅用于推送活动消息，与监听群独立</span></div>
                 <div class="form-grid">
-                    <div class="form-item"><label>QQ群号</label><input type="text" id="cfg_activityPushQQGroupId" value="${v(cfg.activityPushQQGroupId)}" placeholder="如：123456789（多个用逗号分隔）"></div>
-                    <div class="form-item"><label>微信群号</label><input type="text" id="cfg_activityPushWXGroupId" value="${v(cfg.activityPushWXGroupId)}" placeholder="如：wxid_xxxxxxxx"></div>
+                    <div class="form-item"><label>QQ群号</label><input type="text" id="cfg_activityPushQQGroupId" value="${v(cfg.activityPushQQGroupId)}" placeholder="如：95581263,916246295（多个用英文逗号分隔）"></div>
+                    <div class="form-item"><label>微信群号</label><input type="text" id="cfg_activityPushWXGroupId" value="${v(cfg.activityPushWXGroupId)}" placeholder="如：56984485809@chatroom（多个用英文逗号分隔）"></div>
                 </div>
             </div>
             <div class="config-section">
@@ -5788,6 +5788,7 @@ async function pushSelectedActivities() {
     if (!confirm('确认将选中的 ' + ids.length + ' 个活动推送到 ' + channels.join(' + ') + '？\n\n将向所有用户发送活动通知。')) return;
     var successCount = 0;
     var failCount = 0;
+    var pushDetails = [];
     for (var i = 0; i < ids.length; i++) {
         var act = activitiesCache[ids[i]];
         if (!act) { failCount++; continue; }
@@ -5799,11 +5800,17 @@ async function pushSelectedActivities() {
                 await sendActivityToGroups(act['名称'] || '', act['玩法和说明'] || '');
             }
             successCount++;
+            pushDetails.push('✅ ' + (act['名称'] || '未知活动'));
         } catch(e) {
             failCount++;
+            pushDetails.push('❌ ' + (act['名称'] || '未知活动') + ': ' + (e.message || '失败'));
         }
     }
-    toast('推送完成：成功 ' + successCount + ' 个，失败 ' + failCount + ' 个', successCount > 0 ? 'success' : 'error');
+    var resultMsg = '推送完成：成功 ' + successCount + ' 个，失败 ' + failCount + ' 个';
+    if (pushQQWx) {
+        resultMsg += '\n\nQQ群/微信群推送结果请在后台日志中查看';
+    }
+    toast(resultMsg, successCount > 0 ? 'success' : 'error');
 }
 
 async function sendActivityToGroups(activityName, activityGuide) {
@@ -5818,6 +5825,9 @@ async function sendActivityToGroups(activityName, activityGuide) {
             content: content
         });
         if (res.code !== 0) { throw new Error(res.msg || '推送失败'); }
+        if (res.msg && res.msg.indexOf('已推送') >= 0) {
+            console.log('群推送结果: ' + res.msg);
+        }
     } catch (e) {
         throw e;
     }

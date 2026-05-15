@@ -746,68 +746,68 @@ default:
 
 	
 
-	{
-		Command: []string{"密码登陆", "密码登录"},
-		Handle: func(sender *Sender) interface{} {
-			value := GetEnv("grouplogin")
-			if value == "" && (sender.Type == "qqg" || sender.Type == "wxg") {
-				// 如果是群聊且没有登录
-				Auto := &UserSession{}
-				go Autojdck(sender, Auto)
-			} else {
-				Auto := &UserSession{}
-				go Autojdck(sender, Auto)
-			}
-			return nil
-		},
-	},
+	// {
+	// 	Command: []string{"密码登陆", "密码登录"},
+	// 	Handle: func(sender *Sender) interface{} {
+	// 		value := GetEnv("grouplogin")
+	// 		if value == "" && (sender.Type == "qqg" || sender.Type == "wxg") {
+	// 			// 如果是群聊且没有登录
+	// 			Auto := &UserSession{}
+	// 			go Autojdck(sender, Auto)
+	// 		} else {
+	// 			Auto := &UserSession{}
+	// 			go Autojdck(sender, Auto)
+	// 		}
+	// 		return nil
+	// 	},
+	// },
 
-	{
-		Command: []string{"账密更新"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("开始检测ck，并更新ck")
+	// {
+	// 	Command: []string{"账密更新"},
+	// 	Admin:   true,
+	// 	Handle: func(sender *Sender) interface{} {
+	// 		sender.Reply("开始检测ck，并更新ck")
 
-			go UpAutoCookie()
+	// 		go UpAutoCookie()
 
 			
-	return nil
-		},
-	},
+	// 	return nil
+	// 	},
+	// },
 
-	{
-		Command: []string{"所有账密更新", "更新所有账密"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("开始更新所有账密账号")
+	// {
+	// 	Command: []string{"所有账密更新", "更新所有账密"},
+	// 	Admin:   true,
+	// 	Handle: func(sender *Sender) interface{} {
+	// 		sender.Reply("开始更新所有账密账号")
 
-			all_UpAutoCookie()
+	// 		all_UpAutoCookie()
 
-			sender.Reply("所有账号账密登录任务执行完毕")
+	// 		sender.Reply("所有账号账密登录任务执行完毕")
 
-			return nil
-		},
-	},
+	// 		return nil
+	// 	},
+	// },
 
 	
 
-	{
-		Command: []string{"账密检测", "密码检测"},
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("开始密码检测...")
-			go initAutoCookie()
-			return nil
-		},
-	},
+	// {
+	// 	Command: []string{"账密检测", "密码检测"},
+	// 	Handle: func(sender *Sender) interface{} {
+	// 		sender.Reply("开始密码检测...")
+	// 		go initAutoCookie()
+	// 		return nil
+	// 	},
+	// },
 
-	{
-		Command: []string{"推送所有失效账密"},
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("开始密码检测...")
-			go all_initAutoCookie()
-			return nil
-		},
-	},
+	// {
+	// 	Command: []string{"推送所有失效账密"},
+	// 	Handle: func(sender *Sender) interface{} {
+	// 		sender.Reply("开始密码检测...")
+	// 		go all_initAutoCookie()
+	// 		return nil
+	// 	},
+	// },
 
 	{
 		Command: []string{"短信登录", "短信登陆"},
@@ -1348,35 +1348,35 @@ default:
 
 
 
-	{
-		Command: []string{"扫码", "扫码登录"},
+	// {
+	// 	Command: []string{"扫码", "扫码登录"},
 
-		Handle: func(sender *Sender) interface{} {
-			if sender.IsAdmin {
-				sender.Reply("开始京东扫码登录")
-			} else {
-				jbcoin := getWxScanLoginCost()
-				if jbcoin <= 0 {
-					return "未开启扫码登录"
-				}
-				coin := GetCoin(sender.UserID)
-				if coin < jbcoin {
-					return fmt.Sprintf("扫码登录需要%d个积分,当前积分%d不足，请直接微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者复制网址http://180.152.5.230:8005/到其他浏览器打开购买卡密充值", jbcoin, coin)
-				}
+	// 	Handle: func(sender *Sender) interface{} {
+	// 		if sender.IsAdmin {
+	// 			sender.Reply("开始京东扫码登录")
+	// 		} else {
+	// 			jbcoin := getWxScanLoginCost()
+	// 			if jbcoin <= 0 {
+	// 				return "未开启扫码登录"
+	// 			}
+	// 			coin := GetCoin(sender.UserID)
+	// 			if coin < jbcoin {
+	// 				return fmt.Sprintf("扫码登录需要%d个积分,当前积分%d不足，请直接微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者复制网址http://180.152.5.230:8005/到其他浏览器打开购买卡密充值", jbcoin, coin)
+	// 			}
 
-				actualDeduct := RemCoin(sender.UserID, jbcoin)
-				if actualDeduct > coin {
-					sender.Reply(fmt.Sprintf("系统异常：积分扣除失败，请联系管理员"))
-					return nil
-				}
-				sender.Reply(fmt.Sprintf("扫码即将开始，已扣除%d个积分,剩余%d", jbcoin, GetCoin(sender.UserID)))
-				sender.Reply("上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密")
-			}
+	// 			actualDeduct := RemCoin(sender.UserID, jbcoin)
+	// 			if actualDeduct > coin {
+	// 				sender.Reply(fmt.Sprintf("系统异常：积分扣除失败，请联系管理员"))
+	// 				return nil
+	// 			}
+	// 			sender.Reply(fmt.Sprintf("扫码即将开始，已扣除%d个积分,剩余%d", jbcoin, GetCoin(sender.UserID)))
+	// 			sender.Reply("上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密")
+	// 		}
 
-			NolanGetJdQrImg(sender)
-			return nil
-		},
-	},
+	// 		NolanGetJdQrImg(sender)
+	// 		return nil
+	// 	},
+	// },
 
 	{
 		Command: []string{"任务菜单", "农场浇水", "新农场浇水", "一键保价", "自动挖宝", "一键评价", "话费签到", "调查问卷"},

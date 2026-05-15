@@ -506,6 +506,9 @@ func SaveGameConfigForAdmin(req map[string]interface{}) string {
 	}
 
 	for yamlKey, newVal := range configMap {
+		if strings.Contains(newVal, ",") || strings.Contains(newVal, "#") || strings.Contains(newVal, ":") {
+			newVal = fmt.Sprintf("\"%s\"", newVal)
+		}
 		newLines = append(newLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
 	}
 
