@@ -73,7 +73,7 @@ func (rp *Repo) gitClone() {
 }
 
 func (rp *Repo) gitPull() string {
-	return cmd(fmt.Sprintf("cd %s && git stash && git pull", rp.path), &Sender{})
+	return sanitizeGitOutput(cmd(fmt.Sprintf("cd %s && git stash && git pull", rp.path), &Sender{}))
 }
 
 func (rp *Repo) cpConfig() {

@@ -462,11 +462,17 @@ func executeScript(sender *Sender, cmdPath string, args ...string) (string, erro
 
 	err := cmd.Run()
 	if err != nil {
-		errMsg := strings.TrimSpace(stderr.String())
-		if errMsg == "" {
-			errMsg = err.Error()
+		stderrStr := strings.TrimSpace(stderr.String())
+		stdoutStr := strings.TrimSpace(stdout.String())
+		logs.Warn("脚本执行失败 | 命令: %s %v | 错误: %v | stderr: %s | stdout: %s", cmdPath, args, err, stderrStr, stdoutStr)
+		userMsg := stderrStr
+		if userMsg == "" {
+			userMsg = stdoutStr
 		}
-		sanitizedErr := SanitizeError(fmt.Errorf("%s", errMsg))
+		if userMsg == "" {
+			userMsg = err.Error()
+		}
+		sanitizedErr := SanitizeError(fmt.Errorf("%s", userMsg))
 		return "", fmt.Errorf("脚本执行异常：%v", sanitizedErr)
 	}
 	return stdout.String(), nil
@@ -1251,7 +1257,7 @@ for index, item := range ckItems {
     output, err := executeScript(sender, execCmd, scriptPath, ckValue)
 
     if err != nil {
-        sender.Reply(fmt.Sprintf("第%d个账号查询失败：脚本执行异常", accountNo))
+        sender.Reply(fmt.Sprintf("第%d个账号查询失败：%v", accountNo, err))
         log.Printf("%s第%d个账号查询失败 - 错误：%v", logPrefix, accountNo, err)
     } else if output == "" {
         // 无查询结果时的格式调整

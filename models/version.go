@@ -15,6 +15,8 @@ var AppName = "xdd"
 var pname = pname1()
 var GitRepo = "http://180.152.5.230:5699/feiniao/xdd.git"
 var GitBranch = "master"
+var GitUser = ""
+var GitToken = ""
 var notify = true
 
 func pname1() string {
@@ -51,6 +53,53 @@ func getGitBranch() string {
 	return GitBranch
 }
 
+func getGitUser() string {
+	value := GetEnv("gitUser")
+	if value != "" {
+		return value
+	}
+	return GitUser
+}
+
+func getGitToken() string {
+	value := GetEnv("gitToken")
+	if value != "" {
+		return value
+	}
+	return GitToken
+}
+
+func getAuthGitRepo() string {
+	repo := getGitRepo()
+	user := getGitUser()
+	token := getGitToken()
+	if user == "" && token == "" {
+		return repo
+	}
+	cred := ""
+	if token != "" && user != "" {
+		cred = user + ":" + token
+	} else if token != "" {
+		cred = token
+	} else {
+		cred = user
+	}
+	if strings.HasPrefix(repo, "http://") {
+		return "http://" + cred + "@" + repo[7:]
+	}
+	if strings.HasPrefix(repo, "https://") {
+		return "https://" + cred + "@" + repo[8:]
+	}
+	return repo
+}
+
+func sanitizeGitOutput(output string) string {
+	s := output
+	s = regexp.MustCompile(`http[s]?://[^\s'"]+`).ReplaceAllString(s, "***")
+	s = regexp.MustCompile(`\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`).ReplaceAllString(s, "***")
+	return s
+}
+
 func isGitRepo() bool {
 	_, err := os.Stat(ExecPath + "/.git")
 	return err == nil
@@ -73,10 +122,11 @@ func ensureGitRepo() error {
 }
 
 func getRemoteHeadHash() (string, error) {
-	cmd := exec.Command("git", "ls-remote", getGitRepo(), "HEAD")
-	output, err := cmd.Output()
+	cmd := exec.Command("git", "ls-remote", getAuthGitRepo(), "HEAD")
+	cmd.Dir = ExecPath
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", err
+		return "", errors.New(sanitizeGitOutput(string(output)))
 	}
 	fields := strings.Fields(string(output))
 	if len(fields) == 0 {
@@ -157,12 +207,12 @@ func Update(sender *Sender) error {
 
 	sender.Reply("正在拉取最新源码...")
 	logs.Info("git fetch %s %s", getGitRepo(), getGitBranch())
-	cmd := exec.Command("git", "fetch", getGitRepo(), getGitBranch())
+	cmd := exec.Command("git", "fetch", getAuthGitRepo(), getGitBranch())
 	cmd.Dir = ExecPath
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		logs.Warn("git fetch失败: %s, %v", string(output), err)
-		return errors.New("拉取源码失败: " + string(output))
+		return errors.New("拉取源码失败: " + sanitizeGitOutput(string(output)))
 	}
 	logs.Info("git fetch成功")
 
@@ -171,7 +221,7 @@ func Update(sender *Sender) error {
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		logs.Warn("git reset失败: %s, %v", string(output), err)
-		return errors.New("重置代码失败: " + string(output))
+		return errors.New("重置代码失败: " + sanitizeGitOutput(string(output)))
 	}
 	logs.Info("git reset成功: %s", string(output))
 

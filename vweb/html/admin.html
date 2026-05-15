@@ -1247,7 +1247,7 @@
     <div class="modal" style="max-width:680px;">
         <div class="modal-header"><h3>编辑输入字段</h3><span class="modal-close" onclick="closeFieldModal()">&times;</span></div>
         <div class="form-grid" style="grid-template-columns:1fr 1fr;">
-            <div class="form-item"><label>字段名 *</label><input type="text" id="fieldFormKey" placeholder="中文/英文标识"></div>
+            <div class="form-item"><label>字段名 *</label><input type="text" id="fieldFormKey" placeholder="中文/英文标识" oninput="autoGenerateFieldHint()"></div>
             <div class="form-item"><label>输入提示符</label><input type="text" id="fieldFormHint" placeholder="请输入..."></div>
             <div class="form-item"><label>连接符号</label><input type="text" id="fieldFormSeparator" placeholder="#" maxlength="4"></div>
             <div class="form-item"><label>是否必填</label><select id="fieldFormRequired"><option value="true">是</option><option value="false">否</option></select></div>
@@ -3832,6 +3832,7 @@ function addFormField() {
     document.getElementById('fieldFormTimeout').value = '60';
     document.getElementById('fieldFormRuleSummary').value = '';
     renderFieldRuleList([]);
+    autoGenerateFieldHint();
     document.getElementById('fieldModal').classList.remove('hidden');
 }
 
@@ -3879,8 +3880,19 @@ function editFormField(idx) {
     document.getElementById('fieldFormTimeout').value = f['超时秒数'] || 60;
     document.getElementById('fieldFormRuleSummary').value = (f._rules || []).map(function(r) { return getRuleLabel(r['类型'] || 'not_empty'); }).join('、');
     renderFieldRuleList(f._rules || []);
+    autoGenerateFieldHint();
     document.getElementById('fieldModal').classList.remove('hidden');
 }
+function autoGenerateFieldHint() {
+    var key = document.getElementById('fieldFormKey').value.trim();
+    var hintInput = document.getElementById('fieldFormHint');
+    if (!key) {
+        hintInput.placeholder = '请输入...';
+        return;
+    }
+    hintInput.placeholder = '请输入' + key + '的值';
+}
+
 function closeFieldModal() { document.getElementById('fieldModal').classList.add('hidden'); editingFieldIdx = -1; }
 
 function getRuleLabel(type) {
