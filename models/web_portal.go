@@ -244,15 +244,20 @@ func GetPortalActivities() []PortalActivityItem {
 			Enabled:         cfg.Enabled,
 		}
 		for _, field := range cfg.InputFields {
-			item.InputFields = append(item.InputFields, PortalActivityField{
+			pfield := PortalActivityField{
 				Key:        field.Key,
 				Prompt:     field.Prompt,
 				Required:   field.Required,
 				TrimSpace:  field.TrimSpace,
 				TimeoutSec: field.TimeoutSec,
 				ErrorMsg:   field.ErrorMsg,
-			})
+			}
+			if pfield.TimeoutSec == 0 {
+				pfield.TimeoutSec = 60
+			}
+			item.InputFields = append(item.InputFields, pfield)
 		}
+		log.Printf("[门户API] 活动[%s] ID=%s, 字段数=%d, 字段详情=%v", cfg.Name, cfg.ID, len(item.InputFields), item.InputFields)
 		result = append(result, item)
 	}
 	return result

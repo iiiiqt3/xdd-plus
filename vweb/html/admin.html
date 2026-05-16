@@ -3697,9 +3697,15 @@ function generateActivitiesYaml(acts) {
                         if (r['字符列表']) yaml += `            字符列表: ${toYamlStringArray(r['字符列表'])}\n`;
                         if (r['值']) yaml += `            值: "${escapeYamlString(String(r['值']))}"\n`;
                         if (r['长度'] !== undefined) yaml += `            长度: ${r['长度']}\n`;
-                        yaml += `            错误提示: "${escapeYamlString(String(r['错误提示'] || ''))}"\n`;
+                        if (r['错误提示']) yaml += `            错误提示: "${escapeYamlString(String(r['错误提示']))}"\n`;
                     }
                 }
+                var fieldErrMsg = '';
+                if (rules.length > 0) {
+                    var firstErrRule = rules.find(function(rr){ return rr['错误提示']; });
+                    if (firstErrRule) fieldErrMsg = firstErrRule['错误提示'];
+                }
+                if (fieldErrMsg) yaml += `        错误提示: "${escapeYamlString(fieldErrMsg)}"\n`;
                 yaml += `        是否必填: ${f['是否必填'] === true}\n        是否去空格: ${f['是否去空格'] === true}\n        超时秒数: ${f['超时秒数'] || 60}\n`;
             }
         }
