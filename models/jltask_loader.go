@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 //	"github.com/beego/beego/v2/adapter/logs"
 	"github.com/fsnotify/fsnotify"
@@ -384,16 +385,6 @@ func (al *ActivityLoader) executeValidator(v YAMLValidator, input string) (bool,
 		}
 		return true, ""
 
-	case "no_chinese":
-		// 不能包含汉字
-		if isChineseChar(input) {
-			if v.ErrorMsg != "" {
-				return false, v.ErrorMsg
-			}
-			return false, "不能包含汉字，请重新输入！"
-		}
-		return true, ""
-
 	case "not_empty":
 		// 不能为空
 		if len(input) == 0 {
@@ -415,8 +406,7 @@ func (al *ActivityLoader) executeValidator(v YAMLValidator, input string) (bool,
 		return true, ""
 
 	case "min_length":
-		// 最小长度
-		if len(input) < v.Length {
+		if utf8.RuneCountInString(input) < v.Length {
 			if v.ErrorMsg != "" {
 				return false, v.ErrorMsg
 			}
@@ -425,8 +415,7 @@ func (al *ActivityLoader) executeValidator(v YAMLValidator, input string) (bool,
 		return true, ""
 
 	case "max_length":
-		// 最大长度
-		if len(input) > v.Length {
+		if utf8.RuneCountInString(input) > v.Length {
 			if v.ErrorMsg != "" {
 				return false, v.ErrorMsg
 			}
@@ -455,14 +444,14 @@ func (al *ActivityLoader) executeValidator(v YAMLValidator, input string) (bool,
 		return true, ""
 
 	case "not_all_same":
-		// 不能全是同一个字符（如全是星号）
-		if len(input) == 0 {
+		if utf8.RuneCountInString(input) == 0 {
 			return true, ""
 		}
 		allSame := true
-		firstChar := input[0]
-		for i := 1; i < len(input); i++ {
-			if input[i] != firstChar {
+		runes := []rune(input)
+		firstRune := runes[0]
+		for i := 1; i < len(runes); i++ {
+			if runes[i] != firstRune {
 				allSame = false
 				break
 			}

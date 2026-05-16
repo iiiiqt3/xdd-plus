@@ -3192,19 +3192,23 @@ function escapeYamlString(value) {
 
 // 验证规则预设类型列表
 const VALIDATION_RULE_TYPES = [
-    { value: 'not_empty', label: '不能为空', params: [] },
-    { value: 'no_chinese', label: '不能包含汉字', params: [] },
-    { value: 'phone', label: '手机号规则', params: [] },
-    { value: 'prefix', label: '前缀匹配', params: [{ key: 'value', label: '前缀' }] },
-    { value: 'suffix', label: '后缀匹配', params: [{ key: 'value', label: '后缀' }] },
-    { value: 'equals', label: '必须等于', params: [{ key: 'value', label: '值' }] },
-    { value: 'required_chars', label: '必须包含字符', params: [{ key: 'chars', label: '字符列表' }] },
-    { value: 'forbidden_chars', label: '禁止字符', params: [{ key: 'chars', label: '字符列表' }] },
-    { value: 'min_length', label: '最小长度', params: [{ key: 'length', label: '长度' }] },
-    { value: 'max_length', label: '最大长度', params: [{ key: 'length', label: '长度' }] },
-    { value: 'not_all_same', label: '不能同字符', params: [] },
-    { value: 'regex', label: '正则表达式', params: [{ key: 'pattern', label: '正则' }] },
+    { value: 'not_empty', label: '不能为空', params: [], defaultMsg: '该字段不能为空，请重新输入！' },
+    { value: 'phone', label: '手机号规则', params: [], defaultMsg: '手机号格式不正确，请输入11位有效手机号！' },
+    { value: 'prefix', label: '前缀匹配', params: [{ key: 'value', label: '前缀' }], defaultMsg: '输入内容前缀不匹配，请重新输入！' },
+    { value: 'suffix', label: '后缀匹配', params: [{ key: 'value', label: '后缀' }], defaultMsg: '输入内容后缀不匹配，请重新输入！' },
+    { value: 'equals', label: '必须等于', params: [{ key: 'value', label: '值' }], defaultMsg: '输入内容不匹配，请重新输入！' },
+    { value: 'required_chars', label: '必须包含字符', params: [{ key: 'chars', label: '字符列表' }], defaultMsg: '输入内容缺少必要字符，请重新输入！' },
+    { value: 'forbidden_chars', label: '禁止字符', params: [{ key: 'chars', label: '字符列表' }], defaultMsg: '输入内容包含禁止字符，请重新输入！' },
+    { value: 'min_length', label: '最小长度', params: [{ key: 'length', label: '长度' }], defaultMsg: '输入长度不足，请重新输入！' },
+    { value: 'max_length', label: '最大长度', params: [{ key: 'length', label: '长度' }], defaultMsg: '输入长度超出限制，请重新输入！' },
+    { value: 'not_all_same', label: '不能同字符', params: [], defaultMsg: '不能全部输入相同字符，请重新输入！' },
+    { value: 'regex', label: '正则表达式', params: [{ key: 'pattern', label: '正则' }], defaultMsg: '输入格式不正确，请重新输入！' },
 ];
+
+function getDefaultRuleMsg(type) {
+    var hit = VALIDATION_RULE_TYPES.find(function(t) { return t.value === type; });
+    return hit && hit.defaultMsg ? hit.defaultMsg : '输入格式不正确，请重新输入！';
+}
 
 
 function parseCharsValue(value) {
@@ -3937,7 +3941,7 @@ function renderFieldRuleList(rules) {
 /** 添加一条新规则行 */
 function addFieldRuleRow() {
     var rules = collectFieldRulesFromDom();
-    rules.push({ '类型': 'not_empty' });
+    rules.push({ '类型': 'not_empty', '错误提示': getDefaultRuleMsg('not_empty') });
     renderFieldRuleList(rules);
 }
 function removeRuleRow(ri){
@@ -3948,7 +3952,7 @@ function removeRuleRow(ri){
 function changeRuleType(sel,ri){
     var rules = collectFieldRulesFromDom();
     var typeDef = VALIDATION_RULE_TYPES.find(function(t){return t.value===sel.value;});
-    var next = { '类型': sel.value, '错误提示': rules[ri] ? (rules[ri]['错误提示'] || '') : '' };
+    var next = { '类型': sel.value, '错误提示': getDefaultRuleMsg(sel.value) };
     if (typeDef && typeDef.params) {
         typeDef.params.forEach(function(p) {
             if (rules[ri] && rules[ri][p.key] !== undefined) next[p.key] = rules[ri][p.key];
@@ -3999,10 +4003,8 @@ function collectFieldRulesFromDom() {
 function saveFormFieldEdit() {
     var key = document.getElementById('fieldFormKey').value.trim();
     if (!key) { toast('字段标识不能为空', 'error'); return; }
-    if (!/^[\u4e00-\u9fa5a-zA-Z_][\u4e00-\u9fa5a-zA-Z0-9_]*$/.test(key)) {
-        toast('字段标识格式错误！必须以中文、字母或下划线开头，只允许中文、字母、数字和下划线', 'error');
-        return;
-    }
+    if (/\s/.test(key)) { toast('字段标识不能包含空格', 'error'); return; }
+    if (/[:{}[\],&*?|>!%`"']/.test(key)) { toast('字段标识包含非法字符，不能包含 : { } [ ] , & * ? | > ! % ` " \'', 'error'); return; }
     var rules = collectFieldRulesFromDom().map(normalizeRuleForStorage);
     const field = {
         '字段标识': key,

@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 	"math"
+	"unicode/utf8"
 //	"encoding/base64" 
 	"github.com/beego/beego/v2/adapter/logs"
 )
@@ -210,16 +211,21 @@ func getQingLongConfigForActivity(activityID string) *QingLongConfig {
 
 // ===================== 通用验证函数 =====================
 func ValidatePhone(input string) (bool, string) {
-	if len(input) != 11 {
-		return false, "手机号必须是11位数字，请重新输入！"
+	input = strings.TrimSpace(input)
+	runeCount := utf8.RuneCountInString(input)
+	if runeCount != 11 {
+		return false, fmt.Sprintf("手机号必须是11位数字，当前输入了%d位，请重新输入！", runeCount)
+	}
+	for i, r := range input {
+		if r >= '\uff10' && r <= '\uff19' {
+			return false, fmt.Sprintf("手机号第%d位是全角数字，请切换到半角输入！", i+1)
+		}
+		if r < '0' || r > '9' {
+			return false, fmt.Sprintf("手机号第%d位不是数字，请重新输入！", i+1)
+		}
 	}
 	if input[0] != '1' {
 		return false, "手机号必须以1开头，请重新输入！"
-	}
-	for _, r := range input {
-		if r < '0' || r > '9' {
-			return false, "手机号必须是纯数字，请重新输入！"
-		}
 	}
 	return true, ""
 }
@@ -293,6 +299,11 @@ func getUserInputByField(sender *Sender, msgChannel chan string, field InputFiel
 
 			if checkExit(input) {
 				sender.Reply("程序已退出。")
+				return "", true
+			}
+
+			if isChineseChar(input) {
+				sender.Reply("输入内容不能包含中文字符，程序已退出。")
 				return "", true
 			}
 
