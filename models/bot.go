@@ -454,26 +454,9 @@ if TryHandleSshMessage(sender) {
 
 	{
 				if msg == "登录" || msg == "登陆" {
-					msg := make(chan string)
-					loginList[sender.UserID] = msg
-
-					go LoginSelect(sender, msg)
-
-					// msgs := []string{
-					// 	"请选择登录渠道:",
-					// }
-
-					// if Config.QQID == 694738267 {
-					// 	sender.Reply("请回复【】里面的数字序号选择登录渠道:\n----------------------- \r\n 【1】 密码登录 （账号不掉线） \r\n 【2】 短信登录 （不定时掉线） \r\n 【3】 扫码登录 （不定时掉线） \r\n \n推荐使用密码登录，省心省力不错过任务，回复'q'退出登录流程\r\n \n 上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密")
-					// } else {
-					// 	msgs = append(msgs, "如需退出请回复'q'退出登录流程")
-					// 	sender.Reply(strings.Join(msgs, "\n"))
-					// }
-
 					value := GetEnv("grouplogin")
 					if value == "" && (sender.Type == "qqg" || sender.Type == "wxg") {
 						sender.Reply("短信登录请添加本机器人好友后，私聊登录，避免信息泄露")
-						loginList[sender.UserID] = nil
 						return nil
 					}
 					c2 := make(chan string)
