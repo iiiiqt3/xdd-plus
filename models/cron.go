@@ -2,7 +2,7 @@
 package models
 
 import (
-	"fmt"
+	
 	"github.com/beego/beego/v2/adapter/logs"
 	"github.com/robfig/cron/v3"
 	"math/rand"
