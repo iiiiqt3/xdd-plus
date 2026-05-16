@@ -244,9 +244,13 @@ func GetPortalActivities() []PortalActivityItem {
 			Enabled:         cfg.Enabled,
 		}
 		for _, field := range cfg.InputFields {
+			prompt := field.Prompt
+			if strings.TrimSpace(prompt) == "" {
+				prompt = field.Key
+			}
 			pfield := PortalActivityField{
 				Key:        field.Key,
-				Prompt:     field.Prompt,
+				Prompt:     prompt,
 				Required:   field.Required,
 				TrimSpace:  field.TrimSpace,
 				TimeoutSec: field.TimeoutSec,

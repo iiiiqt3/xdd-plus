@@ -301,9 +301,13 @@ func (al *ActivityLoader) convertYAMLToActivity(yamlAct YAMLActivityConfig) *Act
 
 	// 转换输入字段
 	for _, yamlField := range yamlAct.InputFields {
+		prompt := yamlField.Prompt
+		if strings.TrimSpace(prompt) == "" {
+			prompt = yamlField.Key
+		}
 		field := InputField{
 			Key:        yamlField.Key,
-			Prompt:     yamlField.Prompt,
+			Prompt:     prompt,
 			Required:   yamlField.Required,
 			TrimSpace:  yamlField.TrimSpace,
 			TimeoutSec: yamlField.TimeoutSec,
