@@ -503,7 +503,7 @@ func handleRecordCKByGo(qq int, ckValue, finalRemarks, envKey string, config *Ac
 		EnvKey:             envKey,
 		EnvValue:           ckValue,
 		Remarks:            finalRemarks,
-		UserNumber:         int64(qq),
+		UserNumber:         qq,
 		QingLongConfigName: config.QingLongConfigName,
 		Status:             0,
 		ExpireDate:         expireDate,

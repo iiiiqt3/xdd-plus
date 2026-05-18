@@ -440,7 +440,7 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 		EnvKey:             cfg.EnvKey,
 		EnvValue:           ckValue,
 		Remarks:            finalRemarks,
-		UserNumber:         int64(userNumber),
+		UserNumber:         userNumber,
 		QingLongConfigName: cfg.QingLongConfigName,
 		Status:             0,
 		ExpireDate:         expireDate,
