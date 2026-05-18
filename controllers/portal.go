@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"strconv"
 	"strings"
 
 	"github.com/cdle/xdd/models"
@@ -243,67 +242,6 @@ func (c *PortalController) WxStatus() {
 		return
 	}
 	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": "查询成功"}
-	c.ServeJSON()
-}
-
-// RunUserTask 用户手动运行自己的账号任务
-func (c *PortalController) RunUserTask() {
-	var req struct {
-		ActivityID string `json:"activityId"`
-		EnvKey     string `json:"envKey"`
-		EnvID      int    `json:"envId"`
-	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
-		c.ServeJSON()
-		return
-	}
-	if req.ActivityID == "" || req.EnvKey == "" || req.EnvID <= 0 {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "参数不完整"}
-		c.ServeJSON()
-		return
-	}
-	result, err := models.PortalRunUserTask(c.PortalUserID, req.ActivityID, req.EnvKey, req.EnvID)
-	if err != nil {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
-		c.ServeJSON()
-		return
-	}
-	c.Data["json"] = map[string]interface{}{"code": 0, "data": result, "msg": result.Message}
-	c.ServeJSON()
-}
-
-// GetUserTaskLog 获取用户任务的运行日志
-func (c *PortalController) GetUserTaskLog() {
-	taskIDStr := c.Ctx.Input.Param(":taskId")
-	if taskIDStr == "" {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "缺少任务ID参数"}
-		c.ServeJSON()
-		return
-	}
-
-	taskID, err := strconv.Atoi(taskIDStr)
-	if err != nil || taskID <= 0 {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "任务ID格式错误"}
-		c.ServeJSON()
-		return
-	}
-
-	logContent, logErr := models.PortalGetUserTaskLog(c.PortalUserID, taskID)
-	if logErr != nil {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": logErr.Error()}
-		c.ServeJSON()
-		return
-	}
-
-	c.Data["json"] = map[string]interface{}{
-		"code": 0,
-		"data": map[string]interface{}{
-			"taskId": taskID,
-			"log":    logContent,
-		},
-		"msg": "查询成功",
-	}
 	c.ServeJSON()
 }
 

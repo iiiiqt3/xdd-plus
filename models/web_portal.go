@@ -2,14 +2,12 @@ package models
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
-
+    "log"
 	"gorm.io/gorm"
 )
 
@@ -749,181 +747,6 @@ func portalPray(userNumber int) (string, error) {
 		return "先去打卡吧你。", nil
 	}
 	return "祈福成功，愿你事事顺心如意，积分 + 3。", nil
-}
-
-type RunUserTaskResult struct {
-	TaskID      int    `json:"taskId"`
-	Activity    string `json:"activity"`
-	Script      string `json:"script"`
-	MatchedTask string `json:"matchedTask"`
-	Message     string `json:"message"`
-}
-
-var (
-	userTaskLastRun  = make(map[string]time.Time)
-	userTaskMu       sync.Mutex
-	runSemaphore     = make(chan struct{}, 10)
-)
-
-func PortalRunUserTask(userNumber int, activityID, envKey string, envID int) (*RunUserTaskResult, error) {
-	taskKey := fmt.Sprintf("%d_%s_%d", userNumber, activityID, envID)
-
-	userTaskMu.Lock()
-	if lastRun, ok := userTaskLastRun[taskKey]; ok {
-		if time.Since(lastRun) < 60*time.Second {
-			userTaskMu.Unlock()
-			return nil, fmt.Errorf("操作过于频繁，请等待 %d 秒后重试", int(60-time.Since(lastRun).Seconds()))
-		}
-	}
-	userTaskMu.Unlock()
-
-	select {
-	case runSemaphore <- struct{}{}:
-	default:
-		return nil, fmt.Errorf("服务器繁忙，当前运行中的任务较多，请稍后再试（最多支持%d个并发任务）", cap(runSemaphore))
-	}
-
-	defer func() { <-runSemaphore }()
-
-	activityConfigsMu.RLock()
-	var targetCfg *ActivityConfig
-	for _, cfg := range ActivityConfigs {
-		if cfg.ID == activityID {
-			targetCfg = cfg
-			break
-		}
-	}
-	activityConfigsMu.RUnlock()
-
-	if targetCfg == nil {
-		return nil, fmt.Errorf("活动不存在")
-	}
-
-	qlConfig := getQingLongConfigForActivity(targetCfg.ID)
-	if qlConfig == nil {
-		return nil, fmt.Errorf("青龙容器不可用")
-	}
-
-	client := NewQingLongClient(qlConfig)
-	if client == nil {
-		return nil, fmt.Errorf("无法连接青龙容器")
-	}
-
-	tasks, taskErr := client.QueryCronTasks("")
-	if taskErr != nil {
-		return nil, fmt.Errorf("查询青龙任务列表失败: %v", taskErr)
-	}
-
-	var scriptPath string
-	var matchedTaskName string
-
-	// 第一层：envKey 出现在命令中（最精准，如 "task sfsy.js desi sfsyUrl"）
-	for _, t := range tasks {
-		if strings.Contains(t.Command, envKey) {
-			fields := strings.Fields(t.Command)
-			if len(fields) >= 2 {
-				scriptPath = fields[1]
-				matchedTaskName = t.Name
-				break
-			}
-		}
-	}
-
-	// 第二层：活动名出现在任务名称中（如 活动"同城" → 任务"同城活动"）
-	if scriptPath == "" && targetCfg.Name != "" {
-		for _, t := range tasks {
-			if strings.Contains(t.Name, targetCfg.Name) {
-				fields := strings.Fields(t.Command)
-				if len(fields) >= 2 {
-					scriptPath = fields[1]
-					matchedTaskName = t.Name
-					break
-				}
-			}
-		}
-	}
-
-	// 第三层：活动名出现在任务命令中（如 活动"比亚迪" → 命令含"byd"）
-	if scriptPath == "" && targetCfg.Name != "" {
-		for _, t := range tasks {
-			if strings.Contains(t.Command, targetCfg.Name) {
-				fields := strings.Fields(t.Command)
-				if len(fields) >= 2 {
-					scriptPath = fields[1]
-					matchedTaskName = t.Name
-					break
-				}
-			}
-		}
-	}
-
-	if scriptPath == "" {
-		return nil, fmt.Errorf(
-			"在青龙中未找到该活动对应的脚本（活动：%s，环境变量：%s）\n\n可能原因：\n1. 青龙中尚未创建该活动的定时任务\n2. 任务名称与活动名称不一致\n3. 建议在青龙中创建定时任务时，任务名称包含活动名称关键字",
-			targetCfg.Name, envKey,
-		)
-	}
-
-	envs, err := client.QueryEnvs(envKey)
-	if err != nil {
-		return nil, fmt.Errorf("查询环境变量失败: %v", err)
-	}
-
-	envIndex := -1
-	for i, env := range envs {
-		if env.ID == envID {
-			envIndex = i + 1
-			break
-		}
-	}
-	if envIndex == -1 {
-		return nil, fmt.Errorf("找不到指定的环境变量")
-	}
-
-	userTaskMu.Lock()
-	userTaskLastRun[taskKey] = time.Now()
-	userTaskMu.Unlock()
-
-	taskName := fmt.Sprintf("[手动]%s_用户%d_账号%d", targetCfg.Name, userNumber, envID)
-	taskID, err := client.CreateAndRunCronTask(taskName, scriptPath, envKey, envIndex)
-	if err != nil {
-		return nil, fmt.Errorf("执行任务失败: %v", err)
-	}
-
-	go func() {
-		time.Sleep(10 * time.Minute)
-		client.DeleteCronTask([]int{taskID})
-	}()
-
-	return &RunUserTaskResult{
-		TaskID:      taskID,
-		Activity:    targetCfg.Name,
-		Script:      scriptPath,
-		MatchedTask: matchedTaskName,
-		Message:     "任务已启动（将在10分钟后自动清理）",
-	}, nil
-}
-
-func PortalGetUserTaskLog(userNumber int, taskID int) (string, error) {
-	qlManager.mu.RLock()
-	configs := make([]*QingLongConfig, 0, len(qlManager.Configs))
-	for _, cfg := range qlManager.Configs {
-		configs = append(configs, cfg)
-	}
-	qlManager.mu.RUnlock()
-
-	for _, qlConfig := range configs {
-		client := NewQingLongClient(qlConfig)
-		logContent, err := client.GetCronTaskLogContent(taskID)
-		if err == nil && logContent != "" {
-			if strings.Contains(logContent, "任务不存在") || strings.Contains(logContent, "not found") {
-				continue
-			}
-			return logContent, nil
-		}
-	}
-
-	return "", fmt.Errorf("日志不存在或尚未生成（任务可能还在执行中，请稍后再试）")
 }
 
 func formatPortalTime(t time.Time) string {
