@@ -54,19 +54,12 @@ func initDB() {
 		&PortalPrayRecord{},
 		&AppFeedback{},
 		&PortalWxDevice{},
-		&ActivityProject{},
 		//&LoginSelectType{},
 	); err != nil {
 		log.Printf("[数据库迁移] AutoMigrate 失败: %v", err)
 	}
 
-	if !db.Migrator().HasTable(&ActivityProject{}) {
-		if err := db.Migrator().CreateTable(&ActivityProject{}); err != nil {
-			log.Printf("[数据库迁移] 手动创建 activity_project 表失败: %v", err)
-		} else {
-			log.Println("[数据库迁移] activity_project 表创建成功")
-		}
-	}
+	createActivityProjectTable()
 
 	keys = make(map[string]bool)
 	pins = make(map[string]bool)
@@ -286,4 +279,62 @@ func IsUser(qq int64) bool {
 
 	var u []JdCookie
 	return db.Where("QQ = ?", qq).First(&u).Error == nil
+}
+
+func createActivityProjectTable() {
+	var count int64
+	if err := db.Raw("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'activity_project'").Scan(&count).Error; err != nil {
+		log.Printf("[数据库迁移] 检查表失败: %v", err)
+		return
+	}
+	if count > 0 {
+		log.Println("[数据库迁移] activity_project 表已存在，检查字段类型...")
+		var colType string
+		db.Raw("SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'activity_project' AND column_name = 'user_number'").Scan(&colType)
+		if colType == "int" {
+			if err := db.Exec("ALTER TABLE activity_project MODIFY COLUMN user_number BIGINT NOT NULL DEFAULT 0").Error; err != nil {
+				log.Printf("[数据库迁移] 修改 user_number 字段为 BIGINT 失败: %v", err)
+			} else {
+				log.Println("[数据库迁移] user_number 字段已改为 BIGINT")
+			}
+		} else {
+			log.Printf("[数据库迁移] user_number 字段已是 %s，无需修改", colType)
+		}
+		return
+	}
+
+	sql := `
+CREATE TABLE activity_project (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	activity_id VARCHAR(64) NOT NULL DEFAULT '',
+	activity_name VARCHAR(128) NOT NULL DEFAULT '',
+	env_key VARCHAR(128) NOT NULL DEFAULT '',
+	env_value TEXT,
+	remarks TEXT,
+	remark_alias VARCHAR(128) NOT NULL DEFAULT '',
+	user_number BIGINT NOT NULL DEFAULT 0,
+	qinglong_config_name VARCHAR(64) NOT NULL DEFAULT '',
+	qinglong_env_id INT NOT NULL DEFAULT 0,
+	status INT NOT NULL DEFAULT 0,
+	expire_date VARCHAR(10) NOT NULL DEFAULT '',
+	is_monthly_deduct TINYINT(1) NOT NULL DEFAULT 0,
+	monthly_coin INT NOT NULL DEFAULT 0,
+	need_coin INT NOT NULL DEFAULT 0,
+	created_at DATETIME,
+	updated_at DATETIME,
+	deleted_at DATETIME,
+	sync_status VARCHAR(16) NOT NULL DEFAULT 'pending',
+	sync_error TEXT,
+	sync_at DATETIME,
+	INDEX idx_activity_id (activity_id),
+	INDEX idx_env_key (env_key),
+	INDEX idx_remarks (remarks(255)),
+	INDEX idx_user_number (user_number),
+	INDEX idx_deleted_at (deleted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+	if err := db.Exec(sql).Error; err != nil {
+		log.Printf("[数据库迁移] 创建 activity_project 表失败: %v", err)
+		return
+	}
+	log.Println("[数据库迁移] activity_project 表创建成功")
 }

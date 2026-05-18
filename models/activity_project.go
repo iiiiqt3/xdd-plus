@@ -16,7 +16,7 @@ type ActivityProject struct {
 	EnvValue           string     `gorm:"column:env_value;type:text"`
 	Remarks            string     `gorm:"column:remarks;type:text;index"`
 	RemarkAlias        string     `gorm:"column:remark_alias;size:128"`
-	UserNumber         int        `gorm:"column:user_number;index"`
+	UserNumber         int64      `gorm:"column:user_number;index"`
 	QingLongConfigName string     `gorm:"column:qinglong_config_name;size:64"`
 	QingLongEnvID      int        `gorm:"column:qinglong_env_id;default:0"`
 	Status             int        `gorm:"column:status;default:0"`
