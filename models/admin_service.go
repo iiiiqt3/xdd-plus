@@ -2445,7 +2445,7 @@ type ActivityAuthAccountItem struct {
 	EnvID        int    `json:"envId"`
 	Remarks      string `json:"remarks"`
 	AccountAlias string `json:"accountAlias"`
-	UserNumber   int    `json:"userNumber"`
+	UserNumber   int64   `json:"userNumber"`
 	ExpireDate   string `json:"expireDate"`
 	RemainDays   int    `json:"remainDays"`
 	RefundCoin   int    `json:"refundCoin"`

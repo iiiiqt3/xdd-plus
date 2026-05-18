@@ -493,7 +493,7 @@ func MigrateFromQingLongToDB() {
 				EnvValue:           env.Value,
 				Remarks:            env.Remarks,
 				RemarkAlias:        remarkAlias,
-				UserNumber:         userNumber,
+				UserNumber:         int64(userNumber),
 				QingLongConfigName: cfg.QingLongConfigName,
 				QingLongEnvID:      env.ID,
 				Status:             env.Status,
