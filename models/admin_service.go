@@ -2097,6 +2097,35 @@ func InvalidateActivityAdminStatsCache() {}
 
 func RefreshActivityAdminStatsCache(forceRefresh ...bool) {}
 
+type ActivityStatsSnapshot struct {
+	Stats       []ActivityStat `json:"list"`
+	TotalAll    int            `json:"totalAll"`
+	ValidAll    int            `json:"validAll"`
+	ExpiringAll int            `json:"expiringAll"`
+	ExpiredAll  int            `json:"expiredAll"`
+	Cached      bool           `json:"cached"`
+	Refreshing  bool           `json:"refreshing"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
+}
+
+func GetActivityStatsSnapshot(force bool) ActivityStatsSnapshot {
+	stats, totalAll, validAll, expiringAll, expiredAll := buildActivityStats()
+	return ActivityStatsSnapshot{
+		Stats:       stats,
+		TotalAll:    totalAll,
+		ValidAll:    validAll,
+		ExpiringAll: expiringAll,
+		ExpiredAll:  expiredAll,
+		Cached:      false,
+		Refreshing:  false,
+		UpdatedAt:   time.Now(),
+	}
+}
+
+func RefreshSingleActivityAdminStats(activityID string) error {
+	return nil
+}
+
 func buildActivityStats() ([]ActivityStat, int, int, int, int) {
 	activityConfigsMu.RLock()
 	configs := make([]ActivityConfig, 0, len(ActivityConfigs))
