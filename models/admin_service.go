@@ -2648,7 +2648,7 @@ func buildActivityAuthAccountItem(cfg *ActivityConfig, env QLEnvItem) ActivityAu
 	} else if remainDays <= 0 && expireDate != "" {
 		statusText = "已到期"
 	}
-	return ActivityAuthAccountItem{EnvID: env.ID, Remarks: env.Remarks, AccountAlias: accountAlias, UserNumber: userNumber, ExpireDate: expireDate, RemainDays: remainDays, RefundCoin: refundCoin, Status: env.Status, StatusText: statusText}
+	return ActivityAuthAccountItem{EnvID: env.ID, Remarks: env.Remarks, AccountAlias: accountAlias, UserNumber: int64(userNumber), ExpireDate: expireDate, RemainDays: remainDays, RefundCoin: refundCoin, Status: env.Status, StatusText: statusText}
 }
 
 func DeleteActivityAuthAccount(activityID string, envID int, reason string, channels NotifyChannels) (int, error) {
@@ -2725,14 +2725,14 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 		deletedCount++
 		totalRefundCoin += item.RefundCoin
 		if item.UserNumber > 0 && item.RefundCoin > 0 {
-			AdddCoin(item.UserNumber, item.RefundCoin)
+			AdddCoin(int(item.UserNumber), item.RefundCoin)
 		}
 		msg := fmt.Sprintf("📢【授权账号删除与积分退还通知】\n活动：%s\n账号备注：%s\n原到期日：%s\n剩余天数：%d 天\n退还积分：%d\n删除原因：%s\n\n如有疑问请联系管理员。", cfg.Name, item.AccountAlias, item.ExpireDate, item.RemainDays, item.RefundCoin, reason)
 		if item.UserNumber > 0 {
 			if channels.Robot {
-				PushByQQ(strconv.Itoa(item.UserNumber), msg)
+				PushByQQ(strconv.Itoa(int(item.UserNumber)), msg)
 			}
-			CreateSystemWebNotification("授权账号删除与积分退还通知", msg, NotifyCategoryAuth, NotifySourceAuth, item.UserNumber, channels)
+			CreateSystemWebNotification("授权账号删除与积分退还通知", msg, NotifyCategoryAuth, NotifySourceAuth, int(item.UserNumber), channels)
 		}
 	}
 	adminMsg := fmt.Sprintf("📢【活动授权账号删除完成】\n活动：%s\n删除账号：%d 个\n退还积分：%d\n原因：%s", cfg.Name, deletedCount, totalRefundCoin, reason)
