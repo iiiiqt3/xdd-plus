@@ -5865,9 +5865,9 @@ async function pushSelectedActivities() {
 }
 
 async function sendActivityToGroups(activityName, activityGuide, needCoin, isMonthlyDeduct, monthlyCoin) {
-    var content = '【新活动通知】\n活动名称：' + activityName;
+    var content = '';
     if (activityGuide && activityGuide.trim()) {
-        content += '\n\n玩法简介：\n' + activityGuide.trim();
+        content += '玩法简介：\n' + activityGuide.trim();
     }
     content += '\n\n📊 积分信息：\n';
     if (isMonthlyDeduct) {
