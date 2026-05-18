@@ -798,11 +798,6 @@ func PortalRunUserTask(userNumber int, activityID, envKey string, envID int) (*R
 		return nil, fmt.Errorf("活动不存在")
 	}
 
-	scriptPath := targetCfg.ScriptPaths.Record
-	if scriptPath == "" {
-		return nil, fmt.Errorf("该活动未配置运行脚本")
-	}
-
 	qlConfig := getQingLongConfigForActivity(targetCfg.ID)
 	if qlConfig == nil {
 		return nil, fmt.Errorf("青龙容器不可用")
@@ -811,6 +806,25 @@ func PortalRunUserTask(userNumber int, activityID, envKey string, envID int) (*R
 	client := NewQingLongClient(qlConfig)
 	if client == nil {
 		return nil, fmt.Errorf("无法连接青龙容器")
+	}
+
+	tasks, taskErr := client.QueryCronTasks("")
+	if taskErr != nil {
+		return nil, fmt.Errorf("查询青龙任务列表失败: %v", taskErr)
+	}
+
+	var scriptPath string
+	for _, t := range tasks {
+		if strings.Contains(t.Command, envKey) {
+			fields := strings.Fields(t.Command)
+			if len(fields) >= 2 {
+				scriptPath = fields[1]
+				break
+			}
+		}
+	}
+	if scriptPath == "" {
+		return nil, fmt.Errorf("在青龙中未找到该活动的定时任务（搜索关键词：%s），请确认青龙中已创建对应的定时任务", envKey)
 	}
 
 	envs, err := client.QueryEnvs(envKey)
