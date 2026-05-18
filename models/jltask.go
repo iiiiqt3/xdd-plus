@@ -235,17 +235,6 @@ func checkExit(input string) bool {
 	return input == "q" || input == "Q"
 }
 
-func GetFirstRemarkParam(remarks string) string {
-	if remarks == "" {
-		return "未知账号"
-	}
-	parts := strings.Split(remarks, "/")
-	if len(parts) > 0 && parts[0] != "" {
-		return parts[0]
-	}
-	return "未知账号"
-}
-
 // GetSortedActivityIDs 返回已排序的活动 ID 列表
 func GetSortedActivityIDs() []string {
 	activityConfigsMu.RLock()
