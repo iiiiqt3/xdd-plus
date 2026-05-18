@@ -1,6 +1,7 @@
 package models
 
 import (
+	"log"
 	"strings"
 	"time"
 
@@ -32,7 +33,7 @@ func initDB() {
 	if err != nil {
 		panic(err)
 	}
-	db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&JdCookie{},
 		&User{},
 		&WebUserAccount{},
@@ -55,7 +56,9 @@ func initDB() {
 		&PortalWxDevice{},
 		&ActivityProject{},
 		//&LoginSelectType{},
-	)
+	); err != nil {
+		log.Printf("[数据库迁移] AutoMigrate 失败: %v", err)
+	}
 
 	keys = make(map[string]bool)
 	pins = make(map[string]bool)

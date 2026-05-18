@@ -443,8 +443,17 @@ func MigrateFromQingLongToDB() {
 	activityConfigsMu.RUnlock()
 
 	// 检查是否已有数据
+	// 检查表是否存在
+	if !db.Migrator().HasTable(&ActivityProject{}) {
+		log.Println("[数据迁移] activity_project 表不存在，请先运行程序完成数据库迁移")
+		return
+	}
+
 	var count int64
-	db.Model(&ActivityProject{}).Count(&count)
+	if err := db.Model(&ActivityProject{}).Count(&count).Error; err != nil {
+		log.Printf("[数据迁移] 查询数据库失败: %v，请检查 activity_project 表是否存在", err)
+		return
+	}
 	if count > 0 {
 		log.Printf("[数据迁移] 数据库已有 %d 条记录，跳过迁移", count)
 		return
