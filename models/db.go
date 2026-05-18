@@ -60,6 +60,14 @@ func initDB() {
 		log.Printf("[数据库迁移] AutoMigrate 失败: %v", err)
 	}
 
+	if !db.Migrator().HasTable(&ActivityProject{}) {
+		if err := db.Migrator().CreateTable(&ActivityProject{}); err != nil {
+			log.Printf("[数据库迁移] 手动创建 activity_project 表失败: %v", err)
+		} else {
+			log.Println("[数据库迁移] activity_project 表创建成功")
+		}
+	}
+
 	keys = make(map[string]bool)
 	pins = make(map[string]bool)
 	var jps []JdCookie
