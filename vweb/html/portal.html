@@ -1704,8 +1704,10 @@ async function runUserTask(activityId, envKey, envId, displayName) {
 
         const taskId = resp.data?.taskId;
         const activityName = resp.data?.activity || displayName;
+        const matchedTask = resp.data?.matchedTask || '自动匹配';
+        const script = resp.data?.script || '';
 
-        showTaskLogModal(taskId, activityName);
+        showTaskLogModal(taskId, activityName, matchedTask, script);
     } catch (e) {
         toast(e.message || '运行失败', 'error');
     } finally {
@@ -1715,7 +1717,7 @@ async function runUserTask(activityId, envKey, envId, displayName) {
     }
 }
 
-function showTaskLogModal(taskId, activityName) {
+function showTaskLogModal(taskId, activityName, matchedTask, script) {
     let modal = document.getElementById('task-log-modal');
     if (modal) modal.remove();
 
@@ -1732,6 +1734,7 @@ function showTaskLogModal(taskId, activityName) {
                     <div style="margin-bottom:15px;padding:12px;background:#f5f7fa;border-radius:8px;">
                         <div><strong>📂 活动：</strong>${escapeHtml(activityName)}</div>
                         <div><strong>🆔 任务ID：</strong>${taskId}</div>
+                        <div><strong>🔗 青龙任务：</strong>${escapeHtml(matchedTask)} (脚本: ${escapeHtml(script)})</div>
                         <div><strong>⏰ 启动时间：</strong>${new Date().toLocaleString()}</div>
                     </div>
                     <div style="display:flex;gap:10px;margin-bottom:10px;align-items:center;">

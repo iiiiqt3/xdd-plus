@@ -1734,9 +1734,10 @@ func (q *QingLongClient) CreateAndRunCronTask(name, scriptPath, envName string, 
 	createURL := strings.TrimSuffix(q.config.Host, "/") + "/open/crons"
 	payload := []map[string]interface{}{
 		{
-			"name":    name,
-			"command": command,
-			"schedule": "0 0 31 2 *",
+			"name":     name,
+			"command":  command,
+			"schedule": "0 0 2 1 *",
+			"isDisabled": 1,
 		},
 	}
 	jsonData, err := json.Marshal(payload)
@@ -1748,7 +1749,7 @@ func (q *QingLongClient) CreateAndRunCronTask(name, scriptPath, envName string, 
 	if err != nil {
 		return 0, fmt.Errorf("创建请求失败: %v", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := q.client.Do(req)
@@ -1762,16 +1763,32 @@ func (q *QingLongClient) CreateAndRunCronTask(name, scriptPath, envName string, 
 		return 0, fmt.Errorf("读取响应失败: %v", err)
 	}
 
+	if resp.StatusCode != 200 {
+		bodyPreview := string(body)
+		if len(bodyPreview) > 500 {
+			bodyPreview = bodyPreview[:500]
+		}
+		return 0, fmt.Errorf("创建任务失败(HTTP %d): %s", resp.StatusCode, bodyPreview)
+	}
+
 	var createResult struct {
-		Code    int `json:"code"`
-		Data    []int `json:"data"`
+		Code    int    `json:"code"`
+		Data    []int  `json:"data"`
 		Message string `json:"message"`
 	}
 	if err := json.Unmarshal(body, &createResult); err != nil {
-		return 0, fmt.Errorf("解析响应失败: %v", err)
+		bodyPreview := string(body)
+		if len(bodyPreview) > 500 {
+			bodyPreview = bodyPreview[:500]
+		}
+		return 0, fmt.Errorf("解析响应失败: %v (原始: %s)", err, bodyPreview)
 	}
 	if createResult.Code != 200 || len(createResult.Data) == 0 {
-		return 0, fmt.Errorf("创建临时任务失败: %s (code: %d)", createResult.Message, createResult.Code)
+		bodyPreview := string(body)
+		if len(bodyPreview) > 500 {
+			bodyPreview = bodyPreview[:500]
+		}
+		return 0, fmt.Errorf("创建任务失败: %s (code: %d, 原始: %s)", createResult.Message, createResult.Code, bodyPreview)
 	}
 
 	taskID = createResult.Data[0]
@@ -1779,7 +1796,7 @@ func (q *QingLongClient) CreateAndRunCronTask(name, scriptPath, envName string, 
 	runErr := q.RunCronTask([]int{taskID})
 	if runErr != nil {
 		q.DeleteCronTask([]int{taskID})
-		return 0, fmt.Errorf("创建任务成功但执行失败: %v", runErr)
+		return 0, fmt.Errorf("任务已创建但执行失败: %v", runErr)
 	}
 
 	return taskID, nil

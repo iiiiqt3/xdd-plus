@@ -752,10 +752,11 @@ func portalPray(userNumber int) (string, error) {
 }
 
 type RunUserTaskResult struct {
-	TaskID   int    `json:"taskId"`
-	Activity string `json:"activity"`
-	Script   string `json:"script"`
-	Message  string `json:"message"`
+	TaskID      int    `json:"taskId"`
+	Activity    string `json:"activity"`
+	Script      string `json:"script"`
+	MatchedTask string `json:"matchedTask"`
+	Message     string `json:"message"`
 }
 
 var (
@@ -814,17 +815,53 @@ func PortalRunUserTask(userNumber int, activityID, envKey string, envID int) (*R
 	}
 
 	var scriptPath string
+	var matchedTaskName string
+
+	// 第一层：envKey 出现在命令中（最精准，如 "task sfsy.js desi sfsyUrl"）
 	for _, t := range tasks {
 		if strings.Contains(t.Command, envKey) {
 			fields := strings.Fields(t.Command)
 			if len(fields) >= 2 {
 				scriptPath = fields[1]
+				matchedTaskName = t.Name
 				break
 			}
 		}
 	}
+
+	// 第二层：活动名出现在任务名称中（如 活动"同城" → 任务"同城活动"）
+	if scriptPath == "" && targetCfg.Name != "" {
+		for _, t := range tasks {
+			if strings.Contains(t.Name, targetCfg.Name) {
+				fields := strings.Fields(t.Command)
+				if len(fields) >= 2 {
+					scriptPath = fields[1]
+					matchedTaskName = t.Name
+					break
+				}
+			}
+		}
+	}
+
+	// 第三层：活动名出现在任务命令中（如 活动"比亚迪" → 命令含"byd"）
+	if scriptPath == "" && targetCfg.Name != "" {
+		for _, t := range tasks {
+			if strings.Contains(t.Command, targetCfg.Name) {
+				fields := strings.Fields(t.Command)
+				if len(fields) >= 2 {
+					scriptPath = fields[1]
+					matchedTaskName = t.Name
+					break
+				}
+			}
+		}
+	}
+
 	if scriptPath == "" {
-		return nil, fmt.Errorf("在青龙中未找到该活动的定时任务（搜索关键词：%s），请确认青龙中已创建对应的定时任务", envKey)
+		return nil, fmt.Errorf(
+			"在青龙中未找到该活动对应的脚本（活动：%s，环境变量：%s）\n\n可能原因：\n1. 青龙中尚未创建该活动的定时任务\n2. 任务名称与活动名称不一致\n3. 建议在青龙中创建定时任务时，任务名称包含活动名称关键字",
+			targetCfg.Name, envKey,
+		)
 	}
 
 	envs, err := client.QueryEnvs(envKey)
@@ -859,10 +896,11 @@ func PortalRunUserTask(userNumber int, activityID, envKey string, envID int) (*R
 	}()
 
 	return &RunUserTaskResult{
-		TaskID:   taskID,
-		Activity: targetCfg.Name,
-		Script:   scriptPath,
-		Message:  "任务已启动（将在10分钟后自动清理）",
+		TaskID:      taskID,
+		Activity:    targetCfg.Name,
+		Script:      scriptPath,
+		MatchedTask: matchedTaskName,
+		Message:     "任务已启动（将在10分钟后自动清理）",
 	}, nil
 }
 
