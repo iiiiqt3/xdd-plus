@@ -491,27 +491,44 @@ func executeScript(sender *Sender, cmdPath string, args ...string) (string, erro
 
 // ===================== 记录CK =====================
 func handleRecordCKByGo(qq int, ckValue, finalRemarks, envKey string, config *ActivityConfig) (string, error) {
-	qlConfig := getQingLongConfigForActivity(config.ID)
-	if qlConfig == nil {
-		return "", fmt.Errorf("无法获取青龙配置")
-	}
-
-	client := NewQingLongClient(qlConfig)
-
-	duplicate, err := client.CheckDuplicateRemarks(finalRemarks, envKey)
+	duplicate, err := CheckDuplicateRemarksDB(finalRemarks, envKey)
 	if err != nil {
-		sanitizedErr := SanitizeError(err)
-		return "", fmt.Errorf("检查重复备注失败：%v", sanitizedErr)
+		return "", fmt.Errorf("检查重复备注失败：%v", err)
 	}
 
 	if duplicate {
 		return "记录失败，已有相同备注，需换一个备注.", nil
 	}
 
-	if err := client.SubmitEnv(envKey, ckValue, finalRemarks); err != nil {
-		sanitizedErr := SanitizeError(err)
-		return "", fmt.Errorf("提交环境变量失败：%v", sanitizedErr)
+	expireDate := ""
+	if config.IsMonthlyDeduct {
+		d, ok := ParseRemarksDate(finalRemarks)
+		if ok {
+			expireDate = d.Format(DateLayout)
+		}
 	}
+
+	project := &ActivityProject{
+		ActivityID:         config.ID,
+		ActivityName:       config.Name,
+		EnvKey:             envKey,
+		EnvValue:           ckValue,
+		Remarks:            finalRemarks,
+		UserNumber:         qq,
+		QingLongConfigName: config.QingLongConfigName,
+		Status:             0,
+		ExpireDate:         expireDate,
+		IsMonthlyDeduct:    config.IsMonthlyDeduct,
+		MonthlyCoin:        config.MonthlyCoin,
+		NeedCoin:           config.NeedCoin,
+		SyncStatus:         "pending",
+	}
+
+	if err := CreateActivityProject(project); err != nil {
+		return "", fmt.Errorf("保存到数据库失败：%v", err)
+	}
+
+	go TriggerSync(project.ID)
 
 	return "记录成功", nil
 }
@@ -661,50 +678,39 @@ func HandleRecordCK(sender *Sender) interface{} {
 
 // ===================== 更新CK =====================
 func handleUpdateCKByGo(qq int, ckValue, remarks, envKey string, config *ActivityConfig) (string, error) {
-	qlConfig := getQingLongConfigForActivity(config.ID)
-	if qlConfig == nil {
-		log.Printf("[用户%d][更新CK] 获取青龙配置失败，活动ID：%s", qq, config.ID)
-		return "", fmt.Errorf("获取青龙配置失败，请联系管理员")
-	}
-
-	client := NewQingLongClient(qlConfig)
-
-	envItem, err := client.FindEnvByRemarks(remarks, envKey)
+	project, err := GetActivityProjectByRemarks(config.ID, remarks, envKey)
 	if err != nil {
-		sanitizedErr := SanitizeError(err)
-		log.Printf("[用户%d][更新CK] 查询账号失败，备注：%s，错误：%v", qq, remarks, sanitizedErr)
-		if strings.Contains(err.Error(), "未找到") {
+		log.Printf("[用户%d][更新CK] 查询账号失败，备注：%s，错误：%v", qq, remarks, err)
+		if strings.Contains(err.Error(), "record not found") {
 			return "", fmt.Errorf("未找到该账号信息，无法更新")
 		}
-		return "", fmt.Errorf("查询账号信息失败：%v", sanitizedErr)
+		return "", fmt.Errorf("查询账号信息失败：%v", err)
 	}
 
-	if envItem.Status != 0 {
+	if project.Status != 0 {
 		log.Printf("[用户%d][更新CK] 账号处于禁用状态（Status=%d），拒绝更新，备注：%s，ID=%d",
-			qq, envItem.Status, remarks, envItem.ID)
-		return "", fmt.Errorf("该账号已禁用（状态码：%d），不允许更新！请先发送【记录授权】", envItem.Status)
+			qq, project.Status, remarks, project.ID)
+		return "", fmt.Errorf("该账号已禁用（状态码：%d），不允许更新！请先发送【记录授权】", project.Status)
 	}
 
 	if ckValue == "" {
 		log.Printf("[用户%d][更新CK] 提交的CK值为空，备注：%s", qq, remarks)
 		return "", fmt.Errorf("提交的CK值不能为空")
 	}
-	if ckValue == envItem.Value {
+	if ckValue == project.EnvValue {
 		log.Printf("[用户%d][更新CK] CK值未变化，备注：%s", qq, remarks)
 		return "更新失败：提交的CK与原有CK相同", nil
 	}
 
-	if err := client.UpdateEnv(envItem.ID, envItem.Name, ckValue, envItem.Remarks); err != nil {
-		sanitizedErr := SanitizeError(err)
-		log.Printf("[用户%d][更新CK] 更新环境变量失败，备注：%s，错误：%v", qq, remarks, sanitizedErr)
-		return "", fmt.Errorf("更新CK失败：%v", sanitizedErr)
+	project.EnvValue = ckValue
+	project.SyncStatus = "pending_update"
+	project.SyncError = ""
+	if err := UpdateActivityProject(project); err != nil {
+		log.Printf("[用户%d][更新CK] 更新数据库失败，备注：%s，错误：%v", qq, remarks, err)
+		return "", fmt.Errorf("更新CK失败：%v", err)
 	}
 
-	if envItem.Status == 0 {
-		if err := client.EnableEnv(envItem.ID); err != nil {
-			log.Printf("[用户%d][更新CK] 启用环境变量警告，备注：%s，错误：%v", qq, remarks, err)
-		}
-	}
+	go TriggerSync(project.ID)
 
 	log.Printf("[用户%d][更新CK] 更新成功，备注：%s", qq, remarks)
 	return "环境变量值更新成功", nil
@@ -897,28 +903,21 @@ func HandleUpdateCK(sender *Sender) interface{} {
 
 // ===================== 删除CK =====================
 func handleDeleteCKByGo(qq int, remarks, envKey string, config *ActivityConfig) (string, error) {
-	qlConfig := getQingLongConfigForActivity(config.ID)
-	if qlConfig == nil {
-		return "", fmt.Errorf("无法获取青龙配置，请联系管理员")
-	}
-
-	client := NewQingLongClient(qlConfig)
-
-	envItem, err := client.FindEnvByRemarks(remarks, envKey)
+	project, err := GetActivityProjectByRemarks(config.ID, remarks, envKey)
 	if err != nil {
-		if strings.Contains(err.Error(), "未找到备注为") {
+		if strings.Contains(err.Error(), "record not found") {
 			return "", fmt.Errorf("未找到该备注对应的CK记录")
 		}
-		sanitizedErr := SanitizeError(err)
-		log.Printf("[用户%d][删除CK] 查询账号失败，备注：%s，错误：%v", qq, remarks, sanitizedErr)
-		return "", fmt.Errorf("查询账号信息失败：%v", sanitizedErr)
+		log.Printf("[用户%d][删除CK] 查询账号失败，备注：%s，错误：%v", qq, remarks, err)
+		return "", fmt.Errorf("查询账号信息失败：%v", err)
 	}
 
-	if err := client.DeleteEnv(envItem.ID); err != nil {
-		sanitizedErr := SanitizeError(err)
-		log.Printf("[用户%d][删除CK] 删除环境变量失败，备注：%s，错误：%v", qq, remarks, sanitizedErr)
-		return "", fmt.Errorf("删除账号失败：%v", sanitizedErr)
+	if err := SoftDeleteActivityProject(project.ID); err != nil {
+		log.Printf("[用户%d][删除CK] 删除失败，备注：%s，错误：%v", qq, remarks, err)
+		return "", fmt.Errorf("删除账号失败：%v", err)
 	}
+
+	go TriggerSync(project.ID)
 
 	return "环境变量删除成功", nil
 }
@@ -1489,41 +1488,25 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		
 		// =============================================================
 
-		qlConfig := getQingLongConfigForActivity(config.ID)
-		if qlConfig == nil {
-			sender.Reply("无法获取青龙配置")
-			return
-		}
-		
-		client := NewQingLongClient(qlConfig)
-		
-		// 6. 查找对应的环境变量
-		envItem, err := client.FindEnvByRemarks(selectedRemarks, config.EnvKey)
+		project, err := GetActivityProjectByRemarks(config.ID, selectedRemarks, config.EnvKey)
 		if err != nil {
 			sender.Reply(fmt.Sprintf("查询账号信息失败：%v", err))
 			log.Printf("查询账号信息失败：%v", err)
 			return
 		}
 
-		// 7. 更新环境变量（主要是更新 Remarks）
-		err = client.UpdateEnv(envItem.ID, config.EnvKey, envItem.Value, newRemarks)
-		if err != nil {
-			sender.Reply(fmt.Sprintf("更新授权信息失败：%v", err))
-			log.Printf("更新授权信息失败：%v", err)
+		project.Remarks = newRemarks
+		project.ExpireDate = newExpireDate
+		project.Status = 0
+		project.SyncStatus = "pending_update"
+		project.SyncError = ""
+		if err := UpdateActivityProject(project); err != nil {
+			sender.Reply(fmt.Sprintf("更新数据库失败：%v", err))
+			log.Printf("更新数据库失败：%v", err)
 			return
 		}
 
-		// 8. 确保环境变量是启用状态
-		// 注意：根据 DisableExpiredCKs 逻辑，Status=0 表示启用。
-		// 如果 FindEnv 查出来是 0，说明本来就是启用的。
-		// 这里的逻辑保留你原有的：如果是 0 就调用 EnableEnv (可能是为了确保状态刷新，或者你的客户端实现里 0 代表需要激活)
-		// 如果你的 QingLongClient.EnableEnv 在已经是启用状态时会报错，建议加个判断或直接去掉这个块。
-		// 此处保持与你原代码一致：
-		if envItem.Status == 0 {
-			if err := client.EnableEnv(envItem.ID); err != nil {
-				log.Printf("启用环境变量失败（或无需启用）：%v", err)
-			}
-		}
+		go TriggerSync(project.ID)
 
 		// 9. 扣除积分
 		RemCoin(sender.UserID, totalCoin)

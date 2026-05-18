@@ -53,6 +53,7 @@ func initDB() {
 		&PortalPrayRecord{},
 		&AppFeedback{},
 		&PortalWxDevice{},
+		&ActivityProject{},
 		//&LoginSelectType{},
 	)
 

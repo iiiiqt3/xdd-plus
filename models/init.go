@@ -44,6 +44,12 @@ func init() {
 		logs.Info("活动配置热加载已启动")
 	}
 
+	// 启动数据库→青龙同步服务
+	InitSyncService()
+
+	// 从青龙迁移已有数据到数据库（仅首次运行时执行）
+	go MigrateFromQingLongToDB()
+
 	initiiiiqtTask()
 }
 

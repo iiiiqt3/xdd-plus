@@ -268,52 +268,57 @@ func GetPortalActivities() []PortalActivityItem {
 }
 
 func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
-	uid := strconv.Itoa(userNumber)
 	var projects []PortalProjectItem
 
+	dbProjects, err := GetActivityProjectsByUser(userNumber)
+	if err != nil {
+		return nil, err
+	}
+
 	activityConfigsMu.RLock()
-	configs := make([]*ActivityConfig, 0, len(ActivityConfigs))
-	configs = append(configs, ActivityConfigs...)
+	configMap := make(map[string]*ActivityConfig)
+	for _, cfg := range ActivityConfigs {
+		if cfg != nil {
+			configMap[cfg.ID] = cfg
+		}
+	}
 	activityConfigsMu.RUnlock()
 
-	for _, cfg := range configs {
+	for _, dbProj := range dbProjects {
+		cfg, exists := configMap[dbProj.ActivityID]
+		if !exists {
+			continue
+		}
 		if !isPortalActivityAvailable(cfg) {
 			continue
 		}
-		qlConfig := getQingLongConfigForActivity(cfg.ID)
-		if qlConfig == nil {
-			continue
+
+		projectFields := make([]PortalActivityField, 0, len(cfg.InputFields))
+		for _, field := range cfg.InputFields {
+			projectFields = append(projectFields, PortalActivityField{
+				Key:        field.Key,
+				Prompt:     field.Prompt,
+				Required:   field.Required,
+				TrimSpace:  field.TrimSpace,
+				TimeoutSec: field.TimeoutSec,
+				ErrorMsg:   field.ErrorMsg,
+			})
 		}
-		client := NewQingLongClient(qlConfig)
-		envs, err := client.QueryEnvByRemarks(uid, cfg.EnvKey)
-		if err != nil {
-			continue
-		}
-		for _, env := range envs {
-			projectFields := make([]PortalActivityField, 0, len(cfg.InputFields))
-			for _, field := range cfg.InputFields {
-				projectFields = append(projectFields, PortalActivityField{
-					Key:        field.Key,
-					Prompt:     field.Prompt,
-					Required:   field.Required,
-					TrimSpace:  field.TrimSpace,
-					TimeoutSec: field.TimeoutSec,
-					ErrorMsg:   field.ErrorMsg,
-				})
-			}
-			expireDate := ""
-			bizStatus := "active"
-			bizStatusText := "授权有效中"
-			daysLeft := 0
-			if t, ok := ParseRemarksDate(env.Remarks); ok {
-				expireDate = t.Format(DateLayout)
+
+		expireDate := ""
+		bizStatus := "active"
+		bizStatusText := "授权有效中"
+		daysLeft := 0
+		if dbProj.ExpireDate != "" {
+			expireDate = dbProj.ExpireDate
+			if t, err := time.Parse(DateLayout, dbProj.ExpireDate); err == nil {
 				threshold := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
 				durationLeft := threshold.Sub(time.Now())
 				daysLeft = int(durationLeft.Hours() / 24)
 				if daysLeft == 0 && durationLeft > 0 {
 					daysLeft = 1
 				}
-				if expired, _ := CheckRemarksExpired(env.Remarks); expired || env.Status != 0 {
+				if durationLeft <= 0 || dbProj.Status != 0 {
 					bizStatus = "expired"
 					bizStatusText = "已失效"
 					if daysLeft < 0 {
@@ -323,43 +328,45 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 					bizStatus = "expiring"
 					bizStatusText = "快到期"
 				}
-			} else if env.Status != 0 {
-				bizStatus = "expired"
-				bizStatusText = "已失效"
 			}
-			statusText := "已禁用"
-			if env.Status == 0 {
-				statusText = "已启用"
-			}
-			priceText := fmt.Sprintf("一次性 %d 积分", cfg.NeedCoin)
-			if cfg.IsMonthlyDeduct {
-				priceText = fmt.Sprintf("每月 %d 积分", cfg.MonthlyCoin)
-			}
-			projects = append(projects, PortalProjectItem{
-				ActivityID:      cfg.ID,
-				ActivityName:    cfg.Name,
-				EnvKey:          cfg.EnvKey,
-				EnvID:           env.ID,
-				EnvValue:        env.Value,
-				QingLongConfig:  qlConfig.Name,
-				Remark:          env.Remarks,
-				DisplayName:     GetFirstRemarkParam(env.Remarks),
-				ExpireDate:      expireDate,
-				Status:          env.Status,
-				StatusText:      statusText,
-				UpdatedAt:       env.UpdatedAt,
-				CreatedAt:       env.CreatedAt,
-				IsMonthlyDeduct: cfg.IsMonthlyDeduct,
-				MonthlyCoin:     cfg.MonthlyCoin,
-				NeedCoin:        cfg.NeedCoin,
-				BizStatus:       bizStatus,
-				BizStatusText:   bizStatusText,
-				DaysLeft:        daysLeft,
-				PriceText:       priceText,
-				InputFields:     projectFields,
-				CKTemplate:      cfg.CKTemplate,
-			})
+		} else if dbProj.Status != 0 {
+			bizStatus = "expired"
+			bizStatusText = "已失效"
 		}
+
+		statusText := "已禁用"
+		if dbProj.Status == 0 {
+			statusText = "已启用"
+		}
+		priceText := fmt.Sprintf("一次性 %d 积分", dbProj.NeedCoin)
+		if dbProj.IsMonthlyDeduct {
+			priceText = fmt.Sprintf("每月 %d 积分", dbProj.MonthlyCoin)
+		}
+
+		projects = append(projects, PortalProjectItem{
+			ActivityID:      dbProj.ActivityID,
+			ActivityName:    dbProj.ActivityName,
+			EnvKey:          dbProj.EnvKey,
+			EnvID:           dbProj.QingLongEnvID,
+			EnvValue:        dbProj.EnvValue,
+			QingLongConfig:  dbProj.QingLongConfigName,
+			Remark:          dbProj.Remarks,
+			DisplayName:     dbProj.RemarkAlias,
+			ExpireDate:      expireDate,
+			Status:          dbProj.Status,
+			StatusText:      statusText,
+			UpdatedAt:       dbProj.UpdatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt:       dbProj.CreatedAt.Format("2006-01-02 15:04:05"),
+			IsMonthlyDeduct: dbProj.IsMonthlyDeduct,
+			MonthlyCoin:     dbProj.MonthlyCoin,
+			NeedCoin:        dbProj.NeedCoin,
+			BizStatus:       bizStatus,
+			BizStatusText:   bizStatusText,
+			DaysLeft:        daysLeft,
+			PriceText:       priceText,
+			InputFields:     projectFields,
+			CKTemplate:      cfg.CKTemplate,
+		})
 	}
 
 	sort.Slice(projects, func(i, j int) bool {
@@ -428,14 +435,29 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 		finalRemarks = fmt.Sprintf("%s/%s", finalRemarks, expireDate)
 	}
 
-	output, err := handleRecordCKByGo(userNumber, ckValue, finalRemarks, cfg.EnvKey, cfg)
-	if err != nil {
-		return "", err
+	project := &ActivityProject{
+		ActivityID:         cfg.ID,
+		ActivityName:       cfg.Name,
+		EnvKey:             cfg.EnvKey,
+		EnvValue:           ckValue,
+		Remarks:            finalRemarks,
+		UserNumber:         userNumber,
+		QingLongConfigName: cfg.QingLongConfigName,
+		Status:             0,
+		ExpireDate:         expireDate,
+		IsMonthlyDeduct:    cfg.IsMonthlyDeduct,
+		MonthlyCoin:        cfg.MonthlyCoin,
+		NeedCoin:           cfg.NeedCoin,
+		SyncStatus:         "pending",
 	}
-	if !strings.Contains(output, "记录成功") {
-		return "", fmt.Errorf(output)
+
+	if err := CreateActivityProject(project); err != nil {
+		return "", fmt.Errorf("保存到数据库失败：%v", err)
 	}
+
 	RemCoin(userNumber, totalCoin)
+
+	go TriggerSync(project.ID)
 
 	if cfg.IsMonthlyDeduct {
 		return fmt.Sprintf("添加%s成功，扣除%d积分，有效期至%s", cfg.Name, totalCoin, expireDate), nil
@@ -461,12 +483,7 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 		return "", fmt.Errorf("积分不足，当前%d，需要%d", userCoin, totalCoin)
 	}
 
-	qlConfig := getQingLongConfigForActivity(cfg.ID)
-	if qlConfig == nil {
-		return "", fmt.Errorf("无法获取青龙配置")
-	}
-	client := NewQingLongClient(qlConfig)
-	envItem, err := client.FindEnvByRemarks(remarks, cfg.EnvKey)
+	project, err := GetActivityProjectByRemarks(activityID, remarks, cfg.EnvKey)
 	if err != nil {
 		return "", fmt.Errorf("未找到待续费账号")
 	}
@@ -478,10 +495,19 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 	}
 	newRemarks := BuildMonthDeductRemarks(remarks, newExpireDate)
 
-	if err := client.UpdateEnv(envItem.ID, cfg.EnvKey, envItem.Value, newRemarks); err != nil {
-		return "", fmt.Errorf("更新授权失败：%v", SanitizeError(err))
+	project.Remarks = newRemarks
+	project.ExpireDate = newExpireDate
+	project.Status = 0
+	project.SyncStatus = "pending_update"
+	project.SyncError = ""
+	if err := UpdateActivityProject(project); err != nil {
+		return "", fmt.Errorf("更新数据库失败：%v", err)
 	}
+
 	RemCoin(userNumber, totalCoin)
+
+	go TriggerSync(project.ID)
+
 	return fmt.Sprintf("授权成功，扣除%d积分，有效期至%s", totalCoin, newExpireDate), nil
 }
 
@@ -492,6 +518,11 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 	}
 
 	returnCoin := 0
+	project, err := GetActivityProjectByRemarks(activityID, remarks, cfg.EnvKey)
+	if err != nil {
+		return "", fmt.Errorf("未找到对应项目记录")
+	}
+
 	if cfg.IsMonthlyDeduct && cfg.MonthlyCoin > 0 {
 		parts := strings.Split(remarks, "/")
 		if len(parts) >= 1 {
@@ -507,13 +538,12 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 		}
 	}
 
-	output, err := handleDeleteCKByGo(userNumber, remarks, cfg.EnvKey, cfg)
-	if err != nil {
-		return "", err
+	if err := SoftDeleteActivityProject(project.ID); err != nil {
+		return "", fmt.Errorf("删除失败：%v", err)
 	}
-	if !strings.Contains(output, "删除成功") {
-		return "", fmt.Errorf(output)
-	}
+
+	go TriggerSync(project.ID)
+
 	if returnCoin > 0 {
 		AdddCoin(userNumber, returnCoin)
 		return fmt.Sprintf("删除成功，已退还 %d 积分", returnCoin), nil
@@ -530,19 +560,20 @@ func PortalUpdateProject(userNumber int, activityID, remarks, newCkValue string)
 		return "", fmt.Errorf("CK 值不能为空")
 	}
 
-	qlConfig := getQingLongConfigForActivity(cfg.ID)
-	if qlConfig == nil {
-		return "", fmt.Errorf("无法获取青龙配置")
-	}
-	client := NewQingLongClient(qlConfig)
-	envItem, err := client.FindEnvByRemarks(remarks, cfg.EnvKey)
+	project, err := GetActivityProjectByRemarks(activityID, remarks, cfg.EnvKey)
 	if err != nil {
 		return "", fmt.Errorf("未找到对应项目记录")
 	}
 
-	if err := client.UpdateEnv(envItem.ID, cfg.EnvKey, newCkValue, envItem.Remarks); err != nil {
-		return "", fmt.Errorf("更新 CK 失败：%v", SanitizeError(err))
+	project.EnvValue = newCkValue
+	project.SyncStatus = "pending_update"
+	project.SyncError = ""
+	if err := UpdateActivityProject(project); err != nil {
+		return "", fmt.Errorf("更新 CK 失败：%v", err)
 	}
+
+	go TriggerSync(project.ID)
+
 	return "CK 更新成功", nil
 }
 

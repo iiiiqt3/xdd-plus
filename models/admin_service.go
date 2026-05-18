@@ -2377,25 +2377,19 @@ func summarizeActivityStats(stats []ActivityStat) (int, int, int, int) {
 
 func buildActivityStat(cfg ActivityConfig) ActivityStat {
 	stat := ActivityStat{ActivityID: cfg.ID, ActivityName: cfg.Name, DisplayOrder: cfg.DisplayOrder, QLConfig: cfg.QingLongConfigName}
-	qlConfig := getQingLongConfigForActivity(cfg.ID)
-	if qlConfig == nil {
+
+	projects, err := GetActivityProjectsByActivityID(cfg.ID)
+	if err != nil || len(projects) == 0 {
 		return stat
 	}
-	client := getActivityStatsQLClient(qlConfig)
-	if client == nil {
-		return stat
-	}
-	envs, err := client.QueryEnvs(cfg.EnvKey)
-	if err != nil || len(envs) == 0 {
-		return stat
-	}
+
 	now := time.Now()
-	for _, env := range envs {
+	for _, project := range projects {
 		stat.Total++
-		if env.Status == 0 {
-			if cfg.IsMonthlyDeduct {
-				expireDate, ok := ParseRemarksDate(env.Remarks)
-				if ok {
+		if project.Status == 0 {
+			if cfg.IsMonthlyDeduct && project.ExpireDate != "" {
+				expireDate, parseErr := time.Parse(DateLayout, project.ExpireDate)
+				if parseErr == nil {
 					expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
 					remain := expireThreshold.Sub(now)
 					if remain <= 0 {
@@ -2412,9 +2406,9 @@ func buildActivityStat(cfg ActivityConfig) ActivityStat {
 			} else {
 				stat.Valid++
 			}
-		} else if cfg.IsMonthlyDeduct {
-			expireDate, ok := ParseRemarksDate(env.Remarks)
-			if ok {
+		} else if cfg.IsMonthlyDeduct && project.ExpireDate != "" {
+			expireDate, parseErr := time.Parse(DateLayout, project.ExpireDate)
+			if parseErr == nil {
 				expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
 				if now.After(expireThreshold) || now.Equal(expireThreshold) {
 					stat.Expired++
@@ -2527,25 +2521,19 @@ func buildActivityAuthList() []ActivityAuthItem {
 
 func buildActivityAuthItem(cfg ActivityConfig) ActivityAuthItem {
 	item := ActivityAuthItem{ActivityID: cfg.ID, ActivityName: cfg.Name, EnvKey: cfg.EnvKey, QLConfig: cfg.QingLongConfigName, DisplayOrder: cfg.DisplayOrder, MonthlyCoin: cfg.MonthlyCoin, IsMonthlyDeduct: cfg.IsMonthlyDeduct}
-	qlConfig := getQingLongConfigForActivity(cfg.ID)
-	if qlConfig == nil {
+
+	projects, err := GetActivityProjectsByActivityID(cfg.ID)
+	if err != nil || len(projects) == 0 {
 		return item
 	}
-	client := getActivityStatsQLClient(qlConfig)
-	if client == nil {
-		return item
-	}
-	envs, err := client.QueryEnvs(cfg.EnvKey)
-	if err != nil || len(envs) == 0 {
-		return item
-	}
+
 	now := time.Now()
-	for _, env := range envs {
+	for _, project := range projects {
 		item.Total++
-		if env.Status == 0 {
-			if cfg.IsMonthlyDeduct {
-				expireDate, ok := ParseRemarksDate(env.Remarks)
-				if ok {
+		if project.Status == 0 {
+			if cfg.IsMonthlyDeduct && project.ExpireDate != "" {
+				expireDate, parseErr := time.Parse(DateLayout, project.ExpireDate)
+				if parseErr == nil {
 					expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
 					if now.After(expireThreshold) || now.Equal(expireThreshold) {
 						item.Expired++
@@ -2573,18 +2561,15 @@ func GetActivityAuthAccounts(activityID string) ([]ActivityAuthAccountItem, erro
 	if !cfg.IsMonthlyDeduct {
 		return nil, fmt.Errorf("该活动不是月扣费活动，不支持删除账号退积分")
 	}
-	qlConfig := getQingLongConfigForActivity(cfg.ID)
-	if qlConfig == nil {
-		return nil, fmt.Errorf("无法获取青龙配置")
-	}
-	client := NewQingLongClient(qlConfig)
-	envs, err := client.QueryEnvs(cfg.EnvKey)
+
+	projects, err := GetActivityProjectsByActivityID(activityID)
 	if err != nil {
-		return nil, fmt.Errorf("查询环境变量失败：%v", err)
+		return nil, fmt.Errorf("查询数据库失败：%v", err)
 	}
-	items := make([]ActivityAuthAccountItem, 0, len(envs))
-	for _, env := range envs {
-		item := buildActivityAuthAccountItem(cfg, env)
+
+	items := make([]ActivityAuthAccountItem, 0, len(projects))
+	for _, project := range projects {
+		item := buildActivityAuthAccountItemByProject(cfg, &project)
 		items = append(items, item)
 	}
 	sort.SliceStable(items, func(i, j int) bool {
@@ -2594,6 +2579,44 @@ func GetActivityAuthAccounts(activityID string) ([]ActivityAuthAccountItem, erro
 		return items[i].RemainDays > items[j].RemainDays
 	})
 	return items, nil
+}
+
+func buildActivityAuthAccountItemByProject(cfg *ActivityConfig, project *ActivityProject) ActivityAuthAccountItem {
+	accountAlias := project.RemarkAlias
+	if accountAlias == "" {
+		accountAlias = project.Remarks
+	}
+	expireDate := project.ExpireDate
+	remainDays := 0
+	refundCoin := 0
+	if expireDate != "" {
+		if d, parseErr := time.Parse(DateLayout, expireDate); parseErr == nil {
+			remainDays = int(math.Ceil(time.Until(d).Hours() / 24))
+			if remainDays < 0 {
+				remainDays = 0
+			}
+			if cfg.MonthlyCoin > 0 {
+				refundCoin = int(math.Round(float64(cfg.MonthlyCoin) * float64(remainDays) / 30))
+			}
+		}
+	}
+	statusText := "正常"
+	if project.Status != 0 {
+		statusText = "已禁用"
+	} else if remainDays <= 0 && expireDate != "" {
+		statusText = "已到期"
+	}
+	return ActivityAuthAccountItem{
+		EnvID:        project.QingLongEnvID,
+		Remarks:      project.Remarks,
+		AccountAlias: accountAlias,
+		UserNumber:   project.UserNumber,
+		ExpireDate:   expireDate,
+		RemainDays:   remainDays,
+		RefundCoin:   refundCoin,
+		Status:       project.Status,
+		StatusText:   statusText,
+	}
 }
 
 func buildActivityAuthAccountItem(cfg *ActivityConfig, env QLEnvItem) ActivityAuthAccountItem {
@@ -2662,26 +2685,25 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 	if reason == "" {
 		reason = "管理员删除授权账号"
 	}
-	qlConfig := getQingLongConfigForActivity(cfg.ID)
-	if qlConfig == nil {
-		return 0, 0, fmt.Errorf("无法获取青龙配置")
-	}
-	client := NewQingLongClient(qlConfig)
-	envs, err := client.QueryEnvs(cfg.EnvKey)
+
+	projects, err := GetActivityProjectsByActivityID(activityID)
 	if err != nil {
-		return 0, 0, fmt.Errorf("查询环境变量失败：%v", err)
+		return 0, 0, fmt.Errorf("查询数据库失败：%v", err)
 	}
-	envMap := make(map[int]QLEnvItem, len(envs))
-	for _, env := range envs {
-		envMap[env.ID] = env
+	projectMapByEnvID := make(map[int]ActivityProject, len(projects))
+	for _, p := range projects {
+		projectMapByEnvID[p.QingLongEnvID] = p
 	}
+
 	selectedItems := make([]ActivityAuthAccountItem, 0, len(cleanEnvIDs))
+	selectedDBIDs := make([]int, 0, len(cleanEnvIDs))
 	for _, envID := range cleanEnvIDs {
-		target, ok := envMap[envID]
+		target, ok := projectMapByEnvID[envID]
 		if !ok {
 			return 0, 0, fmt.Errorf("未找到要删除的授权账号：%d", envID)
 		}
-		selectedItems = append(selectedItems, buildActivityAuthAccountItem(cfg, target))
+		selectedItems = append(selectedItems, buildActivityAuthAccountItemByProject(cfg, &target))
+		selectedDBIDs = append(selectedDBIDs, target.ID)
 	}
 	deletedCount := 0
 	totalRefundCoin := 0
@@ -2694,11 +2716,12 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 		}
 	}
 
-	for _, item := range selectedItems {
-		if err := client.DeleteEnv(item.EnvID); err != nil {
-			sanitizedErr := SanitizeError(err)
-			return deletedCount, totalRefundCoin, fmt.Errorf("删除青龙环境变量失败：%v", sanitizedErr)
+	for i, item := range selectedItems {
+		dbID := selectedDBIDs[i]
+		if err := SoftDeleteActivityProject(dbID); err != nil {
+			return deletedCount, totalRefundCoin, fmt.Errorf("删除数据库记录失败：%v", err)
 		}
+		go TriggerSync(dbID)
 		deletedCount++
 		totalRefundCoin += item.RefundCoin
 		if item.UserNumber > 0 && item.RefundCoin > 0 {
@@ -2742,30 +2765,25 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 		return 0, 0, fmt.Errorf("账号ID无效")
 	}
 
-	qlConfig := getQingLongConfigForActivity(cfg.ID)
-	if qlConfig == nil {
-		return 0, 0, fmt.Errorf("无法获取青龙配置")
-	}
-	client := NewQingLongClient(qlConfig)
-	envs, err := client.QueryEnvs(cfg.EnvKey)
+	projects, err := GetActivityProjectsByActivityID(activityID)
 	if err != nil {
-		return 0, 0, fmt.Errorf("查询环境变量失败：%v", err)
+		return 0, 0, fmt.Errorf("查询数据库失败：%v", err)
 	}
-	if len(envs) == 0 {
+	if len(projects) == 0 {
 		return 0, 0, fmt.Errorf("该活动暂无用户数据")
 	}
 
-	envMap := make(map[int]QLEnvItem, len(envs))
-	for _, env := range envs {
-		envMap[env.ID] = env
+	projectMapByEnvID := make(map[int]ActivityProject, len(projects))
+	for _, p := range projects {
+		projectMapByEnvID[p.QingLongEnvID] = p
 	}
-	selectedEnvs := make([]QLEnvItem, 0, len(cleanEnvIDs))
+	selectedProjects := make([]ActivityProject, 0, len(cleanEnvIDs))
 	for _, envID := range cleanEnvIDs {
-		target, ok := envMap[envID]
+		target, ok := projectMapByEnvID[envID]
 		if !ok {
 			return 0, 0, fmt.Errorf("未找到要调整的授权账号：%d", envID)
 		}
-		selectedEnvs = append(selectedEnvs, target)
+		selectedProjects = append(selectedProjects, target)
 	}
 
 	dirText := "增加"
@@ -2777,9 +2795,14 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 	failed := 0
 	notifyCount := 0
 
-	for _, env := range selectedEnvs {
-		oldDate, ok := ParseRemarksDate(env.Remarks)
-		if !ok {
+	for _, project := range selectedProjects {
+		if project.ExpireDate == "" {
+			failed++
+			continue
+		}
+
+		oldDate, err := time.Parse(DateLayout, project.ExpireDate)
+		if err != nil {
 			failed++
 			continue
 		}
@@ -2792,24 +2815,26 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 		}
 
 		newDateStr := newDate.Format(DateLayout)
-		newRemarks := BuildMonthDeductRemarks(env.Remarks, newDateStr)
 
-		if err := client.UpdateEnv(env.ID, cfg.EnvKey, env.Value, newRemarks); err != nil {
-			log.Printf("[批量改备注] 更新环境变量失败，ID=%d，错误：%v", env.ID, SanitizeError(err))
+		project.ExpireDate = newDateStr
+		project.Remarks = BuildMonthDeductRemarks(project.Remarks, newDateStr)
+		project.RemarkAlias = GetFirstRemarkParam(project.Remarks)
+		project.SyncStatus = "pending_update"
+		project.SyncError = ""
+		if err := UpdateActivityProject(&project); err != nil {
+			log.Printf("[批量改备注] 更新数据库失败，ID=%d，错误：%v", project.ID, err)
 			failed++
 			continue
 		}
+		go TriggerSync(project.ID)
+
 		updated++
 
-		parts := strings.Split(env.Remarks, "/")
-		accountAlias := "未知账号"
-		userID := ""
-		if len(parts) >= 1 && parts[0] != "" {
-			accountAlias = strings.TrimSpace(parts[0])
+		accountAlias := project.RemarkAlias
+		if accountAlias == "" {
+			accountAlias = "未知账号"
 		}
-		if len(parts) >= 2 {
-			userID = strings.TrimSpace(parts[1])
-		}
+		userID := fmt.Sprintf("%d", project.UserNumber)
 
 		if userID != "" {
 			msg := fmt.Sprintf(

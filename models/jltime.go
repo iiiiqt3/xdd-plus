@@ -144,15 +144,17 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 	totalDeleted := 0
 	notifyCount := 0
 
-	for _, activityConfig := range ActivityConfigs {
-		if !activityConfig.IsMonthlyDeduct {
-			continue
-		}
+	disabledExpiredProjects, err := GetDisabledExpiredProjects()
+	if err != nil {
+		logs.Error("查询过期已禁用项目失败：%v", err)
+		return
+	}
 
+	for _, project := range disabledExpiredProjects {
 		if len(activityIDs) > 0 {
 			found := false
 			for _, aid := range activityIDs {
-				if aid == activityConfig.ID {
+				if aid == project.ActivityID {
 					found = true
 					break
 				}
@@ -162,128 +164,88 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 			}
 		}
 
-		currentActivityID := activityConfig.ID
-		qlConfig := getQingLongConfigForActivity(currentActivityID)
-		if qlConfig == nil {
+		cfg := getActivityByID(project.ActivityID)
+		if cfg == nil {
 			continue
 		}
 
-		client := NewQingLongClient(qlConfig)
-		envs, err := client.QueryEnvs(activityConfig.EnvKey)
-		if err != nil || len(envs) == 0 {
+		expireDate, _ := time.Parse(DateLayout, project.ExpireDate)
+		expireThreshold := time.Date(
+			expireDate.Year(), expireDate.Month(), expireDate.Day(),
+			0, 0, 0, 0, time.Local,
+		).AddDate(0, 0, 1)
+
+		expiredDuration := now.Sub(expireThreshold)
+		if expiredDuration < 0 {
 			continue
 		}
+		expiredDays := int(expiredDuration.Hours() / 24)
 
-		for _, env := range envs {
-			// 只处理已禁用的CK（Status != 0，即被 DisableExpiredCKs 禁用的）
-			if env.Status == 0 {
-				continue
+		accountAlias := project.RemarkAlias
+		if accountAlias == "" {
+			accountAlias = "未知账号"
+		}
+		userID := fmt.Sprintf("%d", project.UserNumber)
+
+		if expiredDays == 30 {
+			msg := fmt.Sprintf(
+				"🔴【授权过期删除提醒】\n"+
+					"活动：%s\n"+
+					"账号备注：%s\n"+
+					"到期日期：%s\n"+
+					"已过期：%d 天\n\n"+
+					"⚠️ 您的CK已被禁用超过30天，将在明天自动删除！\n"+
+					"如需保留，请尽快发送【记录授权】续费，删除后无法恢复！",
+				project.ActivityName, accountAlias,
+				expireDate.Format(DateLayout), expiredDays)
+			logs.Info(">>> 过期删除通知 -> 用户:[%s] 账号:[%s] 活动:[%s] 过期[%d天]",
+				userID, accountAlias, project.ActivityName, expiredDays)
+			if userID != "" {
+				if channels.Robot {
+					PushByQQ(userID, msg)
+					notifyCount++
+					if notifyCount >= 2 {
+						delay := 3 + rand.Intn(3)
+						time.Sleep(time.Duration(delay) * time.Second)
+					}
+				}
+				if userNumber, err := strconv.Atoi(userID); err == nil {
+					CreateSystemWebNotification("授权过期删除提醒", msg, NotifyCategoryAuth, NotifySourceAuth, userNumber, channels)
+				}
+			}
+			totalNotified++
+		}
+
+		if expiredDays >= 31 {
+			logs.Info(">>> 过期CK超过30天，准备删除 -> 账号:[%s] 活动:[%s] DB ID:[%d] 过期[%d天]",
+				accountAlias, project.ActivityName, project.ID, expiredDays)
+
+			if err := SoftDeleteActivityProject(project.ID); err != nil {
+				logs.Error("删除过期项目失败 ID=%d: %v", project.ID, err)
+			} else {
+				go TriggerSync(project.ID)
+				totalDeleted++
 			}
 
-			// 解析备注中的过期日期
-			expireDate, ok := ParseRemarksDate(env.Remarks)
-			if !ok {
-				continue
-			}
-
-			// 计算过期阈值（到期日次日0点，与 CheckRemarksExpired 一致）
-			expireThreshold := time.Date(
-				expireDate.Year(), expireDate.Month(), expireDate.Day(),
-				0, 0, 0, 0, time.Local,
-			).AddDate(0, 0, 1)
-
-			// 已过期的天数
-			expiredDuration := now.Sub(expireThreshold)
-			if expiredDuration < 0 {
-				continue // 还没过期
-			}
-			expiredDays := int(expiredDuration.Hours() / 24)
-
-			// 解析备注中的用户ID
-			parts := strings.Split(env.Remarks, "/")
-			accountAlias := "未知账号"
-			userID := ""
-			if len(parts) >= 1 && parts[0] != "" {
-				accountAlias = strings.TrimSpace(parts[0])
-			}
-			if len(parts) >= 2 {
-				userID = strings.TrimSpace(parts[1])
-			}
-
-			// === 过期第30天：通知用户即将删除 ===
-			if expiredDays == 30 {
-				msg := fmt.Sprintf(
-					"🔴【授权过期删除提醒】\n"+
+			if userID != "" {
+				delMsg := fmt.Sprintf(
+					"📦【授权过期删除提醒】\n"+
 						"活动：%s\n"+
 						"账号备注：%s\n"+
 						"到期日期：%s\n"+
 						"已过期：%d 天\n\n"+
-						"⚠️ 您的CK已被禁用超过30天，将在明天自动删除！\n"+
-						"如需保留，请尽快发送【记录授权】续费，删除后无法恢复！",
-					activityConfig.Name, accountAlias,
-					expireDate.Format(DateLayout), expiredDays)
-				logs.Info(">>> 过期删除通知 -> 用户:[%s] 账号:[%s] 活动:[%s] 过期[%d天]",
-					userID, accountAlias, activityConfig.Name, expiredDays)
-				if userID != "" {
-					if channels.Robot {
-						PushByQQ(userID, msg)
-						notifyCount++
-						if notifyCount >= 2 {
-							delay := 3 + rand.Intn(3)
-							time.Sleep(time.Duration(delay) * time.Second)
-						}
-					}
-					if userNumber, err := strconv.Atoi(userID); err == nil {
-						CreateSystemWebNotification("授权过期删除提醒", msg, NotifyCategoryAuth, NotifySourceAuth, userNumber, channels)
+						"您的CK已过期超过30天，系统已直接删除。如需继续使用请重新发送【记录授权】续费。",
+					project.ActivityName, accountAlias, expireDate.Format(DateLayout), expiredDays)
+				if channels.Robot {
+					PushByQQ(userID, delMsg)
+					notifyCount++
+					if notifyCount >= 2 {
+						delay := 3 + rand.Intn(3)
+						time.Sleep(time.Duration(delay) * time.Second)
 					}
 				}
-				totalNotified++
-			}
-
-			if expiredDays >= 31 {
-				logs.Info(">>> 过期CK超过30天，准备删除青龙变量 -> 账号:[%s] 活动:[%s] ENV ID:[%d] 过期[%d天]",
-					accountAlias, activityConfig.Name, env.ID, expiredDays)
-				deleteOK := false
-				deleteErr := error(nil)
-				if env.Status != 0 {
-					deleteErr = client.DeleteEnv(env.ID)
-					deleteOK = deleteErr == nil
-				}
-				if userID != "" {
-					delMsg := fmt.Sprintf(
-						"📦【授权过期删除提醒】\n"+
-							"活动：%s\n"+
-							"账号备注：%s\n"+
-							"到期日期：%s\n"+
-							"已过期：%d 天\n\n"+
-							"您的CK已过期超过30天，系统已直接删除青龙变量。如需继续使用请重新发送【记录授权】续费。",
-						activityConfig.Name, accountAlias, expireDate.Format(DateLayout), expiredDays)
-					if !deleteOK {
-						delMsg = fmt.Sprintf(
-							"📦【授权过期删除失败提醒】\n"+
-								"活动：%s\n"+
-								"账号备注：%s\n"+
-								"到期日期：%s\n"+
-								"已过期：%d 天\n\n"+
-								"系统尝试删除过期CK失败，请联系管理员处理。失败原因：%v",
-							activityConfig.Name, accountAlias, expireDate.Format(DateLayout), expiredDays, deleteErr)
-					}
-					if channels.Robot {
-						PushByQQ(userID, delMsg)
-						notifyCount++
-						if notifyCount >= 2 {
-							delay := 3 + rand.Intn(3)
-							time.Sleep(time.Duration(delay) * time.Second)
-						}
-					}
-					if userNumber, err := strconv.Atoi(userID); err == nil {
-						CreateSystemWebNotification("授权过期删除提醒", delMsg, NotifyCategoryAuth, NotifySourceAuth, userNumber, channels)
-					}
-				}
-				if deleteOK {
-					totalDeleted++
-				} else {
-					logs.Error("删除过期CK失败 -> 账号:[%s] 活动:[%s] ENV ID:[%d] 错误:%v", accountAlias, activityConfig.Name, env.ID, deleteErr)
+				if userNumber, err := strconv.Atoi(userID); err == nil {
+					CreateSystemWebNotification("授权过期删除提醒", delMsg, NotifyCategoryAuth, NotifySourceAuth, userNumber, channels)
 				}
 			}
 		}
@@ -329,75 +291,54 @@ func DisableExpiredCKsCronWrapper() {
 }
 
 func DisableExpiredCKs(sender *Sender) {
-	// 如果是指令触发，打印触发用户信息；如果是定时任务，sender为nil
 	if sender != nil {
 		logs.Info("===== 用户【%d】触发禁用授权过期CK指令 =====", sender.UserID)
 	} else {
 		logs.Info("===== 开始检查并禁用过期CK（定时任务） =====")
 	}
 
-	// 🔴 修复点：ActivityConfigs 现在是切片，range 返回的是 index 和 value，没有 key
-	// 旧代码: for activityID, activityConfig := range ActivityConfigs
-	// 新代码:
-	for _, activityConfig := range ActivityConfigs {
-		if !activityConfig.IsMonthlyDeduct {
+	expiredProjects, err := GetExpiredProjects()
+	if err != nil {
+		logs.Error("查询过期项目失败：%v", err)
+		if sender != nil {
+			sender.Reply(fmt.Sprintf("查询过期项目失败：%v", err))
+		}
+		return
+	}
+
+	if len(expiredProjects) == 0 {
+		logs.Info("无过期CK需要禁用")
+		if sender != nil {
+			sender.Reply("无授权过期CK需要禁用")
+		}
+		return
+	}
+
+	for _, project := range expiredProjects {
+		cfg := getActivityByID(project.ActivityID)
+		if cfg == nil {
 			continue
 		}
 
-		// 使用结构体中的 ID 字段（初始化时已生成字符串 "1", "2"...）
-		currentActivityID := activityConfig.ID
+		logs.Info("CK将被禁用：备注【%s】，到期日【%s】，DB ID【%d】，当前状态【%d】",
+			project.Remarks, project.ExpireDate, project.ID, project.Status)
 
-		logs.Info("检查活动【%s】（ID：%s）的过期CK...", activityConfig.Name, currentActivityID)
-
-		qlConfig := getQingLongConfigForActivity(currentActivityID)
-		if qlConfig == nil {
-			logs.Warn("活动【%s】无法获取青龙配置，跳过", activityConfig.Name)
+		project.Status = 1
+		project.SyncStatus = "pending_disable"
+		project.SyncError = ""
+		if err := UpdateActivityProject(&project); err != nil {
+			logs.Error("更新数据库状态失败 ID=%d: %v", project.ID, err)
 			continue
 		}
 
-		client := NewQingLongClient(qlConfig)
-		envs, err := client.QueryEnvs(activityConfig.EnvKey)
-		if err != nil {
-			logs.Error("查询活动【%s】环境变量失败：%v", activityConfig.Name, err)
-			continue
-		}
-		if len(envs) == 0 {
-			logs.Info("活动【%s】无环境变量，跳过", activityConfig.Name)
-			continue
-		}
+		go TriggerSync(project.ID)
 
-		var expiredIDs []int
-		// 核心修复：适配青龙状态规则（0=启用，1=禁用）
-		// 原逻辑：env.Status == 1 才禁用 → 修正为 env.Status == 0（启用状态的过期CK才需要禁用）
-		for _, env := range envs {
-			expired, expireDate := CheckRemarksExpired(env.Remarks)
-			// 修复：过期 && 当前是启用状态（Status=0），才需要禁用
-			if expired && env.Status == 0 {
-				expiredIDs = append(expiredIDs, env.ID)
-				logs.Info("CK将被禁用：备注【%s】，到期日【%s】，ENV ID【%d】，当前状态【%d】",
-					env.Remarks, expireDate, env.ID, env.Status)
-			}
-		}
+		logs.Info("成功禁用过期CK ID=%d，备注=%s", project.ID, project.Remarks)
+	}
 
-		if len(expiredIDs) > 0 {
-			err := client.DisableEnvs(expiredIDs)
-			if err != nil {
-				logs.Error("禁用活动【%s】过期CK失败：%v", activityConfig.Name, err)
-				if sender != nil {
-					sender.Reply(fmt.Sprintf("禁用活动【%s】过期CK失败：%v", activityConfig.Name, err))
-				}
-			} else {
-				logs.Info("成功禁用活动【%s】的%d个过期CK", activityConfig.Name, len(expiredIDs))
-				if sender != nil {
-					sender.Reply(fmt.Sprintf("成功禁用活动【%s】的%d个授权过期CK", activityConfig.Name, len(expiredIDs)))
-				}
-			}
-		} else {
-			logs.Info("活动【%s】无过期CK", activityConfig.Name)
-			if sender != nil {
-				sender.Reply(fmt.Sprintf("活动【%s】无授权过期CK需要禁用", activityConfig.Name))
-			}
-		}
+	logs.Info("成功禁用 %d 个过期CK", len(expiredProjects))
+	if sender != nil {
+		sender.Reply(fmt.Sprintf("成功禁用 %d 个授权过期CK", len(expiredProjects)))
 	}
 
 	if sender != nil {
@@ -409,7 +350,6 @@ func DisableExpiredCKs(sender *Sender) {
 }
 
 func CheckExpiringCKs(expireThresholdDays int, sender *Sender) {
-	// 1. 入口日志
 	if sender != nil {
 		logs.Info("===== [手动触发] 用户【%d】开始检查即将过期CK (阈值: %d天) =====", sender.UserID, expireThresholdDays)
 	} else {
@@ -420,119 +360,58 @@ func CheckExpiringCKs(expireThresholdDays int, sender *Sender) {
 	var totalReminded int
 	var totalScanned int
 
-	// 2. 遍历所有活动配置
-	for _, activityConfig := range ActivityConfigs {
-		// 只检查开启了按月扣费的活动
-		if !activityConfig.IsMonthlyDeduct {
+	expiringProjects, err := GetExpiringProjects(expireThresholdDays)
+	if err != nil {
+		logs.Error("查询即将过期项目失败：%v", err)
+		return
+	}
+
+	for _, project := range expiringProjects {
+		cfg := getActivityByID(project.ActivityID)
+		if cfg == nil {
 			continue
 		}
 
-		logs.Debug("正在检查活动：【%s】 (ID: %s)", activityConfig.Name, activityConfig.ID)
+		expireDate, _ := time.Parse(DateLayout, project.ExpireDate)
+		expireThreshold := time.Date(
+			expireDate.Year(),
+			expireDate.Month(),
+			expireDate.Day(),
+			0, 0, 0, 0,
+			time.Local,
+		).AddDate(0, 0, 1)
 
-		currentActivityID := activityConfig.ID
-		qlConfig := getQingLongConfigForActivity(currentActivityID)
-		if qlConfig == nil {
-			logs.Warn("跳过活动【%s】：无法获取青龙配置", activityConfig.Name)
-			continue
+		durationLeft := expireThreshold.Sub(now)
+		daysLeft := int(durationLeft.Hours() / 24)
+		if daysLeft == 0 {
+			daysLeft = 1
 		}
 
-		client := NewQingLongClient(qlConfig)
-
-		// 3. 查询环境变量
-		envs, err := client.QueryEnvs(activityConfig.EnvKey)
-		if err != nil {
-			logs.Error("查询活动【%s】环境变量失败：%v", activityConfig.Name, err)
-			continue
+		accountAlias := project.RemarkAlias
+		if accountAlias == "" {
+			accountAlias = "未知账号"
 		}
 
-		if len(envs) == 0 {
-			continue
-		}
+		userID := fmt.Sprintf("%d", project.UserNumber)
 
-		// 4. 遍历每个环境变量 (CK)
-		for _, env := range envs {
-			// 解析备注中的日期 (格式：账号名称/用户ID/日期)
-			expireDate, ok := ParseRemarksDate(env.Remarks)
-			if !ok {
-				// 无法解析日期则跳过
-				continue
-			}
-			totalScanned++
+		msg := fmt.Sprintf("⚠️【授权即将过期提醒】\n"+
+			"活动：%s\n"+
+			"账号备注：%s\n"+
+			"到期日期：%s\n"+
+			"剩余时间：约 %d 天\n"+
+			"请及时发送【记录授权】续费，以免服务中断！",
+			project.ActivityName,
+			accountAlias,
+			expireDate.Format(DateLayout),
+			daysLeft)
 
-			// 计算过期时间点 (到期日次日 0:00)
-			expireThreshold := time.Date(
-				expireDate.Year(),
-				expireDate.Month(),
-				expireDate.Day(),
-				0, 0, 0, 0,
-				time.Local,
-			).AddDate(0, 0, 1)
+		logs.Info(">>> 触发推送 -> 用户ID:[%s] | 账号:[%s] | 活动:[%s] | 到期:[%s] | 剩余:[%d天]",
+			userID, accountAlias, project.ActivityName, expireDate.Format(DateLayout), daysLeft)
 
-			// 计算剩余时间
-			durationLeft := expireThreshold.Sub(now)
+		PushByQQ(userID, msg)
 
-			// 核心判断逻辑
-			isExpired := durationLeft <= 0
-			isExpiringSoon := durationLeft > 0 && durationLeft <= time.Duration(expireThresholdDays)*24*time.Hour
-
-			if isExpired {
-				// 已过期，跳过预警（由禁用逻辑处理）
-				continue
-			}
-
-			if isExpiringSoon {
-				// --- 解析备注结构 ---
-				// 预期格式：账号名称 / 用户ID / 日期
-				// 索引：      0       1      2
-				parts := strings.Split(env.Remarks, "/")
-
-				var accountAlias string
-				var userID string
-
-				// 提取账号名称 (第一个元素)
-				if len(parts) >= 1 {
-					accountAlias = strings.TrimSpace(parts[0])
-				} else {
-					accountAlias = "未知账号"
-				}
-
-				// 【修改点】提取用户 ID (正数第二个元素，索引 1)
-				if len(parts) >= 2 {
-					userID = strings.TrimSpace(parts[1])
-				}
-
-				if userID == "" {
-					logs.Warn("ENV ID[%d] 备注格式错误，无法提取用户ID (需至少2部分): [%s]", env.ID, env.Remarks)
-					continue
-				}
-
-				// 计算剩余天数显示
-				daysLeft := int(durationLeft.Hours() / 24)
-				if daysLeft == 0 {
-					daysLeft = 1
-				}
-
-				// --- 构造消息 ---
-				msg := fmt.Sprintf("⚠️【授权即将过期提醒】\n"+
-					"活动：%s\n"+
-					"账号备注：%s\n"+
-					"到期日期：%s\n"+
-					"剩余时间：约 %d 天\n"+
-					"请及时发送【记录授权】续费，以免服务中断！",
-					activityConfig.Name,
-					accountAlias,
-					expireDate.Format(DateLayout),
-					daysLeft)
-
-				logs.Info(">>> 触发推送 -> 用户ID:[%s] | 账号:[%s] | 活动:[%s] | 到期:[%s] | 剩余:[%d天]",
-					userID, accountAlias, activityConfig.Name, expireDate.Format(DateLayout), daysLeft)
-
-				// 执行推送
-				PushByQQ(userID, msg)
-
-				totalReminded++
-			}
-		}
+		totalScanned++
+		totalReminded++
 	}
 
 	// 5. 总结
