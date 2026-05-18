@@ -2093,10 +2093,6 @@ func GetActivityStats() ([]ActivityStat, int, int, int, int) {
 	return buildActivityStats()
 }
 
-func GetActivityAuthList() []ActivityAuthItem {
-	return buildActivityAuthList()
-}
-
 func InvalidateActivityAdminStatsCache() {}
 
 func RefreshActivityAdminStatsCache(forceRefresh ...bool) {}
