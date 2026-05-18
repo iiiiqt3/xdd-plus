@@ -749,6 +749,124 @@ func portalPray(userNumber int) (string, error) {
 	return "祈福成功，愿你事事顺心如意，积分 + 3。", nil
 }
 
+type RunUserTaskResult struct {
+	TaskID   int    `json:"taskId"`
+	Activity string `json:"activity"`
+	Script   string `json:"script"`
+	Message  string `json:"message"`
+}
+
+var (
+	userTaskLastRun  = make(map[string]time.Time)
+	userTaskMu       sync.Mutex
+	runSemaphore     = make(chan struct{}, 10)
+)
+
+func PortalRunUserTask(userNumber int, activityID, envKey string, envID int) (*RunUserTaskResult, error) {
+	taskKey := fmt.Sprintf("%d_%s_%d", userNumber, activityID, envID)
+
+	userTaskMu.Lock()
+	if lastRun, ok := userTaskLastRun[taskKey]; ok {
+		if time.Since(lastRun) < 60*time.Second {
+			userTaskMu.Unlock()
+			return nil, fmt.Errorf("操作过于频繁，请等待 %d 秒后重试", int(60-time.Since(lastRun).Seconds()))
+		}
+	}
+	userTaskMu.Unlock()
+
+	select {
+	case runSemaphore <- struct{}{}:
+	default:
+		return nil, fmt.Errorf("服务器繁忙，当前运行中的任务较多，请稍后再试（最多支持%d个并发任务）", cap(runSemaphore))
+	}
+
+	defer func() { <-runSemaphore }()
+
+	activityConfigsMu.RLock()
+	var targetCfg *ActivityConfig
+	for _, cfg := range ActivityConfigs {
+		if cfg.ID == activityID {
+			targetCfg = cfg
+			break
+		}
+	}
+	activityConfigsMu.RUnlock()
+
+	if targetCfg == nil {
+		return nil, fmt.Errorf("活动不存在")
+	}
+
+	scriptPath := targetCfg.ScriptPaths.Record
+	if scriptPath == "" {
+		return nil, fmt.Errorf("该活动未配置运行脚本")
+	}
+
+	qlConfig := getQingLongConfigForActivity(targetCfg.ID)
+	if qlConfig == nil {
+		return nil, fmt.Errorf("青龙容器不可用")
+	}
+
+	client := GetQingLongClient(qlConfig.Name)
+	if client == nil {
+		return nil, fmt.Errorf("无法连接青龙容器")
+	}
+
+	envs, err := client.QueryEnvs(envKey)
+	if err != nil {
+		return nil, fmt.Errorf("查询环境变量失败: %v", err)
+	}
+
+	envIndex := -1
+	for i, env := range envs {
+		if env.ID == envID {
+			envIndex = i + 1
+			break
+		}
+	}
+	if envIndex == -1 {
+		return nil, fmt.Errorf("找不到指定的环境变量")
+	}
+
+	userTaskMu.Lock()
+	userTaskLastRun[taskKey] = time.Now()
+	userTaskMu.Unlock()
+
+	taskName := fmt.Sprintf("[手动]%s_用户%d_账号%d", targetCfg.Name, userNumber, envID)
+	taskID, err := client.CreateAndRunCronTask(taskName, scriptPath, envKey, envIndex)
+	if err != nil {
+		return nil, fmt.Errorf("执行任务失败: %v", err)
+	}
+
+	go func() {
+		time.Sleep(10 * time.Minute)
+		client.DeleteCronTask([]int{taskID})
+	}()
+
+	return &RunUserTaskResult{
+		TaskID:   taskID,
+		Activity: targetCfg.Name,
+		Script:   scriptPath,
+		Message:  "任务已启动（将在10分钟后自动清理）",
+	}, nil
+}
+
+func PortalGetUserTaskLog(userNumber int, taskID int) (string, error) {
+	qlClientsMu.RLock()
+	defer qlClientsMu.RUnlock()
+
+	for _, client := range qlClients {
+		logContent, err := client.GetCronTaskLogContent(taskID)
+		if err == nil && logContent != "" {
+			if strings.Contains(logContent, "任务不存在") || strings.Contains(logContent, "not found") {
+				continue
+			}
+			return logContent, nil
+		}
+	}
+
+	return "", fmt.Errorf("日志不存在或尚未生成（任务可能还在执行中，请稍后再试）")
+}
+
 func formatPortalTime(t time.Time) string {
 	if t.IsZero() {
 		return ""

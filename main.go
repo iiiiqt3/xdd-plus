@@ -189,6 +189,8 @@ func main() {
 	web.Router("/api/portal/project/income", &controllers.PortalController{}, "post:QueryIncome")
 	web.Router("/api/portal/checkin", &controllers.PortalController{}, "post:CheckIn")
 	web.Router("/api/portal/pray", &controllers.PortalController{}, "post:Pray")
+	web.Router("/api/portal/run-task", &controllers.PortalController{}, "post:RunUserTask")
+	web.Router("/api/portal/task-log/:taskId", &controllers.PortalController{}, "get:GetUserTaskLog")
 	web.Router("/api/portal/redeem-key", &controllers.PortalController{}, "post:RedeemKey")
 	web.Router("/api/portal/wx/status", &controllers.PortalController{}, "get:WxStatus")
 	web.Router("/api/portal/wx/scan-login", &controllers.PortalController{}, "post:WxScanLogin")
