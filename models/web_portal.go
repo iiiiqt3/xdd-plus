@@ -2,12 +2,14 @@ package models
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
-    "log"
+
 	"gorm.io/gorm"
 )
 
@@ -806,7 +808,7 @@ func PortalRunUserTask(userNumber int, activityID, envKey string, envID int) (*R
 		return nil, fmt.Errorf("青龙容器不可用")
 	}
 
-	client := GetQingLongClient(qlConfig.Name)
+	client := NewQingLongClient(qlConfig)
 	if client == nil {
 		return nil, fmt.Errorf("无法连接青龙容器")
 	}
@@ -851,10 +853,15 @@ func PortalRunUserTask(userNumber int, activityID, envKey string, envID int) (*R
 }
 
 func PortalGetUserTaskLog(userNumber int, taskID int) (string, error) {
-	qlClientsMu.RLock()
-	defer qlClientsMu.RUnlock()
+	qlManager.mu.RLock()
+	configs := make([]*QingLongConfig, 0, len(qlManager.Configs))
+	for _, cfg := range qlManager.Configs {
+		configs = append(configs, cfg)
+	}
+	qlManager.mu.RUnlock()
 
-	for _, client := range qlClients {
+	for _, qlConfig := range configs {
+		client := NewQingLongClient(qlConfig)
 		logContent, err := client.GetCronTaskLogContent(taskID)
 		if err == nil && logContent != "" {
 			if strings.Contains(logContent, "任务不存在") || strings.Contains(logContent, "not found") {
