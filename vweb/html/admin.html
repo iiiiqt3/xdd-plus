@@ -4087,14 +4087,22 @@ async function saveActivity() {
         return (a['排序编号'] || 999) - (b['排序编号'] || 999);
     });
     const yaml = generateActivitiesYaml(activitiesCache);
-    try { const res = await api.post('/api/admin/activities/save', { activities: yaml }); toast(res.msg || '保存成功', res.code === 0 ? 'success' : 'error'); if (res.code === 0) { closeActivityModal(); loadActivities(); if (isNew) { const notifyWebApp = document.getElementById('actNotifyWebApp').checked; const notifyQQWx = document.getElementById('actNotifyQQWx').checked; const guide = document.getElementById('actFormGuide').value; if (notifyWebApp) { sendActivityNotify(name, guide); } if (notifyQQWx) { sendActivityToGroups(name, guide); } } } } catch (e) { toast('保存失败', 'error'); }
+    try { const res = await api.post('/api/admin/activities/save', { activities: yaml }); toast(res.msg || '保存成功', res.code === 0 ? 'success' : 'error'); if (res.code === 0) { closeActivityModal(); loadActivities(); if (isNew) { const notifyWebApp = document.getElementById('actNotifyWebApp').checked; const notifyQQWx = document.getElementById('actNotifyQQWx').checked; const guide = document.getElementById('actFormGuide').value; const needCoin = parseInt(document.getElementById('actFormCoin').value) || 0; const isMonthlyDeduct = document.getElementById('actFormMonthly').value === 'true'; const monthlyCoin = parseInt(document.getElementById('actFormMonthlyCoin').value) || 0; if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, isMonthlyDeduct, monthlyCoin); } if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, isMonthlyDeduct, monthlyCoin); } } } } catch (e) { toast('保存失败', 'error'); }
 }
 function editActivity(idx) { showActivityEditor(idx); }
-async function sendActivityNotify(activityName, activityGuide, silent) {
+async function sendActivityNotify(activityName, activityGuide, silent, needCoin, isMonthlyDeduct, monthlyCoin) {
     const title = '新增上车项目-' + activityName;
     var content = '管理员已新增新活动：' + activityName + '\n请前往上车项目中心查看详情并参与。';
     if (activityGuide && activityGuide.trim()) {
         content += '\n\n玩法简介：\n' + activityGuide.trim();
+    }
+    content += '\n\n📊 积分信息：\n';
+    if (isMonthlyDeduct) {
+        content += '• 扣分模式：按月扣费\n';
+        content += '• 每月积分：' + monthlyCoin + ' 积分/月';
+    } else {
+        content += '• 扣分模式：一次性扣费\n';
+        content += '• 所需积分：' + needCoin + ' 积分';
     }
     try {
         await api.post('/api/admin/notifications/send', {
@@ -5856,10 +5864,18 @@ async function pushSelectedActivities() {
     toast(resultMsg, successCount > 0 ? 'success' : 'error');
 }
 
-async function sendActivityToGroups(activityName, activityGuide) {
+async function sendActivityToGroups(activityName, activityGuide, needCoin, isMonthlyDeduct, monthlyCoin) {
     var content = '【新活动通知】\n活动名称：' + activityName;
     if (activityGuide && activityGuide.trim()) {
         content += '\n\n玩法简介：\n' + activityGuide.trim();
+    }
+    content += '\n\n📊 积分信息：\n';
+    if (isMonthlyDeduct) {
+        content += '• 扣分模式：按月扣费\n';
+        content += '• 每月积分：' + monthlyCoin + ' 积分/月';
+    } else {
+        content += '• 扣分模式：一次性扣费\n';
+        content += '• 所需积分：' + needCoin + ' 积分';
     }
     content += '\n\n请前往上车项目中心查看详情并参与。';
     try {
