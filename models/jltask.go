@@ -741,55 +741,41 @@ func HandleUpdateCK(sender *Sender) interface{} {
 			return
 		}
 
-		sender.Reply(fmt.Sprintf("正在验证青龙中是否存在你的%s CK，请稍候...", config.EnvKey))
-		ok, msg, ckData := queryQinglongRemarks(qq, config)
-		if !ok {
-			sender.Reply(msg)
-			log.Printf("[用户%d][更新CK] 查询青龙CK失败：%s", qq, msg)
+		sender.Reply(fmt.Sprintf("正在从数据库中查询你的%s CK，请稍候...", config.EnvKey))
+
+		projects, dbErr := GetActivityProjectsByUserAndEnv(qq, config.ID, config.EnvKey)
+		if dbErr != nil {
+			sender.Reply("数据库查询失败，请联系管理员")
+			log.Printf("[用户%d][更新CK] 数据库查询失败：%v", qq, dbErr)
 			return
 		}
 
 		var remarksList []string
 		var displayList []string
 		ckStatusMap := make(map[string]int)
-		ckIDMap := make(map[string]int)
 
-		if len(ckData) == 0 || ckData[0] == "" || ckData[0] == "[]" {
+		if len(projects) == 0 {
 			sender.Reply("未找到可更新的账号")
 			log.Printf("[用户%d][更新CK] CK数据为空", qq)
 			return
 		}
 
-		log.Printf("[用户%d][更新CK] 原始CK数据：%s", qq, ckData[0])
-
-		var ckItems []QLEnvItem
-		err := json.Unmarshal([]byte(ckData[0]), &ckItems)
-		if err != nil {
-			sender.Reply("解析账号数据失败，请联系管理员")
-			log.Printf("[用户%d][更新CK] 解析CK数据失败：%v，原始数据：%s", qq, err, ckData[0])
-			return
-		}
-		if len(ckItems) == 0 {
-			sender.Reply("未找到可更新的账号")
-			log.Printf("[用户%d][更新CK] CK列表为空", qq)
-			return
-		}
-		for _, item := range ckItems {
-			if item.Remarks == "" {
+		log.Printf("[用户%d][更新CK] 从数据库找到%d条记录", qq, len(projects))
+		for _, project := range projects {
+			if project.Remarks == "" {
 				continue
 			}
-			statusInt := item.Status
+			statusInt := project.Status
 			if statusInt != 0 {
 				statusInt = 1
 			}
-			remarksList = append(remarksList, item.Remarks)
-			ckStatusMap[item.Remarks] = statusInt
-			ckIDMap[item.Remarks] = item.ID
+			remarksList = append(remarksList, project.Remarks)
+			ckStatusMap[project.Remarks] = statusInt
 
-			displayName := GetFirstRemarkParam(item.Remarks)
+			displayName := GetFirstRemarkParam(project.Remarks)
 			if statusInt == 1 {
 				displayName += " 【禁用】"
-				log.Printf("[用户%d][更新CK] 发现禁用账号：%s（ID=%d，Status=%d）", qq, displayName, item.ID, item.Status)
+				log.Printf("[用户%d][更新CK] 发现禁用账号：%s（DB ID=%d，Status=%d）", qq, displayName, project.ID, project.Status)
 			}
 			displayList = append(displayList, displayName)
 		}
@@ -952,33 +938,28 @@ func HandleDeleteCK(sender *Sender) interface{} {
 			return
 		}
 
-		sender.Reply(fmt.Sprintf("正在验证青龙中是否存在你的%s CK，请稍候...", config.EnvKey))
-		ok, msg, ckData := queryQinglongRemarks(qq, config)
-		if !ok {
-			sender.Reply(msg)
+		sender.Reply(fmt.Sprintf("正在从数据库中查询你的%s CK，请稍候...", config.EnvKey))
+
+		projects, dbErr := GetActivityProjectsByUserAndEnv(qq, config.ID, config.EnvKey)
+		if dbErr != nil {
+			sender.Reply("数据库查询失败，请联系管理员")
+			log.Printf("[用户%d][删除CK] 数据库查询失败：%v", qq, dbErr)
 			return
 		}
 
 		var remarksList []string
 		var displayList []string
 
-		var ckItems []struct {
-			Remarks string `json:"remarks"`
-		}
-		if err := json.Unmarshal([]byte(ckData[0]), &ckItems); err != nil {
-			sanitizedErr := SanitizeError(err)
-			log.Printf("[用户%d][删除CK] JSON解析失败：%v", qq, sanitizedErr)
-			sender.Reply(fmt.Sprintf("数据解析异常：%v", sanitizedErr))
-			return
-		}
-		for _, item := range ckItems {
-			remarksList = append(remarksList, item.Remarks)
-			displayList = append(displayList, GetFirstRemarkParam(item.Remarks))
-		}
-
-		if len(remarksList) == 0 {
+		if len(projects) == 0 {
 			sender.Reply("未找到可删除的账号")
 			return
+		}
+
+		for _, project := range projects {
+			if project.Remarks != "" {
+				remarksList = append(remarksList, project.Remarks)
+				displayList = append(displayList, GetFirstRemarkParam(project.Remarks))
+			}
 		}
 
 		var selectedRemarks string
@@ -1314,35 +1295,28 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 			return
 		}
 
-		sender.Reply(fmt.Sprintf("正在验证青龙中是否存在你的%s CK，请稍候...", config.EnvKey))
-		
-		// 2. 查询青龙环境
-		ok, msg, ckData := queryQinglongRemarks(qq, config)
-		if !ok {
-			sender.Reply(msg)
+		sender.Reply(fmt.Sprintf("正在从数据库中查询你的%s CK，请稍候...", config.EnvKey))
+
+		projects, dbErr := GetActivityProjectsByUserAndEnv(qq, config.ID, config.EnvKey)
+		if dbErr != nil {
+			sender.Reply("数据库查询失败，请联系管理员")
+			log.Printf("[用户%d][续费授权] 数据库查询失败：%v", qq, dbErr)
 			return
 		}
 
 		var remarksList []string
 		var displayList []string
 
-		var ckItems []struct {
-			Remarks string `json:"remarks"`
-		}
-		// 解析返回的JSON数据
-		if err := json.Unmarshal([]byte(ckData[0]), &ckItems); err != nil {
-			sender.Reply(fmt.Sprintf("解析账号数据失败：%v", err))
-			log.Printf("解析账号数据失败：%v，原始数据：%s", err, ckData[0])
-			return
-		}
-		for _, item := range ckItems {
-			remarksList = append(remarksList, item.Remarks)
-			displayList = append(displayList, GetFirstRemarkParam(item.Remarks))
-		}
-
-		if len(remarksList) == 0 {
+		if len(projects) == 0 {
 			sender.Reply("未找到可授权的账号")
 			return
+		}
+
+		for _, project := range projects {
+			if project.Remarks != "" {
+				remarksList = append(remarksList, project.Remarks)
+				displayList = append(displayList, GetFirstRemarkParam(project.Remarks))
+			}
 		}
 
 		// 3. 选择账号（如果有多个）

@@ -585,17 +585,29 @@ func PortalQueryProjectIncome(userNumber int, activityID, remarks string) (strin
 		return "", fmt.Errorf("该项目暂无查询脚本")
 	}
 
-	qlConfig := getQingLongConfigForActivity(cfg.ID)
-	if qlConfig == nil {
-		return "", fmt.Errorf("无法获取青龙配置")
-	}
-	client := NewQingLongClient(qlConfig)
-	envItem, err := client.FindEnvByRemarks(remarks, cfg.EnvKey)
+	project, err := GetActivityProjectByRemarks(activityID, remarks, cfg.EnvKey)
 	if err != nil {
-		return "", fmt.Errorf("未找到对应项目记录")
+		return "", fmt.Errorf("未找到对应项目记录（数据库中不存在）")
 	}
-	if envItem.Status != 0 {
+
+	if project.UserNumber != userNumber {
+		return "", fmt.Errorf("无权查询此账号")
+	}
+
+	if project.Status != 0 {
 		return "", fmt.Errorf("该项目当前已禁用或已过期，请先续费/重新授权")
+	}
+
+	if cfg.IsMonthlyDeduct && project.ExpireDate != "" {
+		expireTimeObj, parseErr := time.Parse("2006-01-02", project.ExpireDate)
+		if parseErr == nil && time.Now().After(expireTimeObj) {
+			return "", fmt.Errorf("该项目授权已过期（过期时间：%s），请先发送【记录授权】续费", project.ExpireDate)
+		}
+	}
+
+	ckValue := project.EnvValue
+	if ckValue == "" {
+		return "", fmt.Errorf("CK数据为空（可能同步异常），请联系管理员")
 	}
 
 	scriptPath := cfg.ScriptPaths.Query
@@ -611,7 +623,7 @@ func PortalQueryProjectIncome(userNumber int, activityID, remarks string) (strin
 	}
 
 	sender := &Sender{UserID: userNumber}
-	output, err := executeScript(sender, execCmd, scriptPath, envItem.Value)
+	output, err := executeScript(sender, execCmd, scriptPath, ckValue)
 	if err != nil {
 		return "", fmt.Errorf("查询收入失败：%v", err)
 	}
