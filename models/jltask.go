@@ -1176,6 +1176,7 @@ func HandleQueryRecord(sender *Sender) interface{} {
 			sender.Reply(fmt.Sprintf("【%s】暂无查询脚本，无法执行查询", config.Name))
 			return
 		}
+		
 		scriptExt := filepath.Ext(scriptPath)
 		var execCmd string
 		switch scriptExt {
