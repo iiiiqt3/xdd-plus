@@ -207,15 +207,10 @@ func (al *ActivityLoader) LoadConfig() error {
 
 	// 转换为 ActivityConfig 并校验
 	newConfigs := make([]*ActivityConfig, 0, len(yamlConfig.Activities))
+	envKeySet := make(map[string]bool) // 用于校验 EnvKey 唯一性
 	var errors []string
 
 	for i, yamlAct := range yamlConfig.Activities {
-		// 跳过禁用的活动
-		if !yamlAct.Enabled {
-			log.Printf("[热加载] 跳过禁用活动: %s", yamlAct.Name)
-			continue
-		}
-
 		// 校验必填字段
 		if yamlAct.Name == "" {
 			errors = append(errors, fmt.Sprintf("第%d个活动: 名称不能为空", i+1))
@@ -225,6 +220,13 @@ func (al *ActivityLoader) LoadConfig() error {
 			errors = append(errors, fmt.Sprintf("活动[%s]: 环境变量名不能为空", yamlAct.Name))
 			continue
 		}
+
+		// 校验 EnvKey 唯一性
+		if envKeySet[yamlAct.EnvKey] {
+			errors = append(errors, fmt.Sprintf("活动[%s]: 环境变量名[%s]重复", yamlAct.Name, yamlAct.EnvKey))
+			continue
+		}
+		envKeySet[yamlAct.EnvKey] = true
 
 		// 校验青龙配置是否存在
 		qlManager.mu.RLock()
@@ -236,7 +238,7 @@ func (al *ActivityLoader) LoadConfig() error {
 			continue
 		}
 
-		// 构建 ActivityConfig
+		// 构建 ActivityConfig（禁用的活动也加载，只是标记为不可用）
 		act := al.convertYAMLToActivity(yamlAct)
 		newConfigs = append(newConfigs, act)
 	}
@@ -256,9 +258,16 @@ func (al *ActivityLoader) LoadConfig() error {
 		return newConfigs[i].Name < newConfigs[j].Name
 	})
 
-	// 生成连续 ID
-	for i, cfg := range newConfigs {
-		cfg.ID = strconv.Itoa(i + 1)
+	// ID 使用 EnvKey 作为稳定标识，MenuIndex 仅用于菜单展示
+	menuIdx := 1
+	for _, cfg := range newConfigs {
+		cfg.ID = cfg.EnvKey
+		if cfg.Enabled {
+			cfg.MenuIndex = strconv.Itoa(menuIdx)
+			menuIdx++
+		} else {
+			cfg.MenuIndex = "" // 禁用活动不在菜单中显示
+		}
 	}
 
 	// 加锁更新全局配置

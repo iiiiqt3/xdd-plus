@@ -48,7 +48,8 @@ var inputMu sync.Mutex
 
 // ActivityConfig 活动配置结构体
 type ActivityConfig struct {
-	ID                 string        // [运行时生成] 显示用的连续ID (1, 2, 3...)
+	ID                 string        // 稳定标识，使用 EnvKey 作为唯一ID，永不变化
+	MenuIndex          string        // [运行时生成] 菜单展示用的连续编号 (1, 2, 3...)
 	Name               string        // 活动名称
 	EnvKey             string        // 青龙环境变量名
 	NeedCoin           int           // 一次性扣积分值
@@ -155,13 +156,21 @@ func InitActivityList() {
 
 // ===================== 辅助查找函数 =====================
 
-// getActivityByID 根据显示的ID查找活动配置
+// getActivityByID 根据活动ID或菜单编号查找活动配置
+// 优先按 ID(EnvKey) 精确匹配，其次按 MenuIndex 匹配（兼容用户菜单输入）
 func getActivityByID(id string) *ActivityConfig {
 	activityConfigsMu.RLock()
 	defer activityConfigsMu.RUnlock()
 	
+	// 优先按 ID(EnvKey) 精确匹配
 	for _, cfg := range ActivityConfigs {
 		if cfg.ID == id {
+			return cfg
+		}
+	}
+	// 其次按 MenuIndex 匹配（用户菜单输入的连续编号）
+	for _, cfg := range ActivityConfigs {
+		if cfg.MenuIndex == id {
 			return cfg
 		}
 	}
@@ -235,14 +244,16 @@ func checkExit(input string) bool {
 	return input == "q" || input == "Q"
 }
 
-// GetSortedActivityIDs 返回已排序的活动 ID 列表
+// GetSortedActivityIDs 返回已启用的活动 ID 列表（稳定标识，即 EnvKey）
 func GetSortedActivityIDs() []string {
 	activityConfigsMu.RLock()
 	defer activityConfigsMu.RUnlock()
 	
-	ids := make([]string, len(ActivityConfigs))
-	for i, cfg := range ActivityConfigs {
-		ids[i] = cfg.ID
+	ids := make([]string, 0, len(ActivityConfigs))
+	for _, cfg := range ActivityConfigs {
+		if cfg.Enabled {
+			ids = append(ids, cfg.ID)
+		}
 	}
 	return ids
 }
@@ -252,9 +263,11 @@ func BuildActivityMenu(promptPrefix string) string {
 	defer activityConfigsMu.RUnlock()
 	
 	menu := promptPrefix + "\n"
-	// 直接遍历已排序的全局切片
+	// 遍历已排序的全局切片，仅展示启用的活动
 	for _, cfg := range ActivityConfigs {
-		menu += fmt.Sprintf("%s. %s\n", cfg.ID, cfg.Name)
+		if cfg.Enabled {
+			menu += fmt.Sprintf("%s. %s\n", cfg.MenuIndex, cfg.Name)
+		}
 	}
 	return menu
 }
@@ -1257,8 +1270,8 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		// 遍历已排序的切片，展示支持按月扣费的活动
 		activityConfigsMu.RLock()
 		for _, cfg := range ActivityConfigs {
-			if cfg.IsMonthlyDeduct { 
-				menu += fmt.Sprintf("【%s】、 %s（每月%d积分）\n", cfg.ID, cfg.Name, cfg.MonthlyCoin)
+			if cfg.IsMonthlyDeduct && cfg.Enabled { 
+				menu += fmt.Sprintf("【%s】、 %s（每月%d积分）\n", cfg.MenuIndex, cfg.Name, cfg.MonthlyCoin)
 				hasMonthly = true
 			}
 		}

@@ -2,6 +2,7 @@ package models
 
 import (
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -300,6 +301,37 @@ func createActivityProjectTable() {
 		} else {
 			log.Printf("[数据库迁移] user_number 字段已是 %s，无需修改", colType)
 		}
+
+		// 自动迁移：将 activity_id 从旧的连续编号（"1","2","3"...）更新为 EnvKey
+		// 仅当 activity_id 是纯数字且与 env_key 不同时才执行，确保幂等（多次启动不会重复执行）
+		var oldStyleProjects []ActivityProject
+		if err := db.Where("activity_id != env_key AND deleted_at IS NULL").Find(&oldStyleProjects).Error; err == nil {
+			var needMigrate []ActivityProject
+			for _, p := range oldStyleProjects {
+				if isNumeric(p.ActivityID) && p.ActivityID != p.EnvKey {
+					needMigrate = append(needMigrate, p)
+				}
+			}
+			if len(needMigrate) > 0 {
+				tx := db.Begin()
+				migrated := 0
+				for _, p := range needMigrate {
+					if err := tx.Model(&ActivityProject{}).Where("id = ?", p.ID).Update("activity_id", p.EnvKey).Error; err != nil {
+						log.Printf("[数据库迁移] 更新记录 ID=%d 失败: %v", p.ID, err)
+						continue
+					}
+					migrated++
+				}
+				if err := tx.Commit().Error; err != nil {
+					tx.Rollback()
+					log.Printf("[数据库迁移] activity_id 迁移事务提交失败: %v", err)
+				} else {
+					log.Printf("[数据库迁移] activity_id 已从旧编号迁移为 EnvKey，共更新 %d 条记录", migrated)
+				}
+			} else {
+				log.Println("[数据库迁移] activity_id 无需迁移（已是 EnvKey 或无数据）")
+			}
+		}
 		return
 	}
 
@@ -337,4 +369,13 @@ CREATE TABLE activity_project (
 		return
 	}
 	log.Println("[数据库迁移] activity_project 表创建成功")
+}
+
+// isNumeric 判断字符串是否为纯数字（用于识别旧版连续编号格式的 activity_id）
+func isNumeric(s string) bool {
+	if s == "" {
+		return false
+	}
+	_, err := strconv.Atoi(s)
+	return err == nil
 }
