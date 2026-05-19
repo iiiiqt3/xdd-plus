@@ -1153,48 +1153,21 @@ func HandleQueryRecord(sender *Sender) interface{} {
 			return
 		}
 
-		sender.Reply(fmt.Sprintf("已选择【%s】，正在获取账号信息...", config.Name))
-		ok, msg, ckData := queryQinglongRemarks(qq, config)
-		if !ok {
-			sender.Reply(fmt.Sprintf("【%s】查询失败：%s", config.Name, msg))
-			return
-		}
+		sender.Reply(fmt.Sprintf("已选择【%s】，正在从数据库获取账号信息...", config.Name))
 
-		if len(ckData) == 0 || ckData[0] == "" || ckData[0] == "[]" {
-			sender.Reply(fmt.Sprintf("查询失败：未找到【%s】绑定账号，请先完成账号更新", config.Name))
-			return
-		}
-
-		ckResult := ckData[0]
-		log.Printf("%s待解析数据长度：%d字节", logPrefix, len(ckResult))
-
-		type QLEnvItem struct {
-			ID      int    `json:"id"`
-			Name    string `json:"name"`
-			Value   string `json:"value"`
-			Remarks string `json:"remarks"`
-			Status  int    `json:"status"`
-		}
-
-		var (
-			ckItems   []QLEnvItem
-			err       error
-		)
-
-		err = json.Unmarshal([]byte(ckResult), &ckItems)
-
+		projects, err := GetActivityProjectsByUserAndEnv(qq, config.ID, config.EnvKey)
 		if err != nil {
-			sender.Reply("解析账号数据失败，请联系管理员")
-			log.Printf("%sJSON解析失败 - 错误：%v", logPrefix, err)
+			sender.Reply(fmt.Sprintf("【%s】查询失败：数据库错误，请联系管理员", config.Name))
+			log.Printf("%s数据库查询失败：%v", logPrefix, err)
 			return
 		}
 
-		accountCount := len(ckItems)
-
-		if accountCount == 0 {
-			sender.Reply(fmt.Sprintf("查询失败：未找到【%s】绑定账号，请先完成账号更新", config.Name))
+		if len(projects) == 0 {
+			sender.Reply(fmt.Sprintf("查询失败：未找到【%s】绑定账号，请先发送【记录授权】上车", config.Name))
 			return
 		}
+
+		accountCount := len(projects)
 
 		sender.Reply(fmt.Sprintf("检测到你有【%d】个【%s】账号，即将为你依次执行查询...", accountCount, config.Name))
 
@@ -1216,57 +1189,52 @@ func HandleQueryRecord(sender *Sender) interface{} {
 		}
 
 
-for index, item := range ckItems {
+for index, project := range projects {
     accountNo := index + 1
 
-    // 检查账号是否被禁用（Status != 0）
-    if item.Status != 0 {
-        accountName := GetFirstRemarkParam(item.Remarks)
-        sender.Reply(fmt.Sprintf("⚠️ 第%d个账号【%s】已被禁用（可能授权已过期），无法查询，请重新发【记录授权】授权！", accountNo, accountName))
-        log.Printf("%s第%d个账号【%s】状态为禁用（Status=%d），跳过查询", logPrefix, accountNo, accountName, item.Status)
+    mainRemark := GetFirstRemarkParam(project.Remarks)
+    if mainRemark == "" {
+        mainRemark = "未知备注"
+    }
+
+    expireTime := project.ExpireDate
+
+    if project.Status != 0 {
+        sender.Reply(fmt.Sprintf("⚠️ 第%d个账号【%s】已被禁用（可能授权已过期），无法查询，请重新发送【记录授权】续费！", accountNo, mainRemark))
+        log.Printf("%s第%d个账号【%s】状态为禁用（Status=%d），跳过查询", logPrefix, accountNo, mainRemark, project.Status)
         continue
     }
 
-    ckValue := item.Value
-    if ckValue == "" {
-        sender.Reply(fmt.Sprintf("第%d个账号查询失败\n错误：必要参数为空", accountNo))
-        log.Printf("%s第%d个账号CK值为空", logPrefix, accountNo)
-        continue
-    }
-
-    // 解析备注中的备注名和过期时间
-    remarkParts := strings.Split(item.Remarks, "/")
-    mainRemark := "未知备注"
-    if len(remarkParts) > 0 && remarkParts[0] != "" {
-        mainRemark = remarkParts[0]
-    }
-    expireTime := ""
-    if len(remarkParts) >= 2 {
-        lastPart := remarkParts[len(remarkParts)-1]
-        if len(lastPart) == 10 && strings.Contains(lastPart, "-") {
-            if _, err := time.Parse("2006-01-02", lastPart); err == nil {
-                expireTime = lastPart
-            }
+    if config.IsMonthlyDeduct && expireTime != "" {
+        expireTimeObj, parseErr := time.Parse("2006-01-02", expireTime)
+        if parseErr == nil && time.Now().After(expireTimeObj) {
+            sender.Reply(fmt.Sprintf("⚠️ 第%d个账号【%s】授权已过期（过期时间：%s），无法查询，请发送【记录授权】续费！", accountNo, mainRemark, expireTime))
+            log.Printf("%s第%d个账号【%s】已过期（ExpireDate=%s），跳过查询", logPrefix, accountNo, mainRemark, expireTime)
+            continue
         }
+    }
+
+    ckValue := project.EnvValue
+    if ckValue == "" {
+        sender.Reply(fmt.Sprintf("第%d个账号查询失败\n错误：CK数据为空（可能同步异常），请联系管理员", accountNo))
+        log.Printf("%s第%d个账号CK值为空（DB ID=%d）", logPrefix, accountNo, project.ID)
+        continue
     }
 
     log.Printf("%s执行第%d个账号脚本：%s %s", logPrefix, accountNo, execCmd, scriptPath)
 
-    // 执行JS脚本（无需修改脚本，保持原参数）
     output, err := executeScript(sender, execCmd, scriptPath, ckValue)
 
     if err != nil {
         sender.Reply(fmt.Sprintf("第%d个账号查询失败：%v", accountNo, err))
         log.Printf("%s第%d个账号查询失败 - 错误：%v", logPrefix, accountNo, err)
     } else if output == "" {
-        // 无查询结果时的格式调整
         noResultMsg := fmt.Sprintf("第%d个账号备注：【%s】\n查询完成，暂无查询结果", accountNo, mainRemark)
         if expireTime != "" {
             noResultMsg = fmt.Sprintf("第%d个账号备注：【%s】\n授权过期时间：【%s】\n查询完成，暂无查询结果", accountNo, mainRemark, expireTime)
         }
         sender.Reply(noResultMsg)
     } else {
-        // 核心修改：拆分布备注名和过期时间为独立行
         prefixMsg := fmt.Sprintf("第%d个账号备注：【%s】\n", accountNo, mainRemark)
         if expireTime != "" {
             prefixMsg += fmt.Sprintf("授权过期时间：【%s】\n", expireTime)

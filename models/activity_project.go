@@ -118,6 +118,18 @@ func GetActivityProjectsByActivityAndEnvKey(activityID, envKey string) ([]Activi
 	return projects, nil
 }
 
+func GetActivityProjectsByUserAndEnv(userNumber int, activityID, envKey string) ([]ActivityProject, error) {
+	var projects []ActivityProject
+	err := db.Where("user_number = ? AND activity_id = ? AND env_key = ? AND deleted_at IS NULL",
+		userNumber, activityID, envKey).
+		Order("id ASC").
+		Find(&projects).Error
+	if err != nil {
+		return nil, err
+	}
+	return projects, nil
+}
+
 func SoftDeleteActivityProject(id int) error {
 	now := time.Now()
 	return db.Model(&ActivityProject{}).Where("id = ?", id).Updates(map[string]interface{}{
