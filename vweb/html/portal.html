@@ -1926,9 +1926,9 @@ function initProjectModalValidation(item) {
             let isValid = true;
             let errorMessage = '';
 
-            if (!isRemarksField && !isMonthsField && /[\u4e00-\u9fa5]/.test(value)) {
+            if (!isRemarksField && !isMonthsField && /[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/.test(value)) {
                 isValid = false;
-                errorMessage = '该字段不允许输入中文字符，请检查输入内容';
+                errorMessage = '该字段不允许输入中文字符或中文标点符号，请检查输入内容';
             } else if (config && config.errorMsg && value) {
                 const errorMsgLower = config.errorMsg.toLowerCase();
                 if (errorMsgLower.includes('格式') || errorMsgLower.includes('错误') || errorMsgLower.includes('无效')) {
@@ -1957,16 +1957,22 @@ function initProjectModalValidation(item) {
             if (!isRemarksField) {
                 const cursorPos = input.selectionStart;
                 const value = input.value;
-                if (/[\u4e00-\u9fa5]/.test(value) && !isRemarksField && !isMonthsField) {
-                    const newValue = value.replace(/[\u4e00-\u9fa5]/g, '');
+                if (/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/.test(value) && !isRemarksField && !isMonthsField) {
+                    const newValue = value.replace(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/g, '');
                     input.value = newValue;
                     const newPos = Math.max(0, cursorPos - 1);
                     input.setSelectionRange(newPos, newPos);
 
                     createErrorDiv();
-                    errorDiv.textContent = '已自动移除中文字符';
+                    errorDiv.textContent = '已自动移除中文字符或中文标点符号';
                     errorDiv.style.display = 'block';
-                    setTimeout(() => { if (errorDiv) errorDiv.style.display = 'none'; }, 2000);
+
+                    if (input._hideErrorTimer) {
+                        clearTimeout(input._hideErrorTimer);
+                    }
+                    input._hideErrorTimer = setTimeout(() => {
+                        if (errorDiv) errorDiv.style.display = 'none';
+                    }, 5000);
                 }
             }
             clearTimeout(input._validateTimer);

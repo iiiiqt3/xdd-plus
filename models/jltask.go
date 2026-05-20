@@ -1036,15 +1036,12 @@ func HandleDeleteCK(sender *Sender) interface{} {
 			if remainingDays < 0 {
 				remainingDays = 0
 			}
-			if remainingDays > 30 {
-				remainingDays = 30
+			if remainingDays > 0 {
+				remainingDays = remainingDays - 1
 			}
 
 			// 计算退还积分（四舍五入）
 			returnCoin = int(math.Round(float64(config.MonthlyCoin) * remainingDays / 30))
-			if returnCoin > config.MonthlyCoin {
-				returnCoin = config.MonthlyCoin
-			}
 
 			// 提示用户可退还积分
 			confirmPrompt = fmt.Sprintf("【温馨提示】当前为月付费活动\n删除后将退还积分：%d分\n确认删除【%s】？（输入y确认，其他字符取消）",

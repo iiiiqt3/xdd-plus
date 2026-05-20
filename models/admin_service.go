@@ -2356,14 +2356,11 @@ func buildActivityAuthAccountItemByProject(cfg *ActivityConfig, project *Activit
 			if remainDays < 0 {
 				remainDays = 0
 			}
-			if remainDays > 30 {
-				remainDays = 30
+			if remainDays > 0 {
+				remainDays = remainDays - 1
 			}
 			if cfg.MonthlyCoin > 0 {
 				refundCoin = int(math.Round(float64(cfg.MonthlyCoin) * float64(remainDays) / 30))
-				if refundCoin > cfg.MonthlyCoin {
-					refundCoin = cfg.MonthlyCoin
-				}
 			}
 		}
 	}
@@ -2405,14 +2402,11 @@ func buildActivityAuthAccountItem(cfg *ActivityConfig, env QLEnvItem) ActivityAu
 		if remainDays < 0 {
 			remainDays = 0
 		}
-		if remainDays > 30 {
-			remainDays = 30
+		if remainDays > 0 {
+			remainDays = remainDays - 1
 		}
 		if cfg.MonthlyCoin > 0 {
 			refundCoin = int(math.Round(float64(cfg.MonthlyCoin) * float64(remainDays) / 30))
-			if refundCoin > cfg.MonthlyCoin {
-				refundCoin = cfg.MonthlyCoin
-			}
 		}
 	}
 	statusText := "正常"
