@@ -1851,16 +1851,10 @@ function openProjectModal(activityId) {
             requiredTag = '<span class="field-optional" title="此字段为选填项">选填</span>';
         }
 
-        let validationHint = '';
-        if (errorMsg && errorMsg.trim()) {
-            validationHint = `<div class="field-validation-hint">${escapeHtml(errorMsg)}</div>`;
-        }
-
         built.push(`
             <div class="field${fullClass}">
                 <label>${escapeHtml(prompt)}${requiredTag}</label>
                 <input data-modal-field-key="${escapeAttr(field.key)}" placeholder="${isRequired ? '请输入...' : '（可选）请输入...'}">
-                ${validationHint}
             </div>`);
     });
     built.push(`
