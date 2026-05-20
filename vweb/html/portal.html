@@ -530,17 +530,45 @@
         .modal-close:hover { background: rgba(220,38,38,0.08); color: var(--red); border-color: rgba(220,38,38,0.20); }
 
         /* ===== 表单 ===== */
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 18px;
+            align-items: start;
+        }
+        .field {
+            display: flex;
+            flex-direction: column;
+        }
         .field label {
-            display: block; margin-bottom: 8px; font-size: 13.5px;
-            color: var(--text); font-weight: 800; letter-spacing: 0.02em;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.4;
+            min-height: calc(1.4em * 2 + 2px);
+            margin-bottom: 8px;
+            font-size: 13.5px;
+            color: var(--text);
+            font-weight: 800;
+            letter-spacing: 0.02em;
             padding-left: 2px;
+            word-break: break-word;
         }
         .field input, .field textarea {
-            width: 100%; border: 1.5px solid var(--glass-border); border-radius: 11px;
-            background: rgba(255,255,255,0.72); color: var(--text);
-            padding: 11px 14px; outline: none; font-size: 14px; font-weight: 500;
-            transition: all 0.22s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            width: 100%;
+            border: 1.5px solid var(--glass-border);
+            border-radius: 11px;
+            background: rgba(255,255,255,0.72);
+            color: var(--text);
+            padding: 11px 14px;
+            outline: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.22s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            flex-shrink: 0;
         }
         .field input:focus, .field textarea:focus {
             border-color: var(--cyan);
@@ -549,6 +577,43 @@
         }
         .field textarea { min-height: 76px; resize: vertical; }
         .field.full { grid-column: 1 / -1; }
+
+        /* ===== 字段必填/选填标记 ===== */
+        .field-required {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 4px;
+            color: var(--red);
+            font-size: 15px;
+            font-weight: 900;
+            line-height: 1;
+        }
+        .field-optional {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 6px;
+            padding: 1px 7px;
+            border-radius: 6px;
+            background: rgba(148,163,184,0.10);
+            color: var(--text-muted);
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            line-height: 1.4;
+        }
+        .field-validation-hint {
+            margin-top: 5px;
+            padding: 5px 9px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(217,119,6,0.06), rgba(245,158,11,0.04));
+            border: 1px solid rgba(217,119,6,0.15);
+            color: var(--amber);
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.5;
+        }
         .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
         .muted { color: var(--text-dim); }
         .project-modal-meta {
@@ -1775,22 +1840,38 @@ function openProjectModal(activityId) {
     const built = [];
     (item.inputFields || []).forEach((field, index, arr) => {
         const prompt = String(field?.prompt || field?.key || '');
+        const isRequired = !!field?.required;
+        const errorMsg = field?.errorMsg ? String(field.errorMsg) : '';
         const fullClass = arr.length === 1 ? ' full' : '';
+
+        let requiredTag = '';
+        if (isRequired) {
+            requiredTag = '<span class="field-required" title="此字段为必填项">*</span>';
+        } else {
+            requiredTag = '<span class="field-optional" title="此字段为选填项">选填</span>';
+        }
+
+        let validationHint = '';
+        if (errorMsg && errorMsg.trim()) {
+            validationHint = `<div class="field-validation-hint">${escapeHtml(errorMsg)}</div>`;
+        }
+
         built.push(`
             <div class="field${fullClass}">
-                <label>${escapeHtml(prompt)}</label>
-                <input data-modal-field-key="${escapeAttr(field.key)}" placeholder="${escapeAttr(prompt)}">
+                <label>${escapeHtml(prompt)}${requiredTag}</label>
+                <input data-modal-field-key="${escapeAttr(field.key)}" placeholder="${isRequired ? '请输入...' : '（可选）请输入...'}">
+                ${validationHint}
             </div>`);
     });
     built.push(`
         <div class="field">
-            <label>用户备注名</label>
+            <label>用户备注名<span class="field-required" title="用于识别您的账号">*</span></label>
             <input data-modal-field-key="__remarks" placeholder="请输入唯一备注名，不要带/">
         </div>`);
     if (item.isMonthlyDeduct) {
         built.push(`
             <div class="field">
-                <label>授权月数</label>
+                <label>授权月数<span class="field-required" title="按月扣费必填">*</span></label>
                 <input data-modal-field-key="__months" placeholder="如 1 / 3 / 6">
             </div>`);
     }
