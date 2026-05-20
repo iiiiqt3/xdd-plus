@@ -114,6 +114,17 @@
         #activityTable tbody tr.act-row-odd .sticky-col-action { background: #fff; }
         #activityTable tbody tr.act-row-even .sticky-col-name,
         #activityTable tbody tr.act-row-even .sticky-col-action { background: #f6f9ff; }
+        /* 禁用活动行：全文蓝色，与活动配置一致 */
+        .act-row-disabled td { color: #409eff !important; }
+        .act-row-disabled .tag { color: #409eff !important; background: #ecf5ff !important; border-color: #d9ecff !important; }
+        .act-row-disabled .sticky-col-name,
+        .act-row-disabled .sticky-col-action { background: #fafafa !important; }
+        #actAuthTable tbody tr.act-row-disabled td { color: #409eff !important; }
+        #actAuthTable tbody tr.act-row-disabled .tag { color: #409eff !important; background: #ecf5ff !important; border-color: #d9ecff !important; }
+        #actAuthTable tbody tr.act-row-disabled .sticky-col-name,
+        #actAuthTable tbody tr.act-row-disabled .sticky-col-action { background: #fafafa !important; }
+        #actStatsTable tbody tr.act-row-disabled td { color: #409eff !important; }
+        #actStatsTable tbody tr.act-row-disabled .tag { color: #409eff !important; background: #ecf5ff !important; border-color: #d9ecff !important; }
         /* 去掉青龙活动配置表格的边框线 */
         #activityTable tbody td { border-bottom: none; }
         #activityTable thead th { border-bottom: 1px solid #e8e8e8; }
@@ -736,7 +747,8 @@
                             <th style="min-width:80px;text-align:center" data-col="aa-order">排序</th>
                             <th style="min-width:120px" data-col="aa-envkey">环境变量</th>
                             <th style="min-width:100px" data-col="aa-ql">青龙容器</th>
-                            <th style="min-width:70px" data-col="aa-monthly">月费</th>
+                            <th style="min-width:70px" data-col="aa-coin">积分</th>
+                            <th style="min-width:48px" data-col="aa-monthly">月费</th>
                             <th style="min-width:80px" data-col="aa-total">用户总数</th>
                             <th style="min-width:80px" data-col="aa-valid">有效人数</th>
                             <th style="min-width:80px" data-col="aa-expired">过期人数</th>
@@ -766,6 +778,8 @@
                 </div>
                 <div style="overflow-y:auto;flex:1;padding:16px 20px;">
                     <input type="hidden" id="aaModalActId">
+                    <!-- 月费活动：调整授权 -->
+                    <div id="aaMonthlyPanel">
                     <div style="display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,0.9fr);gap:12px;align-items:end;margin-bottom:12px;">
                         <div class="form-item" style="margin:0;"><label>活动名称</label><input type="text" id="aaModalActName" disabled style="background:#f5f7fa;font-weight:600;"></div>
                         <div class="form-item" style="margin:0;"><label>搜索账号</label><div class="search-box has-input-btn" style="max-width:none;"><input type="text" id="aaModalSearch" placeholder="搜索备注名 / 用户编号 / 到期时间 / 状态" oninput="renderActAuthAdjustAccountList()"><button class="btn-search" onclick="renderActAuthAdjustAccountList()" title="搜索"><i class="fas fa-search"></i></button></div></div>
@@ -792,6 +806,39 @@
                         </div>
                     </div>
                     <div id="aaModalPreview" style="max-height:220px;overflow:auto;padding:10px 12px;border:1px solid #ebeef5;border-radius:10px;background:#fafcff;color:#606266;font-size:12px;line-height:1.7;margin-bottom:14px;">请选择要调整的账号</div>
+                    </div>
+                    <!-- 一次性活动：转月费 -->
+                    <div id="aaOnetimePanel" style="display:none;">
+                        <div style="padding:12px 14px;margin-bottom:14px;background:#fdf6ec;border:1px solid #faecd8;border-radius:10px;font-size:13px;color:#e6a23c;line-height:1.7;">
+                            <i class="fas fa-info-circle"></i> 该活动为<strong>一次性扣费</strong>，不支持增减授权天数。如需改为按月扣费，请填写下方配置后执行转换。
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+                            <div class="form-item" style="margin:0;"><label>活动名称</label><input type="text" id="aaOnetimeActName" disabled style="background:#f5f7fa;font-weight:600;"></div>
+                            <div class="form-item" style="margin:0;"><label>当前用户数</label><input type="text" id="aaOnetimeUserCount" disabled style="background:#f5f7fa;"></div>
+                        </div>
+                        <div class="form-item" style="margin-bottom:14px;">
+                            <label>每月积分 *</label>
+                            <input type="number" id="aaConvertMonthlyCoin" min="1" placeholder="转换后每月扣除的积分" value="200">
+                        </div>
+                        <div style="padding:12px 14px;margin-bottom:14px;border:1px solid #ebeef5;border-radius:10px;background:#fafcff;">
+                            <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-weight:normal;font-size:13px;line-height:1.6;">
+                                <input type="checkbox" id="aaConvertSyncUsers" onchange="toggleConvertSyncOptions()" style="margin-top:3px;">
+                                <span><strong>同步迁移现有用户为月费用户</strong><br><span style="color:#909399;font-size:12px;">勾选后将为所有现有账号追加授权天数，并写入到期日期（备注同步更新到青龙）</span></span>
+                            </label>
+                            <div id="aaConvertSyncOptions" style="display:none;margin-top:12px;padding-top:12px;border-top:1px dashed #ebeef5;">
+                                <div class="form-item" style="margin:0;">
+                                    <label>赠送授权天数</label>
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <input type="number" id="aaConvertGrantDays" min="1" max="3650" value="30" style="width:120px;">
+                                        <span style="font-size:12px;color:#999;">天（1-3650，在现有到期日基础上追加；无到期日的从今日起算）</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:4px;">
+                            <button class="btn btn-warning" id="aaConvertSubmitBtn" onclick="submitConvertToMonthly()"><i class="fas fa-exchange-alt"></i> 转为月费活动</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -807,7 +854,7 @@
                     </div>
                     <div style="display:flex;gap:8px;">
                         <button class="btn btn-info" onclick="closeActAuthDeleteModal()">取消</button>
-                        <button class="btn btn-danger" id="aaDeleteSubmitBtn" onclick="submitActAuthDelete()"><i class="fas fa-trash"></i> 确认删除并退积分</button>
+                        <button class="btn btn-danger" id="aaDeleteSubmitBtn" onclick="submitActAuthDelete()"><i class="fas fa-trash"></i> 确认删除</button>
                     </div>
                 </div>
                 <div style="overflow-y:auto;flex:1;padding:16px 20px;">
@@ -822,7 +869,8 @@
                     </div>
                     <div id="aaDeleteAccountList" style="max-height:320px;overflow:auto;border:1px solid #ebeef5;border-radius:10px;background:#fff;margin-bottom:14px;padding:6px 8px;">正在加载账号列表...</div>
                     <div id="aaDeletePreview" style="max-height:220px;overflow:auto;padding:10px 12px;border:1px solid #ebeef5;border-radius:10px;background:#fafcff;color:#606266;font-size:12px;line-height:1.7;margin-bottom:14px;">请选择要删除的账号</div>
-                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;margin-bottom:14px;background:#f8fafc;border:1px solid #ebeef5;border-radius:10px;">
+                    <div id="aaDeleteNoRefundTip" style="display:none;padding:8px 12px;margin-bottom:14px;background:#fdf6ec;border:1px solid #faecd8;border-radius:8px;font-size:12px;color:#e6a23c;"><i class="fas fa-info-circle"></i> 该活动为一次性扣费，删除账号<strong>不退还积分</strong>。</div>
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;margin-bottom:14px;background:#f8fafc;border:1px solid #ebeef5;border-radius:10px;" id="aaManualRefundWrap">
                         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:normal;white-space:nowrap;"><input type="checkbox" id="aaManualRefund" onchange="toggleManualRefund()"> 手动指定退还积分（每个账号单独设置）</label>
                     </div>
                     <div class="form-item" style="margin-bottom:14px;"><label>删除原因</label><textarea id="aaDeleteReason" rows="4" placeholder="请输入删除原因，会随积分退还结果一起发送给用户"></textarea></div>
@@ -881,12 +929,13 @@
                             <th style="min-width:42px">#</th>
                             <th style="min-width:120px" data-col="name">活动名称</th>
                             <th style="min-width:48px" data-col="order">排序</th>
+                            <th style="min-width:70px" data-col="coin">积分</th>
+                            <th style="min-width:48px" data-col="monthly">月费</th>
                             <th style="min-width:80px" data-col="container">所属容器</th>
                             <th style="min-width:80px" data-col="total">上车总人数</th>
                             <th style="min-width:80px" data-col="valid">有效人数</th>
                             <th style="min-width:80px" data-col="expiring">快过期人数</th>
                             <th style="min-width:80px" data-col="expired">过期人数</th>
-                            <th style="min-width:90px">操作</th>
                         </tr></thead>
                         <tbody id="asTableBody"></tbody>
                     </table>
@@ -1182,17 +1231,21 @@
             <div class="form-item"><label>活动名称 *</label><input type="text" id="actFormName" placeholder="如：顺丰速运"></div>
             <div class="form-item"><label>环境变量名 *</label><input type="text" id="actFormEnvKey" placeholder="如：sfsyUrl"></div>
             <div class="form-item">
-                <label>所需积分</label>
+                <label>所需积分 <span class="tip" id="actCoinUnitTip">/次</span></label>
                 <input type="number" id="actFormCoin" value="500">
             </div>
-            <div class="form-item"><label>排序编号</label><input type="number" id="actFormOrder" value="10"></div>
+            <div class="form-item" id="actFormOrderWrap">
+                <label>排序编号</label>
+                <input type="number" id="actFormOrder" value="10">
+                <input type="text" id="actFormOrderDisabled" value="-" disabled style="display:none;background:#f5f7fa;color:#409eff;font-weight:600;text-align:center;">
+            </div>
             <div class="form-item">
                 <label>青龙配置 *</label>
                 <select id="actFormQlConfig"><option value="">请选择青龙配置</option></select>
             </div>
             <div class="form-item">
                 <label>启用状态</label>
-                <select id="actFormEnabled"><option value="true">启用</option><option value="false">禁用</option></select>
+                <select id="actFormEnabled" onchange="toggleActFormEnabled()"><option value="true">启用</option><option value="false">禁用</option></select>
             </div>
             <div class="form-item">
                 <label>是否按月扣费 *</label>
@@ -1790,7 +1843,7 @@ let _asPage = 1;
 async function loadActivityStats(force) {
     const el = document.getElementById('asTableBody');
     if (!asStatsData.length) {
-        el.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
+        el.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
     }
     try {
         const res = await api.get('/api/admin/activity-stats' + (force ? '?refresh=1' : ''));
@@ -1804,37 +1857,52 @@ async function loadActivityStats(force) {
         renderActivityStatsTable(list);
         if (d.refreshing) toast('正在后台刷新活动统计，当前显示缓存数据', 'info');
     } catch(e) {
-        if (!asStatsData.length) el.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:40px;">加载失败</td></tr>';
+        if (!asStatsData.length) el.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;">加载失败</td></tr>';
         toast('加载活动统计失败: ' + e.message, 'error');
     }
 }
 function renderActivityStatsTable(list) {
     const el = document.getElementById('asTableBody');
     if (list.length === 0) {
-        el.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>';
+        el.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>';
         renderPagination('asPagination', 1, 0, getPageSize('act'), function(p) { _asPage = p; renderActivityStatsTable(getFilteredActivityStats()); }, 'act');
         return;
     }
+    const sorted = list.slice().sort(function(a, b) {
+        if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+        if (!a.enabled) return (a.activityName || '').localeCompare(b.activityName || '');
+        if ((a.displayOrder || 0) !== (b.displayOrder || 0)) return (a.displayOrder || 0) - (b.displayOrder || 0);
+        return (a.activityName || '').localeCompare(b.activityName || '');
+    });
     const limit = getPageSize('act');
-    const total = list.length;
+    const total = sorted.length;
     const totalPages = Math.ceil(total / limit) || 1;
     if (_asPage > totalPages) _asPage = totalPages;
     if (_asPage < 1) _asPage = 1;
     const start = (_asPage - 1) * limit;
     const end = Math.min(start + limit, total);
-    const pageList = list.slice(start, end);
-    el.innerHTML = pageList.map((s, i) => `<tr>
+    const pageList = sorted.slice(start, end);
+    el.innerHTML = pageList.map((s, i) => {
+        var coinDisplay = formatApiActivityCoin(s);
+        var orderDisplay = formatApiActivityOrder(s);
+        var monthlyTag = s.isMonthlyDeduct ? '<span class="tag tag-warning">是</span>' : '<span class="tag tag-info">-</span>';
+        var monthlyBadge = s.isMonthlyDeduct ? '<span class="tag tag-warning" style="font-size:10px;margin-left:4px;">月</span>' : '';
+        var rowCls = apiActivityRowClass(s);
+        var rowStyle = apiActivityRowStyle(s);
+        return `<tr class="${rowCls.trim()}"${rowStyle}>
         <td><input type="checkbox" class="as-check" value="${s.activityId}" onchange="asUpdateCheckAll()"></td>
-        <td>${s.activityId}</td>
-        <td style="font-weight:600;">${escapeHtml(s.activityName)}</td>
-        <td>${s.displayOrder}</td>
+        <td>${start + i + 1}</td>
+        <td style="font-weight:600;"><span class="status-dot ${s.enabled ? 'online' : 'offline'}" style="margin-right:4px;vertical-align:middle;"></span>${escapeHtml(s.activityName)}${monthlyBadge}</td>
+        <td style="text-align:center;font-size:12px;">${orderDisplay}</td>
+        <td><span class="tag tag-primary">${coinDisplay}</span></td>
+        <td>${monthlyTag}</td>
         <td><span class="tag tag-primary">${escapeHtml(s.qlConfig || '-')}</span></td>
         <td style="font-weight:700;font-size:15px;">${s.total}</td>
         <td><span style="color:#67c23a;font-weight:600;font-size:15px;">${s.valid}</span></td>
         <td style="text-align:center;"><span style="color:${s.expiringSoon > 0 ? '#e6a23c' : '#999'};">${s.expiringSoon}</span></td>
         <td style="text-align:center;"><span style="color:${s.expired > 0 ? '#f56c6c' : '#999'};">${s.expired}</span></td>
-        <td><button class="btn btn-info btn-xs" onclick="refreshSingleActivityStat('${s.activityId}')"><i class="fas fa-sync-alt"></i> 单独刷新</button></td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
     renderPagination('asPagination', _asPage, total, limit, function(p) { _asPage = p; renderActivityStatsTable(getFilteredActivityStats()); }, 'act');
 }
 function getFilteredActivityStats() {
@@ -2238,8 +2306,36 @@ function markFeedbackRead(id) {
 function markFeedbackNew(id) {
     updateFeedbackStatus(id, 'new');
 }
+// ============ 活动展示辅助函数 ============
+function sortActivityConfigList(acts) {
+    return (acts || []).slice().sort(function(a, b) {
+        if (a['启用状态'] !== b['启用状态']) return a['启用状态'] ? -1 : 1;
+        if (!a['启用状态']) return String(a['名称'] || '').localeCompare(String(b['名称'] || ''));
+        return (a['排序编号'] || 999) - (b['排序编号'] || 999);
+    });
+}
+
+function formatApiActivityCoin(item) {
+    if (item.isMonthlyDeduct) return (item.monthlyCoin || 0) + '/月';
+    return (item.needCoin || 0) + '/次';
+}
+
+function formatApiActivityOrder(item) {
+    if (item.enabled === false) return '-';
+    return item.displayOrder || 0;
+}
+
+function apiActivityRowClass(item) {
+    return item.enabled === false ? ' act-row-disabled' : '';
+}
+
+function apiActivityRowStyle(item) {
+    return item.enabled === false ? ' style="opacity:0.85;background:#fafafa;"' : '';
+}
+
 // ============ 青龙活动授权管理 ============
 let actAuthData = [];
+let actAuthCurrentAct = null;
 let actAuthAccountData = [];
 let actAuthAdjustAccountData = [];
 let actAuthDeleteSelectedEnvIds = [];
@@ -2249,7 +2345,7 @@ let _aaPage = 1;
 async function loadActAuthList(force) {
     const el = document.getElementById('actAuthTableBody');
     if (!actAuthData.length) {
-        el.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
+        el.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
     }
     try {
         const res = await api.get('/api/admin/activity-auth-list' + (force ? '?refresh=1' : ''));
@@ -2259,7 +2355,7 @@ async function loadActAuthList(force) {
         renderActAuthTable(getFilteredActAuthData());
         if (d.refreshing) toast('正在后台刷新授权统计，当前显示缓存数据', 'info');
     } catch(e) {
-        if (!actAuthData.length) el.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:40px;">加载失败</td></tr>';
+        if (!actAuthData.length) el.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;">加载失败</td></tr>';
         toast('加载活动授权列表失败: ' + e.message, 'error');
     }
 }
@@ -2277,37 +2373,51 @@ function getFilteredActAuthData() {
 function renderActAuthTable(list) {
     const el = document.getElementById('actAuthTableBody');
     if (!list || list.length === 0) {
-        el.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>';
+        el.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>';
         renderPagination('aaPagination', 1, 0, getPageSize('actAuth'), function(p) { _aaPage = p; renderActAuthTable(getFilteredActAuthData()); }, 'actAuth');
         return;
     }
-    // 过滤掉一次性上车项目（非月扣费）
-    const filtered = list.filter(function(s) { return s.isMonthlyDeduct; });
-    if (filtered.length === 0) {
-        el.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:40px;">暂无月扣费活动</td></tr>';
-        renderPagination('aaPagination', 1, 0, getPageSize('actAuth'), function(p) { _aaPage = p; renderActAuthTable(getFilteredActAuthData()); }, 'actAuth');
-        return;
-    }
+    const sorted = list.slice().sort(function(a, b) {
+        if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+        if (!a.enabled) return (a.activityName || '').localeCompare(b.activityName || '');
+        if ((a.displayOrder || 0) !== (b.displayOrder || 0)) return (a.displayOrder || 0) - (b.displayOrder || 0);
+        return (a.activityName || '').localeCompare(b.activityName || '');
+    });
     const limit = getPageSize('actAuth');
-    const total = filtered.length;
+    const total = sorted.length;
     const totalPages = Math.ceil(total / limit) || 1;
     if (_aaPage > totalPages) _aaPage = totalPages;
     if (_aaPage < 1) _aaPage = 1;
     const start = (_aaPage - 1) * limit;
     const end = Math.min(start + limit, total);
-    const pageList = filtered.slice(start, end);
+    const pageList = sorted.slice(start, end);
     el.innerHTML = pageList.map(function(s, i) {
-        return '<tr>' +
-            '<td style="text-align:center;color:#999;">' + (start + i + 1) + '</td>' +
-            '<td class="sticky-col-name" style="font-weight:600;">' + escapeHtml(s.activityName) + '</td>' +
-            '<td style="text-align:center;">' + (s.displayOrder || 0) + '</td>' +
+        var coinDisplay = formatApiActivityCoin(s);
+        var orderDisplay = formatApiActivityOrder(s);
+        var monthlyTag = s.isMonthlyDeduct ? '<span class="tag tag-warning">是</span>' : '<span class="tag tag-info">-</span>';
+        var monthlyBadge = s.isMonthlyDeduct ? '<span class="tag tag-warning" style="font-size:10px;margin-left:4px;">月</span>' : '';
+        var rowCls = apiActivityRowClass(s);
+        var rowStyle = apiActivityRowStyle(s);
+        var adjustBtn = s.isMonthlyDeduct
+            ? '<button class="btn btn-primary btn-xs" onclick="openActAuthModal(\'' + s.activityId + '\')"><i class="fas fa-user-clock"></i> 调整授权</button>'
+            : '<button class="btn btn-warning btn-xs" onclick="openActAuthModal(\'' + s.activityId + '\')"><i class="fas fa-exchange-alt"></i> 转月费</button>';
+        var deleteBtnText = s.isMonthlyDeduct ? '删除账号' : '删除账号';
+        return '<tr class="' + rowCls.trim() + '"' + rowStyle + '>' +
+            '<td style="text-align:center;">' + (start + i + 1) + '</td>' +
+            '<td class="sticky-col-name" style="font-weight:600;">' +
+                '<span class="status-dot ' + (s.enabled ? 'online' : 'offline') + '" style="margin-right:4px;vertical-align:middle;"></span>' +
+                escapeHtml(s.activityName) + monthlyBadge +
+            '</td>' +
+            '<td style="text-align:center;font-size:12px;">' + orderDisplay + '</td>' +
             '<td><span style="font-family:monospace;font-size:12px;">' + escapeHtml(s.envKey) + '</span></td>' +
             '<td><span class="tag tag-primary">' + escapeHtml(s.qlConfig || '-') + '</span></td>' +
-            '<td>' + (s.monthlyCoin || 0) + ' 积分/月</td>' +
+            '<td><span class="tag tag-primary">' + coinDisplay + '</span></td>' +
+            '<td>' + monthlyTag + '</td>' +
             '<td style="font-weight:700;font-size:15px;">' + (s.total || 0) + '</td>' +
             '<td><span style="color:#67c23a;font-weight:600;">' + (s.valid || 0) + '</span></td>' +
             '<td><span style="color:' + (s.expired > 0 ? '#f56c6c' : '#999') + ';">' + (s.expired || 0) + '</span></td>' +
-            '<td class="sticky-col-action"><div class="act-auth-actions"><button class="btn btn-primary btn-xs" onclick="openActAuthModal(\'' + s.activityId + '\')"><i class="fas fa-user-clock"></i> 调整授权</button><button class="btn btn-danger btn-xs" onclick="openActAuthDeleteModal(\'' + s.activityId + '\')"><i class="fas fa-user-times"></i> 删除账号</button></div></td>' +
+            '<td class="sticky-col-action"><div class="act-auth-actions">' + adjustBtn +
+            '<button class="btn btn-danger btn-xs" onclick="openActAuthDeleteModal(\'' + s.activityId + '\')"><i class="fas fa-user-times"></i> ' + deleteBtnText + '</button></div></td>' +
         '</tr>';
     }).join('');
     renderPagination('aaPagination', _aaPage, total, limit, function(p) { _aaPage = p; renderActAuthTable(getFilteredActAuthData()); }, 'actAuth');
@@ -2344,7 +2454,23 @@ function openActAuthModal(activityId) {
         if (actAuthData[i].activityId === activityId) { act = actAuthData[i]; break; }
     }
     if (!act) return;
+    actAuthCurrentAct = act;
     document.getElementById('aaModalActId').value = activityId;
+    var isMonthly = act.isMonthlyDeduct;
+    document.getElementById('aaMonthlyPanel').style.display = isMonthly ? '' : 'none';
+    document.getElementById('aaOnetimePanel').style.display = isMonthly ? 'none' : '';
+    document.getElementById('actAuthModalTitle').textContent = isMonthly ? '调整授权' : '转月费活动';
+    document.getElementById('aaModalSubmitBtn').style.display = isMonthly ? '' : 'none';
+    if (!isMonthly) {
+        document.getElementById('aaOnetimeActName').value = act.activityName + '（' + (act.total || 0) + '个用户）';
+        document.getElementById('aaOnetimeUserCount').value = (act.total || 0) + ' 人';
+        document.getElementById('aaConvertMonthlyCoin').value = act.monthlyCoin || 200;
+        document.getElementById('aaConvertSyncUsers').checked = false;
+        document.getElementById('aaConvertGrantDays').value = 30;
+        toggleConvertSyncOptions();
+        document.getElementById('actAuthModal').classList.remove('hidden');
+        return;
+    }
     document.getElementById('aaModalActName').value = act.activityName + '（' + act.total + '个用户）';
     actAuthAdjustSelectedEnvIds = [];
     document.querySelector('input[name="aaModalDir"][value="add"]').checked = true;
@@ -2372,6 +2498,44 @@ function openActAuthModal(activityId) {
 
 function closeActAuthModal() {
     document.getElementById('actAuthModal').classList.add('hidden');
+    actAuthCurrentAct = null;
+}
+
+function toggleConvertSyncOptions() {
+    var checked = document.getElementById('aaConvertSyncUsers').checked;
+    document.getElementById('aaConvertSyncOptions').style.display = checked ? '' : 'none';
+}
+
+async function submitConvertToMonthly() {
+    var activityId = document.getElementById('aaModalActId').value;
+    var monthlyCoin = parseInt(document.getElementById('aaConvertMonthlyCoin').value, 10);
+    var syncUsers = document.getElementById('aaConvertSyncUsers').checked;
+    var grantDays = parseInt(document.getElementById('aaConvertGrantDays').value, 10);
+    if (!monthlyCoin || monthlyCoin <= 0) { toast('请输入有效的每月积分', 'error'); return; }
+    if (syncUsers && (!grantDays || grantDays < 1 || grantDays > 3650)) { toast('授权天数需在1-3650之间', 'error'); return; }
+    var confirmMsg = '确认将该活动转为月扣费（每月' + monthlyCoin + '积分）？';
+    if (syncUsers) confirmMsg += '\n将同步迁移现有用户并赠送 ' + grantDays + ' 天授权。';
+    if (!confirm(confirmMsg)) return;
+    document.getElementById('aaConvertSubmitBtn').disabled = true;
+    try {
+        var res = await api.post('/api/admin/activity-auth-convert-monthly', {
+            activityId: activityId,
+            monthlyCoin: monthlyCoin,
+            syncUsers: syncUsers,
+            grantDays: syncUsers ? grantDays : 0,
+            channels: getCheckedNotifyChannels('aaNotifyChannel')
+        });
+        toast(res.msg || '转换成功', res.code === 0 ? 'success' : 'error');
+        if (res.code === 0) {
+            closeActAuthModal();
+            loadActAuthList(true);
+            loadActivities();
+        }
+    } catch(e) {
+        toast('转换失败: ' + e.message, 'error');
+    } finally {
+        document.getElementById('aaConvertSubmitBtn').disabled = false;
+    }
 }
 
 function renderActAuthAdjustAccountList() {
@@ -2450,8 +2614,13 @@ async function openActAuthDeleteModal(activityId) {
         if (actAuthData[i].activityId === activityId) { act = actAuthData[i]; break; }
     }
     if (!act) return;
+    actAuthCurrentAct = act;
+    var isMonthly = act.isMonthlyDeduct;
     document.getElementById('aaDeleteActId').value = activityId;
     document.getElementById('aaDeleteActName').value = act.activityName + '（' + act.total + '个用户）';
+    document.getElementById('aaDeleteSubmitBtn').innerHTML = isMonthly ? '<i class="fas fa-trash"></i> 确认删除并退积分' : '<i class="fas fa-trash"></i> 确认删除';
+    document.getElementById('aaDeleteNoRefundTip').style.display = isMonthly ? 'none' : '';
+    document.getElementById('aaManualRefundWrap').style.display = isMonthly ? '' : 'none';
     actAuthDeleteSelectedEnvIds = [];
     document.getElementById('aaDeleteReason').value = '';
     var searchInput = document.getElementById('aaDeleteSearch');
@@ -2478,6 +2647,7 @@ async function openActAuthDeleteModal(activityId) {
 function closeActAuthDeleteModal() {
     document.getElementById('actAuthDeleteModal').classList.add('hidden');
     document.getElementById('aaManualRefund').checked = false;
+    actAuthCurrentAct = null;
 }
 
 function toggleManualRefund() {
@@ -2502,14 +2672,21 @@ function renderActAuthDeleteAccountList() {
     }
     box.innerHTML = list.map(function(x) {
         var checked = actAuthDeleteSelectedEnvIds.indexOf(x.envId) >= 0 ? ' checked' : '';
+        var isMonthly = actAuthCurrentAct && actAuthCurrentAct.isMonthlyDeduct;
+        var rightInfo = isMonthly
+            ? '<span style="color:#67c23a;font-weight:700;font-size:12px;">退 ' + (x.refundCoin || 0) + ' 积分</span>'
+            : '<span style="color:#909399;font-size:12px;">不退积分</span>';
+        var expireInfo = isMonthly
+            ? '到期 ' + escapeHtml(x.expireDate || '-') + ' / 剩余 ' + (x.remainDays || 0) + ' 天 / '
+            : '';
         return '<label style="display:flex;align-items:flex-start;gap:8px;padding:8px 6px;border-bottom:1px solid #f3f4f6;cursor:pointer;font-size:12px;line-height:1.5;">' +
             '<input type="checkbox" class="aa-delete-check" value="' + x.envId + '" onchange="onActAuthDeleteCheckChange(' + x.envId + ', this.checked)" style="margin-top:2px;"' + checked + '>' +
             '<div style="flex:1;min-width:0;">' +
                 '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">' +
                     '<span style="font-weight:600;color:#303133;font-size:12px;">' + escapeHtml(x.accountAlias || x.remarks || '-') + '</span>' +
-                    '<span style="color:#67c23a;font-weight:700;font-size:12px;">退 ' + (x.refundCoin || 0) + ' 积分</span>' +
+                    rightInfo +
                 '</div>' +
-                '<div style="margin-top:3px;font-size:11px;color:#909399;line-height:1.6;">用户' + (x.userNumber || '-') + ' / 到期 ' + escapeHtml(x.expireDate || '-') + ' / 剩余 ' + (x.remainDays || 0) + ' 天 / ' + escapeHtml(x.statusText || '-') + '</div>' +
+                '<div style="margin-top:3px;font-size:11px;color:#909399;line-height:1.6;">用户' + (x.userNumber || '-') + ' / ' + expireInfo + escapeHtml(x.statusText || '-') + '</div>' +
             '</div>' +
         '</label>';
     }).join('');
@@ -2543,10 +2720,11 @@ function updateActAuthDeletePreview() {
         return;
     }
     var isManual = document.getElementById('aaManualRefund').checked;
-    var autoRefundCoin = selected.reduce(function(sum, item) { return sum + (item.refundCoin || 0); }, 0);
+    var isMonthly = actAuthCurrentAct && actAuthCurrentAct.isMonthlyDeduct;
+    var autoRefundCoin = isMonthly ? selected.reduce(function(sum, item) { return sum + (item.refundCoin || 0); }, 0) : 0;
     var displayRefundCoin = autoRefundCoin;
-    var refundLabel = '自动计算';
-    if (isManual) {
+    var refundLabel = isMonthly ? '自动计算' : '一次性活动不退积分';
+    if (isMonthly && isManual) {
         displayRefundCoin = 0;
         for (var i = 0; i < selected.length; i++) {
             var el = document.getElementById('aaRefundInput_' + selected[i].envId);
@@ -2560,15 +2738,16 @@ function updateActAuthDeletePreview() {
     var users = selected.filter(function(item) { return item.userNumber; }).map(function(item) { return item.userNumber; });
     var uniqueUsers = Array.from(new Set(users));
     var previewList = selected.map(function(item) {
-        var refundPart = isManual
+        var refundPart = !isMonthly ? '不退积分'
+            : isManual
             ? '<input type="number" id="aaRefundInput_' + item.envId + '" value="' + (item.refundCoin || 0) + '" min="0" style="width:70px;padding:2px 6px;border:1px solid #dcdfe6;border-radius:4px;font-size:12px;" oninput="updateActAuthDeletePreview()"> 积分'
             : (item.refundCoin || 0) + '积分';
-        return '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">· ' + escapeHtml(item.accountAlias || item.remarks || '-') + ' / 用户' + (item.userNumber || '-') + ' / 到期 ' + escapeHtml(item.expireDate || '-') + ' / 退' + refundPart + ' / ' + escapeHtml(item.statusText || '-') + '</div>';
+        return '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">· ' + escapeHtml(item.accountAlias || item.remarks || '-') + ' / 用户' + (item.userNumber || '-') + (isMonthly ? ' / 到期 ' + escapeHtml(item.expireDate || '-') + ' / 退' + refundPart : ' / ' + refundPart) + ' / ' + escapeHtml(item.statusText || '-') + '</div>';
     }).join('');
     document.getElementById('aaDeletePreview').innerHTML =
         '<div><b>已选账号：</b>' + selectedCount + ' 个</div>' +
         '<div><b>涉及用户：</b>' + uniqueUsers.length + ' 人</div>' +
-        '<div><b>预计退还：</b><span style="color:#67c23a;font-weight:700;">' + displayRefundCoin + ' 积分</span> <span style="font-size:11px;color:#909399;">（' + refundLabel + '）</span></div>' +
+        (isMonthly ? '<div><b>预计退还：</b><span style="color:#67c23a;font-weight:700;">' + displayRefundCoin + ' 积分</span> <span style="font-size:11px;color:#909399;">（' + refundLabel + '）</span></div>' : '<div><b>退还说明：</b><span style="color:#e6a23c;">一次性活动，删除不退还积分</span></div>') +
         '<div style="margin-top:6px;"><b>账号预览：</b></div>' + previewList;
 }
 
@@ -2578,7 +2757,8 @@ async function submitActAuthDelete() {
     var items = getSelectedActAuthDeleteItems();
     if (!items.length) { toast('请选择要删除的账号', 'error'); return; }
     if (!reason) { toast('请填写删除原因', 'error'); return; }
-    var isManual = document.getElementById('aaManualRefund').checked;
+    var isMonthly = actAuthCurrentAct && actAuthCurrentAct.isMonthlyDeduct;
+    var isManual = isMonthly && document.getElementById('aaManualRefund').checked;
     var manualRefundCoins = {};
     var displayRefundCoin = 0;
     if (isManual) {
@@ -2589,10 +2769,10 @@ async function submitActAuthDelete() {
             manualRefundCoins[items[i].envId] = v;
             displayRefundCoin += v;
         }
-    } else {
+    } else if (isMonthly) {
         displayRefundCoin = items.reduce(function(sum, item) { return sum + (item.refundCoin || 0); }, 0);
     }
-    if (!confirm('确认删除选中的 ' + items.length + ' 个账号？\n预计退还积分：' + displayRefundCoin + (isManual ? '（手动指定）' : '（自动计算）') + '\n删除后将在后台异步执行。')) return;
+    if (!confirm('确认删除选中的 ' + items.length + ' 个账号？' + (isMonthly ? '\n预计退还积分：' + displayRefundCoin + (isManual ? '（手动指定）' : '（自动计算）') : '\n一次性活动，不退还积分') + '\n删除后将在后台异步执行。')) return;
     document.getElementById('aaDeleteSubmitBtn').disabled = true;
     closeActAuthDeleteModal();
     toast('已提交后台异步删除任务，请稍后刷新查看结果', 'info');
@@ -3495,6 +3675,7 @@ function renderActivityCards(acts) {
         });
     }
     if (!filteredActs || filteredActs.length === 0) { tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#999;padding:40px;">暂无活动配置</td></tr>'; renderPagination('actPagination', 1, 0, getPageSize('act'), function(p) { _actPage = p; renderActivityCards(activitiesCache); }, 'act'); return; }
+    filteredActs = sortActivityConfigList(filteredActs);
     _openDetailIdx = -1;
     var limit = getPageSize('act');
     var total = filteredActs.length;
@@ -3508,15 +3689,15 @@ function renderActivityCards(acts) {
         const enabled = a['启用状态'] === true;
         const monthly = a['是否按月扣费'] === true;
         const fields = (a._inputFields || []).map(f => escapeHtml(f['字段标识'] || '?'));
-        const coinDisplay = monthly ? (a['每月积分']||0)+'/月' : (a['所需积分']||0);
-        const disabledAttr = !enabled ? 'style="opacity:0.55;background:#fafafa;"' : '';
-        const nameColor = enabled ? '#333' : '#409eff';
+        const coinDisplay = monthly ? (a['每月积分']||0)+'/月' : (a['所需积分']||0)+'/次';
+        const disabledCls = !enabled ? ' act-row-disabled' : '';
+        const disabledAttr = !enabled ? 'style="opacity:0.85;background:#fafafa;"' : '';
         const orderDisplay = enabled ? (a['排序编号'] || 0) : '-';
-        let html = `<tr onclick="showActivityDetail(${realIdx})" class="act-row-${i % 2 === 0 ? 'odd' : 'even'}" style="cursor:pointer;" ${disabledAttr}>
+        let html = `<tr onclick="showActivityDetail(${realIdx})" class="act-row-${i % 2 === 0 ? 'odd' : 'even'}${disabledCls}" style="cursor:pointer;" ${disabledAttr}>
             <td onclick="event.stopPropagation();"><input type="checkbox" class="act-check" value="${realIdx}" onchange="updateActCheckAll()"></td>
             <td><span class="tag tag-info">${realIdx + 1}</span></td>
             <td class="sticky-col-name">
-                <span style="font-weight:600;color:${nameColor};">
+                <span style="font-weight:600;">
                     <span class="status-dot ${enabled ? 'online' : 'offline'}" style="margin-right:4px;vertical-align:middle;"></span>
                     ${escapeHtml(a['名称'] || '未命名')}
                 </span>
@@ -3649,7 +3830,7 @@ async function loadActivities() {
             return;
         }
         console.info('[活动配置] 原始YAML长度:', raw.length, '前100字:', raw.slice(0,100));
-        activitiesCache = parseActivitiesYaml(raw); 
+        activitiesCache = sortActivityConfigList(parseActivitiesYaml(raw)); 
         console.info('[活动配置] 解析到活动数:', activitiesCache.length, activitiesCache.map(a => a['名称']));
         renderActivityCards(activitiesCache); 
     } catch (e) { 
@@ -3740,6 +3921,7 @@ function showActivityEditor(idx) {
     document.getElementById('actFormOrder').value = act['排序编号'] || 10;
     document.getElementById('actFormQlConfig').value = '';
     document.getElementById('actFormEnabled').value = isNew ? 'true' : String(act['启用状态'] === true);
+    toggleActFormEnabled();
     document.getElementById('actFormMonthly').value = isNew ? '' : String(act['是否按月扣费'] === true);
     document.getElementById('actFormMonthlyCoin').value = act['每月积分'] || 200;
     document.getElementById('actFormGuide').value = act['玩法和说明'] || '';
@@ -3776,11 +3958,28 @@ function toggleMonthlyCoin() {
     const coinInput = document.getElementById('actFormCoin');
     const monthlyInput = document.getElementById('actFormMonthlyCoin');
     const tip = document.getElementById('monthlyTip');
+    const unitTip = document.getElementById('actCoinUnitTip');
     coinInput.disabled = monthly;
     coinInput.style.background = monthly ? '#f5f5f5' : '#fff';
     monthlyInput.disabled = !monthly;
     monthlyInput.style.background = monthly ? '#fff' : '#f5f5f5';
     tip.textContent = monthly ? '' : '（按月扣费时生效）';
+    if (unitTip) unitTip.textContent = monthly ? '（月费模式下以每月积分为准）' : '/次';
+}
+
+function toggleActFormEnabled() {
+    const enabled = document.getElementById('actFormEnabled').value === 'true';
+    const orderInput = document.getElementById('actFormOrder');
+    const orderDisabled = document.getElementById('actFormOrderDisabled');
+    if (enabled) {
+        orderInput.style.display = '';
+        orderDisabled.style.display = 'none';
+        orderInput.disabled = false;
+    } else {
+        orderInput.style.display = 'none';
+        orderDisabled.style.display = '';
+        orderInput.disabled = true;
+    }
 }
 
 function getEditingActivityFields() {
@@ -4082,10 +4281,7 @@ async function saveActivity() {
     if (editIdx >= 0 && activitiesCache[editIdx]) {
     }
     if (editIdx >= 0) activitiesCache[editIdx] = act; else activitiesCache.push(act);
-    activitiesCache.sort(function(a, b) {
-        if (a['启用状态'] !== b['启用状态']) return a['启用状态'] ? -1 : 1;
-        return (a['排序编号'] || 999) - (b['排序编号'] || 999);
-    });
+    activitiesCache = sortActivityConfigList(activitiesCache);
     const yaml = generateActivitiesYaml(activitiesCache);
     try { const res = await api.post('/api/admin/activities/save', { activities: yaml }); toast(res.msg || '保存成功', res.code === 0 ? 'success' : 'error'); if (res.code === 0) { closeActivityModal(); loadActivities(); if (isNew) { const notifyWebApp = document.getElementById('actNotifyWebApp').checked; const notifyQQWx = document.getElementById('actNotifyQQWx').checked; const guide = document.getElementById('actFormGuide').value; const needCoin = parseInt(document.getElementById('actFormCoin').value) || 0; const isMonthlyDeduct = document.getElementById('actFormMonthly').value === 'true'; const monthlyCoin = parseInt(document.getElementById('actFormMonthlyCoin').value) || 0; if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, isMonthlyDeduct, monthlyCoin); } if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, isMonthlyDeduct, monthlyCoin); } } } } catch (e) { toast('保存失败', 'error'); }
 }

@@ -284,6 +284,7 @@ func main() {
 	web.Router("/api/admin/activity-auth-accounts", &controllers.AdminApiController{}, "get:GetActivityAuthAccounts")
 	web.Router("/api/admin/activity-auth-delete-account", &controllers.AdminApiController{}, "post:DeleteActivityAuthAccount")
 	web.Router("/api/admin/activity-auth-batch", &controllers.AdminApiController{}, "post:BatchUpdateActivityAuth")
+	web.Router("/api/admin/activity-auth-convert-monthly", &controllers.AdminApiController{}, "post:ConvertActivityToMonthly")
 
 	// ===================== 微信协议设备管理 API =====================
 	web.Router("/api/admin/wx-devices", &controllers.AdminApiController{}, "get:GetWxDevices")

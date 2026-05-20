@@ -2078,15 +2078,34 @@ func BatchUpdateQLEnvs(configName string, envIDs []int, remarks string) error {
 
 // ActivityStat 单个活动的统计信息
 type ActivityStat struct {
-	ActivityID   string `json:"activityId"`
-	ActivityName string `json:"activityName"`
-	DisplayOrder int    `json:"displayOrder"`
-	QLConfig     string `json:"qlConfig"`
-	Total        int    `json:"total"`        // 上车总人数
-	Valid        int    `json:"valid"`        // 有效人数（启用状态）
-	ExpiringSoon int    `json:"expiringSoon"` // 快过期人数（7天内到期）
-	Expired      int    `json:"expired"`      // 过期人数（已过期未删除）
-	Disabled     int    `json:"disabled"`     // 已禁用人数
+	ActivityID      string `json:"activityId"`
+	ActivityName    string `json:"activityName"`
+	DisplayOrder    int    `json:"displayOrder"`
+	QLConfig        string `json:"qlConfig"`
+	Enabled         bool   `json:"enabled"`
+	IsMonthlyDeduct bool   `json:"isMonthlyDeduct"`
+	NeedCoin        int    `json:"needCoin"`
+	MonthlyCoin     int    `json:"monthlyCoin"`
+	Total           int    `json:"total"`        // 上车总人数
+	Valid           int    `json:"valid"`        // 有效人数（启用状态）
+	ExpiringSoon    int    `json:"expiringSoon"` // 快过期人数（7天内到期）
+	Expired         int    `json:"expired"`      // 过期人数（已过期未删除）
+	Disabled        int    `json:"disabled"`     // 已禁用人数
+}
+
+func sortConfigsForAdminDisplay(configs []ActivityConfig) {
+	sort.SliceStable(configs, func(i, j int) bool {
+		if configs[i].Enabled != configs[j].Enabled {
+			return configs[i].Enabled
+		}
+		if !configs[i].Enabled {
+			return configs[i].Name < configs[j].Name
+		}
+		if configs[i].DisplayOrder != configs[j].DisplayOrder {
+			return configs[i].DisplayOrder < configs[j].DisplayOrder
+		}
+		return configs[i].Name < configs[j].Name
+	})
 }
 
 func GetActivityStats() ([]ActivityStat, int, int, int, int) {
@@ -2135,6 +2154,7 @@ func buildActivityStats() ([]ActivityStat, int, int, int, int) {
 		}
 	}
 	activityConfigsMu.RUnlock()
+	sortConfigsForAdminDisplay(configs)
 
 	stats := make([]ActivityStat, len(configs))
 	var wg sync.WaitGroup
@@ -2168,7 +2188,11 @@ func summarizeActivityStats(stats []ActivityStat) (int, int, int, int) {
 }
 
 func buildActivityStat(cfg ActivityConfig) ActivityStat {
-	stat := ActivityStat{ActivityID: cfg.ID, ActivityName: cfg.Name, DisplayOrder: cfg.DisplayOrder, QLConfig: cfg.QingLongConfigName}
+	stat := ActivityStat{
+		ActivityID: cfg.ID, ActivityName: cfg.Name, DisplayOrder: cfg.DisplayOrder,
+		QLConfig: cfg.QingLongConfigName, Enabled: cfg.Enabled,
+		IsMonthlyDeduct: cfg.IsMonthlyDeduct, NeedCoin: cfg.NeedCoin, MonthlyCoin: cfg.MonthlyCoin,
+	}
 
 	projects, err := GetActivityProjectsByActivityID(cfg.ID)
 	if err != nil || len(projects) == 0 {
@@ -2226,6 +2250,8 @@ type ActivityAuthItem struct {
 	EnvKey          string `json:"envKey"`
 	QLConfig        string `json:"qlConfig"`
 	DisplayOrder    int    `json:"displayOrder"`
+	Enabled         bool   `json:"enabled"`
+	NeedCoin        int    `json:"needCoin"`
 	MonthlyCoin     int    `json:"monthlyCoin"`
 	IsMonthlyDeduct bool   `json:"isMonthlyDeduct"`
 	Total           int    `json:"total"`
@@ -2264,6 +2290,7 @@ func buildActivityAuthList() []ActivityAuthItem {
 		}
 	}
 	activityConfigsMu.RUnlock()
+	sortConfigsForAdminDisplay(configs)
 	list := make([]ActivityAuthItem, len(configs))
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, 8)
@@ -2281,7 +2308,11 @@ func buildActivityAuthList() []ActivityAuthItem {
 }
 
 func buildActivityAuthItem(cfg ActivityConfig) ActivityAuthItem {
-	item := ActivityAuthItem{ActivityID: cfg.ID, ActivityName: cfg.Name, EnvKey: cfg.EnvKey, QLConfig: cfg.QingLongConfigName, DisplayOrder: cfg.DisplayOrder, MonthlyCoin: cfg.MonthlyCoin, IsMonthlyDeduct: cfg.IsMonthlyDeduct}
+	item := ActivityAuthItem{
+		ActivityID: cfg.ID, ActivityName: cfg.Name, EnvKey: cfg.EnvKey,
+		QLConfig: cfg.QingLongConfigName, DisplayOrder: cfg.DisplayOrder, Enabled: cfg.Enabled,
+		NeedCoin: cfg.NeedCoin, MonthlyCoin: cfg.MonthlyCoin, IsMonthlyDeduct: cfg.IsMonthlyDeduct,
+	}
 
 	projects, err := GetActivityProjectsByActivityID(cfg.ID)
 	if err != nil || len(projects) == 0 {
@@ -2318,9 +2349,6 @@ func GetActivityAuthAccounts(activityID string) ([]ActivityAuthAccountItem, erro
 	cfg := getActivityByID(activityID)
 	if cfg == nil {
 		return nil, fmt.Errorf("活动不存在")
-	}
-	if !cfg.IsMonthlyDeduct {
-		return nil, fmt.Errorf("该活动不是月扣费活动，不支持删除账号退积分")
 	}
 
 	projects, err := GetActivityProjectsByActivityID(activityID)
@@ -2365,7 +2393,9 @@ func buildActivityAuthAccountItemByProject(cfg *ActivityConfig, project *Activit
 		}
 	}
 	statusText := "正常"
-	if project.Status != 0 {
+	if !cfg.IsMonthlyDeduct && expireDate == "" {
+		statusText = "一次性"
+	} else if project.Status != 0 {
 		statusText = "已禁用"
 	} else if remainDays <= 0 && expireDate != "" {
 		statusText = "已到期"
@@ -2434,9 +2464,7 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 	if cfg == nil {
 		return 0, 0, fmt.Errorf("活动不存在")
 	}
-	if !cfg.IsMonthlyDeduct {
-		return 0, 0, fmt.Errorf("该活动不是月扣费活动，不支持删除账号退积分")
-	}
+	isMonthly := cfg.IsMonthlyDeduct
 	cleanEnvIDs := make([]int, 0, len(envIDs))
 	seen := map[int]bool{}
 	for _, envID := range envIDs {
@@ -2475,7 +2503,7 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 	deletedCount := 0
 	totalRefundCoin := 0
 
-	if len(manualRefundCoins) > 0 {
+	if isMonthly && len(manualRefundCoins) > 0 {
 		for i := range selectedItems {
 			if coin, ok := manualRefundCoins[selectedItems[i].EnvID]; ok {
 				selectedItems[i].RefundCoin = coin
@@ -2490,16 +2518,28 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 		}
 		go TriggerSync(dbID)
 		deletedCount++
-		totalRefundCoin += item.RefundCoin
-		if item.UserNumber > 0 && item.RefundCoin > 0 {
-			AdddCoin(item.UserNumber, item.RefundCoin)
+		refundCoin := 0
+		if isMonthly {
+			refundCoin = item.RefundCoin
+			totalRefundCoin += refundCoin
+			if item.UserNumber > 0 && refundCoin > 0 {
+				AdddCoin(item.UserNumber, refundCoin)
+			}
 		}
-		msg := fmt.Sprintf("📢【授权账号删除与积分退还通知】\n活动：%s\n账号备注：%s\n原到期日：%s\n剩余天数：%d 天\n退还积分：%d\n删除原因：%s\n\n如有疑问请联系管理员。", cfg.Name, item.AccountAlias, item.ExpireDate, item.RemainDays, item.RefundCoin, reason)
 		if item.UserNumber > 0 {
+			var msg string
+			var title string
+			if isMonthly {
+				title = "授权账号删除与积分退还通知"
+				msg = fmt.Sprintf("📢【授权账号删除与积分退还通知】\n活动：%s\n账号备注：%s\n原到期日：%s\n剩余天数：%d 天\n退还积分：%d\n删除原因：%s\n\n如有疑问请联系管理员。", cfg.Name, item.AccountAlias, item.ExpireDate, item.RemainDays, refundCoin, reason)
+			} else {
+				title = "授权账号删除通知"
+				msg = fmt.Sprintf("📢【授权账号删除通知】\n活动：%s\n账号备注：%s\n说明：该活动为一次性扣费，删除不退还积分\n删除原因：%s\n\n如有疑问请联系管理员。", cfg.Name, item.AccountAlias, reason)
+			}
 			if channels.Robot {
 				PushByQQ(strconv.Itoa(item.UserNumber), msg)
 			}
-			CreateSystemWebNotification("授权账号删除与积分退还通知", msg, NotifyCategoryAuth, NotifySourceAuth, item.UserNumber, channels)
+			CreateSystemWebNotification(title, msg, NotifyCategoryAuth, NotifySourceAuth, item.UserNumber, channels)
 		}
 	}
 	adminMsg := fmt.Sprintf("📢【活动授权账号删除完成】\n活动：%s\n删除账号：%d 个\n退还积分：%d\n原因：%s", cfg.Name, deletedCount, totalRefundCoin, reason)
@@ -2644,6 +2684,149 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 
 	InvalidateActivityAdminStatsCache()
 	return updated, failed, nil
+}
+
+// ConvertActivityToMonthly 将一次性活动转为月扣费活动，可选同步迁移现有用户
+func ConvertActivityToMonthly(activityID string, monthlyCoin int, syncUsers bool, grantDays int, channels NotifyChannels) (int, error) {
+	if monthlyCoin <= 0 {
+		return 0, fmt.Errorf("每月积分必须大于0")
+	}
+	if syncUsers && (grantDays < 1 || grantDays > 3650) {
+		return 0, fmt.Errorf("授权天数需在1-3650之间")
+	}
+
+	cfg := getActivityByID(activityID)
+	if cfg == nil {
+		return 0, fmt.Errorf("活动不存在")
+	}
+	if cfg.IsMonthlyDeduct {
+		return 0, fmt.Errorf("该活动已经是月扣费活动")
+	}
+
+	if err := updateActivityMonthlyFieldsInYaml(cfg.EnvKey, monthlyCoin); err != nil {
+		return 0, err
+	}
+	ReloadActivities()
+
+	migrated := 0
+	if !syncUsers {
+		InvalidateActivityAdminStatsCache()
+		return migrated, nil
+	}
+
+	projects, err := GetActivityProjectsByActivityID(activityID)
+	if err != nil {
+		return migrated, fmt.Errorf("活动配置已更新，但查询用户失败：%v", err)
+	}
+
+	now := time.Now()
+	for _, project := range projects {
+		var newExpire time.Time
+		if project.ExpireDate != "" {
+			if oldDate, parseErr := time.Parse(DateLayout, project.ExpireDate); parseErr == nil {
+				newExpire = oldDate.AddDate(0, 0, grantDays)
+			}
+		}
+		if newExpire.IsZero() {
+			newExpire = now.AddDate(0, 0, grantDays)
+		}
+		newExpireStr := newExpire.Format(DateLayout)
+		newRemarks := BuildMonthDeductRemarks(project.Remarks, newExpireStr)
+
+		project.IsMonthlyDeduct = true
+		project.MonthlyCoin = monthlyCoin
+		project.ExpireDate = newExpireStr
+		project.Remarks = newRemarks
+		project.RemarkAlias = GetFirstRemarkParam(newRemarks)
+		project.Status = 0
+		project.SyncStatus = "pending_update"
+		project.SyncError = ""
+		if err := UpdateActivityProject(&project); err != nil {
+			log.Printf("[转月费] 更新用户项目失败 ID=%d: %v", project.ID, err)
+			continue
+		}
+		go TriggerSync(project.ID)
+		migrated++
+
+		if project.UserNumber > 0 {
+			accountAlias := project.RemarkAlias
+			if accountAlias == "" {
+				accountAlias = "未知账号"
+			}
+			msg := fmt.Sprintf(
+				"📢【活动计费方式变更通知】\n"+
+					"活动：%s\n"+
+					"账号备注：%s\n"+
+					"变更：一次性扣费 → 按月扣费（每月%d积分）\n"+
+					"授权到期日：%s\n\n"+
+					"如有疑问请联系管理员。",
+				cfg.Name, accountAlias, monthlyCoin, newExpireStr)
+			if channels.Robot {
+				PushByQQ(strconv.Itoa(project.UserNumber), msg)
+			}
+			CreateSystemWebNotification("活动计费方式变更通知", msg, NotifyCategoryAuth, NotifySourceAuth, project.UserNumber, channels)
+		}
+	}
+
+	adminMsg := fmt.Sprintf("📢【活动转月费完成】\n活动：%s\n每月积分：%d\n同步迁移用户：%d 人\n赠送授权：%d 天", cfg.Name, monthlyCoin, migrated, grantDays)
+	CreateSystemWebNotification("活动转月费完成", adminMsg, NotifyCategoryAuth, NotifySourceAuth, 0, channels)
+	InvalidateActivityAdminStatsCache()
+	return migrated, nil
+}
+
+func updateActivityMonthlyFieldsInYaml(envKey string, monthlyCoin int) error {
+	data, err := ioutil.ReadFile("conf/activities.yaml")
+	if err != nil {
+		return fmt.Errorf("读取配置文件失败: %v", err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	inActivities := false
+	inTarget := false
+	found := false
+	var newLines []string
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "activities:") {
+			inActivities = true
+			newLines = append(newLines, line)
+			continue
+		}
+		if inActivities && trimmed != "" && !strings.HasPrefix(line, "  ") && !strings.HasPrefix(line, "#") {
+			inActivities = false
+			inTarget = false
+		}
+		if inActivities && strings.HasPrefix(trimmed, "- 名称:") {
+			inTarget = false
+		}
+		if inActivities && strings.Contains(line, "环境变量名:") {
+			val := strings.TrimSpace(strings.TrimPrefix(trimmed, "环境变量名:"))
+			val = strings.Trim(val, "\"")
+			if val == envKey {
+				inTarget = true
+				found = true
+			}
+		}
+		if inTarget && strings.HasPrefix(trimmed, "是否按月扣费:") {
+			newLines = append(newLines, "    是否按月扣费: true")
+			continue
+		}
+		if inTarget && strings.HasPrefix(trimmed, "每月积分:") {
+			newLines = append(newLines, fmt.Sprintf("    每月积分: %d", monthlyCoin))
+			continue
+		}
+		newLines = append(newLines, line)
+	}
+
+	if !found {
+		return fmt.Errorf("配置文件中未找到环境变量名为 %s 的活动", envKey)
+	}
+
+	if err := ioutil.WriteFile("conf/activities.yaml", []byte(strings.Join(newLines, "\n")), 0644); err != nil {
+		return fmt.Errorf("写入配置文件失败: %v", err)
+	}
+	return nil
 }
 
 // ===================== 微信协议设备管理 =====================

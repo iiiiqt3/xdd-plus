@@ -1973,6 +1973,49 @@ func (c *AdminApiController) BatchUpdateActivityAuth() {
 	c.ServeJSON()
 }
 
+// ConvertActivityToMonthly 一次性活动转为月扣费活动
+func (c *AdminApiController) ConvertActivityToMonthly() {
+	var req struct {
+		ActivityID  string   `json:"activityId"`
+		MonthlyCoin int      `json:"monthlyCoin"`
+		SyncUsers   bool     `json:"syncUsers"`
+		GrantDays   int      `json:"grantDays"`
+		Channels    []string `json:"channels"`
+	}
+	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+
+	if req.ActivityID == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "活动ID不能为空"}
+		c.ServeJSON()
+		return
+	}
+	if req.MonthlyCoin <= 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "每月积分必须大于0"}
+		c.ServeJSON()
+		return
+	}
+	if req.SyncUsers && (req.GrantDays < 1 || req.GrantDays > 3650) {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "授权天数需在1-3650之间"}
+		c.ServeJSON()
+		return
+	}
+
+	channels := models.NormalizeNotifyChannels(req.Channels)
+	migrated, err := models.ConvertActivityToMonthly(req.ActivityID, req.MonthlyCoin, req.SyncUsers, req.GrantDays, channels)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+
+	msg := fmt.Sprintf("活动已转为月扣费（每月%d积分）", req.MonthlyCoin)
+	if req.SyncUsers {
+		msg += fmt.Sprintf("，已同步迁移 %d 个用户", migrated)
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg, "data": map[string]interface{}{"migrated": migrated}}
+	c.ServeJSON()
+}
+
 // ===================== 微信协议设备管理 =====================
 
 // GetWxDevices 获取微信设备列表
