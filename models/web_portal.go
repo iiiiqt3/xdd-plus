@@ -532,7 +532,13 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 				if remainingDays < 0 {
 					remainingDays = 0
 				}
+				if remainingDays > 30 {
+					remainingDays = 30
+				}
 				returnCoin = int((float64(cfg.MonthlyCoin) * remainingDays / 30) + 0.5)
+				if returnCoin > cfg.MonthlyCoin {
+					returnCoin = cfg.MonthlyCoin
+				}
 			}
 		}
 	}

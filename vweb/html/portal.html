@@ -550,8 +550,8 @@
             min-height: calc(1.4em * 2 + 2px);
             margin-bottom: 8px;
             font-size: 13.5px;
-            color: var(--text);
-            font-weight: 800;
+            color: var(--cyan);
+            font-weight: 600;
             letter-spacing: 0.02em;
             padding-left: 2px;
             word-break: break-word;
@@ -1876,7 +1876,121 @@ function openProjectModal(activityId) {
             </div>`);
     }
     fields.innerHTML = built.join('');
+
+    initProjectModalValidation(item);
     document.getElementById('projectModalMask').classList.add('show');
+}
+
+function initProjectModalValidation(item) {
+    const fieldConfigs = {};
+    (item.inputFields || []).forEach(field => {
+        if (field?.key) {
+            fieldConfigs[field.key] = {
+                required: !!field.required,
+                errorMsg: field.errorMsg ? String(field.errorMsg) : '',
+                prompt: field.prompt ? String(field.prompt) : ''
+            };
+        }
+    });
+
+    document.querySelectorAll('#projectModalFields input[data-modal-field-key]').forEach(input => {
+        const fieldKey = input.dataset.modalFieldKey;
+        const config = fieldConfigs[fieldKey];
+        const isRemarksField = fieldKey === '__remarks';
+        const isMonthsField = fieldKey === '__months';
+
+        let errorDiv = null;
+
+        function createErrorDiv() {
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.className = 'field-validation-hint field-error-active';
+                errorDiv.style.cssText = 'display:none;margin-top:6px;padding:6px 10px;border-radius:8px;background:linear-gradient(135deg,rgba(220,38,38,0.08),rgba(244,63,94,0.05));border:1px solid rgba(220,38,38,0.20);color:var(--red);font-size:11px;font-weight:600;line-height:1.5;animation:shakeError 0.3s ease;';
+                input.parentNode.appendChild(errorDiv);
+            }
+        }
+
+        function validateField() {
+            const value = input.value.trim();
+
+            if (!value) {
+                if (errorDiv) {
+                    errorDiv.style.display = 'none';
+                    input.style.borderColor = '';
+                    input.style.boxShadow = '';
+                }
+                return true;
+            }
+
+            createErrorDiv();
+            let isValid = true;
+            let errorMessage = '';
+
+            if (!isRemarksField && !isMonthsField && /[\u4e00-\u9fa5]/.test(value)) {
+                isValid = false;
+                errorMessage = '该字段不允许输入中文字符，请检查输入内容';
+            } else if (config && config.errorMsg && value) {
+                const errorMsgLower = config.errorMsg.toLowerCase();
+                if (errorMsgLower.includes('格式') || errorMsgLower.includes('错误') || errorMsgLower.includes('无效')) {
+                    if (value.length < 3) {
+                        isValid = false;
+                        errorMessage = config.errorMsg;
+                    }
+                }
+            }
+
+            if (!isValid) {
+                errorDiv.textContent = errorMessage;
+                errorDiv.style.display = 'block';
+                input.style.borderColor = 'var(--red)';
+                input.style.boxShadow = '0 0 0 3px rgba(220,38,38,0.12)';
+                return false;
+            } else {
+                errorDiv.style.display = 'none';
+                input.style.borderColor = '';
+                input.style.boxShadow = '';
+                return true;
+            }
+        }
+
+        input.addEventListener('input', () => {
+            if (!isRemarksField) {
+                const cursorPos = input.selectionStart;
+                const value = input.value;
+                if (/[\u4e00-\u9fa5]/.test(value) && !isRemarksField && !isMonthsField) {
+                    const newValue = value.replace(/[\u4e00-\u9fa5]/g, '');
+                    input.value = newValue;
+                    const newPos = Math.max(0, cursorPos - 1);
+                    input.setSelectionRange(newPos, newPos);
+
+                    createErrorDiv();
+                    errorDiv.textContent = '已自动移除中文字符';
+                    errorDiv.style.display = 'block';
+                    setTimeout(() => { if (errorDiv) errorDiv.style.display = 'none'; }, 2000);
+                }
+            }
+            clearTimeout(input._validateTimer);
+            input._validateTimer = setTimeout(validateField, 300);
+        });
+
+        input.addEventListener('blur', validateField);
+    });
+
+    if (!document.getElementById('dynamicValidationStyle')) {
+        const style = document.createElement('style');
+        style.id = 'dynamicValidationStyle';
+        style.textContent = `
+            @keyframes shakeError {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-4px); }
+                75% { transform: translateX(4px); }
+            }
+            .field-error-active {
+                animation: shakeError 0.3s ease;
+            }
+        `;
+        document.head.appendChild(style);
+    }
 }
 
 function closeProjectModal() {
