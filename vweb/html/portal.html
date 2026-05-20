@@ -1900,6 +1900,7 @@ function initProjectModalValidation(item) {
         const isMonthsField = fieldKey === '__months';
 
         let errorDiv = null;
+        let isAutoRemoveChinese = false;
 
         function createErrorDiv() {
             if (!errorDiv) {
@@ -1929,14 +1930,6 @@ function initProjectModalValidation(item) {
             if (!isRemarksField && !isMonthsField && /[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/.test(value)) {
                 isValid = false;
                 errorMessage = '该字段不允许输入中文字符或中文标点符号，请检查输入内容';
-            } else if (config && config.errorMsg && value) {
-                const errorMsgLower = config.errorMsg.toLowerCase();
-                if (errorMsgLower.includes('格式') || errorMsgLower.includes('错误') || errorMsgLower.includes('无效')) {
-                    if (value.length < 3) {
-                        isValid = false;
-                        errorMessage = config.errorMsg;
-                    }
-                }
             }
 
             if (!isValid) {
@@ -1944,11 +1937,14 @@ function initProjectModalValidation(item) {
                 errorDiv.style.display = 'block';
                 input.style.borderColor = 'var(--red)';
                 input.style.boxShadow = '0 0 0 3px rgba(220,38,38,0.12)';
+                isAutoRemoveChinese = false;
                 return false;
             } else {
-                errorDiv.style.display = 'none';
-                input.style.borderColor = '';
-                input.style.boxShadow = '';
+                if (!isAutoRemoveChinese) {
+                    errorDiv.style.display = 'none';
+                    input.style.borderColor = '';
+                    input.style.boxShadow = '';
+                }
                 return true;
             }
         }
@@ -1967,19 +1963,38 @@ function initProjectModalValidation(item) {
                     errorDiv.textContent = '已自动移除中文字符或中文标点符号';
                     errorDiv.style.display = 'block';
 
+                    isAutoRemoveChinese = true;
+
                     if (input._hideErrorTimer) {
                         clearTimeout(input._hideErrorTimer);
                     }
                     input._hideErrorTimer = setTimeout(() => {
                         if (errorDiv) errorDiv.style.display = 'none';
-                    }, 5000);
+                        isAutoRemoveChinese = false;
+                    }, 2000);
                 }
             }
-            clearTimeout(input._validateTimer);
-            input._validateTimer = setTimeout(validateField, 300);
         });
 
-        input.addEventListener('blur', validateField);
+        input.addEventListener('blur', () => {
+            const value = input.value.trim();
+            if (value && !isRemarksField && !isMonthsField && /[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/.test(value)) {
+                createErrorDiv();
+                errorDiv.textContent = '该字段不允许输入中文字符或中文标点符号，请检查输入内容';
+                errorDiv.style.display = 'block';
+                input.style.borderColor = 'var(--red)';
+                input.style.boxShadow = '0 0 0 3px rgba(220,38,38,0.12)';
+                isAutoRemoveChinese = false;
+            } else {
+                if (!isAutoRemoveChinese) {
+                    if (errorDiv) {
+                        errorDiv.style.display = 'none';
+                        input.style.borderColor = '';
+                        input.style.boxShadow = '';
+                    }
+                }
+            }
+        });
     });
 
     if (!document.getElementById('dynamicValidationStyle')) {
