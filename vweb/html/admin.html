@@ -19,6 +19,28 @@
         .nav-item.active { background: rgba(64,158,255,0.12); color: #409eff; border-left-color: #409eff; font-weight: 500; }
         .nav-item i { width: 20px; text-align: center; font-size: 15px; }
         .nav-divider { height: 1px; background: rgba(0,0,0,0.05); margin: 6px 16px; }
+        /* ===== 二级菜单样式 ===== */
+        .nav-group { margin-bottom: 2px; }
+        .nav-group-title { display: flex; align-items: center; padding: 11px 20px; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; color: #555; font-size: 14px; gap: 12px; border-radius: 0 8px 8px 0; margin-right: 8px; position: relative; }
+        .nav-group-title:hover { background: rgba(64,158,255,0.08); color: #333; }
+        .nav-group-title.active { background: rgba(64,158,255,0.12); color: #409eff; border-left-color: #409eff; font-weight: 500; }
+        .nav-group-title i { width: 20px; text-align: center; font-size: 15px; }
+        .nav-group-title .arrow { margin-left: auto; transition: transform 0.3s; font-size: 12px; }
+        .nav-group-title.expanded .arrow { transform: rotate(90deg); }
+        .nav-group-items { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .nav-group-items.expanded { max-height: 200px; }
+        .nav-sub-item { display: flex; align-items: center; padding: 10px 20px 10px 52px; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; color: #555; font-size: 13px; gap: 10px; border-radius: 0 8px 8px 0; margin-right: 8px; }
+        .nav-sub-item:hover { background: rgba(64,158,255,0.08); color: #333; }
+        .nav-sub-item.active { background: rgba(64,158,255,0.12); color: #409eff; border-left-color: #409eff; font-weight: 500; }
+        .nav-sub-item i { width: 18px; text-align: center; font-size: 14px; }
+        /* ===== Tab切换样式 ===== */
+        .tab-container { display: flex; gap: 0; margin-bottom: 16px; background: #f5f7fa; border-radius: 8px; padding: 4px; }
+        .tab-btn { padding: 10px 24px; border: none; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #666; border-radius: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+        .tab-btn:hover { color: #333; background: rgba(255,255,255,0.5); }
+        .tab-btn.active { background: #fff; color: #409eff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .tab-btn i { font-size: 16px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         .main-content { margin-left: 220px; min-height: 100vh; }
         .top-bar { background: #fff; padding: 14px 28px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e8e8e8; position: sticky; top: 0; z-index: 60; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         .top-bar h1 { font-size: 18px; font-weight: 600; color: #1a1a2e; }
@@ -340,17 +362,16 @@
         <div class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')"><i class="fas fa-tachometer-alt"></i><span>仪表盘</span></div>
         <div class="nav-divider"></div>
         <div class="nav-item" data-page="jdcookies" onclick="switchPage('jdcookies')"><i class="fas fa-cookie"></i><span>京东账号</span></div>
-        <div class="nav-item" data-page="jdcontainers" onclick="switchPage('jdcontainers')"><i class="fas fa-box"></i><span>京东容器</span></div>
         <div class="nav-item" data-page="jdcrontasks" onclick="switchPage('jdcrontasks')"><i class="fas fa-list-check"></i><span>京东任务列表</span></div>
         <div class="nav-item" data-page="users" onclick="switchPage('users')"><i class="fas fa-users"></i><span>用户管理</span></div>
         <div class="nav-divider"></div>
         <div class="nav-item" data-page="activities" onclick="switchPage('activities')"><i class="fas fa-calendar-alt"></i><span>青龙活动配置</span></div>
         <div class="nav-item" data-page="actauth" onclick="switchPage('actauth')"><i class="fas fa-user-shield"></i><span>青龙活动授权</span></div>
         <div class="nav-item" data-page="actstats" onclick="switchPage('actstats')"><i class="fas fa-chart-pie"></i><span>活动人数统计</span></div>
-        <div class="nav-item" data-page="qlcontainers" onclick="switchPage('qlcontainers')"><i class="fas fa-server"></i><span>青龙活动容器</span></div>
         <div class="nav-item" data-page="qlcrontasks" onclick="switchPage('qlcrontasks')"><i class="fas fa-tasks"></i><span>青龙活动任务</span></div>
         <div class="nav-item" data-page="qlenvs" onclick="switchPage('qlenvs')"><i class="fas fa-cubes"></i><span>青龙活动变量</span></div>
         <div class="nav-divider"></div>
+        <div class="nav-item" data-page="containers" onclick="switchPage('containers')"><i class="fas fa-boxes-stacked"></i><span>容器管理</span></div>
         <div class="nav-item" data-page="notifications" onclick="switchPage('notifications')"><i class="fas fa-bell"></i><span>通知中心</span></div>
         <div class="nav-item" data-page="feedbacks" onclick="switchPage('feedbacks')"><i class="fas fa-comment-dots"></i><span>意见反馈</span></div>
         <div class="nav-item" data-page="envvars" onclick="switchPage('envvars')"><i class="fas fa-database"></i><span>xdd环境变量</span></div>
@@ -944,18 +965,39 @@
             </div>
         </div>
 
-        <!-- ========= 青龙活动容器 ========= -->
-        <div id="page-qlcontainers" class="page-section">
-            <div class="card">
-                <div class="card-header" style="justify-content:space-between;">
-                    <div class="card-title"><i class="fas fa-server"></i> 青龙容器配置</div>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <button class="btn btn-success btn-sm" onclick="showQlCtnModal()"><i class="fas fa-plus"></i> 添加容器</button>
-                        <button class="btn btn-primary btn-sm" onclick="testAllQlConnections()"><i class="fas fa-plug"></i> 检测全部连接</button>
-                    </div>
+        <!-- ========= 容器管理（带Tab切换） ========= -->
+        <div id="page-containers" class="page-section">
+            <div class="card" style="padding:16px;">
+                <div class="tab-container">
+                    <button class="tab-btn active" onclick="switchContainerTab('jdcontainers')"><i class="fas fa-box"></i> 京东容器</button>
+                    <button class="tab-btn" onclick="switchContainerTab('qlcontainers')"><i class="fas fa-server"></i> 青龙活动容器</button>
                 </div>
-                <p style="font-size:13px;color:#999;margin-bottom:16px;"><i class="fas fa-info-circle"></i> 活动配置使用的青龙面板，在 conf/activities.yaml 文件顶部的 qinglong_configs 中配置，支持热加载无需重启。</p>
-                <div class="container-cards" id="qlContainerCards"></div>
+                
+                <!-- 京东容器内容 -->
+                <div id="tab-jdcontainers" class="tab-content active">
+                    <div class="card-header" style="justify-content:space-between;">
+                        <div class="card-title"><i class="fas fa-box"></i> 京东容器</div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button class="btn btn-success btn-sm" onclick="showJdContainerModal()"><i class="fas fa-plus"></i> 添加容器</button>
+                            <button class="btn btn-primary btn-sm" onclick="testAllJdConnections()"><i class="fas fa-plug"></i> 检测全部连接</button>
+                        </div>
+                    </div>
+                    <p style="font-size:13px;color:#999;margin-bottom:16px;"><i class="fas fa-info-circle"></i> config.yaml 中京东 CK 分发用的青龙容器，与活动配置的青龙容器独立。</p>
+                    <div class="container-cards" id="jdContainerCards"></div>
+                </div>
+                
+                <!-- 青龙活动容器内容 -->
+                <div id="tab-qlcontainers" class="tab-content">
+                    <div class="card-header" style="justify-content:space-between;">
+                        <div class="card-title"><i class="fas fa-server"></i> 青龙活动容器</div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button class="btn btn-success btn-sm" onclick="showQlCtnModal()"><i class="fas fa-plus"></i> 添加容器</button>
+                            <button class="btn btn-primary btn-sm" onclick="testAllQlConnections()"><i class="fas fa-plug"></i> 检测全部连接</button>
+                        </div>
+                    </div>
+                    <p style="font-size:13px;color:#999;margin-bottom:16px;"><i class="fas fa-info-circle"></i> 活动配置使用的青龙面板，在 conf/activities.yaml 文件顶部的 qinglong_configs 中配置，支持热加载无需重启。</p>
+                    <div class="container-cards" id="qlContainerCards"></div>
+                </div>
             </div>
         </div>
 
@@ -989,22 +1031,6 @@
                     </table>
                 </div>
                 <div class="pagination" id="qlEnvPagination"></div>
-            </div>
-        </div>
-
-        <!-- ========= 青龙京东容器 ========= -->
-        <div id="page-jdcontainers" class="page-section">
-            <div class="card">
-                <div class="card-header" style="justify-content:space-between;">
-                    <div class="card-title"><i class="fas fa-box"></i> 青龙京东容器</div>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <button class="btn btn-success btn-sm" onclick="showJdContainerModal()"><i class="fas fa-plus"></i> 添加容器</button>
-      
-                        <button class="btn btn-primary btn-sm" onclick="testAllJdConnections()"><i class="fas fa-plug"></i> 检测全部连接</button>
-                    </div>
-                </div>
-                <p style="font-size:13px;color:#999;margin-bottom:16px;"><i class="fas fa-info-circle"></i> config.yaml 中京东 CK 分发用的青龙容器，与活动配置的青龙容器独立。</p>
-                <div class="container-cards" id="jdContainerCards"></div>
             </div>
         </div>
 
@@ -1642,6 +1668,19 @@ function animateCounter(el, target) {
     requestAnimationFrame(step);
 }
 
+// ============ 容器管理Tab切换 ============
+function switchContainerTab(tab) {
+    document.querySelectorAll('#page-containers .tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('#page-containers .tab-content').forEach(content => content.classList.remove('active'));
+    document.querySelector(`#page-containers .tab-btn[onclick="switchContainerTab('${tab}')"]`).classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (tab === 'jdcontainers') {
+        loadJdContainers();
+    } else if (tab === 'qlcontainers') {
+        loadQLContainers();
+    }
+}
+
 // ============ 页面切换 ============
 function switchPage(page) {
     currentPage = page;
@@ -1656,10 +1695,11 @@ function switchPage(page) {
         users: ['用户管理', '账号管理 / 用户管理'], notifications: ['通知中心', '系统设置 / 通知中心'], feedbacks: ['意见反馈', '系统设置 / 意见反馈'], envvars: ['xdd环境变量', '系统设置 / xdd环境变量'],
         activities: ['活动配置', '系统设置 / 活动配置'], actauth: ['青龙活动授权', '系统设置 / 青龙活动授权'], actstats: ['活动人数统计', '系统设置 / 活动人数统计'],
         wxdevices: ['微信协议管理', '系统设置 / 微信协议管理'],
+        containers: ['容器管理', '容器管理'],
         qlcontainers: ['青龙活动容器', '容器管理 / 青龙活动容器'],
-        qlenvs: ['青龙活动变量', '容器管理 / 青龙活动变量'], jdcontainers: ['青龙京东容器', '容器管理 / 青龙京东容器'],
-        jdcrontasks: ['京东任务列表', '容器管理 / 京东任务列表'],
-        qlcrontasks: ['青龙活动任务', '容器管理 / 青龙活动任务'],
+        qlenvs: ['青龙活动变量', '容器管理 / 青龙活动变量'], jdcontainers: ['京东容器', '容器管理 / 京东容器'],
+        jdcrontasks: ['京东任务列表', '京东容器 / 京东任务列表'],
+        qlcrontasks: ['青龙活动任务', '青龙活动 / 青龙活动任务'],
         sysconfig: ['系统配置', '系统设置 / 系统配置'],
         gameconfig: ['娱乐功能', '系统设置 / 娱乐功能'],
     };
@@ -1670,11 +1710,17 @@ function switchPage(page) {
         dashboard: loadDashboard, jdcookies: () => loadJdCookies(1), users: () => loadUsers(1),
         notifications: () => loadNotifications(1), feedbacks: () => loadFeedbacks(1), envvars: () => loadEnvVars(1), activities: loadActivities, actauth: loadActAuthList, actstats: loadActivityStats,
         wxdevices: loadWxDevices,
+        containers: loadContainers,
         qlcontainers: loadQLContainers,
         qlenvs: loadQLEnvConfigs, jdcontainers: loadJdContainers, jdcrontasks: initJdCronTaskPage,
         qlcrontasks: initQlCronTaskPage, sysconfig: function() { loadSysConfig(); }, gameconfig: loadGameConfig,
     };
     if (loaders[page]) loaders[page]();
+}
+
+function loadContainers() {
+    loadJdContainers();
+    loadQLContainers();
 }
 
 // ============ 仪表盘（丰富内容） ============
