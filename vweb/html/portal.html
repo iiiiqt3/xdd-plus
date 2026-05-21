@@ -991,12 +991,6 @@
         <section class="panel active" id="panel-dashboard">
             <!-- 核心数据英雄条 -->
             <div class="dash-hero-strip">
-                <div class="dash-hero-item hero-cyan-grad">
-                    <div class="hero-bg-icon">💰</div>
-                    <div class="hero-label">当前积分</div>
-                    <div class="hero-value" id="cardCoin">-</div>
-                    <div class="hero-sub" id="cardNumber">编号 -</div>
-                </div>
                 <div class="dash-hero-item hero-green-grad">
                     <div class="hero-bg-icon">🚀</div>
                     <div class="hero-label">进行中的活动</div>
@@ -1006,7 +1000,7 @@
                 <div class="dash-hero-item hero-green-grad">
                     <div class="hero-bg-icon">✅</div>
                     <div class="hero-label">已参与活动</div>
-                    <div class="hero-value" id="cardActiveCount">0</div>
+                    <div class="hero-value" id="cardJoinedCount">0</div>
                     <div class="hero-sub">我已上车的活动</div>
                 </div>
                 <div class="dash-hero-item hero-blue-grad">
@@ -1047,9 +1041,9 @@
                         账号信息
                     </div>
                     <div id="profileBox">
+                        <div class="dash-profile-row" style="background:linear-gradient(135deg,rgba(6,182,212,0.08),rgba(6,182,212,0.03));border-radius:8px;padding:8px 10px;margin-bottom:4px;"><span class="pr-label" style="font-weight:600;color:var(--cyan);">💰 当前积分</span><span class="pr-value" id="profileCoin" style="font-size:18px;font-weight:700;color:var(--cyan);">-</span></div>
                         <div class="dash-profile-row"><span class="pr-label">网页账号</span><span class="pr-value" id="cardAccount">-</span></div>
                         <div class="dash-profile-row"><span class="pr-label">用户编号</span><span class="pr-value" id="profileNumber">-</span></div>
-                        <div class="dash-profile-row"><span class="pr-label">当前积分</span><span class="pr-value" id="profileCoin">-</span></div>
                         <div class="dash-profile-row"><span class="pr-label">QQ</span><span class="pr-value" id="profileQQ">-</span></div>
                         <div class="dash-profile-row"><span class="pr-label">微信ID</span><span class="pr-value" id="profileWxid">-</span></div>
                         <div class="dash-profile-row"><span class="pr-label">用户类别</span><span class="pr-value" id="profileClass">-</span></div>
@@ -1607,12 +1601,10 @@ function updateDashboardProjectStats() {
 
 function renderDashboard() {
     const d = state.dashboard || {};
-    document.getElementById('cardCoin').textContent = d.coin ?? '-';
-    document.getElementById('cardNumber').textContent = '编号 ' + (d.number ?? '-');
     const availableEl = document.getElementById('cardAvailableCount');
     if (availableEl) availableEl.textContent = d.availableCount ?? (state.activities || []).length ?? 0;
-    document.getElementById('cardActiveCount').textContent = d.activeCount ?? 0;
-    document.getElementById('cardValidAccounts').textContent = d.projectCount ?? 0;
+    document.getElementById('cardJoinedCount').textContent = d.joinedCount ?? 0;
+    document.getElementById('cardValidAccounts').textContent = d.activeCount ?? 0;
     document.getElementById('cardExpiringCount').textContent = d.expiringCount ?? 0;
     document.getElementById('cardExpiredCount').textContent = d.expiredCount ?? 0;
     const dashNotifyTotal = document.getElementById('dashNotifyTotal');
@@ -1623,7 +1615,7 @@ function renderDashboard() {
     state.notificationUnread = d.notificationUnread ?? state.notificationUnread;
     updateNotificationBadges();
     document.getElementById('topSummary').textContent =
-        `积分 ${d.coin ?? '-'} · 账号 ${d.username || '-'} · 编号 ${d.number || '-'} · 进行中活动 ${d.availableCount ?? 0} · 已参与 ${d.activeCount || 0} · 有效账号 ${d.projectCount || 0} · 快到期 ${d.expiringCount || 0} · 已失效 ${d.expiredCount || 0}`;
+        `积分 ${d.coin ?? '-'} · 账号 ${d.username || '-'} · 编号 ${d.number || '-'} · 进行中活动 ${d.availableCount ?? 0} · 已参与活动 ${d.joinedCount || 0} · 有效账号 ${d.activeCount || 0} · 快到期 ${d.expiringCount || 0} · 已失效 ${d.expiredCount || 0}`;
 
     // 账号信息
     const user = state.profile?.user || {};
