@@ -6,6 +6,7 @@ import (
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/buger/jsonparser"
 	"os"
 	"time"
 	"strings"
@@ -171,6 +172,29 @@ func SendWxMsg(uid string, msg string) {
 
 }
 
+func GetQxNickname(wxid string) string {
+	req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
+	requestBody := map[string]interface{}{
+		"type": "Q0011",
+		"data": map[string]string{
+			"wxid": wxid,
+		},
+	}
+	req.Header("Content-Type", "application/json")
+	body, _ := json.Marshal(requestBody)
+	req.Body(string(body))
+	response, err := req.String()
+	if err != nil {
+		logs.Error("获取昵称失败:", err)
+		return ""
+	}
+	nickname, _ := jsonparser.GetString([]byte(response), "data", "nick")
+	if nickname == "" {
+		nickname, _ = jsonparser.GetString([]byte(response), "nick")
+	}
+	return nickname
+}
+
 func SendWxGroupMsg(uid string, gid string, msg string) {
 
 	switch Config.Wx.Model {
@@ -202,24 +226,30 @@ func SendWxGroupMsg(uid string, gid string, msg string) {
 		s, _ := req.String()
 		logs.Info(s)
 	case "qx":
+		nickname := GetQxNickname(uid)
+		if nickname == "" {
+			nickname = uid
+		}
+		atMsg := fmt.Sprintf("@%s %s", nickname, msg)
 		req := httplib.Post(Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid)
 		requestBody := map[string]interface{}{
-			"type": "Q0001",
+			"type": "Q0009",
 			"data": map[string]string{
-				"wxid": gid,
-				"msg": msg,
+				"wxid":   gid,
+				"atwxid": uid,
+				"msg":    atMsg,
 			},
 		}
 		req.Header("Content-Type", "application/json")
 		body, _ := json.Marshal(requestBody)
-		logs.Info("发送消息请求体:", string(body))
+		logs.Info("发送@消息请求体:", string(body))
 		req.Body(string(body))
 		response, err := req.String()
 		if err != nil {
-			logs.Error("发送消息失败:", err)
+			logs.Error("发送@消息失败:", err)
 			return
 		}
-		logs.Info("发送消息响应:", response)
+		logs.Info("发送@消息响应:", response)
 	default:
 		logs.Info("尚未配置")
 	}

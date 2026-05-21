@@ -23,7 +23,7 @@ userid_farmNew.json
 # 日志文件
 *.log
 logs/
-
+.md
 # 临时文件
 tmp/
 *.tmp
