@@ -527,7 +527,7 @@
             </div>
         </div>
 
-        <!-- ========= 用户管理（无昵称列） ========= -->
+        <!-- ========= 用户管理 ========= -->
         <div id="page-users" class="page-section">
             <div class="card">
                 <div class="toolbar">
@@ -546,7 +546,7 @@
                     <table class="data-table">
                         <thead><tr>
                             <th style="min-width:36px;width:36px;"><input type="checkbox" id="userCheckAll" onchange="toggleAllUserCheck(this.checked)"></th>
-                            <th style="min-width:50px" data-col="id">ID</th><th style="min-width:60px" data-col="number">编号</th><th style="min-width:140px" data-col="wxid">微信ID</th><th style="min-width:90px" data-col="qq">QQ</th>
+                            <th style="min-width:50px" data-col="id">ID</th><th style="min-width:60px" data-col="number">编号</th><th style="min-width:90px" data-col="nickname">昵称</th><th style="min-width:140px" data-col="wxid">微信ID</th><th style="min-width:90px" data-col="qq">QQ</th>
                             <th style="min-width:60px" data-col="coins">积分</th><th style="min-width:70px" data-col="source">来源</th><th style="min-width:60px" data-col="admin">管理员</th>
                             <th style="min-width:90px" data-col="active">最后活跃</th><th style="min-width:90px" class="col-action-sticky" data-col="action">操作</th>
                         </tr></thead>
@@ -1411,6 +1411,7 @@
         <div class="modal-header"><h3 id="userFormModalTitle">新增用户</h3><span class="modal-close" onclick="closeUserFormModal()">&times;</span></div>
         <div class="form-grid" style="grid-template-columns:1fr 1fr;">
             <div class="form-item"><label>编号</label><input type="text" id="userFormNumber" placeholder="用户编号"></div>
+            <div class="form-item"><label>昵称</label><input type="text" id="userFormNickname" placeholder="用户昵称"></div>
             <div class="form-item"><label>积分</label><input type="number" id="userFormCoin" value="0"></div>
             <div class="form-item"><label>微信ID</label><input type="text" id="userFormWxid" placeholder="WxID"></div>
             <div class="form-item"><label>QQ</label><input type="text" id="userFormQQ" placeholder="QQ号"></div>
@@ -3089,11 +3090,12 @@ async function loadUsers(page) {
         const res = await api.get(`/api/admin/users?page=${userPage}&limit=${getPageSize('user')}&search=${encodeURIComponent(search)}`);
         const tbody = document.getElementById('userTableBody');
         const list = res.data?.list || [];
-        tbody.innerHTML = list.length === 0 ? '<tr><td colspan="10" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>' :
+        tbody.innerHTML = list.length === 0 ? '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>' :
             list.map(u => `<tr>
                 <td><input type="checkbox" class="user-check" value="${u.ID}" onchange="updateUserCheckAll()"></td>
                 <td>${u.ID}</td>
                 <td>${u.Number}</td>
+                <td>${formatVal(u.Nickname)}</td>
                 <td style="font-family:monospace;font-size:12px;" title="${escapeHtml(u.Wxid)}">${formatVal(u.Wxid)}</td>
                 <td>${formatVal(u.QQ)}</td>
                 <td><span class="tag tag-warning">${u.Coin}</span></td>
@@ -3101,7 +3103,7 @@ async function loadUsers(page) {
                 <td>${u.IsAdmin ? '<span class="tag tag-success">是</span>' : '<span class="tag tag-info">否</span>'}</td>
                 <td style="font-size:12px;">${u.ActiveAt ? new Date(u.ActiveAt).toLocaleDateString('zh-CN') : '-'}</td>
                 <td class="col-action-sticky">
-                    <button class="btn btn-primary btn-xs" onclick="showUserEditModal(${u.ID}, '${escapeAttr(u.Wxid)}', '${escapeAttr(u.QQ)}', ${u.Coin}, '${escapeAttr(u.Class)}', ${u.IsAdmin})" title="编辑"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-primary btn-xs" onclick="showUserEditModal(${u.ID}, '${escapeAttr(u.Wxid)}', '${escapeAttr(u.QQ)}', ${u.Coin}, '${escapeAttr(u.Class)}', ${u.IsAdmin}, '${escapeAttr(u.Nickname || '')}')" title="编辑"><i class="fas fa-edit"></i></button>
                     <button class="btn btn-danger btn-xs" onclick="deleteUser(${u.ID})" title="删除"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`).join('');
@@ -3128,6 +3130,7 @@ function showCreateUserModal() {
     document.getElementById('userFormModalTitle').textContent = '新增用户';
     document.getElementById('userFormId').value = '0';
     document.getElementById('userFormNumber').value = '';
+    document.getElementById('userFormNickname').value = '';
     document.getElementById('userFormCoin').value = '0';
     document.getElementById('userFormWxid').value = '';
     document.getElementById('userFormQQ').value = '';
@@ -3135,10 +3138,11 @@ function showCreateUserModal() {
     document.getElementById('userFormIsAdmin').value = 'false';
     document.getElementById('userFormModal').classList.remove('hidden');
 }
-function showUserEditModal(id, wxid, qq, coin, cls, isAdmin) {
+function showUserEditModal(id, wxid, qq, coin, cls, isAdmin, nickname) {
     document.getElementById('userFormModalTitle').textContent = '编辑用户';
     document.getElementById('userFormId').value = id;
     document.getElementById('userFormNumber').value = id;
+    document.getElementById('userFormNickname').value = nickname || '';
     document.getElementById('userFormCoin').value = coin || 0;
     document.getElementById('userFormWxid').value = wxid || '';
     document.getElementById('userFormQQ').value = qq || '';
@@ -3150,6 +3154,7 @@ function closeUserFormModal() { document.getElementById('userFormModal').classLi
 async function saveUser() {
     const id = parseInt(document.getElementById('userFormId').value);
     const number = document.getElementById('userFormNumber').value.trim();
+    const nickname = document.getElementById('userFormNickname').value.trim();
     const coin = parseInt(document.getElementById('userFormCoin').value) || 0;
     const wxid = document.getElementById('userFormWxid').value.trim();
     const qq = document.getElementById('userFormQQ').value.trim();
@@ -3159,9 +3164,9 @@ async function saveUser() {
     try {
         let res;
         if (id > 0) {
-            res = await api.post('/api/admin/users/update', { id, number, coin, wxid, qq, class: cls, isAdmin });
+            res = await api.post('/api/admin/users/update', { id, number, coin, wxid, qq, class: cls, isAdmin, nickname });
         } else {
-            res = await api.post('/api/admin/users/create', { number, coin, wxid, qq, class: cls, isAdmin });
+            res = await api.post('/api/admin/users/create', { number, coin, wxid, qq, class: cls, isAdmin, nickname });
         }
         toast(res.msg || '保存成功', res.code === 0 ? 'success' : 'error');
         if (res.code === 0) { closeUserFormModal(); loadUsers(); }

@@ -185,6 +185,10 @@ func HandleQQMessage(msg LLMessage) {
 	if msg.PostType == "message" {
 		logs.Info("接收到信息:" + msg.RawMessage)
 
+		if msg.Sender.Nickname != "" {
+			go models.UpdateUserNicknameIfEmpty(msg.UserId, msg.Sender.Nickname)
+		}
+
 		if msg.MessageType == "private" {
 			models.ListenQQPrivateMessage(msg.UserId, msg.RawMessage)
 		} else if msg.MessageType == "group" {

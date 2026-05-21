@@ -63,6 +63,7 @@ type PortalDashboard struct {
 	QQ                        string `json:"qq"`
 	Wxid                      string `json:"wxid"`
 	Coin                      int    `json:"coin"`
+	Nickname                  string `json:"nickname"`
 	AccountID                 int    `json:"accountId"`
 	Username                  string `json:"username"`
 	BoundAt                   string `json:"boundAt"`
@@ -125,6 +126,7 @@ func GetPortalDashboard(accountID int) (*PortalDashboard, error) {
 		QQ:                        profile.User.QQ,
 		Wxid:                      profile.User.Wxid,
 		Coin:                      profile.User.Coin,
+		Nickname:                  profile.User.Nickname,
 		AccountID:                 profile.Account.ID,
 		Username:                  profile.Account.Username,
 		BoundAt:                   formatPortalTime(profile.Account.BoundAt),

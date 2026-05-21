@@ -1951,12 +1951,13 @@ func DeleteQLConfig(name string) error {
 // ===================== 用户管理扩展 =====================
 
 // CreateUser 创建新用户
-func CreateUser(wxid, qq string, coin int, isAdmin bool) error {
+func CreateUser(wxid, qq string, coin int, isAdmin bool, nickname string) error {
 	user := User{
-		Wxid:    wxid,
-		QQ:      qq,
-		Coin:    coin,
-		IsAdmin: isAdmin,
+		Wxid:     wxid,
+		QQ:       qq,
+		Coin:     coin,
+		IsAdmin:  isAdmin,
+		Nickname: nickname,
 	}
 	var maxNum int
 	db.Model(&User{}).Select("COALESCE(MAX(number), 0)").Scan(&maxNum)
@@ -1965,13 +1966,14 @@ func CreateUser(wxid, qq string, coin int, isAdmin bool) error {
 }
 
 // UpdateUser 更新用户信息（除 ID 外所有字段）
-func UpdateUser(id int, wxid, qq string, coin int, class string, isAdmin bool) error {
+func UpdateUser(id int, wxid, qq string, coin int, class string, isAdmin bool, nickname string) error {
 	updates := map[string]interface{}{
-		"wxid":    wxid,
-		"qq":      qq,
-		"coin":    coin,
-		"class":   class,
-		"isAdmin": isAdmin,
+		"wxid":     wxid,
+		"qq":       qq,
+		"coin":     coin,
+		"class":    class,
+		"isAdmin":  isAdmin,
+		"nickname": nickname,
 	}
 	return db.Model(&User{}).Where("id = ?", id).Updates(updates).Error
 }

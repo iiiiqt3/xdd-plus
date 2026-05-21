@@ -133,7 +133,6 @@ func GetWxid(wxid string) int {
 		}
 
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			// Handle timeout here, for example log an error and retry
 			logs.Error("Database query timed out. Retrying...")
 			continue
 		}
@@ -141,16 +140,54 @@ func GetWxid(wxid string) int {
 
 	if err != nil {
 		tt := rand.Int()
-		db.Create(&User{
+		newUser := User{
 			Class:    "wx",
 			Number:   tt,
 			Coin:     0,
 			ActiveAt: time.Now(),
 			Wxid:     wxid,
-		})
+		}
+		numStr := fmt.Sprintf("%d", tt)
+		if len(numStr) < 16 {
+			newUser.QQ = numStr
+		}
+		db.Create(&newUser)
+		go fillWxNickname(wxid)
 		return tt
 	} else {
+		updates := map[string]interface{}{}
+		numStr := fmt.Sprintf("%d", u.Number)
+		if len(numStr) < 16 && u.QQ == "" {
+			updates["qq"] = numStr
+		}
+		if u.Nickname == "" {
+			go fillWxNickname(wxid)
+		}
+		if len(updates) > 0 {
+			db.Model(&User{}).Where("number = ?", u.Number).Updates(updates)
+		}
 		return u.Number
+	}
+}
+
+func fillWxNickname(wxid string) {
+	nickname := GetWxNickname(wxid)
+	if nickname == "" {
+		return
+	}
+	result := db.Model(&User{}).Where("wxid = ? AND (nickname = '' OR nickname IS NULL)", wxid).Update("nickname", nickname)
+	if result.RowsAffected > 0 {
+		logs.Info("微信昵称补全成功:", wxid, "->", nickname)
+	}
+}
+
+func UpdateUserNicknameIfEmpty(number int, nickname string) {
+	if nickname == "" {
+		return
+	}
+	result := db.Model(&User{}).Where("number = ? AND (nickname = '' OR nickname IS NULL)", number).Update("nickname", nickname)
+	if result.RowsAffected > 0 {
+		logs.Info("QQ昵称补全成功:", number, "->", nickname)
 	}
 }
 

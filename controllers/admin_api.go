@@ -1630,13 +1630,14 @@ func (c *AdminApiController) DeleteQLConfig() {
 // CreateUser 创建用户
 func (c *AdminApiController) CreateUser() {
 	var req struct {
-		Wxid    string `json:"wxid"`
-		QQ      string `json:"qq"`
-		Coin    int    `json:"coin"`
-		IsAdmin bool   `json:"isAdmin"`
+		Wxid     string `json:"wxid"`
+		QQ       string `json:"qq"`
+		Coin     int    `json:"coin"`
+		IsAdmin  bool   `json:"isAdmin"`
+		Nickname string `json:"nickname"`
 	}
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
-	err := models.CreateUser(req.Wxid, req.QQ, req.Coin, req.IsAdmin)
+	err := models.CreateUser(req.Wxid, req.QQ, req.Coin, req.IsAdmin, req.Nickname)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "创建失败: " + err.Error()}
 		c.ServeJSON()
@@ -1649,12 +1650,13 @@ func (c *AdminApiController) CreateUser() {
 // UpdateUser 更新用户
 func (c *AdminApiController) UpdateUser() {
 	var req struct {
-		ID      int    `json:"id"`
-		Wxid    string `json:"wxid"`
-		QQ      string `json:"qq"`
-		Coin    int    `json:"coin"`
-		Class   string `json:"class"`
-		IsAdmin bool   `json:"isAdmin"`
+		ID       int    `json:"id"`
+		Wxid     string `json:"wxid"`
+		QQ       string `json:"qq"`
+		Coin     int    `json:"coin"`
+		Class    string `json:"class"`
+		IsAdmin  bool   `json:"isAdmin"`
+		Nickname string `json:"nickname"`
 	}
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
 	if req.ID == 0 {
@@ -1662,7 +1664,7 @@ func (c *AdminApiController) UpdateUser() {
 		c.ServeJSON()
 		return
 	}
-	err := models.UpdateUser(req.ID, req.Wxid, req.QQ, req.Coin, req.Class, req.IsAdmin)
+	err := models.UpdateUser(req.ID, req.Wxid, req.QQ, req.Coin, req.Class, req.IsAdmin, req.Nickname)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "修改失败: " + err.Error()}
 		c.ServeJSON()

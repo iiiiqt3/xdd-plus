@@ -999,7 +999,8 @@
             <div style="flex:1;min-width:0;">
                 <h2 id="pageTitle">⚡ 仪表盘</h2>
                 <div class="topbar-chips" id="topbarChips">
-                    <span class="topbar-chip"><span class="chip-icon">👤</span><span class="chip-label">账号</span><span class="chip-val" id="topAccount">-</span></span>
+                    <span class="topbar-chip"><span class="chip-icon">👤</span><span class="chip-label">昵称</span><span class="chip-val" id="topNickname">-</span></span>
+                    <span class="topbar-chip"><span class="chip-icon">🏷️</span><span class="chip-label">账号</span><span class="chip-val" id="topAccount">-</span></span>
                     <span class="topbar-chip"><span class="chip-icon">🔢</span><span class="chip-label">编号</span><span class="chip-val" id="topNumber">-</span></span>
                     <span class="topbar-chip chip-coin"><span class="chip-icon">💰</span><span class="chip-label">积分</span><span class="chip-val" id="topCoin">-</span></span>
                 </div>
@@ -1064,6 +1065,7 @@
                         账号信息
                     </div>
                     <div id="profileBox">
+                        <div class="dash-profile-row"><span class="pr-label">用户昵称</span><span class="pr-value" id="profileNickname">-</span></div>
                         <div class="dash-profile-row"><span class="pr-label">当前积分</span><span class="pr-value" id="profileCoin">-</span></div>
                         <div class="dash-profile-row"><span class="pr-label">网页账号</span><span class="pr-value" id="cardAccount">-</span></div>
                         <div class="dash-profile-row"><span class="pr-label">用户编号</span><span class="pr-value" id="profileNumber">-</span></div>
@@ -1637,9 +1639,11 @@ function renderDashboard() {
     state.notificationTotal = d.notificationTotal ?? state.notificationTotal;
     state.notificationUnread = d.notificationUnread ?? state.notificationUnread;
     updateNotificationBadges();
+    const topNickname = document.getElementById('topNickname');
     const topAccount = document.getElementById('topAccount');
     const topNumber = document.getElementById('topNumber');
     const topCoin = document.getElementById('topCoin');
+    if (topNickname) topNickname.textContent = d.nickname || '-';
     if (topAccount) topAccount.textContent = d.username || '-';
     if (topNumber) topNumber.textContent = d.number || '-';
     if (topCoin) topCoin.textContent = d.coin ?? '-';
@@ -1647,6 +1651,7 @@ function renderDashboard() {
     // 账号信息
     const user = state.profile?.user || {};
     const account = state.profile?.account || {};
+    document.getElementById('profileNickname').textContent = d.nickname || user.Nickname || '-';
     document.getElementById('cardAccount').textContent = d.username || account.Username || account.username || '-';
     document.getElementById('profileNumber').textContent = user.Number || '-';
     document.getElementById('profileCoin').textContent = user.Coin ?? '-';
