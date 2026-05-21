@@ -195,26 +195,8 @@ func GetWxNickname(wxid string) string {
 		logs.Error("获取昵称失败:", err)
 		return ""
 	}
-	logs.Info("api:11 获取昵称响应:", response)
-	data := []byte(response)
-	for _, key := range []string{"nick", "nickname", "NickName", "Nick", "data", "name", "NickName"} {
-		val, _ := jsonparser.GetString(data, key)
-		if val != "" {
-			logs.Info("获取昵称成功, key:", key, " val:", val)
-			return val
-		}
-	}
-	val, _ := jsonparser.GetString(data, "data", "nick")
-	if val == "" {
-		val, _ = jsonparser.GetString(data, "data", "nickname")
-	}
-	if val == "" {
-		val, _ = jsonparser.GetString(data, "data", "NickName")
-	}
-	if val != "" {
-		logs.Info("获取昵称成功(嵌套):", val)
-	}
-	return val
+	nickname, _ := jsonparser.GetString([]byte(response), "nickname")
+	return nickname
 }
 
 func SendWxGroupMsg(uid string, gid string, msg string) {
