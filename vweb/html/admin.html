@@ -1995,12 +1995,10 @@ async function loadDashboard() {
                 <div></div>
             </div>`;
         } catch(e) { document.getElementById('dashActInfo').innerHTML = '<p style="color:#c0c4cc;text-align:center;padding:30px;">加载失败</p>'; }
-        if (typeof window._mobDiagDone === 'function') window._mobDiagDone(true);
 
     } catch (e) {
         console.error('加载仪表盘失败:', e);
         if (typeof toast === 'function') toast('仪表盘加载失败，请刷新重试', 'error');
-        if (typeof window._mobDiagDone === 'function') window._mobDiagDone(false);
     }
 }
 
