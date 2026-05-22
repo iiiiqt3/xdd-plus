@@ -693,6 +693,29 @@
         }
         .empty { color: var(--text-muted); text-align: center; padding: 28px 10px; font-size: 13px; }
 
+        .filter-bar {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .filter-bar .search-input {
+            flex: 1; min-width: 180px; height: 40px; border-radius: 12px;
+            border: 1px solid var(--glass-border); padding: 0 14px 0 38px;
+            font-size: 13.5px; font-weight: 600; color: var(--text);
+            background: rgba(255,255,255,0.92) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2.5'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E") 12px center no-repeat;
+            transition: all 0.2s ease; outline: none;
+        }
+        .filter-bar .search-input:focus {
+            border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(8,145,178,0.12);
+        }
+        .filter-bar .search-input::placeholder { color: var(--text-muted); font-weight: 500; }
+        .filter-bar .search-clear {
+            width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+            background: rgba(148,163,184,0.12); color: var(--text-dim); font-size: 15px;
+            display: none; align-items: center; justify-content: center; transition: all 0.15s;
+        }
+        .filter-bar .search-clear:hover { background: rgba(220,38,38,0.12); color: var(--red); }
+        .filter-bar .search-clear.show { display: inline-flex; }
+
         /* ===== 自定义滚动条 ===== */
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -1135,6 +1158,10 @@
                     <button class="active" id="projectTab-active" onclick="switchProjectTab('active')">授权有效中</button>
                     <button id="projectTab-expired" onclick="switchProjectTab('expired')">授权过期</button>
                 </div>
+                <div class="filter-bar">
+                    <input class="search-input" id="projectSearchInput" type="text" placeholder="搜索项目名、备注名、账号…" oninput="onProjectSearch(this.value)">
+                    <button class="search-clear" id="projectSearchClear" onclick="clearProjectSearch()">✕</button>
+                </div>
                 <div class="card table-wrap" style="padding:0;overflow:hidden;">
                     <table>
                         <thead><tr><th>项目</th><th>账号数量</th><th>费用</th><th>青龙</th><th>状态统计</th><th>操作</th></tr></thead>
@@ -1148,6 +1175,10 @@
         <section class="panel" id="panel-activities">
             <div class="section">
                 <div class="section-header panel-duplicate-title"><h3>🚀 上车项目</h3><span class="muted">选择项目并填写信息完成上车</span></div>
+                <div class="filter-bar">
+                    <input class="search-input" id="activitySearchInput" type="text" placeholder="搜索项目名、编号、环境变量…" oninput="onActivitySearch(this.value)">
+                    <button class="search-clear" id="activitySearchClear" onclick="clearActivitySearch()">✕</button>
+                </div>
                 <div class="activities-list" id="activitiesBox"></div>
             </div>
         </section>
@@ -1324,7 +1355,9 @@ const state = {
     currentPanel: 'dashboard',
     wxPollTimer: null,
     wxPollingUuid: '',
-    wxPollingDeduct: false
+    wxPollingDeduct: false,
+    projectSearch: '',
+    activitySearch: ''
 };
 
 document.querySelectorAll('.menu button[data-panel]').forEach(btn => {
@@ -1705,6 +1738,34 @@ function renderDashboard() {
     }
 }
 
+function onProjectSearch(value) {
+    state.projectSearch = value;
+    const clearBtn = document.getElementById('projectSearchClear');
+    if (clearBtn) clearBtn.classList.toggle('show', value.length > 0);
+    renderProjects();
+}
+
+function clearProjectSearch() {
+    state.projectSearch = '';
+    document.getElementById('projectSearchInput').value = '';
+    document.getElementById('projectSearchClear').classList.remove('show');
+    renderProjects();
+}
+
+function onActivitySearch(value) {
+    state.activitySearch = value;
+    const clearBtn = document.getElementById('activitySearchClear');
+    if (clearBtn) clearBtn.classList.toggle('show', value.length > 0);
+    renderActivities();
+}
+
+function clearActivitySearch() {
+    state.activitySearch = '';
+    document.getElementById('activitySearchInput').value = '';
+    document.getElementById('activitySearchClear').classList.remove('show');
+    renderActivities();
+}
+
 function switchProjectTab(tab) {
     state.currentProjectTab = tab;
     document.getElementById('projectTab-active').classList.toggle('active', tab === 'active');
@@ -1714,10 +1775,23 @@ function switchProjectTab(tab) {
 
 function getFilteredProjects() {
     const list = state.projects || [];
+    let filtered = list;
     if (state.currentProjectTab === 'expired') {
-        return list.filter(item => item.bizStatus === 'expired');
+        filtered = filtered.filter(item => item.bizStatus === 'expired');
+    } else {
+        filtered = filtered.filter(item => item.bizStatus === 'active' || item.bizStatus === 'expiring');
     }
-    return list.filter(item => item.bizStatus === 'active' || item.bizStatus === 'expiring');
+    const keyword = (state.projectSearch || '').trim().toLowerCase();
+    if (keyword) {
+        filtered = filtered.filter(item => {
+            const name = (item.activityName || '').toLowerCase();
+            const display = (item.displayName || '').toLowerCase();
+            const remark = (item.remark || '').toLowerCase();
+            const envKey = (item.envKey || '').toLowerCase();
+            return name.indexOf(keyword) !== -1 || display.indexOf(keyword) !== -1 || remark.indexOf(keyword) !== -1 || envKey.indexOf(keyword) !== -1;
+        });
+    }
+    return filtered;
 }
 
 function getGroupedProjects() {
@@ -1745,7 +1819,9 @@ function renderProjects() {
     const tbody = document.getElementById('projectsBody');
     const groups = getGroupedProjects();
     if (!groups.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="empty">${state.currentProjectTab === 'expired' ? '暂无已过期项目。' : '暂无授权有效中的项目。'}</td></tr>`;
+        const keyword = (state.projectSearch || '').trim();
+        const emptyMsg = keyword ? '没有匹配的项目，请尝试其他关键词。' : (state.currentProjectTab === 'expired' ? '暂无已过期项目。' : '暂无授权有效中的项目。');
+        tbody.innerHTML = `<tr><td colspan="6" class="empty">${emptyMsg}</td></tr>`;
         return;
     }
     tbody.innerHTML = groups.map(group => {
@@ -1837,11 +1913,18 @@ function toggleGroupDetail(groupKey) {
 
 function renderActivities() {
     const box = document.getElementById('activitiesBox');
-    if (!state.activities.length) {
-        box.innerHTML = '<div class="empty">暂无活动配置。</div>';
+    const keyword = (state.activitySearch || '').trim().toLowerCase();
+    const list = keyword ? state.activities.filter(item => {
+        const name = (item.name || '').toLowerCase();
+        const envKey = (item.envKey || '').toLowerCase();
+        const id = String(item.id || '');
+        return name.indexOf(keyword) !== -1 || envKey.indexOf(keyword) !== -1 || id.indexOf(keyword) !== -1;
+    }) : state.activities;
+    if (!list.length) {
+        box.innerHTML = `<div class="empty">${keyword ? '没有匹配的项目，请尝试其他关键词。' : '暂无活动配置。'}</div>`;
         return;
     }
-    box.innerHTML = state.activities.map(item => `
+    box.innerHTML = list.map(item => `
         <div class="activity-row">
             <div>
                 <div class="activity-title">${escapeHtml(item.name)}</div>
