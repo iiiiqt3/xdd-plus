@@ -168,7 +168,6 @@
         #actAuthTable tbody tr:hover .sticky-col-action { background: #ecf5ff !important; }
         .act-auth-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: flex-start; min-width: 150px; }
         .act-auth-actions .btn { flex: 1 1 68px; justify-content: center; padding-left: 6px; padding-right: 6px; white-space: nowrap; }
-        @media (max-width: 768px) { #actAuthTable { min-width: 980px; } #actAuthTable .sticky-col-action { min-width: 150px; width: 150px; } .act-auth-actions .btn { font-size: 11px; } }
         .tag { display: inline-block; padding: 3px 10px; border-radius: 3px; font-size: 12px; font-weight: 500; }
         .tag-success { background: #f0f9eb; color: #67c23a; border: 1px solid #e1f3d8; }
         .tag-danger { background: #fef0f0; color: #f56c6c; border: 1px solid #fde2e2; }
@@ -311,8 +310,6 @@
         .sys-info-grid .si-row .si-lbl { color: #999; }
         .sys-info-grid .si-row .si-val { font-weight: 500; color: #333; }
 
-        @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } .form-grid { grid-template-columns: repeat(2, 1fr); } .dash-grid { grid-template-columns: 1fr; } .dash-hero { grid-template-columns: repeat(2, 1fr); } .dash-act-strip { grid-template-columns: repeat(2, 1fr); } .dash-summary-row { grid-template-columns: 1fr !important; } }
-        @media (max-width: 768px) { .sidebar { width: 0; } .main-content { margin-left: 0; } .stats-grid { grid-template-columns: 1fr; } .dash-hero { grid-template-columns: 1fr; } .dash-act-strip { grid-template-columns: repeat(2, 1fr); } }
         /* 活动行内详情 */
         .detail-row td { padding: 0 !important; border-bottom: 2px solid #409eff; }
         .detail-row .detail-inner { display: none; padding: 16px 20px; background: #f8faff; border-top: 1px solid #e8e8e8; animation: detailSlide 0.25s ease; }
@@ -350,6 +347,97 @@
         .toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .3s; }
         .toggle-switch input:checked + .toggle-slider { background: #409eff; }
         .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+        .mobile-menu-btn { display: none; width: 36px; height: 36px; border-radius: 8px; background: rgba(64,158,255,0.1); color: #409eff; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; flex-shrink: 0; transition: background 0.2s; }
+        .mobile-menu-btn:hover { background: rgba(64,158,255,0.2); }
+        .mobile-menu-btn:active { background: rgba(64,158,255,0.3); }
+        .sidebar-backdrop { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); z-index: 99; -webkit-tap-highlight-color: transparent; }
+
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .form-grid { grid-template-columns: repeat(2, 1fr); }
+            .dash-grid { grid-template-columns: 1fr; }
+            .dash-hero { grid-template-columns: repeat(2, 1fr); }
+            .dash-act-strip { grid-template-columns: repeat(2, 1fr); }
+            .dash-summary-row { grid-template-columns: 1fr !important; }
+            .container-cards { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+            .activity-cards { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn { display: flex; }
+            .sidebar { transform: translateX(-100%); width: 260px !important; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 200; box-shadow: none; }
+            .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+            .sidebar-backdrop.open { display: block; }
+            .main-content { margin-left: 0 !important; }
+            .top-bar { padding: 10px 14px; }
+            .top-bar h1 { font-size: 16px; }
+            .top-bar .breadcrumb { font-size: 12px; }
+            .content-area { padding: 12px; }
+            .card { padding: 12px 12px 0 12px; margin-bottom: 12px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+            .stat-card { padding: 10px; }
+            .stat-icon { width: 34px; height: 34px; font-size: 15px; }
+            .stat-info h3 { font-size: 20px; }
+            .form-grid { grid-template-columns: 1fr !important; }
+            .form-item.full { grid-column: 1 / -1; }
+            .form-item input, .form-item select, .form-item textarea { font-size: 16px; padding: 10px 12px; }
+            .dash-hero { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+            .dash-hero-card { padding: 12px; }
+            .dash-hero-card .hero-value { font-size: 22px; }
+            .dash-hero-card .hero-icon { font-size: 32px; }
+            .dash-act-strip { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+            .dash-summary-row { grid-template-columns: 1fr !important; gap: 10px; }
+            .dash-grid { grid-template-columns: 1fr !important; gap: 10px; }
+            .toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+            .toolbar .search-box { max-width: 100% !important; width: 100%; }
+            .toolbar .search-box input { width: 100%; min-width: 0; }
+            .toolbar-actions { justify-content: flex-start; flex-wrap: wrap; gap: 6px; }
+            .btn-sm { padding: 7px 12px; font-size: 12px; }
+            .modal { width: 95% !important; max-width: 95% !important; max-height: 90vh; padding: 16px; }
+            .modal-lg { max-width: 95% !important; }
+            .modal-header { margin-bottom: 14px; padding-bottom: 12px; }
+            .modal-header h3 { font-size: 15px; }
+            .modal-footer { flex-wrap: wrap; gap: 8px; }
+            .card-header { flex-direction: column; gap: 10px; align-items: flex-start; }
+            .card-header .btn { width: 100%; justify-content: center; }
+            .card-title { font-size: 14px; }
+            .container-cards { grid-template-columns: 1fr !important; }
+            .activity-cards { grid-template-columns: 1fr !important; }
+            .activity-card-body { grid-template-columns: 1fr; }
+            .pagination { flex-wrap: wrap; justify-content: center; gap: 4px; }
+            .pagination button { padding: 5px 10px; font-size: 12px; }
+            .pagination span { font-size: 12px; }
+            .tab-container { flex-wrap: wrap; gap: 0; }
+            .tab-btn { padding: 8px 14px; font-size: 12px; flex: 1; justify-content: center; min-width: 0; }
+            .data-table thead th, .data-table tbody td { padding: 6px 8px; font-size: 12px; }
+            .tag { padding: 2px 8px; font-size: 11px; }
+            .btn-xs { padding: 3px 8px; font-size: 11px; }
+            .config-section-title { font-size: 13px; padding: 8px 12px; }
+            .ctn-status-item { padding: 4px 6px; font-size: 12px; }
+            .ctn-status-item .ctn-host { font-size: 11px; }
+            .notify-compose-body { grid-template-columns: 1fr !important; }
+            .notify-side-panel { grid-template-columns: 1fr !important; }
+            .notify-compose-hero { flex-direction: column; align-items: stretch; }
+            .notify-compose-actions { flex-direction: column; align-items: stretch; }
+            .modal-fullscreen { width: 98vw !important; max-width: 98vw !important; }
+        }
+
+        @media (max-width: 480px) {
+            .top-bar { padding: 8px 10px; }
+            .top-bar h1 { font-size: 15px; }
+            .content-area { padding: 8px; }
+            .card { padding: 10px 10px 0 10px; border-radius: 8px; }
+            .dash-hero { grid-template-columns: 1fr !important; gap: 8px; }
+            .dash-hero-card .hero-value { font-size: 20px; }
+            .stats-grid { grid-template-columns: 1fr !important; }
+            .btn-sm { padding: 6px 10px; font-size: 11px; }
+            .toolbar-actions .btn { font-size: 11px; padding: 5px 8px; }
+            .search-box input { padding: 8px 10px; font-size: 13px; }
+            .activity-card { padding: 10px 12px; }
+            .activity-card-header { flex-direction: column; gap: 8px; }
+            .stat-info h3 { font-size: 18px; }
+        }
     </style>
 </head>
 <body>
@@ -380,10 +468,14 @@
         <div class="nav-item" data-page="sysconfig" onclick="switchPage('sysconfig')"><i class="fas fa-cog"></i><span>系统配置</span></div>
     </div>
 </div>
+<div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
 
 <div class="main-content">
     <div class="top-bar">
-        <div><h1 id="pageTitle">仪表盘</h1><div class="breadcrumb" id="breadcrumb">首页 / 仪表盘</div></div>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></div>
+            <div><h1 id="pageTitle">仪表盘</h1><div class="breadcrumb" id="breadcrumb">首页 / 仪表盘</div></div>
+        </div>
         <div style="display:flex;gap:8px;align-items:center;"><span style="font-size:13px;color:#999;" id="currentTime"></span></div>
     </div>
     <div class="content-area">
@@ -1593,6 +1685,27 @@ function setPageSizesFromCache() {
 function savePageSizesToCache() { try { localStorage.setItem('xdd_admin_page_sizes', JSON.stringify(pageSizes)); } catch(e) {} }
 setPageSizesFromCache();
 
+// ============ 移动端侧边栏切换 ============
+function toggleSidebar() {
+    var sidebar = document.querySelector('.sidebar');
+    var backdrop = document.querySelector('.sidebar-backdrop');
+    if (!sidebar || !backdrop) return;
+    sidebar.classList.toggle('open');
+    backdrop.classList.toggle('open');
+    document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
+}
+function closeSidebar() {
+    var sidebar = document.querySelector('.sidebar');
+    var backdrop = document.querySelector('.sidebar-backdrop');
+    if (!sidebar || !backdrop) return;
+    sidebar.classList.remove('open');
+    backdrop.classList.remove('open');
+    document.body.style.overflow = '';
+}
+function isMobile() {
+    return window.innerWidth <= 768;
+}
+
 function toast(msg, type = 'info') {
     const el = document.getElementById('toast');
     el.textContent = msg; el.className = 'toast ' + type + ' show';
@@ -1684,6 +1797,7 @@ function switchContainerTab(tab) {
 
 // ============ 页面切换 ============
 function switchPage(page) {
+    closeSidebar();
     currentPage = page;
     document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(el => {
@@ -5095,6 +5209,7 @@ window._pageSizeChange = function(key, size) {
 
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', () => { loadDashboard(); initResizableColumns(); });
+window.addEventListener('resize', function() { if (!isMobile()) closeSidebar(); });
 
 // ============ 列宽拖拽调整 + localStorage缓存 ============
 function initResizableColumns() {
