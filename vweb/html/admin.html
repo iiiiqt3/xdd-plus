@@ -1915,9 +1915,9 @@ async function loadDashboard() {
             api.get('/api/admin/users?page=1&limit=1').catch(() => ({ data: { total: 0 } })),
             api.get('/api/admin/qlconfigs').catch(() => ({ data: [] })),
         ]);
-        animateCounter(document.getElementById('statCk'), ckRes.data?.total || 0);
-        animateCounter(document.getElementById('statUsers'), userRes.data?.total || 0);
-        animateCounter(document.getElementById('statEnvs'), envRes.data?.total || 0);
+        animateCounter(document.getElementById('statCk'), (ckRes.data||{}).total || 0);
+        animateCounter(document.getElementById('statUsers'), (userRes.data||{}).total || 0);
+        animateCounter(document.getElementById('statEnvs'), (envRes.data||{}).total || 0);
         animateCounter(document.getElementById('statQlCtn'), Array.isArray(qlRes.data) ? qlRes.data.length : 0);
 
         // 用户在线统计
@@ -1999,7 +1999,7 @@ async function loadDashboard() {
         // 活动概览
         try {
             const actRes = await api.get('/api/admin/activities');
-            const acts = parseActivitiesYaml(actRes.data?.raw || '');
+            const acts = parseActivitiesYaml((actRes.data||{}).raw || '');
             const enabled = acts.filter(a => a['启用状态'] === true);
             const disabled = acts.filter(a => a['启用状态'] !== true);
             const monthly = acts.filter(a => a['是否按月扣费'] === true);
@@ -2122,7 +2122,7 @@ function renderActivityStatsTable(list) {
     renderPagination('asPagination', _asPage, total, limit, function(p) { _asPage = p; renderActivityStatsTable(getFilteredActivityStats()); }, 'act');
 }
 function getFilteredActivityStats() {
-    const search = (document.getElementById('asSearch')?.value || '').trim().toLowerCase();
+    const search = ((document.getElementById('asSearch')||{}).value || '').trim().toLowerCase();
     if (!search) return asStatsData;
     return asStatsData.filter(function(s) {
         // 搜索所有字段值
@@ -2169,7 +2169,7 @@ async function loadNotifications(page) {
     tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
     try {
         const limit = getPageSize('notify');
-        const search = document.getElementById('notifySearch')?.value || '';
+        const search = (document.getElementById('notifySearch')||{}).value || '';
         const res = await api.get('/api/admin/notifications?page=' + notifyPage + '&limit=' + limit + '&search=' + encodeURIComponent(search) + '&category=' + encodeURIComponent(notifyCategoryFilter));
         const d = res.data || {};
         notifyData = d.list || [];
@@ -2390,7 +2390,7 @@ async function loadFeedbacks(page) {
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
     try {
         const limit = getPageSize('feedback');
-        const search = document.getElementById('feedbackSearch')?.value || '';
+        const search = (document.getElementById('feedbackSearch')||{}).value || '';
         var url = '/api/admin/feedbacks?page=' + feedbackPage + '&limit=' + limit + '&search=' + encodeURIComponent(search);
         if (feedbackSortField) url += '&sortField=' + feedbackSortField + '&sortOrder=' + feedbackSortOrder;
         const res = await api.get(url);
@@ -2443,7 +2443,7 @@ async function updateFeedbackStatus(id, status) {
 }
 
 function closeFeedbackDetailModal() {
-    document.getElementById('feedbackDetailModal')?.classList.add('hidden');
+    ('feedbackDetailModal'||{classList:{add:function(){},remove:function(){},toggle:function(){},contains:function(){return false}}}).classList.add('hidden');
 }
 
 async function openFeedbackDetail(id) {
@@ -2482,21 +2482,21 @@ async function openFeedbackDetail(id) {
             detailLines.push('已奖励积分：' + (f.rewardCoin || 0));
         }
         document.getElementById('feedbackDetailContent').textContent = detailLines.join('\n');
-        document.getElementById('feedbackDetailModal')?.classList.remove('hidden');
+        ('feedbackDetailModal'||{classList:{add:function(){},remove:function(){},toggle:function(){},contains:function(){return false}}}).classList.remove('hidden');
     } catch(e) {
         toast('加载反馈详情失败: ' + e.message, 'error');
     }
 }
 
 async function submitFeedbackProcess() {
-    const id = parseInt(document.getElementById('feedbackDetailId')?.value || '0');
-    const status = document.getElementById('feedbackProcessStatus')?.value || 'processed';
-    const reply = document.getElementById('feedbackReply')?.value || '';
-    const rewardCoin = parseInt(document.getElementById('feedbackRewardCoin')?.value || '0') || 0;
-    const handler = document.getElementById('feedbackHandler')?.value || '管理员';
-    const originalStatus = document.getElementById('feedbackOriginalStatus')?.value || 'new';
-    const notifyWebApp = document.getElementById('feedbackNotifyWebApp')?.checked || false;
-    const notifyBot = document.getElementById('feedbackNotifyBot')?.checked || false;
+    const id = parseInt((document.getElementById('feedbackDetailId')||{}).value || '0');
+    const status = (document.getElementById('feedbackProcessStatus')||{}).value || 'processed';
+    const reply = (document.getElementById('feedbackReply')||{}).value || '';
+    const rewardCoin = parseInt((document.getElementById('feedbackRewardCoin')||{}).value || '0') || 0;
+    const handler = (document.getElementById('feedbackHandler')||{}).value || '管理员';
+    const originalStatus = (document.getElementById('feedbackOriginalStatus')||{}).value || 'new';
+    const notifyWebApp = (document.getElementById('feedbackNotifyWebApp')||{}).checked || false;
+    const notifyBot = (document.getElementById('feedbackNotifyBot')||{}).checked || false;
     const isFirstReply = (originalStatus === 'new');
     if (!id) return toast('反馈ID无效', 'error');
     if (!status) return toast('请选择处理状态', 'error');
@@ -2577,7 +2577,7 @@ async function loadActAuthList(force) {
 }
 
 function getFilteredActAuthData() {
-    const search = (document.getElementById('actAuthSearch')?.value || '').trim().toLowerCase();
+    const search = ((document.getElementById('actAuthSearch')||{}).value || '').trim().toLowerCase();
     if (!search) return actAuthData;
     return actAuthData.filter(function(s) {
         return (s.activityName || '').toLowerCase().includes(search) ||
@@ -2756,7 +2756,7 @@ async function submitConvertToMonthly() {
 
 function renderActAuthAdjustAccountList() {
     var box = document.getElementById('aaModalAccountList');
-    var search = (document.getElementById('aaModalSearch')?.value || '').trim().toLowerCase();
+    var search = ((document.getElementById('aaModalSearch')||{}).value || '').trim().toLowerCase();
     var list = !search ? actAuthAdjustAccountData : actAuthAdjustAccountData.filter(function(x) {
         return matchesActAuthAccountSearch(x, search);
     });
@@ -2786,7 +2786,7 @@ function renderActAuthAdjustAccountList() {
 }
 
 function toggleAllActAuthAdjustCheck(checked) {
-    var search = (document.getElementById('aaModalSearch')?.value || '').trim().toLowerCase();
+    var search = ((document.getElementById('aaModalSearch')||{}).value || '').trim().toLowerCase();
     actAuthAdjustAccountData.filter(function(x) { return matchesActAuthAccountSearch(x, search); }).forEach(function(x) {
         toggleSelectedEnvId(actAuthAdjustSelectedEnvIds, x.envId, checked);
     });
@@ -2802,7 +2802,7 @@ function updateActAuthAdjustPreview() {
     var selected = getSelectedActAuthAdjustItems();
     var selectedCount = selected.length;
     document.getElementById('aaModalSelectedCount').textContent = '已选择 ' + selectedCount + ' 个账号';
-    var search = (document.getElementById('aaModalSearch')?.value || '').trim().toLowerCase();
+    var search = ((document.getElementById('aaModalSearch')||{}).value || '').trim().toLowerCase();
     var visibleItems = actAuthAdjustAccountData.filter(function(x) { return matchesActAuthAccountSearch(x, search); });
     var visibleCount = visibleItems.length;
     var visibleSelectedCount = visibleItems.filter(function(x) { return actAuthAdjustSelectedEnvIds.indexOf(x.envId) >= 0; }).length;
@@ -2872,7 +2872,7 @@ function toggleManualRefund() {
 
 function renderActAuthDeleteAccountList() {
     var box = document.getElementById('aaDeleteAccountList');
-    var search = (document.getElementById('aaDeleteSearch')?.value || '').trim().toLowerCase();
+    var search = ((document.getElementById('aaDeleteSearch')||{}).value || '').trim().toLowerCase();
     var list = !search ? actAuthAccountData : actAuthAccountData.filter(function(x) {
         return matchesActAuthAccountSearch(x, search);
     });
@@ -2909,7 +2909,7 @@ function renderActAuthDeleteAccountList() {
 }
 
 function toggleAllActAuthDeleteCheck(checked) {
-    var search = (document.getElementById('aaDeleteSearch')?.value || '').trim().toLowerCase();
+    var search = ((document.getElementById('aaDeleteSearch')||{}).value || '').trim().toLowerCase();
     actAuthAccountData.filter(function(x) { return matchesActAuthAccountSearch(x, search); }).forEach(function(x) {
         toggleSelectedEnvId(actAuthDeleteSelectedEnvIds, x.envId, checked);
     });
@@ -2925,7 +2925,7 @@ function updateActAuthDeletePreview() {
     var selected = getSelectedActAuthDeleteItems();
     var selectedCount = selected.length;
     document.getElementById('aaDeleteSelectedCount').textContent = '已选择 ' + selectedCount + ' 个账号';
-    var search = (document.getElementById('aaDeleteSearch')?.value || '').trim().toLowerCase();
+    var search = ((document.getElementById('aaDeleteSearch')||{}).value || '').trim().toLowerCase();
     var visibleItems = actAuthAccountData.filter(function(x) { return matchesActAuthAccountSearch(x, search); });
     var visibleCount = visibleItems.length;
     var visibleSelectedCount = visibleItems.filter(function(x) { return actAuthDeleteSelectedEnvIds.indexOf(x.envId) >= 0; }).length;
@@ -3069,7 +3069,7 @@ let wxPage = 1;
 
 async function loadWxDevices(page) {
     if (page) wxPage = page;
-    const search = document.getElementById('wxSearch')?.value || '';
+    const search = (document.getElementById('wxSearch')||{}).value || '';
     const tbody = document.getElementById('wxTableBody');
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
     try {
@@ -3188,11 +3188,11 @@ async function loadDashWxStats() {
 // ============ 京东CK ============
 async function loadJdCookies(page) {
     if (page) ckPage = page;
-    const search = document.getElementById('ckSearch')?.value || '';
+    const search = (document.getElementById('ckSearch')||{}).value || '';
     try {
         const res = await api.get(`/api/admin/jdcookies?page=${ckPage}&limit=${getPageSize('ck')}&search=${encodeURIComponent(search)}`);
         const tbody = document.getElementById('ckTableBody');
-        const list = res.data?.list || [];
+        const list = (res.data||{}).list || [];
         ckListCache = list;
         tbody.innerHTML = list.length === 0 ? '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>' :
             list.map(c => `<tr>
@@ -3211,7 +3211,7 @@ async function loadJdCookies(page) {
                     <button class="btn btn-danger btn-xs" onclick="deleteCk(${c.ID})" title="删除"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`).join('');
-        renderPagination('ckPagination', ckPage, res.data?.total || 0, getPageSize('ck'), loadJdCookies, 'ck');
+        renderPagination('ckPagination', ckPage, (res.data||{}).total || 0, getPageSize('ck'), loadJdCookies, 'ck');
     } catch (e) { toast('加载失败: ' + e.message, 'error'); }
 }
 async function deleteCk(id) {
@@ -3254,11 +3254,11 @@ async function saveCkEdit() {
 // ============ 用户管理（增加删除按钮、移除昵称列） ============
 async function loadUsers(page) {
     if (page) userPage = page;
-    const search = document.getElementById('userSearch')?.value || '';
+    const search = (document.getElementById('userSearch')||{}).value || '';
     try {
         const res = await api.get(`/api/admin/users?page=${userPage}&limit=${getPageSize('user')}&search=${encodeURIComponent(search)}`);
         const tbody = document.getElementById('userTableBody');
-        const list = res.data?.list || [];
+        const list = (res.data||{}).list || [];
         tbody.innerHTML = list.length === 0 ? '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>' :
             list.map(u => `<tr>
                 <td><input type="checkbox" class="user-check" value="${u.ID}" onchange="updateUserCheckAll()"></td>
@@ -3276,7 +3276,7 @@ async function loadUsers(page) {
                     <button class="btn btn-danger btn-xs" onclick="deleteUser(${u.ID})" title="删除"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`).join('');
-        renderPagination('userPagination', userPage, res.data?.total || 0, getPageSize('user'), loadUsers, 'user');
+        renderPagination('userPagination', userPage, (res.data||{}).total || 0, getPageSize('user'), loadUsers, 'user');
     } catch (e) { toast('加载失败: ' + e.message, 'error'); }
 }
 async function deleteUser(id) {
@@ -3386,11 +3386,11 @@ function updateUserCheckAll() {
 // ============ 环境变量 ============
 async function loadEnvVars(page) {
     if (page) envPage = page;
-    const search = document.getElementById('envSearch')?.value || '';
+    const search = (document.getElementById('envSearch')||{}).value || '';
     try {
         const res = await api.get(`/api/admin/envvars?page=${envPage}&limit=${getPageSize('env')}&search=${encodeURIComponent(search)}`);
         const tbody = document.getElementById('envTableBody');
-        const list = res.data?.list || [];
+        const list = (res.data||{}).list || [];
         tbody.innerHTML = list.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>' :
             list.map(e => `<tr>
                 <td><input type="checkbox" class="env-check" value="${e.ID}" onchange="updateEnvCheckAll()"></td>
@@ -3403,7 +3403,7 @@ async function loadEnvVars(page) {
                     <button class="btn btn-danger btn-xs" onclick="deleteEnvVar(${e.ID})" title="删除"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`).join('');
-        renderPagination('envPagination', envPage, res.data?.total || 0, getPageSize('env'), loadEnvVars, 'env');
+        renderPagination('envPagination', envPage, (res.data||{}).total || 0, getPageSize('env'), loadEnvVars, 'env');
     } catch (e) { toast('加载失败: ' + e.message, 'error'); }
 }
 let editingEnvId = 0;
@@ -4042,7 +4042,7 @@ async function loadActivities() {
     if (document.getElementById('actSearch')) document.getElementById('actSearch').value = '';
     try { 
         const res = await api.get('/api/admin/activities'); 
-        const raw = res.data?.raw || '';
+        const raw = (res.data||{}).raw || '';
         activitiesRawCache = raw;
         if (!raw) {
             console.warn('[活动配置] API返回的raw为空:', JSON.stringify(res.data).slice(0,200));
@@ -4764,7 +4764,7 @@ async function loadQLEnvs(page) {
     if (page) qlEnvPage = page;
     // 使用当前选中的容器名（从按钮组状态获取），而不是已删除的select元素
     const configName = qlEnvCurrentConfig || '';
-    const search = document.getElementById('qlEnvSearch')?.value || '';
+    const search = (document.getElementById('qlEnvSearch')||{}).value || '';
     if (!configName) { /* 没有选中容器时静默返回 */ return; }
     try {
         const res = await api.get(`/api/admin/qlenvs?config=${encodeURIComponent(configName)}&search=${encodeURIComponent(search)}`);
@@ -5017,16 +5017,16 @@ async function saveGameConfig() {
     if (!confirm('确认保存游戏参数配置？保存后将立即生效。')) return;
     try {
         var data = {
-            guess_number_cost: parseInt(document.getElementById('game_guessNumberCost')?.value) || 10,
-            guess_number_times: parseInt(document.getElementById('game_guessNumberTimes')?.value) || 10,
-            guess_number_reward: parseInt(document.getElementById('game_guessNumberReward')?.value) || 300,
-            guess_number_mine_cost: parseInt(document.getElementById('game_guessNumberMineCost')?.value) || 100,
-            rock_paper_scissors: parseInt(document.getElementById('game_rockPaperScissors')?.value) || 50,
-            big_small_cost: parseInt(document.getElementById('game_bigSmallCost')?.value) || 60,
-            big_small_players: parseInt(document.getElementById('game_bigSmallPlayers')?.value) || 6,
-            big_small_max_games: parseInt(document.getElementById('game_bigSmallMaxGames')?.value) || 5,
-            duel_default_bet: parseInt(document.getElementById('game_duelDefaultBet')?.value) || 50,
-            duel_max_rooms: parseInt(document.getElementById('game_duelMaxRooms')?.value) || 10,
+            guess_number_cost: parseInt((document.getElementById('game_guessNumberCost')||{}).value) || 10,
+            guess_number_times: parseInt((document.getElementById('game_guessNumberTimes')||{}).value) || 10,
+            guess_number_reward: parseInt((document.getElementById('game_guessNumberReward')||{}).value) || 300,
+            guess_number_mine_cost: parseInt((document.getElementById('game_guessNumberMineCost')||{}).value) || 100,
+            rock_paper_scissors: parseInt((document.getElementById('game_rockPaperScissors')||{}).value) || 50,
+            big_small_cost: parseInt((document.getElementById('game_bigSmallCost')||{}).value) || 60,
+            big_small_players: parseInt((document.getElementById('game_bigSmallPlayers')||{}).value) || 6,
+            big_small_max_games: parseInt((document.getElementById('game_bigSmallMaxGames')||{}).value) || 5,
+            duel_default_bet: parseInt((document.getElementById('game_duelDefaultBet')||{}).value) || 50,
+            duel_max_rooms: parseInt((document.getElementById('game_duelMaxRooms')||{}).value) || 10,
         };
         var res = await api.post('/api/admin/gameconfig/save', data);
         if (res.code !== 0) { toast('保存失败: ' + res.msg, 'error'); return; }
@@ -5146,8 +5146,8 @@ async function loadSysConfig() {
 
 async function fetchImageToken() {
     const btn = event.target.closest('btn');
-    const user = document.getElementById('sys_ImageUserName')?.value?.trim();
-    const pass = document.getElementById('sys_ImagePassword')?.value?.trim();
+    const user = ((document.getElementById('sys_ImageUserName')||{}).value || '').trim();
+    const pass = ((document.getElementById('sys_ImagePassword')||{}).value || '').trim();
     if (!user || !pass) { toast('请先填写 Image 用户名和密码', 'warning'); return; }
     try {
         toast('正在获取 Token...', 'info');
@@ -5166,32 +5166,32 @@ async function saveSysConfig() {
     try {
         // 保存 config.yaml 配置
         const jdData = {
-            mode: document.getElementById('cfg_mode')?.value,
-            apiToken: document.getElementById('cfg_apiToken')?.value,
-            master: document.getElementById('cfg_master')?.value,
-            qquid: document.getElementById('cfg_qquid')?.value,
-            qqgid: document.getElementById('cfg_qqgid')?.value,
-            wxgid: document.getElementById('cfg_wxgid')?.value,
-            atTime: document.getElementById('cfg_atTime')?.value,
-            later: parseInt(document.getElementById('cfg_later')?.value) || 60,
-            lim: parseInt(document.getElementById('cfg_lim')?.value) || 20,
-            isAddFriend: document.getElementById('cfg_isAddFriend')?.value === 'true',
-            openQQ: document.getElementById('cfg_openQQ')?.value === 'true',
-            qbotPublicMode: document.getElementById('cfg_qbotPublicMode')?.value === 'true',
-            defaultPriority: parseInt(document.getElementById('cfg_defaultPriority')?.value) || 1,
-            qywxKey: document.getElementById('cfg_qywxKey')?.value,
-            invalid: document.getElementById('cfg_invalid')?.value,
-            query: document.getElementById('cfg_query')?.value,
-            query1: document.getElementById('cfg_query1')?.value,
-            note: document.getElementById('cfg_note')?.value,
-            wxModel: document.getElementById('cfg_wxModel')?.value,
-            wxUrl: document.getElementById('cfg_wxUrl')?.value,
-            wxRobotId: document.getElementById('cfg_wxRobotId')?.value,
-            wxLoginBaseURL: document.getElementById('cfg_wxLoginBaseURL')?.value,
-            wxScanLoginCost: parseInt(document.getElementById('cfg_wxScanLoginCost')?.value) || 2000,
-            wxDeviceName: document.getElementById('cfg_wxDeviceName')?.value,
-            activityPushQQGroupId: document.getElementById('cfg_activityPushQQGroupId')?.value || '',
-            activityPushWXGroupId: document.getElementById('cfg_activityPushWXGroupId')?.value || '',
+            mode: (document.getElementById('cfg_mode')||{}).value,
+            apiToken: (document.getElementById('cfg_apiToken')||{}).value,
+            master: (document.getElementById('cfg_master')||{}).value,
+            qquid: (document.getElementById('cfg_qquid')||{}).value,
+            qqgid: (document.getElementById('cfg_qqgid')||{}).value,
+            wxgid: (document.getElementById('cfg_wxgid')||{}).value,
+            atTime: (document.getElementById('cfg_atTime')||{}).value,
+            later: parseInt((document.getElementById('cfg_later')||{}).value) || 60,
+            lim: parseInt((document.getElementById('cfg_lim')||{}).value) || 20,
+            isAddFriend: (document.getElementById('cfg_isAddFriend')||{}).value === 'true',
+            openQQ: (document.getElementById('cfg_openQQ')||{}).value === 'true',
+            qbotPublicMode: (document.getElementById('cfg_qbotPublicMode')||{}).value === 'true',
+            defaultPriority: parseInt((document.getElementById('cfg_defaultPriority')||{}).value) || 1,
+            qywxKey: (document.getElementById('cfg_qywxKey')||{}).value,
+            invalid: (document.getElementById('cfg_invalid')||{}).value,
+            query: (document.getElementById('cfg_query')||{}).value,
+            query1: (document.getElementById('cfg_query1')||{}).value,
+            note: (document.getElementById('cfg_note')||{}).value,
+            wxModel: (document.getElementById('cfg_wxModel')||{}).value,
+            wxUrl: (document.getElementById('cfg_wxUrl')||{}).value,
+            wxRobotId: (document.getElementById('cfg_wxRobotId')||{}).value,
+            wxLoginBaseURL: (document.getElementById('cfg_wxLoginBaseURL')||{}).value,
+            wxScanLoginCost: parseInt((document.getElementById('cfg_wxScanLoginCost')||{}).value) || 2000,
+            wxDeviceName: (document.getElementById('cfg_wxDeviceName')||{}).value,
+            activityPushQQGroupId: (document.getElementById('cfg_activityPushQQGroupId')||{}).value || '',
+            activityPushWXGroupId: (document.getElementById('cfg_activityPushWXGroupId')||{}).value || '',
         };
         const jdRes = await api.post('/api/admin/jdconfig/save', jdData);
         if (jdRes.code !== 0) { toast('config.yaml 保存失败: ' + jdRes.msg, 'error'); return; }
@@ -5199,18 +5199,18 @@ async function saveSysConfig() {
 
         // 保存系统配置（第三方服务）
         const sysData = {
-            ImageUserName: document.getElementById('sys_ImageUserName')?.value,
-            ImagePassword: document.getElementById('sys_ImagePassword')?.value,
-            ImageToken: document.getElementById('sys_ImageToken')?.value,
-            NolanUrl: document.getElementById('sys_NolanUrl')?.value,
-            NolanToken: document.getElementById('sys_NolanToken')?.value,
-            RabbitUrl: document.getElementById('sys_RabbitUrl')?.value,
-            RabbitToken: document.getElementById('sys_RabbitToken')?.value,
-            RabbitApiToken: document.getElementById('sys_RabbitApiToken')?.value,
-            BBKWxUrl: document.getElementById('sys_BBKWxUrl')?.value,
-            BBKJdUrl: document.getElementById('sys_BBKJdUrl')?.value,
-            BBKToken: document.getElementById('sys_BBKToken')?.value,
-            ProxyUrl: document.getElementById('sys_ProxyUrl')?.value,
+            ImageUserName: (document.getElementById('sys_ImageUserName')||{}).value,
+            ImagePassword: (document.getElementById('sys_ImagePassword')||{}).value,
+            ImageToken: (document.getElementById('sys_ImageToken')||{}).value,
+            NolanUrl: (document.getElementById('sys_NolanUrl')||{}).value,
+            NolanToken: (document.getElementById('sys_NolanToken')||{}).value,
+            RabbitUrl: (document.getElementById('sys_RabbitUrl')||{}).value,
+            RabbitToken: (document.getElementById('sys_RabbitToken')||{}).value,
+            RabbitApiToken: (document.getElementById('sys_RabbitApiToken')||{}).value,
+            BBKWxUrl: (document.getElementById('sys_BBKWxUrl')||{}).value,
+            BBKJdUrl: (document.getElementById('sys_BBKJdUrl')||{}).value,
+            BBKToken: (document.getElementById('sys_BBKToken')||{}).value,
+            ProxyUrl: (document.getElementById('sys_ProxyUrl')||{}).value,
         };
         const sysRes = await api.post('/api/admin/sysconfig/save', sysData);
         toast(sysRes.msg || '保存成功', sysRes.code === 0 ? 'success' : 'error');
@@ -5294,7 +5294,7 @@ function initResizableColumns() {
 
     // 为每个 data-table 添加拖拽手柄
     document.querySelectorAll('.data-table').forEach(table => {
-        const tableId = table.id || table.closest('div')?.id || 'table_' + Math.random().toString(36).slice(2,8);
+        const tableId = table.id || (table.closest('div')||{}).id || 'table_' + Math.random().toString(36).slice(2,8);
         if (!table.id) table.id = tableId;
 
         // 恢复已保存的列宽
@@ -5851,8 +5851,8 @@ async function cronScriptEditCommon(prefix, taskId) {
             var hint = document.getElementById('cronScriptModeHint');
             if (hint) hint.textContent = errMsg ? ('回退显示命令：' + errMsg) : '回退显示命令';
         } else {
-            var command = res.data?.command || '';
-            var content = res.data?.content;
+            var command = (res.data||{}).command || '';
+            var content = (res.data||{}).content;
             var filename = '';
             if (typeof content === 'string') {
                 content = content.replace(/\r\n/g, '\n');
@@ -6247,8 +6247,8 @@ async function batchQlCronAction(action) {
 async function pushSelectedActivities() {
     var ids = getActSelectedIds();
     if (ids.length === 0) { toast('请先勾选要推送的活动', 'info'); return; }
-    var pushWebApp = document.getElementById('pushChannelWebApp')?.checked || false;
-    var pushQQWx = document.getElementById('pushChannelQQWx')?.checked || false;
+    var pushWebApp = (document.getElementById('pushChannelWebApp')||{}).checked || false;
+    var pushQQWx = (document.getElementById('pushChannelQQWx')||{}).checked || false;
     if (!pushWebApp && !pushQQWx) { toast('请至少选择一个推送渠道', 'info'); return; }
     var channels = [];
     if (pushWebApp) channels.push('网页/APP');
