@@ -174,7 +174,6 @@
         .tag-warning { background: #fdf6ec; color: #e6a23c; border: 1px solid #faecd8; }
         .tag-info { background: #f4f4f5; color: #909399; border: 1px solid #e9e9eb; }
         .tag-primary { background: #ecf5ff; color: #409eff; border: 1px solid #d9ecff; }
-        .modal-overlay.hidden { display: none; }
         .modal { background: #fff; border-radius: 10px; padding: 24px; width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
         .modal-lg { max-width: 900px; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; }
@@ -1723,6 +1722,16 @@ function isMobile() {
     return window.innerWidth <= 768;
 }
 
+function toggleAllCheck(cls, checked) {
+    document.querySelectorAll('.' + cls).forEach(function(cb) { cb.checked = checked; });
+}
+function updateCheckAll(cls, checkAllId) {
+    var all = document.querySelectorAll('.' + cls);
+    var checked = document.querySelectorAll('.' + cls + ':checked');
+    var el = document.getElementById(checkAllId);
+    if (el) el.checked = all.length > 0 && all.length === checked.length;
+}
+
 function toast(msg, type = 'info') {
     const el = document.getElementById('toast');
     el.textContent = msg; el.className = 'toast ' + type + ' show';
@@ -2227,9 +2236,7 @@ async function deleteNotification(id) {
     }
 }
 
-function toggleAllNotifyCheck(checked) {
-    document.querySelectorAll('.notify-check').forEach(function(el) { el.checked = checked; });
-}
+function toggleAllNotifyCheck(checked) { toggleAllCheck('notify-check', checked); }
 
 function getCheckedNotifyIds() {
     return Array.from(document.querySelectorAll('.notify-check:checked')).map(function(el) { return parseInt(el.value, 10); }).filter(Boolean);
@@ -2303,9 +2310,7 @@ function sortFeedbacks(field) {
     loadFeedbacks(1);
 }
 
-function toggleAllFeedbackCheck(checked) {
-    document.querySelectorAll('.feedback-check').forEach(function(cb) { cb.checked = checked; });
-}
+function toggleAllFeedbackCheck(checked) { toggleAllCheck('feedback-check', checked); }
 
 function getCheckedFeedbackIds() {
     var ids = [];
@@ -3341,12 +3346,8 @@ async function saveBatchUserCoin() {
         if (res.code === 0) { closeBatchUserCoinModal(); document.getElementById('userCheckAll').checked = false; loadUsers(); }
     } catch (e) { toast('修改失败: ' + e.message, 'error'); }
 }
-function toggleAllUserCheck(checked) { document.querySelectorAll('.user-check').forEach(function(cb) { cb.checked = checked; }); }
-function updateUserCheckAll() {
-    var all = document.querySelectorAll('.user-check');
-    var checked = document.querySelectorAll('.user-check:checked');
-    document.getElementById('userCheckAll').checked = all.length > 0 && all.length === checked.length;
-}
+function toggleAllUserCheck(checked) { toggleAllCheck('user-check', checked); }
+function updateUserCheckAll() { updateCheckAll('user-check', 'userCheckAll'); }
 
 // ============ 环境变量 ============
 async function loadEnvVars(page) {
@@ -3406,20 +3407,12 @@ async function batchDeleteEnvVars() {
         if (res.code === 0) { document.getElementById('envCheckAll').checked = false; loadEnvVars(); }
     } catch (e) { toast('删除失败: ' + e.message, 'error'); }
 }
-function toggleAllEnvCheck(checked) { document.querySelectorAll('.env-check').forEach(function(cb) { cb.checked = checked; }); }
-function updateEnvCheckAll() {
-    var all = document.querySelectorAll('.env-check');
-    var checked = document.querySelectorAll('.env-check:checked');
-    document.getElementById('envCheckAll').checked = all.length > 0 && all.length === checked.length;
-}
+function toggleAllEnvCheck(checked) { toggleAllCheck('env-check', checked); }
+function updateEnvCheckAll() { updateCheckAll('env-check', 'envCheckAll'); }
 
 // ============ CK 批量操作 ============
-function toggleAllCkCheck(checked) { document.querySelectorAll('.ck-check').forEach(function(cb) { cb.checked = checked; }); }
-function updateCkCheckAll() {
-    var all = document.querySelectorAll('.ck-check');
-    var checked = document.querySelectorAll('.ck-check:checked');
-    document.getElementById('ckCheckAll').checked = all.length > 0 && all.length === checked.length;
-}
+function toggleAllCkCheck(checked) { toggleAllCheck('ck-check', checked); }
+function updateCkCheckAll() { updateCheckAll('ck-check', 'ckCheckAll'); }
 async function batchDeleteCk() {
     var ids = getCheckedIds('ck-check');
     if (ids.length === 0) { toast('请先选择CK记录', 'info'); return; }
@@ -3459,12 +3452,8 @@ async function saveBatchCkEdit() {
 }
 
 // ============ 活动批量操作 ============
-function toggleAllActCheck(checked) { document.querySelectorAll('.act-check').forEach(function(cb) { cb.checked = checked; }); }
-function updateActCheckAll() {
-    var all = document.querySelectorAll('.act-check');
-    var checked = document.querySelectorAll('.act-check:checked');
-    document.getElementById('actCheckAll').checked = all.length > 0 && all.length === checked.length;
-}
+function toggleAllActCheck(checked) { toggleAllCheck('act-check', checked); }
+function updateActCheckAll() { updateCheckAll('act-check', 'actCheckAll'); }
 async function batchDeleteActivities() {
     var vals = getCheckedIds('act-check');
     if (vals.length === 0) { toast('请先选择活动', 'info'); return; }
@@ -4642,12 +4631,8 @@ async function saveQlEnvCreate() {
         if (res.code === 0) { closeQlEnvCreateModal(); loadQLEnvs(); }
     } catch (e) { toast('创建失败: ' + e.message, 'error'); }
 }
-function toggleAllQlEnvCheck(checked) { document.querySelectorAll('.ql-env-check').forEach(function(cb) { cb.checked = checked; }); }
-function updateQlEnvCheckAll() {
-    var all = document.querySelectorAll('.ql-env-check');
-    var checked = document.querySelectorAll('.ql-env-check:checked');
-    document.getElementById('qlEnvCheckAll').checked = all.length > 0 && all.length === checked.length;
-}
+function toggleAllQlEnvCheck(checked) { toggleAllCheck('ql-env-check', checked); }
+function updateQlEnvCheckAll() { updateCheckAll('ql-env-check', 'qlEnvCheckAll'); }
 async function batchDeleteQlEnvs() {
     var ids = getCheckedIds('ql-env-check');
     if (ids.length === 0) { toast('请先选择变量', 'info'); return; }
@@ -5257,98 +5242,41 @@ function initResizableColumns() {
         });
     }
 
-    // 为每个 data-table 添加拖拽手柄
+    function attachResizer(th, table) {
+        if (th.querySelector('.col-resizer')) return;
+        const resizer = document.createElement('div');
+        resizer.className = 'col-resizer';
+        th.style.position = 'relative';
+        th.appendChild(resizer);
+        let isResizing = false, startX, startWidth, colName;
+        resizer.addEventListener('mousedown', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            isResizing = true; startX = e.pageX; startWidth = th.offsetWidth; colName = th.dataset.col;
+            document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
+            const onMouseMove = (ev) => { if (!isResizing) return; th.style.width = Math.max(30, startWidth + ev.pageX - startX) + 'px'; };
+            const onMouseUp = () => {
+                isResizing = false; document.body.style.cursor = ''; document.body.style.userSelect = '';
+                document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp);
+                if (colName) saveColWidths(table.id, {[colName]: th.offsetWidth});
+            };
+            document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
+        });
+    }
+
     document.querySelectorAll('.data-table').forEach(table => {
         const tableId = table.id || (table.closest('div')||{}).id || 'table_' + Math.random().toString(36).slice(2,8);
         if (!table.id) table.id = tableId;
-
-        // 恢复已保存的列宽
         setTimeout(() => restoreColWidths(table.id), 100);
-
-        const ths = table.querySelectorAll('thead th');
-        ths.forEach(th => {
-            if (th.querySelector('.col-resizer')) return; // 防止重复添加
-            
-            const resizer = document.createElement('div');
-            resizer.className = 'col-resizer';
-            th.style.position = 'relative';
-            th.appendChild(resizer);
-
-            let isResizing = false, startX, startWidth, colName;
-
-            resizer.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                isResizing = true;
-                startX = e.pageX;
-                startWidth = th.offsetWidth;
-                colName = th.dataset.col;
-                document.body.style.cursor = 'col-resize';
-                document.body.style.userSelect = 'none';
-
-                const onMouseMove = (ev) => {
-                    if (!isResizing) return;
-                    const diff = ev.pageX - startX;
-                    const newWidth = Math.max(30, startWidth + diff);
-                    th.style.width = newWidth + 'px';
-                    
-                    // 同步更新 tbody 对应列的宽度（通过 CSS 自动处理）
-                };
-
-                const onMouseUp = () => {
-                    if (!isResizing) return;
-                    isResizing = false;
-                    document.body.style.cursor = '';
-                    document.body.style.userSelect = '';
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-
-                    if (colName) {
-                        saveColWidths(table.id, { [colName]: th.offsetWidth });
-                    }
-                };
-
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            });
-        });
+        table.querySelectorAll('thead th').forEach(th => attachResizer(th, table));
     });
 
-    // 页面切换后重新初始化新显示表格的拖拽
     const origSwitchPage = window.switchPage;
     window.switchPage = function(page) {
         origSwitchPage.call(this, page);
         setTimeout(() => {
             document.querySelectorAll('.data-table:not([data-resized])').forEach(table => {
                 table.setAttribute('data-resized', '1');
-                const ths = table.querySelectorAll('thead th');
-                ths.forEach(th => {
-                    if (th.querySelector('.col-resizer')) return;
-                    const resizer = document.createElement('div');
-                    resizer.className = 'col-resizer';
-                    th.style.position = 'relative';
-                    th.appendChild(resizer);
-
-                    let isResizing = false, startX, startWidth, colName;
-                    resizer.addEventListener('mousedown', (e) => {
-                        e.preventDefault(); e.stopPropagation();
-                        isResizing = true; startX = e.pageX; startWidth = th.offsetWidth;
-                        colName = th.dataset.col;
-                        document.body.style.cursor = 'col-resize';
-                        document.body.style.userSelect = 'none';
-                        const onMouseMove = (ev) => {
-                            if (!isResizing) return;
-                            th.style.width = Math.max(30, startWidth + ev.pageX - startX) + 'px';
-                        };
-                        const onMouseUp = () => {
-                            isResizing = false; document.body.style.cursor = ''; document.body.style.userSelect = '';
-                            document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp);
-                            if (colName) saveColWidths(table.id, {[colName]: th.offsetWidth});
-                        };
-                        document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
-                    });
-                });
-                // 恢复列宽
+                table.querySelectorAll('thead th').forEach(th => attachResizer(th, table));
                 const sw = savedWidths[table.id];
                 if (sw) { table.querySelectorAll('thead th').forEach(t => { if (t.dataset.col && sw[t.dataset.col]) t.style.width = sw[t.dataset.col]+'px'; }); }
             });
@@ -6013,11 +5941,8 @@ function renderJdCronTaskTable() {
     renderPagination('jdCronPagination', _jdCronPage, total, limit, function(p) { _jdCronPage = p; renderJdCronTaskTable(); }, 'jdCron');
 }
 
-function jdCronUpdateCheckAll() {
-    var all = document.querySelectorAll('.jdCron-task-check'); var checked = document.querySelectorAll('.jdCron-task-check:checked');
-    document.getElementById('jdCronCheckAll').checked = all.length > 0 && all.length === checked.length;
-}
-function toggleAllJdCronTasks(v) { document.querySelectorAll('.jdCron-task-check').forEach(function(cb) { cb.checked = v; }); }
+function jdCronUpdateCheckAll() { updateCheckAll('jdCron-task-check', 'jdCronCheckAll'); }
+function toggleAllJdCronTasks(v) { toggleAllCheck('jdCron-task-check', v); }
 function getJdCronSelectedIds() { var ids = []; document.querySelectorAll('.jdCron-task-check:checked').forEach(function(cb) { ids.push(parseInt(cb.value)); }); return ids; }
 
 function jdCronViewLog(taskId) {
@@ -6148,11 +6073,8 @@ function renderQlCronTaskTable() {
     renderPagination('qlCronPagination', _qlCronPage, total, limit, function(p) { _qlCronPage = p; renderQlCronTaskTable(); }, 'qlCron');
 }
 
-function qlCronUpdateCheckAll() {
-    var all = document.querySelectorAll('.qlCron-task-check'); var checked = document.querySelectorAll('.qlCron-task-check:checked');
-    document.getElementById('qlCronCheckAll').checked = all.length > 0 && all.length === checked.length;
-}
-function toggleAllQlCronTasks(v) { document.querySelectorAll('.qlCron-task-check').forEach(function(cb) { cb.checked = v; }); }
+function qlCronUpdateCheckAll() { updateCheckAll('qlCron-task-check', 'qlCronCheckAll'); }
+function toggleAllQlCronTasks(v) { toggleAllCheck('qlCron-task-check', v); }
 function getQlCronSelectedIds() { var ids = []; document.querySelectorAll('.qlCron-task-check:checked').forEach(function(cb) { ids.push(parseInt(cb.value)); }); return ids; }
 
 function qlCronViewLog(taskId) {
@@ -6275,15 +6197,8 @@ async function sendActivityToGroups(activityName, activityGuide, needCoin, isMon
 }
 
 // ============ 活动人数统计 勾选功能 ============
-function toggleAllAsCheck(checked) {
-    document.querySelectorAll('.as-check').forEach(function(cb) { cb.checked = checked; });
-}
-
-function asUpdateCheckAll() {
-    var all = document.querySelectorAll('.as-check');
-    var checked = document.querySelectorAll('.as-check:checked');
-    document.getElementById('asCheckAll').checked = all.length > 0 && all.length === checked.length;
-}
+function toggleAllAsCheck(checked) { toggleAllCheck('as-check', checked); }
+function asUpdateCheckAll() { updateCheckAll('as-check', 'asCheckAll'); }
 
 function getAsSelectedIds() {
     var ids = [];
@@ -6292,15 +6207,8 @@ function getAsSelectedIds() {
 }
 
 // ============ 微信协议管理 勾选功能 ============
-function toggleAllWxCheck(checked) {
-    document.querySelectorAll('.wx-check').forEach(function(cb) { cb.checked = checked; });
-}
-
-function wxUpdateCheckAll() {
-    var all = document.querySelectorAll('.wx-check');
-    var checked = document.querySelectorAll('.wx-check:checked');
-    document.getElementById('wxCheckAll').checked = all.length > 0 && all.length === checked.length;
-}
+function toggleAllWxCheck(checked) { toggleAllCheck('wx-check', checked); }
+function wxUpdateCheckAll() { updateCheckAll('wx-check', 'wxCheckAll'); }
 
 function getWxSelectedIds() {
     var ids = [];
