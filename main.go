@@ -345,7 +345,8 @@ func main() {
 	web.BConfig.WebConfig.AutoRender = false
 	web.BConfig.CopyRequestBody = true
 	web.BConfig.WebConfig.Session.SessionOn = true
-	web.BConfig.WebConfig.Session.SessionGCMaxLifetime = 3600
+	web.BConfig.WebConfig.Session.SessionGCMaxLifetime = 172800
+	web.BConfig.WebConfig.Session.SessionCookieLifeTime = 172800
 	web.BConfig.WebConfig.Session.SessionName = models.AppName
 	// 配置CORS跨域访问
 	web.InsertFilter("*", web.BeforeRouter, cors.Allow(&cors.Options{
