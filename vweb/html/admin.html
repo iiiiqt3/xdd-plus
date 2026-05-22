@@ -3554,7 +3554,7 @@ const COMMON_CK_FIELDS = ['phone','password','ptpin','qq','wxid','user_remarks']
 function normalizeCkTemplate(raw) {
     if (!raw || raw.includes('{{')) return raw; // 已经是标准格式或空
     // 简写模式：将非 # 分隔的单词替换为 {{.xxx}}
-    return raw.split(/(?=[#;])|(?<=[#;])/).map(seg => {
+    return raw.split(/([#;])/).map(seg => {
         seg = seg.trim();
         if (!seg || seg === '#' || seg === ';') return seg;
         const mapped = FIELD_NAME_MAP[seg.toLowerCase()] || seg;
