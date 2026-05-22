@@ -14,7 +14,6 @@ type WebUserAccount struct {
     Username     string    `gorm:"size:64;uniqueIndex"`
     PasswordHash string    `gorm:"size:64"`
     PasswordSalt string    `gorm:"size:32"`
-    UserID       int       `gorm:"index"`
     UserNumber   int       `gorm:"uniqueIndex"`
     Status       string    `gorm:"size:16;default:active"`
     BoundAt      time.Time
@@ -100,7 +99,6 @@ func CreateWebUserAccount(username, password string, userNumber int) (*WebUserAc
         Username:     username,
         PasswordHash: buildWebPasswordHash(username, password, salt),
         PasswordSalt: salt,
-        UserID:       user.ID,
         UserNumber:   user.Number,
         Status:       "active",
         BoundAt:      now,
