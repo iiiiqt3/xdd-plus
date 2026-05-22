@@ -441,50 +441,6 @@
     </style>
 </head>
 <body>
-<div id="mobileDiag" style="display:none;position:fixed;bottom:10px;right:10px;left:10px;z-index:9999;background:#333;color:#fff;padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:monospace;">
-    <div id="mobileDiagContent">⏳ 页面加载中...</div>
-</div>
-<script>
-(function(){
-    var isMob = window.innerWidth <= 768;
-    if (!isMob) return;
-    var el = document.getElementById('mobileDiag');
-    var ct = document.getElementById('mobileDiagContent');
-    if (!el || !ct) return;
-    el.style.display = 'block';
-    var steps = [];
-    function log(msg) { steps.push(msg); ct.innerHTML = steps.join('<br>'); }
-    log('✅ HTML 解析完成');
-    log('UA: ' + navigator.userAgent.substring(0, 80));
-    log('⏳ 等待JS执行...');
-    window.onerror = function(msg, src, line, col, err) {
-        log('❌ JS错误: ' + (msg || 'unknown') + ' @line:' + line + ':' + col);
-        return true;
-    };
-    window.addEventListener('error', function(e) {
-        if (e.message) log('❌ ErrorEvent: ' + e.message + ' @' + (e.filename||'').split('/').pop() + ':' + e.lineno);
-    }, true);
-    window.addEventListener('unhandledrejection', function(e) {
-        log('❌ Promise拒绝: ' + (e.reason ? (e.reason.message || e.reason) : 'unknown'));
-    });
-    setTimeout(function() {
-        if (typeof axios !== 'undefined') { log('✅ axios 已加载'); }
-        else { log('⚠️ axios 未加载，将使用 fetch 降级'); }
-        if (typeof fetch === 'function') { log('✅ fetch API 可用'); }
-        else { log('❌ fetch 不可用！'); }
-        if (typeof toggleSidebar === 'function') { log('✅ toggleSidebar 已定义'); }
-        else { log('❌ toggleSidebar 未定义！主脚本可能未执行'); }
-        if (typeof loadDashboard === 'function') { log('✅ loadDashboard 已定义'); }
-        else { log('❌ loadDashboard 未定义！'); }
-        log('⏳ 等待仪表盘数据...');
-    }, 1000);
-    window._mobDiagDone = function(ok) {
-        if (ok) { log('✅ 数据加载成功！'); setTimeout(function(){ el.style.display='none'; }, 2000); }
-        else { log('❌ 数据加载失败！请截图反馈'); el.style.background='#c0392b'; }
-    };
-    setTimeout(function() { if (steps.length < 10) { log('❌ 超时！JS可能未完全执行'); el.style.background='#e67e22'; } }, 15000);
-})();
-</script>
 <div class="sidebar">
     <div class="sidebar-header">
         <h2>XDD 管理</h2>
