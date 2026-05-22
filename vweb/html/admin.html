@@ -348,10 +348,10 @@
         .toggle-switch input:checked + .toggle-slider { background: #409eff; }
         .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
 
-        .mobile-menu-btn { display: none; width: 36px; height: 36px; border-radius: 8px; background: rgba(64,158,255,0.1); color: #409eff; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; flex-shrink: 0; transition: background 0.2s; }
+        .mobile-menu-btn { display: none; width: 40px; height: 40px; border-radius: 8px; background: rgba(64,158,255,0.1); color: #409eff; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
         .mobile-menu-btn:hover { background: rgba(64,158,255,0.2); }
         .mobile-menu-btn:active { background: rgba(64,158,255,0.3); }
-        .sidebar-backdrop { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); z-index: 99; -webkit-tap-highlight-color: transparent; }
+        .sidebar-backdrop { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); z-index: 199; -webkit-tap-highlight-color: transparent; }
 
         @media (max-width: 1200px) {
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -366,9 +366,9 @@
 
         @media (max-width: 768px) {
             .mobile-menu-btn { display: flex; }
-            .sidebar { transform: translateX(-100%); width: 260px !important; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 200; box-shadow: none; pointer-events: none; }
-            .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.15); pointer-events: auto; }
-            .sidebar-backdrop.open { display: block; }
+            .sidebar { display: none; position: fixed; left: 0; top: 0; bottom: 0; width: 260px !important; z-index: 200; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+            .sidebar.mobile-open { display: block; }
+            .sidebar-backdrop.mobile-open { display: block; }
             .main-content { margin-left: 0 !important; }
             .top-bar { padding: 10px 14px; }
             .top-bar h1 { font-size: 16px; }
@@ -441,6 +441,39 @@
     </style>
 </head>
 <body>
+<div id="mobileDiag" style="display:none;position:fixed;bottom:10px;right:10px;left:10px;z-index:9999;background:#333;color:#fff;padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.6;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:monospace;">
+    <div id="mobileDiagContent">⏳ 页面加载中...</div>
+</div>
+<script>
+(function(){
+    var isMob = window.innerWidth <= 768;
+    if (!isMob) return;
+    var el = document.getElementById('mobileDiag');
+    var ct = document.getElementById('mobileDiagContent');
+    if (!el || !ct) return;
+    el.style.display = 'block';
+    var steps = [];
+    function log(msg) { steps.push(msg); ct.innerHTML = steps.join('<br>'); }
+    log('✅ HTML 解析完成');
+    log('⏳ 等待JS执行...');
+    setTimeout(function() {
+        if (typeof axios !== 'undefined') { log('✅ axios 已加载'); }
+        else { log('⚠️ axios 未加载，将使用 fetch 降级'); }
+        if (typeof fetch === 'function') { log('✅ fetch API 可用'); }
+        else { log('❌ fetch 不可用！'); }
+        if (typeof toggleSidebar === 'function') { log('✅ toggleSidebar 已定义'); }
+        else { log('❌ toggleSidebar 未定义！主脚本可能未执行'); }
+        if (typeof loadDashboard === 'function') { log('✅ loadDashboard 已定义'); }
+        else { log('❌ loadDashboard 未定义！'); }
+        log('⏳ 等待仪表盘数据...');
+    }, 500);
+    window._mobDiagDone = function(ok) {
+        if (ok) { log('✅ 数据加载成功！'); setTimeout(function(){ el.style.display='none'; }, 2000); }
+        else { log('❌ 数据加载失败！请截图反馈'); el.style.background='#c0392b'; }
+    };
+    setTimeout(function() { if (steps.length < 8) { log('❌ 超时！JS可能未完全执行'); el.style.background='#e67e22'; } }, 15000);
+})();
+</script>
 <div class="sidebar">
     <div class="sidebar-header">
         <h2>XDD 管理</h2>
@@ -1700,16 +1733,23 @@ function toggleSidebar() {
     var sidebar = document.querySelector('.sidebar');
     var backdrop = document.querySelector('.sidebar-backdrop');
     if (!sidebar || !backdrop) return;
-    sidebar.classList.toggle('open');
-    backdrop.classList.toggle('open');
-    document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
+    var willOpen = !sidebar.classList.contains('mobile-open');
+    if (willOpen) {
+        sidebar.classList.add('mobile-open');
+        backdrop.classList.add('mobile-open');
+        document.body.style.overflow = 'hidden';
+    } else {
+        sidebar.classList.remove('mobile-open');
+        backdrop.classList.remove('mobile-open');
+        document.body.style.overflow = '';
+    }
 }
 function closeSidebar() {
     var sidebar = document.querySelector('.sidebar');
     var backdrop = document.querySelector('.sidebar-backdrop');
     if (!sidebar || !backdrop) return;
-    sidebar.classList.remove('open');
-    backdrop.classList.remove('open');
+    sidebar.classList.remove('mobile-open');
+    backdrop.classList.remove('mobile-open');
     document.body.style.overflow = '';
 }
 function isMobile() {
@@ -1988,10 +2028,12 @@ async function loadDashboard() {
                 <div></div>
             </div>`;
         } catch(e) { document.getElementById('dashActInfo').innerHTML = '<p style="color:#c0c4cc;text-align:center;padding:30px;">加载失败</p>'; }
+        if (typeof window._mobDiagDone === 'function') window._mobDiagDone(true);
 
     } catch (e) {
         console.error('加载仪表盘失败:', e);
         if (typeof toast === 'function') toast('仪表盘加载失败，请刷新重试', 'error');
+        if (typeof window._mobDiagDone === 'function') window._mobDiagDone(false);
     }
 }
 
