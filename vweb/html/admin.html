@@ -4461,10 +4461,10 @@ async function saveActivity() {
 }
 function editActivity(idx) { showActivityEditor(idx); }
 async function sendActivityNotify(activityName, activityGuide, silent, needCoin, isMonthlyDeduct, monthlyCoin) {
-    const title = '新增上车项目-' + activityName;
-    var content = '管理员已新增新活动：' + activityName + '\n请前往上车项目中心查看详情并参与。';
+    const title = '🎉 新活动上线 - ' + activityName;
+    var content = '🎉 新活动上线：' + activityName;
     if (activityGuide && activityGuide.trim()) {
-        content += '\n\n玩法简介：\n' + activityGuide.trim();
+        content += '\n\n📝 玩法简介：\n' + activityGuide.trim();
     }
     content += '\n\n📊 积分信息：\n';
     if (isMonthlyDeduct) {
@@ -4474,6 +4474,11 @@ async function sendActivityNotify(activityName, activityGuide, silent, needCoin,
         content += '• 扣分模式：一次性扣费\n';
         content += '• 所需积分：' + needCoin + ' 积分';
     }
+    content += '\n\n📲 参与方式：';
+    content += '\n• 安卓APP：http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk';
+    content += '\n• iOS版本：http://180.152.5.230:8888/down/Uu1IewAFQ54x.ipa';
+    content += '\n• 网页端：http://180.152.5.230:5701';
+    content += '\n\n请前往活动中心参与！';
     try {
         await api.post('/api/admin/notifications/send', {
             title: title,
@@ -6169,9 +6174,9 @@ async function pushSelectedActivities() {
 }
 
 async function sendActivityToGroups(activityName, activityGuide, needCoin, isMonthlyDeduct, monthlyCoin) {
-    var content = '';
+    var content = '🎉 新活动上线：' + activityName;
     if (activityGuide && activityGuide.trim()) {
-        content += '玩法简介：\n' + activityGuide.trim();
+        content += '\n\n📝 玩法简介：\n' + activityGuide.trim();
     }
     content += '\n\n📊 积分信息：\n';
     if (isMonthlyDeduct) {
@@ -6181,10 +6186,14 @@ async function sendActivityToGroups(activityName, activityGuide, needCoin, isMon
         content += '• 扣分模式：一次性扣费\n';
         content += '• 所需积分：' + needCoin + ' 积分';
     }
-    content += '\n\n请前往上车项目中心查看详情并参与。';
+    content += '\n\n📲 参与方式：';
+    content += '\n• 安卓APP：http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk';
+    content += '\n• iOS版本：http://180.152.5.230:8888/down/Uu1IewAFQ54x.ipa';
+    content += '\n• 网页端：http://180.152.5.230:5701';
+    content += '\n\n请下载APP或网页后台前往活动中心参与！';
     try {
         var res = await api.post('/api/admin/activity/pushgroups', {
-            title: '新增上车项目-' + activityName,
+            title: '🎉 新活动上线 - ' + activityName,
             content: content
         });
         if (res.code !== 0) { throw new Error(res.msg || '推送失败'); }
