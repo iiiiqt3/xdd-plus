@@ -4462,7 +4462,7 @@ async function saveActivity() {
 function editActivity(idx) { showActivityEditor(idx); }
 async function sendActivityNotify(activityName, activityGuide, silent, needCoin, isMonthlyDeduct, monthlyCoin) {
     const title = '🎉 新活动上线 - ' + activityName;
-    var content = '🎉 新活动上线：' + activityName;
+    var content = activityName;
     if (activityGuide && activityGuide.trim()) {
         content += '\n\n📝 玩法简介：\n' + activityGuide.trim();
     }
@@ -4478,7 +4478,7 @@ async function sendActivityNotify(activityName, activityGuide, silent, needCoin,
     content += '\n• 安卓APP：http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk';
     content += '\n• iOS版本：http://180.152.5.230:8888/down/Uu1IewAFQ54x.ipa';
     content += '\n• 网页端：http://180.152.5.230:5701';
-    content += '\n\n请前往活动中心参与！';
+    content += '\n\n🚀 请下载APP或网页后台前往活动中心参与！';
     try {
         await api.post('/api/admin/notifications/send', {
             title: title,
@@ -6153,11 +6153,14 @@ async function pushSelectedActivities() {
         var act = activitiesCache[ids[i]];
         if (!act) { failCount++; continue; }
         try {
+            var actNeedCoin = parseInt(act['所需积分']) || 0;
+            var actIsMonthly = act['是否按月扣费'] === true;
+            var actMonthlyCoin = parseInt(act['每月积分']) || 0;
             if (pushWebApp) {
-                await sendActivityNotify(act['名称'] || '', act['玩法和说明'] || '', true);
+                await sendActivityNotify(act['名称'] || '', act['玩法和说明'] || '', true, actNeedCoin, actIsMonthly, actMonthlyCoin);
             }
             if (pushQQWx) {
-                await sendActivityToGroups(act['名称'] || '', act['玩法和说明'] || '');
+                await sendActivityToGroups(act['名称'] || '', act['玩法和说明'] || '', actNeedCoin, actIsMonthly, actMonthlyCoin);
             }
             successCount++;
             pushDetails.push('✅ ' + (act['名称'] || '未知活动'));
@@ -6174,7 +6177,7 @@ async function pushSelectedActivities() {
 }
 
 async function sendActivityToGroups(activityName, activityGuide, needCoin, isMonthlyDeduct, monthlyCoin) {
-    var content = '🎉 新活动上线：' + activityName;
+    var content = activityName;
     if (activityGuide && activityGuide.trim()) {
         content += '\n\n📝 玩法简介：\n' + activityGuide.trim();
     }
@@ -6190,7 +6193,7 @@ async function sendActivityToGroups(activityName, activityGuide, needCoin, isMon
     content += '\n• 安卓APP：http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk';
     content += '\n• iOS版本：http://180.152.5.230:8888/down/Uu1IewAFQ54x.ipa';
     content += '\n• 网页端：http://180.152.5.230:5701';
-    content += '\n\n请下载APP或网页后台前往活动中心参与！';
+    content += '\n\n🚀 请下载APP或网页后台前往活动中心参与！';
     try {
         var res = await api.post('/api/admin/activity/pushgroups', {
             title: '🎉 新活动上线 - ' + activityName,
