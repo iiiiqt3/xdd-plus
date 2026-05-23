@@ -1003,7 +1003,7 @@
                 <button class="active" data-panel="dashboard">⚡ 仪表盘</button>
                 <button data-panel="notifications">🔔 通知中心<span class="notify-badge" id="menuNotifyBadge" style="display:none;">0</span></button>
                 <button data-panel="projects">📦 我的项目</button>
-                <button data-panel="activities">🚀 上车项目</button>
+                <button data-panel="activities">🚀 活动中心</button>
                 <button data-panel="tasks">⭐ 积分任务</button>
             </div>
         </div>
@@ -1171,10 +1171,10 @@
             </div>
         </section>
 
-        <!-- ===== 上车项目 ===== -->
+        <!-- ===== 活动中心 ===== -->
         <section class="panel" id="panel-activities">
             <div class="section">
-                <div class="section-header panel-duplicate-title"><h3>🚀 上车项目</h3><span class="muted">选择项目并填写信息完成上车</span></div>
+                <div class="section-header panel-duplicate-title"><h3>🚀 活动中心</h3><span class="muted">选择活动并填写信息参与</span></div>
                 <div class="filter-bar">
                     <input class="search-input" id="activitySearchInput" type="text" placeholder="搜索项目名、编号、环境变量…" oninput="onActivitySearch(this.value)">
                     <button class="search-clear" id="activitySearchClear" onclick="clearActivitySearch()">✕</button>
@@ -1383,7 +1383,7 @@ function syncPanelTitle(panel) {
     const titleMap = {
         dashboard: '⚡ 仪表盘',
         projects: '📦 我的项目',
-        activities: '🚀 上车项目',
+        activities: '🚀 活动中心',
         notifications: '🔔 通知中心',
         tasks: '⭐ 积分任务',
         wx: '💬 微信协议',
@@ -1948,7 +1948,7 @@ function openProjectModal(activityId) {
     const item = (state.activities || []).find(x => String(x.id) === String(activityId));
     if (!item) { toast('未找到活动信息', 'error'); return; }
     state.currentActivity = item;
-    document.getElementById('projectModalTitle').textContent = `上车项目：${item.name}`;
+    document.getElementById('projectModalTitle').textContent = `活动中心：${item.name}`;
     const meta = document.getElementById('projectModalMeta');
     meta.innerHTML = `
         <span class="project-modal-chip">${escapeHtml(item.isMonthlyDeduct ? `每月扣 ${item.monthlyCoin} 积分` : `一次扣 ${item.needCoin} 积分`)}</span>
