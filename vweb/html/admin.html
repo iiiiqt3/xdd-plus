@@ -980,11 +980,11 @@
                         <span id="aaDeleteSelectedCount" style="font-size:12px;color:#909399;">已选择 0 个账号</span>
                     </div>
                     <div id="aaDeleteAccountList" style="max-height:320px;overflow:auto;border:1px solid #ebeef5;border-radius:10px;background:#fff;margin-bottom:14px;padding:6px 8px;">正在加载账号列表...</div>
-                    <div id="aaDeletePreview" style="max-height:220px;overflow:auto;padding:10px 12px;border:1px solid #ebeef5;border-radius:10px;background:#fafcff;color:#606266;font-size:12px;line-height:1.7;margin-bottom:14px;">请选择要删除的账号</div>
-                    <div id="aaDeleteNoRefundTip" style="display:none;padding:8px 12px;margin-bottom:14px;background:#fdf6ec;border:1px solid #faecd8;border-radius:8px;font-size:12px;color:#e6a23c;"><i class="fas fa-info-circle"></i> 该活动为一次性扣费，删除账号<strong>不退还积分</strong>。</div>
-                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;margin-bottom:14px;background:#f8fafc;border:1px solid #ebeef5;border-radius:10px;" id="aaManualRefundWrap">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;margin-bottom:10px;background:#f8fafc;border:1px solid #ebeef5;border-radius:10px;" id="aaManualRefundWrap">
                         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:normal;white-space:nowrap;"><input type="checkbox" id="aaManualRefund" onchange="toggleManualRefund()"> 手动指定退还积分（每个账号单独设置）</label>
                     </div>
+                    <div id="aaDeletePreview" style="max-height:220px;overflow:auto;padding:10px 12px;border:1px solid #ebeef5;border-radius:10px;background:#fafcff;color:#606266;font-size:12px;line-height:1.7;margin-bottom:14px;">请选择要删除的账号</div>
+                    <div id="aaDeleteNoRefundTip" style="display:none;padding:8px 12px;margin-bottom:14px;background:#fdf6ec;border:1px solid #faecd8;border-radius:8px;font-size:12px;color:#e6a23c;"><i class="fas fa-info-circle"></i> 该活动为一次性扣费，删除账号<strong>不退还积分</strong>。</div>
                     <div class="form-item" style="margin-bottom:14px;"><label>删除原因</label><textarea id="aaDeleteReason" rows="4" placeholder="请输入删除原因，会随积分退还结果一起发送给用户"></textarea></div>
                 </div>
             </div>
@@ -2837,6 +2837,16 @@ function closeActAuthDeleteModal() {
 }
 
 function toggleManualRefund() {
+    renderActAuthDeleteAccountList();
+    updateActAuthDeletePreview();
+}
+
+function syncRefundInput(envId) {
+    var inlineInput = document.getElementById('aaRefundInline_' + envId);
+    var previewInput = document.getElementById('aaRefundInput_' + envId);
+    if (inlineInput && previewInput) {
+        previewInput.value = inlineInput.value;
+    }
     updateActAuthDeletePreview();
 }
 
@@ -2856,12 +2866,20 @@ function renderActAuthDeleteAccountList() {
         updateActAuthDeletePreview();
         return;
     }
+    var isManual = document.getElementById('aaManualRefund').checked;
     box.innerHTML = list.map(function(x) {
         var checked = actAuthDeleteSelectedEnvIds.indexOf(x.envId) >= 0 ? ' checked' : '';
         var isMonthly = actAuthCurrentAct && actAuthCurrentAct.isMonthlyDeduct;
-        var rightInfo = isMonthly
-            ? '<span style="color:#67c23a;font-weight:700;font-size:12px;">退 ' + (x.refundCoin || 0) + ' 积分</span>'
-            : '<span style="color:#909399;font-size:12px;">不退积分</span>';
+        var rightInfo = '';
+        if (isMonthly) {
+            if (isManual) {
+                rightInfo = '<span style="display:flex;align-items:center;gap:4px;font-size:12px;"><span style="color:#67c23a;font-weight:700;">退</span> <input type="number" id="aaRefundInline_' + x.envId + '" value="' + (x.refundCoin || 0) + '" min="0" style="width:60px;padding:2px 6px;border:1px solid #dcdfe6;border-radius:4px;font-size:12px;" onclick="event.stopPropagation();" oninput="syncRefundInput(\'' + x.envId + '\')"> 积分</span>';
+            } else {
+                rightInfo = '<span style="color:#67c23a;font-weight:700;font-size:12px;">退 ' + (x.refundCoin || 0) + ' 积分</span>';
+            }
+        } else {
+            rightInfo = '<span style="color:#909399;font-size:12px;">不退积分</span>';
+        }
         var expireInfo = isMonthly
             ? '到期 ' + escapeHtml(x.expireDate || '-') + ' / 剩余 ' + (x.remainDays || 0) + ' 天 / '
             : '';
@@ -2913,7 +2931,7 @@ function updateActAuthDeletePreview() {
     if (isMonthly && isManual) {
         displayRefundCoin = 0;
         for (var i = 0; i < selected.length; i++) {
-            var el = document.getElementById('aaRefundInput_' + selected[i].envId);
+            var el = document.getElementById('aaRefundInline_' + selected[i].envId) || document.getElementById('aaRefundInput_' + selected[i].envId);
             if (el) {
                 var v = parseInt(el.value, 10);
                 if (!isNaN(v) && v >= 0) displayRefundCoin += v;
@@ -2924,11 +2942,11 @@ function updateActAuthDeletePreview() {
     var users = selected.filter(function(item) { return item.userNumber; }).map(function(item) { return item.userNumber; });
     var uniqueUsers = Array.from(new Set(users));
     var previewList = selected.map(function(item) {
-        var refundPart = !isMonthly ? '不退积分'
-            : isManual
-            ? '<input type="number" id="aaRefundInput_' + item.envId + '" value="' + (item.refundCoin || 0) + '" min="0" style="width:70px;padding:2px 6px;border:1px solid #dcdfe6;border-radius:4px;font-size:12px;" oninput="updateActAuthDeletePreview()"> 积分'
-            : (item.refundCoin || 0) + '积分';
-        return '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">· ' + escapeHtml(item.accountAlias || item.remarks || '-') + ' / 用户' + (item.userNumber || '-') + (isMonthly ? ' / 到期 ' + escapeHtml(item.expireDate || '-') + ' / 退' + refundPart : ' / ' + refundPart) + ' / ' + escapeHtml(item.statusText || '-') + '</div>';
+        var refundValue = item.refundCoin || 0;
+        var inlineEl = document.getElementById('aaRefundInline_' + item.envId);
+        if (inlineEl) refundValue = parseInt(inlineEl.value, 10) || 0;
+        var refundPart = !isMonthly ? '不退积分' : refundValue + '积分';
+        return '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">· ' + escapeHtml(item.accountAlias || item.remarks || '-') + ' / 用户' + (item.userNumber || '-') + (isMonthly ? ' / 到期 ' + escapeHtml(item.expireDate || '-') + ' / 退 ' + refundPart : ' / ' + refundPart) + ' / ' + escapeHtml(item.statusText || '-') + '</div>';
     }).join('');
     document.getElementById('aaDeletePreview').innerHTML =
         '<div><b>已选账号：</b>' + selectedCount + ' 个</div>' +
@@ -2949,7 +2967,7 @@ async function submitActAuthDelete() {
     var displayRefundCoin = 0;
     if (isManual) {
         for (var i = 0; i < items.length; i++) {
-            var el = document.getElementById('aaRefundInput_' + items[i].envId);
+            var el = document.getElementById('aaRefundInline_' + items[i].envId) || document.getElementById('aaRefundInput_' + items[i].envId);
             var v = el ? parseInt(el.value, 10) : 0;
             if (isNaN(v) || v < 0) { toast('请输入有效的退还积分', 'error'); return; }
             manualRefundCoins[items[i].envId] = v;
