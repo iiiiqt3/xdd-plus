@@ -356,8 +356,26 @@ func PortalWxPollLogin(userNumber int, uuid string, deductCoin bool) (*PortalWxA
             nickname = "微信用户"
         }
         user, err := getPortalUserByNumber(userNumber)
-        if err == nil && wxid != "" && strings.TrimSpace(user.Wxid) == "" {
-            db.Model(&user).Update("wxid", wxid)
+        if err == nil && wxid != "" {
+            if strings.TrimSpace(user.Wxid) == "" {
+                db.Model(&user).Update("wxid", wxid)
+            } else if user.Wxid != wxid {
+                var existingDevice PortalWxDevice
+                if db.Where("user_number = ? AND wxid = ?", userNumber, wxid).First(&existingDevice).Error != nil {
+                    var deviceCount int64
+                    db.Model(&PortalWxDevice{}).Where("user_number = ?", userNumber).Count(&deviceCount)
+                    primaryCount := int64(0)
+                    if strings.TrimSpace(user.Wxid) != "" {
+                        primaryCount = 1
+                    }
+                    if deviceCount+primaryCount < maxWxDevicesPerUser {
+                        db.Create(&PortalWxDevice{
+                            UserNumber: userNumber,
+                            Wxid:       wxid,
+                        })
+                    }
+                }
+            }
         }
 
         msg := fmt.Sprintf("登录成功，昵称：%s，微信ID：%s", nickname, wxid)
