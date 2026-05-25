@@ -32,8 +32,8 @@ var (
 )
 
 const (
-	syncInterval       = 10 * time.Second
-	syncBatchSize      = 20
+	syncInterval       = 30 * time.Second
+	syncBatchSize      = 50
 	syncMaxRetries     = 3
 	fullSyncInterval   = 30 * time.Minute
 )
