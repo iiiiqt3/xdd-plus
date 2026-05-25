@@ -3776,24 +3776,129 @@ default:
     Command: []string{"用户信息", "查询id", "查询ID", "我的ID", "我的信息"},
     Admin:   false,
     Handle: func(sender *Sender) interface{} {
-     
+        var user User
+        db.Where("number = ?", sender.UserID).First(&user)
+        nickname := user.Nickname
+        if nickname == "" {
+            nickname = "未设置"
+        }
+        coin := user.Coin
         msgs := []string{
-            "信息如下：",
-            "WxId: " + sender.WxId,
-            "UserID: " + strconv.Itoa(sender.UserID),
-            "ChatID: " + strconv.Itoa(sender.ChatID),
-            "GroupId: " + strconv.Itoa(sender.GroupId),
-            "WxGroupId: " + sender.WxGroupId,
-            "Type: " + sender.Type,
-            "Contents: " + strings.Join(sender.Contents, ", "),
-            "MessageID: " + strconv.Itoa(sender.MessageID),
-            "Username: " + sender.Username,
-            "IsAdmin: " + strconv.FormatBool(sender.IsAdmin),
-            "ReplySenderUserID: " + strconv.Itoa(sender.ReplySenderUserID),
+            "📋 信息如下：",
+            "🆔 UserID: " + strconv.Itoa(sender.UserID),
+            "👤 昵称: " + nickname,
+            "💰 积分: " + strconv.Itoa(coin),
+            "💬 WxId: " + sender.WxId,
+            "📱 QQ: " + sender.QQ,
+            "🏷️ ChatID: " + strconv.Itoa(sender.ChatID),
+            "🏠 GroupId: " + strconv.Itoa(sender.GroupId),
+            "📂 WxGroupId: " + sender.WxGroupId,
+            "📌 Type: " + sender.Type,
         }
         return strings.Join(msgs, "\n")
     },
 },
+	{
+		Command: []string{"项目中心", "项目", "活动中心", "活动列表", "上车项目"},
+		Admin:   false,
+		Handle: func(sender *Sender) interface{} {
+			msgChannel := make(chan string)
+			qq := sender.UserID
+			inputMu.Lock()
+			inputList[qq] = msgChannel
+			inputMu.Unlock()
+
+			go func() {
+				defer func() {
+					close(msgChannel)
+					delete(inputList, qq)
+				}()
+
+				activityConfigsMu.RLock()
+				configs := make([]*ActivityConfig, len(ActivityConfigs))
+				copy(configs, ActivityConfigs)
+				activityConfigsMu.RUnlock()
+
+				var enabledConfigs []*ActivityConfig
+				for _, cfg := range configs {
+					if cfg.Enabled {
+						enabledConfigs = append(enabledConfigs, cfg)
+					}
+				}
+				if len(enabledConfigs) == 0 {
+					sender.Reply("暂无可用活动")
+					return
+				}
+
+				msgs := []string{"🚀 当前可参与的项目：", ""}
+				for i, cfg := range enabledConfigs {
+					coinText := ""
+					if cfg.IsMonthlyDeduct {
+						coinText = fmt.Sprintf("每月 %d 积分", cfg.MonthlyCoin)
+					} else {
+						coinText = fmt.Sprintf("一次 %d 积分", cfg.NeedCoin)
+					}
+					tag := "一次上车"
+					if cfg.IsMonthlyDeduct {
+						tag = "按月授权"
+					}
+					msgs = append(msgs, fmt.Sprintf("【%d】%s | %s | %s", i+1, cfg.Name, tag, coinText))
+				}
+				msgs = append(msgs, "")
+				msgs = append(msgs, "📲 参与方式：")
+				msgs = append(msgs, "• 安卓APP：")
+				msgs = append(msgs, "    http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk")
+				msgs = append(msgs, "• iOS版本：")
+				msgs = append(msgs, "    http://180.152.5.230:8888/down/Uu1IewAFQ54x.ipa")
+				msgs = append(msgs, "• 网页端：")
+				msgs = append(msgs, "    http://180.152.5.230:5701")
+				msgs = append(msgs, "• 机器人：发送【记录账号】即可上车（纯文字交互，操作不如APP和网页直观，推荐优先使用APP或网页端）")
+				msgs = append(msgs, "")
+				msgs = append(msgs, "输入数字查看玩法简介，输入 q 退出：")
+				sender.Reply(strings.Join(msgs, "\n"))
+
+				timeout := time.After(60 * time.Second)
+				for {
+					select {
+					case input, ok := <-msgChannel:
+						if !ok {
+							return
+						}
+						input = strings.TrimSpace(input)
+						if strings.ToLower(input) == "q" {
+							sender.Reply("已退出项目中心")
+							return
+						}
+						idx, err := strconv.Atoi(input)
+						if err != nil || idx < 1 || idx > len(enabledConfigs) {
+							sender.Reply("输入无效，请输入 1-" + strconv.Itoa(len(enabledConfigs)) + " 的数字，或输入 q 退出")
+							continue
+						}
+						cfg := enabledConfigs[idx-1]
+						guide := strings.TrimSpace(cfg.Guide)
+						detail := fmt.Sprintf("📋【%s】", cfg.Name)
+						if cfg.IsMonthlyDeduct {
+							detail += fmt.Sprintf("\n💰 费用：每月 %d 积分", cfg.MonthlyCoin)
+						} else {
+							detail += fmt.Sprintf("\n💰 费用：一次 %d 积分", cfg.NeedCoin)
+						}
+						if guide != "" {
+							detail += "\n\n📖 玩法简介：\n" + guide
+						} else {
+							detail += "\n\n暂无玩法简介"
+						}
+						detail += "\n\n请使用上述方式下载APP或访问网页端，在「活动中心」选择该项目即可上车！"
+						sender.Reply(detail)
+						return
+					case <-timeout:
+						sender.Reply("操作超时，已退出项目中心")
+						return
+					}
+				}
+			}()
+			return nil
+		},
+	},
 	//获取我的userid
 	{
 		Command: []string{"我的微信号"},
