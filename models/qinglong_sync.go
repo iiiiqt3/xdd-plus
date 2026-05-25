@@ -246,6 +246,9 @@ func (sq *SyncQueue) handleDelete(project *ActivityProject, client *QingLongClie
 				return fmt.Errorf("删除环境变量 %d 失败: %v", project.QingLongEnvID, err)
 			}
 		}
+		if _, err := client.FindEnvByRemarks(project.Remarks, project.EnvKey); err == nil {
+			return fmt.Errorf("删除环境变量 %d 后验证失败，青龙中仍存在", project.QingLongEnvID)
+		}
 		MarkProjectDeleted(project.ID)
 		log.Printf("[同步服务] 删除成功 ID=%d QLEnvID=%d", project.ID, project.QingLongEnvID)
 		return nil
@@ -263,6 +266,10 @@ func (sq *SyncQueue) handleDelete(project *ActivityProject, client *QingLongClie
 		if sanitizedErr.Error() == "" {
 			return fmt.Errorf("删除环境变量 %d 失败: %v", envItem.ID, err)
 		}
+	}
+
+	if _, err := client.FindEnvByRemarks(project.Remarks, project.EnvKey); err == nil {
+		return fmt.Errorf("删除环境变量 %d 后验证失败，青龙中仍存在", envItem.ID)
 	}
 
 	MarkProjectDeleted(project.ID)

@@ -180,10 +180,7 @@ func MarkProjectSyncError(id int, errMsg string) error {
 }
 
 func MarkProjectDeleted(id int) error {
-	return db.Model(&ActivityProject{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"sync_status": "deleted",
-		"updated_at":  time.Now(),
-	}).Error
+	return db.Unscoped().Where("id = ?", id).Delete(&ActivityProject{}).Error
 }
 
 func CountActivityProjectStats(activityID, envKey string) (total, valid, expiringSoon, expired, disabled int) {
