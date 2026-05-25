@@ -2439,7 +2439,7 @@ async function updateFeedbackStatus(id, status) {
 }
 
 function closeFeedbackDetailModal() {
-    ('feedbackDetailModal'||{classList:{add:function(){},remove:function(){},toggle:function(){},contains:function(){return false}}}).classList.add('hidden');
+    document.getElementById('feedbackDetailModal').classList.add('hidden');
 }
 
 async function openFeedbackDetail(id) {
@@ -2478,7 +2478,7 @@ async function openFeedbackDetail(id) {
             detailLines.push('已奖励积分：' + (f.rewardCoin || 0));
         }
         document.getElementById('feedbackDetailContent').textContent = detailLines.join('\n');
-        ('feedbackDetailModal'||{classList:{add:function(){},remove:function(){},toggle:function(){},contains:function(){return false}}}).classList.remove('hidden');
+        document.getElementById('feedbackDetailModal').classList.remove('hidden');
     } catch(e) {
         toast('加载反馈详情失败: ' + e.message, 'error');
     }
