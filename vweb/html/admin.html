@@ -2870,12 +2870,12 @@ function onOneTimeRefundModeChange() {
     var mode = document.querySelector('input[name="aaOneTimeRefundMode"]:checked').value;
     document.getElementById('aaOneTimeRefundAllWrap').style.display = mode === 'all' ? 'flex' : 'none';
     document.getElementById('aaOneTimeRefundPartialTip').style.display = mode === 'partial' ? '' : 'none';
+    renderActAuthDeleteAccountList();
     if (mode === 'all') {
         var defaultCoin = actAuthCurrentAct ? (actAuthCurrentAct.needCoin || 0) : 0;
         document.getElementById('aaOneTimeRefundAllInput').value = defaultCoin;
         applyOneTimeAllRefundToSelected(defaultCoin);
     }
-    renderActAuthDeleteAccountList();
     updateActAuthDeletePreview();
 }
 

@@ -3784,17 +3784,18 @@ default:
         }
         coin := user.Coin
         msgs := []string{
-            "【用户信息】",
             "",
-            "UserID：" + strconv.Itoa(sender.UserID),
-            "昵称：" + nickname,
-            "积分：" + strconv.Itoa(coin),
-            "WxId：" + sender.WxId,
-            "QQ：" + user.QQ,
-            "ChatID：" + strconv.Itoa(sender.ChatID),
-            "GroupId：" + strconv.Itoa(sender.GroupId),
-            "WxGroupId：" + sender.WxGroupId,
-            "Type：" + sender.Type,
+            "📋 用户信息：",
+            "",
+            "🆔 UserID：" + strconv.Itoa(sender.UserID),
+            "👤 昵称：" + nickname,
+            "💰 积分：" + strconv.Itoa(coin),
+            "💬 WxId：" + sender.WxId,
+            "📱 QQ：" + user.QQ,
+            "🏷️ ChatID：" + strconv.Itoa(sender.ChatID),
+            "🏠 GroupId：" + strconv.Itoa(sender.GroupId),
+            "📂 WxGroupId：" + sender.WxGroupId,
+            "📌 Type：" + sender.Type,
         }
         return strings.Join(msgs, "\n")
     },
