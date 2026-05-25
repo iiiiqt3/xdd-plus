@@ -1798,7 +1798,7 @@ function getGroupedProjects() {
     const list = getFilteredProjects();
     const map = new Map();
     list.forEach(item => {
-        const key = `${item.activityId}__${item.activityName}__${item.qingLongConfig}__${item.priceText}`;
+        const key = `${item.activityId}__${item.qingLongConfig}`;
         if (!map.has(key)) {
             map.set(key, {
                 key, activityId: item.activityId, activityName: item.activityName,
