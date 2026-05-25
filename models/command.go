@@ -3789,7 +3789,7 @@ default:
             "👤 昵称: " + nickname,
             "💰 积分: " + strconv.Itoa(coin),
             "💬 WxId: " + sender.WxId,
-            "📱 QQ: " + sender.QQ,
+            "📱 QQ: " + user.QQ,
             "🏷️ ChatID: " + strconv.Itoa(sender.ChatID),
             "🏠 GroupId: " + strconv.Itoa(sender.GroupId),
             "📂 WxGroupId: " + sender.WxGroupId,
