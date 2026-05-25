@@ -448,8 +448,10 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 		ExpireDate:         expireDate,
 		IsMonthlyDeduct:    cfg.IsMonthlyDeduct,
 		MonthlyCoin:        cfg.MonthlyCoin,
-		NeedCoin:           cfg.NeedCoin,
 		SyncStatus:         "pending",
+	}
+	if !cfg.IsMonthlyDeduct {
+		project.NeedCoin = cfg.NeedCoin
 	}
 
 	if err := CreateActivityProject(project); err != nil {
@@ -498,6 +500,7 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 
 	project.Remarks = newRemarks
 	project.ExpireDate = newExpireDate
+	project.NeedCoin = 0
 	project.Status = 0
 	project.SyncStatus = "pending_update"
 	project.SyncError = ""
@@ -524,7 +527,7 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 		return "", fmt.Errorf("未找到对应项目记录")
 	}
 
-	if cfg.IsMonthlyDeduct && cfg.MonthlyCoin > 0 {
+	if cfg.IsMonthlyDeduct && project.MonthlyCoin > 0 && project.NeedCoin == 0 {
 		parts := strings.Split(remarks, "/")
 		if len(parts) >= 1 {
 			dateStr := parts[len(parts)-1]
@@ -537,7 +540,7 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 				if remainingDays > 0 {
 					remainingDays = remainingDays - 1
 				}
-				returnCoin = int((float64(cfg.MonthlyCoin) * remainingDays / 30) + 0.5)
+				returnCoin = int((float64(project.MonthlyCoin) * remainingDays / 30) + 0.5)
 			}
 		}
 	}

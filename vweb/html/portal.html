@@ -2193,7 +2193,19 @@ async function renewProject(activityId, remarks) {
 }
 
 async function deleteProject(activityId, remarks, activityName) {
-    if (!window.confirm(`确认删除【${activityName}】这条项目记录吗？`)) return;
+    const item = (state.projects || []).find(x => String(x.activityId) === String(activityId) && x.remark === remarks);
+    let refundTip = '';
+    if (item && item.isMonthlyDeduct && item.needCoin > 0) {
+        refundTip = '\n该账号由一次性活动转换，删除不退还积分';
+    } else if (item && item.isMonthlyDeduct && item.monthlyCoin > 0 && item.daysLeft > 0) {
+        const estimated = Math.round(item.monthlyCoin * item.daysLeft / 30);
+        refundTip = `\n预计返还积分：${estimated}（最终以服务端结算为准）`;
+    } else if (item && item.isMonthlyDeduct) {
+        refundTip = '\n预计返还积分：以服务端结算为准';
+    } else if (item && !item.isMonthlyDeduct) {
+        refundTip = '\n此活动为一次性扣费，删除不退还积分';
+    }
+    if (!window.confirm(`确认删除【${activityName}】这条项目记录吗？${refundTip}`)) return;
     try {
         const resp = await request('/api/portal/project/delete', {
             method: 'POST',

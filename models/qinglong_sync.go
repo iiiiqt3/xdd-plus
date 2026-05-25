@@ -500,10 +500,12 @@ func MigrateFromQingLongToDB() {
 				ExpireDate:         expireDate,
 				IsMonthlyDeduct:    cfg.IsMonthlyDeduct,
 				MonthlyCoin:        cfg.MonthlyCoin,
-				NeedCoin:           cfg.NeedCoin,
 				SyncStatus:         "synced",
 				CreatedAt:          time.Now(),
 				UpdatedAt:          time.Now(),
+			}
+			if !cfg.IsMonthlyDeduct {
+				project.NeedCoin = cfg.NeedCoin
 			}
 
 			if err := db.Create(project).Error; err != nil {

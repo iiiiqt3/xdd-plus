@@ -522,8 +522,10 @@ func handleRecordCKByGo(qq int, ckValue, finalRemarks, envKey string, config *Ac
 		ExpireDate:         expireDate,
 		IsMonthlyDeduct:    config.IsMonthlyDeduct,
 		MonthlyCoin:        config.MonthlyCoin,
-		NeedCoin:           config.NeedCoin,
 		SyncStatus:         "pending",
+	}
+	if !config.IsMonthlyDeduct {
+		project.NeedCoin = config.NeedCoin
 	}
 
 	if err := CreateActivityProject(project); err != nil {
@@ -1015,8 +1017,20 @@ func HandleDeleteCK(sender *Sender) interface{} {
 		var returnCoin int = 0
 		confirmPrompt := fmt.Sprintf("确认要删除【%s】这个账号吗？（输入y确认，其他字符取消）", GetFirstRemarkParam(selectedRemarks))
 
-		// 判断是否为月付费活动
-		if config.IsMonthlyDeduct && config.MonthlyCoin > 0 {
+		selectedProjectMonthlyCoin := config.MonthlyCoin
+		selectedProjectNeedCoin := config.NeedCoin
+		for _, p := range projects {
+			if p.Remarks == selectedRemarks {
+				if p.MonthlyCoin > 0 {
+					selectedProjectMonthlyCoin = p.MonthlyCoin
+				}
+				selectedProjectNeedCoin = p.NeedCoin
+				break
+			}
+		}
+
+		// 判断是否为月付费活动（NeedCoin>0 表示从一次性活动转来且未续费，不退积分）
+		if config.IsMonthlyDeduct && selectedProjectMonthlyCoin > 0 && selectedProjectNeedCoin == 0 {
 			// 分割备注，取最后一段为日期
 			remarkParts := strings.Split(selectedRemarks, "/")
 			if len(remarkParts) < 1 {
@@ -1041,7 +1055,7 @@ func HandleDeleteCK(sender *Sender) interface{} {
 			}
 
 			// 计算退还积分（四舍五入）
-			returnCoin = int(math.Round(float64(config.MonthlyCoin) * remainingDays / 30))
+			returnCoin = int(math.Round(float64(selectedProjectMonthlyCoin) * remainingDays / 30))
 
 			// 提示用户可退还积分
 			confirmPrompt = fmt.Sprintf("【温馨提示】当前为月付费活动\n删除后将退还积分：%d分\n确认删除【%s】？（输入y确认，其他字符取消）",
@@ -1445,6 +1459,7 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 
 		project.Remarks = newRemarks
 		project.ExpireDate = newExpireDate
+		project.NeedCoin = 0
 		project.Status = 0
 		project.SyncStatus = "pending_update"
 		project.SyncError = ""
