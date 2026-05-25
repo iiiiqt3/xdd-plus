@@ -2657,6 +2657,7 @@ function onActAuthAdjustCheckChange(envId, checked) {
 
 function onActAuthDeleteCheckChange(envId, checked) {
     toggleSelectedEnvId(actAuthDeleteSelectedEnvIds, envId, checked);
+    renderActAuthDeleteAccountList();
     updateActAuthDeletePreview();
 }
 
