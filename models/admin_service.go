@@ -2269,6 +2269,7 @@ type ActivityAuthAccountItem struct {
 	ExpireDate   string `json:"expireDate"`
 	RemainDays   int    `json:"remainDays"`
 	RefundCoin   int    `json:"refundCoin"`
+	NeedCoin     int    `json:"needCoin"`
 	Status       int    `json:"status"`
 	StatusText   string `json:"statusText"`
 }
@@ -2410,6 +2411,7 @@ func buildActivityAuthAccountItemByProject(cfg *ActivityConfig, project *Activit
 		ExpireDate:   expireDate,
 		RemainDays:   remainDays,
 		RefundCoin:   refundCoin,
+		NeedCoin:     project.NeedCoin,
 		Status:       project.Status,
 		StatusText:   statusText,
 	}

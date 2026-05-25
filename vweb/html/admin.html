@@ -975,34 +975,39 @@
                         <div class="form-item" style="margin:0;"><label>活动名称</label><input type="text" id="aaDeleteActName" disabled style="background:#f5f7fa;font-weight:600;"></div>
                         <div class="form-item" style="margin:0;"><label>搜索账号</label><div class="search-box has-input-btn" style="max-width:none;"><input type="text" id="aaDeleteSearch" placeholder="搜索备注名 / 用户编号 / 到期时间 / 状态" oninput="renderActAuthDeleteAccountList()"><button class="btn-search" onclick="renderActAuthDeleteAccountList()" title="搜索"><i class="fas fa-search"></i></button></div></div>
                     </div>
+
+                    <div id="aaRefundMonthlyWrap" style="display:none;padding:10px 14px;margin-bottom:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;">
+                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                            <span style="font-size:13px;font-weight:600;color:#1e40af;">💳 退还积分</span>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="checkbox" id="aaManualRefund" onchange="toggleManualRefund()"> 每个账号单独设置</label>
+                            <div id="aaBatchRefundWrap" style="display:none;align-items:center;gap:6px;">
+                                <span style="font-size:12px;color:#606266;">统一退还：</span>
+                                <input type="number" id="aaBatchRefundInput" min="0" value="0" style="width:70px;padding:3px 8px;border:1px solid #dcdfe6;border-radius:4px;font-size:12px;" oninput="applyBatchRefund(this.value)">
+                                <span style="font-size:12px;color:#606266;">积分/人</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="aaRefundOneTimeWrap" style="display:none;padding:10px 14px;margin-bottom:12px;background:#fdf6ec;border:1px solid #faecd8;border-radius:10px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:13px;font-weight:600;color:#b45309;">💳 退还积分</div>
+                        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="aaOneTimeRefundMode" value="none" checked onchange="onOneTimeRefundModeChange()"> 不退还</label>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="aaOneTimeRefundMode" value="all" onchange="onOneTimeRefundModeChange()"> 全部退还</label>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="aaOneTimeRefundMode" value="partial" onchange="onOneTimeRefundModeChange()"> 部分退还</label>
+                        </div>
+                        <div id="aaOneTimeRefundAllWrap" style="display:none;align-items:center;gap:8px;margin-top:10px;">
+                            <span style="font-size:12px;color:#606266;">每人退还：</span>
+                            <input type="number" id="aaOneTimeRefundAllInput" min="0" value="0" style="width:80px;padding:3px 8px;border:1px solid #dcdfe6;border-radius:4px;font-size:12px;" oninput="applyOneTimeAllRefund(this.value)">
+                            <span style="font-size:12px;color:#606266;">积分</span>
+                        </div>
+                        <div id="aaOneTimeRefundPartialTip" style="display:none;margin-top:8px;font-size:11px;color:#909399;">已勾选的账号下方显示积分输入框，默认为上车积分，可按需修改</div>
+                    </div>
+
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 10px;margin-bottom:10px;background:#f8fafc;border:1px solid #ebeef5;border-radius:10px;font-size:12px;color:#606266;">
                         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="aaDeleteCheckAll" onchange="toggleAllActAuthDeleteCheck(this.checked)"> 全选当前筛选结果</label>
                         <span id="aaDeleteSelectedCount" style="font-size:12px;color:#909399;">已选择 0 个账号</span>
                     </div>
                     <div id="aaDeleteAccountList" style="max-height:320px;overflow:auto;border:1px solid #ebeef5;border-radius:10px;background:#fff;margin-bottom:14px;padding:6px 8px;">正在加载账号列表...</div>
-
-                    <div id="aaRefundMonthlyWrap" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;margin-bottom:10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;">
-                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:normal;white-space:nowrap;"><input type="checkbox" id="aaManualRefund" onchange="toggleManualRefund()"> 手动指定退还积分（每个账号单独设置）</label>
-                        <div id="aaBatchRefundWrap" style="display:none;align-items:center;gap:6px;margin-left:8px;">
-                            <span style="font-size:12px;color:#606266;white-space:nowrap;">统一退还：</span>
-                            <input type="number" id="aaBatchRefundInput" min="0" value="0" style="width:70px;padding:3px 8px;border:1px solid #dcdfe6;border-radius:4px;font-size:12px;" oninput="applyBatchRefund(this.value)">
-                            <span style="font-size:12px;color:#606266;">积分/人</span>
-                        </div>
-                    </div>
-
-                    <div id="aaRefundOneTimeWrap" style="display:none;padding:8px 12px;margin-bottom:10px;background:#fdf6ec;border:1px solid #faecd8;border-radius:10px;">
-                        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:8px;">
-                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="aaOneTimeRefundMode" value="none" checked onchange="onOneTimeRefundModeChange()"> 不退还积分</label>
-                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="aaOneTimeRefundMode" value="all" onchange="onOneTimeRefundModeChange()"> 全部退还</label>
-                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="aaOneTimeRefundMode" value="partial" onchange="onOneTimeRefundModeChange()"> 部分退还</label>
-                        </div>
-                        <div id="aaOneTimeRefundAllWrap" style="display:none;align-items:center;gap:8px;margin-top:6px;">
-                            <span style="font-size:12px;color:#606266;">每人退还：</span>
-                            <input type="number" id="aaOneTimeRefundAllInput" min="0" value="0" style="width:80px;padding:3px 8px;border:1px solid #dcdfe6;border-radius:4px;font-size:12px;" oninput="applyOneTimeAllRefund(this.value)">
-                            <span style="font-size:12px;color:#606266;">积分</span>
-                        </div>
-                        <div id="aaOneTimeRefundPartialTip" style="display:none;margin-top:6px;font-size:11px;color:#909399;">已在下方每个账号旁显示积分输入框，默认全额，可按需修改</div>
-                    </div>
 
                     <div id="aaDeletePreview" style="max-height:220px;overflow:auto;padding:10px 12px;border:1px solid #ebeef5;border-radius:10px;background:#fafcff;color:#606266;font-size:12px;line-height:1.7;margin-bottom:14px;">请选择要删除的账号</div>
                     <div id="aaDeleteNoRefundTip" style="display:none;padding:8px 12px;margin-bottom:14px;background:#fdf6ec;border:1px solid #faecd8;border-radius:8px;font-size:12px;color:#e6a23c;"><i class="fas fa-info-circle"></i> 该活动为一次性扣费，删除账号<strong>不退还积分</strong>。</div>
@@ -2865,17 +2870,26 @@ function onOneTimeRefundModeChange() {
     var mode = document.querySelector('input[name="aaOneTimeRefundMode"]:checked').value;
     document.getElementById('aaOneTimeRefundAllWrap').style.display = mode === 'all' ? 'flex' : 'none';
     document.getElementById('aaOneTimeRefundPartialTip').style.display = mode === 'partial' ? '' : 'none';
+    if (mode === 'all') {
+        var defaultCoin = actAuthCurrentAct ? (actAuthCurrentAct.needCoin || 0) : 0;
+        document.getElementById('aaOneTimeRefundAllInput').value = defaultCoin;
+        applyOneTimeAllRefundToSelected(defaultCoin);
+    }
     renderActAuthDeleteAccountList();
     updateActAuthDeletePreview();
 }
 
 function applyOneTimeAllRefund(val) {
+    applyOneTimeAllRefundToSelected(val);
+    updateActAuthDeletePreview();
+}
+
+function applyOneTimeAllRefundToSelected(val) {
     var coin = parseInt(val, 10) || 0;
-    actAuthAccountData.forEach(function(x) {
-        var el = document.getElementById('aaRefundInline_' + x.envId);
+    actAuthDeleteSelectedEnvIds.forEach(function(envId) {
+        var el = document.getElementById('aaRefundInline_' + envId);
         if (el) el.value = coin;
     });
-    updateActAuthDeletePreview();
 }
 
 function toggleManualRefund() {
@@ -2890,8 +2904,8 @@ function applyBatchRefund(val) {
     var coin = parseInt(val, 10) || 0;
     var isManual = document.getElementById('aaManualRefund').checked;
     if (!isManual) return;
-    actAuthAccountData.forEach(function(x) {
-        var el = document.getElementById('aaRefundInline_' + x.envId);
+    actAuthDeleteSelectedEnvIds.forEach(function(envId) {
+        var el = document.getElementById('aaRefundInline_' + envId);
         if (el) el.value = coin;
     });
     updateActAuthDeletePreview();
@@ -2935,11 +2949,15 @@ function renderActAuthDeleteAccountList() {
             }
         } else {
             var oneTimeMode = (document.querySelector('input[name="aaOneTimeRefundMode"]:checked') || {}).value || 'none';
-            if (oneTimeMode === 'partial') {
-                rightInfo = '<span style="display:flex;align-items:center;gap:4px;font-size:12px;"><span style="color:#e6a23c;font-weight:700;">退</span> <input type="number" id="aaRefundInline_' + x.envId + '" value="' + (actAuthCurrentAct ? actAuthCurrentAct.needCoin || 0 : 0) + '" min="0" style="width:60px;padding:2px 6px;border:1px solid #dcdfe6;border-radius:4px;font-size:12px;" onclick="event.stopPropagation();" oninput="syncRefundInput(\'' + x.envId + '\')"> 积分</span>';
+            var isSelected = actAuthDeleteSelectedEnvIds.indexOf(x.envId) >= 0;
+            if (oneTimeMode === 'partial' && isSelected) {
+                var defaultCoin = x.needCoin || (actAuthCurrentAct ? actAuthCurrentAct.needCoin || 0 : 0);
+                rightInfo = '<span style="display:flex;align-items:center;gap:4px;font-size:12px;"><span style="color:#e6a23c;font-weight:700;">退</span> <input type="number" id="aaRefundInline_' + x.envId + '" value="' + defaultCoin + '" min="0" style="width:60px;padding:2px 6px;border:1px solid #dcdfe6;border-radius:4px;font-size:12px;" onclick="event.stopPropagation();" oninput="syncRefundInput(\'' + x.envId + '\')"> 积分</span>';
+            } else if (oneTimeMode === 'partial' && !isSelected) {
+                rightInfo = '<span style="color:#909399;font-size:12px;">未勾选</span>';
             } else if (oneTimeMode === 'all') {
                 var allVal = parseInt((document.getElementById('aaOneTimeRefundAllInput') || {}).value, 10) || 0;
-                rightInfo = '<span style="color:#67c23a;font-weight:700;font-size:12px;">退 ' + allVal + ' 积分</span>';
+                rightInfo = isSelected ? '<span style="color:#67c23a;font-weight:700;font-size:12px;">退 ' + allVal + ' 积分</span>' : '<span style="color:#909399;font-size:12px;">未勾选</span>';
             } else {
                 rightInfo = '<span style="color:#909399;font-size:12px;">不退积分</span>';
             }
