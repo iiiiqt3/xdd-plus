@@ -3842,24 +3842,20 @@ function parseSingleActivityBlock(block) {
         const line = lines[i];
         const trimmed = line.trim();
         
-        // 跳过空行和注释行（但在多行块标量中保留空行）
-        if (trimmed === '' || trimmed.startsWith('#')) {
-            if (inBlockScalar) {
-                blockScalarLines.push('');
-            }
-            continue;
-        }
-        
-        const indent = line.length - line.trimStart().length;
-        
         // 处理多行块标量（| 或 |-）的续行
         if (inBlockScalar) {
+            const indent = line.length - line.trimStart().length;
             if (indent > 2) {
                 // 仍在块标量内容中，收集内容（去掉前4个空格的基础缩进）
+                // 在多行块标量中，# 不是注释，是实际内容
                 blockScalarLines.push(line.substring(4));
                 continue;
+            } else if (trimmed === '') {
+                // 空行在多行块标量中保留
+                blockScalarLines.push('');
+                continue;
             } else {
-                // 缩进回到2或更少，块标量结束，保存收集的内容
+                // 缩进回到2或更少且非空行，块标量结束，保存收集的内容
                 act[blockScalarKey] = blockScalarLines.join('\n').replace(/\n+$/, '');
                 inBlockScalar = false;
                 blockScalarKey = '';
@@ -3867,6 +3863,13 @@ function parseSingleActivityBlock(block) {
                 // 继续处理当前行（不跳过）
             }
         }
+        
+        // 跳过空行和注释行（仅在非多行块标量模式下）
+        if (trimmed === '' || trimmed.startsWith('#')) {
+            continue;
+        }
+        
+        const indent = line.length - line.trimStart().length;
         
         // 输入字段开始: "输入字段:"
         if (/^输入字段:/.test(trimmed)) {
