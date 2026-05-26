@@ -1,18 +1,22 @@
 import UIKit
+import UserNotifications
 
 @available(iOS 13.0, *)
 final class RootTabBarController: UITabBarController, UITabBarControllerDelegate {
-    private let protectedIndexes: Set<Int> = [0, 1, 3, 4]
+    private let protectedIndexes: Set<Int> = [0, 1, 4]
     private var pendingProtectedIndex: Int?
-    private var lastSafeIndex: Int = 2
+    private var lastSafeIndex: Int = 3
+    private var swipeLeft: UISwipeGestureRecognizer?
+    private var swipeRight: UISwipeGestureRecognizer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         delegate = self
         setupAppearance()
         setupTabs()
-        selectedIndex = 2
-        lastSafeIndex = 2
+        selectedIndex = 3
+        lastSafeIndex = 3
+        setupSwipeGestures()
         NotificationCenter.default.addObserver(self, selector: #selector(handleSessionChange), name: AppNotifications.sessionDidChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handleLogout), name: AppNotifications.sessionDidLogout, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handleRequiresLogin), name: AppNotifications.sessionRequiresLogin, object: nil)
@@ -20,32 +24,15 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
     }
 
     private func setupAppearance() {
-        let appearance = UITabBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .systemBackground
-
-        let layouts = [
-            appearance.stackedLayoutAppearance,
-            appearance.inlineLayoutAppearance,
-            appearance.compactInlineLayoutAppearance,
-        ]
-        layouts.forEach { layout in
-            layout.normal.titleTextAttributes = [.foregroundColor: UIColor.secondaryLabel]
-            layout.normal.iconColor = .secondaryLabel
-            layout.selected.titleTextAttributes = [.foregroundColor: UIColor.systemBlue]
-            layout.selected.iconColor = .systemBlue
-        }
-
-        tabBar.standardAppearance = appearance
-        if #available(iOS 15.0, *) {
-            tabBar.scrollEdgeAppearance = appearance
-        }
+        LiquidGlassEffect.applyGlassToTabBar(tabBar)
         tabBar.tintColor = .systemBlue
         tabBar.unselectedItemTintColor = .secondaryLabel
     }
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        swipeLeft.map { view.removeGestureRecognizer($0) }
+        swipeRight.map { view.removeGestureRecognizer($0) }
     }
 
     private func setupTabs() {
@@ -55,16 +42,42 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
         let projects = AppNavigationController(rootViewController: ProjectsRootViewController())
         projects.tabBarItem = UITabBarItem(title: "项目", image: UIImage(systemName: "shippingbox"), selectedImage: UIImage(systemName: "shippingbox.fill"))
 
-        let jd = AppNavigationController(rootViewController: MainUIViewController())
-        jd.tabBarItem = UITabBarItem(title: "京东", image: UIImage(systemName: "bag"), selectedImage: UIImage(systemName: "bag.fill"))
-
-        let wechat = AppNavigationController(rootViewController: WechatProtocolViewController())
-        wechat.tabBarItem = UITabBarItem(title: "微信", image: UIImage(systemName: "message"), selectedImage: UIImage(systemName: "message.fill"))
-
         let tasks = AppNavigationController(rootViewController: CoinTasksViewController())
         tasks.tabBarItem = UITabBarItem(title: "任务", image: UIImage(systemName: "star"), selectedImage: UIImage(systemName: "star.fill"))
 
-        viewControllers = [home, projects, jd, wechat, tasks]
+        let jd = AppNavigationController(rootViewController: MainUIViewController())
+        jd.tabBarItem = UITabBarItem(title: "京东", image: UIImage(systemName: "bag"), selectedImage: UIImage(systemName: "bag.fill"))
+
+        let more = AppNavigationController(rootViewController: MoreViewController())
+        more.tabBarItem = UITabBarItem(title: "更多", image: UIImage(systemName: "line.3.horizontal"), selectedImage: UIImage(systemName: "line.3.horizontal"))
+
+        viewControllers = [home, projects, tasks, jd, more]
+    }
+
+    private func setupSwipeGestures() {
+        let left = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
+        left.direction = .left
+        let right = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
+        right.direction = .right
+        view.addGestureRecognizer(left)
+        view.addGestureRecognizer(right)
+        swipeLeft = left
+        swipeRight = right
+    }
+
+    @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
+        guard let count = viewControllers?.count, count > 0 else { return }
+        if gesture.direction == .left {
+            let next = selectedIndex + 1
+            if next < count {
+                selectedIndex = next
+            }
+        } else if gesture.direction == .right {
+            let prev = selectedIndex - 1
+            if prev >= 0 {
+                selectedIndex = prev
+            }
+        }
     }
 
     func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
@@ -117,8 +130,8 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
 
     @objc private func handleLogout() {
         if protectedIndexes.contains(selectedIndex) {
-            selectedIndex = 2
-            lastSafeIndex = 2
+            selectedIndex = 3
+            lastSafeIndex = 3
         }
     }
 
@@ -136,14 +149,7 @@ final class AppNavigationController: UINavigationController {
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationBar.prefersLargeTitles = true
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .systemBackground
-        appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
-        appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
-        navigationBar.standardAppearance = appearance
-        navigationBar.scrollEdgeAppearance = appearance
-        navigationBar.compactAppearance = appearance
+        LiquidGlassEffect.applyGlassToNavBar(navigationBar)
         navigationBar.tintColor = .systemBlue
     }
 }
@@ -487,11 +493,15 @@ final class PortalResetPasswordViewController: BaseNativeViewController {
 @available(iOS 13.0, *)
 final class HomeDashboardViewController: BaseNativeViewController {
     private let scrollView = UIScrollView()
+    private let refreshControl = UIRefreshControl()
     private let stack = UIStackView()
     private let summaryLabel = UILabel()
     private let userInfoLabel = UILabel()
     private var cards: [InfoCardView] = []
-    private lazy var heroView = SectionHeroView(icon: "house.fill", title: "首页", subtitle: "积分、项目和微信协议总览", tint: .systemBlue)
+    private var notificationSection: UIView?
+    private var notificationStack: UIStackView?
+    private lazy var heroView = SectionHeroView(icon: "house.fill", title: "首页", subtitle: "通知中心 · 项目概览 · 账号状态", tint: .systemBlue)
+    private var wxAutoRefreshTimer: Timer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -499,10 +509,12 @@ final class HomeDashboardViewController: BaseNativeViewController {
         view.backgroundColor = .systemGroupedBackground
         setupUI()
         NotificationCenter.default.addObserver(self, selector: #selector(reloadData), name: AppNotifications.sessionDidChange, object: nil)
+        startWxAutoRefresh()
     }
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        wxAutoRefreshTimer?.invalidate()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -510,8 +522,18 @@ final class HomeDashboardViewController: BaseNativeViewController {
         reloadData()
     }
 
+    private func startWxAutoRefresh() {
+        wxAutoRefreshTimer?.invalidate()
+        wxAutoRefreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            guard AppSessionStore.shared.isAuthenticated else { return }
+            self?.loadNotifications()
+        }
+    }
+
     private func setupUI() {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.refreshControl = refreshControl
+        refreshControl.addTarget(self, action: #selector(reloadData), for: .valueChanged)
         stack.axis = .vertical
         stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -531,6 +553,50 @@ final class HomeDashboardViewController: BaseNativeViewController {
         ])
 
         stack.addArrangedSubview(heroView)
+
+        let notifCard = UIView()
+        notifCard.applyCardStyle()
+        let notifTitle = UILabel()
+        notifTitle.text = "📢 通知中心"
+        notifTitle.font = UIFont.systemFont(ofSize: 17, weight: .bold)
+        let notifRow = UIView()
+        let notifLabel = UILabel()
+        notifLabel.text = "正在加载通知..."
+        notifLabel.textColor = .tertiaryLabel
+        notifLabel.font = UIFont.systemFont(ofSize: 12)
+        notifLabel.tag = 1001
+        let viewAllLabel = UILabel()
+        viewAllLabel.text = "查看全部 ›"
+        viewAllLabel.textColor = .systemBlue
+        viewAllLabel.font = UIFont.systemFont(ofSize: 12, weight: .bold)
+        viewAllLabel.isUserInteractionEnabled = true
+        viewAllLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openNotifications)))
+        notifRow.addSubview(notifLabel)
+        notifRow.addSubview(viewAllLabel)
+        notifLabel.translatesAutoresizingMaskIntoConstraints = false
+        viewAllLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            notifLabel.leadingAnchor.constraint(equalTo: notifRow.leadingAnchor),
+            notifLabel.centerYAnchor.constraint(equalTo: notifRow.centerYAnchor),
+            viewAllLabel.trailingAnchor.constraint(equalTo: notifRow.trailingAnchor),
+            viewAllLabel.centerYAnchor.constraint(equalTo: notifRow.centerYAnchor)
+        ])
+        notifRow.translatesAutoresizingMaskIntoConstraints = false
+        notifRow.heightAnchor.constraint(equalToConstant: 24).isActive = true
+        let notifInnerStack = UIStackView(arrangedSubviews: [notifTitle, notifRow])
+        notifInnerStack.axis = .vertical
+        notifInnerStack.spacing = 8
+        notifInnerStack.translatesAutoresizingMaskIntoConstraints = false
+        notificationStack = notifInnerStack
+        notifCard.addSubview(notifInnerStack)
+        NSLayoutConstraint.activate([
+            notifInnerStack.topAnchor.constraint(equalTo: notifCard.topAnchor, constant: 18),
+            notifInnerStack.leadingAnchor.constraint(equalTo: notifCard.leadingAnchor, constant: 18),
+            notifInnerStack.trailingAnchor.constraint(equalTo: notifCard.trailingAnchor, constant: -18),
+            notifInnerStack.bottomAnchor.constraint(equalTo: notifCard.bottomAnchor, constant: -18)
+        ])
+        notificationSection = notifCard
+        stack.addArrangedSubview(notifCard)
 
         let headerCard = UIView()
         headerCard.applyCardStyle(cornerRadius: 22)
@@ -568,7 +634,7 @@ final class HomeDashboardViewController: BaseNativeViewController {
             InfoCardView(title: "快到期", value: "-", tint: .systemOrange),
             InfoCardView(title: "有效项目", value: "-", tint: .systemGreen),
             InfoCardView(title: "当前积分", value: "-", tint: .systemPurple),
-            InfoCardView(title: "微信协议", value: "-", tint: .systemBlue)
+            InfoCardView(title: "已上车项目", value: "-", tint: .systemBlue)
         ]
         row1.addArrangedSubview(cards[0])
         row1.addArrangedSubview(cards[1])
@@ -583,17 +649,17 @@ final class HomeDashboardViewController: BaseNativeViewController {
         let actionTitle = UILabel()
         actionTitle.text = "快捷入口"
         actionTitle.font = UIFont.systemFont(ofSize: 17, weight: .bold)
-        let projectsAction = ActionButton(icon: "shippingbox.fill", title: "我的项目", desc: "查看上车与收益详情", tint: .systemIndigo)
+        let projectsAction = ActionButton(icon: "shippingbox.fill", title: "项目中心", desc: "活动中心与项目管理", tint: .systemIndigo)
         projectsAction.tapAction = { [weak self] in self?.tabBarController?.selectedIndex = 1 }
-        let wxAction = ActionButton(icon: "message.fill", title: "微信协议", desc: "扫码登录与状态管理", tint: .systemGreen)
-        wxAction.tapAction = { [weak self] in self?.tabBarController?.selectedIndex = 3 }
         let tasksAction = ActionButton(icon: "star.fill", title: "积分任务", desc: "打卡、祈福与积分购买", tint: .systemOrange)
-        tasksAction.tapAction = { [weak self] in self?.tabBarController?.selectedIndex = 4 }
+        tasksAction.tapAction = { [weak self] in self?.tabBarController?.selectedIndex = 2 }
         let jdAction = ActionButton(icon: "bag.fill", title: "京东页面", desc: "登录京东、查询与手机卡", tint: .systemBlue)
-        jdAction.tapAction = { [weak self] in self?.tabBarController?.selectedIndex = 2 }
+        jdAction.tapAction = { [weak self] in self?.tabBarController?.selectedIndex = 3 }
+        let moreAction = ActionButton(icon: "line.3.horizontal", title: "更多", desc: "通知、反馈与系统信息", tint: .systemPurple)
+        moreAction.tapAction = { [weak self] in self?.tabBarController?.selectedIndex = 4 }
         let actionGrid = UIStackView(arrangedSubviews: [
-            UIStackView(arrangedSubviews: [projectsAction, wxAction]),
-            UIStackView(arrangedSubviews: [tasksAction, jdAction])
+            UIStackView(arrangedSubviews: [projectsAction, tasksAction]),
+            UIStackView(arrangedSubviews: [jdAction, moreAction])
         ])
         actionGrid.axis = .vertical
         actionGrid.spacing = 10
@@ -617,6 +683,10 @@ final class HomeDashboardViewController: BaseNativeViewController {
         stack.addArrangedSubview(actionCard)
     }
 
+    @objc private func openNotifications() {
+        tabBarController?.selectedIndex = 4
+    }
+
     @objc private func reloadData() {
         guard AppSessionStore.shared.isAuthenticated else {
             summaryLabel.text = "请先登录用户中心"
@@ -624,7 +694,9 @@ final class HomeDashboardViewController: BaseNativeViewController {
             cards.forEach { $0.updateValue("-") }
             return
         }
+        refreshControl.beginRefreshing()
         PortalService.shared.fetchHomeSnapshot { result in
+            self.refreshControl.endRefreshing()
             switch result {
             case .failure(let error):
                 self.handle(error)
@@ -633,28 +705,99 @@ final class HomeDashboardViewController: BaseNativeViewController {
                 self.render(snapshot)
             }
         }
+        loadNotifications()
+    }
+
+    private func loadNotifications() {
+        guard AppSessionStore.shared.isAuthenticated else { return }
+        PortalService.shared.fetchNotifications(includeContent: false) { [weak self] result in
+            if case .success(let page) = result {
+                self?.renderNotifications(page)
+            }
+        }
+    }
+
+    private func renderNotifications(_ page: PortalNotificationPage) {
+        guard let notifStack = notificationStack else { return }
+        let existingViews = notifStack.arrangedSubviews
+        for view in existingViews where view.tag >= 2000 {
+            notifStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        if let notifRow = existingViews.last, let label = notifRow.viewWithTag(1001) as? UILabel {
+            if page.unread > 0 {
+                label.text = "未读通知：\(page.unread)条"
+                label.textColor = .systemBlue
+                label.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+            } else if page.list.isEmpty {
+                label.text = "暂无新通知"
+                label.textColor = .tertiaryLabel
+            } else {
+                label.text = "所有通知已读"
+                label.textColor = .secondaryLabel
+            }
+        }
+        let displayList = page.list.prefix(3)
+        for (index, item) in displayList.enumerated() {
+            let row = UIView()
+            row.tag = 2000 + index
+            let dotLabel = UILabel()
+            dotLabel.text = item.isRead ? "📄" : "🔵"
+            dotLabel.font = UIFont.systemFont(ofSize: 12)
+            let titleLabel = UILabel()
+            titleLabel.text = item.title ?? "无标题"
+            titleLabel.font = UIFont.systemFont(ofSize: 13, weight: item.isTop == true ? .bold : .regular)
+            titleLabel.textColor = item.isTop == true || !item.isRead ? .label : .secondaryLabel
+            titleLabel.numberOfLines = 1
+            let chevron = UILabel()
+            chevron.text = "›"
+            chevron.textColor = .systemBlue
+            chevron.font = UIFont.systemFont(ofSize: 16, weight: .bold)
+            row.addSubview(dotLabel)
+            row.addSubview(titleLabel)
+            row.addSubview(chevron)
+            dotLabel.translatesAutoresizingMaskIntoConstraints = false
+            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+            chevron.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                dotLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+                dotLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                titleLabel.leadingAnchor.constraint(equalTo: dotLabel.trailingAnchor, constant: 6),
+                titleLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                titleLabel.trailingAnchor.constraint(equalTo: chevron.leadingAnchor, constant: -4),
+                chevron.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+                chevron.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                row.heightAnchor.constraint(equalToConstant: 24)
+            ])
+            row.isUserInteractionEnabled = true
+            let tap = UITapGestureRecognizer(target: self, action: #selector(openNotifications))
+            row.addGestureRecognizer(tap)
+            notifStack.addArrangedSubview(row)
+        }
     }
 
     private func render(_ snapshot: PortalHomeSnapshot) {
         let dashboard = snapshot.dashboard
         let profile = snapshot.profile
-        summaryLabel.text = "用户中心"
+        let displayName = dashboard.nickname ?? dashboard.username ?? "用户"
+        summaryLabel.text = "编号：\(dashboard.number)  ·  \(displayName)"
         let wxStatusText = snapshot.wechatStatus?.status ?? (profile.user?.Wxid?.isEmpty == false ? "已绑定" : "未绑定")
-        userInfoLabel.text = "账号：\(dashboard.username ?? "-")\n用户编号：\(dashboard.number)\n最近登录：\(dashboard.lastLoginAt ?? "-")\n微信状态：\(wxStatusText)"
+        userInfoLabel.text = "积分：\(dashboard.coin)  ·  登录：\(dashboard.lastLoginAt ?? "-")\n微信：\(wxStatusText)"
         cards[0].updateValue("\(dashboard.expiringCount)")
         cards[1].updateValue("\(dashboard.activeCount)")
         cards[2].updateValue("\(dashboard.coin)")
-        cards[3].updateValue(wxStatusText)
+        cards[3].updateValue("\(dashboard.joinedCount)")
     }
 }
 
 @available(iOS 13.0, *)
 final class ProjectsRootViewController: BaseNativeViewController {
-    private let segmented = UISegmentedControl(items: ["可上车项目", "我的项目"])
+    private let segmented = UISegmentedControl(items: ["活动中心", "我的项目", "微信协议"])
     private let container = UIView()
     private let activitiesVC = ActivitiesListViewController()
     private let myProjectsVC = MyProjectsListViewController()
-    private lazy var heroView = SectionHeroView(icon: "shippingbox.fill", title: "我的项目", subtitle: "上车项目、项目管理与收益查询", tint: .systemIndigo)
+    private let wechatVC = WechatProtocolViewController()
+    private lazy var heroView = SectionHeroView(icon: "shippingbox.fill", title: "项目中心", subtitle: "活动中心、我的项目与微信协议", tint: .systemIndigo)
     private var currentVC: UIViewController?
 
     override func viewDidLoad() {
@@ -696,7 +839,13 @@ final class ProjectsRootViewController: BaseNativeViewController {
         currentVC?.willMove(toParent: nil)
         currentVC?.view.removeFromSuperview()
         currentVC?.removeFromParent()
-        let vc = index == 0 ? activitiesVC : myProjectsVC
+        let vc: UIViewController
+        switch index {
+        case 0: vc = activitiesVC
+        case 1: vc = myProjectsVC
+        case 2: vc = wechatVC
+        default: vc = activitiesVC
+        }
         addChild(vc)
         vc.view.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(vc.view)
@@ -747,7 +896,7 @@ final class ActivitiesListViewController: UITableViewController {
         }
     }
 
-    private func isSearching: Bool {
+    private var isSearching: Bool {
         return searchController.isActive && !(searchController.searchBar.text ?? "").isEmpty
     }
 
@@ -1481,25 +1630,42 @@ final class WechatProtocolViewController: BaseNativeViewController {
     private let detailLabel = UILabel()
     private lazy var heroView = SectionHeroView(icon: "message.fill", title: "微信协议", subtitle: "扫码登录、在线状态与设备管理", tint: .systemGreen)
     private var pollingTimer: Timer?
+    private var autoRefreshTimer: Timer?
     private var qrModalNavigationController: UINavigationController?
     private var currentUUID: String?
     private var currentDeductCoin = false
     private var pollFailureCount = 0
+    private var lastKnownStatus: String?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = .systemGroupedBackground
         setupUI()
+        startAutoRefresh()
     }
 
     deinit {
         pollingTimer?.invalidate()
+        autoRefreshTimer?.invalidate()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadStatus()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        autoRefreshTimer?.invalidate()
+    }
+
+    private func startAutoRefresh() {
+        autoRefreshTimer?.invalidate()
+        autoRefreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            guard AppSessionStore.shared.isAuthenticated else { return }
+            self?.loadStatus(silent: true)
+        }
     }
 
     private func setupUI() {
@@ -1566,14 +1732,26 @@ final class WechatProtocolViewController: BaseNativeViewController {
         ])
     }
 
-    private func loadStatus() {
-        PortalService.shared.fetchWechatStatus { result in
+    private func loadStatus(silent: Bool = false) {
+        PortalService.shared.fetchWechatStatus { [weak self] result in
             switch result {
             case .failure(let error):
-                self.statusLabel.text = "未绑定或未在线"
-                self.detailLabel.text = error.message
+                if !silent {
+                    self?.statusLabel.text = "未绑定或未在线"
+                    self?.detailLabel.text = error.message
+                }
             case .success(let status):
-                self.render(status)
+                let newStatus = status.status ?? "未知"
+                if let last = self?.lastKnownStatus, last != newStatus {
+                    let content = UNMutableNotificationContent()
+                    content.title = "微信协议状态变更"
+                    content.body = "状态从「\(last)」变为「\(newStatus)」"
+                    content.sound = .default
+                    let request = UNNotificationRequest(identifier: "wx_status_\(Date().timeIntervalSince1970)", content: content, trigger: nil)
+                    UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+                }
+                self?.lastKnownStatus = newStatus
+                self?.render(status)
             }
         }
     }

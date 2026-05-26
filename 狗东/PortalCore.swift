@@ -39,14 +39,52 @@ struct PortalDashboard: Decodable {
     let qq: String?
     let wxid: String?
     let coin: Int
+    let nickname: String?
     let accountId: Int?
     let username: String?
     let boundAt: String?
     let lastLoginAt: String?
+    let availableCount: Int
     let projectCount: Int
+    let joinedCount: Int
     let activeCount: Int
+    let validCkCount: Int
     let expiringCount: Int
     let expiredCount: Int
+    let notificationTotal: Int?
+    let notificationUnread: Int?
+    let checkedInToday: Bool?
+    let continuousDays: Int?
+    let prayedToday: Bool?
+}
+
+@available(iOS 13.0, *)
+struct PortalNotification: Decodable {
+    let id: Int
+    let title: String?
+    let content: String?
+    let category: String?
+    let source: String?
+    let isRead: Bool
+    let displayType: String?
+    let isTop: Bool?
+    let createdAt: String?
+    let readAt: String?
+}
+
+@available(iOS 13.0, *)
+struct PortalNotificationPage: Decodable {
+    let list: [PortalNotification]
+    let total: Int
+    let unread: Int
+}
+
+@available(iOS 13.0, *)
+struct SubmitFeedbackPayload: Encodable {
+    let type: String
+    let title: String
+    let content: String
+    let contact: String
 }
 
 @available(iOS 13.0, *)
@@ -734,6 +772,43 @@ final class PortalService {
 
     func pray(completion: @escaping (Result<String, APIError>) -> Void) {
         APIClient.shared.requestMessage(path: "/api/portal/pray", completion: completion)
+    }
+
+    func fetchNotifications(includeContent: Bool = true, completion: @escaping (Result<PortalNotificationPage, APIError>) -> Void) {
+        let path = "/api/portal/notifications?includeContent=\(includeContent ? "1" : "0")&limit=100"
+        struct NotificationsData: Decodable {
+            let list: [PortalNotification]
+            let total: Int
+            let unread: Int
+        }
+        APIClient.shared.requestData(path: path) { (result: Result<NotificationsData, APIError>) in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let data):
+                completion(.success(PortalNotificationPage(list: data.list, total: data.total, unread: data.unread)))
+            }
+        }
+    }
+
+    func fetchNotificationDetail(id: Int, completion: @escaping (Result<PortalNotification, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/notification/detail?id=\(id)", completion: completion)
+    }
+
+    func submitFeedback(type: String, title: String, content: String, contact: String, completion: @escaping (Result<String, APIError>) -> Void) {
+        let payload: [String: Any] = ["type": type, "title": title, "content": content, "contact": contact]
+        requestMessageJSON(path: "/api/portal/feedback", payload: payload, completion: completion)
+    }
+
+    func verifySession(completion: @escaping (Result<Void, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/dashboard") { (result: Result<PortalDashboard, APIError>) in
+            switch result {
+            case .success:
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
     }
 
     private func requestMessageJSON(path: String, payload: [String: Any], completion: @escaping (Result<String, APIError>) -> Void) {

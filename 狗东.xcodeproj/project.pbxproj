@@ -17,6 +17,7 @@
 		20DEE4AC2ED86A5A009C4BE3 /* QueryResultManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DEE4AB2ED86A5A009C4BE3 /* QueryResultManager.swift */; };
 		20F000000000000000000001 /* PortalCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000101 /* PortalCore.swift */; };
 		20F000000000000000000002 /* PortalAppUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000102 /* PortalAppUI.swift */; };
+		20F000000000000000000003 /* PortalMoreViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000103 /* PortalMoreViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +33,7 @@
 		20E86DC32ED7187A0001ED28 /* ---Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "---Info.plist"; sourceTree = SOURCE_ROOT; };
 		20F000000000000000000101 /* PortalCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalCore.swift; sourceTree = "<group>"; };
 		20F000000000000000000102 /* PortalAppUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalAppUI.swift; sourceTree = "<group>"; };
+		20F000000000000000000103 /* PortalMoreViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalMoreViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +76,7 @@
 				20D397132EDB01E00085594A /* WoolViewController.swift */,
 				20D397152EDB0DDC0085594A /* 172haoka_WebBrowserViewController.swift */,
 				20F000000000000000000102 /* PortalAppUI.swift */,
+				20F000000000000000000103 /* PortalMoreViews.swift */,
 				20F000000000000000000101 /* PortalCore.swift */,
 			);
 			path = "狗东";
@@ -164,6 +167,7 @@
 				20D397162EDB0DDC0085594A /* 172haoka_WebBrowserViewController.swift in Sources */,
 				20D397142EDB01E00085594A /* WoolViewController.swift in Sources */,
 				20F000000000000000000002 /* PortalAppUI.swift in Sources */,
+				20F000000000000000000003 /* PortalMoreViews.swift in Sources */,
 				20F000000000000000000001 /* PortalCore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
