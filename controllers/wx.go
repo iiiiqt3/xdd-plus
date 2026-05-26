@@ -378,6 +378,12 @@ func (c *WxController) HandleWxMessage() {
 
 // receiveMoney 处理微信转账收款，支持自动收款和自动收款+充值两种模式
 func receiveMoney(autocollect *AutocollectMessageBody, ag *WxMessage, typ int) {
+	// 检查是否是机器人给用户转账（机器人发起的转账不应该给用户充值积分）
+	if ag.Content.FromWxid == models.Config.Wx.Robotid {
+		logs.Info("检测到机器人给用户转账，跳过充值逻辑")
+		return
+	}
+	
 	args := make(map[string]string)
 	args["money"] = autocollect.Money
 	args["payer_pay_id"] = autocollect.PayerPayId
