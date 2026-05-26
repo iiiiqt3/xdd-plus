@@ -1,13 +1,11 @@
 package controllers
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
@@ -15,7 +13,6 @@ import (
 	"github.com/buger/jsonparser"
 	"github.com/cdle/xdd/models"
 	"math/rand"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
