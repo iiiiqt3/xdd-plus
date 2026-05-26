@@ -2,14 +2,14 @@ import UIKit
 import Foundation
 import Security
 
-@available(iOS 13.0, *)
+
 enum AppEnvironment {
     static let baseURL = URL(string: "http://180.152.5.230:5701")!
     static let coinPurchaseURL = URL(string: "http://180.152.5.230:8005/#/")!
     static let groupURL = URL(string: "https://qm.qq.com/q/4gYwV6YzPW")!
 }
 
-@available(iOS 13.0, *)
+
 enum AppNotifications {
     static let sessionDidChange = Notification.Name("PortalSessionDidChange")
     static let sessionDidLogout = Notification.Name("PortalSessionDidLogout")
@@ -17,23 +17,23 @@ enum AppNotifications {
     static let jdAuthCallback = Notification.Name("JDAuthCallbackNotification")
 }
 
-@available(iOS 13.0, *)
+
 struct APIError: Error {
     let message: String
     let isUnauthorized: Bool
 }
 
-@available(iOS 13.0, *)
+
 struct EmptyPayload: Decodable {}
 
-@available(iOS 13.0, *)
+
 struct APIEnvelope<T: Decodable>: Decodable {
     let code: Int
     let msg: String?
     let data: T?
 }
 
-@available(iOS 13.0, *)
+
 struct PortalDashboard: Decodable {
     let number: Int
     let qq: String?
@@ -58,7 +58,7 @@ struct PortalDashboard: Decodable {
     let prayedToday: Bool?
 }
 
-@available(iOS 13.0, *)
+
 struct PortalNotification: Decodable {
     let id: Int
     let title: String?
@@ -72,14 +72,14 @@ struct PortalNotification: Decodable {
     let readAt: String?
 }
 
-@available(iOS 13.0, *)
+
 struct PortalNotificationPage: Decodable {
     let list: [PortalNotification]
     let total: Int
     let unread: Int
 }
 
-@available(iOS 13.0, *)
+
 struct SubmitFeedbackPayload: Encodable {
     let type: String
     let title: String
@@ -87,13 +87,13 @@ struct SubmitFeedbackPayload: Encodable {
     let contact: String
 }
 
-@available(iOS 13.0, *)
+
 struct PortalProfile: Decodable {
     let user: PortalUser?
     let account: PortalAccount?
 }
 
-@available(iOS 13.0, *)
+
 struct PortalUser: Decodable {
     let Number: Int?
     let QQ: String?
@@ -103,7 +103,7 @@ struct PortalUser: Decodable {
     let Nickname: String?
 }
 
-@available(iOS 13.0, *)
+
 struct PortalAccount: Decodable {
     let ID: Int?
     let Username: String?
@@ -112,7 +112,7 @@ struct PortalAccount: Decodable {
     let LastLoginAt: String?
 }
 
-@available(iOS 13.0, *)
+
 struct PortalActivityField: Decodable {
     let key: String
     let prompt: String
@@ -122,7 +122,7 @@ struct PortalActivityField: Decodable {
     let errorMsg: String?
 }
 
-@available(iOS 13.0, *)
+
 struct PortalActivity: Decodable {
     let id: String
     let name: String
@@ -135,7 +135,7 @@ struct PortalActivity: Decodable {
     let inputFields: [PortalActivityField]?
 }
 
-@available(iOS 13.0, *)
+
 struct PortalProject: Decodable {
     let activityId: String
     let activityName: String?
@@ -158,7 +158,7 @@ struct PortalProject: Decodable {
     let priceText: String?
 }
 
-@available(iOS 13.0, *)
+
 struct PortalWechatStatus: Decodable {
     let nickname: String?
     let wxid: String?
@@ -169,7 +169,19 @@ struct PortalWechatStatus: Decodable {
     let refreshTime: String?
 }
 
-@available(iOS 13.0, *)
+struct PortalWxDevice: Decodable {
+    let id: Int
+    let wxid: String?
+    let nickname: String?
+    let device: String?
+    let status: String?
+    let online: Bool?
+    let isPrimary: Bool?
+    let loginTime: String?
+    let refreshTime: String?
+}
+
+
 struct PortalWechatActionResult: Decodable {
     let message: String?
     let status: PortalWechatStatus?
@@ -187,14 +199,14 @@ struct PortalWechatActionResult: Decodable {
     }
 }
 
-@available(iOS 13.0, *)
+
 struct PortalHomeSnapshot {
     let dashboard: PortalDashboard
     let profile: PortalProfile
     let wechatStatus: PortalWechatStatus?
 }
 
-@available(iOS 13.0, *)
+
 final class CookieStorageManager {
     static let shared = CookieStorageManager()
 
@@ -236,7 +248,7 @@ final class CookieStorageManager {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class CredentialStore {
     static let shared = CredentialStore()
 
@@ -306,7 +318,7 @@ final class CredentialStore {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class APIClient {
     static let shared = APIClient()
 
@@ -461,7 +473,7 @@ final class APIClient {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class AppSessionStore {
     static let shared = AppSessionStore()
 
@@ -542,7 +554,7 @@ final class AppSessionStore {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class PortalAuthService {
     static let shared = PortalAuthService()
     private init() {}
@@ -624,18 +636,18 @@ final class PortalAuthService {
     }
 }
 
-@available(iOS 13.0, *)
+
 struct ResetInfoPayload: Decodable {
     let username: String?
 }
 
-@available(iOS 13.0, *)
+
 struct RegisterPayload: Decodable {
     let username: String?
     let userNumber: Int?
 }
 
-@available(iOS 13.0, *)
+
 final class PortalService {
     static let shared = PortalService()
     private init() {}
@@ -811,6 +823,29 @@ final class PortalService {
         }
     }
 
+    func performWechatActionForDevice(path: String, wxid: String, completion: @escaping (Result<PortalWechatActionResult, APIError>) -> Void) {
+        let payload: [String: Any] = ["wxid": wxid]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: path, method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func fetchWxDevices(completion: @escaping (Result<[PortalWxDevice], APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/wx/devices", completion: completion)
+    }
+
+    func addWxDevice(wxid: String, completion: @escaping (Result<String, APIError>) -> Void) {
+        let payload: [String: Any] = ["wxid": wxid]
+        requestMessageJSON(path: "/api/portal/wx/add-device", payload: payload, completion: completion)
+    }
+
+    func removeWxDevice(id: Int, completion: @escaping (Result<String, APIError>) -> Void) {
+        let payload: [String: Any] = ["id": id]
+        requestMessageJSON(path: "/api/portal/wx/remove-device", payload: payload, completion: completion)
+    }
+
     private func requestMessageJSON(path: String, payload: [String: Any], completion: @escaping (Result<String, APIError>) -> Void) {
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
             completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
@@ -820,7 +855,7 @@ final class PortalService {
     }
 }
 
-@available(iOS 13.0, *)
+
 class BaseNativeViewController: UIViewController {
     func showMessage(_ message: String, title: String = "提示", completion: (() -> Void)? = nil) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
@@ -837,7 +872,7 @@ class BaseNativeViewController: UIViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 extension UIView {
     func applyCardStyle(cornerRadius: CGFloat = 18) {
         backgroundColor = .secondarySystemBackground
@@ -850,7 +885,7 @@ extension UIView {
     }
 }
 
-@available(iOS 13.0, *)
+
 extension UIButton {
     func applyPrimaryStyle(color: UIColor) {
         backgroundColor = color
@@ -873,7 +908,7 @@ extension UIButton {
     }
 }
 
-@available(iOS 13.0, *)
+
 extension UITextField {
     func applyAppInputStyle(placeholder: String) {
         self.placeholder = placeholder
@@ -891,7 +926,7 @@ extension UITextField {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class InfoCardView: UIView {
     private let titleLabel = UILabel()
     private let valueLabel = UILabel()
@@ -928,7 +963,7 @@ final class InfoCardView: UIView {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class SectionHeroView: UIView {
     private let iconWrap = UIView()
     private let iconView = UIImageView()
@@ -992,7 +1027,7 @@ final class SectionHeroView: UIView {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class PromptTipView: UIView {
     private let textView = UITextView()
 
@@ -1038,7 +1073,7 @@ final class PromptTipView: UIView {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class StatusBadgeLabel: UILabel {
     enum Kind { case active, expiring, expired, gray }
 
@@ -1066,7 +1101,7 @@ final class StatusBadgeLabel: UILabel {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class ActionButton: UIView {
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
@@ -1138,7 +1173,7 @@ final class ActionButton: UIView {
     func updateDesc(_ text: String) { descLabel.text = text }
 }
 
-@available(iOS 13.0, *)
+
 final class EmptyStateView: UIView {
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
@@ -1184,7 +1219,7 @@ final class EmptyStateView: UIView {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class ProjectSummaryCardView: UIView {
     let titleLabel = UILabel()
     let metaLabel = UILabel()
@@ -1250,7 +1285,7 @@ final class ProjectSummaryCardView: UIView {
     }
 }
 
-@available(iOS 13.0, *)
+
 enum QRImageDecoder {
     static func decodeImage(from raw: String) -> UIImage? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)

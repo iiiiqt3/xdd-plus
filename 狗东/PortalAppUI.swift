@@ -1,7 +1,7 @@
 import UIKit
 import UserNotifications
 
-@available(iOS 13.0, *)
+
 final class RootTabBarController: UITabBarController, UITabBarControllerDelegate {
     private let protectedIndexes: Set<Int> = [0, 1, 4]
     private var pendingProtectedIndex: Int?
@@ -24,7 +24,7 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
     }
 
     private func setupAppearance() {
-        LiquidGlassEffect.applyGlassToTabBar(tabBar)
+        LiquidGlassEffect.applyToTabBar(tabBar)
         tabBar.tintColor = .systemBlue
         tabBar.unselectedItemTintColor = .secondaryLabel
     }
@@ -67,16 +67,23 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
 
     @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
         guard let count = viewControllers?.count, count > 0 else { return }
+        let direction: UIView.AnimationOptions = gesture.direction == .left ? .transitionFlipFromRight : .transitionFlipFromLeft
         if gesture.direction == .left {
             let next = selectedIndex + 1
             if next < count {
-                selectedIndex = next
+                animateTabSwitch(to: next, direction: direction)
             }
         } else if gesture.direction == .right {
             let prev = selectedIndex - 1
             if prev >= 0 {
-                selectedIndex = prev
+                animateTabSwitch(to: prev, direction: direction)
             }
+        }
+    }
+
+    private func animateTabSwitch(to index: Int, direction: UIView.AnimationOptions) {
+        UIView.transition(with: view, duration: 0.3, options: [direction, .curveEaseInOut]) {
+            self.selectedIndex = index
         }
     }
 
@@ -144,17 +151,17 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
     }
 }
 
-@available(iOS 13.0, *)
+
 final class AppNavigationController: UINavigationController {
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationBar.prefersLargeTitles = true
-        LiquidGlassEffect.applyGlassToNavBar(navigationBar)
+        LiquidGlassEffect.applyToNavBar(navigationBar)
         navigationBar.tintColor = .systemBlue
     }
 }
 
-@available(iOS 13.0, *)
+
 final class PortalLoginViewController: BaseNativeViewController, UITextFieldDelegate {
     var onAuthSuccess: (() -> Void)?
 
@@ -328,7 +335,7 @@ final class PortalLoginViewController: BaseNativeViewController, UITextFieldDele
     }
 }
 
-@available(iOS 13.0, *)
+
 final class PortalRegisterViewController: BaseNativeViewController {
     var onAuthFinished: (() -> Void)?
 
@@ -402,7 +409,7 @@ final class PortalRegisterViewController: BaseNativeViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class PortalResetPasswordViewController: BaseNativeViewController {
     private let codeField = UITextField()
     private let usernameField = UITextField()
@@ -490,7 +497,7 @@ final class PortalResetPasswordViewController: BaseNativeViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class HomeDashboardViewController: BaseNativeViewController {
     private let scrollView = UIScrollView()
     private let refreshControl = UIRefreshControl()
@@ -500,7 +507,6 @@ final class HomeDashboardViewController: BaseNativeViewController {
     private var cards: [InfoCardView] = []
     private var notificationSection: UIView?
     private var notificationStack: UIStackView?
-    private lazy var heroView = SectionHeroView(icon: "house.fill", title: "首页", subtitle: "通知中心 · 项目概览 · 账号状态", tint: .systemBlue)
     private var wxAutoRefreshTimer: Timer?
 
     override func viewDidLoad() {
@@ -551,8 +557,6 @@ final class HomeDashboardViewController: BaseNativeViewController {
             stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -20),
             stack.widthAnchor.constraint(equalTo: view.widthAnchor, constant: -32)
         ])
-
-        stack.addArrangedSubview(heroView)
 
         let notifCard = UIView()
         notifCard.applyCardStyle()
@@ -790,19 +794,18 @@ final class HomeDashboardViewController: BaseNativeViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class ProjectsRootViewController: BaseNativeViewController {
     private let segmented = UISegmentedControl(items: ["活动中心", "我的项目", "微信协议"])
     private let container = UIView()
     private let activitiesVC = ActivitiesListViewController()
     private let myProjectsVC = MyProjectsListViewController()
     private let wechatVC = WechatProtocolViewController()
-    private lazy var heroView = SectionHeroView(icon: "shippingbox.fill", title: "项目中心", subtitle: "活动中心、我的项目与微信协议", tint: .systemIndigo)
     private var currentVC: UIViewController?
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        navigationItem.largeTitleDisplayMode = .never
+        title = "项目"
         view.backgroundColor = .systemGroupedBackground
         setupUI()
         switchTo(index: 0)
@@ -813,15 +816,10 @@ final class ProjectsRootViewController: BaseNativeViewController {
         segmented.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
         segmented.translatesAutoresizingMaskIntoConstraints = false
         container.translatesAutoresizingMaskIntoConstraints = false
-        heroView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(heroView)
         view.addSubview(segmented)
         view.addSubview(container)
         NSLayoutConstraint.activate([
-            heroView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
-            heroView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            heroView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            segmented.topAnchor.constraint(equalTo: heroView.bottomAnchor, constant: 12),
+            segmented.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
             segmented.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             segmented.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             container.topAnchor.constraint(equalTo: segmented.bottomAnchor, constant: 12),
@@ -860,7 +858,7 @@ final class ProjectsRootViewController: BaseNativeViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class ActivitiesListViewController: UITableViewController {
     private var activities: [PortalActivity] = []
     private var filteredActivities: [PortalActivity] = []
@@ -941,7 +939,7 @@ final class ActivitiesListViewController: UITableViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 extension ActivitiesListViewController: UISearchResultsUpdating {
     func updateSearchResults(for searchController: UISearchController) {
         let query = (searchController.searchBar.text ?? "").lowercased().trimmingCharacters(in: .whitespaces)
@@ -958,7 +956,7 @@ extension ActivitiesListViewController: UISearchResultsUpdating {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class ProjectFormViewController: BaseNativeViewController {
     private let activity: PortalActivity
     private let scrollView = UIScrollView()
@@ -1109,7 +1107,7 @@ final class ProjectFormViewController: BaseNativeViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class MyProjectsListViewController: UITableViewController {
     struct Group {
         let key: String
@@ -1413,7 +1411,7 @@ final class MyProjectsListViewController: UITableViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 extension MyProjectsListViewController: UISearchResultsUpdating {
     func updateSearchResults(for searchController: UISearchController) {
         let query = (searchController.searchBar.text ?? "").lowercased().trimmingCharacters(in: .whitespaces)
@@ -1448,7 +1446,7 @@ extension MyProjectsListViewController: UISearchResultsUpdating {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class ProjectGroupSummaryView: UIView {
     let queryButton = UIButton(type: .system)
     let expandButton = UIButton(type: .system)
@@ -1513,7 +1511,7 @@ final class ProjectGroupSummaryView: UIView {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class ProjectIncomeViewController: BaseNativeViewController {
     private let content: String
     private let titleText: String
@@ -1549,7 +1547,7 @@ final class ProjectIncomeViewController: BaseNativeViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class ProjectEditCKViewController: BaseNativeViewController {
     private let project: PortalProject
     private let onSaved: (String) -> Void
@@ -1624,11 +1622,12 @@ final class ProjectEditCKViewController: BaseNativeViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class WechatProtocolViewController: BaseNativeViewController {
     private let statusLabel = UILabel()
     private let detailLabel = UILabel()
-    private lazy var heroView = SectionHeroView(icon: "message.fill", title: "微信协议", subtitle: "扫码登录、在线状态与设备管理", tint: .systemGreen)
+    private let deviceContainer = UIStackView()
+    private let refreshDeviceBtn = UIButton(type: .system)
     private var pollingTimer: Timer?
     private var autoRefreshTimer: Timer?
     private var qrModalNavigationController: UINavigationController?
@@ -1639,7 +1638,6 @@ final class WechatProtocolViewController: BaseNativeViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = .systemGroupedBackground
         setupUI()
         startAutoRefresh()
@@ -1653,6 +1651,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadStatus()
+        loadDevices()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -1669,22 +1668,48 @@ final class WechatProtocolViewController: BaseNativeViewController {
     }
 
     private func setupUI() {
-        let card = UIView()
-        card.applyCardStyle(cornerRadius: 22)
-        card.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
-        detailLabel.font = UIFont.systemFont(ofSize: 14)
+        let scrollView = UIScrollView()
+        let mainStack = UIStackView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        mainStack.axis = .vertical
+        mainStack.spacing = 16
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        scrollView.addSubview(mainStack)
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16),
+            mainStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
+            mainStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
+            mainStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
+            mainStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32)
+        ])
+
+        let statusCard = UIView()
+        statusCard.applyCardStyle()
+        statusLabel.font = .systemFont(ofSize: 22, weight: .bold)
+        detailLabel.font = .systemFont(ofSize: 14)
         detailLabel.textColor = .secondaryLabel
         detailLabel.numberOfLines = 0
         let statusStack = UIStackView(arrangedSubviews: [statusLabel, detailLabel])
         statusStack.axis = .vertical
         statusStack.spacing = 10
         statusStack.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(statusStack)
+        statusCard.addSubview(statusStack)
+        NSLayoutConstraint.activate([
+            statusStack.topAnchor.constraint(equalTo: statusCard.topAnchor, constant: 18),
+            statusStack.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: 18),
+            statusStack.trailingAnchor.constraint(equalTo: statusCard.trailingAnchor, constant: -18),
+            statusStack.bottomAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: -18)
+        ])
+        mainStack.addArrangedSubview(statusCard)
 
         let gridLabel = UILabel()
         gridLabel.text = "快捷操作"
-        gridLabel.font = UIFont.systemFont(ofSize: 17, weight: .bold)
+        gridLabel.font = .systemFont(ofSize: 17, weight: .bold)
 
         let scanAction = ActionButton(icon: "qrcode.viewfinder", title: "扫码登录", desc: "微信扫码授权登录", tint: .systemBlue)
         scanAction.tapAction = { [weak self] in self?.scanLogin() }
@@ -1708,28 +1733,27 @@ final class WechatProtocolViewController: BaseNativeViewController {
         let gridStack = UIStackView(arrangedSubviews: [gridLabel, row1, row2, deleteActionBtn])
         gridStack.axis = .vertical
         gridStack.spacing = 10
-        gridStack.translatesAutoresizingMaskIntoConstraints = false
+        mainStack.addArrangedSubview(gridStack)
+        deleteActionBtn.heightAnchor.constraint(equalToConstant: 68).isActive = true
 
-        heroView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(heroView)
-        view.addSubview(card)
-        view.addSubview(gridStack)
-        NSLayoutConstraint.activate([
-            heroView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
-            heroView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            heroView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            card.topAnchor.constraint(equalTo: heroView.bottomAnchor, constant: 16),
-            card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            statusStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
-            statusStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
-            statusStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
-            statusStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -18),
-            gridStack.topAnchor.constraint(equalTo: card.bottomAnchor, constant: 20),
-            gridStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            gridStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            deleteActionBtn.heightAnchor.constraint(equalToConstant: 68)
-        ])
+        let deviceLabel = UILabel()
+        deviceLabel.text = "监控设备"
+        deviceLabel.font = .systemFont(ofSize: 17, weight: .bold)
+
+        refreshDeviceBtn.setTitle("刷新设备列表", for: .normal)
+        refreshDeviceBtn.titleLabel?.font = .systemFont(ofSize: 13, weight: .medium)
+        refreshDeviceBtn.addTarget(self, action: #selector(loadDevices), for: .touchUpInside)
+
+        let deviceHeader = UIStackView(arrangedSubviews: [deviceLabel, UIView(), refreshDeviceBtn])
+        deviceHeader.axis = .horizontal
+
+        deviceContainer.axis = .vertical
+        deviceContainer.spacing = 10
+
+        let deviceStack = UIStackView(arrangedSubviews: [deviceHeader, deviceContainer])
+        deviceStack.axis = .vertical
+        deviceStack.spacing = 12
+        mainStack.addArrangedSubview(deviceStack)
     }
 
     private func loadStatus(silent: Bool = false) {
@@ -1761,12 +1785,186 @@ final class WechatProtocolViewController: BaseNativeViewController {
         detailLabel.text = "微信ID：\(status.wxid ?? "-")\n昵称：\(status.nickname ?? "-")\n设备：\(status.device ?? "-")\n登录时间：\(status.loginTime ?? "-")\n刷新时间：\(status.refreshTime ?? "-")"
     }
 
+    @objc private func loadDevices() {
+        refreshDeviceBtn.isEnabled = false
+        refreshDeviceBtn.setTitle("正在刷新...", for: .normal)
+        PortalService.shared.fetchWxDevices { [weak self] result in
+            self?.refreshDeviceBtn.isEnabled = true
+            self?.refreshDeviceBtn.setTitle("✅ 已刷新", for: .normal)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                self?.refreshDeviceBtn.setTitle("刷新设备列表", for: .normal)
+            }
+            switch result {
+            case .failure: break
+            case .success(let devices):
+                self?.renderDevices(devices)
+            }
+        }
+    }
+
+    private func renderDevices(_ devices: [PortalWxDevice]) {
+        deviceContainer.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if devices.isEmpty {
+            let emptyLabel = UILabel()
+            emptyLabel.text = "暂无微信协议设备\n首次使用请点击上方「扫码登录」添加主设备"
+            emptyLabel.numberOfLines = 0
+            emptyLabel.textAlignment = .center
+            emptyLabel.font = .systemFont(ofSize: 13)
+            emptyLabel.textColor = .secondaryLabel
+            deviceContainer.addArrangedSubview(emptyLabel)
+            return
+        }
+        for device in devices {
+            deviceContainer.addArrangedSubview(makeDeviceCard(device))
+        }
+    }
+
+    private func makeDeviceCard(_ device: PortalWxDevice) -> UIView {
+        let card = UIView()
+        card.applyCardStyle(cornerRadius: 16)
+        if device.isPrimary == true {
+            card.layer.borderWidth = 1
+            card.layer.borderColor = UIColor.systemBlue.withAlphaComponent(0.3).cgColor
+        }
+
+        let isOnline = device.online == true
+        let isPrimary = device.isPrimary == true
+
+        var badges: [String] = []
+        if isPrimary { badges.append("⭐ 主设备") }
+        else { badges.append("📋 监控") }
+        badges.append(isOnline ? "🟢 在线" : "🔴 离线")
+
+        let badgesText = badges.joined(separator: "  ")
+        let badgesLabel = UILabel()
+        badgesLabel.text = badgesText
+        badgesLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        badgesLabel.textColor = isOnline ? .systemGreen : .systemRed
+
+        let nameLabel = UILabel()
+        nameLabel.text = device.nickname ?? device.wxid ?? "未知设备"
+        nameLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+
+        let infoLabel = UILabel()
+        infoLabel.text = "设备：\(device.device ?? "-")\n微信ID：\(device.wxid ?? "-")\n登录时间：\(device.loginTime ?? "-")"
+        infoLabel.font = .systemFont(ofSize: 12)
+        infoLabel.textColor = .secondaryLabel
+        infoLabel.numberOfLines = 0
+
+        let btnRow = UIStackView()
+        btnRow.axis = .horizontal
+        btnRow.spacing = 8
+        btnRow.distribution = .fillEqually
+
+        if isPrimary {
+            [("唤醒", "bell.fill", "/api/portal/wx/wake-login"), ("重新登录", "arrow.clockwise", "/api/portal/wx/relogin"), ("登出", "power", "/api/portal/wx/logout")].forEach { (title, icon, path) in
+                let btn = UIButton(type: .system)
+                btn.setTitle(" \(title)", for: .normal)
+                btn.setImage(UIImage(systemName: icon), for: .normal)
+                btn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+                btn.backgroundColor = .secondarySystemBackground
+                btn.layer.cornerRadius = 8
+                btn.heightAnchor.constraint(equalToConstant: 36).isActive = true
+                btn.addAction(UIAction { [weak self] _ in
+                    self?.confirmWxActionForDevice(title: title, message: "确认对设备「\(device.nickname ?? device.wxid ?? "")」执行\(title)？", path: path, wxid: device.wxid)
+                }, for: .touchUpInside)
+                btnRow.addArrangedSubview(btn)
+            }
+        } else {
+            [("唤醒", "bell.fill", "/api/portal/wx/wake-login"), ("登出", "power", "/api/portal/wx/logout")].forEach { (title, icon, path) in
+                let btn = UIButton(type: .system)
+                btn.setTitle(" \(title)", for: .normal)
+                btn.setImage(UIImage(systemName: icon), for: .normal)
+                btn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+                btn.backgroundColor = .secondarySystemBackground
+                btn.layer.cornerRadius = 8
+                btn.heightAnchor.constraint(equalToConstant: 36).isActive = true
+                btn.addAction(UIAction { [weak self] _ in
+                    self?.confirmWxActionForDevice(title: title, message: "确认对监控设备执行\(title)？", path: path, wxid: device.wxid)
+                }, for: .touchUpInside)
+                btnRow.addArrangedSubview(btn)
+            }
+            let removeBtn = UIButton(type: .system)
+            removeBtn.setTitle(" 移除", for: .normal)
+            removeBtn.setImage(UIImage(systemName: "trash"), for: .normal)
+            removeBtn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+            removeBtn.setTitleColor(.systemRed, for: .normal)
+            removeBtn.backgroundColor = .secondarySystemBackground
+            removeBtn.layer.cornerRadius = 8
+            removeBtn.heightAnchor.constraint(equalToConstant: 36).isActive = true
+            removeBtn.addAction(UIAction { [weak self] _ in
+                let alert = UIAlertController(title: "确认移除", message: "确认移除监控设备「\(device.nickname ?? device.wxid ?? "")」？", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+                alert.addAction(UIAlertAction(title: "确认移除", style: .destructive) { _ in
+                    PortalService.shared.removeWxDevice(id: device.id) { result in
+                        if case .failure(let error) = result { self?.handle(error) }
+                        else { self?.loadDevices() }
+                    }
+                })
+                self?.present(alert, animated: true)
+            }, for: .touchUpInside)
+            btnRow.addArrangedSubview(removeBtn)
+        }
+
+        let innerStack = UIStackView(arrangedSubviews: [badgesLabel, nameLabel, infoLabel, btnRow])
+        innerStack.axis = .vertical
+        innerStack.spacing = 8
+        innerStack.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(innerStack)
+        NSLayoutConstraint.activate([
+            innerStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            innerStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
+            innerStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
+            innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14)
+        ])
+        return card
+    }
+
+    private func confirmWxActionForDevice(title: String, message: String, path: String, wxid: String?) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+        alert.addAction(UIAlertAction(title: "确认", style: .default) { _ in
+            if let wxid = wxid {
+                self.performWxActionForDevice(path: path, wxid: wxid)
+            } else {
+                self.performAction(path: path, deductCoin: false)
+            }
+        })
+        present(alert, animated: true)
+    }
+
+    private func performWxActionForDevice(path: String, wxid: String) {
+        PortalService.shared.performWechatActionForDevice(path: path, wxid: wxid) { [weak self] result in
+            switch result {
+            case .failure(let error): self?.handle(error)
+            case .success(let data):
+                if let qr = data.qrBase64, let uuid = data.uuid {
+                    self?.currentUUID = uuid
+                    self?.currentDeductCoin = false
+                    let vc = WechatQRCodeViewController(base64String: qr, message: data.message ?? "请扫码", onDismiss: { [weak self] in
+                        self?.stopPolling()
+                        self?.qrModalNavigationController = nil
+                    })
+                    let nav = AppNavigationController(rootViewController: vc)
+                    nav.modalPresentationStyle = .formSheet
+                    self?.qrModalNavigationController = nav
+                    self?.present(nav, animated: true) {
+                        self?.startPolling()
+                    }
+                } else {
+                    self?.showMessage(data.message ?? "操作成功")
+                    self?.loadStatus()
+                    self?.loadDevices()
+                }
+            }
+        }
+    }
+
     @objc private func scanLogin() { confirmWechatAction(title: "扫码登录", message: "确认开始微信扫码登录吗？扫码成功后将进入自动轮询状态。", path: "/api/portal/wx/scan-login", deductCoin: true) }
     @objc private func relogin() { confirmWechatAction(title: "重新登录", message: "确认重新获取微信登录二维码吗？", path: "/api/portal/wx/relogin", deductCoin: false) }
     @objc private func wakeLogin() { confirmWechatAction(title: "唤醒登录", message: "确认执行微信唤醒登录吗？", path: "/api/portal/wx/wake-login", deductCoin: false) }
     @objc private func logoutAction() { confirmWechatAction(title: "登出设备", message: "确认登出当前微信设备吗？", path: "/api/portal/wx/logout", deductCoin: false) }
     @objc private func deleteAction() { confirmWechatAction(title: "删除设备", message: "确认删除当前微信设备数据吗？删除后需要重新扫码登录。", path: "/api/portal/wx/delete", deductCoin: false) }
-
 
     private func confirmWechatAction(title: String, message: String, path: String, deductCoin: Bool) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
@@ -1799,6 +1997,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
                 } else {
                     self.showMessage(data.message ?? "操作成功")
                     self.loadStatus()
+                    self.loadDevices()
                 }
             }
         }
@@ -1855,13 +2054,14 @@ final class WechatProtocolViewController: BaseNativeViewController {
                     self.showMessage(data.message ?? "登录成功")
                 }
                 self.loadStatus()
+                self.loadDevices()
                 AppSessionStore.shared.refreshIfPossible(silent: true)
             }
         }
     }
 }
 
-@available(iOS 13.0, *)
+
 final class WechatQRCodeViewController: BaseNativeViewController {
     private let base64String: String
     private let messageText: String
@@ -1886,8 +2086,14 @@ final class WechatQRCodeViewController: BaseNativeViewController {
         view.backgroundColor = .systemBackground
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(closeTapped))
 
-        let heroView = SectionHeroView(icon: "qrcode.viewfinder", title: "扫码登录", subtitle: "请用微信扫码，完成后页面会自动刷新状态", tint: .systemBlue)
-        heroView.translatesAutoresizingMaskIntoConstraints = false
+        let titleLabel = UILabel()
+        titleLabel.text = "扫码登录"
+        titleLabel.font = .systemFont(ofSize: 20, weight: .bold)
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "请用微信扫码，完成后页面会自动刷新状态"
+        subtitleLabel.font = .systemFont(ofSize: 14)
+        subtitleLabel.textColor = .secondaryLabel
 
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.contentMode = .scaleAspectFit
@@ -1920,16 +2126,18 @@ final class WechatQRCodeViewController: BaseNativeViewController {
         hintLabel.font = UIFont.systemFont(ofSize: 12)
         hintLabel.textColor = .systemGray
 
-        view.addSubview(heroView)
+        view.addSubview(titleLabel)
+        view.addSubview(subtitleLabel)
         view.addSubview(imageView)
         view.addSubview(stateLabel)
         view.addSubview(hintLabel)
         NSLayoutConstraint.activate([
-            heroView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
-            heroView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            heroView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+            subtitleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            imageView.topAnchor.constraint(equalTo: heroView.bottomAnchor, constant: 24),
+            imageView.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 24),
             imageView.widthAnchor.constraint(equalToConstant: 260),
             imageView.heightAnchor.constraint(equalToConstant: 260),
             stateLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 16),
@@ -1951,7 +2159,7 @@ final class WechatQRCodeViewController: BaseNativeViewController {
     }
 }
 
-@available(iOS 13.0, *)
+
 final class CoinTasksViewController: BaseNativeViewController {
     private lazy var heroView = SectionHeroView(icon: "star.fill", title: "积分任务", subtitle: "每日打卡、祈福与积分补充入口", tint: .systemOrange)
     private let redeemField = UITextField()
