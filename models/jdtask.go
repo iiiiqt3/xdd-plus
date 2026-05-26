@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"math/rand"
-	"net/url"
 	"regexp"
 	"strconv"
 	//	"bytes"

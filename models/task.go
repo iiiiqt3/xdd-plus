@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -183,9 +182,8 @@ func runTask(task *Task, sender *Sender) string {
 			break
 		}
 		if task.Name == "jd_get_share_code.js" {
-			rt := findShareCode(line)
-			if rt != "" {
-				sender.Reply(rt)
+			if strings.Contains(line, "pt_pin") && strings.Contains(line, "的助力码") {
+				sender.Reply(strings.TrimSpace(line))
 			}
 		}
 		msg += line

@@ -22,8 +22,7 @@ import (
 	"gorm.io/gorm"
 	"io"
 	"net/http"
-	
-	"os/exec"
+
 	"regexp"
 	"strconv"
 	"strings"
