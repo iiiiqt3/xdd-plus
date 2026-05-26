@@ -39,7 +39,7 @@ type ActivityConfigAdmin struct {
 }
 
 func GetActivityConfigsForAdmin() interface{} {
-	data, err := ioutil.ReadFile("conf/activities.yaml")
+	data, err := ioutil.ReadFile(ExecPath + "/conf/activities.yaml")
 	if err != nil {
 		return nil
 	}
@@ -2779,7 +2779,7 @@ func ConvertActivityToMonthly(activityID string, monthlyCoin int, syncUsers bool
 }
 
 func updateActivityMonthlyFieldsInYaml(envKey string, monthlyCoin int) error {
-	data, err := ioutil.ReadFile("conf/activities.yaml")
+	data, err := ioutil.ReadFile(ExecPath + "/conf/activities.yaml")
 	if err != nil {
 		return fmt.Errorf("读取配置文件失败: %v", err)
 	}
@@ -2827,7 +2827,7 @@ func updateActivityMonthlyFieldsInYaml(envKey string, monthlyCoin int) error {
 		return fmt.Errorf("配置文件中未找到环境变量名为 %s 的活动", envKey)
 	}
 
-	if err := ioutil.WriteFile("conf/activities.yaml", []byte(strings.Join(newLines, "\n")), 0644); err != nil {
+	if err := ioutil.WriteFile(ExecPath+"/conf/activities.yaml", []byte(strings.Join(newLines, "\n")), 0644); err != nil {
 		return fmt.Errorf("写入配置文件失败: %v", err)
 	}
 	return nil

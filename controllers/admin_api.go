@@ -47,7 +47,7 @@ func (c *AdminApiController) SaveActivities() {
 	}
 
 	// 写入 activities.yaml
-	err := ioutil.WriteFile("conf/activities.yaml", []byte(req.Activities), 0644)
+	err := ioutil.WriteFile(models.ExecPath+"/conf/activities.yaml", []byte(req.Activities), 0644)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "保存失败: " + err.Error()}
 		c.ServeJSON()

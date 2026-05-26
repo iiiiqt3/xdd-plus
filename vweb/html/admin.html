@@ -3626,7 +3626,7 @@ async function batchDeleteActivities() {
     }
     try {
         var yamlStr = generateActivitiesYaml(activitiesCache);
-        const res = await api.post('/api/admin/activities/save', { content: yamlStr });
+        const res = await api.post('/api/admin/activities/save', { activities: yamlStr });
         toast(res.msg || '删除成功', res.code === 0 ? 'success' : 'error');
         if (res.code === 0) { document.getElementById('actCheckAll').checked = false; loadActivities(); }
     } catch (e) { toast('删除失败: ' + e.message, 'error'); }
