@@ -2547,7 +2547,7 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 		}
 	}
 	adminMsg := fmt.Sprintf("📢【活动授权账号删除完成】\n活动：%s\n删除账号：%d 个\n退还积分：%d\n原因：%s", cfg.Name, deletedCount, totalRefundCoin, reason)
-	CreateSystemWebNotification("活动授权账号删除完成", adminMsg, NotifyCategoryAuth, NotifySourceAuth, 0, channels)
+	CreateAdminOnlyWebNotification("活动授权账号删除完成", adminMsg, NotifyCategoryAuth, NotifySourceAuth, channels)
 	InvalidateActivityAdminStatsCache()
 	return deletedCount, totalRefundCoin, nil
 }
@@ -2684,7 +2684,7 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 	if channels.Robot {
 		go (&JdCookie{}).Push(adminMsg)
 	}
-	CreateSystemWebNotification("活动授权批量操作完成", adminMsg, NotifyCategoryAuth, NotifySourceAuth, 0, channels)
+	CreateAdminOnlyWebNotification("活动授权批量操作完成", adminMsg, NotifyCategoryAuth, NotifySourceAuth, channels)
 
 	InvalidateActivityAdminStatsCache()
 	return updated, failed, nil
@@ -2773,7 +2773,7 @@ func ConvertActivityToMonthly(activityID string, monthlyCoin int, syncUsers bool
 	}
 
 	adminMsg := fmt.Sprintf("📢【活动转月费完成】\n活动：%s\n每月积分：%d\n同步迁移用户：%d 人\n赠送授权：%d 天", cfg.Name, monthlyCoin, migrated, grantDays)
-	CreateSystemWebNotification("活动转月费完成", adminMsg, NotifyCategoryAuth, NotifySourceAuth, 0, channels)
+	CreateAdminOnlyWebNotification("活动转月费完成", adminMsg, NotifyCategoryAuth, NotifySourceAuth, channels)
 	InvalidateActivityAdminStatsCache()
 	return migrated, nil
 }

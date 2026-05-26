@@ -23,6 +23,10 @@ const (
 	NotifySourceWx         = "微信协议"
 	NotifyDisplayNormal    = "normal"
 	NotifyDisplayPopup     = "popup"
+
+	TargetScopeAll   = "all"
+	TargetScopeUser  = "user"
+	TargetScopeAdmin = "admin"
 )
 
 var AllNotifyCategories = []string{
@@ -218,6 +222,29 @@ func CreateSystemWebNotification(title, content, category, source string, userNu
 	}).Error
 }
 
+func CreateAdminOnlyWebNotification(title, content, category, source string, channels NotifyChannels) error {
+	if !channels.Web && !channels.App {
+		return nil
+	}
+	title = strings.TrimSpace(title)
+	content = strings.TrimSpace(content)
+	if title == "" || content == "" {
+		return nil
+	}
+	if source == "" {
+		source = NotifySourceAdmin
+	}
+	return db.Create(&WebNotification{
+		Title:       title,
+		Content:     content,
+		Category:    normalizeNoticeCategory(category),
+		Source:      source,
+		Channels:    channelsToString(NotifyChannels{Web: channels.Web, App: channels.App}),
+		TargetScope: TargetScopeAdmin,
+		TargetUser:  0,
+	}).Error
+}
+
 func GetAdminNotifications(search string, category string, page, limit int) ([]AdminNotificationItem, int64) {
 	if page < 1 {
 		page = 1
@@ -257,7 +284,7 @@ func GetPortalNotifications(userNumber int, category string, page, limit int) ([
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	q := db.Model(&WebNotification{}).Where("target_scope = ? OR target_user = ?", "all", userNumber)
+	q := db.Model(&WebNotification{}).Where("(target_scope = ? OR target_user = ?) AND target_scope != ?", TargetScopeAll, userNumber, TargetScopeAdmin)
 	if strings.TrimSpace(category) != "" && category != "全部" {
 		q = q.Where("category = ?", category)
 	}
@@ -287,19 +314,19 @@ func GetPortalNotifications(userNumber int, category string, page, limit int) ([
 	}
 	var unread int64
 	db.Model(&WebNotification{}).
-		Where("target_scope = ? OR target_user = ?", "all", userNumber).
+		Where("(target_scope = ? OR target_user = ?) AND target_scope != ?", TargetScopeAll, userNumber, TargetScopeAdmin).
 		Where("id NOT IN (?)", db.Model(&WebNotificationRead{}).Select("notification_id").Where("user_number = ?", userNumber)).
 		Count(&unread)
 	return items, total, unread
 }
 
 func GetPortalNotificationCounts(userNumber int) (int64, int64) {
-	base := db.Model(&WebNotification{}).Where("target_scope = ? OR target_user = ?", "all", userNumber)
+	base := db.Model(&WebNotification{}).Where("(target_scope = ? OR target_user = ?) AND target_scope != ?", TargetScopeAll, userNumber, TargetScopeAdmin)
 	var total int64
 	base.Count(&total)
 	var unread int64
 	db.Model(&WebNotification{}).
-		Where("target_scope = ? OR target_user = ?", "all", userNumber).
+		Where("(target_scope = ? OR target_user = ?) AND target_scope != ?", TargetScopeAll, userNumber, TargetScopeAdmin).
 		Where("id NOT IN (?)", db.Model(&WebNotificationRead{}).Select("notification_id").Where("user_number = ?", userNumber)).
 		Count(&unread)
 	return total, unread
@@ -315,7 +342,7 @@ func GetPortalNotificationUnreadStats(userNumber int) NotifyUnreadStats {
 	}
 	var rows []WebNotification
 	db.Select("source, category").
-		Where("target_scope = ? OR target_user = ?", "all", userNumber).
+		Where("(target_scope = ? OR target_user = ?) AND target_scope != ?", TargetScopeAll, userNumber, TargetScopeAdmin).
 		Where("id NOT IN (?)", db.Model(&WebNotificationRead{}).Select("notification_id").Where("user_number = ?", userNumber)).
 		Find(&rows)
 	for _, row := range rows {
