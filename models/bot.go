@@ -8,7 +8,6 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"gorm.io/gorm"
 	"math/rand"
-	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -139,13 +138,10 @@ var jbzlno = 0
 var zdlist = make(map[string]int)
 var zd = 0
 var zdno = 0
-var meituanList = make(map[int]chan string)
 var ElmList = make(map[int]chan string)
 var ckList = make(map[int]chan string)
 
 var inputList = make(map[int]chan string)
-
-var AiinputList = make(map[int]chan string)
 
 
 
@@ -202,11 +198,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		return nil
 	}
 
-	if meituanList[sender.UserID] != nil {
-		c2 := meituanList[sender.UserID]
-		c2 <- msg
-		return nil
-	}
 	if ElmList[sender.UserID] != nil {
 		c2 := ElmList[sender.UserID]
 		c2 <- msg
@@ -219,12 +210,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	}
 	if inputList[sender.UserID] != nil {
 		c2 := inputList[sender.UserID]
-		c2 <- msg
-		return nil
-	}
-
-	if AiinputList[sender.UserID] != nil {
-		c2 := AiinputList[sender.UserID]
 		c2 <- msg
 		return nil
 	}
@@ -274,153 +259,6 @@ if TryHandleSshMessage(sender) {
 			{
 				if strings.HasPrefix(msg, "ZSKM") {
 					return use_ZSKey(msg, sender.UserID)
-				}
-			}
-
-			{
-				if strings.HasPrefix(msg, "Ag") {
-					UpLine(msg, sender)
-				}
-			}
-			{
-				if strings.Contains(msg, "http://meishi.meituan.com/i/") || strings.Contains(msg, "https://i.meituan.com/mttouch/") {
-					if sender.Type == "qq" || sender.Type == "qqg" {
-						msg = strings.ReplaceAll(msg, "&amp;", "&")
-
-					}
-					parsedURL, err := url.Parse(msg)
-					if err != nil {
-						fmt.Println("解析URL出错:", err)
-						return fmt.Sprintf("解析URL出错:%s", err)
-					}
-					token := parsedURL.Query().Get("token")
-					UpLine(token, sender)
-				}
-			}
-
-			{
-				if strings.Contains(msg, "http://dpurl.cn/") {
-					re := regexp.MustCompile(`http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+`)
-					match := re.FindString(msg)
-					realUrl := Meituan_getRealUrl(match)
-					uuid := Meituan_getUUID(realUrl)
-					if uuid != "" {
-						inviterGameNickName := regexp.MustCompile(`inviterGameNickName=(.*?)&`)
-						inviterGameNickNameMatch := inviterGameNickName.FindStringSubmatch(realUrl)
-						if len(inviterGameNickNameMatch) > 1 {
-							re := regexp.MustCompile(`(.*?)\*\*\*`)
-							pre_name := re.FindStringSubmatch(inviterGameNickNameMatch[1])
-							if len(pre_name) > 1 {
-								bind := Meituan_Bind(sender, pre_name[1], uuid)
-								if !bind {
-									meiTuans := GetMeiTuan(sender)
-									if len(meiTuans) > 0 {
-										msg := make(chan string)
-										meituanList[sender.UserID] = msg
-										sender.Contents = []string{uuid}
-										go MeituanSelect(sender, msg, 2, meiTuans)
-
-										msgs := []string{
-											"请回复以下序列号指定账号绑定UUID:",
-										}
-										for i, tuan := range meiTuans {
-											msgs = append(msgs, fmt.Sprintf("%d、%s", i, tuan.Nickname))
-										}
-										sender.Reply(strings.Join(msgs, "\n"))
-									} else {
-										return "查无美团账号"
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-
-			{
-				if strings.Contains(msg, "https://i.meituan.com/c/") || strings.Contains(msg, "https://w.dianping.com/c/") {
-					parsedURL, err := url.Parse(msg)
-					if err != nil {
-						fmt.Println("解析URL出错:", err)
-						return fmt.Sprintf("解析URL出错:%s", err)
-					}
-
-					startIndex := strings.Index(parsedURL.String(), "0000")
-					if startIndex < 0 {
-						fmt.Println("未找到以0000开头的信息")
-						return ""
-					}
-
-					endIndex := startIndex + 64
-					urlStr := parsedURL.String()
-					if endIndex > len(urlStr) {
-						fmt.Println("0000索引64长度不够")
-						return ""
-					}
-
-					uuid := urlStr[startIndex:endIndex]
-					fmt.Println("提取的60位信息:", uuid)
-
-					meiTuans := GetMeiTuan(sender)
-					if len(meiTuans) > 0 {
-
-						msg := make(chan string)
-						meituanList[sender.UserID] = msg
-						go MeituanUuid(sender, msg, uuid, meiTuans)
-
-						msgs := []string{
-							"请回复以下序列号更新账号uuid，如需退出请回复'q'退出登录流程：",
-						}
-						for i, tuan := range meiTuans {
-							msgs = append(msgs, fmt.Sprintf("%d、%s", i, tuan.Nickname))
-						}
-						sender.Reply(strings.Join(msgs, "\n"))
-					} else {
-						return "查无美团账号"
-					}
-
-				}
-			}
-
-			{
-				if msg == "查询美团" {
-					meiTuans := GetMeiTuan(sender)
-					if len(meiTuans) > 0 {
-						for _, meituan := range meiTuans {
-							sender.Reply(meituan.Query())
-						}
-					} else {
-						return "查无美团账号，请使用 '美团登录'口令，按要求提交ck"
-					}
-				}
-			}
-
-			{
-				if msg == "美团领券" || msg == "美团领卷" || msg == "美团领劵" {
-
-					meiTuans := GetMeiTuan(sender)
-					if len(meiTuans) > 0 {
-
-						msg := make(chan string)
-						meituanList[sender.UserID] = msg
-						go MeituanSelect(sender, msg, 1, meiTuans)
-
-						var msgs []string // 修改为[]string类型
-						value := GetEnv("mtlq")
-						jbcoin, _ := strconv.Atoi(value)
-
-						message := fmt.Sprintf("请输入 ' 、' （顿号）前面的数字序号，选择后将扣除%d积分，输入小写的 q 退出流程", jbcoin)
-
-						for i, tuan := range meiTuans {
-							msgs = append(msgs, fmt.Sprintf("%d、%s", i, tuan.Nickname))
-						}
-
-						combinedMessage := fmt.Sprintf("%s\n%s", message, strings.Join(msgs, "\n"))
-						sender.Reply(combinedMessage)
-
-					} else {
-						return "查无美团账号，请先发送 '美团登录'口令，按要求提交ck，随后在执行指令"
-					}
 				}
 			}
 

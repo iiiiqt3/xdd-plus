@@ -20,13 +20,9 @@ func initCron() {
 	c.AddFunc(strconv.Itoa(rand.Intn(59))+" 10 5/7 * ?", GetAuthKey)
 
 	// 原有定时任务
-	c.AddFunc("0 10 * * 3,5", AutoBak)           // 自动备份（每周三、五10点）
 //	c.AddFunc("59 23 * * ?", Daemon)             // 自动重启xdd（每天23点59分）
 //	c.AddFunc("0 8-20/1 * * ?", GetNewVersion)   // 检查新版本（每天8-20点每小时0分）
 	c.AddFunc("0 0 * * ?", ResetOrderNumber)     // 重置编号（每天0点）
-//	c.AddFunc("49 11 * * ?", CX_jd_OnceApply_cx) // 保价查询（每天11点49分）
-//	c.AddFunc("40 15 */3 * ?", CX_jd_fruit_new_cx) // 新农场查询通知（每3天15点40分）
-//	c.AddFunc("10 14 */4 * ?", CX_jd_dwapp_cx)   // 话费兑换通知（每4天14点10分）
 //	c.AddFunc("5 0,6,12,18 * * ?", UpAutoCookie) // 账密自动登录更新ck（每天0、6、12、18点5分）
 	c.AddFunc("30 8,18 * * ?", initCookie)       // 账号检测（每天8、18点30分）
 	c.AddFunc("59 58 23 L * ?", ClearAllContinuousSignIns) // 连续打卡次数清0（每月最后一日23点58分59秒）

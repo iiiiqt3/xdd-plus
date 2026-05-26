@@ -45,8 +45,6 @@ func initDB() {
 		&UserAdmin{},
 		&Cache{},
 		&Key{},
-		&BakJdCookie{},
-		&MeiTuan{},
 		&Auth{},
 		&Limit{},
 		&Wish{},

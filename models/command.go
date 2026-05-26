@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"net/url"
 //	"path/filepath" 
 	"os"
 	//	"math"
@@ -416,17 +415,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	{
-		Command: []string{"对话Grok", "对话ai", "ai", "AI"},
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("您已进入与 Ai 连续对话模式，发送您的问题开始交流，回复 'q' 退出。")
-			c2 := make(chan string)
-			AiinputList[sender.UserID] = c2
-			go handleGrokChat(sender, c2)
-			return nil
-		},
-	},
-
 	// 更新CK命令（修复语法，和你的结构对齐）
 	{
 		Command: []string{"更新ck", "更新CK","记录更新"},
@@ -501,245 +489,7 @@ var codeSignals = []CodeSignal{
 
 
 
-{
-	Command: []string{"店铛铛更新", "更新店铛铛"}, // 双命令触发，贴合原有习惯
-	Handle: func(sender *Sender) interface{} {
-		qq := sender.UserID // 获取整型用户ID（后续拼接备注用）
-		msgChannel := make(chan string)
-		ckList[qq] = msgChannel // 注册用户消息通道，复用原有ckList
 
-		// 独立协程处理交互，避免阻塞主逻辑
-		go func() {
-			// 退出清理：释放通道+删除注册，避免内存泄漏
-			defer func() {
-				close(msgChannel)
-				delete(ckList, qq)
-			}()
-
-			// 通用输入函数：支持q退出、1分钟超时、自动去空格，复用原有逻辑
-			getInput := func(prompt string) string {
-				sender.Reply(prompt)
-				select {
-				case input := <-msgChannel:
-					input = strings.TrimSpace(input)
-					if input == "q" {
-						sender.Reply("你已选择退出，操作终止。")
-						return ""
-					}
-					return input
-				case <-time.After(time.Minute):
-					sender.Reply("输入超时，程序已结束。")
-					return ""
-				}
-			}
-
-			// 步骤1：引导输入原有手机号（青龙中为DDD_ACCOUNTS变量，格式手机号#密码）
-			oldPhone := getInput("请输入你店铛铛原有手机号（用于校验青龙已存在账号）：")
-			if oldPhone == "" {
-				return
-			}
-			sender.Reply(fmt.Sprintf("正在校验手机号【%s】是否存在于青龙面板...", oldPhone))
-
-			// 步骤2：调用Python脚本校验手机号（参数：手机号、目标变量名DDD_ACCOUNTS）
-			chkCmd := exec.Command("python3", "scripts/check_ddd_phone.py", oldPhone, "DDD_ACCOUNTS")
-			var chkStdout, chkStderr bytes.Buffer
-			chkCmd.Stdout = &chkStdout
-			chkCmd.Stderr = &chkStderr
-			if err := chkCmd.Run(); err != nil {
-				sender.Reply(fmt.Sprintf("手机号校验失败：%s", chkStderr.String()))
-				return
-			}
-			chkResult := strings.TrimSpace(chkStdout.String())
-			if chkResult != "found" { // Python脚本返回found表示校验通过
-				sender.Reply(fmt.Sprintf("校验失败：手机号【%s】未在青龙找到请确认后重试", oldPhone))
-				return
-			}
-			sender.Reply("手机号校验通过，该账号已存在于青龙面板！本次操作不会更改账号和密码")
-
-			// 步骤3：引导输入新的备注名（后续拼接备注名/用户ID）
-			newRemarks := getInput("请输入新的备注名，会以备注名+自动读取用户id 组合的形式记录用户备注")
-			if newRemarks == "" {
-				return
-			}
-
-			// 步骤4：拼接最终备注格式 备注名/用户ID（用户ID转字符串，避免类型问题）
-			uidStr := strconv.Itoa(qq)
-			finalRemarks := fmt.Sprintf("%s/%s", newRemarks, uidStr)
-			sender.Reply(fmt.Sprintf("即将更新青龙备注为：【%s】，开始执行更新操作...", finalRemarks))
-
-			// 步骤5：调用Python脚本更新青龙备注（参数：手机号、最终备注、目标变量名）
-			updCmd := exec.Command("python3", "scripts/update_ddd_remarks.py", oldPhone, finalRemarks, "DDD_ACCOUNTS")
-			var updStdout, updStderr bytes.Buffer
-			updCmd.Stdout = &updStdout
-			updCmd.Stderr = &updStderr
-			if err := updCmd.Run(); err != nil {
-				sender.Reply(fmt.Sprintf("店铛铛备注更新失败：%s", updStderr.String()))
-				return
-			}
-
-			// 步骤6：更新成功反馈
-			updResult := strings.TrimSpace(updStdout.String())
-			sender.Reply(fmt.Sprintf("店铛铛更新成功！青龙面板【DDD_ACCOUNTS】变量备注已更新为：%s", finalRemarks))
-			if updResult != "" {
-				sender.Reply(fmt.Sprintf("更新详情：%s", updResult))
-			}
-		}()
-
-		return nil
-	},
-},
-{
-	Command: []string{"更新茄皇", "茄皇更新"},
-	Handle: func(sender *Sender) interface{} {
-		activityCodes := map[string]string{
-			"1": "TYQH", // 茄皇
-		}
-		qq := sender.UserID
-		qqStr := strconv.Itoa(qq)
-		msgChannel := make(chan string)
-		ckList[qq] = msgChannel
-
-		go func() {
-			defer func() {
-				close(msgChannel)
-				delete(ckList, qq)
-			}()
-
-			// 通用输入获取函数（保留原逻辑：超时1分钟、q退出、去空格）
-			getInput := func(prompt string) string {
-				sender.Reply(prompt)
-				select {
-				case input := <-msgChannel:
-					input = strings.TrimSpace(input)
-					if input == "q" {
-						sender.Reply("你已选择退出程序，操作终止。")
-						return ""
-					}
-					return input
-				case <-time.After(time.Minute):
-					sender.Reply("输入超时，程序已结束。")
-					return ""
-				}
-			}
-
-			// 步骤1：选择活动代号（仅茄皇，保留原逻辑）
-			envSelect := getInput("请选择活动代号（输入数字），任意地方输入q可退出程序：\n1. TYQH（茄皇）\n")
-			if envSelect == "" {
-				return
-			}
-			envName, ok := activityCodes[envSelect]
-			if !ok {
-				sender.Reply("活动代号选择错误")
-				return
-			}
-
-			// 步骤2：输入WID（核心调整：原先输旧CK，现直接输WID）
-			wid := getInput("请输入茄皇的WID（小程序个人中心的客户编号）：")
-			if wid == "" {
-				return
-			}
-
-			// 步骤3：调用Python脚本【通过WID查询青龙CK并校验是否含手机号】
-chkPhoneCmd := exec.Command("python3", "scripts/check_ck_has_phone.py", wid, envName)
-var chkPhoneStdout, chkPhoneStderr bytes.Buffer
-chkPhoneCmd.Stdout = &chkPhoneStdout
-chkPhoneCmd.Stderr = &chkPhoneStderr
-var hasPhone bool // 仅保留：标记CK是否包含手机号（后续逻辑需使用）
-if err := chkPhoneCmd.Run(); err != nil {
-    sender.Reply(fmt.Sprintf("CK校验失败：%s", chkPhoneStderr.String()))
-    return
-}
-chkPhoneResult := strings.TrimSpace(chkPhoneStdout.String())
-// 解析脚本返回结果：格式为「状态|当前CK值」，状态包括found_has_phone/found_no_phone/not_found
-resultParts := strings.SplitN(chkPhoneResult, "|", 2)
-if len(resultParts) != 2 {
-    sender.Reply(fmt.Sprintf("CK校验异常：%s", chkPhoneResult))
-    return
-}
-status, _ := resultParts[0], resultParts[1] // 第二个值未使用，用_忽略
-switch status {
-case "found_has_phone":
-    hasPhone = true
-    sender.Reply("检测到该WID对应的CK已包含手机号（格式：手机号#WID），无需重复输入手机号！")
-case "found_no_phone":
-    hasPhone = false
-    sender.Reply("检测到该WID对应的CK未包含手机号，按流程输入手机号完成更新...")
-case "not_found":
-    sender.Reply("你没有挂过茄皇，无法进行更新操作，终止！上车请发【记录ck】")
-    return
-default:
-    sender.Reply(fmt.Sprintf("CK校验异常：%s", status))
-    return
-}
-
-			var newCk string // 存储构造后的新CK（仅无手机号时赋值）
-			if !hasPhone {
-				// 步骤4：无手机号时，提示输入手机号（非空校验）
-				phone := getInput("请输入手机号：")
-				if phone == "" {
-					return
-				}
-				// 校验手机号格式（可选：简单校验11位数字，避免无效输入）
-				if len(phone) != 11 {
-					sender.Reply("手机号格式错误，请输入11位数字！")
-					return
-				}
-				// 构造新CK：手机号#WID 格式
-				newCk = fmt.Sprintf("%s#%s", phone, wid)
-				sender.Reply(fmt.Sprintf("新CK已构造完成：%s", newCk))
-			}
-
-			// 步骤5：统一输入备注（无论是否含手机号，均执行此步骤）
-			remarks := getInput("请输入备注名：")
-			if remarks == "" {
-				return
-			}
-			// 拼接最终备注：备注/用户ID（核心格式，不变）
-			finalRemarks := fmt.Sprintf("%s/%s", remarks, qqStr)
-			sender.Reply(fmt.Sprintf("备注已处理完成：%s，开始执行更新流程...", finalRemarks))
-
-			// 步骤6：积分校验（保留原逻辑，未修改）
-			value3 := GetEnv("up" + envName)
-			if value3 == "" {
-				sender.Reply(fmt.Sprintf("%s未开启更新功能", envName))
-				return
-			}
-			coin := GetCoin(sender.UserID)
-			jbcoin, _ := strconv.Atoi(value3)
-			if coin < jbcoin {
-				sender.Reply(fmt.Sprintf("积分不足，%s更新需要%d个积分，请直接私聊微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者复制网址http://180.152.5.230:8005/到其他浏览器打开购买卡密充值", envName, jbcoin))
-				return
-			}
-
-			// 步骤7：执行更新脚本（核心适配：传参随是否含手机号变化）
-			// 传参规则：有手机号→newCk传空（仅更备注），无手机号→传新CK（更CK+备注）
-			var cmd *exec.Cmd
-			if hasPhone {
-				cmd = exec.Command("python3", "scripts/updata_tyqh.py", "", finalRemarks, envName, wid)
-			} else {
-				cmd = exec.Command("python3", "scripts/updata_tyqh.py", newCk, finalRemarks, envName, wid)
-			}
-			var stdout, stderr bytes.Buffer
-			cmd.Stdout = &stdout
-			cmd.Stderr = &stderr
-			err := cmd.Run()
-			if err == nil {
-				outputStr := stdout.String()
-				if strings.Contains(outputStr, "更新成功") {
-					RemCoin(sender.UserID, jbcoin)
-					sender.Reply(fmt.Sprintf("更新%s账号成功，已扣除%d个积分，剩余积分%d", envName, jbcoin, GetCoin(sender.UserID)))
-					sender.Reply("更新成功！")
-				} else {
-					sender.Reply(fmt.Sprintf("更新提示：%s", outputStr))
-				}
-			} else {
-				sender.Reply(fmt.Sprintf("更新失败：%s", stderr.String()))
-			}
-		}()
-
-		return nil
-	},
-},
 
 
 
@@ -826,74 +576,6 @@ default:
 	},
 
 	{
-		Command: []string{"删掉"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			cost := sender.Contents[0]
-
-			if Config.QQID == 764763903 {
-				DeleteCk(cost, "ck")
-				return "删除成功"
-			}
-			if len(sender.Contents) >= 1 {
-				sender.Reply(fmt.Sprintf("开始删除%s行", cost))
-				rsp := cmd(fmt.Sprintf("python3 ./tou_ck.py %s", cost), &Sender{})
-				sender.Reply(rsp)
-			} else {
-				sender.Reply("请配置开始信息")
-			}
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"停助力", "停止助力"},
-		Handle: func(sender *Sender) interface{} {
-			if sender.UserID == 995336676 || sender.IsAdmin {
-				rsp := cmd(fmt.Sprintf(`bash stop.sh`), &Sender{})
-				return rsp
-			} else {
-				sender.Reply("无权操作")
-			}
-			return nil
-		},
-	},
-
-	
-	{
-		Command: []string{"创建1卡密"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			if Config.VIP == true {
-				contents := sender.Contents
-				logs.Info(contents[0])
-				num, _ := strconv.Atoi(contents[0])
-				value, _ := strconv.Atoi(contents[1])
-				return createKey(num, value)
-			}
-			return "非VIP用户"
-		},
-	},
-
-
-    
-	{
-		Command: []string{"赠送11卡密"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			if Config.VIP == true {
-				contents := sender.Contents
-				logs.Info(contents[0])
-				num, _ := strconv.Atoi(contents[0])
-				value, _ := strconv.Atoi(contents[1])
-				return create_ZSKey(num, value)
-			}
-			return "非VIP用户"
-		},
-	},
-
-
-{
     Command: []string{"赠送卡密"},
     Admin:   true,
     Handle: func(sender *Sender) interface{} {
@@ -1005,26 +687,6 @@ default:
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			return Count()
-		},
-	},
-
-	{
-		Command: []string{"跑"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			if len(sender.Contents) >= 1 {
-				var head = sender.Contents[0]
-				var args = strings.Join(sender.Contents[1:], " ")
-				rsp := cmd(fmt.Sprintf(`python3 ./runcommand.py check "%s" "%s"`, head, args), &Sender{})
-				sender.Reply(rsp)
-				if strings.Index(rsp, "开始") >= 0 {
-					rsp := cmd(fmt.Sprintf(`python3 ./runcommand.py run "%s" "%s"`, head, args), &Sender{})
-					sender.Reply(rsp)
-				}
-			} else {
-				sender.Reply("请配置开始信息")
-			}
-			return nil
 		},
 	},
 
@@ -1872,39 +1534,9 @@ default:
 	},
 
 	{
-		Command: []string{"XDD专用还愿CK指令，慎用！"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("开始还原CK，后悔请马上重启")
-			Reduction()
-			sender.Reply("已还原完成")
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"备份CK"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("开始备份CK")
-			AutoBak()
-			sender.Reply("备份完成")
-			return nil
-		},
-	},
-
-	{
 		Command: []string{"余额", "积分", "我的积分", "积分查询", "查询积分"},
 		Handle: func(sender *Sender) interface{} {
 			return fmt.Sprintf("积分:%d", GetCoin(sender.UserID))
-		},
-	},
-
-	{
-		Command: []string{"推一推状态"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			return fmt.Sprintf("推一推正在运行线程:%d,闲置线程:%d", tytnum, 3-tytnum)
 		},
 	},
 
@@ -2980,33 +2612,6 @@ default:
 		},
 	},
 	{
-		Command: []string{"run", "执行"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			name := sender.Contents[0]
-			pins := ""
-			if len(sender.Contents) > 1 {
-				sender.Contents = sender.Contents[1:]
-				err := sender.handleJdCookies(func(ck *JdCookie) {
-					pins += "&" + ck.PtPin
-				})
-				if err != nil {
-					return nil
-				}
-			}
-			envs := []Env{}
-			if pins != "" {
-				envs = append(envs, Env{
-					Name:  "pins",
-					Value: pins,
-				})
-			}
-			runTask(&Task{Path: name, Envs: envs}, sender)
-			return nil
-		},
-	},
-
-	{
 		Command: []string{"优先级", "priority"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -3174,17 +2779,6 @@ default:
 		},
 	},
 	{
-		Command: []string{"重置推一推"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			cks := GetJdCookies()
-			for _, ck := range cks {
-				ck.Update(Tyt, True)
-			}
-			return nil
-		},
-	},
-	{
 		Command: []string{"重置活动"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -3241,89 +2835,6 @@ default:
 		},
 	},
 	{
-		Command: []string{"更新指定"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				if len(ck.WsKey) > 0 {
-					var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-					rsp := getKey(pinky)
-					if len(rsp) > 0 {
-						if strings.Contains(rsp, "fake") {
-							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
-						}
-						ptKey := FetchJdCookieValue("pt_key", rsp)
-						ptPin := FetchJdCookieValue("pt_pin", rsp)
-						ck := JdCookie{
-							PtKey: ptKey,
-							PtPin: ptPin,
-						}
-						if nck, err := GetJdCookie(ck.PtPin); err == nil {
-							nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-							msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-							sender.Reply(msg)
-							logs.Info(msg)
-						} else {
-							sender.Reply("转换失败")
-						}
-					} else {
-						sender.Reply("转换失败")
-					}
-				} else {
-					sender.Reply(fmt.Sprintf("Wskey为空，%s", ck.Nickname))
-				}
-
-			})
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"更新指定R"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.handleJdCookies(func(ck *JdCookie) {
-				if len(ck.WsKey) > 0 {
-					var pinky = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.RWskey)
-					logs.Info(pinky)
-					_, _, rsp := NolanGetCookie(pinky)
-					_, _, rsp = BBKGetCookie(pinky)
-
-					pin, _ := url.QueryUnescape(ck.PtPin)
-					pinky = fmt.Sprintf("pin=%s;wskey=%s;", pin, ck.RWskey)
-					_, _, rsp = RabbitGetCookie(pinky)
-
-					if len(rsp) > 0 {
-						if strings.Contains(rsp, "fake") {
-							sender.Reply(fmt.Sprintf("Wskey失效，%s", ck.Nickname))
-						}
-						ptKey := FetchJdCookieValue("pt_key", rsp)
-						ptPin := FetchJdCookieValue("pt_pin", rsp)
-						ck := JdCookie{
-							PtKey: ptKey,
-							PtPin: ptPin,
-						}
-						if nck, err := GetJdCookie(ck.PtPin); err == nil {
-							nck.Updates(JdCookie{PtKey: ptKey, Available: True})
-							msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-							sender.Reply(msg)
-							logs.Info(msg)
-						} else {
-							sender.Reply("转换失败")
-						}
-					} else {
-						sender.Reply("转换失败")
-					}
-				} else {
-					sender.Reply(fmt.Sprintf("Wskey为空，%s", ck.Nickname))
-				}
-
-			})
-			return nil
-		},
-	},
-
-	{
 		Command: []string{"删除", "clean"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -3331,30 +2842,6 @@ default:
 				ck.Removes(ck)
 				sender.Reply(fmt.Sprintf("已删除账号%s", ck.Nickname))
 			})
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"删除美团", "美团删除"},
-		Handle: func(sender *Sender) interface{} {
-			meiTuans := GetMeiTuan(sender)
-			if len(meiTuans) > 0 {
-				// 进入队列
-				msg := make(chan string)
-				meituanList[sender.UserID] = msg
-				go Delete_meituan(sender, msg, meiTuans)
-				msgs := []string{
-					"请回复以下序列号删除指定账号，如需退出请回复'q'退出登录流程：",
-				}
-				for i, tuan := range meiTuans {
-					msgs = append(msgs, fmt.Sprintf("%d、%s", i, tuan.Nickname))
-				}
-				sender.Reply(strings.Join(msgs, "\n"))
-			} else {
-				sender.Reply("查无美团账号，请使用 '美团登录'口令，按要求提交ck")
-				return nil
-			}
 			return nil
 		},
 	},
@@ -3396,39 +2883,6 @@ default:
 	},
 
 	{
-		Command: []string{"新农场推送", "新版农场推送"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("开始通知韭菜新版农场成熟情况")
-			CX_jd_fruit_new_cx()
-			sender.Reply("已完成通知")
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"话费通知", "话费兑换通知"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("开始通知满足兑换10元话费的韭菜")
-			CX_jd_dwapp_cx()
-			sender.Reply("已完成通知")
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"保价推送"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("开始通知韭菜保价情况")
-			CX_jd_OnceApply_cx()
-			sender.Reply("已完成通知")
-			return nil
-		},
-	},
-
-	{
 		Command: []string{"查找内鬼"},
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
@@ -3444,17 +2898,6 @@ default:
 				}
 			}()
 
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"扣除500优先级"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("开始扣除前30名优先级")
-			PriorityDel()
-			sender.Reply("已完成")
 			return nil
 		},
 	},
@@ -3635,55 +3078,6 @@ default:
 		},
 	},
 
-	{
-		Command: []string{"关闭查询"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			env := &Env{
-				Name:  "qq",
-				Value: "1",
-			}
-			ExportEnv(env)
-			sender.Reply("操作成功")
-			return nil
-		},
-	},
-	{
-		Command: []string{"开启查询"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			UnExportEnv(&Env{
-				Name: "qq",
-			})
-			sender.Reply("操作成功")
-			return nil
-		},
-	},
-
-	{
-		Command: []string{"关闭群聊查询"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			env := &Env{
-				Name:  "qqg",
-				Value: "1",
-			}
-			ExportEnv(env)
-			sender.Reply("操作成功")
-			return nil
-		},
-	},
-	{
-		Command: []string{"开启私聊查询"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			UnExportEnv(&Env{
-				Name: "qqg",
-			})
-			sender.Reply("操作成功")
-			return nil
-		},
-	},
 	{
 		Command: []string{"开启微信自动好友"},
 		Admin:   true,
@@ -3944,45 +3338,6 @@ default:
 		},
 	},
 	{
-		Command: []string{"设置signUrl"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			ctt := sender.JoinContens()
-			env := &Env{
-				Name:  "sign",
-				Value: ctt,
-			}
-			ExportEnv(env)
-			sender.Reply("操作成功")
-			return nil
-		},
-	},
-	{
-		Command: []string{"取消signUrl"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			UnExportEnv(&Env{
-				Name: "sign",
-			})
-			sender.Reply("操作成功")
-			return nil
-		},
-	},
-	{
-		Command: []string{"设置代理"},
-		Admin:   true,
-		Handle: func(sender *Sender) interface{} {
-			ctt := sender.JoinContens()
-			env := &Env{
-				Name:  "proxy",
-				Value: ctt,
-			}
-			ExportEnv(env)
-			sender.Reply("代理设置成功")
-			return nil
-		},
-	},
-	{
 		Command: []string{"导出wskey"},
 		Admin:   false,
 		Handle: func(sender *Sender) interface{} {
@@ -4021,14 +3376,6 @@ default:
 
 		},
 	},
-	{
-		Command: []string{"美团登录", "登录美团", "美团扫码", "美团登陆"},
-		Handle: func(sender *Sender) interface{} {
-			Meituan_getck(sender)
-			return nil
-		},
-	},
-
 	{
 		Command: []string{"猜数字", "数字游戏"},
 		Handle: func(sender *Sender) interface{} {
@@ -5051,48 +4398,6 @@ func GetAccountStatusText(ck *JdCookie) (string, bool) {
 
 
 
-// 删除美团账号
-func Delete_meituan(sender *Sender, msg chan string, meituans []MeiTuan) {
-	for {
-		n, ok := <-msg
-		//说明发送方关闭了channel
-		if !ok {
-			break
-		}
-		if n == "q" {
-			sender.Reply("退出登录流程")
-			meituanList[sender.UserID] = nil
-			close(msg)
-			return
-		}
-		num, err := strconv.Atoi(n)
-		if err != nil {
-			sender.Reply("请输入数字，检测到非数字输入已退出流程!")
-			meituanList[sender.UserID] = nil
-			return
-		}
-		regular := `^0$|^[1-9]\d*$`
-		reg := regexp.MustCompile(regular)
-		if reg.MatchString(n) {
-
-			if len(meituans) <= num {
-				sender.Reply("输入序列号错误，已退出！")
-				meituanList[sender.UserID] = nil
-				return
-			}
-		} else {
-			sender.Reply("输入序列号错误，已退出！！")
-			meituanList[sender.UserID] = nil
-			return
-		}
-		meituanck := meituans[num]
-		db.Delete(meituanck)
-
-		sender.Reply(fmt.Sprintf("已删除美团账号%s", meituans[num].Nickname))
-		meituanList[sender.UserID] = nil
-	}
-}
-
 func WxImg_ts() {
 	type AutoGenerated1 struct {
 		Token     string `json:"token"`
@@ -5118,106 +4423,6 @@ func WxImg_ts() {
 	s, _ := req.String()
 	logs.Info(s)
 }
-
-func PriorityDel() {
-	// 获取所有的 JD Cookie，并按照优先级降序排列，取前30名
-	allCookies := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Order("priority DESC").Limit(40)
-	})
-
-	// 遍历第7名到第30名账号并执行优先级扣除处理并保存
-	for i, cookie := range allCookies {
-		// 从第7名（下标6）开始，直到第30名（下标29）
-		if i >= 6 && i <= 20 {
-			// 扣除500优先级
-			adjustedPriority := cookie.Priority - 160
-
-			// 更新账号的优先级
-			cookie.Priority = adjustedPriority
-			// 保存更新后的账号信息到数据库
-			db.Save(cookie)
-		}
-	}
-}
-
-func handleGrokChat(sender *Sender, msg chan string) {
-	defer func() {
-		delete(AiinputList, sender.UserID)
-	}()
-	apiURL := "https://cloud.luchentech.com/api/maas/chat/completions"
-	token := GetEnv("ai_token")
-	if token == "" {
-		sender.Reply("请先设置ai_token")
-		return
-	}
-
-	messages := []map[string]interface{}{}
-	for {
-		timeout := time.After(300 * time.Second)
-		select {
-		case input, ok := <-msg:
-			if !ok || input == "q" {
-				sender.Reply("您已退出 Ai 连续对话模式。")
-				return
-			}
-
-			messages = append(messages, map[string]interface{}{
-				"role":    "user",
-				"content": input,
-			})
-			requestBody := map[string]interface{}{
-				"model":      "deepseek_r1",
-				"messages":   messages,
-				"stream":     false,
-				"max_tokens": 512,
-			}
-			body, _ := json.Marshal(requestBody)
-			req, _ := http.NewRequest("POST", apiURL, strings.NewReader(string(body)))
-			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
-			req.Header.Add("Content-Type", "application/json")
-			res, err := http.DefaultClient.Do(req)
-			if err != nil {
-				sender.Reply("请求失败，无法从新接口获取响应。")
-				logs.Error("发送请求失败: %s", err)
-				return
-			}
-			defer res.Body.Close()
-			bodyBytes, err := io.ReadAll(res.Body)
-			if err != nil {
-				sender.Reply("解析响应失败，请稍后再试。")
-				logs.Error("读取响应失败: %s", err)
-				return
-			}
-			if res.StatusCode != 200 {
-				sender.Reply(fmt.Sprintf("请求失败，状态码：%d", res.StatusCode))
-				logs.Error("请求失败，状态码: %d, 响应: %s", res.StatusCode, string(bodyBytes))
-				return
-			}
-			var response map[string]interface{}
-			err = json.Unmarshal(bodyBytes, &response)
-			if err != nil {
-				sender.Reply("解析响应失败，请稍后再试。")
-				logs.Error("解析 JSON 响应错误: %s", err)
-				return
-			}
-			choices := response["choices"].([]interface{})
-			if len(choices) == 0 {
-				sender.Reply("未收到有效的响应内容。")
-				return
-			}
-			content := choices[0].(map[string]interface{})["message"].(map[string]interface{})["content"].(string)
-			messages = append(messages, map[string]interface{}{
-				"role":    "assistant",
-				"content": content,
-			})
-			sender.Reply(content)
-		case <-timeout:
-			sender.Reply("操作超时，退出 Ai 连续对话模式。")
-			return
-		}
-	}
-}
-
 
 //##千寻拉群函数
 
@@ -5399,6 +4604,9 @@ func QueryJingFen(sender *Sender, ptKey, ptPin string) error {
 		msgs = append(msgs, "请求失败或响应格式不正确")
 	}
 	sender.Reply(strings.Join(msgs, "\n"))
+
+	return nil
+}
 
 	return nil
 }
