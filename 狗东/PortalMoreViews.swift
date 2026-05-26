@@ -1,8 +1,9 @@
 import UIKit
 
 
-final class MoreViewController: UITableViewController {
+final class MoreViewController: BaseNativeViewController, UITableViewDataSource, UITableViewDelegate {
     private var unreadCount = 0
+    private let tableView = UITableView(frame: .zero, style: .insetGrouped)
 
     private enum Section: Int, CaseIterable {
         case features = 0
@@ -11,8 +12,57 @@ final class MoreViewController: UITableViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "更多"
-        tableView = UITableView(frame: .zero, style: .insetGrouped)
+        view.backgroundColor = .systemGroupedBackground
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+
+        let headerRow = UIView()
+        let headerIcon = UILabel()
+        headerIcon.text = "⚙️"
+        headerIcon.font = .systemFont(ofSize: 22)
+        let headerTitle = UILabel()
+        headerTitle.text = "更多"
+        headerTitle.font = .systemFont(ofSize: 20, weight: .bold)
+        let headerSubtitle = UILabel()
+        headerSubtitle.text = "通知 · 反馈 · 关于"
+        headerSubtitle.font = .systemFont(ofSize: 11)
+        headerSubtitle.textColor = .secondaryLabel
+        headerRow.addSubview(headerIcon)
+        headerRow.addSubview(headerTitle)
+        headerRow.addSubview(headerSubtitle)
+        headerIcon.translatesAutoresizingMaskIntoConstraints = false
+        headerTitle.translatesAutoresizingMaskIntoConstraints = false
+        headerSubtitle.translatesAutoresizingMaskIntoConstraints = false
+
+        let headerContainer = UIView()
+        headerContainer.addSubview(headerRow)
+        headerRow.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            headerRow.topAnchor.constraint(equalTo: headerContainer.topAnchor, constant: 8),
+            headerRow.leadingAnchor.constraint(equalTo: headerContainer.leadingAnchor, constant: 16),
+            headerRow.trailingAnchor.constraint(equalTo: headerContainer.trailingAnchor, constant: -16),
+            headerRow.bottomAnchor.constraint(equalTo: headerContainer.bottomAnchor, constant: -4),
+            headerRow.heightAnchor.constraint(equalToConstant: 32),
+            headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
+            headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+            headerIcon.widthAnchor.constraint(equalToConstant: 28),
+            headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 6),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -7),
+            headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
+            headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor)
+        ])
+        tableView.tableHeaderView = headerContainer
+        headerContainer.layoutIfNeeded()
+        tableView.tableHeaderView = headerContainer
+
+        view.addSubview(tableView)
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
         NotificationCenter.default.addObserver(self, selector: #selector(reloadBadge), name: AppNotifications.sessionDidChange, object: nil)
     }
 
@@ -23,9 +73,9 @@ final class MoreViewController: UITableViewController {
         reloadBadge()
     }
 
-    override func numberOfSections(in tableView: UITableView) -> Int { Section.allCases.count }
+    func numberOfSections(in tableView: UITableView) -> Int { Section.allCases.count }
 
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch Section(rawValue: section) {
         case .features: return 2
         case .about: return 2
@@ -33,7 +83,7 @@ final class MoreViewController: UITableViewController {
         }
     }
 
-    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         switch Section(rawValue: section) {
         case .features: return "常用功能"
         case .about: return "关于"
@@ -41,7 +91,7 @@ final class MoreViewController: UITableViewController {
         }
     }
 
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
         cell.accessoryType = .disclosureIndicator
         switch Section(rawValue: indexPath.section) {
@@ -92,7 +142,7 @@ final class MoreViewController: UITableViewController {
         return cell
     }
 
-    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         switch Section(rawValue: indexPath.section) {
         case .features:
@@ -151,6 +201,11 @@ final class NotificationListViewController: BaseNativeViewController {
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        loadData()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
         loadData()
     }
 
@@ -470,8 +525,8 @@ enum LiquidGlassEffect {
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
         appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
-        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.85)
-        appearance.shadowColor = UIColor.separator.withAlphaComponent(0.3)
+        appearance.backgroundColor = UIColor.systemBackground
+        appearance.shadowColor = UIColor.separator.withAlphaComponent(0.2)
         tabBar.standardAppearance = appearance
         if #available(iOS 15.0, *) {
             tabBar.scrollEdgeAppearance = appearance
@@ -482,8 +537,8 @@ enum LiquidGlassEffect {
         let appearance = UINavigationBarAppearance()
         appearance.configureWithDefaultBackground()
         appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
-        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.85)
-        appearance.shadowColor = UIColor.separator.withAlphaComponent(0.3)
+        appearance.backgroundColor = UIColor.systemBackground
+        appearance.shadowColor = UIColor.separator.withAlphaComponent(0.2)
         appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
         navBar.standardAppearance = appearance

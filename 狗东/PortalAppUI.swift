@@ -94,6 +94,7 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
         } completion: { _ in
             fromView.removeFromSuperview()
             self.selectedIndex = index
+            self.resetScrollPosition(for: toVC)
             if let tabBarItems = self.tabBar.items, index < tabBarItems.count {
                 let iconViews = self.tabBar.subviews.filter { String(describing: type(of: $0)).contains("UITabBarButton") }
                 if index < iconViews.count {
@@ -101,6 +102,28 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
                 }
             }
         }
+    }
+
+    private func resetScrollPosition(for vc: UIViewController) {
+        if let nav = vc as? UINavigationController, let topVC = nav.topViewController {
+            if let scrollView = findScrollView(in: topVC.view) {
+                scrollView.setContentOffset(.zero, animated: false)
+            }
+        } else if let scrollView = findScrollView(in: vc.view) {
+            scrollView.setContentOffset(.zero, animated: false)
+        }
+    }
+
+    private func findScrollView(in view: UIView) -> UIScrollView? {
+        if let scrollView = view as? UIScrollView {
+            return scrollView
+        }
+        for subview in view.subviews {
+            if let found = findScrollView(in: subview) {
+                return found
+            }
+        }
+        return nil
     }
 
     func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
@@ -856,13 +879,45 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "项目"
         view.backgroundColor = .systemGroupedBackground
         setupUI()
         switchTo(index: 0)
     }
 
     private func setupUI() {
+        let headerRow = UIView()
+        let headerIcon = UILabel()
+        headerIcon.text = "📁"
+        headerIcon.font = .systemFont(ofSize: 22)
+        let headerTitle = UILabel()
+        headerTitle.text = "项目"
+        headerTitle.font = .systemFont(ofSize: 20, weight: .bold)
+        let headerSubtitle = UILabel()
+        headerSubtitle.text = "活动中心 · 微信协议"
+        headerSubtitle.font = .systemFont(ofSize: 11)
+        headerSubtitle.textColor = .secondaryLabel
+        headerRow.addSubview(headerIcon)
+        headerRow.addSubview(headerTitle)
+        headerRow.addSubview(headerSubtitle)
+        headerIcon.translatesAutoresizingMaskIntoConstraints = false
+        headerTitle.translatesAutoresizingMaskIntoConstraints = false
+        headerSubtitle.translatesAutoresizingMaskIntoConstraints = false
+        headerRow.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(headerRow)
+        NSLayoutConstraint.activate([
+            headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 2),
+            headerRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            headerRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            headerRow.heightAnchor.constraint(equalToConstant: 36),
+            headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
+            headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+            headerIcon.widthAnchor.constraint(equalToConstant: 28),
+            headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 6),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -7),
+            headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
+            headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor)
+        ])
+
         segmented.selectedSegmentIndex = 0
         segmented.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
         segmented.translatesAutoresizingMaskIntoConstraints = false
@@ -875,7 +930,7 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         view.addSubview(searchBar)
         view.addSubview(container)
         NSLayoutConstraint.activate([
-            segmented.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            segmented.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 6),
             segmented.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             segmented.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             searchBar.topAnchor.constraint(equalTo: segmented.bottomAnchor, constant: 4),
@@ -1651,6 +1706,7 @@ final class ProjectEditCKViewController: BaseNativeViewController {
     private let project: PortalProject
     private let onSaved: (String) -> Void
     private var fieldInputs: [UITextField] = []
+    private let previewLabel = UILabel()
 
     init(project: PortalProject, onSaved: @escaping (String) -> Void) {
         self.project = project
@@ -1691,14 +1747,14 @@ final class ProjectEditCKViewController: BaseNativeViewController {
         view.addSubview(scrollView)
         scrollView.addSubview(stack)
         NSLayoutConstraint.activate([
-            remarkLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            remarkLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             remarkLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             remarkLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            scrollView.topAnchor.constraint(equalTo: remarkLabel.bottomAnchor, constant: 12),
+            scrollView.topAnchor.constraint(equalTo: remarkLabel.bottomAnchor, constant: 8),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16),
+            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 8),
             stack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
@@ -1718,14 +1774,8 @@ final class ProjectEditCKViewController: BaseNativeViewController {
             input.autocapitalizationType = .none
             input.backgroundColor = .secondarySystemBackground
             input.clearButtonMode = .whileEditing
-            let tag = UILabel()
-            tag.text = "   \(key)="
-            tag.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
-            tag.textColor = .tertiaryLabel
-            tag.sizeToFit()
-            input.leftView = tag
-            input.leftViewMode = .always
             input.accessibilityIdentifier = key
+            input.addTarget(self, action: #selector(fieldChanged), for: .editingChanged)
             fieldInputs.append(input)
             let card = UIView()
             card.applyCardStyle(cornerRadius: 12)
@@ -1744,8 +1794,34 @@ final class ProjectEditCKViewController: BaseNativeViewController {
             stack.addArrangedSubview(card)
         }
 
+        let previewCard = UIView()
+        previewCard.applyCardStyle(cornerRadius: 12)
+        let previewTitle = UILabel()
+        previewTitle.text = "CK 预览"
+        previewTitle.font = .systemFont(ofSize: 13, weight: .semibold)
+        previewTitle.textColor = .secondaryLabel
+        previewLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        previewLabel.textColor = .label
+        previewLabel.numberOfLines = 0
+        previewLabel.backgroundColor = .tertiarySystemBackground
+        previewLabel.layer.cornerRadius = 8
+        previewLabel.clipsToBounds = true
+        let previewStack = UIStackView(arrangedSubviews: [previewTitle, previewLabel])
+        previewStack.axis = .vertical
+        previewStack.spacing = 8
+        previewStack.translatesAutoresizingMaskIntoConstraints = false
+        previewCard.addSubview(previewStack)
+        NSLayoutConstraint.activate([
+            previewStack.topAnchor.constraint(equalTo: previewCard.topAnchor, constant: 12),
+            previewStack.leadingAnchor.constraint(equalTo: previewCard.leadingAnchor, constant: 12),
+            previewStack.trailingAnchor.constraint(equalTo: previewCard.trailingAnchor, constant: -12),
+            previewStack.bottomAnchor.constraint(equalTo: previewCard.bottomAnchor, constant: -12),
+            previewLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 60)
+        ])
+        stack.addArrangedSubview(previewCard)
+
         let tipLabel = UILabel()
-        tipLabel.text = "修改后会自动拼接为完整的 CK 值提交。留空的字段会被跳过。"
+        tipLabel.text = "提示：输入字段后，下方会自动显示拼接后的完整 CK 值。"
         tipLabel.font = .systemFont(ofSize: 12)
         tipLabel.textColor = .tertiaryLabel
         tipLabel.numberOfLines = 0
@@ -1754,9 +1830,25 @@ final class ProjectEditCKViewController: BaseNativeViewController {
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKb))
         tap.cancelsTouchesInView = false
         view.addGestureRecognizer(tap)
+
+        updatePreview()
     }
 
     @objc private func dismissKb() { view.endEditing(true) }
+
+    @objc private func fieldChanged() { updatePreview() }
+
+    private func updatePreview() {
+        var parts: [String] = []
+        for input in fieldInputs {
+            let key = input.accessibilityIdentifier ?? ""
+            let value = (input.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !value.isEmpty {
+                parts.append("\(key)=\(value)")
+            }
+        }
+        previewLabel.text = parts.isEmpty ? "（暂无数据）" : parts.joined(separator: ";")
+    }
 
     private func parseEnvFields(envValue: String, envKey: String) -> [(String, String)] {
         let env = envValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1817,6 +1909,8 @@ final class WechatProtocolViewController: BaseNativeViewController {
     private var currentDeductCoin = false
     private var pollFailureCount = 0
     private var lastKnownStatus: String?
+    private var introExpanded = false
+    private let introBody = UILabel()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -1863,7 +1957,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 10),
+            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 6),
             mainStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
             mainStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             mainStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
@@ -1872,16 +1966,44 @@ final class WechatProtocolViewController: BaseNativeViewController {
 
         let introCard = UIView()
         introCard.applyCardStyle()
+        let introTitleRow = UIView()
+        let introIcon = UILabel()
+        introIcon.text = "📖"
+        introIcon.font = .systemFont(ofSize: 16)
         let introTitle = UILabel()
-        introTitle.text = "📖 什么是微信协议？"
+        introTitle.text = "什么是微信协议？"
         introTitle.font = .systemFont(ofSize: 15, weight: .bold)
         introTitle.textColor = .label
-        let introBody = UILabel()
+        let expandIcon = UILabel()
+        expandIcon.text = "▸"
+        expandIcon.font = .systemFont(ofSize: 14)
+        expandIcon.textColor = .secondaryLabel
+        introTitleRow.addSubview(introIcon)
+        introTitleRow.addSubview(introTitle)
+        introTitleRow.addSubview(expandIcon)
+        introIcon.translatesAutoresizingMaskIntoConstraints = false
+        introTitle.translatesAutoresizingMaskIntoConstraints = false
+        expandIcon.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            introIcon.leadingAnchor.constraint(equalTo: introTitleRow.leadingAnchor),
+            introIcon.centerYAnchor.constraint(equalTo: introTitleRow.centerYAnchor),
+            introIcon.widthAnchor.constraint(equalToConstant: 24),
+            introTitle.leadingAnchor.constraint(equalTo: introIcon.trailingAnchor, constant: 4),
+            introTitle.centerYAnchor.constraint(equalTo: introTitleRow.centerYAnchor),
+            expandIcon.trailingAnchor.constraint(equalTo: introTitleRow.trailingAnchor),
+            expandIcon.centerYAnchor.constraint(equalTo: introTitleRow.centerYAnchor),
+            introTitleRow.heightAnchor.constraint(equalToConstant: 24)
+        ])
+        introTitleRow.isUserInteractionEnabled = true
+        introTitleRow.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(toggleIntro)))
+
         introBody.text = "微信协议是一种自动化工具，主要用于获取微信小程序的登录凭证（CK）。\n\n【主要作用】\n\u{2022} 自动获取小程序CK，无需手动抓包\n\u{2022} CK通常有有效期，配合微信协议可保持永不过期\n\u{2022} 支持微信协议的项目，只需提交微信ID即可自动上车\n\n【使用场景】\n如果某个项目标注「支持微信协议」，你只需要：\n1. 在此页面扫码或提交微信ID绑定设备\n2. 在项目中心选择支持微信协议的项目上车\n3. 系统会自动使用你的微信身份完成任务"
         introBody.font = .systemFont(ofSize: 13)
         introBody.textColor = .secondaryLabel
         introBody.numberOfLines = 0
-        let introStack = UIStackView(arrangedSubviews: [introTitle, introBody])
+        introBody.isHidden = true
+
+        let introStack = UIStackView(arrangedSubviews: [introTitleRow, introBody])
         introStack.axis = .vertical
         introStack.spacing = 8
         introStack.translatesAutoresizingMaskIntoConstraints = false
@@ -1935,6 +2057,11 @@ final class WechatProtocolViewController: BaseNativeViewController {
         gridStack.spacing = 10
         mainStack.addArrangedSubview(gridStack)
         deleteActionBtn.heightAnchor.constraint(equalToConstant: 68).isActive = true
+    }
+
+    @objc private func toggleIntro() {
+        introExpanded.toggle()
+        introBody.isHidden = !introExpanded
     }
 
     private func loadStatus(silent: Bool = false) {
@@ -2368,7 +2495,7 @@ final class CoinTasksViewController: BaseNativeViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16),
+            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 4),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
