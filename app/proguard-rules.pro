@@ -1,0 +1,2 @@
+-keep class com.feiniao.androidjd.data.model.** { *; }
+-dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
