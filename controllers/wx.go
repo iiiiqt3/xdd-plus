@@ -339,39 +339,17 @@ func (c *WxController) HandleWxMessage() {
 					models.ListenWXTempPrivateMessage(ag.Content.FromWxid, ag.Content.Msg)
 				}
 			case 2000:
-				if ag.Content.RobotWxid == models.Config.Wx.Robotid {
-					if models.ElmList[models.GetWxid(ag.Content.FromWxid)] != nil {
-						logs.Info("进入饿充值队列")
-						autocollect := &AutocollectMessageBody{}
-						err := json.Unmarshal([]byte(ag.Content.Msg), autocollect)
-						if err == nil && autocollect.PayerPayId != "" && autocollect.ReceiverPayId != "" && autocollect.Paysubtype == 1 {
-							switch autocollect.Money {
-							case "3.00":
-								switchMoney(ag, "3.txt")
-
-							case "6.00":
-								switchMoney(ag, "6.txt")
-
-							case "12.00":
-								switchMoney(ag, "12.txt")
-							default:
-								//不予处理
-								return
-							}
-							receiveMoney(autocollect, ag, 1)
-							return
-						}
+			if ag.Content.RobotWxid == models.Config.Wx.Robotid {
+				logs.Info("接收到转账" + ag.Content.Msg)
+				if models.IsAutoAgreeAutocollection() {
+					autocollect := &AutocollectMessageBody{}
+					err := json.Unmarshal([]byte(ag.Content.Msg), autocollect)
+					if err == nil && autocollect.PayerPayId != "" && autocollect.ReceiverPayId != "" && autocollect.Paysubtype == 1 {
+						receiveMoney(autocollect, ag, 0)
 					}
-					logs.Info("接收到转账" + ag.Content.Msg)
-					if models.IsAutoAgreeAutocollection() {
-						autocollect := &AutocollectMessageBody{}
-						err := json.Unmarshal([]byte(ag.Content.Msg), autocollect)
-						if err == nil && autocollect.PayerPayId != "" && autocollect.ReceiverPayId != "" && autocollect.Paysubtype == 1 {
-							receiveMoney(autocollect, ag, 0)
-						}
-					}
-
 				}
+
+			}
 
 			case 2002:
 				if ag.Content.RobotWxid == models.Config.Wx.Robotid {
@@ -396,19 +374,7 @@ func (c *WxController) HandleWxMessage() {
 	}
 }
 
-// switchMoney 处理饿了么卡密兑换，从文件中读取卡密发送给用户
-func switchMoney(ag *WxMessage, filePath string) {
-	line, err := handleElm(filePath)
-	if err != nil {
-		logs.Error(err)
-		models.JdCookie{}.Push(fmt.Sprintf("卡密为空请及时维护:%s", filePath))
-		models.SendWxMsg(ag.Content.FromWxid, "卡密库存不足,请联系管理员处理")
-		return
-	}
-	models.SendWxMsg(ag.Content.FromWxid, "请复制饿了么卡密发给机器人完成饿了么积分充值")
-	models.SendWxMsg(ag.Content.FromWxid, line)
-	models.ElmList[models.GetWxid(ag.Content.FromWxid)] = nil
-}
+
 
 // receiveMoney 处理微信转账收款，支持自动收款和自动收款+充值两种模式
 func receiveMoney(autocollect *AutocollectMessageBody, ag *WxMessage, typ int) {
@@ -495,42 +461,4 @@ func u2s(form string) (to string, err error) {
 	return
 }
 
-// handleElm 处理饿了么卡密文件，读取第一行并删除，同时检查库存
-func handleElm(filePath string) (firstLine string, err error) {
-	// 打开文件进行读取
-	file, err := os.Open(models.ExecPath + "/elm/" + filePath)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	// 读取第一行
-	if scanner.Scan() {
-		firstLine = scanner.Text()
-	} else {
-		return "", errors.New("文件为空")
-	}
-
-	// 读取文件的其余部分
-	var lines []string
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	// 库存提醒
-	if len(lines) <= 3 {
-		// Perform the special reminder action here
-		models.JdCookie{}.Push(fmt.Sprintf("卡密库存不足，请及时补充:%s", filePath))
-	}
-
-	// 关闭文件后重新打开进行写入
-	file.Close()
-	err = os.WriteFile(models.ExecPath+"/elm/"+filePath, []byte(strings.Join(lines, "\n")), 0644)
-	if err != nil {
-		return "", err
-	}
-
-	// 返回第一行
-	return firstLine, nil
-}

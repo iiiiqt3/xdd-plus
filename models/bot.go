@@ -138,7 +138,6 @@ var jbzlno = 0
 var zdlist = make(map[string]int)
 var zd = 0
 var zdno = 0
-var ElmList = make(map[int]chan string)
 var ckList = make(map[int]chan string)
 
 var inputList = make(map[int]chan string)
@@ -198,11 +197,6 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		return nil
 	}
 
-	if ElmList[sender.UserID] != nil {
-		c2 := ElmList[sender.UserID]
-		c2 <- msg
-		return nil
-	}
 	if ckList[sender.UserID] != nil {
 		c2 := ckList[sender.UserID]
 		c2 <- msg
