@@ -3830,6 +3830,8 @@ function parseSingleActivityBlock(block) {
     let curField = null;
     let curRule = null;
     let inBlockScalar = false;
+    let blockScalarKey = '';
+    let blockScalarLines = [];
     
     // 第一行: "- 名称: xxx"
     const firstMatch = lines[0].match(/^\s*- \s*(\S+):\s*(.*)$/);
@@ -3840,19 +3842,29 @@ function parseSingleActivityBlock(block) {
         const line = lines[i];
         const trimmed = line.trim();
         
-        // 跳过空行和注释行
-        if (trimmed === '' || trimmed.startsWith('#')) continue;
+        // 跳过空行和注释行（但在多行块标量中保留空行）
+        if (trimmed === '' || trimmed.startsWith('#')) {
+            if (inBlockScalar) {
+                blockScalarLines.push('');
+            }
+            continue;
+        }
         
         const indent = line.length - line.trimStart().length;
         
         // 处理多行块标量（| 或 |-）的续行
         if (inBlockScalar) {
             if (indent > 2) {
-                // 仍在块标量内容中，跳过
+                // 仍在块标量内容中，收集内容（去掉前4个空格的基础缩进）
+                blockScalarLines.push(line.substring(4));
                 continue;
             } else {
-                // 缩进回到2或更少，块标量结束
+                // 缩进回到2或更少，块标量结束，保存收集的内容
+                act[blockScalarKey] = blockScalarLines.join('\n').replace(/\n+$/, '');
                 inBlockScalar = false;
+                blockScalarKey = '';
+                blockScalarLines = [];
+                // 继续处理当前行（不跳过）
             }
         }
         
@@ -3932,10 +3944,13 @@ function parseSingleActivityBlock(block) {
         if (indent === 2) {
             const m = trimmed.match(/^(\S+):\s*(.*)$/);
             if (m) {
-                act[m[1]] = cleanValue(m[2]);
                 // 检查是否是多行块标量（| 或 |-）
                 if (m[2].trim() === '|' || m[2].trim() === '|-') {
                     inBlockScalar = true;
+                    blockScalarKey = m[1];
+                    blockScalarLines = [];
+                } else {
+                    act[m[1]] = cleanValue(m[2]);
                 }
                 // 如果当前还在字段模式中，说明已退出字段区域，保存当前字段
                 if (curField) { inputFields.push(curField); curField = null; }
@@ -3951,6 +3966,11 @@ function parseSingleActivityBlock(block) {
             const m = trimmed.match(/^(\S+):\s*(.*)$/);
             if (m) act[m[1]] = cleanValue(m[2]);
         }
+    }
+    
+    // 处理最后一个多行块标量（如果文件以此结尾）
+    if (inBlockScalar && blockScalarKey) {
+        act[blockScalarKey] = blockScalarLines.join('\n').replace(/\n+$/, '');
     }
     
     // 保存最后一个未保存的字段
@@ -4197,6 +4217,9 @@ function generateActivitiesYaml(acts) {
     }
     let yaml = prefix + `activities:\n`;
     for (const a of acts) {
+        const guide = a['玩法和说明'] || '';
+        const guideLines = guide.split('\n');
+        const guideBlock = `  玩法和说明: |-\n` + guideLines.map(l => `    ${l}`).join('\n') + '\n';
         yaml += `- 名称: "${escapeYamlString(a['名称'])}"
   环境变量名: "${escapeYamlString(a['环境变量名'])}"
   所需积分: ${a['所需积分'] || 0}
@@ -4205,8 +4228,7 @@ function generateActivitiesYaml(acts) {
   每月积分: ${a['每月积分'] || 0}
   排序编号: ${a['排序编号'] || 0}
   启用状态: ${a['启用状态'] === true}
-  玩法和说明: "${escapeYamlString(a['玩法和说明'])}"
-`;
+${guideBlock}`;
         const fields = a._inputFields || [];
         if (fields.length === 0) { yaml += `  输入字段: []\n`; }
         else {
