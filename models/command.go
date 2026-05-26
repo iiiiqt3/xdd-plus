@@ -4607,6 +4607,3 @@ func QueryJingFen(sender *Sender, ptKey, ptPin string) error {
 
 	return nil
 }
-
-	return nil
-}
