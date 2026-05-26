@@ -7,6 +7,7 @@ import android.content.Intent
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -125,6 +126,7 @@ class NotificationListActivity : AppCompatActivity() {
         return cardView().apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
+            descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
 
             if (!item.isRead) {
                 background = android.graphics.drawable.GradientDrawable().apply {
@@ -203,7 +205,11 @@ class NotificationListActivity : AppCompatActivity() {
 
             item.content?.takeIf { it.isNotBlank() }?.let { content ->
                 val preview = if (content.length > 120) content.take(120) + "..." else content
-                addView(bodyText(preview).apply {
+                addView(TextView(context).apply {
+                    text = preview
+                    setTextColor(Color.parseColor("#475569"))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.2f)
+                    setLineSpacing(0f, 1.28f)
                     setPadding(0, dp(6), 0, 0)
                     maxLines = 3
                 })

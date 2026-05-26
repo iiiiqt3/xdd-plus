@@ -8,9 +8,9 @@ echo "📦 开始打包..."
 ./gradlew assembleDebug --no-daemon
 
 if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
-    cp "app/build/outputs/apk/debug/app-debug.apk" "goudong-v2.3.0.apk"
+    cp "app/build/outputs/apk/debug/app-debug.apk" "goudong-v2.4.0.apk"
     echo "✅ 打包完成！"
-    echo "📍 文件位置: $(pwd)/goudong-v2.3.0.apk"
+    echo "📍 文件位置: $(pwd)/goudong-v2.4.0.apk"
 else
     echo "❌ 打包失败，请检查错误信息"
 fi
