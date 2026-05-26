@@ -13,6 +13,9 @@ object AppServices {
     lateinit var appContext: Context
         private set
 
+    @Volatile
+    var isAuthInProgress = false
+
     lateinit var sessionManager: SessionManager
         private set
     lateinit var cookieJar: PersistentCookieJar

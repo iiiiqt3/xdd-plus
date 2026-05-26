@@ -417,9 +417,9 @@ fun sanitizeErrorMessage(message: String?): String {
 fun Fragment.handlePortalError(error: Throwable, title: String = "提示", onUnauthorized: (() -> Unit)? = null) {
     val apiError = error as? ApiError
     if (apiError?.unauthorized == true) {
-        AppServices.sessionManager.setAuthenticated(false)
-        AppServices.apiClient.clearCookies()
-        startActivity(Intent(requireContext(), AuthActivity::class.java))
+        if (!AppServices.isAuthInProgress) {
+            (activity as? com.goudong.jd.MainActivity)?.handleUnauthorized()
+        }
         onUnauthorized?.invoke()
         return
     }
@@ -429,9 +429,14 @@ fun Fragment.handlePortalError(error: Throwable, title: String = "提示", onUna
 fun AppCompatActivity.handlePortalError(error: Throwable, title: String = "提示", onUnauthorized: (() -> Unit)? = null) {
     val apiError = error as? ApiError
     if (apiError?.unauthorized == true) {
-        AppServices.sessionManager.setAuthenticated(false)
-        AppServices.apiClient.clearCookies()
-        startActivity(Intent(this, AuthActivity::class.java))
+        val mainActivity = this as? com.goudong.jd.MainActivity
+        if (mainActivity != null) {
+            mainActivity.handleUnauthorized()
+        } else {
+            AppServices.sessionManager.setAuthenticated(false)
+            AppServices.apiClient.clearCookies()
+            startActivity(Intent(this, AuthActivity::class.java))
+        }
         onUnauthorized?.invoke()
         return
     }

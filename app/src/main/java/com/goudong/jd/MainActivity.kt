@@ -47,9 +47,11 @@ class MainActivity : AppCompatActivity() {
     private val tabOrder = intArrayOf(TAB_HOME, TAB_PROJECTS, TAB_TASKS, TAB_JD, TAB_MORE)
 
     private val authLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        AppServices.isAuthInProgress = false
         if (result.resultCode == Activity.RESULT_OK) {
             val target = pendingTabId ?: TAB_HOME
             switchToTab(target)
+            reloadVisibleFragment()
         }
         pendingTabId = null
     }
@@ -221,7 +223,12 @@ class MainActivity : AppCompatActivity() {
         if (tabId == TAB_HOME || tabId == TAB_PROJECTS || tabId == TAB_TASKS) {
             lifecycleScope.launch {
                 runCatching { AppServices.portalRepository.verifySession() }
-                    .onFailure { handlePortalError(it) }
+                    .onFailure { error ->
+                        val apiError = error as? com.goudong.jd.data.model.ApiError
+                        if (apiError?.unauthorized == true) {
+                            handleUnauthorized()
+                        }
+                    }
             }
         }
         updateNotificationBadge()
@@ -232,6 +239,43 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             runCatching { AppServices.portalRepository.fetchNotifications(includeContent = false) }
                 .onSuccess { response -> updateMoreBadge(response.unread) }
+        }
+    }
+
+    fun handleUnauthorized() {
+        if (AppServices.isAuthInProgress) return
+        AppServices.isAuthInProgress = true
+
+        lifecycleScope.launch {
+            val credentials = AppServices.sessionManager.loadCredentials()
+            if (credentials != null) {
+                val success = runCatching {
+                    AppServices.authRepository.login(credentials.first, credentials.second)
+                }.isSuccess
+
+                if (success) {
+                    AppServices.isAuthInProgress = false
+                    reloadVisibleFragment()
+                    return@launch
+                }
+            }
+
+            AppServices.isAuthInProgress = false
+            AppServices.sessionManager.setAuthenticated(false)
+            pendingTabId = tabOrder[viewPager.currentItem]
+            authLauncher.launch(Intent(this@MainActivity, AuthActivity::class.java))
+        }
+    }
+
+    private fun reloadVisibleFragment() {
+        for (fragment in supportFragmentManager.fragments) {
+            if (!fragment.isVisible) continue
+            when (fragment) {
+                is HomeFragment -> fragment.loadData(forceRefresh = true)
+                is ProjectsFragment -> fragment.refreshCurrentTab()
+                is TasksFragment -> fragment.refreshDashboard()
+            }
+            break
         }
     }
 

@@ -295,12 +295,11 @@ class HomeFragment : Fragment() {
                 .onFailure { error ->
                     val apiError = error as? ApiError
                     if (apiError?.unauthorized == true) {
-                        AppServices.sessionManager.setAuthenticated(false)
-                        AppServices.apiClient.clearCookies()
-                        summaryText.text = "登录已过期"
-                        detailText.text = "请重新登录"
-                        coinText.text = "当前积分：-"
-                        startActivity(Intent(requireContext(), AuthActivity::class.java))
+                        if (!AppServices.isAuthInProgress) {
+                            (activity as? MainActivity)?.handleUnauthorized()
+                        }
+                        summaryText.text = "正在重新登录..."
+                        detailText.text = "请稍候"
                     } else {
                         summaryText.text = "加载失败"
                         detailText.text = com.goudong.jd.ui.common.sanitizeErrorMessage(error.message)

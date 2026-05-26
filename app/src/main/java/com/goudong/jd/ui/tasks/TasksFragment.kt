@@ -128,6 +128,10 @@ class TasksFragment : Fragment() {
         loadDashboard()
     }
 
+    fun refreshDashboard() {
+        loadDashboard()
+    }
+
     private fun loadDashboard() {
         lifecycleScope.launch {
             runCatching { AppServices.portalRepository.fetchHomeSnapshot() }

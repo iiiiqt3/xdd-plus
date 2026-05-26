@@ -149,6 +149,11 @@ class ProjectsFragment : Fragment() {
         }
     }
 
+    fun refreshCurrentTab() {
+        if (currentTab == 0) cachedActivities = null else cachedProjects = null
+        renderCurrentTab(forceRefresh = true)
+    }
+
     private fun renderCurrentTab(forceRefresh: Boolean) {
         contentRoot.removeAllViews()
         if (!swipeRefreshLayout.isRefreshing && forceRefresh) {
