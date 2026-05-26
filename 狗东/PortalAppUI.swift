@@ -67,23 +67,39 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
 
     @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
         guard let count = viewControllers?.count, count > 0 else { return }
-        let direction: UIView.AnimationOptions = gesture.direction == .left ? .transitionFlipFromRight : .transitionFlipFromLeft
         if gesture.direction == .left {
             let next = selectedIndex + 1
             if next < count {
-                animateTabSwitch(to: next, direction: direction)
+                animateTabSlide(to: next, fromRight: true)
             }
         } else if gesture.direction == .right {
             let prev = selectedIndex - 1
             if prev >= 0 {
-                animateTabSwitch(to: prev, direction: direction)
+                animateTabSlide(to: prev, fromRight: false)
             }
         }
     }
 
-    private func animateTabSwitch(to index: Int, direction: UIView.AnimationOptions) {
-        UIView.transition(with: view, duration: 0.3, options: [direction, .curveEaseInOut]) {
+    private func animateTabSlide(to index: Int, fromRight: Bool) {
+        guard let fromView = selectedViewController?.view, let toVC = viewControllers?[index] else {
+            selectedIndex = index
+            return
+        }
+        let offset = fromRight ? view.bounds.width : -view.bounds.width
+        toVC.view.frame = view.bounds.offsetBy(dx: offset, dy: 0)
+        view.addSubview(toVC.view)
+        UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0, options: .curveEaseInOut) {
+            toVC.view.frame = self.view.bounds
+            fromView.frame = self.view.bounds.offsetBy(dx: -offset, dy: 0)
+        } completion: { _ in
+            fromView.removeFromSuperview()
             self.selectedIndex = index
+            if let tabBarItems = self.tabBar.items, index < tabBarItems.count {
+                let iconViews = self.tabBar.subviews.filter { String(describing: type(of: $0)).contains("UITabBarButton") }
+                if index < iconViews.count {
+                    LiquidGlassEffect.tabBarBounceAnimation(iconViews[index])
+                }
+            }
         }
     }
 
@@ -551,12 +567,41 @@ final class HomeDashboardViewController: BaseNativeViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 20),
+            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 8),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -20),
+            stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -12),
             stack.widthAnchor.constraint(equalTo: view.widthAnchor, constant: -32)
         ])
+
+        let headerRow = UIView()
+        let headerIcon = UILabel()
+        headerIcon.text = "🏠"
+        headerIcon.font = .systemFont(ofSize: 24)
+        let headerTitle = UILabel()
+        headerTitle.text = "首页"
+        headerTitle.font = .systemFont(ofSize: 20, weight: .bold)
+        let headerSubtitle = UILabel()
+        headerSubtitle.text = "通知中心 · 项目概览"
+        headerSubtitle.font = .systemFont(ofSize: 12)
+        headerSubtitle.textColor = .secondaryLabel
+        headerRow.addSubview(headerIcon)
+        headerRow.addSubview(headerTitle)
+        headerRow.addSubview(headerSubtitle)
+        headerIcon.translatesAutoresizingMaskIntoConstraints = false
+        headerTitle.translatesAutoresizingMaskIntoConstraints = false
+        headerSubtitle.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
+            headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+            headerIcon.widthAnchor.constraint(equalToConstant: 32),
+            headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 8),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -8),
+            headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
+            headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor),
+            headerRow.heightAnchor.constraint(equalToConstant: 44)
+        ])
+        stack.addArrangedSubview(headerRow)
 
         let notifCard = UIView()
         notifCard.applyCardStyle()
@@ -688,7 +733,12 @@ final class HomeDashboardViewController: BaseNativeViewController {
     }
 
     @objc private func openNotifications() {
-        tabBarController?.selectedIndex = 4
+        if AppSessionStore.shared.isAuthenticated {
+            let notifVC = NotificationListViewController()
+            navigationController?.pushViewController(notifVC, animated: true)
+        } else {
+            tabBarController?.selectedIndex = 4
+        }
     }
 
     @objc private func reloadData() {
@@ -795,9 +845,10 @@ final class HomeDashboardViewController: BaseNativeViewController {
 }
 
 
-final class ProjectsRootViewController: BaseNativeViewController {
+final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDelegate {
     private let segmented = UISegmentedControl(items: ["活动中心", "我的项目", "微信协议"])
     private let container = UIView()
+    private let searchBar = UISearchBar()
     private let activitiesVC = ActivitiesListViewController()
     private let myProjectsVC = MyProjectsListViewController()
     private let wechatVC = WechatProtocolViewController()
@@ -816,13 +867,21 @@ final class ProjectsRootViewController: BaseNativeViewController {
         segmented.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
         segmented.translatesAutoresizingMaskIntoConstraints = false
         container.translatesAutoresizingMaskIntoConstraints = false
+        searchBar.delegate = self
+        searchBar.placeholder = "搜索项目名、活动名称…"
+        searchBar.searchBarStyle = .minimal
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(segmented)
+        view.addSubview(searchBar)
         view.addSubview(container)
         NSLayoutConstraint.activate([
-            segmented.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            segmented.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             segmented.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             segmented.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            container.topAnchor.constraint(equalTo: segmented.bottomAnchor, constant: 12),
+            searchBar.topAnchor.constraint(equalTo: segmented.bottomAnchor, constant: 4),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            container.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 4),
             container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             container.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -844,6 +903,17 @@ final class ProjectsRootViewController: BaseNativeViewController {
         case 2: vc = wechatVC
         default: vc = activitiesVC
         }
+        searchBar.text = nil
+        searchBar.showsCancelButton = false
+        searchBar.resignFirstResponder()
+        activitiesVC.applySearch("")
+        myProjectsVC.applySearch("")
+        if index == 2 {
+            searchBar.isHidden = true
+        } else {
+            searchBar.isHidden = false
+            searchBar.placeholder = index == 0 ? "搜索活动名称…" : "搜索项目名、备注…"
+        }
         addChild(vc)
         vc.view.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(vc.view)
@@ -856,13 +926,33 @@ final class ProjectsRootViewController: BaseNativeViewController {
         vc.didMove(toParent: self)
         currentVC = vc
     }
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if segmented.selectedSegmentIndex == 0 {
+            activitiesVC.applySearch(q)
+        } else if segmented.selectedSegmentIndex == 1 {
+            myProjectsVC.applySearch(q)
+        }
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+    }
+
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.text = nil
+        searchBar.resignFirstResponder()
+        activitiesVC.applySearch("")
+        myProjectsVC.applySearch("")
+    }
 }
 
 
 final class ActivitiesListViewController: UITableViewController {
     private var activities: [PortalActivity] = []
     private var filteredActivities: [PortalActivity] = []
-    private let searchController = UISearchController(searchResultsController: nil)
+    private var isFiltering = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -870,16 +960,23 @@ final class ActivitiesListViewController: UITableViewController {
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "activity")
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 132
-        searchController.searchResultsUpdater = self
-        searchController.obscuresBackgroundDuringPresentation = false
-        searchController.searchBar.placeholder = "搜索活动名称、青龙配置…"
-        navigationItem.searchController = searchController
-        definesPresentationContext = true
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadData()
+    }
+
+    func applySearch(_ text: String) {
+        if text.isEmpty {
+            isFiltering = false
+            filteredActivities = []
+        } else {
+            isFiltering = true
+            let q = text.lowercased()
+            filteredActivities = activities.filter { ($0.name.lowercased().contains(q)) || ($0.qingLongConfig?.lowercased().contains(q) ?? false) }
+        }
+        tableView.reloadData()
     }
 
     private func loadData() {
@@ -895,7 +992,7 @@ final class ActivitiesListViewController: UITableViewController {
     }
 
     private var isSearching: Bool {
-        return searchController.isActive && !(searchController.searchBar.text ?? "").isEmpty
+        return isFiltering
     }
 
     private var displayedActivities: [PortalActivity] {
@@ -940,21 +1037,6 @@ final class ActivitiesListViewController: UITableViewController {
 }
 
 
-extension ActivitiesListViewController: UISearchResultsUpdating {
-    func updateSearchResults(for searchController: UISearchController) {
-        let query = (searchController.searchBar.text ?? "").lowercased().trimmingCharacters(in: .whitespaces)
-        if query.isEmpty {
-            filteredActivities = []
-        } else {
-            filteredActivities = activities.filter {
-                ($0.name ?? "").lowercased().contains(query) ||
-                ($0.envKey ?? "").lowercased().contains(query) ||
-                ($0.qingLongConfig ?? "").lowercased().contains(query)
-            }
-        }
-        tableView.reloadData()
-    }
-}
 
 
 final class ProjectFormViewController: BaseNativeViewController {
@@ -1124,7 +1206,7 @@ final class MyProjectsListViewController: UITableViewController {
     private var allGroups: [Group] = []
     private var groups: [Group] = []
     private var expandedGroupKeys: Set<String> = []
-    private let searchController = UISearchController(searchResultsController: nil)
+    private var isFiltering = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -1133,11 +1215,6 @@ final class MyProjectsListViewController: UITableViewController {
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 132
         tableView.separatorStyle = .none
-        searchController.searchResultsUpdater = self
-        searchController.obscuresBackgroundDuringPresentation = false
-        searchController.searchBar.placeholder = "搜索项目名、备注名、青龙配置…"
-        navigationItem.searchController = searchController
-        definesPresentationContext = true
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -1183,6 +1260,25 @@ final class MyProjectsListViewController: UITableViewController {
         }
     }
 
+    func applySearch(_ text: String) {
+        if text.isEmpty {
+            isFiltering = false
+            groups = allGroups
+        } else {
+            isFiltering = true
+            let q = text.lowercased()
+            groups = allGroups.filter { group in
+                if group.activityName.lowercased().contains(q) { return true }
+                if (group.qingLongConfig ?? "").lowercased().contains(q) { return true }
+                return group.items.contains { item in
+                    (item.displayName ?? "").lowercased().contains(q) ||
+                    (item.remark ?? "").lowercased().contains(q)
+                }
+            }
+        }
+        tableView.reloadData()
+    }
+
     override func numberOfSections(in tableView: UITableView) -> Int { groups.count }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -1204,9 +1300,7 @@ final class MyProjectsListViewController: UITableViewController {
         tableView.deselectRow(at: indexPath, animated: true)
         if indexPath.row == 0 {
             toggleGroup(section: indexPath.section)
-            return
         }
-        presentAction(for: groups[indexPath.section].items[indexPath.row - 1])
     }
 
     private func makeGroupCell(section: Int) -> UITableViewCell {
@@ -1236,23 +1330,80 @@ final class MyProjectsListViewController: UITableViewController {
         let cell = UITableViewCell(style: .default, reuseIdentifier: nil)
         cell.selectionStyle = .none
         cell.backgroundColor = .clear
-        let card = ProjectSummaryCardView()
+
+        let card = UIView()
+        card.applyCardStyle(cornerRadius: 16)
         card.translatesAutoresizingMaskIntoConstraints = false
-        card.titleLabel.text = item.displayName?.isEmpty == false ? item.displayName : (item.remark?.isEmpty == false ? item.remark : item.activityName)
-        let line1 = item.expireDate ?? "长期 / 未记录"
-        let line2 = item.qingLongConfig ?? "默认容器"
-        card.metaLabel.text = "到期：\(line1)\n青龙：\(line2)\n点击卡片可进行续费、查询、删除"
-        card.priceLabel.text = item.priceText ?? "-"
+
+        let titleLabel = UILabel()
+        titleLabel.text = item.displayName?.isEmpty == false ? item.displayName : (item.remark?.isEmpty == false ? item.remark : item.activityName)
+        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        titleLabel.numberOfLines = 1
+
         let status = item.bizStatus ?? "gray"
+        let statusBadge = UILabel()
         if status == "active" {
-            card.badgeLabel.configure(text: item.bizStatusText ?? "有效中", kind: .active)
+            statusBadge.text = " \(item.bizStatusText ?? "有效中") "
+            statusBadge.textColor = .systemGreen
         } else if status == "expiring" {
-            card.badgeLabel.configure(text: item.bizStatusText ?? "快到期", kind: .expiring)
+            statusBadge.text = " \(item.bizStatusText ?? "快到期") "
+            statusBadge.textColor = .systemOrange
         } else if status == "expired" {
-            card.badgeLabel.configure(text: item.bizStatusText ?? "已失效", kind: .expired)
+            statusBadge.text = " \(item.bizStatusText ?? "已失效") "
+            statusBadge.textColor = .systemRed
         } else {
-            card.badgeLabel.configure(text: item.statusText ?? "未知", kind: .gray)
+            statusBadge.text = " \(item.statusText ?? "未知") "
+            statusBadge.textColor = .secondaryLabel
         }
+        statusBadge.font = .systemFont(ofSize: 11, weight: .medium)
+
+        let titleRow = UIStackView(arrangedSubviews: [titleLabel, UIView(), statusBadge])
+        titleRow.axis = .horizontal
+        titleRow.spacing = 8
+
+        let metaLabel = UILabel()
+        metaLabel.text = "到期：\(item.expireDate ?? "长期") · 青龙：\(item.qingLongConfig ?? "默认") · \(item.priceText ?? "")"
+        metaLabel.font = .systemFont(ofSize: 12)
+        metaLabel.textColor = .secondaryLabel
+        metaLabel.numberOfLines = 0
+
+        let btnRow = UIStackView()
+        btnRow.axis = .horizontal
+        btnRow.spacing = 8
+        btnRow.distribution = .fillEqually
+
+        let actions: [(String, String, UIColor, () -> Void)] = [
+            ("查询", "magnifyingglass", .systemBlue, { [weak self] in self?.queryIncome(for: item) }),
+            ("修改", "pencil", .systemPurple, { [weak self] in self?.updateProject(item) }),
+            ("续费", "arrow.clockwise", .systemGreen, { [weak self] in self?.renewProject(item) }),
+            ("删除", "trash", .systemRed, { [weak self] in self?.deleteProject(item) })
+        ]
+
+        for (title, icon, color, action) in actions {
+            let btn = UIButton(type: .system)
+            btn.setTitle(" \(title)", for: .normal)
+            btn.setImage(UIImage(systemName: icon), for: .normal)
+            btn.titleLabel?.font = .systemFont(ofSize: 11, weight: .medium)
+            btn.tintColor = color
+            btn.backgroundColor = color.withAlphaComponent(0.1)
+            btn.layer.cornerRadius = 8
+            btn.heightAnchor.constraint(equalToConstant: 34).isActive = true
+            btn.addAction(UIAction { _ in action() }, for: .touchUpInside)
+            btnRow.addArrangedSubview(btn)
+        }
+
+        let innerStack = UIStackView(arrangedSubviews: [titleRow, metaLabel, btnRow])
+        innerStack.axis = .vertical
+        innerStack.spacing = 8
+        innerStack.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(innerStack)
+        NSLayoutConstraint.activate([
+            innerStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            innerStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            innerStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12)
+        ])
+
         cell.contentView.addSubview(card)
         NSLayoutConstraint.activate([
             card.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 6),
@@ -1314,24 +1465,6 @@ final class MyProjectsListViewController: UITableViewController {
         }
 
         run(index: 0)
-    }
-
-    private func presentAction(for item: PortalProject) {
-        let sheet = UIAlertController(title: item.displayName ?? item.activityName ?? "项目", message: item.priceText, preferredStyle: .actionSheet)
-        sheet.addAction(UIAlertAction(title: "查询收入", style: .default) { _ in
-            self.queryIncome(for: item)
-        })
-        sheet.addAction(UIAlertAction(title: "修改", style: .default) { _ in
-            self.updateProject(item)
-        })
-        sheet.addAction(UIAlertAction(title: "续费", style: .default) { _ in
-            self.renewProject(item)
-        })
-        sheet.addAction(UIAlertAction(title: "删除", style: .destructive) { _ in
-            self.deleteProject(item)
-        })
-        sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
-        present(sheet, animated: true)
     }
 
     private func queryIncome(for item: PortalProject) {
@@ -1411,40 +1544,6 @@ final class MyProjectsListViewController: UITableViewController {
     }
 }
 
-
-extension MyProjectsListViewController: UISearchResultsUpdating {
-    func updateSearchResults(for searchController: UISearchController) {
-        let query = (searchController.searchBar.text ?? "").lowercased().trimmingCharacters(in: .whitespaces)
-        if query.isEmpty {
-            groups = allGroups
-        } else {
-            groups = allGroups.compactMap { group in
-                let groupMatch = group.activityName.lowercased().contains(query) ||
-                    (group.qingLongConfig ?? "").lowercased().contains(query)
-                let filteredItems = group.items.filter {
-                    ($0.activityName ?? "").lowercased().contains(query) ||
-                    ($0.remark ?? "").lowercased().contains(query) ||
-                    ($0.displayName ?? "").lowercased().contains(query) ||
-                    ($0.envKey ?? "").lowercased().contains(query)
-                }
-                if groupMatch {
-                    return group
-                } else if !filteredItems.isEmpty {
-                    var g = group
-                    g = Group(key: group.key, activityId: group.activityId, activityName: group.activityName,
-                              qingLongConfig: group.qingLongConfig, priceText: group.priceText,
-                              items: filteredItems, activeCount: filteredItems.filter { $0.bizStatus == "active" }.count,
-                              expiringCount: filteredItems.filter { $0.bizStatus == "expiring" }.count,
-                              expiredCount: filteredItems.filter { $0.bizStatus == "expired" }.count)
-                    return g
-                }
-                return nil
-            }
-        }
-        tableView.backgroundView = groups.isEmpty ? EmptyStateView(icon: "magnifyingglass", title: "无搜索结果", desc: "没有找到匹配的项目") : nil
-        tableView.reloadData()
-    }
-}
 
 
 final class ProjectGroupSummaryView: UIView {
@@ -1551,7 +1650,7 @@ final class ProjectIncomeViewController: BaseNativeViewController {
 final class ProjectEditCKViewController: BaseNativeViewController {
     private let project: PortalProject
     private let onSaved: (String) -> Void
-    private let textView = UITextView()
+    private var fieldInputs: [UITextField] = []
 
     init(project: PortalProject, onSaved: @escaping (String) -> Void) {
         self.project = project
@@ -1571,41 +1670,124 @@ final class ProjectEditCKViewController: BaseNativeViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "保存", style: .done, target: self, action: #selector(saveTapped))
 
         let remarkLabel = UILabel()
-        remarkLabel.translatesAutoresizingMaskIntoConstraints = false
         remarkLabel.text = "当前备注：\(project.remark ?? project.displayName ?? project.activityName ?? "项目")"
-        remarkLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        remarkLabel.font = .systemFont(ofSize: 14, weight: .medium)
         remarkLabel.textColor = .secondaryLabel
         remarkLabel.numberOfLines = 0
 
-        textView.translatesAutoresizingMaskIntoConstraints = false
-        textView.font = UIFont.monospacedSystemFont(ofSize: 15, weight: .regular)
-        textView.textColor = .label
-        textView.backgroundColor = .secondarySystemBackground
-        textView.layer.cornerRadius = 18
-        textView.layer.borderWidth = 1
-        textView.layer.borderColor = UIColor.systemGray5.cgColor
-        textView.textContainerInset = UIEdgeInsets(top: 16, left: 14, bottom: 16, right: 14)
-        textView.text = project.envValue ?? ""
-        textView.autocorrectionType = .no
-        textView.autocapitalizationType = .none
+        let envKey = project.envKey ?? "JD_COOKIE"
+        let envValue = project.envValue ?? ""
+        let fields = parseEnvFields(envValue: envValue, envKey: envKey)
+
+        let scrollView = UIScrollView()
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        remarkLabel.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(remarkLabel)
-        view.addSubview(textView)
+        view.addSubview(scrollView)
+        scrollView.addSubview(stack)
         NSLayoutConstraint.activate([
             remarkLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             remarkLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             remarkLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            textView.topAnchor.constraint(equalTo: remarkLabel.bottomAnchor, constant: 12),
-            textView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            textView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            textView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16)
+            scrollView.topAnchor.constraint(equalTo: remarkLabel.bottomAnchor, constant: 12),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16),
+            stack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
+            stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
+            stack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32)
         ])
+
+        for (key, value) in fields {
+            let titleLabel = UILabel()
+            titleLabel.text = key
+            titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+            titleLabel.textColor = .secondaryLabel
+            let input = UITextField()
+            input.text = value
+            input.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
+            input.borderStyle = .roundedRect
+            input.autocorrectionType = .no
+            input.autocapitalizationType = .none
+            input.backgroundColor = .secondarySystemBackground
+            input.clearButtonMode = .whileEditing
+            let tag = UILabel()
+            tag.text = "   \(key)="
+            tag.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
+            tag.textColor = .tertiaryLabel
+            tag.sizeToFit()
+            input.leftView = tag
+            input.leftViewMode = .always
+            input.accessibilityIdentifier = key
+            fieldInputs.append(input)
+            let card = UIView()
+            card.applyCardStyle(cornerRadius: 12)
+            let innerStack = UIStackView(arrangedSubviews: [titleLabel, input])
+            innerStack.axis = .vertical
+            innerStack.spacing = 6
+            innerStack.translatesAutoresizingMaskIntoConstraints = false
+            card.addSubview(innerStack)
+            NSLayoutConstraint.activate([
+                innerStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+                innerStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+                innerStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+                innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+                input.heightAnchor.constraint(greaterThanOrEqualToConstant: 40)
+            ])
+            stack.addArrangedSubview(card)
+        }
+
+        let tipLabel = UILabel()
+        tipLabel.text = "修改后会自动拼接为完整的 CK 值提交。留空的字段会被跳过。"
+        tipLabel.font = .systemFont(ofSize: 12)
+        tipLabel.textColor = .tertiaryLabel
+        tipLabel.numberOfLines = 0
+        stack.addArrangedSubview(tipLabel)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKb))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func dismissKb() { view.endEditing(true) }
+
+    private func parseEnvFields(envValue: String, envKey: String) -> [(String, String)] {
+        let env = envValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if env.contains(";") || env.contains("=") {
+            let pairs = env.components(separatedBy: ";").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            var results: [(String, String)] = []
+            for pair in pairs {
+                let parts = pair.components(separatedBy: "=")
+                if parts.count >= 2 {
+                    let key = parts[0].trimmingCharacters(in: .whitespaces)
+                    let value = parts.dropFirst().joined(separator: "=").trimmingCharacters(in: .whitespaces)
+                    results.append((key, value))
+                }
+            }
+            if !results.isEmpty { return results }
+        }
+        return [(envKey, env)]
     }
 
     @objc private func saveTapped() {
-        let ckValue = textView.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var parts: [String] = []
+        for input in fieldInputs {
+            let key = input.accessibilityIdentifier ?? ""
+            let value = (input.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !value.isEmpty {
+                parts.append("\(key)=\(value)")
+            }
+        }
+        let ckValue = parts.joined(separator: ";")
         if ckValue.isEmpty {
-            showMessage("请输入新的 CK 值")
+            showMessage("请至少填写一个字段")
             return
         }
         navigationItem.rightBarButtonItem?.isEnabled = false
@@ -1672,7 +1854,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
         let mainStack = UIStackView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         mainStack.axis = .vertical
-        mainStack.spacing = 16
+        mainStack.spacing = 14
         mainStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scrollView)
         scrollView.addSubview(mainStack)
@@ -1681,36 +1863,55 @@ final class WechatProtocolViewController: BaseNativeViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16),
+            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 10),
             mainStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
             mainStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             mainStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
             mainStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32)
         ])
 
-        let statusCard = UIView()
-        statusCard.applyCardStyle()
-        statusLabel.font = .systemFont(ofSize: 22, weight: .bold)
-        detailLabel.font = .systemFont(ofSize: 14)
-        detailLabel.textColor = .secondaryLabel
-        detailLabel.numberOfLines = 0
-        let statusStack = UIStackView(arrangedSubviews: [statusLabel, detailLabel])
-        statusStack.axis = .vertical
-        statusStack.spacing = 10
-        statusStack.translatesAutoresizingMaskIntoConstraints = false
-        statusCard.addSubview(statusStack)
+        let introCard = UIView()
+        introCard.applyCardStyle()
+        let introTitle = UILabel()
+        introTitle.text = "📖 什么是微信协议？"
+        introTitle.font = .systemFont(ofSize: 15, weight: .bold)
+        introTitle.textColor = .label
+        let introBody = UILabel()
+        introBody.text = "微信协议是一种自动化工具，主要用于获取微信小程序的登录凭证（CK）。\n\n【主要作用】\n\u{2022} 自动获取小程序CK，无需手动抓包\n\u{2022} CK通常有有效期，配合微信协议可保持永不过期\n\u{2022} 支持微信协议的项目，只需提交微信ID即可自动上车\n\n【使用场景】\n如果某个项目标注「支持微信协议」，你只需要：\n1. 在此页面扫码或提交微信ID绑定设备\n2. 在项目中心选择支持微信协议的项目上车\n3. 系统会自动使用你的微信身份完成任务"
+        introBody.font = .systemFont(ofSize: 13)
+        introBody.textColor = .secondaryLabel
+        introBody.numberOfLines = 0
+        let introStack = UIStackView(arrangedSubviews: [introTitle, introBody])
+        introStack.axis = .vertical
+        introStack.spacing = 8
+        introStack.translatesAutoresizingMaskIntoConstraints = false
+        introCard.addSubview(introStack)
         NSLayoutConstraint.activate([
-            statusStack.topAnchor.constraint(equalTo: statusCard.topAnchor, constant: 18),
-            statusStack.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: 18),
-            statusStack.trailingAnchor.constraint(equalTo: statusCard.trailingAnchor, constant: -18),
-            statusStack.bottomAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: -18)
+            introStack.topAnchor.constraint(equalTo: introCard.topAnchor, constant: 14),
+            introStack.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 14),
+            introStack.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -14),
+            introStack.bottomAnchor.constraint(equalTo: introCard.bottomAnchor, constant: -14)
         ])
-        mainStack.addArrangedSubview(statusCard)
+        mainStack.addArrangedSubview(introCard)
+
+        let deviceLabel = UILabel()
+        deviceLabel.text = "📱 监控设备"
+        deviceLabel.font = .systemFont(ofSize: 17, weight: .bold)
+        refreshDeviceBtn.setTitle("刷新设备列表", for: .normal)
+        refreshDeviceBtn.titleLabel?.font = .systemFont(ofSize: 13, weight: .medium)
+        refreshDeviceBtn.addTarget(self, action: #selector(loadDevices), for: .touchUpInside)
+        let deviceHeader = UIStackView(arrangedSubviews: [deviceLabel, UIView(), refreshDeviceBtn])
+        deviceHeader.axis = .horizontal
+        deviceContainer.axis = .vertical
+        deviceContainer.spacing = 10
+        let deviceStack = UIStackView(arrangedSubviews: [deviceHeader, deviceContainer])
+        deviceStack.axis = .vertical
+        deviceStack.spacing = 12
+        mainStack.addArrangedSubview(deviceStack)
 
         let gridLabel = UILabel()
         gridLabel.text = "快捷操作"
         gridLabel.font = .systemFont(ofSize: 17, weight: .bold)
-
         let scanAction = ActionButton(icon: "qrcode.viewfinder", title: "扫码登录", desc: "微信扫码授权登录", tint: .systemBlue)
         scanAction.tapAction = { [weak self] in self?.scanLogin() }
         let reloginAction = ActionButton(icon: "arrow.clockwise", title: "重新登录", desc: "重新获取登录凭证", tint: .systemPurple)
@@ -1721,7 +1922,6 @@ final class WechatProtocolViewController: BaseNativeViewController {
         logoutActionBtn.tapAction = { [weak self] in self?.logoutAction() }
         let deleteActionBtn = ActionButton(icon: "trash.fill", title: "删除设备", desc: "清除设备数据后重新扫码", tint: .systemRed)
         deleteActionBtn.tapAction = { [weak self] in self?.deleteAction() }
-
         let row1 = UIStackView(arrangedSubviews: [scanAction, reloginAction])
         row1.axis = .horizontal
         row1.spacing = 10
@@ -1735,25 +1935,6 @@ final class WechatProtocolViewController: BaseNativeViewController {
         gridStack.spacing = 10
         mainStack.addArrangedSubview(gridStack)
         deleteActionBtn.heightAnchor.constraint(equalToConstant: 68).isActive = true
-
-        let deviceLabel = UILabel()
-        deviceLabel.text = "监控设备"
-        deviceLabel.font = .systemFont(ofSize: 17, weight: .bold)
-
-        refreshDeviceBtn.setTitle("刷新设备列表", for: .normal)
-        refreshDeviceBtn.titleLabel?.font = .systemFont(ofSize: 13, weight: .medium)
-        refreshDeviceBtn.addTarget(self, action: #selector(loadDevices), for: .touchUpInside)
-
-        let deviceHeader = UIStackView(arrangedSubviews: [deviceLabel, UIView(), refreshDeviceBtn])
-        deviceHeader.axis = .horizontal
-
-        deviceContainer.axis = .vertical
-        deviceContainer.spacing = 10
-
-        let deviceStack = UIStackView(arrangedSubviews: [deviceHeader, deviceContainer])
-        deviceStack.axis = .vertical
-        deviceStack.spacing = 12
-        mainStack.addArrangedSubview(deviceStack)
     }
 
     private func loadStatus(silent: Bool = false) {

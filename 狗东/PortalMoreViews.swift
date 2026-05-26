@@ -13,12 +13,10 @@ final class MoreViewController: UITableViewController {
         super.viewDidLoad()
         title = "更多"
         tableView = UITableView(frame: .zero, style: .insetGrouped)
-       NotificationCenter.default.addObserver(self, selector: #selector(reloadBadge), name: AppNotifications.sessionDidChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(reloadBadge), name: AppNotifications.sessionDidChange, object: nil)
     }
 
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
+    deinit { NotificationCenter.default.removeObserver(self) }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -194,10 +192,15 @@ extension NotificationListViewController: UITableViewDataSource, UITableViewDele
         cell.textLabel?.numberOfLines = 2
         cell.textLabel?.font = .systemFont(ofSize: 15, weight: item.isTop == true ? .semibold : .regular)
         cell.textLabel?.textColor = item.isRead ? .secondaryLabel : .label
-        let preview = item.content?.prefix(80) ?? ""
-        cell.detailTextLabel?.text = String(preview)
+
+        var detailParts: [String] = []
+        if let createdAt = item.createdAt, !createdAt.isEmpty { detailParts.append(createdAt) }
+        let preview = item.content?.prefix(60) ?? ""
+        if !preview.isEmpty { detailParts.append(String(preview)) }
+        cell.detailTextLabel?.text = detailParts.joined(separator: " · ")
         cell.detailTextLabel?.numberOfLines = 2
         cell.detailTextLabel?.textColor = .tertiaryLabel
+
         if !item.isRead {
             let dot = UIView()
             dot.backgroundColor = .systemBlue
@@ -235,6 +238,15 @@ extension NotificationListViewController: UITableViewDataSource, UITableViewDele
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let item = notifications[indexPath.row]
+        if !item.isRead {
+            PortalService.shared.markNotificationRead(id: item.id) { _ in }
+            notifications[indexPath.row] = PortalNotification(
+                id: item.id, title: item.title, content: item.content, category: item.category,
+                source: item.source, isRead: true, displayType: item.displayType,
+                isTop: item.isTop, createdAt: item.createdAt, readAt: item.readAt
+            )
+            tableView.reloadRows(at: [indexPath], with: .none)
+        }
         navigationController?.pushViewController(NotificationDetailViewController(notification: item), animated: true)
     }
 }
@@ -418,28 +430,15 @@ final class FeedbackViewController: BaseNativeViewController, UITextFieldDelegat
 
 
 final class AboutVersionViewController: UITableViewController {
-    private var updateInfo: String = "暂无更新信息"
-
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "关于版本"
         tableView = UITableView(frame: .zero, style: .insetGrouped)
-        loadUpdateInfo()
-    }
-
-    private func loadUpdateInfo() {
-        PortalService.shared.fetchHomeSnapshot { [weak self] result in
-            if case .success = result {
-                self?.tableView.reloadData()
-            }
-        }
     }
 
     override func numberOfSections(in tableView: UITableView) -> Int { 2 }
 
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        section == 0 ? 1 : 1
-    }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { 1 }
 
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         section == 0 ? "版本信息" : "更新内容"
@@ -469,10 +468,10 @@ final class AboutVersionViewController: UITableViewController {
 enum LiquidGlassEffect {
     static func applyToTabBar(_ tabBar: UITabBar) {
         let appearance = UITabBarAppearance()
-        appearance.configureWithTransparentBackground()
-        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
-        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.6)
-        appearance.shadowColor = UIColor.clear
+        appearance.configureWithDefaultBackground()
+        appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
+        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.85)
+        appearance.shadowColor = UIColor.separator.withAlphaComponent(0.3)
         tabBar.standardAppearance = appearance
         if #available(iOS 15.0, *) {
             tabBar.scrollEdgeAppearance = appearance
@@ -481,10 +480,10 @@ enum LiquidGlassEffect {
 
     static func applyToNavBar(_ navBar: UINavigationBar) {
         let appearance = UINavigationBarAppearance()
-        appearance.configureWithTransparentBackground()
-        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
-        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.6)
-        appearance.shadowColor = UIColor.clear
+        appearance.configureWithDefaultBackground()
+        appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
+        appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.85)
+        appearance.shadowColor = UIColor.separator.withAlphaComponent(0.3)
         appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
         navBar.standardAppearance = appearance
@@ -501,5 +500,15 @@ enum LiquidGlassEffect {
         blurView.clipsToBounds = true
         view.insertSubview(blurView, at: 0)
         view.backgroundColor = .clear
+    }
+
+    static func tabBarBounceAnimation(_ view: UIView) {
+        UIView.animate(withDuration: 0.15, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5, options: []) {
+            view.transform = CGAffineTransform(scaleX: 0.85, y: 0.85)
+        } completion: { _ in
+            UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.5, initialSpringVelocity: 0.3, options: []) {
+                view.transform = .identity
+            }
+        }
     }
 }

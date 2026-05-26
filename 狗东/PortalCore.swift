@@ -786,6 +786,15 @@ final class PortalService {
         APIClient.shared.requestMessage(path: "/api/portal/pray", completion: completion)
     }
 
+    func markNotificationRead(id: Int, completion: @escaping (Result<Void, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/notification/read?id=\(id)", method: "POST") { (result: Result<EmptyPayload, APIError>) in
+            switch result {
+            case .success: completion(.success(()))
+            case .failure(let error): completion(.failure(error))
+            }
+        }
+    }
+
     func fetchNotifications(includeContent: Bool = true, completion: @escaping (Result<PortalNotificationPage, APIError>) -> Void) {
         let path = "/api/portal/notifications?includeContent=\(includeContent ? "1" : "0")&limit=100"
         struct NotificationsData: Decodable {
