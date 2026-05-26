@@ -3802,7 +3802,7 @@ function parseActivitiesYaml(yaml) {
     const actStartIndices = [];  // 每个"- 名称:"行的 index
     
     for (let i = 0; i < lines.length; i++) {
-        if (/^\s{2}-\s+名称:\s*.+$/.test(lines[i])) {
+        if (/^\s*- \s*名称:\s*.+$/.test(lines[i])) {
             actStartIndices.push(i);
         }
     }
@@ -3829,9 +3829,10 @@ function parseSingleActivityBlock(block) {
     const inputFields = [];
     let curField = null;
     let curRule = null;
+    let inBlockScalar = false;
     
     // 第一行: "- 名称: xxx"
-    const firstMatch = lines[0].match(/^\s{2}-\s+(\S+):\s*(.*)$/);
+    const firstMatch = lines[0].match(/^\s*- \s*(\S+):\s*(.*)$/);
     if (!firstMatch) return null;
     act[firstMatch[1]] = cleanValue(firstMatch[2]);
     
@@ -3843,6 +3844,17 @@ function parseSingleActivityBlock(block) {
         if (trimmed === '' || trimmed.startsWith('#')) continue;
         
         const indent = line.length - line.trimStart().length;
+        
+        // 处理多行块标量（| 或 |-）的续行
+        if (inBlockScalar) {
+            if (indent > 2) {
+                // 仍在块标量内容中，跳过
+                continue;
+            } else {
+                // 缩进回到2或更少，块标量结束
+                inBlockScalar = false;
+            }
+        }
         
         // 输入字段开始: "输入字段:"
         if (/^输入字段:/.test(trimmed)) {
@@ -3862,15 +3874,15 @@ function parseSingleActivityBlock(block) {
             continue;
         }
         
-        // 脚本子项: indent=6 的 key:value
-        if (inScripts && indent <= 8) {
+        // 脚本子项: indent=4 的 key:value
+        if (inScripts && indent <= 4) {
             const m = trimmed.match(/^(\S+):\s*(.*)$/);
             if (m) act['script_' + m[1]] = cleanValue(m[2]);
             continue;
         }
         
-        // 新输入字段: indent=6~7 以 "-" 开头
-        if (inFields && indent >= 6 && indent <= 7 && trimmed.startsWith('- ')) {
+        // 新输入字段: indent=2~3 以 "-" 开头
+        if (inFields && indent >= 2 && indent <= 3 && trimmed.startsWith('- ')) {
             if (curField) inputFields.push(curField);
             curField = {};
             curRule = null;
@@ -3880,7 +3892,7 @@ function parseSingleActivityBlock(block) {
         }
         
         // 验证规则子属性 或 字段属性
-        if (inFields && curField && indent >= 8) {
+        if (inFields && curField && indent >= 4) {
             if (trimmed === '验证规则:' || trimmed === '验证规则: []') {
                 if (trimmed.endsWith('[]')) curField._rules = [];
                 curRule = null;
@@ -3906,7 +3918,7 @@ function parseSingleActivityBlock(block) {
             const kv = trimmed.match(/^(\S+):\s*(.*)$/);
             if (kv) {
                 const k = kv[1], rawV = kv[2].trim();
-                if (curRule && indent >= 12) {
+                if (curRule && indent >= 8) {
                     curRule[k] = cleanValue(rawV);
                 } else {
                     curField[k] = cleanValue(rawV);
@@ -3916,14 +3928,15 @@ function parseSingleActivityBlock(block) {
             }
         }
         
-        // ===== 关键修复：indent=4 的活动级属性 =====
-        // YAML 中 CK构建模板、备注构建模板 等位于"输入字段"之后、"脚本路径"之前
-        // 此时 inFields 可能仍为 true，导致这些属性被错误跳过
-        // 修复：当 indent=4 时，强制退出字段模式并作为活动属性处理
-        if (indent === 4) {
+        // indent=2 的活动级属性
+        if (indent === 2) {
             const m = trimmed.match(/^(\S+):\s*(.*)$/);
             if (m) {
                 act[m[1]] = cleanValue(m[2]);
+                // 检查是否是多行块标量（| 或 |-）
+                if (m[2].trim() === '|' || m[2].trim() === '|-') {
+                    inBlockScalar = true;
+                }
                 // 如果当前还在字段模式中，说明已退出字段区域，保存当前字段
                 if (curField) { inputFields.push(curField); curField = null; }
                 curRule = null;
@@ -3933,8 +3946,8 @@ function parseSingleActivityBlock(block) {
             }
         }
         
-        // 兜底：其他 indent=4 属性（原逻辑保留）
-        if (indent === 4 && !inFields && !inScripts) {
+        // 兜底：其他 indent=2 属性（原逻辑保留）
+        if (indent === 2 && !inFields && !inScripts) {
             const m = trimmed.match(/^(\S+):\s*(.*)$/);
             if (m) act[m[1]] = cleanValue(m[2]);
         }
@@ -4184,34 +4197,34 @@ function generateActivitiesYaml(acts) {
     }
     let yaml = prefix + `activities:\n`;
     for (const a of acts) {
-        yaml += `  - 名称: "${escapeYamlString(a['名称'])}"
-    环境变量名: "${escapeYamlString(a['环境变量名'])}"
-    所需积分: ${a['所需积分'] || 0}
-    青龙配置名: "${escapeYamlString(a['青龙配置名'])}"
-    是否按月扣费: ${a['是否按月扣费'] === true}
-    每月积分: ${a['每月积分'] || 0}
-    排序编号: ${a['排序编号'] || 0}
-    启用状态: ${a['启用状态'] === true}
-    玩法和说明: "${escapeYamlString(a['玩法和说明'])}"
+        yaml += `- 名称: "${escapeYamlString(a['名称'])}"
+  环境变量名: "${escapeYamlString(a['环境变量名'])}"
+  所需积分: ${a['所需积分'] || 0}
+  青龙配置名: "${escapeYamlString(a['青龙配置名'])}"
+  是否按月扣费: ${a['是否按月扣费'] === true}
+  每月积分: ${a['每月积分'] || 0}
+  排序编号: ${a['排序编号'] || 0}
+  启用状态: ${a['启用状态'] === true}
+  玩法和说明: "${escapeYamlString(a['玩法和说明'])}"
 `;
         const fields = a._inputFields || [];
-        if (fields.length === 0) { yaml += `    输入字段: []\n`; }
+        if (fields.length === 0) { yaml += `  输入字段: []\n`; }
         else {
-            yaml += `    输入字段:\n`;
+            yaml += `  输入字段:\n`;
             for (const f of fields) {
-                yaml += `      - 字段标识: "${escapeYamlString(f['字段标识'])}"\n        提示文本: "${escapeYamlString(f['提示文本'])}"\n`;
+                yaml += `  - 字段标识: "${escapeYamlString(f['字段标识'])}"\n    提示文本: "${escapeYamlString(f['提示文本'])}"\n`;
                 const rules = f._rules || [];
-                if (rules.length === 0) { yaml += `        验证规则: []\n`; }
+                if (rules.length === 0) { yaml += `    验证规则: []\n`; }
                 else {
-                    yaml += `        验证规则:\n`;
+                    yaml += `    验证规则:\n`;
                     for (const ruleItem of rules) {
                         const r = normalizeRuleForStorage(ruleItem);
-                        yaml += `          - 类型: "${escapeYamlString(r['类型'] || 'not_empty')}"\n`;
-                        if (r['正则表达式']) yaml += `            正则表达式: "${escapeYamlString(String(r['正则表达式']))}"\n`;
-                        if (r['字符列表']) yaml += `            字符列表: ${toYamlStringArray(r['字符列表'])}\n`;
-                        if (r['值']) yaml += `            值: "${escapeYamlString(String(r['值']))}"\n`;
-                        if (r['长度'] !== undefined) yaml += `            长度: ${r['长度']}\n`;
-                        if (r['错误提示']) yaml += `            错误提示: "${escapeYamlString(String(r['错误提示']))}"\n`;
+                        yaml += `    - 类型: "${escapeYamlString(r['类型'] || 'not_empty')}"\n`;
+                        if (r['正则表达式']) yaml += `      正则表达式: "${escapeYamlString(String(r['正则表达式']))}"\n`;
+                        if (r['字符列表']) yaml += `      字符列表: ${toYamlStringArray(r['字符列表'])}\n`;
+                        if (r['值']) yaml += `      值: "${escapeYamlString(String(r['值']))}"\n`;
+                        if (r['长度'] !== undefined) yaml += `      长度: ${r['长度']}\n`;
+                        if (r['错误提示']) yaml += `      错误提示: "${escapeYamlString(String(r['错误提示']))}"\n`;
                     }
                 }
                 var fieldErrMsg = '';
@@ -4219,11 +4232,11 @@ function generateActivitiesYaml(acts) {
                     var firstErrRule = rules.find(function(rr){ return rr['错误提示']; });
                     if (firstErrRule) fieldErrMsg = firstErrRule['错误提示'];
                 }
-                if (fieldErrMsg) yaml += `        错误提示: "${escapeYamlString(fieldErrMsg)}"\n`;
-                yaml += `        是否必填: ${f['是否必填'] === true}\n        是否去空格: ${f['是否去空格'] === true}\n        超时秒数: ${f['超时秒数'] || 60}\n`;
+                if (fieldErrMsg) yaml += `    错误提示: "${escapeYamlString(fieldErrMsg)}"\n`;
+                yaml += `    是否必填: ${f['是否必填'] === true}\n    是否去空格: ${f['是否去空格'] === true}\n    超时秒数: ${f['超时秒数'] || 60}\n`;
             }
         }
-        yaml += `    CK构建模板: "${escapeYamlString(a['CK构建模板'])}"\n    备注构建模板: "${escapeYamlString(a['备注构建模板'])}"\n    脚本路径:\n      查询: "${escapeYamlString(a['script_查询'])}"\n      记录: "${escapeYamlString(a['script_记录'])}"\n      更新: "${escapeYamlString(a['script_更新'])}"\n      查询环境变量: "${escapeYamlString(a['script_查询环境变量'])}"\n      删除: "${escapeYamlString(a['script_删除'])}"\n\n`;
+        yaml += `  CK构建模板: "${escapeYamlString(a['CK构建模板'])}"\n  备注构建模板: "${escapeYamlString(a['备注构建模板'])}"\n  脚本路径:\n    查询: "${escapeYamlString(a['script_查询'])}"\n    记录: "${escapeYamlString(a['script_记录'])}"\n    更新: "${escapeYamlString(a['script_更新'])}"\n    查询环境变量: "${escapeYamlString(a['script_查询环境变量'])}"\n    删除: "${escapeYamlString(a['script_删除'])}"\n\n`;
     }
     return yaml;
 }
