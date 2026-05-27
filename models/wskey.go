@@ -96,64 +96,52 @@ func appjmp(tokenKey string) (string, error) {
 
 
 func LoginSelect(sender *Sender, msg chan string) {
-    for {
-        select {
-        case n, ok := <-msg:
-            if !ok {
-                sender.Reply("通道已关闭，退出登录流程")
-                loginList[sender.UserID] = nil
-                return
-            }
+	defer func() {
+		delete(loginList, sender.UserID)
+	}()
 
-            // 判断是否输入了 "q" 退出
-            if n == "q" {
-                loginList[sender.UserID] = nil
-                sender.Reply("已退出登录流程")
-                close(msg)
-                return
-            }
+	for {
+		select {
+		case n, ok := <-msg:
+			if !ok {
+				sender.Reply("通道已关闭，退出登录流程")
+				return
+			}
 
-            // num, err := strconv.Atoi(n)
-            _, err := strconv.Atoi(n)
-            if err != nil {
-                sender.Reply("当前仅支持短信登录，请直接发送【短信登录】或【登录】进行操作")
-                loginList[sender.UserID] = nil
-                return
-            }
+			if n == "q" {
+				sender.Reply("已退出登录流程")
+				close(msg)
+				return
+			}
 
-            // if Config.QQID == 694738267 {
-            //     switch num {
-            //     case 1:
-            //         loginList[sender.UserID] = nil
-            //         Auto := &UserSession{}
-            //         Autojdck(sender, Auto)
-            //     case 2:
-            //         loginList[sender.UserID] = nil
-            //         value := GetEnv("grouplogin")
-            //         if value == "" && (sender.Type == "qqg" || sender.Type == "wxg") {
-            //             logs.Error("se grouplogin")
-            //             sender.Reply("短信登录请添加本机器人好友后，私聊登录，避免信息泄露")
-            //             return
-            //         }
-            //         c2 := make(chan string)
-            //         smsList[sender.UserID] = c2
+			num, err := strconv.Atoi(n)
+			if err != nil {
+				sender.Reply("请输入数字 1 或 2，或输入 q 退出")
+				continue
+			}
 
-            //         sender.Reply("上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密")
-
-            //         go SmsSelect(sender, c2, "Nolan")
-            //     case 3:
-            //         loginList[sender.UserID] = nil
-            //         NolanGetJdQrImg(sender)
-            //     default:
-            //         sender.Reply("无效输入，请输入数字 1, 2, 3 或 'q' 退出登录流程")
-            //     }
-            // } else {
-            //     sender.Reply("无效QQID，无法处理登录请求")
-            //     close(msg)
-            //     return
-            // }
-            loginList[sender.UserID] = nil
-            sender.Reply("当前仅支持短信登录，请直接发送【短信登录】或【登录】进行操作")
-        }
-    }
+			switch num {
+			case 1:
+				close(msg)
+				value := GetEnv("grouplogin")
+				if value == "" && (sender.Type == "qqg" || sender.Type == "wxg") {
+					sender.Reply("短信登录请添加本机器人好友后，私聊登录，避免信息泄露")
+					return
+				}
+				c2 := make(chan string)
+				smsList[sender.UserID] = c2
+				sender.Reply("请输入手机号...\n上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密\n回复'q'退出登录流程")
+				go SmsSelect(sender, c2, "Nolan")
+				return
+			case 2:
+				close(msg)
+				c2 := make(chan string)
+				wxJdList[sender.UserID] = c2
+				go handleWxJdLogin(sender, c2)
+				return
+			default:
+				sender.Reply("无效输入，请输入数字 1 或 2，或输入 q 退出")
+			}
+		}
+	}
 }

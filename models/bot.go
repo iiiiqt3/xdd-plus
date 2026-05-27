@@ -207,6 +207,11 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		c2 <- msg
 		return nil
 	}
+	if wxJdList[sender.UserID] != nil {
+		c2 := wxJdList[sender.UserID]
+		c2 <- msg
+		return nil
+	}
 
 if TryHandleSshMessage(sender) {
     return nil
@@ -292,9 +297,9 @@ if TryHandleSshMessage(sender) {
 						return nil
 					}
 					c2 := make(chan string)
-					smsList[sender.UserID] = c2
-					sender.Reply("请输入手机号...\n上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密\n回复'q'退出登录流程")
-					go SmsSelect(sender, c2, "Nolan")
+					loginList[sender.UserID] = c2
+					sender.Reply("请选择登录方式：\n1️⃣ 短信登录\n2️⃣ 微信协议自动登录\n\n回复 q 退出登录流程")
+					go LoginSelect(sender, c2)
 				}
 			}
 

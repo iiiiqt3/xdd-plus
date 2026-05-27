@@ -2814,7 +2814,7 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"祈祷", "祈愿", "祈福"},
 		Handle: func(sender *Sender) interface{} {
-			sender.Reply("🔄 机器人端祈福功能升级中\n\n📱 请前往以下渠道完成祈福：\n• APP 用户后台 → 积分任务 → 祈福\n• 网页用户后台 → 积分任务 → 祈福\n\n⏳ 升级完成后将第一时间通知大家，感谢理解！")
+			sender.Reply("🔄 机器人端祈福功能升级中\n\n📱 请前往以下渠道完成祈福：\n\n💻 电脑网页用户\n请复制以下地址到浏览器打开：\nhttp://180.152.5.230:5701\n\n📲 手机用户\n⚠️ 请复制链接到浏览器打开，以免被腾讯拦截\n安卓版本下载地址：http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk\niOS版本下载地址：http://180.152.5.230:8888/down/QaWi0JBZgb3t.ipa\n\n⏳ 升级完成后将第一时间通知大家，感谢理解！")
 			return nil
 		},
 	},

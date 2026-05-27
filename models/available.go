@@ -137,18 +137,43 @@ func initCookie() {
 	
 	})
 	xj := 0
+	autoRefreshOK := 0
+	autoRefreshFail := 0
 	for _, ck := range cks {
 		if ck.Available == True && !CookieOK(&ck) {
-			//todo 通知账号失效
-			ck.Updates(JdCookie{Available: False})
-    		     time.Sleep(time.Duration(rand.Intn(3000)+1000) * time.Millisecond)
-	//		time.Sleep(time.Second)   //#时间改成1秒
-			ck.Push(fmt.Sprintf("1、失效账号，%s，你的账号%s已过期，快发送【密码登录】提交账号把。", ck.PtPin,ck.Nickname))
-			(&JdCookie{}).Push(fmt.Sprintf("失效账号：%s", ck.PtPin))
-			xj++
+			refreshed := false
+			wxid, found := findWxProtocolIDForCK(&ck)
+			if found {
+				ptKey, ptPin, err := wxJdRefreshCK(wxid)
+				if err == nil {
+					newCK := &JdCookie{PtKey: ptKey, PtPin: ptPin}
+					if CookieOK(newCK) {
+						if existingCK, e := GetJdCookie(ptPin); e == nil {
+							existingCK.Updates(JdCookie{PtKey: ptKey, Available: True, WeiXin: wxid, UpdateAt: Date()})
+						}
+						autoRefreshOK++
+						refreshed = true
+						(&JdCookie{}).Push(fmt.Sprintf("自动刷新成功: %s", ck.PtPin))
+					}
+				}
+				if !refreshed {
+					autoRefreshFail++
+				}
+			}
+			if !refreshed {
+				ck.Updates(JdCookie{Available: False})
+				time.Sleep(time.Duration(rand.Intn(3000)+1000) * time.Millisecond)
+				ck.Push(fmt.Sprintf("1、失效账号，%s，你的账号%s已过期，快发送【登录】提交账号把。", ck.PtPin, ck.Nickname))
+				(&JdCookie{}).Push(fmt.Sprintf("失效账号：%s", ck.PtPin))
+				xj++
+			}
 		}
 	}
-	(&JdCookie{}).Push(fmt.Sprintf("账号检测结束，失效账号%d个", xj))
+	summary := fmt.Sprintf("账号检测结束，失效账号%d个", xj)
+	if autoRefreshOK > 0 || autoRefreshFail > 0 {
+		summary += fmt.Sprintf("（微信协议自动刷新：成功%d，失败%d）", autoRefreshOK, autoRefreshFail)
+	}
+	(&JdCookie{}).Push(summary)
 	go func() {
 		Save <- &JdCookie{}
 	}()

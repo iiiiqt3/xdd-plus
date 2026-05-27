@@ -23,6 +23,7 @@ type WxProtocolConfig struct {
 	LoginBaseURL  string `yaml:"login_base_url"`
 	ScanLoginCost int    `yaml:"scan_login_cost"`
 	DeviceName    string `yaml:"device_name"`
+	JdServer      string `yaml:"jd_server"`
 }
 
 // GameConfig 游戏配置（支持热更新）
