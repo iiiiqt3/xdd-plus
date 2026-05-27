@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"gorm.io/gorm"
 )
 
 const (
@@ -310,18 +309,6 @@ func findUserProtocolDevices(sender *Sender) []string {
 	return devices
 }
 
-func wxJdListUserCKs(sender *Sender) []JdCookie {
-	var cks []JdCookie
-	var user User
-	if db.Where("number = ?", sender.UserID).First(&user).Error != nil {
-		return cks
-	}
-	cks = GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where("QQ = ?", user.Number)
-	})
-	return cks
-}
-
 func handleWxJdLogin(sender *Sender, msg chan string) {
 	defer func() {
 		delete(wxJdList, sender.UserID)
@@ -333,110 +320,79 @@ func handleWxJdLogin(sender *Sender, msg chan string) {
 		return
 	}
 
-	cks := wxJdListUserCKs(sender)
-	if len(cks) == 0 {
-		sender.Reply("❌ 未找到你绑定的京东账号，请先提交CK或通过短信登录上车。")
+	if len(devices) == 1 {
+		sender.Reply("⏳ 正在刷新，请稍候...")
+		wxJdRefreshByDevice(sender, devices[0])
 		return
 	}
 
-	var menu strings.Builder
-	menu.WriteString("📋 请选择要刷新的京东账号：\n\n")
-	raw, _ := getWxUserStatusRaw()
-	for i, ck := range cks {
-		status := "✅"
-		if ck.Available == False || !CookieOK(&ck) {
-			status = "❌"
-		}
-		nick := ck.Nickname
-		if nick == "" {
-			nick = ck.PtPin
-		}
-		wxNick := "未绑定微信协议"
-		if ck.WeiXin != "" {
-			wxNick = ck.WeiXin
-			if raw != nil {
-				if info, ok := raw.Data[ck.WeiXin]; ok && info.Nickname != "" {
-					wxNick = info.Nickname + "(" + ck.WeiXin + ")"
-				}
+	var devMenu strings.Builder
+	devMenu.WriteString("📱 请选择微信协议设备：\n\n")
+	devRaw, _ := getWxUserStatusRaw()
+	for i, d := range devices {
+		nick := d
+		if devRaw != nil {
+			if info, ok := devRaw.Data[d]; ok && info.Nickname != "" {
+				nick = info.Nickname
 			}
 		}
-		menu.WriteString(fmt.Sprintf("%d、%s %s → 微信:%s\n", i+1, status, nick, wxNick))
+		devMenu.WriteString(fmt.Sprintf("%d、%s (%s)\n", i+1, nick, d))
 	}
-	menu.WriteString("\n输入序号刷新对应账号，输入 0 刷新全部，输入 q 退出：")
-	sender.Reply(menu.String())
+	devMenu.WriteString("\n输入序号刷新对应设备，输入 0 刷新全部，输入 q 退出：")
+	sender.Reply(devMenu.String())
 
-	input, ok := wxJdWaitInput(sender, msg, 60)
+	devInput, ok := wxJdWaitInput(sender, msg, 60)
 	if !ok {
 		return
 	}
-	if input == "q" || input == "Q" {
+	if devInput == "q" || devInput == "Q" {
 		sender.Reply("已退出登录流程")
 		return
 	}
-	idx, err := strconv.Atoi(input)
-	if err != nil || idx < 0 || idx > len(cks) {
+	devIdx, err := strconv.Atoi(devInput)
+	if err != nil || devIdx < 0 || devIdx > len(devices) {
 		sender.Reply("输入无效，已退出登录流程")
 		return
 	}
 
-	wxid := devices[0]
-	if len(devices) > 1 {
-		var devMenu strings.Builder
-		devMenu.WriteString("检测到多个微信协议设备，请选择：\n\n")
-		devRaw, _ := getWxUserStatusRaw()
+	if devIdx == 0 {
+		sender.Reply(fmt.Sprintf("⏳ 正在刷新全部 %d 个设备，请稍候...", len(devices)))
+		success := 0
+		fail := 0
 		for i, d := range devices {
-			nick := d
-			if devRaw != nil {
-				if info, ok := devRaw.Data[d]; ok && info.Nickname != "" {
-					nick = info.Nickname
-				}
+			if i > 0 {
+				time.Sleep(time.Duration(rand.Intn(2000)+3000) * time.Millisecond)
 			}
-			devMenu.WriteString(fmt.Sprintf("%d、%s (%s)\n", i+1, nick, d))
+			if wxJdRefreshByDevice(sender, d) {
+				success++
+			} else {
+				fail++
+			}
 		}
-		sender.Reply(devMenu.String())
-		devInput, ok := wxJdWaitInput(sender, msg, 60)
-		if !ok {
-			return
-		}
-		devIdx, err := strconv.Atoi(devInput)
-		if err != nil || devIdx < 1 || devIdx > len(devices) {
-			sender.Reply("输入无效，已退出登录流程")
-			return
-		}
-		wxid = devices[devIdx-1]
-	}
-
-	if idx == 0 {
-		wxJdRefreshAllCK(sender, cks, wxid)
+		sender.Reply(fmt.Sprintf("🔄 批量刷新完成\n✅ 成功: %d\n❌ 失败: %d", success, fail))
 	} else {
-		ck := cks[idx-1]
-		wxJdRefreshSingleCK(sender, &ck, wxid)
+		sender.Reply("⏳ 正在刷新，请稍候...")
+		wxJdRefreshByDevice(sender, devices[devIdx-1])
 	}
 }
 
-func wxJdRefreshSingleCK(sender *Sender, ck *JdCookie, wxid string) {
-	nick := ck.Nickname
-	if nick == "" {
-		nick = ck.PtPin
-	}
-	sender.Reply(fmt.Sprintf("⏳ 正在为 [%s] 刷新CK，请稍候...", nick))
+func wxJdRefreshByDevice(sender *Sender, wxid string) bool {
 	ptKey, ptPin, err := wxJdRefreshCK(wxid)
 	if err != nil {
 		sender.Reply(fmt.Sprintf("❌ 刷新失败: %v", err))
-		return
+		return false
 	}
 	newCK := &JdCookie{PtKey: ptKey, PtPin: ptPin}
 	if !CookieOK(newCK) {
 		sender.Reply("❌ 刷新成功但CK验证无效，可能被风控，请稍后重试")
-		return
+		return false
 	}
-	if existingCK, err := GetJdCookie(ptPin); err == nil {
-		existingCK.Updates(JdCookie{
-			PtKey:     ptKey,
-			Available: True,
-			WeiXin:    wxid,
-			UpdateAt:  Date(),
-		})
+	nick := ptPin
+	if existingCK, e := GetJdCookie(ptPin); e == nil {
+		existingCK.Updates(JdCookie{PtKey: ptKey, Available: True, WeiXin: wxid, UpdateAt: Date()})
+		if existingCK.Nickname != "" {
+			nick = existingCK.Nickname
+		}
 	} else {
 		newCK.WeiXin = wxid
 		newCK.QQ = sender.UserID
@@ -444,51 +400,8 @@ func wxJdRefreshSingleCK(sender *Sender, ck *JdCookie, wxid string) {
 		NewJdCookie(newCK)
 	}
 	sender.Reply(fmt.Sprintf("✅ [%s] CK刷新成功！", nick))
-	(&JdCookie{}).Push(fmt.Sprintf("微信协议自动刷新成功: %s (wxid: %s)", nick, wxid))
-}
-
-func wxJdRefreshAllCK(sender *Sender, cks []JdCookie, defaultWxid string) {
-	sender.Reply(fmt.Sprintf("⏳ 正在批量刷新 %d 个账号，请稍候...", len(cks)))
-	success := 0
-	fail := 0
-	for i, ck := range cks {
-		if i > 0 {
-			time.Sleep(time.Duration(rand.Intn(2000)+3000) * time.Millisecond)
-		}
-		wxid := defaultWxid
-		if ck.WeiXin != "" {
-			online, err := checkWxDeviceOnline(ck.WeiXin)
-			if err == nil && online {
-				wxid = ck.WeiXin
-			}
-		}
-		nick := ck.Nickname
-		if nick == "" {
-			nick = ck.PtPin
-		}
-		ptKey, ptPin, err := wxJdRefreshCK(wxid)
-		if err != nil {
-			logs.Error("批量刷新失败 %s: %v", nick, err)
-			fail++
-			continue
-		}
-		newCK := &JdCookie{PtKey: ptKey, PtPin: ptPin}
-		if !CookieOK(newCK) {
-			fail++
-			continue
-		}
-		if existingCK, err := GetJdCookie(ptPin); err == nil {
-			existingCK.Updates(JdCookie{
-				PtKey:     ptKey,
-				Available: True,
-				WeiXin:    wxid,
-				UpdateAt:  Date(),
-			})
-			success++
-		}
-	}
-	sender.Reply(fmt.Sprintf("🔄 批量刷新完成\n✅ 成功: %d\n❌ 失败: %d", success, fail))
-	(&JdCookie{}).Push(fmt.Sprintf("微信协议批量刷新完成: 成功%d 失败%d", success, fail))
+	(&JdCookie{}).Push(fmt.Sprintf("微信协议刷新成功: %s (设备: %s)", nick, wxid))
+	return true
 }
 
 func wxJdWaitInput(sender *Sender, msg chan string, timeoutSec int) (string, bool) {
