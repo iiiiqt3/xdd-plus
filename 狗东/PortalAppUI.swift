@@ -564,7 +564,13 @@ final class HomeDashboardViewController: BaseNativeViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
         reloadData()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
     }
 
     private func startWxAutoRefresh() {
@@ -590,7 +596,7 @@ final class HomeDashboardViewController: BaseNativeViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 8),
+            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 2),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -12),
@@ -882,6 +888,16 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         view.backgroundColor = .systemGroupedBackground
         setupUI()
         switchTo(index: 0)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
     }
 
     private func setupUI() {
@@ -1705,8 +1721,11 @@ final class ProjectIncomeViewController: BaseNativeViewController {
 final class ProjectEditCKViewController: BaseNativeViewController {
     private let project: PortalProject
     private let onSaved: (String) -> Void
-    private var fieldInputs: [UITextField] = []
+    private var fieldInputs: [String: UITextField] = [:]
+    private var fieldNames: [String] = []
     private let previewLabel = UILabel()
+    private var ckTemplate: String = ""
+    private var isRawMode = false
 
     init(project: PortalProject, onSaved: @escaping (String) -> Void) {
         self.project = project
@@ -1725,15 +1744,39 @@ final class ProjectEditCKViewController: BaseNativeViewController {
         navigationItem.largeTitleDisplayMode = .never
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "保存", style: .done, target: self, action: #selector(saveTapped))
 
+        ckTemplate = project.ckTemplate ?? ""
+        let envValue = project.envValue ?? ""
+        let inputFields = project.inputFields ?? []
+
+        let templateFieldKeys = getCkTemplateFields(ckTemplate)
+        let parsed = splitCkValueByTemplate(ckTemplate, envValue)
+        let visibleFields = inputFields.filter { templateFieldKeys.contains($0.key) }
+
+        if parsed != nil && !visibleFields.isEmpty {
+            isRawMode = false
+            fieldNames = visibleFields.map { $0.key }
+            for field in visibleFields {
+                fieldInputs[field.key] = nil
+            }
+        } else {
+            isRawMode = true
+        }
+
         let remarkLabel = UILabel()
         remarkLabel.text = "当前备注：\(project.remark ?? project.displayName ?? project.activityName ?? "项目")"
         remarkLabel.font = .systemFont(ofSize: 14, weight: .medium)
         remarkLabel.textColor = .secondaryLabel
         remarkLabel.numberOfLines = 0
 
-        let envKey = project.envKey ?? "JD_COOKIE"
-        let envValue = project.envValue ?? ""
-        let fields = parseEnvFields(envValue: envValue, envKey: envKey)
+        let noticeLabel = UILabel()
+        if isRawMode {
+            noticeLabel.text = "当前活动无法按字段自动拆分，请直接编辑原始值。请保留字段名和连接符格式。"
+        } else {
+            noticeLabel.text = "已按活动配置拆分为字段编辑。请只修改字段值，字段名和连接符会在保存时自动组合。"
+        }
+        noticeLabel.font = .systemFont(ofSize: 12)
+        noticeLabel.textColor = .tertiaryLabel
+        noticeLabel.numberOfLines = 0
 
         let scrollView = UIScrollView()
         let stack = UIStackView()
@@ -1741,42 +1784,47 @@ final class ProjectEditCKViewController: BaseNativeViewController {
         stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        remarkLabel.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(remarkLabel)
+        view.addSubview(noticeLabel)
         view.addSubview(scrollView)
         scrollView.addSubview(stack)
+        remarkLabel.translatesAutoresizingMaskIntoConstraints = false
+        noticeLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             remarkLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             remarkLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             remarkLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            scrollView.topAnchor.constraint(equalTo: remarkLabel.bottomAnchor, constant: 8),
+            noticeLabel.topAnchor.constraint(equalTo: remarkLabel.bottomAnchor, constant: 4),
+            noticeLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            noticeLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            scrollView.topAnchor.constraint(equalTo: noticeLabel.bottomAnchor, constant: 8),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 8),
+            stack.topAnchor.constraint(equalTo: scrollView.topAnchor),
             stack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
             stack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32)
         ])
 
-        for (key, value) in fields {
+        if isRawMode {
             let titleLabel = UILabel()
-            titleLabel.text = key
+            titleLabel.text = "原始 CK 值"
             titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
             titleLabel.textColor = .secondaryLabel
             let input = UITextField()
-            input.text = value
+            input.text = envValue
             input.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
             input.borderStyle = .roundedRect
             input.autocorrectionType = .no
             input.autocapitalizationType = .none
             input.backgroundColor = .secondarySystemBackground
             input.clearButtonMode = .whileEditing
-            input.accessibilityIdentifier = key
+            input.accessibilityIdentifier = "__raw__"
             input.addTarget(self, action: #selector(fieldChanged), for: .editingChanged)
-            fieldInputs.append(input)
+            fieldInputs["__raw__"] = input
             let card = UIView()
             card.applyCardStyle(cornerRadius: 12)
             let innerStack = UIStackView(arrangedSubviews: [titleLabel, input])
@@ -1789,15 +1837,61 @@ final class ProjectEditCKViewController: BaseNativeViewController {
                 innerStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
                 innerStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
                 innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
-                input.heightAnchor.constraint(greaterThanOrEqualToConstant: 40)
+                input.heightAnchor.constraint(greaterThanOrEqualToConstant: 80)
             ])
             stack.addArrangedSubview(card)
+        } else {
+            for field in visibleFields {
+                let key = field.key
+                let prompt = field.prompt.isEmpty ? key : field.prompt
+                let value = parsed?[key] ?? ""
+
+                let titleLabel = UILabel()
+                titleLabel.text = key
+                titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+                titleLabel.textColor = .systemBlue
+
+                let input = UITextField()
+                input.text = value
+                input.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
+                input.borderStyle = .roundedRect
+                input.autocorrectionType = .no
+                input.autocapitalizationType = .none
+                input.backgroundColor = .secondarySystemBackground
+                input.clearButtonMode = .whileEditing
+                input.accessibilityIdentifier = key
+                input.addTarget(self, action: #selector(fieldChanged), for: .editingChanged)
+                fieldInputs[key] = input
+
+                let card = UIView()
+                card.applyCardStyle(cornerRadius: 12)
+                let subviews: [UIView] = prompt != key ? {
+                    let promptLabel = UILabel()
+                    promptLabel.text = prompt
+                    promptLabel.font = .systemFont(ofSize: 11)
+                    promptLabel.textColor = .tertiaryLabel
+                    return [titleLabel, promptLabel, input]
+                }() : [titleLabel, input]
+                let innerStack = UIStackView(arrangedSubviews: subviews)
+                innerStack.axis = .vertical
+                innerStack.spacing = 6
+                innerStack.translatesAutoresizingMaskIntoConstraints = false
+                card.addSubview(innerStack)
+                NSLayoutConstraint.activate([
+                    innerStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+                    innerStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+                    innerStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+                    innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+                    input.heightAnchor.constraint(greaterThanOrEqualToConstant: 40)
+                ])
+                stack.addArrangedSubview(card)
+            }
         }
 
         let previewCard = UIView()
         previewCard.applyCardStyle(cornerRadius: 12)
         let previewTitle = UILabel()
-        previewTitle.text = "CK 预览"
+        previewTitle.text = "保存预览"
         previewTitle.font = .systemFont(ofSize: 13, weight: .semibold)
         previewTitle.textColor = .secondaryLabel
         previewLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
@@ -1820,13 +1914,6 @@ final class ProjectEditCKViewController: BaseNativeViewController {
         ])
         stack.addArrangedSubview(previewCard)
 
-        let tipLabel = UILabel()
-        tipLabel.text = "提示：输入字段后，下方会自动显示拼接后的完整 CK 值。"
-        tipLabel.font = .systemFont(ofSize: 12)
-        tipLabel.textColor = .tertiaryLabel
-        tipLabel.numberOfLines = 0
-        stack.addArrangedSubview(tipLabel)
-
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKb))
         tap.cancelsTouchesInView = false
         view.addGestureRecognizer(tap)
@@ -1838,49 +1925,124 @@ final class ProjectEditCKViewController: BaseNativeViewController {
 
     @objc private func fieldChanged() { updatePreview() }
 
-    private func updatePreview() {
-        var parts: [String] = []
-        for input in fieldInputs {
-            let key = input.accessibilityIdentifier ?? ""
-            let value = (input.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            if !value.isEmpty {
-                parts.append("\(key)=\(value)")
-            }
+    private func buildPreview() -> String {
+        if isRawMode {
+            return fieldInputs["__raw__"]?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         }
-        previewLabel.text = parts.isEmpty ? "（暂无数据）" : parts.joined(separator: ";")
+        if ckTemplate.isEmpty || fieldNames.isEmpty { return "" }
+        var result = ckTemplate
+        for name in fieldNames {
+            let value = fieldInputs[name]?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            result = result.replacingOccurrences(of: "{{.\(name)}}", with: value)
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func parseEnvFields(envValue: String, envKey: String) -> [(String, String)] {
-        let env = envValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        if env.contains(";") || env.contains("=") {
-            let pairs = env.components(separatedBy: ";").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            var results: [(String, String)] = []
-            for pair in pairs {
-                let parts = pair.components(separatedBy: "=")
-                if parts.count >= 2 {
-                    let key = parts[0].trimmingCharacters(in: .whitespaces)
-                    let value = parts.dropFirst().joined(separator: "=").trimmingCharacters(in: .whitespaces)
-                    results.append((key, value))
+    private func updatePreview() {
+        let text = buildPreview()
+        previewLabel.text = text.isEmpty ? "（暂无数据）" : text
+    }
+
+    private func getCkTemplateFields(_ template: String) -> [String] {
+        var fields: [String] = []
+        var seen = Set<String>()
+        let regex = try? NSRegularExpression(pattern: "\\{\\{\\.([^}]+)\\}\\}")
+        let nsTemplate = template as NSString
+        let results = regex?.matches(in: template, range: NSRange(location: 0, length: nsTemplate.length)) ?? []
+        for match in results {
+            if match.numberOfRanges >= 2 {
+                let key = nsTemplate.substring(with: match.range(at: 1))
+                if !seen.contains(key) {
+                    seen.insert(key)
+                    fields.append(key)
                 }
             }
-            if !results.isEmpty { return results }
         }
-        return [(envKey, env)]
+        return fields
+    }
+
+    private func splitCkValueByTemplate(_ template: String, _ value: String) -> [String: String]? {
+        let fieldKeys = getCkTemplateFields(template)
+        if fieldKeys.isEmpty { return nil }
+
+        let regex = try? NSRegularExpression(pattern: "\\{\\{\\.([^}]+)\\}\\}")
+        let nsTemplate = template as NSString
+        let matches = regex?.matches(in: template, range: NSRange(location: 0, length: nsTemplate.length)) ?? []
+        if matches.isEmpty { return nil }
+
+        struct Placeholder {
+            let key: String
+            let prefix: String
+            let endIdx: Int
+        }
+
+        var placeholders: [Placeholder] = []
+        var cursor = 0
+        for match in matches {
+            let key = nsTemplate.substring(with: match.range(at: 1))
+            let startIdx = match.range.location
+            let endIdx = match.range.location + match.range.length
+            let prefix = nsTemplate.substring(with: NSRange(location: cursor, length: startIdx - cursor))
+            placeholders.append(Placeholder(key: key, prefix: prefix, endIdx: endIdx))
+            cursor = endIdx
+        }
+        let suffix = nsTemplate.substring(from: cursor)
+
+        var pos = 0
+        var result: [String: String] = [:]
+        let nsValue = value as NSString
+
+        for i in 0..<placeholders.count {
+            let p = placeholders[i]
+            if !p.prefix.isEmpty {
+                let prefixRange = nsValue.range(of: p.prefix, options: [], range: NSRange(location: pos, length: nsValue.length - pos))
+                if prefixRange.location == NSNotFound { return nil }
+                pos = prefixRange.location + prefixRange.length
+            }
+
+            let nextPrefix: String
+            if i + 1 < placeholders.count {
+                nextPrefix = placeholders[i + 1].prefix
+            } else {
+                nextPrefix = suffix
+            }
+
+            var end = nsValue.length
+            if !nextPrefix.isEmpty {
+                let nextRange = nsValue.range(of: nextPrefix, options: [], range: NSRange(location: pos, length: nsValue.length - pos))
+                if nextRange.location == NSNotFound { return nil }
+                end = nextRange.location
+            }
+
+            result[p.key] = nsValue.substring(with: NSRange(location: pos, length: end - pos))
+            pos = end
+        }
+
+        if !suffix.isEmpty {
+            let suffixRange = nsValue.range(of: suffix, options: [], range: NSRange(location: pos, length: nsValue.length - pos))
+            if suffixRange.location == NSNotFound { return nil }
+            pos = suffixRange.location + suffixRange.length
+        }
+
+        if pos != nsValue.length { return nil }
+        return result
     }
 
     @objc private func saveTapped() {
-        var parts: [String] = []
-        for input in fieldInputs {
-            let key = input.accessibilityIdentifier ?? ""
-            let value = (input.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            if !value.isEmpty {
-                parts.append("\(key)=\(value)")
-            }
-        }
-        let ckValue = parts.joined(separator: ";")
+        let ckValue = buildPreview()
         if ckValue.isEmpty {
             showMessage("请至少填写一个字段")
             return
+        }
+        if !isRawMode {
+            for name in fieldNames {
+                let value = fieldInputs[name]?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                if value.isEmpty {
+                    showMessage("\(name) 不能为空")
+                    fieldInputs[name]?.becomeFirstResponder()
+                    return
+                }
+            }
         }
         navigationItem.rightBarButtonItem?.isEnabled = false
         PortalService.shared.updateProject(activityId: project.activityId, remarks: project.remark ?? "", ckValue: ckValue) { result in
@@ -2159,62 +2321,74 @@ final class WechatProtocolViewController: BaseNativeViewController {
         infoLabel.textColor = .secondaryLabel
         infoLabel.numberOfLines = 0
 
-        let btnRow = UIStackView()
-        btnRow.axis = .horizontal
-        btnRow.spacing = 8
-        btnRow.distribution = .fillEqually
+        let btnRow1 = UIStackView()
+        btnRow1.axis = .horizontal
+        btnRow1.spacing = 8
+        btnRow1.distribution = .fillEqually
+        let btnRow2 = UIStackView()
+        btnRow2.axis = .horizontal
+        btnRow2.spacing = 8
+        btnRow2.distribution = .fillEqually
 
-        if isPrimary {
-            [("唤醒", "bell.fill", "/api/portal/wx/wake-login"), ("重新登录", "arrow.clockwise", "/api/portal/wx/relogin"), ("登出", "power", "/api/portal/wx/logout")].forEach { (title, icon, path) in
-                let btn = UIButton(type: .system)
-                btn.setTitle(" \(title)", for: .normal)
-                btn.setImage(UIImage(systemName: icon), for: .normal)
-                btn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
-                btn.backgroundColor = .secondarySystemBackground
-                btn.layer.cornerRadius = 8
-                btn.heightAnchor.constraint(equalToConstant: 36).isActive = true
-                btn.addAction(UIAction { [weak self] _ in
-                    self?.confirmWxActionForDevice(title: title, message: "确认对设备「\(device.nickname ?? device.wxid ?? "")」执行\(title)？", path: path, wxid: device.wxid)
-                }, for: .touchUpInside)
-                btnRow.addArrangedSubview(btn)
-            }
-        } else {
-            [("唤醒", "bell.fill", "/api/portal/wx/wake-login"), ("登出", "power", "/api/portal/wx/logout")].forEach { (title, icon, path) in
-                let btn = UIButton(type: .system)
-                btn.setTitle(" \(title)", for: .normal)
-                btn.setImage(UIImage(systemName: icon), for: .normal)
-                btn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
-                btn.backgroundColor = .secondarySystemBackground
-                btn.layer.cornerRadius = 8
-                btn.heightAnchor.constraint(equalToConstant: 36).isActive = true
-                btn.addAction(UIAction { [weak self] _ in
-                    self?.confirmWxActionForDevice(title: title, message: "确认对监控设备执行\(title)？", path: path, wxid: device.wxid)
-                }, for: .touchUpInside)
-                btnRow.addArrangedSubview(btn)
-            }
-            let removeBtn = UIButton(type: .system)
-            removeBtn.setTitle(" 移除", for: .normal)
-            removeBtn.setImage(UIImage(systemName: "trash"), for: .normal)
-            removeBtn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
-            removeBtn.setTitleColor(.systemRed, for: .normal)
-            removeBtn.backgroundColor = .secondarySystemBackground
-            removeBtn.layer.cornerRadius = 8
-            removeBtn.heightAnchor.constraint(equalToConstant: 36).isActive = true
-            removeBtn.addAction(UIAction { [weak self] _ in
-                let alert = UIAlertController(title: "确认移除", message: "确认移除监控设备「\(device.nickname ?? device.wxid ?? "")」？", preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "取消", style: .cancel))
-                alert.addAction(UIAlertAction(title: "确认移除", style: .destructive) { _ in
+        let deviceName = device.nickname ?? device.wxid ?? ""
+        [("唤醒", "bell.fill", "/api/portal/wx/wake-login"), ("重登", "arrow.clockwise", "/api/portal/wx/relogin")].forEach { (title, icon, path) in
+            let btn = UIButton(type: .system)
+            btn.setTitle(" \(title)", for: .normal)
+            btn.setImage(UIImage(systemName: icon), for: .normal)
+            btn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+            btn.backgroundColor = .secondarySystemBackground
+            btn.layer.cornerRadius = 8
+            btn.heightAnchor.constraint(equalToConstant: 36).isActive = true
+            btn.addAction(UIAction { [weak self] _ in
+                self?.confirmWxActionForDevice(title: title, message: "确认对设备「\(deviceName)」执行\(title)？", path: path, wxid: device.wxid)
+            }, for: .touchUpInside)
+            btnRow1.addArrangedSubview(btn)
+        }
+        let logoutBtn = UIButton(type: .system)
+        logoutBtn.setTitle(" 登出", for: .normal)
+        logoutBtn.setImage(UIImage(systemName: "power"), for: .normal)
+        logoutBtn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+        logoutBtn.backgroundColor = .secondarySystemBackground
+        logoutBtn.layer.cornerRadius = 8
+        logoutBtn.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        logoutBtn.addAction(UIAction { [weak self] _ in
+            self?.confirmWxActionForDevice(title: "登出", message: "确认对设备「\(deviceName)」执行登出？", path: "/api/portal/wx/logout", wxid: device.wxid)
+        }, for: .touchUpInside)
+        btnRow2.addArrangedSubview(logoutBtn)
+
+        let removeBtn = UIButton(type: .system)
+        removeBtn.setTitle(" 移除", for: .normal)
+        removeBtn.setImage(UIImage(systemName: "trash"), for: .normal)
+        removeBtn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+        removeBtn.setTitleColor(.systemRed, for: .normal)
+        removeBtn.backgroundColor = .secondarySystemBackground
+        removeBtn.layer.cornerRadius = 8
+        removeBtn.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        removeBtn.addAction(UIAction { [weak self] _ in
+            let alert = UIAlertController(title: "确认移除", message: "确认移除设备「\(deviceName)」？移除后需要重新扫码添加。", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+            alert.addAction(UIAlertAction(title: "确认移除", style: .destructive) { _ in
+                if isPrimary {
                     PortalService.shared.removeWxDevice(id: device.id) { result in
                         if case .failure(let error) = result { self?.handle(error) }
                         else { self?.loadDevices() }
                     }
-                })
-                self?.present(alert, animated: true)
-            }, for: .touchUpInside)
-            btnRow.addArrangedSubview(removeBtn)
-        }
+                } else {
+                    PortalService.shared.removeWxDevice(id: device.id) { result in
+                        if case .failure(let error) = result { self?.handle(error) }
+                        else { self?.loadDevices() }
+                    }
+                }
+            })
+            self?.present(alert, animated: true)
+        }, for: .touchUpInside)
+        btnRow2.addArrangedSubview(removeBtn)
 
-        let innerStack = UIStackView(arrangedSubviews: [badgesLabel, nameLabel, infoLabel, btnRow])
+        let btnStack = UIStackView(arrangedSubviews: [btnRow1, btnRow2])
+        btnStack.axis = .vertical
+        btnStack.spacing = 8
+
+        let innerStack = UIStackView(arrangedSubviews: [badgesLabel, nameLabel, infoLabel, btnStack])
         innerStack.axis = .vertical
         innerStack.spacing = 8
         innerStack.translatesAutoresizingMaskIntoConstraints = false
@@ -2478,6 +2652,16 @@ final class CoinTasksViewController: BaseNativeViewController {
         navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = .systemGroupedBackground
         setupUI()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
     }
 
     private func setupUI() {

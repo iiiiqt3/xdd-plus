@@ -156,6 +156,8 @@ struct PortalProject: Decodable {
     let bizStatusText: String?
     let daysLeft: Int?
     let priceText: String?
+    let inputFields: [PortalActivityField]?
+    let ckTemplate: String?
 }
 
 

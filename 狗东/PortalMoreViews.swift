@@ -13,6 +13,7 @@ final class MoreViewController: BaseNativeViewController, UITableViewDataSource,
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
+        navigationItem.largeTitleDisplayMode = .never
         tableView.dataSource = self
         tableView.delegate = self
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -39,10 +40,10 @@ final class MoreViewController: BaseNativeViewController, UITableViewDataSource,
         headerContainer.addSubview(headerRow)
         headerRow.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            headerRow.topAnchor.constraint(equalTo: headerContainer.topAnchor, constant: 8),
+            headerRow.topAnchor.constraint(equalTo: headerContainer.topAnchor, constant: 2),
             headerRow.leadingAnchor.constraint(equalTo: headerContainer.leadingAnchor, constant: 16),
             headerRow.trailingAnchor.constraint(equalTo: headerContainer.trailingAnchor, constant: -16),
-            headerRow.bottomAnchor.constraint(equalTo: headerContainer.bottomAnchor, constant: -4),
+            headerRow.bottomAnchor.constraint(equalTo: headerContainer.bottomAnchor, constant: -2),
             headerRow.heightAnchor.constraint(equalToConstant: 44),
             headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
             headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
@@ -58,7 +59,7 @@ final class MoreViewController: BaseNativeViewController, UITableViewDataSource,
 
         view.addSubview(tableView)
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -70,7 +71,13 @@ final class MoreViewController: BaseNativeViewController, UITableViewDataSource,
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
         reloadBadge()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
     }
 
     func numberOfSections(in tableView: UITableView) -> Int { Section.allCases.count }
