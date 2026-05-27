@@ -862,6 +862,115 @@ func (c *LoginController) SMSLogin() {
 
 }
 
+// BatchSMSLogin 批量提交CK，处理完成后只推送一条汇总消息
+func (c *LoginController) BatchSMSLogin() {
+	cksStr := c.GetString("cks")
+	token := c.GetString("token")
+
+	if token != models.Config.ApiToken && models.Config.ApiToken != "" {
+		result := Result{Data: "null", Code: 300, Message: "Token错误"}
+		jsons, _ := json.Marshal(result)
+		(&models.JdCookie{}).Push("批量推送：传入错误Token，请小心攻击")
+		c.Ctx.WriteString(string(jsons))
+		return
+	}
+
+	var ckList []string
+	if err := json.Unmarshal([]byte(cksStr), &ckList); err != nil {
+		result := Result{Data: "null", Code: 300, Message: "cks参数格式错误，需要JSON数组"}
+		jsons, _ := json.Marshal(result)
+		c.Ctx.WriteString(string(jsons))
+		return
+	}
+
+	total := len(ckList)
+	if total == 0 {
+		result := Result{Data: "null", Code: 300, Message: "cks为空"}
+		jsons, _ := json.Marshal(result)
+		c.Ctx.WriteString(string(jsons))
+		return
+	}
+
+	successCount := 0
+	failCount := 0
+	var failDetails []string
+	var added []string
+	var updated []string
+
+	for _, cookie := range ckList {
+		ptKey := FetchJdCookieValue("pt_key", cookie)
+		ptPin := FetchJdCookieValue("pt_pin", cookie)
+
+		if ptKey == "" || ptPin == "" {
+			failCount++
+			failDetails = append(failDetails, fmt.Sprintf("无效CK: %s", truncateStr(cookie, 30)))
+			continue
+		}
+
+		ck := &models.JdCookie{
+			PtKey: ptKey,
+			PtPin: ptPin,
+		}
+
+		if !models.CookieOK(ck) {
+			failCount++
+			failDetails = append(failDetails, fmt.Sprintf("CK过期: %s", ptPin))
+			continue
+		}
+
+		if nck, err := models.GetJdCookie(ck.PtPin); err == nil {
+			nck.Updates(models.JdCookie{
+				PtKey:     ptKey,
+				PtPin:     ptPin,
+				Available: "true",
+				IsApp:     "true",
+				UpdateAt:  time.Now().Local().Format("2006-01-02"),
+			})
+			updated = append(updated, ptPin)
+			successCount++
+		} else {
+			models.NewJdCookie(ck)
+			added = append(added, ptPin)
+			successCount++
+		}
+	}
+
+	go func() {
+		models.Save <- &models.JdCookie{}
+	}()
+
+	summaryMsg := fmt.Sprintf("快递CK批量推送完成，共%d条，成功%d条，失败%d条", total, successCount, failCount)
+	if len(added) > 0 {
+		summaryMsg += fmt.Sprintf("\n新增%d条", len(added))
+	}
+	if len(updated) > 0 {
+		summaryMsg += fmt.Sprintf("\n更新%d条", len(updated))
+	}
+	(&models.JdCookie{}).Push(summaryMsg)
+
+	result := Result{
+		Code:    200,
+		Message: summaryMsg,
+		Data: map[string]interface{}{
+			"total":   total,
+			"success": successCount,
+			"failed":  failCount,
+			"added":   len(added),
+			"updated": len(updated),
+			"details": failDetails,
+		},
+	}
+	jsons, _ := json.Marshal(result)
+	c.Ctx.WriteString(string(jsons))
+}
+
+func truncateStr(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
+}
+
 // WskeyLogin 通过wskey方式登录京东，获取Cookie
 func (c *LoginController) WskeyLogin() {
 	cookie := string(c.Ctx.Input.RequestBody)
