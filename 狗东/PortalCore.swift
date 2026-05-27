@@ -872,6 +872,17 @@ final class PortalService {
 }
 
 class BaseNativeViewController: UIViewController, ResetableViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboardAnywhere))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func dismissKeyboardAnywhere() {
+        view.endEditing(true)
+    }
+
     func showMessage(_ message: String, title: String = "提示", completion: (() -> Void)? = nil) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "确定", style: .default) { _ in completion?() })

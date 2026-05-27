@@ -105,12 +105,15 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
     }
 
     private func resetScrollPosition(for vc: UIViewController) {
-        if let nav = vc as? UINavigationController, let topVC = nav.topViewController {
-            if let resetable = topVC as? ResetableViewController {
-                resetable.resetToInitialState()
-            }
-            if let scrollView = findScrollView(in: topVC.view) {
-                scrollView.setContentOffset(.zero, animated: false)
+        if let nav = vc as? UINavigationController {
+            nav.popToRootViewController(animated: false)
+            if let topVC = nav.topViewController {
+                if let resetable = topVC as? ResetableViewController {
+                    resetable.resetToInitialState()
+                }
+                if let scrollView = findScrollView(in: topVC.view) {
+                    scrollView.setContentOffset(.zero, animated: false)
+                }
             }
         } else if let scrollView = findScrollView(in: vc.view) {
             scrollView.setContentOffset(.zero, animated: false)
@@ -2129,7 +2132,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
         let mainStack = UIStackView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         mainStack.axis = .vertical
-        mainStack.spacing = 10
+        mainStack.spacing = 6
         mainStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scrollView)
         scrollView.addSubview(mainStack)
@@ -2138,7 +2141,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 4),
+            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 2),
             mainStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
             mainStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             mainStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
@@ -2186,14 +2189,14 @@ final class WechatProtocolViewController: BaseNativeViewController {
 
         let introStack = UIStackView(arrangedSubviews: [introTitleRow, introBody])
         introStack.axis = .vertical
-        introStack.spacing = 6
+        introStack.spacing = 4
         introStack.translatesAutoresizingMaskIntoConstraints = false
         introCard.addSubview(introStack)
         NSLayoutConstraint.activate([
-            introStack.topAnchor.constraint(equalTo: introCard.topAnchor, constant: 12),
-            introStack.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 12),
-            introStack.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -12),
-            introStack.bottomAnchor.constraint(equalTo: introCard.bottomAnchor, constant: -12)
+            introStack.topAnchor.constraint(equalTo: introCard.topAnchor, constant: 10),
+            introStack.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 10),
+            introStack.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -10),
+            introStack.bottomAnchor.constraint(equalTo: introCard.bottomAnchor, constant: -10)
         ])
         mainStack.addArrangedSubview(introCard)
 
@@ -2206,10 +2209,10 @@ final class WechatProtocolViewController: BaseNativeViewController {
         let deviceHeader = UIStackView(arrangedSubviews: [deviceLabel, UIView(), refreshDeviceBtn])
         deviceHeader.axis = .horizontal
         deviceContainer.axis = .vertical
-        deviceContainer.spacing = 10
+        deviceContainer.spacing = 8
         let deviceStack = UIStackView(arrangedSubviews: [deviceHeader, deviceContainer])
         deviceStack.axis = .vertical
-        deviceStack.spacing = 12
+        deviceStack.spacing = 8
         mainStack.addArrangedSubview(deviceStack)
 
         let gridLabel = UILabel()
