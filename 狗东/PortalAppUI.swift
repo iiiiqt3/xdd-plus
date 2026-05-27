@@ -146,8 +146,6 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
         lastSafeIndex = index
         AppSessionStore.shared.refreshIfPossible(silent: true) { [weak self] success in
             if !success {
-                // 不再盲目清 session：只有 refreshIfPossible 内部判断为真正未授权时才会清 session
-                // 网络超时/服务器错误不会清除 session，只静默忽略
                 if !AppSessionStore.shared.isAuthenticated {
                     self?.pendingProtectedIndex = index
                     AppSessionStore.shared.clearSession(requireLogin: true)
@@ -155,6 +153,10 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
             }
         }
         return true
+    }
+
+    func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
+        resetScrollPosition(for: viewController)
     }
 
     private func presentAuthFlow() {
@@ -2132,7 +2134,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
         let mainStack = UIStackView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         mainStack.axis = .vertical
-        mainStack.spacing = 6
+        mainStack.spacing = 4
         mainStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scrollView)
         scrollView.addSubview(mainStack)
@@ -2144,7 +2146,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
             mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 2),
             mainStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
             mainStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
-            mainStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
+            mainStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -12),
             mainStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32)
         ])
 
@@ -2193,10 +2195,10 @@ final class WechatProtocolViewController: BaseNativeViewController {
         introStack.translatesAutoresizingMaskIntoConstraints = false
         introCard.addSubview(introStack)
         NSLayoutConstraint.activate([
-            introStack.topAnchor.constraint(equalTo: introCard.topAnchor, constant: 10),
+            introStack.topAnchor.constraint(equalTo: introCard.topAnchor, constant: 8),
             introStack.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 10),
             introStack.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -10),
-            introStack.bottomAnchor.constraint(equalTo: introCard.bottomAnchor, constant: -10)
+            introStack.bottomAnchor.constraint(equalTo: introCard.bottomAnchor, constant: -8)
         ])
         mainStack.addArrangedSubview(introCard)
 
@@ -2209,10 +2211,10 @@ final class WechatProtocolViewController: BaseNativeViewController {
         let deviceHeader = UIStackView(arrangedSubviews: [deviceLabel, UIView(), refreshDeviceBtn])
         deviceHeader.axis = .horizontal
         deviceContainer.axis = .vertical
-        deviceContainer.spacing = 8
+        deviceContainer.spacing = 6
         let deviceStack = UIStackView(arrangedSubviews: [deviceHeader, deviceContainer])
         deviceStack.axis = .vertical
-        deviceStack.spacing = 8
+        deviceStack.spacing = 6
         mainStack.addArrangedSubview(deviceStack)
 
         let gridLabel = UILabel()
@@ -2238,7 +2240,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
         row2.distribution = .fillEqually
         let gridStack = UIStackView(arrangedSubviews: [gridLabel, row1, row2, deleteActionBtn])
         gridStack.axis = .vertical
-        gridStack.spacing = 10
+        gridStack.spacing = 6
         mainStack.addArrangedSubview(gridStack)
         deleteActionBtn.heightAnchor.constraint(equalToConstant: 68).isActive = true
     }
