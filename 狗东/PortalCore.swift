@@ -867,7 +867,11 @@ final class PortalService {
 }
 
 
-class BaseNativeViewController: UIViewController {
+@objc protocol ResetableViewController {
+    func resetToInitialState()
+}
+
+class BaseNativeViewController: UIViewController, ResetableViewController {
     func showMessage(_ message: String, title: String = "提示", completion: (() -> Void)? = nil) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "确定", style: .default) { _ in completion?() })
@@ -881,6 +885,8 @@ class BaseNativeViewController: UIViewController {
         }
         showMessage(error.message)
     }
+
+    func resetToInitialState() {}
 }
 
 

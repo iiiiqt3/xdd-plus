@@ -35,31 +35,25 @@ final class MoreViewController: BaseNativeViewController, UITableViewDataSource,
         headerIcon.translatesAutoresizingMaskIntoConstraints = false
         headerTitle.translatesAutoresizingMaskIntoConstraints = false
         headerSubtitle.translatesAutoresizingMaskIntoConstraints = false
-
-        let headerContainer = UIView()
-        headerContainer.addSubview(headerRow)
         headerRow.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(headerRow)
         NSLayoutConstraint.activate([
-            headerRow.topAnchor.constraint(equalTo: headerContainer.topAnchor, constant: 2),
-            headerRow.leadingAnchor.constraint(equalTo: headerContainer.leadingAnchor, constant: 16),
-            headerRow.trailingAnchor.constraint(equalTo: headerContainer.trailingAnchor, constant: -16),
-            headerRow.bottomAnchor.constraint(equalTo: headerContainer.bottomAnchor, constant: -2),
+            headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 2),
+            headerRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            headerRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             headerRow.heightAnchor.constraint(equalToConstant: 44),
             headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
             headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
             headerIcon.widthAnchor.constraint(equalToConstant: 32),
             headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 8),
-            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -8),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
             headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
             headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor)
         ])
-        tableView.tableHeaderView = headerContainer
-        headerContainer.layoutIfNeeded()
-        tableView.tableHeaderView = headerContainer
 
         view.addSubview(tableView)
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 8),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)

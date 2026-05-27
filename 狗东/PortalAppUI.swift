@@ -106,6 +106,9 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
 
     private func resetScrollPosition(for vc: UIViewController) {
         if let nav = vc as? UINavigationController, let topVC = nav.topViewController {
+            if let resetable = topVC as? ResetableViewController {
+                resetable.resetToInitialState()
+            }
             if let scrollView = findScrollView(in: topVC.view) {
                 scrollView.setContentOffset(.zero, animated: false)
             }
@@ -582,27 +585,6 @@ final class HomeDashboardViewController: BaseNativeViewController {
     }
 
     private func setupUI() {
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.refreshControl = refreshControl
-        refreshControl.addTarget(self, action: #selector(reloadData), for: .valueChanged)
-        stack.axis = .vertical
-        stack.spacing = 16
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(scrollView)
-        scrollView.addSubview(stack)
-
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 2),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -12),
-            stack.widthAnchor.constraint(equalTo: view.widthAnchor, constant: -32)
-        ])
-
         let headerRow = UIView()
         let headerIcon = UILabel()
         headerIcon.text = "🏠"
@@ -620,17 +602,42 @@ final class HomeDashboardViewController: BaseNativeViewController {
         headerIcon.translatesAutoresizingMaskIntoConstraints = false
         headerTitle.translatesAutoresizingMaskIntoConstraints = false
         headerSubtitle.translatesAutoresizingMaskIntoConstraints = false
+        headerRow.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(headerRow)
         NSLayoutConstraint.activate([
+            headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 2),
+            headerRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            headerRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            headerRow.heightAnchor.constraint(equalToConstant: 44),
             headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
             headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
             headerIcon.widthAnchor.constraint(equalToConstant: 32),
             headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 8),
-            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -8),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
             headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
-            headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor),
-            headerRow.heightAnchor.constraint(equalToConstant: 44)
+            headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor)
         ])
-        stack.addArrangedSubview(headerRow)
+
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.refreshControl = refreshControl
+        refreshControl.addTarget(self, action: #selector(reloadData), for: .valueChanged)
+        stack.axis = .vertical
+        stack.spacing = 16
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        scrollView.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 8),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            stack.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -12),
+            stack.widthAnchor.constraint(equalTo: view.widthAnchor, constant: -32)
+        ])
 
         let notifCard = UIView()
         notifCard.applyCardStyle()
@@ -900,6 +907,13 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         navigationController?.setNavigationBarHidden(false, animated: animated)
     }
 
+    override func resetToInitialState() {
+        segmented.selectedSegmentIndex = 0
+        searchBar.text = nil
+        searchBar.resignFirstResponder()
+        switchTo(index: 0)
+    }
+
     private func setupUI() {
         let headerRow = UIView()
         let headerIcon = UILabel()
@@ -929,7 +943,7 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
             headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
             headerIcon.widthAnchor.constraint(equalToConstant: 32),
             headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 8),
-            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -8),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
             headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
             headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor)
         ])
@@ -2086,6 +2100,11 @@ final class WechatProtocolViewController: BaseNativeViewController {
         autoRefreshTimer?.invalidate()
     }
 
+    override func resetToInitialState() {
+        introExpanded = false
+        introBody.isHidden = true
+    }
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadStatus()
@@ -2110,7 +2129,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
         let mainStack = UIStackView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         mainStack.axis = .vertical
-        mainStack.spacing = 14
+        mainStack.spacing = 10
         mainStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scrollView)
         scrollView.addSubview(mainStack)
@@ -2119,7 +2138,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 6),
+            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 4),
             mainStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
             mainStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             mainStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
@@ -2167,14 +2186,14 @@ final class WechatProtocolViewController: BaseNativeViewController {
 
         let introStack = UIStackView(arrangedSubviews: [introTitleRow, introBody])
         introStack.axis = .vertical
-        introStack.spacing = 8
+        introStack.spacing = 6
         introStack.translatesAutoresizingMaskIntoConstraints = false
         introCard.addSubview(introStack)
         NSLayoutConstraint.activate([
-            introStack.topAnchor.constraint(equalTo: introCard.topAnchor, constant: 14),
-            introStack.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 14),
-            introStack.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -14),
-            introStack.bottomAnchor.constraint(equalTo: introCard.bottomAnchor, constant: -14)
+            introStack.topAnchor.constraint(equalTo: introCard.topAnchor, constant: 12),
+            introStack.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 12),
+            introStack.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -12),
+            introStack.bottomAnchor.constraint(equalTo: introCard.bottomAnchor, constant: -12)
         ])
         mainStack.addArrangedSubview(introCard)
 
@@ -2352,7 +2371,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
         logoutBtn.layer.cornerRadius = 8
         logoutBtn.heightAnchor.constraint(equalToConstant: 36).isActive = true
         logoutBtn.addAction(UIAction { [weak self] _ in
-            self?.confirmWxActionForDevice(title: "登出", message: "确认对设备「\(deviceName)」执行登出？", path: "/api/portal/wx/logout", wxid: device.wxid)
+            self?.confirmWxActionForDevice(title: "登出", message: "确认对设备「\(deviceName)」执行登出？\n\n登出不扣积分，可随时重新登录。", path: "/api/portal/wx/logout", wxid: device.wxid)
         }, for: .touchUpInside)
         btnRow2.addArrangedSubview(logoutBtn)
 
@@ -2365,7 +2384,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
         removeBtn.layer.cornerRadius = 8
         removeBtn.heightAnchor.constraint(equalToConstant: 36).isActive = true
         removeBtn.addAction(UIAction { [weak self] _ in
-            let alert = UIAlertController(title: "确认移除", message: "确认移除设备「\(deviceName)」？移除后需要重新扫码添加。", preferredStyle: .alert)
+            let alert = UIAlertController(title: "确认移除", message: "确认移除设备「\(deviceName)」？\n\n⚠️ 移除后需要重新扫码登录，将再次扣除积分。", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "取消", style: .cancel))
             alert.addAction(UIAlertAction(title: "确认移除", style: .destructive) { _ in
                 if isPrimary {
@@ -2687,7 +2706,7 @@ final class CoinTasksViewController: BaseNativeViewController {
             headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
             headerIcon.widthAnchor.constraint(equalToConstant: 32),
             headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 8),
-            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -8),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
             headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
             headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor),
             headerRow.heightAnchor.constraint(equalToConstant: 44)
