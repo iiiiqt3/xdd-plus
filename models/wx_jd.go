@@ -517,19 +517,18 @@ func wxJdFingerEncode(obj map[string]interface{}) string {
 		}
 		a := e >> 2
 		c := (3 & e) << 4
-		if r >= 0 {
-			c |= r >> 4
-		}
-		s := (15 & r) << 2
-		if u >= 0 {
-			s |= u >> 6
-		}
-		f := 63 & u
+		var s, f int
 		if r < 0 {
 			s = 64
 			f = 64
 		} else if u < 0 {
+			c |= r >> 4
+			s = (15 & r) << 2
 			f = 64
+		} else {
+			c |= r >> 4
+			s = (15&r)<<2 | u>>6
+			f = 63 & u
 		}
 		out.WriteByte(wxJdAlpha[a])
 		out.WriteByte(wxJdAlpha[c])
