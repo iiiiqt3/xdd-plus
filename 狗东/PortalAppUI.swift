@@ -894,6 +894,8 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
     private let myProjectsVC = MyProjectsListViewController()
     private let wechatVC = WechatProtocolViewController()
     private var currentVC: UIViewController?
+    private var containerTopToSearchBar: NSLayoutConstraint!
+    private var containerTopToSegmented: NSLayoutConstraint!
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -964,6 +966,10 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         view.addSubview(segmented)
         view.addSubview(searchBar)
         view.addSubview(container)
+        containerTopToSearchBar = container.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 4)
+        containerTopToSegmented = container.topAnchor.constraint(equalTo: segmented.bottomAnchor, constant: 4)
+        containerTopToSearchBar.isActive = true
+        containerTopToSegmented.isActive = false
         NSLayoutConstraint.activate([
             segmented.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 6),
             segmented.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
@@ -971,7 +977,6 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
             searchBar.topAnchor.constraint(equalTo: segmented.bottomAnchor, constant: 4),
             searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            container.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 4),
             container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             container.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -1000,8 +1005,12 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         myProjectsVC.applySearch("")
         if index == 2 {
             searchBar.isHidden = true
+            containerTopToSearchBar.isActive = false
+            containerTopToSegmented.isActive = true
         } else {
             searchBar.isHidden = false
+            containerTopToSearchBar.isActive = true
+            containerTopToSegmented.isActive = false
             searchBar.placeholder = index == 0 ? "搜索活动名称…" : "搜索项目名、备注…"
         }
         addChild(vc)
@@ -2130,26 +2139,6 @@ final class WechatProtocolViewController: BaseNativeViewController {
     }
 
     private func setupUI() {
-        let scrollView = UIScrollView()
-        let mainStack = UIStackView()
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        mainStack.axis = .vertical
-        mainStack.spacing = 4
-        mainStack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(scrollView)
-        scrollView.addSubview(mainStack)
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 2),
-            mainStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
-            mainStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
-            mainStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -12),
-            mainStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32)
-        ])
-
         let introCard = UIView()
         introCard.applyCardStyle()
         let introTitleRow = UIView()
@@ -2200,7 +2189,31 @@ final class WechatProtocolViewController: BaseNativeViewController {
             introStack.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -10),
             introStack.bottomAnchor.constraint(equalTo: introCard.bottomAnchor, constant: -8)
         ])
-        mainStack.addArrangedSubview(introCard)
+        introCard.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(introCard)
+
+        let scrollView = UIScrollView()
+        let mainStack = UIStackView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        mainStack.axis = .vertical
+        mainStack.spacing = 4
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        scrollView.addSubview(mainStack)
+        NSLayoutConstraint.activate([
+            introCard.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 2),
+            introCard.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            introCard.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            scrollView.topAnchor.constraint(equalTo: introCard.bottomAnchor, constant: 4),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            mainStack.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            mainStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
+            mainStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
+            mainStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -12),
+            mainStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32)
+        ])
 
         let deviceLabel = UILabel()
         deviceLabel.text = "📱 监控设备"
