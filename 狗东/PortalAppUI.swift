@@ -915,6 +915,7 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
     }
 
     override func resetToInitialState() {
+        guard isViewLoaded else { return }
         segmented.selectedSegmentIndex = 0
         searchBar.text = nil
         searchBar.resignFirstResponder()
@@ -2115,6 +2116,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
     }
 
     override func resetToInitialState() {
+        guard isViewLoaded else { return }
         introExpanded = false
         introBody.isHidden = true
     }
