@@ -719,6 +719,48 @@ func sendBase64Image(sender *Sender, base64Data string) error {
 	return nil
 }
 
+func autoBindWxDevice(userNumber int, wxid string) {
+	wxid = strings.TrimSpace(wxid)
+	if wxid == "" {
+		return
+	}
+	user, err := getPortalUserByNumber(userNumber)
+	if err != nil {
+		logs.Warn("自动绑定微信设备失败：获取用户信息失败 %v", err)
+		return
+	}
+	if strings.TrimSpace(user.Wxid) == "" {
+		if err := db.Model(&user).Update("wxid", wxid).Error; err != nil {
+			logs.Warn("自动绑定微信设备失败：设置主wxid失败 %v", err)
+		} else {
+			logs.Info("自动绑定微信设备：已将 %s 设为用户 %d 的主设备", wxid, userNumber)
+		}
+		return
+	}
+	if user.Wxid == wxid {
+		return
+	}
+	var existingDevice PortalWxDevice
+	if db.Where("user_number = ? AND wxid = ?", userNumber, wxid).First(&existingDevice).Error == nil {
+		return
+	}
+	var deviceCount int64
+	db.Model(&PortalWxDevice{}).Where("user_number = ?", userNumber).Count(&deviceCount)
+	primaryCount := int64(0)
+	if strings.TrimSpace(user.Wxid) != "" {
+		primaryCount = 1
+	}
+	if deviceCount+primaryCount >= maxWxDevicesPerUser {
+		logs.Warn("自动绑定微信设备失败：用户 %d 已达到设备上限 %d", userNumber, maxWxDevicesPerUser)
+		return
+	}
+	if err := db.Create(&PortalWxDevice{UserNumber: userNumber, Wxid: wxid}).Error; err != nil {
+		logs.Warn("自动绑定微信设备失败：创建记录失败 %v", err)
+	} else {
+		logs.Info("自动绑定微信设备：已将 %s 添加为用户 %d 的监控设备", wxid, userNumber)
+	}
+}
+
 // pollLoginStatus 异步轮询扫码状态
 // deductCoin: 是否在登录成功后扣除积分
 func pollLoginStatus(sender *Sender, uuid string, deductCoin bool) {
@@ -749,7 +791,6 @@ func pollLoginStatus(sender *Sender, uuid string, deductCoin bool) {
 			case 1:
 				sender.Reply("📱 已扫描二维码，请在手机上点击「确认登录」...")
 			case 2:
-				// 登录成功 — 优先从 User 字段取，兼容 Data 字段
 				nickname := status.User.Nickname
 				wxid := status.User.Wxid
 				if nickname == "" {
@@ -762,13 +803,14 @@ func pollLoginStatus(sender *Sender, uuid string, deductCoin bool) {
 					nickname = "微信用户"
 				}
 
-				// 登录成功，扣除积分
+				autoBindWxDevice(sender.UserID, wxid)
+
 				if deductCoin {
 					cost := getWxScanLoginCoin()
 					RemCoin(sender.UserID, cost)
-					sender.Reply(fmt.Sprintf("🎉 登录成功！已扣除 %d 积分，剩余积分 %d\n\n👤 昵称：%s\n🆔 微信ID：%s", cost, GetCoin(sender.UserID), nickname, wxid))
+					sender.Reply(fmt.Sprintf("🎉 登录成功！已扣除 %d 积分，剩余积分 %d\n\n👤 昵称：%s\n🆔 微信ID：%s\n✅ 已自动绑定到你的账号，可在APP/网页查看", cost, GetCoin(sender.UserID), nickname, wxid))
 				} else {
-					sender.Reply(fmt.Sprintf("🎉 登录成功！\n\n👤 昵称：%s\n🆔 微信ID：%s", nickname, wxid))
+					sender.Reply(fmt.Sprintf("🎉 登录成功！\n\n👤 昵称：%s\n🆔 微信ID：%s\n✅ 已自动绑定到你的账号", nickname, wxid))
 				}
 				return
 			default:
