@@ -626,6 +626,7 @@ func (c *AdminApiController) UpdateJdCookie() {
 		Available string `json:"available"`
 		Note      string `json:"note"`
 		Wxid      string `json:"wxid"`
+		WxPid     string `json:"wxPid"`
 		QQ        string `json:"qq"`
 	}
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
@@ -634,7 +635,7 @@ func (c *AdminApiController) UpdateJdCookie() {
 		c.ServeJSON()
 		return
 	}
-	err := models.UpdateJdCookieById(req.ID, req.PtKey, req.Priority, req.Available, req.Note, req.Wxid, req.QQ)
+	err := models.UpdateJdCookieById(req.ID, req.PtKey, req.Priority, req.Available, req.Note, req.Wxid, req.WxPid, req.QQ)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "更新失败: " + err.Error()}
 		c.ServeJSON()

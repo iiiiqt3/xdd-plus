@@ -264,16 +264,6 @@ func wxJdRefreshCK(wxid string) (string, string, error) {
 	return ptKey, ptPin, nil
 }
 
-func findWxProtocolIDForCK(ck *JdCookie) (string, bool) {
-	if ck.WeiXin != "" {
-		online, err := checkWxDeviceOnline(ck.WeiXin)
-		if err == nil && online {
-			return ck.WeiXin, true
-		}
-	}
-	return "", false
-}
-
 func findUserProtocolDevices(sender *Sender) []string {
 	var devices []string
 	raw, err := getWxUserStatusRaw()
@@ -383,12 +373,13 @@ func wxJdRefreshByDevice(sender *Sender, wxid string) bool {
 	}
 	nick := ptPin
 	if existingCK, e := GetJdCookie(ptPin); e == nil {
-		existingCK.Updates(JdCookie{PtKey: ptKey, Available: True, WeiXin: wxid, UpdateAt: Date()})
+		existingCK.Updates(JdCookie{PtKey: ptKey, Available: True, WeiXin: wxid, WxPid: wxid, UpdateAt: Date()})
 		if existingCK.Nickname != "" {
 			nick = existingCK.Nickname
 		}
 	} else {
 		newCK.WeiXin = wxid
+		newCK.WxPid = wxid
 		newCK.QQ = sender.UserID
 		newCK.Available = True
 		NewJdCookie(newCK)

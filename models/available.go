@@ -136,28 +136,30 @@ func initCookie() {
 
 	
 	})
+
 	xj := 0
 	autoRefreshOK := 0
 	autoRefreshFail := 0
 	for _, ck := range cks {
 		if ck.Available == True && !CookieOK(&ck) {
 			refreshed := false
-			wxid, found := findWxProtocolIDForCK(&ck)
-			if found {
-				ptKey, ptPin, err := wxJdRefreshCK(wxid)
-				if err == nil {
-					newCK := &JdCookie{PtKey: ptKey, PtPin: ptPin}
-					if CookieOK(newCK) {
-						if existingCK, e := GetJdCookie(ptPin); e == nil {
-							existingCK.Updates(JdCookie{PtKey: ptKey, Available: True, WeiXin: wxid, UpdateAt: Date()})
+			if ck.WxPid != "" {
+				online, _ := checkWxDeviceOnline(ck.WxPid)
+				if online {
+					ptKey, ptPin, err := wxJdRefreshCK(ck.WxPid)
+					if err == nil && ptKey != "" && ptPin != "" {
+						newCK := &JdCookie{PtKey: ptKey, PtPin: ptPin}
+						if CookieOK(newCK) {
+							ck.Updates(JdCookie{PtKey: ptKey, Available: True, UpdateAt: Date()})
+							autoRefreshOK++
+							refreshed = true
+							(&JdCookie{}).Push(fmt.Sprintf("自动刷新成功: %s (设备: %s)", ck.PtPin, ck.WxPid))
+						} else {
+							autoRefreshFail++
 						}
-						autoRefreshOK++
-						refreshed = true
-						(&JdCookie{}).Push(fmt.Sprintf("自动刷新成功: %s", ck.PtPin))
+					} else {
+						autoRefreshFail++
 					}
-				}
-				if !refreshed {
-					autoRefreshFail++
 				}
 			}
 			if !refreshed {

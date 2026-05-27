@@ -673,12 +673,15 @@ func DeleteJdCookieById(id int) error {
 	return db.Where("ID = ?", id).Delete(&JdCookie{}).Error
 }
 
-func UpdateJdCookieById(id int, ptKey string, priority int, available, note, wxid, qq string) error {
+func UpdateJdCookieById(id int, ptKey string, priority int, available, note, wxid, wxPid, qq string) error {
 	updates := map[string]interface{}{
 		"Priority":  priority,
 		"Available": available,
 		"Note":      note,
 		"WeiXin":    wxid,
+	}
+	if wxPid != "" {
+		updates["WxPid"] = wxPid
 	}
 	if ptKey != "" {
 		updates["PtKey"] = ptKey

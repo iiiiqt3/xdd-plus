@@ -119,6 +119,7 @@ type JdCookie struct {
 	BeanNum         string `gorm:"column:BeanNum"`
 	QQ              int    `gorm:"column:QQ"`
 	WeiXin          string `gorm:"column:WeiXin"`
+	WxPid           string `gorm:"column:WxPid"`
 	Hack            string `gorm:"column:Hack"`
 	Appoint         string `gorm:"column:Appoint"` //指定
 	PushPlus        string `gorm:"column:PushPlus"`
