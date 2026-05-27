@@ -266,33 +266,36 @@ func wxJdRefreshCK(wxid string) (string, string, error) {
 
 func findUserProtocolDevices(sender *Sender) []string {
 	var devices []string
+	seen := make(map[string]bool)
 	raw, err := getWxUserStatusRaw()
 	if err != nil || raw == nil {
 		return devices
 	}
+
 	if sender.WxId != "" {
 		if info, ok := raw.Data[sender.WxId]; ok && info.Survival == 1 {
 			devices = append(devices, sender.WxId)
+			seen[sender.WxId] = true
 		}
 	}
-	if len(devices) > 0 {
-		return devices
-	}
+
 	var user User
 	if db.Where("number = ?", sender.UserID).First(&user).Error == nil {
-		if user.Wxid != "" {
+		if user.Wxid != "" && !seen[user.Wxid] {
 			if info, ok := raw.Data[user.Wxid]; ok && info.Survival == 1 {
 				devices = append(devices, user.Wxid)
+				seen[user.Wxid] = true
 			}
 		}
 		var portalDevices []PortalWxDevice
 		db.Where("user_number = ?", user.Number).Find(&portalDevices)
 		for _, d := range portalDevices {
-			if d.Wxid == user.Wxid {
+			if seen[d.Wxid] {
 				continue
 			}
 			if info, ok := raw.Data[d.Wxid]; ok && info.Survival == 1 {
 				devices = append(devices, d.Wxid)
+				seen[d.Wxid] = true
 			}
 		}
 	}
