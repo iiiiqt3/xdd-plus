@@ -320,12 +320,6 @@ func handleWxJdLogin(sender *Sender, msg chan string) {
 		return
 	}
 
-	if len(devices) == 1 {
-		sender.Reply("⏳ 正在刷新，请稍候...")
-		wxJdRefreshByDevice(sender, devices[0])
-		return
-	}
-
 	var devMenu strings.Builder
 	devMenu.WriteString("📱 请选择微信协议设备：\n\n")
 	devRaw, _ := getWxUserStatusRaw()
