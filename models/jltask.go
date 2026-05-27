@@ -70,6 +70,10 @@ type ActivityConfig struct {
 	IsMonthlyDeduct bool   // 是否按月扣积分（默认false）
 	MonthlyCoin     int    // 每月扣积分值（默认200）
 
+	// 新增按天扣费配置
+	IsDailyDeduct bool   // 是否按天扣积分（默认false）
+	DailyCoin     int    // 每天扣积分值
+
 	// 👇 核心字段：控制菜单显示顺序，数值越小越靠前
 	DisplayOrder int
 	Enabled      bool
@@ -503,7 +507,7 @@ func handleRecordCKByGo(qq int, ckValue, finalRemarks, envKey string, config *Ac
 	}
 
 	expireDate := ""
-	if config.IsMonthlyDeduct {
+	if config.IsMonthlyDeduct || config.IsDailyDeduct {
 		d, ok := ParseRemarksDate(finalRemarks)
 		if ok {
 			expireDate = d.Format(DateLayout)
@@ -522,9 +526,11 @@ func handleRecordCKByGo(qq int, ckValue, finalRemarks, envKey string, config *Ac
 		ExpireDate:         expireDate,
 		IsMonthlyDeduct:    config.IsMonthlyDeduct,
 		MonthlyCoin:        config.MonthlyCoin,
+		IsDailyDeduct:      config.IsDailyDeduct,
+		DailyCoin:          config.DailyCoin,
 		SyncStatus:         "pending",
 	}
-	if !config.IsMonthlyDeduct {
+	if !config.IsMonthlyDeduct && !config.IsDailyDeduct {
 		project.NeedCoin = config.NeedCoin
 	}
 
@@ -604,7 +610,31 @@ func HandleRecordCK(sender *Sender) interface{} {
 
 		var months int
 		var expireDate string
-		if config.IsMonthlyDeduct {
+		if config.IsDailyDeduct {
+			daysStr, exit := getUserInputByField(sender, msgChannel, InputField{
+				Key:        "days",
+				Prompt:     fmt.Sprintf("该活动按天扣费每天【%d】积分，你当前积分还剩【%d】，请输入授权天数（如7/15/30）：", config.DailyCoin, GetCoin(sender.UserID)),
+				Validator: func(s string) (bool, string) {
+					num, err := strconv.Atoi(s)
+					if err != nil {
+						return false, "请输入有效的数字！"
+					}
+					if num < 1 || num > 365 {
+						return false, "天数需在1-365之间！"
+					}
+					return true, ""
+				},
+				Required:   true,
+				TrimSpace:  false,
+				TimeoutSec: 60,
+				ErrorMsg:   "天数输入错误，请重新输入！",
+			})
+			if exit {
+				return
+			}
+			months, _ = strconv.Atoi(daysStr)
+			expireDate = GenerateExpireDateFromDays(months)
+		} else if config.IsMonthlyDeduct {
 			monthStr, exit := getUserInputByField(sender, msgChannel, InputField{
 				Key:        "months",
 				Prompt:     fmt.Sprintf("该活动按月扣费每月【%d】积分，你当前积分还剩【%d】，请输入授权时长（月数，如1/3/6）：", config.MonthlyCoin, GetCoin(sender.UserID)),
@@ -632,12 +662,14 @@ func HandleRecordCK(sender *Sender) interface{} {
 
 		ckValue := config.CKBuilder(inputs)
 		finalRemarks := config.RemarksBuilder(qq, userRemarks, inputs)
-		if config.IsMonthlyDeduct {
+		if config.IsMonthlyDeduct || config.IsDailyDeduct {
 			finalRemarks = fmt.Sprintf("%s/%s", finalRemarks, expireDate)
 		}
 
 		totalCoin := 0
-		if config.IsMonthlyDeduct {
+		if config.IsDailyDeduct {
+			totalCoin = config.DailyCoin * months
+		} else if config.IsMonthlyDeduct {
 			totalCoin = config.MonthlyCoin * months
 		} else {
 			totalCoin = config.NeedCoin
@@ -665,7 +697,10 @@ func HandleRecordCK(sender *Sender) interface{} {
 
 		if strings.Contains(output, "记录成功") {
 			RemCoin(sender.UserID, totalCoin)
-			if config.IsMonthlyDeduct {
+			if config.IsDailyDeduct {
+				sender.Reply(fmt.Sprintf("添加%s账号成功！已扣除%d积分（%d天×%d积分/天），剩余%d积分。授权有效期至：%s",
+					config.Name, totalCoin, months, config.DailyCoin, userCoin-totalCoin, expireDate))
+			} else if config.IsMonthlyDeduct {
 				sender.Reply(fmt.Sprintf("添加%s账号成功！已扣除%d积分（%d个月×%d积分/月），剩余%d积分。授权有效期至：%s",
 					config.Name, totalCoin, months, config.MonthlyCoin, userCoin-totalCoin, expireDate))
 			} else {
@@ -1013,25 +1048,27 @@ func HandleDeleteCK(sender *Sender) interface{} {
 			sender.Reply(fmt.Sprintf("共找到1个%s账号，自动选中：%s", config.EnvKey, displayList[0]))
 		}
 
-		// ===================== 月付费退还积分逻辑 =====================
+		// ===================== 月付费/按天计费退还积分逻辑 =====================
 		var returnCoin int = 0
 		confirmPrompt := fmt.Sprintf("确认要删除【%s】这个账号吗？（输入y确认，其他字符取消）", GetFirstRemarkParam(selectedRemarks))
 
 		selectedProjectMonthlyCoin := config.MonthlyCoin
+		selectedProjectDailyCoin := config.DailyCoin
 		selectedProjectNeedCoin := config.NeedCoin
 		for _, p := range projects {
 			if p.Remarks == selectedRemarks {
 				if p.MonthlyCoin > 0 {
 					selectedProjectMonthlyCoin = p.MonthlyCoin
 				}
+				if p.DailyCoin > 0 {
+					selectedProjectDailyCoin = p.DailyCoin
+				}
 				selectedProjectNeedCoin = p.NeedCoin
 				break
 			}
 		}
 
-		// 判断是否为月付费活动（NeedCoin>0 表示从一次性活动转来且未续费，不退积分）
-		if config.IsMonthlyDeduct && selectedProjectMonthlyCoin > 0 && selectedProjectNeedCoin == 0 {
-			// 分割备注，取最后一段为日期
+		if (config.IsMonthlyDeduct || config.IsDailyDeduct) && selectedProjectNeedCoin == 0 {
 			remarkParts := strings.Split(selectedRemarks, "/")
 			if len(remarkParts) < 1 {
 				sender.Reply("备注格式错误，无法获取到期日期")
@@ -1039,7 +1076,6 @@ func HandleDeleteCK(sender *Sender) interface{} {
 			}
 			dateStr := remarkParts[len(remarkParts)-1]
 
-			// 解析日期
 			expireDate, err := time.Parse("2006-01-02", dateStr)
 			if err != nil {
 				sender.Reply(fmt.Sprintf("日期格式错误：%s，必须为 2006-01-02 格式", dateStr))
@@ -1054,12 +1090,15 @@ func HandleDeleteCK(sender *Sender) interface{} {
 				remainingDays = remainingDays - 1
 			}
 
-			// 计算退还积分（四舍五入）
-			returnCoin = int(math.Round(float64(selectedProjectMonthlyCoin) * remainingDays / 30))
-
-			// 提示用户可退还积分
-			confirmPrompt = fmt.Sprintf("【温馨提示】当前为月付费活动\n删除后将退还积分：%d分\n确认删除【%s】？（输入y确认，其他字符取消）",
-				returnCoin, GetFirstRemarkParam(selectedRemarks))
+			if config.IsDailyDeduct && selectedProjectDailyCoin > 0 {
+				returnCoin = selectedProjectDailyCoin * int(remainingDays)
+				confirmPrompt = fmt.Sprintf("【温馨提示】当前为按天计费活动\n删除后将退还积分：%d分\n确认删除【%s】？（输入y确认，其他字符取消）",
+					returnCoin, GetFirstRemarkParam(selectedRemarks))
+			} else if selectedProjectMonthlyCoin > 0 {
+				returnCoin = int(math.Round(float64(selectedProjectMonthlyCoin) * remainingDays / 30))
+				confirmPrompt = fmt.Sprintf("【温馨提示】当前为月付费活动\n删除后将退还积分：%d分\n确认删除【%s】？（输入y确认，其他字符取消）",
+					returnCoin, GetFirstRemarkParam(selectedRemarks))
+			}
 		}
 
 		// 确认删除
@@ -1103,8 +1142,7 @@ func HandleDeleteCK(sender *Sender) interface{} {
 
 		// 删除成功后执行积分退还
 		if strings.Contains(output, "删除成功") {
-			if config.IsMonthlyDeduct && returnCoin > 0 {
-				// 直接调用你现有的积分函数
+			if (config.IsMonthlyDeduct || config.IsDailyDeduct) && returnCoin > 0 {
 				AdddCoin(qq, returnCoin)
 				sender.Reply(fmt.Sprintf("【%s】删除成功！积分已退还：+%d分", GetFirstRemarkParam(selectedRemarks), returnCoin))
 			} else {
@@ -1217,7 +1255,7 @@ for index, project := range projects {
         continue
     }
 
-    if config.IsMonthlyDeduct && expireTime != "" {
+    if (config.IsMonthlyDeduct || config.IsDailyDeduct) && expireTime != "" {
         expireTimeObj, parseErr := time.Parse("2006-01-02", expireTime)
         if parseErr == nil && time.Now().After(expireTimeObj) {
             sender.Reply(fmt.Sprintf("⚠️ 第%d个账号【%s】授权已过期（过期时间：%s），无法查询，请发送【记录授权】续费！", accountNo, mainRemark, expireTime))
@@ -1281,32 +1319,32 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 
 		var menu string
 		menu = "请选择要授权的活动代号（输入数字）任意地方输入q可退出程序：\n"
-		hasMonthly := false
+		hasRenewable := false
 
-		// 🔴 修复点1：修正字段名拼写错误 (IsMonthlyDount -> IsMonthlyDeduct)
-		// 遍历已排序的切片，展示支持按月扣费的活动
 		activityConfigsMu.RLock()
 		for _, cfg := range ActivityConfigs {
-			if cfg.IsMonthlyDeduct && cfg.Enabled { 
+			if cfg.IsDailyDeduct && cfg.Enabled {
+				menu += fmt.Sprintf("【%s】、 %s（每天%d积分）\n", cfg.MenuIndex, cfg.Name, cfg.DailyCoin)
+				hasRenewable = true
+			} else if cfg.IsMonthlyDeduct && cfg.Enabled {
 				menu += fmt.Sprintf("【%s】、 %s（每月%d积分）\n", cfg.MenuIndex, cfg.Name, cfg.MonthlyCoin)
-				hasMonthly = true
+				hasRenewable = true
 			}
 		}
 		activityConfigsMu.RUnlock()
 
-		if !hasMonthly {
-			sender.Reply("暂无支持按月扣费的活动！")
+		if !hasRenewable {
+			sender.Reply("暂无支持授权续费的活动！")
 			return
 		}
 
-		// 1. 获取用户选择的活动ID
 		envID, exit := getUserInputByField(sender, msgChannel, InputField{
 			Key:        "env_id",
 			Prompt:     menu,
 			Validator: func(s string) (bool, string) {
 				cfg := getActivityByID(s)
-				if cfg == nil || !cfg.IsMonthlyDeduct {
-					return false, "活动代号不存在或不支持按月扣费，请输入菜单中的有效数字！"
+				if cfg == nil || (!cfg.IsMonthlyDeduct && !cfg.IsDailyDeduct) {
+					return false, "活动代号不存在或不支持授权续费，请输入菜单中的有效数字！"
 				}
 				return true, ""
 			},
@@ -1387,35 +1425,63 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		}
 
 		// 4. 获取授权时长
-		monthStr, exit := getUserInputByField(sender, msgChannel, InputField{
-			Key:        "months",
-			Prompt:     fmt.Sprintf("该活动每月扣费【%d】积分，您当前的积分还剩【%d】，请输入授权时长（月数，如1/3/6）：", config.MonthlyCoin, GetCoin(sender.UserID)),
-			Validator: func(s string) (bool, string) {
-				num, err := strconv.Atoi(s)
-				if err != nil {
-					return false, "请输入有效的数字！"
-				}
-				if num < 1 || num > 12 {
-					return false, "时长需在1-12个月之间！"
-				}
-				return true, ""
-			},
-			Required:   true,
-			TrimSpace:  false,
-			TimeoutSec: 60,
-			ErrorMsg:   "时长输入错误，请重新输入！",
-		})
-		if exit {
-			return
+		var months int
+		var totalCoin int
+		if config.IsDailyDeduct {
+			daysStr, exit := getUserInputByField(sender, msgChannel, InputField{
+				Key:        "days",
+				Prompt:     fmt.Sprintf("该活动每天扣费【%d】积分，您当前的积分还剩【%d】，请输入授权天数（如7/15/30）：", config.DailyCoin, GetCoin(sender.UserID)),
+				Validator: func(s string) (bool, string) {
+					num, err := strconv.Atoi(s)
+					if err != nil {
+						return false, "请输入有效的数字！"
+					}
+					if num < 1 || num > 365 {
+						return false, "天数需在1-365之间！"
+					}
+					return true, ""
+				},
+				Required:   true,
+				TrimSpace:  false,
+				TimeoutSec: 60,
+				ErrorMsg:   "天数输入错误，请重新输入！",
+			})
+			if exit {
+				return
+			}
+			months, _ = strconv.Atoi(daysStr)
+			totalCoin = config.DailyCoin * months
+		} else {
+			monthStr, exit := getUserInputByField(sender, msgChannel, InputField{
+				Key:        "months",
+				Prompt:     fmt.Sprintf("该活动每月扣费【%d】积分，您当前的积分还剩【%d】，请输入授权时长（月数，如1/3/6）：", config.MonthlyCoin, GetCoin(sender.UserID)),
+				Validator: func(s string) (bool, string) {
+					num, err := strconv.Atoi(s)
+					if err != nil {
+						return false, "请输入有效的数字！"
+					}
+					if num < 1 || num > 12 {
+						return false, "时长需在1-12个月之间！"
+					}
+					return true, ""
+				},
+				Required:   true,
+				TrimSpace:  false,
+				TimeoutSec: 60,
+				ErrorMsg:   "时长输入错误，请重新输入！",
+			})
+			if exit {
+				return
+			}
+			months, _ = strconv.Atoi(monthStr)
+			totalCoin = config.MonthlyCoin * months
 		}
-		months, _ := strconv.Atoi(monthStr)
 
 		// 5. 扣除积分校验
-		totalCoin := config.MonthlyCoin * months
 		userCoin := GetCoin(sender.UserID)
 		if userCoin < totalCoin {
-			sender.Reply(fmt.Sprintf("积分不足！授权%d个月需要%d积分，你当前有%d积分。",
-				months, totalCoin, userCoin))
+			sender.Reply(fmt.Sprintf("积分不足！授权需要%d积分，你当前有%d积分。",
+				totalCoin, userCoin))
 			return
 		}
 
@@ -1425,27 +1491,28 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		var baseTime time.Time
 		var hasOldDate bool
 
-		// 尝试从当前备注中解析原有的过期时间
-		// 依赖 time.go 中的 ParseRemarksDate 函数
 		baseTime, hasOldDate = ParseRemarksDate(selectedRemarks)
 
-		if hasOldDate {
-			// 场景A：续费逻辑（原有日期有效）
-			// 逻辑：原过期时间 + 购买月数
-			// 例如：原 6-30 + 1个月 = 7-30 (而不是从今天 3-30 开始算)
-			newExpireDate = GenerateExpireDateFromBase(baseTime, months)
-			logs.Info("检测到已有授权，执行续费逻辑：基准日期[%s] + [%d]个月 = [%s]", 
-				baseTime.Format(DateLayout), months, newExpireDate)
+		if config.IsDailyDeduct {
+			if hasOldDate {
+				newExpireDate = baseTime.AddDate(0, 0, months).Format(DateLayout)
+				logs.Info("按天续费：基准日期[%s] + [%d]天 = [%s]", baseTime.Format(DateLayout), months, newExpireDate)
+			} else {
+				newExpireDate = GenerateExpireDateFromDays(months)
+				logs.Info("按天新开通：当前时间 + [%d]天 = [%s]", months, newExpireDate)
+			}
 		} else {
-			// 场景B：新开通逻辑（无原有日期或格式错误）
-			// 逻辑：当前时间 + 购买月数
-			newExpireDate = GenerateExpireDate(months)
-			logs.Info("未检测到有效授权日期，执行新开通逻辑：当前时间 + [%d]个月 = [%s]", 
-				months, newExpireDate)
+			if hasOldDate {
+				newExpireDate = GenerateExpireDateFromBase(baseTime, months)
+				logs.Info("按月续费：基准日期[%s] + [%d]个月 = [%s]", 
+					baseTime.Format(DateLayout), months, newExpireDate)
+			} else {
+				newExpireDate = GenerateExpireDate(months)
+				logs.Info("按月新开通：当前时间 + [%d]个月 = [%s]", 
+					months, newExpireDate)
+			}
 		}
 
-		// 使用专用工具函数构建新备注（自动去除旧日期并追加新日期）
-		// 依赖 time.go 中的 BuildMonthDeductRemarks 函数
 		newRemarks := BuildMonthDeductRemarks(selectedRemarks, newExpireDate)
 		
 		// =============================================================
@@ -1461,6 +1528,10 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		project.ExpireDate = newExpireDate
 		project.NeedCoin = 0
 		project.Status = 0
+		if config.IsDailyDeduct {
+			project.IsDailyDeduct = true
+			project.DailyCoin = config.DailyCoin
+		}
 		project.SyncStatus = "pending_update"
 		project.SyncError = ""
 		if err := UpdateActivityProject(project); err != nil {
@@ -1474,8 +1545,13 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		// 9. 扣除积分
 		RemCoin(sender.UserID, totalCoin)
 
-		sender.Reply(fmt.Sprintf("✅ 授权成功！\n已扣除%d积分（%d个月×%d积分/月）\n剩余积分：%d\n授权有效期至：%s",
-			totalCoin, months, config.MonthlyCoin, userCoin-totalCoin, newExpireDate))
+		if config.IsDailyDeduct {
+			sender.Reply(fmt.Sprintf("✅ 授权成功！\n已扣除%d积分（%d天×%d积分/天）\n剩余积分：%d\n授权有效期至：%s",
+				totalCoin, months, config.DailyCoin, userCoin-totalCoin, newExpireDate))
+		} else {
+			sender.Reply(fmt.Sprintf("✅ 授权成功！\n已扣除%d积分（%d个月×%d积分/月）\n剩余积分：%d\n授权有效期至：%s",
+				totalCoin, months, config.MonthlyCoin, userCoin-totalCoin, newExpireDate))
+		}
 		
 		logs.Info("用户[%d] 授权活动[%s] 成功，新有效期[%s], 扣除积分[%d]", 
 			sender.UserID, config.Name, newExpireDate, totalCoin)

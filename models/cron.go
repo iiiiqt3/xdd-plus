@@ -53,6 +53,9 @@ func initCron() {
 	// ===== 核心新增：每天凌晨1点检查并禁用过期CK（月扣活动） =====
 		c.AddFunc("20 23 * * ?", DisableExpiredCKsCronWrapper)
 
+	// ===== 按天计费每日扣费：每天凌晨0点30分执行 =====
+		c.AddFunc("30 0 * * ?", DailyDeductCronWrapper)
+
 	// ===== 过期30天通知+删除：每天检查一次 =====
 	c.AddFunc("30 12 * * ?", func() { NotifyDeleteExpiredCKs(nil) })
 

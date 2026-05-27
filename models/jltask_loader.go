@@ -28,6 +28,8 @@ type YAMLActivityConfig struct {
 	QingLongConfigName string              `yaml:"青龙配置名"`
 	IsMonthlyDeduct    bool                `yaml:"是否按月扣费"`
 	MonthlyCoin        int                 `yaml:"每月积分"`
+	IsDailyDeduct      bool                `yaml:"是否按天扣费"`
+	DailyCoin          int                 `yaml:"每天积分"`
 	DisplayOrder       int                 `yaml:"排序编号"`
 	Enabled            bool                `yaml:"启用状态"`
 	Guide              string              `yaml:"玩法和说明"`
@@ -289,6 +291,8 @@ func (al *ActivityLoader) convertYAMLToActivity(yamlAct YAMLActivityConfig) *Act
 		Guide:              strings.TrimSpace(yamlAct.Guide),
 		IsMonthlyDeduct:    yamlAct.IsMonthlyDeduct,
 		MonthlyCoin:        yamlAct.MonthlyCoin,
+		IsDailyDeduct:      yamlAct.IsDailyDeduct,
+		DailyCoin:          yamlAct.DailyCoin,
 		DisplayOrder:       yamlAct.DisplayOrder,
 		Enabled:            yamlAct.Enabled,
 		InputFields:        make([]InputField, 0, len(yamlAct.InputFields)),

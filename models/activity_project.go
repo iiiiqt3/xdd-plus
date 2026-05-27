@@ -23,6 +23,8 @@ type ActivityProject struct {
 	ExpireDate         string     `gorm:"column:expire_date;size:10"`
 	IsMonthlyDeduct    bool       `gorm:"column:is_monthly_deduct;default:false"`
 	MonthlyCoin        int        `gorm:"column:monthly_coin;default:0"`
+	IsDailyDeduct      bool       `gorm:"column:is_daily_deduct;default:false"`
+	DailyCoin          int        `gorm:"column:daily_coin;default:0"`
 	NeedCoin           int        `gorm:"column:need_coin;default:0"`
 	CreatedAt          time.Time  `gorm:"column:created_at"`
 	UpdatedAt          time.Time  `gorm:"column:updated_at"`
@@ -196,7 +198,7 @@ func CountActivityProjectStats(activityID, envKey string) (total, valid, expirin
 	for _, p := range projects {
 		total++
 		if p.Status == 0 {
-			if p.IsMonthlyDeduct && p.ExpireDate != "" {
+			if (p.IsMonthlyDeduct || p.IsDailyDeduct) && p.ExpireDate != "" {
 				expireDate, err := time.Parse(DateLayout, p.ExpireDate)
 				if err == nil {
 					expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
@@ -216,7 +218,7 @@ func CountActivityProjectStats(activityID, envKey string) (total, valid, expirin
 				valid++
 			}
 		} else {
-			if p.IsMonthlyDeduct && p.ExpireDate != "" {
+			if (p.IsMonthlyDeduct || p.IsDailyDeduct) && p.ExpireDate != "" {
 				expireDate, err := time.Parse(DateLayout, p.ExpireDate)
 				if err == nil {
 					expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
@@ -249,7 +251,7 @@ func CountActivityProjectByStatus(activityID, envKey string) (total, valid, expi
 	for _, p := range projects {
 		total++
 		if p.Status == 0 {
-			if p.IsMonthlyDeduct && p.ExpireDate != "" {
+			if (p.IsMonthlyDeduct || p.IsDailyDeduct) && p.ExpireDate != "" {
 				expireDate, err := time.Parse(DateLayout, p.ExpireDate)
 				if err == nil {
 					expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
@@ -273,7 +275,7 @@ func CountActivityProjectByStatus(activityID, envKey string) (total, valid, expi
 
 func GetExpiringProjects(daysThreshold int) ([]ActivityProject, error) {
 	var projects []ActivityProject
-	err := db.Where("is_monthly_deduct = ? AND status = 0 AND expire_date != '' AND deleted_at IS NULL", true).
+	err := db.Where("(is_monthly_deduct = ? OR is_daily_deduct = ?) AND status = 0 AND expire_date != '' AND deleted_at IS NULL", true, true).
 		Find(&projects).Error
 	if err != nil {
 		return nil, err
@@ -297,7 +299,7 @@ func GetExpiringProjects(daysThreshold int) ([]ActivityProject, error) {
 
 func GetExpiredProjects() ([]ActivityProject, error) {
 	var projects []ActivityProject
-	err := db.Where("is_monthly_deduct = ? AND status = 0 AND expire_date != '' AND deleted_at IS NULL", true).
+	err := db.Where("(is_monthly_deduct = ? OR is_daily_deduct = ?) AND status = 0 AND expire_date != '' AND deleted_at IS NULL", true, true).
 		Find(&projects).Error
 	if err != nil {
 		return nil, err
@@ -320,7 +322,7 @@ func GetExpiredProjects() ([]ActivityProject, error) {
 
 func GetDisabledExpiredProjects() ([]ActivityProject, error) {
 	var projects []ActivityProject
-	err := db.Where("is_monthly_deduct = ? AND status != 0 AND expire_date != '' AND deleted_at IS NULL", true).
+	err := db.Where("(is_monthly_deduct = ? OR is_daily_deduct = ?) AND status != 0 AND expire_date != '' AND deleted_at IS NULL", true, true).
 		Find(&projects).Error
 	if err != nil {
 		return nil, err

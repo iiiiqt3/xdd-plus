@@ -1391,12 +1391,16 @@
                 <select id="actFormEnabled" onchange="toggleActFormEnabled()"><option value="true">启用</option><option value="false">禁用</option></select>
             </div>
             <div class="form-item">
-                <label>是否按月扣费 *</label>
-                <select id="actFormMonthly" onchange="toggleMonthlyCoin()"><option value="">请选择</option><option value="false">否</option><option value="true">是</option></select>
+                <label>计费模式 *</label>
+                <select id="actFormMonthly" onchange="toggleMonthlyCoin()"><option value="">请选择</option><option value="false">一次性</option><option value="true">月扣费</option><option value="daily">按天计费</option></select>
             </div>
             <div class="form-item">
                 <label>每月积分 <span class="tip" id="monthlyTip"></span></label>
                 <input type="number" id="actFormMonthlyCoin" value="200">
+            </div>
+            <div class="form-item">
+                <label>每天积分 <span class="tip" id="dailyTip"></span></label>
+                <input type="number" id="actFormDailyCoin" value="10">
             </div>
             <div class="form-item full" style="margin-top:8px;">
                 <label style="display:flex;justify-content:space-between;align-items:center;">
@@ -2004,8 +2008,8 @@ async function loadDashboard() {
             const acts = parseActivitiesYaml((actRes.data||{}).raw || '');
             const enabled = acts.filter(a => a['启用状态'] === true);
             const disabled = acts.filter(a => a['启用状态'] !== true);
-            const monthly = acts.filter(a => a['是否按月扣费'] === true);
-            const onetime = acts.filter(a => a['是否按月扣费'] !== true);
+            const monthly = acts.filter(a => a['是否按月扣费'] === true || a['是否按天扣费'] === true);
+            const onetime = acts.filter(a => a['是否按月扣费'] !== true && a['是否按天扣费'] !== true);
             document.getElementById('dashActInfo').innerHTML = `<div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
                     <span style="color:#999;">活动总数</span>
@@ -2101,8 +2105,8 @@ function renderActivityStatsTable(list) {
     el.innerHTML = pageList.map((s, i) => {
         var coinDisplay = formatApiActivityCoin(s);
         var orderDisplay = formatApiActivityOrder(s);
-        var monthlyTag = s.isMonthlyDeduct ? '<span class="tag tag-warning">是</span>' : '<span class="tag tag-info">-</span>';
-        var monthlyBadge = s.isMonthlyDeduct ? '<span class="tag tag-warning" style="font-size:10px;margin-left:4px;">月</span>' : '';
+        var monthlyTag = s.isDailyDeduct ? '<span class="tag tag-warning">天</span>' : s.isMonthlyDeduct ? '<span class="tag tag-warning">月</span>' : '<span class="tag tag-info">-</span>';
+        var monthlyBadge = s.isDailyDeduct ? '<span class="tag tag-warning" style="font-size:10px;margin-left:4px;">天</span>' : s.isMonthlyDeduct ? '<span class="tag tag-warning" style="font-size:10px;margin-left:4px;">月</span>' : '';
         var rowCls = apiActivityRowClass(s);
         var rowStyle = apiActivityRowStyle(s);
         return `<tr class="${rowCls.trim()}"${rowStyle}>
@@ -2528,6 +2532,7 @@ function sortActivityConfigList(acts) {
 }
 
 function formatApiActivityCoin(item) {
+    if (item.isDailyDeduct) return (item.dailyCoin || 0) + '/天';
     if (item.isMonthlyDeduct) return (item.monthlyCoin || 0) + '/月';
     return (item.needCoin || 0) + '/次';
 }
@@ -2606,11 +2611,11 @@ function renderActAuthTable(list) {
     el.innerHTML = pageList.map(function(s, i) {
         var coinDisplay = formatApiActivityCoin(s);
         var orderDisplay = formatApiActivityOrder(s);
-        var monthlyTag = s.isMonthlyDeduct ? '<span class="tag tag-warning">是</span>' : '<span class="tag tag-info">-</span>';
-        var monthlyBadge = s.isMonthlyDeduct ? '<span class="tag tag-warning" style="font-size:10px;margin-left:4px;">月</span>' : '';
+        var monthlyTag = s.isDailyDeduct ? '<span class="tag tag-warning">天</span>' : s.isMonthlyDeduct ? '<span class="tag tag-warning">月</span>' : '<span class="tag tag-info">-</span>';
+        var monthlyBadge = s.isDailyDeduct ? '<span class="tag tag-warning" style="font-size:10px;margin-left:4px;">天</span>' : s.isMonthlyDeduct ? '<span class="tag tag-warning" style="font-size:10px;margin-left:4px;">月</span>' : '';
         var rowCls = apiActivityRowClass(s);
         var rowStyle = apiActivityRowStyle(s);
-        var adjustBtn = s.isMonthlyDeduct
+        var adjustBtn = (s.isMonthlyDeduct || s.isDailyDeduct)
             ? '<button class="btn btn-primary btn-xs" onclick="openActAuthModal(\'' + s.activityId + '\')"><i class="fas fa-user-clock"></i> 调整授权</button>'
             : '<button class="btn btn-warning btn-xs" onclick="openActAuthModal(\'' + s.activityId + '\')"><i class="fas fa-exchange-alt"></i> 转月费</button>';
         var deleteBtnText = s.isMonthlyDeduct ? '删除账号' : '删除账号';
@@ -2669,7 +2674,7 @@ function openActAuthModal(activityId) {
     if (!act) return;
     actAuthCurrentAct = act;
     document.getElementById('aaModalActId').value = activityId;
-    var isMonthly = act.isMonthlyDeduct;
+    var isMonthly = act.isMonthlyDeduct || act.isDailyDeduct;
     document.getElementById('aaMonthlyPanel').style.display = isMonthly ? '' : 'none';
     document.getElementById('aaOnetimePanel').style.display = isMonthly ? 'none' : '';
     document.getElementById('actAuthModalTitle').textContent = isMonthly ? '调整授权' : '转月费活动';
@@ -2828,11 +2833,11 @@ async function openActAuthDeleteModal(activityId) {
     }
     if (!act) return;
     actAuthCurrentAct = act;
-    var isMonthly = act.isMonthlyDeduct;
+    var isMonthly = act.isMonthlyDeduct || act.isDailyDeduct;
     document.getElementById('aaDeleteActId').value = activityId;
     document.getElementById('aaDeleteActName').value = act.activityName + '（' + act.total + '个用户）';
     document.getElementById('aaDeleteSubmitBtn').innerHTML = isMonthly ? '<i class="fas fa-trash"></i> 确认删除并退积分' : '<i class="fas fa-trash"></i> 确认删除';
-    document.getElementById('aaDeleteNoRefundTip').style.display = 'none';
+    document.getElementById('aaDeleteNoRefundTip').style.display = isMonthly ? 'none' : '';
     document.getElementById('aaRefundMonthlyWrap').style.display = isMonthly ? 'flex' : 'none';
     document.getElementById('aaRefundOneTimeWrap').style.display = isMonthly ? 'none' : '';
     document.querySelectorAll('input[name="aaOneTimeRefundMode"][value="none"]').forEach(function(r) { r.checked = true; });
@@ -2940,7 +2945,7 @@ function renderActAuthDeleteAccountList() {
     var isManual = document.getElementById('aaManualRefund').checked;
     box.innerHTML = list.map(function(x) {
         var checked = actAuthDeleteSelectedEnvIds.indexOf(x.envId) >= 0 ? ' checked' : '';
-        var isMonthly = actAuthCurrentAct && actAuthCurrentAct.isMonthlyDeduct;
+        var isMonthly = actAuthCurrentAct && (actAuthCurrentAct.isMonthlyDeduct || actAuthCurrentAct.isDailyDeduct);
         var rightInfo = '';
         if (isMonthly) {
             if (isManual) {
@@ -3007,7 +3012,7 @@ function updateActAuthDeletePreview() {
         return;
     }
     var isManual = document.getElementById('aaManualRefund').checked;
-    var isMonthly = actAuthCurrentAct && actAuthCurrentAct.isMonthlyDeduct;
+    var isMonthly = actAuthCurrentAct && (actAuthCurrentAct.isMonthlyDeduct || actAuthCurrentAct.isDailyDeduct);
     var oneTimeMode = !isMonthly ? ((document.querySelector('input[name="aaOneTimeRefundMode"]:checked') || {}).value || 'none') : 'none';
     var autoRefundCoin = isMonthly ? selected.reduce(function(sum, item) { return sum + (item.refundCoin || 0); }, 0) : 0;
     var displayRefundCoin = autoRefundCoin;
@@ -3074,7 +3079,7 @@ async function submitActAuthDelete() {
     var items = getSelectedActAuthDeleteItems();
     if (!items.length) { toast('请选择要删除的账号', 'error'); return; }
     if (!reason) { toast('请填写删除原因', 'error'); return; }
-    var isMonthly = actAuthCurrentAct && actAuthCurrentAct.isMonthlyDeduct;
+    var isMonthly = actAuthCurrentAct && (actAuthCurrentAct.isMonthlyDeduct || actAuthCurrentAct.isDailyDeduct);
     var isManual = isMonthly && document.getElementById('aaManualRefund').checked;
     var oneTimeMode = !isMonthly ? ((document.querySelector('input[name="aaOneTimeRefundMode"]:checked') || {}).value || 'none') : 'none';
     var manualRefundCoins = {};
@@ -4057,8 +4062,9 @@ function renderActivityCards(acts) {
         var realIdx = filteredIndices ? filteredIndices[start + i] : (acts === activitiesCache ? start + i : start + i);
         const enabled = a['启用状态'] === true;
         const monthly = a['是否按月扣费'] === true;
+        const daily = a['是否按天扣费'] === true;
         const fields = (a._inputFields || []).map(f => escapeHtml(f['字段标识'] || '?'));
-        const coinDisplay = monthly ? (a['每月积分']||0)+'/月' : (a['所需积分']||0)+'/次';
+        const coinDisplay = daily ? (a['每天积分']||0)+'/天' : monthly ? (a['每月积分']||0)+'/月' : (a['所需积分']||0)+'/次';
         const disabledCls = !enabled ? ' act-row-disabled' : '';
         const disabledAttr = !enabled ? 'style="opacity:0.85;background:#fafafa;"' : '';
         const orderDisplay = enabled ? (a['排序编号'] || 0) : '-';
@@ -4152,11 +4158,11 @@ function showActivityDetail(idx) {
                 <div class="dash-info-list">
                     <div class="row"><span class="lbl">名称</span><span class="val">${escapeHtml(act['名称']||'-')}</span></div>
                     <div class="row"><span class="lbl">环境变量名</span><span class="val" style="font-family:monospace;">${formatVal(act['环境变量名'])}</span></div>
-                    <div class="row"><span class="lbl">所需积分</span><span class="val">${act['所需积分']||0}${act['是否按月扣费']?' / 月扣 '+act['每月积分']:''}</span></div>
+                    <div class="row"><span class="lbl">所需积分</span><span class="val">${act['是否按天扣费']?'每天 '+act['每天积分']+' 积分':act['是否按月扣费']?'每月 '+act['每月积分']+' 积分':(act['所需积分']||0)+' /次'}</span></div>
                     <div class="row"><span class="lbl">青龙容器</span><span class="val">${formatVal(act['青龙配置名'])||'不使用'}</span></div>
                     <div class="row"><span class="lbl">排序编号</span><span class="val">${act['排序编号']||'-'}</span></div>
                     <div class="row"><span class="lbl">启用状态</span><span class="val">${boolLabel(act['启用状态'])}</span></div>
-                    <div class="row"><span class="lbl">按月扣费</span><span class="val">${boolLabel(act['是否按月扣费'])}</span></div>
+                    <div class="row"><span class="lbl">计费模式</span><span class="val">${act['是否按天扣费']?'按天计费':act['是否按月扣费']?'月扣费':'一次性'}</span></div>
                 </div>
             </div>
             <div>
@@ -4229,6 +4235,8 @@ function generateActivitiesYaml(acts) {
   青龙配置名: "${escapeYamlString(a['青龙配置名'])}"
   是否按月扣费: ${a['是否按月扣费'] === true}
   每月积分: ${a['每月积分'] || 0}
+  是否按天扣费: ${a['是否按天扣费'] === true}
+  每天积分: ${a['每天积分'] || 0}
   排序编号: ${a['排序编号'] || 0}
   启用状态: ${a['启用状态'] === true}
 ${guideBlock}`;
@@ -4293,8 +4301,15 @@ function showActivityEditor(idx) {
     document.getElementById('actFormQlConfig').value = '';
     document.getElementById('actFormEnabled').value = isNew ? 'true' : String(act['启用状态'] === true);
     toggleActFormEnabled();
-    document.getElementById('actFormMonthly').value = isNew ? '' : String(act['是否按月扣费'] === true);
+    if (isNew) {
+        document.getElementById('actFormMonthly').value = '';
+    } else if (act['是否按天扣费'] === true) {
+        document.getElementById('actFormMonthly').value = 'daily';
+    } else {
+        document.getElementById('actFormMonthly').value = String(act['是否按月扣费'] === true);
+    }
     document.getElementById('actFormMonthlyCoin').value = act['每月积分'] || 200;
+    document.getElementById('actFormDailyCoin').value = act['每天积分'] || 10;
     document.getElementById('actFormGuide').value = act['玩法和说明'] || '';
     document.getElementById('actFormCkTpl').value = simplifyCkTemplate(act['CK构建模板']) || '';
     document.getElementById('actFormCkTpl').dataset.manualEdit = '';
@@ -4325,17 +4340,24 @@ function closeActivityModal() {
 
 // 按月扣费时：所需积分灰色不可编辑，每月积分可用
 function toggleMonthlyCoin() {
-    const monthly = document.getElementById('actFormMonthly').value === 'true';
+    const mode = document.getElementById('actFormMonthly').value;
+    const monthly = mode === 'true';
+    const daily = mode === 'daily';
     const coinInput = document.getElementById('actFormCoin');
     const monthlyInput = document.getElementById('actFormMonthlyCoin');
+    const dailyInput = document.getElementById('actFormDailyCoin');
     const tip = document.getElementById('monthlyTip');
+    const dailyTip = document.getElementById('dailyTip');
     const unitTip = document.getElementById('actCoinUnitTip');
-    coinInput.disabled = monthly;
-    coinInput.style.background = monthly ? '#f5f5f5' : '#fff';
+    coinInput.disabled = monthly || daily;
+    coinInput.style.background = (monthly || daily) ? '#f5f5f5' : '#fff';
     monthlyInput.disabled = !monthly;
     monthlyInput.style.background = monthly ? '#fff' : '#f5f5f5';
-    tip.textContent = monthly ? '' : '（按月扣费时生效）';
-    if (unitTip) unitTip.textContent = monthly ? '（月费模式下以每月积分为准）' : '/次';
+    dailyInput.disabled = !daily;
+    dailyInput.style.background = daily ? '#fff' : '#f5f5f5';
+    tip.textContent = monthly ? '' : '（月扣费时生效）';
+    dailyTip.textContent = daily ? '' : '（按天计费时生效）';
+    if (unitTip) unitTip.textContent = monthly ? '（月费模式下以每月积分为准）' : daily ? '（按天计费模式下以每天积分为准）' : '/次';
 }
 
 function toggleActFormEnabled() {
@@ -4614,7 +4636,7 @@ async function saveActivity() {
     const qlConfig = document.getElementById('actFormQlConfig').value;
     if (!qlConfig) { toast('请选择青龙配置', 'error'); return; }
     const monthlyVal = document.getElementById('actFormMonthly').value;
-    if (monthlyVal === '') { toast('请选择是否按月扣费', 'error'); return; }
+    if (monthlyVal === '') { toast('请选择计费模式', 'error'); return; }
     const editIdx = parseInt(document.getElementById('activityModal').dataset.editIdx);
     const isNew = editIdx < 0;
     const enabled = document.getElementById('actFormEnabled').value === 'true';
@@ -4639,6 +4661,8 @@ async function saveActivity() {
         '启用状态': enabled,
         '是否按月扣费': monthlyVal === 'true',
         '每月积分': parseInt(document.getElementById('actFormMonthlyCoin').value) || 0,
+        '是否按天扣费': monthlyVal === 'daily',
+        '每天积分': parseInt(document.getElementById('actFormDailyCoin').value) || 0,
         '玩法和说明': document.getElementById('actFormGuide').value,
         'CK构建模板': normalizeCkTemplate(document.getElementById('actFormCkTpl').value),
         '备注构建模板': document.getElementById('actFormRemarksTpl').value,
@@ -4654,17 +4678,20 @@ async function saveActivity() {
     if (editIdx >= 0) activitiesCache[editIdx] = act; else activitiesCache.push(act);
     activitiesCache = sortActivityConfigList(activitiesCache);
     const yaml = generateActivitiesYaml(activitiesCache);
-    try { const res = await api.post('/api/admin/activities/save', { activities: yaml }); toast(res.msg || '保存成功', res.code === 0 ? 'success' : 'error'); if (res.code === 0) { closeActivityModal(); loadActivities(); if (isNew) { const notifyWebApp = document.getElementById('actNotifyWebApp').checked; const notifyQQWx = document.getElementById('actNotifyQQWx').checked; const guide = document.getElementById('actFormGuide').value; const needCoin = parseInt(document.getElementById('actFormCoin').value) || 0; const isMonthlyDeduct = document.getElementById('actFormMonthly').value === 'true'; const monthlyCoin = parseInt(document.getElementById('actFormMonthlyCoin').value) || 0; if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, isMonthlyDeduct, monthlyCoin); } if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, isMonthlyDeduct, monthlyCoin); } } } } catch (e) { toast('保存失败', 'error'); }
+    try { const res = await api.post('/api/admin/activities/save', { activities: yaml }); toast(res.msg || '保存成功', res.code === 0 ? 'success' : 'error'); if (res.code === 0) { closeActivityModal(); loadActivities(); if (isNew) { const notifyWebApp = document.getElementById('actNotifyWebApp').checked; const notifyQQWx = document.getElementById('actNotifyQQWx').checked; const guide = document.getElementById('actFormGuide').value; const needCoin = parseInt(document.getElementById('actFormCoin').value) || 0; const billingMode = document.getElementById('actFormMonthly').value; const monthlyCoin = parseInt(document.getElementById('actFormMonthlyCoin').value) || 0; const dailyCoin = parseInt(document.getElementById('actFormDailyCoin').value) || 0; if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, billingMode, monthlyCoin, dailyCoin); } if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, billingMode, monthlyCoin, dailyCoin); } } } } catch (e) { toast('保存失败', 'error'); }
 }
 function editActivity(idx) { showActivityEditor(idx); }
-async function sendActivityNotify(activityName, activityGuide, silent, needCoin, isMonthlyDeduct, monthlyCoin) {
+async function sendActivityNotify(activityName, activityGuide, silent, needCoin, billingMode, monthlyCoin, dailyCoin) {
     const title = '🎉 新活动上线 - ' + activityName;
     var content = activityName;
     if (activityGuide && activityGuide.trim()) {
         content += '\n\n📝 玩法简介：\n' + activityGuide.trim();
     }
     content += '\n\n📊 积分信息：\n';
-    if (isMonthlyDeduct) {
+    if (billingMode === 'daily') {
+        content += '• 扣分模式：按天计费\n';
+        content += '• 每天积分：' + dailyCoin + ' 积分/天';
+    } else if (billingMode === 'true') {
         content += '• 扣分模式：按月扣费\n';
         content += '• 每月积分：' + monthlyCoin + ' 积分/月';
     } else {
@@ -6351,13 +6378,14 @@ async function pushSelectedActivities() {
         if (!act) { failCount++; continue; }
         try {
             var actNeedCoin = parseInt(act['所需积分']) || 0;
-            var actIsMonthly = act['是否按月扣费'] === true;
+            var actBillingMode = act['是否按天扣费'] === true ? 'daily' : String(act['是否按月扣费'] === true);
             var actMonthlyCoin = parseInt(act['每月积分']) || 0;
+            var actDailyCoin = parseInt(act['每天积分']) || 0;
             if (pushWebApp) {
-                await sendActivityNotify(act['名称'] || '', act['玩法和说明'] || '', true, actNeedCoin, actIsMonthly, actMonthlyCoin);
+                await sendActivityNotify(act['名称'] || '', act['玩法和说明'] || '', true, actNeedCoin, actBillingMode, actMonthlyCoin, actDailyCoin);
             }
             if (pushQQWx) {
-                await sendActivityToGroups(act['名称'] || '', act['玩法和说明'] || '', actNeedCoin, actIsMonthly, actMonthlyCoin);
+                await sendActivityToGroups(act['名称'] || '', act['玩法和说明'] || '', actNeedCoin, actBillingMode, actMonthlyCoin, actDailyCoin);
             }
             successCount++;
             pushDetails.push('✅ ' + (act['名称'] || '未知活动'));
@@ -6373,13 +6401,16 @@ async function pushSelectedActivities() {
     toast(resultMsg, successCount > 0 ? 'success' : 'error');
 }
 
-async function sendActivityToGroups(activityName, activityGuide, needCoin, isMonthlyDeduct, monthlyCoin) {
+async function sendActivityToGroups(activityName, activityGuide, needCoin, billingMode, monthlyCoin, dailyCoin) {
     var content = activityName;
     if (activityGuide && activityGuide.trim()) {
         content += '\n\n📝 玩法简介：\n' + activityGuide.trim();
     }
     content += '\n\n📊 积分信息：\n';
-    if (isMonthlyDeduct) {
+    if (billingMode === 'daily') {
+        content += '• 扣分模式：按天计费\n';
+        content += '• 每天积分：' + dailyCoin + ' 积分/天';
+    } else if (billingMode === 'true') {
         content += '• 扣分模式：按月扣费\n';
         content += '• 每月积分：' + monthlyCoin + ' 积分/月';
     } else {

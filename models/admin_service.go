@@ -30,6 +30,8 @@ type ActivityConfigAdmin struct {
 	QingLongConfig  string                   `json:"qingLongConfig"`
 	IsMonthlyDeduct bool                     `json:"isMonthlyDeduct"`
 	MonthlyCoin     int                      `json:"monthlyCoin"`
+	IsDailyDeduct   bool                     `json:"isDailyDeduct"`
+	DailyCoin       int                      `json:"dailyCoin"`
 	DisplayOrder    int                      `json:"displayOrder"`
 	Enabled         bool                     `json:"enabled"`
 	InputFields     []map[string]interface{} `json:"inputFields"`
@@ -2091,11 +2093,13 @@ type ActivityStat struct {
 	IsMonthlyDeduct bool   `json:"isMonthlyDeduct"`
 	NeedCoin        int    `json:"needCoin"`
 	MonthlyCoin     int    `json:"monthlyCoin"`
-	Total           int    `json:"total"`        // 上车总人数
-	Valid           int    `json:"valid"`        // 有效人数（启用状态）
-	ExpiringSoon    int    `json:"expiringSoon"` // 快过期人数（7天内到期）
-	Expired         int    `json:"expired"`      // 过期人数（已过期未删除）
-	Disabled        int    `json:"disabled"`     // 已禁用人数
+	IsDailyDeduct   bool   `json:"isDailyDeduct"`
+	DailyCoin       int    `json:"dailyCoin"`
+	Total           int    `json:"total"`
+	Valid           int    `json:"valid"`
+	ExpiringSoon    int    `json:"expiringSoon"`
+	Expired         int    `json:"expired"`
+	Disabled        int    `json:"disabled"`
 }
 
 func sortConfigsForAdminDisplay(configs []ActivityConfig) {
@@ -2197,6 +2201,7 @@ func buildActivityStat(cfg ActivityConfig) ActivityStat {
 		ActivityID: cfg.ID, ActivityName: cfg.Name, DisplayOrder: cfg.DisplayOrder,
 		QLConfig: cfg.QingLongConfigName, Enabled: cfg.Enabled,
 		IsMonthlyDeduct: cfg.IsMonthlyDeduct, NeedCoin: cfg.NeedCoin, MonthlyCoin: cfg.MonthlyCoin,
+		IsDailyDeduct: cfg.IsDailyDeduct, DailyCoin: cfg.DailyCoin,
 	}
 
 	projects, err := GetActivityProjectsByActivityID(cfg.ID)
@@ -2208,7 +2213,7 @@ func buildActivityStat(cfg ActivityConfig) ActivityStat {
 	for _, project := range projects {
 		stat.Total++
 		if project.Status == 0 {
-			if cfg.IsMonthlyDeduct && project.ExpireDate != "" {
+			if (cfg.IsMonthlyDeduct || cfg.IsDailyDeduct) && project.ExpireDate != "" {
 				expireDate, parseErr := time.Parse(DateLayout, project.ExpireDate)
 				if parseErr == nil {
 					expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
@@ -2227,7 +2232,7 @@ func buildActivityStat(cfg ActivityConfig) ActivityStat {
 			} else {
 				stat.Valid++
 			}
-		} else if cfg.IsMonthlyDeduct && project.ExpireDate != "" {
+		} else if (cfg.IsMonthlyDeduct || cfg.IsDailyDeduct) && project.ExpireDate != "" {
 			expireDate, parseErr := time.Parse(DateLayout, project.ExpireDate)
 			if parseErr == nil {
 				expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
@@ -2259,6 +2264,8 @@ type ActivityAuthItem struct {
 	NeedCoin        int    `json:"needCoin"`
 	MonthlyCoin     int    `json:"monthlyCoin"`
 	IsMonthlyDeduct bool   `json:"isMonthlyDeduct"`
+	IsDailyDeduct   bool   `json:"isDailyDeduct"`
+	DailyCoin       int    `json:"dailyCoin"`
 	Total           int    `json:"total"`
 	Valid           int    `json:"valid"`
 	Expired         int    `json:"expired"`
@@ -2318,6 +2325,7 @@ func buildActivityAuthItem(cfg ActivityConfig) ActivityAuthItem {
 		ActivityID: cfg.ID, ActivityName: cfg.Name, EnvKey: cfg.EnvKey,
 		QLConfig: cfg.QingLongConfigName, DisplayOrder: cfg.DisplayOrder, Enabled: cfg.Enabled,
 		NeedCoin: cfg.NeedCoin, MonthlyCoin: cfg.MonthlyCoin, IsMonthlyDeduct: cfg.IsMonthlyDeduct,
+		IsDailyDeduct: cfg.IsDailyDeduct, DailyCoin: cfg.DailyCoin,
 	}
 
 	projects, err := GetActivityProjectsByActivityID(cfg.ID)
@@ -2329,7 +2337,7 @@ func buildActivityAuthItem(cfg ActivityConfig) ActivityAuthItem {
 	for _, project := range projects {
 		item.Total++
 		if project.Status == 0 {
-			if cfg.IsMonthlyDeduct && project.ExpireDate != "" {
+			if (cfg.IsMonthlyDeduct || cfg.IsDailyDeduct) && project.ExpireDate != "" {
 				expireDate, parseErr := time.Parse(DateLayout, project.ExpireDate)
 				if parseErr == nil {
 					expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
@@ -2393,13 +2401,15 @@ func buildActivityAuthAccountItemByProject(cfg *ActivityConfig, project *Activit
 			if remainDays > 0 {
 				remainDays = remainDays - 1
 			}
-			if project.MonthlyCoin > 0 && project.NeedCoin == 0 {
+			if project.DailyCoin > 0 && project.NeedCoin == 0 {
+				refundCoin = project.DailyCoin * remainDays
+			} else if project.MonthlyCoin > 0 && project.NeedCoin == 0 {
 				refundCoin = int(math.Round(float64(project.MonthlyCoin) * float64(remainDays) / 30))
 			}
 		}
 	}
 	statusText := "正常"
-	if !cfg.IsMonthlyDeduct && expireDate == "" {
+	if !cfg.IsMonthlyDeduct && !cfg.IsDailyDeduct && expireDate == "" {
 		statusText = "一次性"
 	} else if project.Status != 0 {
 		statusText = "已禁用"
@@ -2471,7 +2481,7 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 	if cfg == nil {
 		return 0, 0, fmt.Errorf("活动不存在")
 	}
-	isMonthly := cfg.IsMonthlyDeduct
+	isMonthly := cfg.IsMonthlyDeduct || cfg.IsDailyDeduct
 	cleanEnvIDs := make([]int, 0, len(envIDs))
 	seen := map[int]bool{}
 	for _, envID := range envIDs {
@@ -2563,8 +2573,8 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 	if cfg == nil {
 		return 0, 0, fmt.Errorf("活动不存在")
 	}
-	if !cfg.IsMonthlyDeduct {
-		return 0, 0, fmt.Errorf("该活动不是月扣费活动，不支持授权管理")
+	if !cfg.IsMonthlyDeduct && !cfg.IsDailyDeduct {
+		return 0, 0, fmt.Errorf("该活动不是月扣费/按天计费活动，不支持授权管理")
 	}
 
 	cleanEnvIDs := make([]int, 0, len(envIDs))

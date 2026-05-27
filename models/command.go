@@ -1089,7 +1089,7 @@ var codeSignals = []CodeSignal{
 {
     Command: []string{"sign", "打卡", "签到"},
     Handle: func(sender *Sender) interface{} {
-        sender.Reply("🔄 机器人端打卡功能升级中\n\n📱 请前往以下渠道完成打卡：\n\n💻 电脑网页用户\n请复制以下地址到浏览器打开：\nhttp://180.152.5.230:5701\n\n📲 手机用户\n请回复【狗东下载】，下载大师全新开发的软件\n（支持活动中心查询、打卡查询等各种功能）\n\n⏳ 升级完成后将第一时间通知大家，感谢理解！")
+        sender.Reply("🔄 机器人端打卡功能升级中\n\n📱 请前往以下渠道完成打卡：\n\n💻 电脑网页用户\n请复制以下地址到浏览器打开：\nhttp://180.152.5.230:5701\n\n📲 手机用户\n⚠️ 请复制链接到浏览器打开，以免被腾讯拦截\n安卓版本下载地址：http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk\niOS版本下载地址：http://180.152.5.230:8888/down/QaWi0JBZgb3t.ipa\n\n⏳ 升级完成后将第一时间通知大家，感谢理解！")
         return nil
     },
 },

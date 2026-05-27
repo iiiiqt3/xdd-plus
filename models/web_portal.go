@@ -26,6 +26,8 @@ type PortalProjectItem struct {
 	CreatedAt       string                `json:"createdAt"`
 	IsMonthlyDeduct bool                  `json:"isMonthlyDeduct"`
 	MonthlyCoin     int                   `json:"monthlyCoin"`
+	IsDailyDeduct   bool                  `json:"isDailyDeduct"`
+	DailyCoin       int                   `json:"dailyCoin"`
 	NeedCoin        int                   `json:"needCoin"`
 	BizStatus       string                `json:"bizStatus"`
 	BizStatusText   string                `json:"bizStatusText"`
@@ -51,6 +53,8 @@ type PortalActivityItem struct {
 	NeedCoin        int                   `json:"needCoin"`
 	IsMonthlyDeduct bool                  `json:"isMonthlyDeduct"`
 	MonthlyCoin     int                   `json:"monthlyCoin"`
+	IsDailyDeduct   bool                  `json:"isDailyDeduct"`
+	DailyCoin       int                   `json:"dailyCoin"`
 	QingLongConfig  string                `json:"qingLongConfig"`
 	Guide           string                `json:"guide"`
 	InputFields     []PortalActivityField `json:"inputFields"`
@@ -239,6 +243,8 @@ func GetPortalActivities() []PortalActivityItem {
 			NeedCoin:        cfg.NeedCoin,
 			IsMonthlyDeduct: cfg.IsMonthlyDeduct,
 			MonthlyCoin:     cfg.MonthlyCoin,
+			IsDailyDeduct:   cfg.IsDailyDeduct,
+			DailyCoin:       cfg.DailyCoin,
 			QingLongConfig:  cfg.QingLongConfigName,
 			Guide:           strings.TrimSpace(cfg.Guide),
 			CKTemplate:      cfg.CKTemplate,
@@ -340,7 +346,9 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 			statusText = "已启用"
 		}
 		priceText := fmt.Sprintf("一次性 %d 积分", dbProj.NeedCoin)
-		if dbProj.IsMonthlyDeduct {
+		if dbProj.IsDailyDeduct {
+			priceText = fmt.Sprintf("每天 %d 积分", dbProj.DailyCoin)
+		} else if dbProj.IsMonthlyDeduct {
 			priceText = fmt.Sprintf("每月 %d 积分", dbProj.MonthlyCoin)
 		}
 
@@ -360,6 +368,8 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 			CreatedAt:       dbProj.CreatedAt.Format("2006-01-02 15:04:05"),
 			IsMonthlyDeduct: dbProj.IsMonthlyDeduct,
 			MonthlyCoin:     dbProj.MonthlyCoin,
+			IsDailyDeduct:   dbProj.IsDailyDeduct,
+			DailyCoin:       dbProj.DailyCoin,
 			NeedCoin:        dbProj.NeedCoin,
 			BizStatus:       bizStatus,
 			BizStatusText:   bizStatusText,
@@ -411,7 +421,11 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 		cleanedInputs[field.Key] = value
 	}
 
-	if cfg.IsMonthlyDeduct {
+	if cfg.IsDailyDeduct {
+		if months < 1 || months > 365 {
+			return "", fmt.Errorf("授权天数需在1-365之间")
+		}
+	} else if cfg.IsMonthlyDeduct {
 		if months < 1 || months > 12 {
 			return "", fmt.Errorf("授权月数需在1-12之间")
 		}
@@ -421,7 +435,10 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 
 	totalCoin := cfg.NeedCoin
 	expireDate := ""
-	if cfg.IsMonthlyDeduct {
+	if cfg.IsDailyDeduct {
+		totalCoin = cfg.DailyCoin * months
+		expireDate = GenerateExpireDateFromDays(months)
+	} else if cfg.IsMonthlyDeduct {
 		totalCoin = cfg.MonthlyCoin * months
 		expireDate = GenerateExpireDate(months)
 	}
@@ -432,7 +449,7 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 
 	ckValue := cfg.CKBuilder(cleanedInputs)
 	finalRemarks := cfg.RemarksBuilder(userNumber, strings.TrimSpace(userRemarks), cleanedInputs)
-	if cfg.IsMonthlyDeduct {
+	if cfg.IsMonthlyDeduct || cfg.IsDailyDeduct {
 		finalRemarks = fmt.Sprintf("%s/%s", finalRemarks, expireDate)
 	}
 
@@ -448,9 +465,11 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 		ExpireDate:         expireDate,
 		IsMonthlyDeduct:    cfg.IsMonthlyDeduct,
 		MonthlyCoin:        cfg.MonthlyCoin,
+		IsDailyDeduct:      cfg.IsDailyDeduct,
+		DailyCoin:          cfg.DailyCoin,
 		SyncStatus:         "pending",
 	}
-	if !cfg.IsMonthlyDeduct {
+	if !cfg.IsMonthlyDeduct && !cfg.IsDailyDeduct {
 		project.NeedCoin = cfg.NeedCoin
 	}
 
@@ -462,7 +481,9 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 
 	go TriggerSync(project.ID)
 
-	if cfg.IsMonthlyDeduct {
+	if cfg.IsDailyDeduct {
+		return fmt.Sprintf("添加%s成功，扣除%d积分，有效期至%s", cfg.Name, totalCoin, expireDate), nil
+	} else if cfg.IsMonthlyDeduct {
 		return fmt.Sprintf("添加%s成功，扣除%d积分，有效期至%s", cfg.Name, totalCoin, expireDate), nil
 	}
 	return fmt.Sprintf("添加%s成功，扣除%d积分", cfg.Name, totalCoin), nil
@@ -473,14 +494,23 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 	if cfg == nil {
 		return "", fmt.Errorf("活动不存在")
 	}
-	if !cfg.IsMonthlyDeduct {
+	if !cfg.IsMonthlyDeduct && !cfg.IsDailyDeduct {
 		return "", fmt.Errorf("该活动不支持网页端授权续费")
 	}
-	if months < 1 || months > 12 {
-		return "", fmt.Errorf("授权月数需在1-12之间")
+
+	var totalCoin int
+	if cfg.IsDailyDeduct {
+		if months < 1 || months > 365 {
+			return "", fmt.Errorf("授权天数需在1-365之间")
+		}
+		totalCoin = cfg.DailyCoin * months
+	} else {
+		if months < 1 || months > 12 {
+			return "", fmt.Errorf("授权月数需在1-12之间")
+		}
+		totalCoin = cfg.MonthlyCoin * months
 	}
 
-	totalCoin := cfg.MonthlyCoin * months
 	userCoin := GetCoin(userNumber)
 	if userCoin < totalCoin {
 		return "", fmt.Errorf("积分不足，当前%d，需要%d", userCoin, totalCoin)
@@ -492,9 +522,18 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 	}
 
 	baseTime, hasOldDate := ParseRemarksDate(remarks)
-	newExpireDate := GenerateExpireDate(months)
-	if hasOldDate {
-		newExpireDate = GenerateExpireDateFromBase(baseTime, months)
+	var newExpireDate string
+	if cfg.IsDailyDeduct {
+		if hasOldDate {
+			newExpireDate = baseTime.AddDate(0, 0, months).Format(DateLayout)
+		} else {
+			newExpireDate = GenerateExpireDateFromDays(months)
+		}
+	} else {
+		newExpireDate = GenerateExpireDate(months)
+		if hasOldDate {
+			newExpireDate = GenerateExpireDateFromBase(baseTime, months)
+		}
 	}
 	newRemarks := BuildMonthDeductRemarks(remarks, newExpireDate)
 
@@ -502,6 +541,10 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 	project.ExpireDate = newExpireDate
 	project.NeedCoin = 0
 	project.Status = 0
+	if cfg.IsDailyDeduct {
+		project.IsDailyDeduct = true
+		project.DailyCoin = cfg.DailyCoin
+	}
 	project.SyncStatus = "pending_update"
 	project.SyncError = ""
 	if err := UpdateActivityProject(project); err != nil {
@@ -527,7 +570,7 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 		return "", fmt.Errorf("未找到对应项目记录")
 	}
 
-	if cfg.IsMonthlyDeduct && project.MonthlyCoin > 0 && project.NeedCoin == 0 {
+	if (cfg.IsMonthlyDeduct || cfg.IsDailyDeduct) && project.NeedCoin == 0 {
 		parts := strings.Split(remarks, "/")
 		if len(parts) >= 1 {
 			dateStr := parts[len(parts)-1]
@@ -540,7 +583,11 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 				if remainingDays > 0 {
 					remainingDays = remainingDays - 1
 				}
-				returnCoin = int((float64(project.MonthlyCoin) * remainingDays / 30) + 0.5)
+				if cfg.IsDailyDeduct && project.DailyCoin > 0 {
+					returnCoin = project.DailyCoin * int(remainingDays)
+				} else if project.MonthlyCoin > 0 {
+					returnCoin = int((float64(project.MonthlyCoin) * remainingDays / 30) + 0.5)
+				}
 			}
 		}
 	}
@@ -606,7 +653,7 @@ func PortalQueryProjectIncome(userNumber int, activityID, remarks string) (strin
 		return "", fmt.Errorf("该项目当前已禁用或已过期，请先续费/重新授权")
 	}
 
-	if cfg.IsMonthlyDeduct && project.ExpireDate != "" {
+	if (cfg.IsMonthlyDeduct || cfg.IsDailyDeduct) && project.ExpireDate != "" {
 		expireTimeObj, parseErr := time.Parse("2006-01-02", project.ExpireDate)
 		if parseErr == nil && time.Now().After(expireTimeObj) {
 			return "", fmt.Errorf("该项目授权已过期（过期时间：%s），请先发送【记录授权】续费", project.ExpireDate)
