@@ -787,7 +787,7 @@ final class PortalService {
     }
 
     func markNotificationRead(id: Int, completion: @escaping (Result<Void, APIError>) -> Void) {
-        APIClient.shared.requestData(path: "/api/portal/notification/read?id=\(id)", method: "POST") { (result: Result<EmptyPayload, APIError>) in
+        APIClient.shared.requestData(path: "/api/portal/notification?id=\(id)") { (result: Result<PortalNotification, APIError>) in
             switch result {
             case .success: completion(.success(()))
             case .failure(let error): completion(.failure(error))
@@ -813,7 +813,7 @@ final class PortalService {
     }
 
     func fetchNotificationDetail(id: Int, completion: @escaping (Result<PortalNotification, APIError>) -> Void) {
-        APIClient.shared.requestData(path: "/api/portal/notification/detail?id=\(id)", completion: completion)
+        APIClient.shared.requestData(path: "/api/portal/notification?id=\(id)", completion: completion)
     }
 
     func submitFeedback(type: String, title: String, content: String, contact: String, completion: @escaping (Result<String, APIError>) -> Void) {

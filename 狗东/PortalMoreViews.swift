@@ -20,13 +20,13 @@ final class MoreViewController: BaseNativeViewController, UITableViewDataSource,
         let headerRow = UIView()
         let headerIcon = UILabel()
         headerIcon.text = "⚙️"
-        headerIcon.font = .systemFont(ofSize: 22)
+        headerIcon.font = .systemFont(ofSize: 24)
         let headerTitle = UILabel()
         headerTitle.text = "更多"
         headerTitle.font = .systemFont(ofSize: 20, weight: .bold)
         let headerSubtitle = UILabel()
         headerSubtitle.text = "通知 · 反馈 · 关于"
-        headerSubtitle.font = .systemFont(ofSize: 11)
+        headerSubtitle.font = .systemFont(ofSize: 12)
         headerSubtitle.textColor = .secondaryLabel
         headerRow.addSubview(headerIcon)
         headerRow.addSubview(headerTitle)
@@ -43,12 +43,12 @@ final class MoreViewController: BaseNativeViewController, UITableViewDataSource,
             headerRow.leadingAnchor.constraint(equalTo: headerContainer.leadingAnchor, constant: 16),
             headerRow.trailingAnchor.constraint(equalTo: headerContainer.trailingAnchor, constant: -16),
             headerRow.bottomAnchor.constraint(equalTo: headerContainer.bottomAnchor, constant: -4),
-            headerRow.heightAnchor.constraint(equalToConstant: 32),
+            headerRow.heightAnchor.constraint(equalToConstant: 44),
             headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
             headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
-            headerIcon.widthAnchor.constraint(equalToConstant: 28),
-            headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 6),
-            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -7),
+            headerIcon.widthAnchor.constraint(equalToConstant: 32),
+            headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 8),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -8),
             headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
             headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor)
         ])
@@ -301,6 +301,8 @@ extension NotificationListViewController: UITableViewDataSource, UITableViewDele
                 isTop: item.isTop, createdAt: item.createdAt, readAt: item.readAt
             )
             tableView.reloadRows(at: [indexPath], with: .none)
+            let unreadCount = notifications.filter { !$0.isRead }.count
+            title = unreadCount > 0 ? "消息通知(\(unreadCount)条未读)" : "消息通知"
         }
         navigationController?.pushViewController(NotificationDetailViewController(notification: item), animated: true)
     }
@@ -535,10 +537,10 @@ enum LiquidGlassEffect {
 
     static func applyToNavBar(_ navBar: UINavigationBar) {
         let appearance = UINavigationBarAppearance()
-        appearance.configureWithDefaultBackground()
+        appearance.configureWithTransparentBackground()
         appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
-        appearance.backgroundColor = UIColor.systemBackground
-        appearance.shadowColor = UIColor.separator.withAlphaComponent(0.2)
+        appearance.backgroundColor = .clear
+        appearance.shadowColor = .clear
         appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
         navBar.standardAppearance = appearance

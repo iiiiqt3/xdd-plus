@@ -888,13 +888,13 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         let headerRow = UIView()
         let headerIcon = UILabel()
         headerIcon.text = "📁"
-        headerIcon.font = .systemFont(ofSize: 22)
+        headerIcon.font = .systemFont(ofSize: 24)
         let headerTitle = UILabel()
         headerTitle.text = "项目"
         headerTitle.font = .systemFont(ofSize: 20, weight: .bold)
         let headerSubtitle = UILabel()
         headerSubtitle.text = "活动中心 · 微信协议"
-        headerSubtitle.font = .systemFont(ofSize: 11)
+        headerSubtitle.font = .systemFont(ofSize: 12)
         headerSubtitle.textColor = .secondaryLabel
         headerRow.addSubview(headerIcon)
         headerRow.addSubview(headerTitle)
@@ -908,12 +908,12 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
             headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 2),
             headerRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             headerRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            headerRow.heightAnchor.constraint(equalToConstant: 36),
+            headerRow.heightAnchor.constraint(equalToConstant: 44),
             headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
             headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
-            headerIcon.widthAnchor.constraint(equalToConstant: 28),
-            headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 6),
-            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -7),
+            headerIcon.widthAnchor.constraint(equalToConstant: 32),
+            headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 8),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -8),
             headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
             headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor)
         ])
@@ -2469,7 +2469,6 @@ final class WechatQRCodeViewController: BaseNativeViewController {
 
 
 final class CoinTasksViewController: BaseNativeViewController {
-    private lazy var heroView = SectionHeroView(icon: "star.fill", title: "积分任务", subtitle: "每日打卡、祈福与积分补充入口", tint: .systemOrange)
     private let redeemField = UITextField()
     private let redeemButton = UIButton(type: .system)
     private var isRedeeming = false
@@ -2482,27 +2481,58 @@ final class CoinTasksViewController: BaseNativeViewController {
     }
 
     private func setupUI() {
+        let headerRow = UIView()
+        let headerIcon = UILabel()
+        headerIcon.text = "⭐"
+        headerIcon.font = .systemFont(ofSize: 24)
+        let headerTitle = UILabel()
+        headerTitle.text = "任务"
+        headerTitle.font = .systemFont(ofSize: 20, weight: .bold)
+        let headerSubtitle = UILabel()
+        headerSubtitle.text = "每日打卡 · 祈福 · 积分补充"
+        headerSubtitle.font = .systemFont(ofSize: 12)
+        headerSubtitle.textColor = .secondaryLabel
+        headerRow.addSubview(headerIcon)
+        headerRow.addSubview(headerTitle)
+        headerRow.addSubview(headerSubtitle)
+        headerIcon.translatesAutoresizingMaskIntoConstraints = false
+        headerTitle.translatesAutoresizingMaskIntoConstraints = false
+        headerSubtitle.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
+            headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+            headerIcon.widthAnchor.constraint(equalToConstant: 32),
+            headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 8),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor, constant: -8),
+            headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
+            headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor),
+            headerRow.heightAnchor.constraint(equalToConstant: 44)
+        ])
+
         let scrollView = UIScrollView()
         let stack = UIStackView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
         stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(headerRow)
         view.addSubview(scrollView)
         scrollView.addSubview(stack)
+        headerRow.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 2),
+            headerRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            headerRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            scrollView.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 8),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 4),
+            stack.topAnchor.constraint(equalTo: scrollView.topAnchor),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
             stack.widthAnchor.constraint(equalTo: view.widthAnchor, constant: -32)
         ])
-
-        stack.addArrangedSubview(heroView)
 
         let checkinAction = ActionButton(icon: "checkmark.circle.fill", title: "每日打卡", desc: "签到领取积分奖励", tint: .systemBlue)
         checkinAction.tapAction = { [weak self] in self?.checkinTapped() }
