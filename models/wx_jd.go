@@ -25,7 +25,7 @@ const (
 	wxJdSignGSALT = "sb2cwlYyaCSN1KUv5RHG3tmqxfEb8NKN"
 	wxJdBizKey    = "bce044c839bb9eb811aad5af18a629e199da4e13"
 	wxJdFingerTk  = "L64RTJ562VJEYNEQN67XMUWSR4UFLOIQHJYZ3MWERRIKJGP24SDSBDS4I4AMVU24Y3Y7A4UPDICN2"
-	wxJdAlpha     = "23IL<N01c7KvwZO56RSTAfghiFyzWJqVabGH4PQdopUrsCuX*xeBjkltDEmn89.-"
+	wxJdAlpha     = "23IL<N01c7KvwZO56RSTAfghiFyzWJqVabGH4PQdopUrsCuX*xeBjkltDEmn89.-/"
 	wxJdReferer   = "https://servicewechat.com/" + wxJdAppID + "/864/page-frame.html"
 	wxJdUA        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf254186b) XWEB/19481"
 )
@@ -341,6 +341,7 @@ func handleWxJdLogin(sender *Sender, msg chan string) {
 
 	var menu strings.Builder
 	menu.WriteString("📋 请选择要刷新的京东账号：\n\n")
+	raw, _ := getWxUserStatusRaw()
 	for i, ck := range cks {
 		status := "✅"
 		if ck.Available == False || !CookieOK(&ck) {
@@ -350,7 +351,16 @@ func handleWxJdLogin(sender *Sender, msg chan string) {
 		if nick == "" {
 			nick = ck.PtPin
 		}
-		menu.WriteString(fmt.Sprintf("%d、%s %s\n", i+1, status, nick))
+		wxNick := "未绑定微信协议"
+		if ck.WeiXin != "" {
+			wxNick = ck.WeiXin
+			if raw != nil {
+				if info, ok := raw.Data[ck.WeiXin]; ok && info.Nickname != "" {
+					wxNick = info.Nickname + "(" + ck.WeiXin + ")"
+				}
+			}
+		}
+		menu.WriteString(fmt.Sprintf("%d、%s %s → 微信:%s\n", i+1, status, nick, wxNick))
 	}
 	menu.WriteString("\n输入序号刷新对应账号，输入 0 刷新全部，输入 q 退出：")
 	sender.Reply(menu.String())
@@ -373,11 +383,11 @@ func handleWxJdLogin(sender *Sender, msg chan string) {
 	if len(devices) > 1 {
 		var devMenu strings.Builder
 		devMenu.WriteString("检测到多个微信协议设备，请选择：\n\n")
+		devRaw, _ := getWxUserStatusRaw()
 		for i, d := range devices {
-			raw, _ := getWxUserStatusRaw()
 			nick := d
-			if raw != nil {
-				if info, ok := raw.Data[d]; ok && info.Nickname != "" {
+			if devRaw != nil {
+				if info, ok := devRaw.Data[d]; ok && info.Nickname != "" {
 					nick = info.Nickname
 				}
 			}
