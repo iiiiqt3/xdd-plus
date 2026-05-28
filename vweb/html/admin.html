@@ -1374,15 +1374,6 @@
             <div class="form-item"><label>活动名称 *</label><input type="text" id="actFormName" placeholder="如：顺丰速运"></div>
             <div class="form-item"><label>环境变量名 *</label><input type="text" id="actFormEnvKey" placeholder="如：sfsyUrl"></div>
             <div class="form-item">
-                <label>所需积分 <span class="tip" id="actCoinUnitTip">/次</span></label>
-                <input type="number" id="actFormCoin" value="500">
-            </div>
-            <div class="form-item" id="actFormOrderWrap">
-                <label>排序编号</label>
-                <input type="number" id="actFormOrder" value="10">
-                <input type="text" id="actFormOrderDisabled" value="-" disabled style="display:none;background:#f5f7fa;color:#409eff;font-weight:600;text-align:center;">
-            </div>
-            <div class="form-item">
                 <label>青龙配置 *</label>
                 <select id="actFormQlConfig"><option value="">请选择青龙配置</option></select>
             </div>
@@ -1390,17 +1381,34 @@
                 <label>启用状态</label>
                 <select id="actFormEnabled" onchange="toggleActFormEnabled()"><option value="true">启用</option><option value="false">禁用</option></select>
             </div>
-            <div class="form-item">
-                <label>计费模式 *</label>
-                <select id="actFormMonthly" onchange="toggleMonthlyCoin()"><option value="">请选择</option><option value="false">一次性</option><option value="true">月扣费</option><option value="daily">按天计费</option></select>
+            <div class="form-item" id="actFormOrderWrap">
+                <label>排序编号</label>
+                <input type="number" id="actFormOrder" value="10">
+                <input type="text" id="actFormOrderDisabled" value="-" disabled style="display:none;background:#f5f7fa;color:#409eff;font-weight:600;text-align:center;">
             </div>
-            <div class="form-item">
-                <label>每月积分 <span class="tip" id="monthlyTip"></span></label>
-                <input type="number" id="actFormMonthlyCoin" value="200">
-            </div>
-            <div class="form-item">
-                <label>每天积分 <span class="tip" id="dailyTip"></span></label>
-                <input type="number" id="actFormDailyCoin" value="10">
+            <div class="form-item"></div>
+            <div class="form-item full" style="grid-column:1/-1;margin:8px 0 4px;padding:12px 16px;background:linear-gradient(135deg,rgba(64,158,255,0.04),rgba(103,194,58,0.04));border-radius:8px;border-left:3px solid #67c23a;">
+                <label style="font-weight:600;color:#333;display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;">
+                    <i class="fas fa-coins" style="color:#e6a23c;"></i> 积分配置
+                </label>
+                <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);gap:14px;">
+                    <div class="form-item">
+                        <label>计费模式 *</label>
+                        <select id="actFormMonthly" onchange="toggleMonthlyCoin()"><option value="">请选择</option><option value="false">一次性</option><option value="true">月扣费</option><option value="daily">按天计费</option></select>
+                    </div>
+                    <div class="form-item">
+                        <label>所需积分 <span class="tip" id="actCoinUnitTip">/次</span></label>
+                        <input type="number" id="actFormCoin" value="500">
+                    </div>
+                    <div class="form-item" id="actMonthlyCoinWrap">
+                        <label>每月积分 <span class="tip" id="monthlyTip"></span></label>
+                        <input type="number" id="actFormMonthlyCoin" value="200">
+                    </div>
+                    <div class="form-item" id="actDailyCoinWrap">
+                        <label>每天积分 <span class="tip" id="dailyTip"></span></label>
+                        <input type="number" id="actFormDailyCoin" value="10">
+                    </div>
+                </div>
             </div>
             <div class="form-item full" style="margin-top:8px;">
                 <label style="display:flex;justify-content:space-between;align-items:center;">
@@ -4349,8 +4357,12 @@ function toggleMonthlyCoin() {
     const tip = document.getElementById('monthlyTip');
     const dailyTip = document.getElementById('dailyTip');
     const unitTip = document.getElementById('actCoinUnitTip');
+    const monthlyWrap = document.getElementById('actMonthlyCoinWrap');
+    const dailyWrap = document.getElementById('actDailyCoinWrap');
     coinInput.disabled = monthly || daily;
     coinInput.style.background = (monthly || daily) ? '#f5f5f5' : '#fff';
+    if (monthlyWrap) monthlyWrap.style.display = daily ? 'none' : '';
+    if (dailyWrap) dailyWrap.style.display = monthly ? 'none' : '';
     monthlyInput.disabled = !monthly;
     monthlyInput.style.background = monthly ? '#fff' : '#f5f5f5';
     dailyInput.disabled = !daily;
