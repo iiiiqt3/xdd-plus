@@ -308,7 +308,7 @@ func createActivityProjectTable() {
 		}{
 			{"is_daily_deduct", "TINYINT(1) NOT NULL DEFAULT 0"},
 			{"daily_coin", "INT NOT NULL DEFAULT 0"},
-			{"min_days", "INT NOT NULL DEFAULT 1"},
+			{"min_days", "INT NOT NULL DEFAULT 0"},
 		}
 		for _, col := range missingColumns {
 			var exists int

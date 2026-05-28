@@ -285,7 +285,7 @@ func (al *ActivityLoader) LoadConfig() error {
 // convertYAMLToActivity 将 YAML 配置转换为 ActivityConfig
 func (al *ActivityLoader) convertYAMLToActivity(yamlAct YAMLActivityConfig) *ActivityConfig {
 	minDays := yamlAct.MinDays
-	if minDays < 1 {
+	if yamlAct.IsDailyDeduct && minDays < 1 {
 		minDays = 1
 	}
 	act := &ActivityConfig{
