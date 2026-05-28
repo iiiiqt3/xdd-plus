@@ -678,6 +678,27 @@
             color: var(--text); font-size: 13px; font-weight: 900; word-break: break-word;
         }
         .ck-field-name span { color: var(--text-dim); font-size: 11.5px; font-weight: 700; line-height: 1.45; }
+        .ck-field-row .field textarea {
+            width: 100%;
+            border: 1.5px solid var(--glass-border);
+            border-radius: 11px;
+            background: rgba(255,255,255,0.72);
+            color: var(--text);
+            padding: 11px 14px;
+            outline: none;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.22s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            resize: vertical;
+            min-height: 60px;
+            word-break: break-all;
+        }
+        .ck-field-row .field textarea:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3.5px rgba(8,145,178,0.12), 0 2px 8px rgba(8,145,178,0.08);
+            background: rgba(255,255,255,0.88);
+        }
         .ck-preview-box {
             white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
             padding: 11px 12px; border-radius: 12px; background: rgba(241,245,249,0.82);
@@ -2344,11 +2365,22 @@ function editProjectCk(activityId, remarks, displayName) {
         list.innerHTML = visibleFields.map(field => {
             const key = String(field.key || '');
             const prompt = String(field.prompt || key);
+            const val = parsed[key] || '';
+            const isLong = val.length > 80;
+            if (isLong) {
+                return `
+                <div class="ck-field-row">
+                    <div class="ck-field-name">${escapeHtml(key)}<span>${escapeHtml(prompt)}</span></div>
+                    <div class="field">
+                        <textarea data-edit-ck-key="${escapeAttr(key)}" rows="3" placeholder="请输入${escapeAttr(key)}的值" oninput="updateEditCkPreview()" style="font-family:monospace;font-size:12px;min-height:60px;resize:vertical;">${escapeHtml(val)}</textarea>
+                    </div>
+                </div>`;
+            }
             return `
                 <div class="ck-field-row">
                     <div class="ck-field-name">${escapeHtml(key)}<span>${escapeHtml(prompt)}</span></div>
                     <div class="field">
-                        <input data-edit-ck-key="${escapeAttr(key)}" value="${escapeAttr(parsed[key] || '')}" placeholder="请输入${escapeAttr(key)}的值" oninput="updateEditCkPreview()">
+                        <input data-edit-ck-key="${escapeAttr(key)}" value="${escapeAttr(val)}" placeholder="请输入${escapeAttr(key)}的值" oninput="updateEditCkPreview()">
                     </div>
                 </div>`;
         }).join('');
