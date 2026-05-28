@@ -3950,7 +3950,7 @@ function parseSingleActivityBlock(block) {
             const kv = trimmed.match(/^(\S+):\s*(.*)$/);
             if (kv) {
                 const k = kv[1], rawV = kv[2].trim();
-                if (curRule && indent >= 8) {
+                if (curRule && indent >= 6) {
                     curRule[k] = cleanValue(rawV);
                 } else {
                     curField[k] = cleanValue(rawV);
