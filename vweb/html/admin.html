@@ -4554,7 +4554,8 @@ function buildRuleParamsHtml(ruleType, rule, ri) {
         else if (p.key === 'chars') value = stringifyCharsValue(rule['字符列表']);
         else if (p.key === 'length') value = rule['长度'] !== undefined ? String(rule['长度']) : '';
         else if (p.key === 'value') value = rule['值'] || '';
-        return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#999;">' + p.label + '：<input type="text" value="' + escapeHtml(String(value || '')) + '" style="width:100px;padding:2px 6px;font-size:12px;border:1px solid #dcdfe6;border-radius:3px;" oninput="storeRuleParam(this,\'' + p.key + '\')"></span>';
+        var escapedValue = escapeHtml(String(value || ''));
+        return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#999;">' + p.label + '：<input type="text" value="' + escapedValue + '" data-init-key="' + p.key + '" data-init-value="' + escapedValue + '" style="width:100px;padding:2px 6px;font-size:12px;border:1px solid #dcdfe6;border-radius:3px;" oninput="storeRuleParam(this,\'' + p.key + '\')"></span>';
     }).join('');
 }
 
@@ -4569,12 +4570,12 @@ function renderFieldRuleList(rules) {
     container.innerHTML = rules.map(function(r, ri) {
         var ruleType = VALIDATION_RULE_TYPES.find(function(t){return t.value===r['类型'];}) || {value:r['类型'],label:r['类型']+'(自定义)',params:[]};
         var paramsHtml = buildRuleParamsHtml(ruleType, r, ri);
-        return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #eee;background:#fff;margin-bottom:4px;border-radius:4px;flex-wrap:wrap;" data-rule-idx="'+ri+'">'+
+        return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #eee;background:#fff;margin-bottom:4px;border-radius:4px;flex-wrap:wrap;" data-rule-idx="'+ri+'" data-param-errmsg="'+escapeHtml(r['错误提示']||'')+'">'+
             '<select onchange="changeRuleType(this,'+ri+')" style="padding:4px 8px;font-size:12px;border:1px solid #dcdfe6;border-radius:4px;">'+
                 VALIDATION_RULE_TYPES.map(function(t){return '<option value="'+t.value+'"'+(t.value===ruleType.value?' selected':'')+'>'+t.label+'</option>';}).join('')+
             '</select>'+
             '<span id="rule-param-'+ri+'">'+paramsHtml+'</span>'+
-            '<input type="text" placeholder="错误提示" value="'+escapeHtml(r['错误提示']||'')+'" onchange="updateRuleErr('+ri+',this.value)" style="flex:1;min-width:80px;padding:4px 8px;font-size:12px;border:1px solid #dcdfe6;border-radius:4px;" title="校验失败时的提示文字">'+
+            '<input type="text" placeholder="错误提示" value="'+escapeHtml(r['错误提示']||'')+'" oninput="updateRuleErr(this,'+ri+')" style="flex:1;min-width:80px;padding:4px 8px;font-size:12px;border:1px solid #dcdfe6;border-radius:4px;" title="校验失败时的提示文字">'+
             '<button type="button" class="btn btn-danger btn-xs" onclick="removeRuleRow('+ri+')" title="删除此规则"><i class="fas fa-trash"></i></button>'+
         '</div>';
     }).join('');
@@ -4611,7 +4612,10 @@ function storeRuleParam(input,key){
     else if (key === 'length') row.dataset.param_length = input.value;
     else if (key === 'value') row.dataset.param_value = input.value;
 }
-function updateRuleErr(ri,val){}
+function updateRuleErr(input,ri){
+    var row = input.closest('[data-rule-idx]');
+    if (row) row.dataset.param_errmsg = input.value;
+}
 function collectFieldRulesFromDom() {
     var rules = [];
     document.querySelectorAll('#fieldRuleList [data-rule-idx]').forEach(function(el){
@@ -4623,6 +4627,10 @@ function collectFieldRulesFromDom() {
         if (typeDef) {
             typeDef.params.forEach(function(p) {
                 var val = el.dataset['param_' + p.key];
+                if (val === undefined || val === '') {
+                    var initInput = el.querySelector('input[data-init-key="' + p.key + '"]');
+                    if (initInput) val = initInput.dataset.initValue || initInput.value;
+                }
                 if (val === undefined || val === '') return;
                 if (p.key === 'chars') {
                     var chars = parseCharsValue(val);
@@ -4637,7 +4645,9 @@ function collectFieldRulesFromDom() {
                 }
             });
         }
-        if (errInput && errInput.value.trim()) rule['错误提示'] = errInput.value.trim();
+        var errMsg = el.dataset.paramerrmsg || '';
+        if (!errMsg && errInput) errMsg = errInput.value.trim();
+        if (errMsg) rule['错误提示'] = errMsg;
         rules.push(rule);
     });
     return rules;
