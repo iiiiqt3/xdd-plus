@@ -586,7 +586,9 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 			dateStr := parts[len(parts)-1]
 			expireDate, err := time.Parse(DateLayout, dateStr)
 			if err == nil {
-				remainingDays := expireDate.Sub(time.Now()).Hours() / 24
+				now := time.Now()
+				expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+				remainingDays := expireThreshold.Sub(now).Hours() / 24
 				if remainingDays < 0 {
 					remainingDays = 0
 				}

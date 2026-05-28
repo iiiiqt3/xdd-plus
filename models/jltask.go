@@ -1083,7 +1083,8 @@ func HandleDeleteCK(sender *Sender) interface{} {
 				return
 			}
 			now := time.Now()
-			remainingDays := expireDate.Sub(now).Hours() / 24
+			expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+			remainingDays := expireThreshold.Sub(now).Hours() / 24
 			if remainingDays < 0 {
 				remainingDays = 0
 			}

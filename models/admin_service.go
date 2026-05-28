@@ -2394,7 +2394,9 @@ func buildActivityAuthAccountItemByProject(cfg *ActivityConfig, project *Activit
 	refundCoin := 0
 	if expireDate != "" {
 		if d, parseErr := time.Parse(DateLayout, expireDate); parseErr == nil {
-			remainDays = int(math.Ceil(time.Until(d).Hours() / 24))
+			now := time.Now()
+			expireThreshold := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+			remainDays = int(math.Ceil(expireThreshold.Sub(now).Hours() / 24))
 			if remainDays < 0 {
 				remainDays = 0
 			}
