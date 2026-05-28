@@ -4351,6 +4351,7 @@ function toggleMonthlyCoin() {
     const mode = document.getElementById('actFormMonthly').value;
     const monthly = mode === 'true';
     const daily = mode === 'daily';
+    const onetime = mode === 'false';
     const coinInput = document.getElementById('actFormCoin');
     const monthlyInput = document.getElementById('actFormMonthlyCoin');
     const dailyInput = document.getElementById('actFormDailyCoin');
@@ -4359,10 +4360,30 @@ function toggleMonthlyCoin() {
     const unitTip = document.getElementById('actCoinUnitTip');
     const monthlyWrap = document.getElementById('actMonthlyCoinWrap');
     const dailyWrap = document.getElementById('actDailyCoinWrap');
-    coinInput.disabled = monthly || daily;
-    coinInput.style.background = (monthly || daily) ? '#f5f5f5' : '#fff';
-    if (monthlyWrap) monthlyWrap.style.display = daily ? 'none' : '';
-    if (dailyWrap) dailyWrap.style.display = monthly ? 'none' : '';
+    const coinWrap = coinInput.closest('.form-item');
+
+    if (onetime) {
+        coinInput.disabled = false;
+        coinInput.style.background = '#fff';
+        if (coinWrap) coinWrap.style.display = '';
+        if (monthlyWrap) monthlyWrap.style.display = 'none';
+        if (dailyWrap) dailyWrap.style.display = 'none';
+    } else if (monthly) {
+        if (coinWrap) coinWrap.style.display = 'none';
+        if (monthlyWrap) monthlyWrap.style.display = '';
+        if (dailyWrap) dailyWrap.style.display = 'none';
+    } else if (daily) {
+        if (coinWrap) coinWrap.style.display = 'none';
+        if (monthlyWrap) monthlyWrap.style.display = 'none';
+        if (dailyWrap) dailyWrap.style.display = '';
+    } else {
+        coinInput.disabled = false;
+        coinInput.style.background = '#fff';
+        if (coinWrap) coinWrap.style.display = '';
+        if (monthlyWrap) monthlyWrap.style.display = 'none';
+        if (dailyWrap) dailyWrap.style.display = 'none';
+    }
+
     monthlyInput.disabled = !monthly;
     monthlyInput.style.background = monthly ? '#fff' : '#f5f5f5';
     dailyInput.disabled = !daily;
