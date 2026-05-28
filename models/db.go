@@ -301,6 +301,28 @@ func createActivityProjectTable() {
 			log.Printf("[数据库迁移] user_number 字段已是 %s，无需修改", colType)
 		}
 
+		// 检查并添加按天计费相关字段
+		missingColumns := []struct {
+			name    string
+			define  string
+		}{
+			{"is_daily_deduct", "TINYINT(1) NOT NULL DEFAULT 0"},
+			{"daily_coin", "INT NOT NULL DEFAULT 0"},
+			{"min_days", "INT NOT NULL DEFAULT 1"},
+		}
+		for _, col := range missingColumns {
+			var exists int
+			db.Raw("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'activity_project' AND column_name = ?", col.name).Scan(&exists)
+			if exists == 0 {
+				sql := "ALTER TABLE activity_project ADD COLUMN " + col.name + " " + col.define
+				if err := db.Exec(sql).Error; err != nil {
+					log.Printf("[数据库迁移] 添加 %s 字段失败: %v", col.name, err)
+				} else {
+					log.Printf("[数据库迁移] 已添加 %s 字段", col.name)
+				}
+			}
+		}
+
 		// 自动迁移：将 activity_id 从旧的连续编号（"1","2","3"...）更新为 EnvKey
 		// 仅当 activity_id 是纯数字且与 env_key 不同时才执行，确保幂等（多次启动不会重复执行）
 		var oldStyleProjects []ActivityProject
