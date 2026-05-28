@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -30,6 +31,15 @@ const (
 )
 
 var wxJdList = make(map[int]chan string)
+
+type RiskVerifyError struct {
+	JmpURL string
+	ErrMsg string
+}
+
+func (e *RiskVerifyError) Error() string {
+	return e.ErrMsg
+}
 
 func getWxJdServer() string {
 	if Config.WxProtocol.JdServer != "" {
@@ -238,6 +248,14 @@ func wxJdSilentAuthLogin(code string, eidToken string) (string, string, error) {
 	errCode, _ := result["err_code"].(float64)
 	ptKey, _ := result["pt_key"].(string)
 	ptPin, _ := result["pt_pin"].(string)
+	if errCode == 128 {
+		jmpURL, _ := result["jmp_url"].(string)
+		errMsg, _ := result["err_msg"].(string)
+		return "", "", &RiskVerifyError{
+			JmpURL: jmpURL,
+			ErrMsg: errMsg,
+		}
+	}
 	if errCode != 0 || ptKey == "" || ptPin == "" {
 		return "", "", fmt.Errorf("silentauthlogin失败: err_code=%.0f body=%s", errCode, truncateStr(string(body), 400))
 	}
@@ -366,6 +384,36 @@ func handleWxJdLogin(sender *Sender, msg chan string) {
 func wxJdRefreshByDevice(sender *Sender, wxid string) bool {
 	ptKey, ptPin, err := wxJdRefreshCK(wxid)
 	if err != nil {
+		var riskErr *RiskVerifyError
+		if errors.As(err, &riskErr) {
+			sender.Reply(fmt.Sprintf("⚠️ 账号需要短信验证\n\n🔗 请点击网址进行验证：\n%s\n\n验证完成后回复 y 继续执行，回复 q 退出", riskErr.JmpURL))
+			if smsList[sender.UserID] == nil {
+				smsList[sender.UserID] = make(chan string)
+			}
+			defer delete(smsList, sender.UserID)
+			timeout := time.After(200 * time.Second)
+			for {
+				select {
+				case msg, ok := <-smsList[sender.UserID]:
+					if !ok {
+						sender.Reply("通道已关闭，退出验证流程")
+						return false
+					}
+					if msg == "q" || msg == "Q" {
+						sender.Reply("已退出验证流程")
+						return false
+					}
+					if msg == "y" || msg == "Y" {
+						sender.Reply("⏳ 验证通过，正在重新刷新...")
+						return wxJdRefreshByDevice(sender, wxid)
+					}
+					sender.Reply("无效输入，请回复 y 继续，或回复 q 退出")
+				case <-timeout:
+					sender.Reply("⏰ 操作超时，已退出验证流程")
+					return false
+				}
+			}
+		}
 		sender.Reply(fmt.Sprintf("❌ 刷新失败: %v", err))
 		return false
 	}
