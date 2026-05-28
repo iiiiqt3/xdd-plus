@@ -261,6 +261,7 @@ class ProjectsFragment : Fragment() {
 
     private fun activityCard(item: PortalActivity): View {
         val brandBlue = ContextCompat.getColor(requireContext(), R.color.brand_secondary)
+        val daily = item.isDailyDeduct == true
         val monthly = item.isMonthlyDeduct == true
         return requireContext().cardView().apply {
             orientation = LinearLayout.HORIZONTAL
@@ -290,18 +291,34 @@ class ProjectsFragment : Fragment() {
             }
             // 扣费方式标签
             tagRow.addView(TextView(context).apply {
-                text = if (monthly) "按月授权" else "一次性上车"
-                setTextColor(if (monthly) Color.parseColor("#7C3AED") else Color.parseColor("#0369A1"))
+                text = when {
+                    daily -> "按天授权"
+                    monthly -> "按月授权"
+                    else -> "一次性上车"
+                }
+                setTextColor(when {
+                    daily -> Color.parseColor("#059669")
+                    monthly -> Color.parseColor("#7C3AED")
+                    else -> Color.parseColor("#0369A1")
+                })
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
                 setTypeface(typeface, Typeface.BOLD)
                 background = GradientDrawable().apply {
-                    setColor(if (monthly) Color.parseColor("#F3E8FF") else Color.parseColor("#E0F2FE"))
+                    setColor(when {
+                        daily -> Color.parseColor("#D1FAE5")
+                        monthly -> Color.parseColor("#F3E8FF")
+                        else -> Color.parseColor("#E0F2FE")
+                    })
                     cornerRadius = context.dp(6).toFloat()
                 }
                 setPadding(context.dp(7), context.dp(2), context.dp(7), context.dp(2))
             })
             // 积分
-            val coinText = if (monthly) "${item.monthlyCoin ?: 0} 积分/月" else "${item.needCoin ?: 0} 积分"
+            val coinText = when {
+                daily -> "${item.dailyCoin ?: 0} 积分/天"
+                monthly -> "${item.monthlyCoin ?: 0} 积分/月"
+                else -> "${item.needCoin ?: 0} 积分"
+            }
             tagRow.addView(TextView(context).apply {
                 text = coinText
                 setTextColor(brandBlue)
@@ -580,15 +597,30 @@ class ProjectsFragment : Fragment() {
     }
 
     private fun showDeleteConfirm(item: PortalProject) {
-        val refundTip = if (item.isMonthlyDeduct == true && (item.needCoin ?: 0) > 0) {
-            "该账号由一次性活动转换，删除不退还积分"
-        } else if (item.isMonthlyDeduct == true && (item.daysLeft ?: 0) > 0 && (item.monthlyCoin ?: 0) > 0) {
-            val estimated = (((item.monthlyCoin ?: 0).toDouble() * (item.daysLeft ?: 0).toDouble() / 30.0) + 0.5).toInt()
-            "预计返还积分：$estimated（最终以服务端结算为准）"
-        } else if (item.isMonthlyDeduct == true) {
-            "预计返还积分：以服务端结算为准"
-        } else {
-            "此活动为一次性扣费，删除不退还积分"
+        val refundTip = when {
+            // 按天计费退积分
+            item.isDailyDeduct == true && (item.daysLeft ?: 0) > 0 && (item.dailyCoin ?: 0) > 0 -> {
+                val estimated = (item.dailyCoin ?: 0) * (item.daysLeft ?: 0)
+                "预计返还积分：$estimated（最终以服务端结算为准）"
+            }
+            item.isDailyDeduct == true -> {
+                "预计返还积分：以服务端结算为准"
+            }
+            // 按月计费退积分
+            item.isMonthlyDeduct == true && (item.needCoin ?: 0) > 0 -> {
+                "该账号由一次性活动转换，删除不退还积分"
+            }
+            item.isMonthlyDeduct == true && (item.daysLeft ?: 0) > 0 && (item.monthlyCoin ?: 0) > 0 -> {
+                val estimated = (((item.monthlyCoin ?: 0).toDouble() * (item.daysLeft ?: 0).toDouble() / 30.0) + 0.5).toInt()
+                "预计返还积分：$estimated（最终以服务端结算为准）"
+            }
+            item.isMonthlyDeduct == true -> {
+                "预计返还积分：以服务端结算为准"
+            }
+            // 一次性扣费
+            else -> {
+                "此活动为一次性扣费，删除不退还积分"
+            }
         }
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
             .setTitle("确认删除")

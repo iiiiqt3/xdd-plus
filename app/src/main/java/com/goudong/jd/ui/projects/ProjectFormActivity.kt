@@ -62,10 +62,10 @@ class ProjectFormActivity : AppCompatActivity() {
                 setTypeface(typeface, Typeface.BOLD)
             })
             // 描述间隔
-            val desc = if (activityItem.isMonthlyDeduct == true) {
-                "每月扣 ${activityItem.monthlyCoin ?: 0} 积分 · 青龙：${activityItem.qingLongConfig ?: "默认容器"}"
-            } else {
-                "一次扣 ${activityItem.needCoin ?: 0} 积分 · 青龙：${activityItem.qingLongConfig ?: "默认容器"}"
+            val desc = when {
+                activityItem.isDailyDeduct == true -> "每天扣 ${activityItem.dailyCoin ?: 0} 积分 · 青龙：${activityItem.qingLongConfig ?: "默认容器"}"
+                activityItem.isMonthlyDeduct == true -> "每月扣 ${activityItem.monthlyCoin ?: 0} 积分 · 青龙：${activityItem.qingLongConfig ?: "默认容器"}"
+                else -> "一次扣 ${activityItem.needCoin ?: 0} 积分 · 青龙：${activityItem.qingLongConfig ?: "默认容器"}"
             }
             addView(TextView(context).apply {
                 text = desc
@@ -138,16 +138,29 @@ class ProjectFormActivity : AppCompatActivity() {
             })
             val remark = inputField("请输入唯一备注名")
             addView(remark)
-            // 授权月数
-            val monthInput = if (activityItem.isMonthlyDeduct == true) {
-                addView(TextView(context).apply {
-                    text = "授权月数"
-                    setTextColor(Color.parseColor("#475569"))
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
-                    setPadding(0, dp(14), 0, dp(6))
-                })
-                inputField("请输入 1-12", number = true).also { addView(it) }
-            } else null
+            // 授权时长输入框
+            val monthInput = when {
+                activityItem.isDailyDeduct == true -> {
+                    val minDays = activityItem.minDays ?: 1
+                    addView(TextView(context).apply {
+                        text = "授权天数（最少${minDays}天）"
+                        setTextColor(Color.parseColor("#475569"))
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
+                        setPadding(0, dp(14), 0, dp(6))
+                    })
+                    inputField("最少${minDays}天，如 ${minDays}/7/30", number = true).also { addView(it) }
+                }
+                activityItem.isMonthlyDeduct == true -> {
+                    addView(TextView(context).apply {
+                        text = "授权月数"
+                        setTextColor(Color.parseColor("#475569"))
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
+                        setPadding(0, dp(14), 0, dp(6))
+                    })
+                    inputField("请输入 1-12", number = true).also { addView(it) }
+                }
+                else -> null
+            }
             // 间隔
             addView(android.view.View(context).apply {
                 layoutParams = LinearLayout.LayoutParams(0, dp(16))
@@ -159,12 +172,28 @@ class ProjectFormActivity : AppCompatActivity() {
                 if (remarks.isBlank()) return@setOnClickListener alert("请输入备注名")
                 val map = inputs.mapValues { it.value.text?.toString().orEmpty().trim() }
                 val months = monthInput?.text?.toString()?.toIntOrNull() ?: 0
-                if (activityItem.isMonthlyDeduct == true && months <= 0) {
-                    return@setOnClickListener alert("请输入正确的授权月数")
+
+                // 验证输入
+                if (activityItem.isDailyDeduct == true) {
+                    val minDays = activityItem.minDays ?: 1
+                    if (months < minDays) return@setOnClickListener alert("授权天数最少${minDays}天")
+                    if (months > 365) return@setOnClickListener alert("授权天数不能超过365天")
+                } else if (activityItem.isMonthlyDeduct == true) {
+                    if (months <= 0) return@setOnClickListener alert("请输入正确的授权月数")
                 }
-                val totalCoin = if (activityItem.isMonthlyDeduct == true) (activityItem.monthlyCoin ?: 0) * months else (activityItem.needCoin ?: 0)
-                val expireText = if (activityItem.isMonthlyDeduct == true && months > 0) {
-                    val cal = java.util.Calendar.getInstance().apply { add(java.util.Calendar.MONTH, months) }
+
+                val totalCoin = when {
+                    activityItem.isDailyDeduct == true -> (activityItem.dailyCoin ?: 0) * months
+                    activityItem.isMonthlyDeduct == true -> (activityItem.monthlyCoin ?: 0) * months
+                    else -> activityItem.needCoin ?: 0
+                }
+                val expireText = if ((activityItem.isDailyDeduct == true || activityItem.isMonthlyDeduct == true) && months > 0) {
+                    val cal = java.util.Calendar.getInstance()
+                    if (activityItem.isDailyDeduct == true) {
+                        cal.add(java.util.Calendar.DAY_OF_MONTH, months)
+                    } else {
+                        cal.add(java.util.Calendar.MONTH, months)
+                    }
                     val y = cal.get(java.util.Calendar.YEAR)
                     val m = cal.get(java.util.Calendar.MONTH) + 1
                     val d = cal.get(java.util.Calendar.DAY_OF_MONTH)
@@ -174,11 +203,18 @@ class ProjectFormActivity : AppCompatActivity() {
                     append("项目：${activityItem.name ?: "未命名"}\n")
                     append("备注名：$remarks\n")
                     append("将扣积分：$totalCoin\n")
-                    if (activityItem.isMonthlyDeduct == true) {
-                        append("授权月数：$months\n")
-                        if (!expireText.isNullOrBlank()) append("预计有效期至：$expireText\n")
-                    } else {
-                        append("生效方式：一次性上车\n")
+                    when {
+                        activityItem.isDailyDeduct == true -> {
+                            append("授权天数：$months\n")
+                            if (!expireText.isNullOrBlank()) append("预计有效期至：$expireText\n")
+                        }
+                        activityItem.isMonthlyDeduct == true -> {
+                            append("授权月数：$months\n")
+                            if (!expireText.isNullOrBlank()) append("预计有效期至：$expireText\n")
+                        }
+                        else -> {
+                            append("生效方式：一次性上车\n")
+                        }
                     }
                     append("确认后才会正式上车并扣除积分。")
                 }
