@@ -25,7 +25,7 @@ type ActivityProject struct {
 	MonthlyCoin        int        `gorm:"column:monthly_coin;default:0"`
 	IsDailyDeduct      bool       `gorm:"column:is_daily_deduct;default:false"`
 	DailyCoin          int        `gorm:"column:daily_coin;default:0"`
-	MinDays            int        `gorm:"column:min_days;default:0"`
+	MinDays            *int       `gorm:"column:min_days"`
 	NeedCoin           int        `gorm:"column:need_coin;default:0"`
 	CreatedAt          time.Time  `gorm:"column:created_at"`
 	UpdatedAt          time.Time  `gorm:"column:updated_at"`

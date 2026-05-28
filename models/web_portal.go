@@ -473,8 +473,11 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 		MonthlyCoin:        cfg.MonthlyCoin,
 		IsDailyDeduct:      cfg.IsDailyDeduct,
 		DailyCoin:          cfg.DailyCoin,
-		MinDays:            cfg.MinDays,
 		SyncStatus:         "pending",
+	}
+	if cfg.IsDailyDeduct && cfg.MinDays > 0 {
+		minDays := cfg.MinDays
+		project.MinDays = &minDays
 	}
 	if !cfg.IsMonthlyDeduct && !cfg.IsDailyDeduct {
 		project.NeedCoin = cfg.NeedCoin

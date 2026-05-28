@@ -529,8 +529,11 @@ func handleRecordCKByGo(qq int, ckValue, finalRemarks, envKey string, config *Ac
 		MonthlyCoin:        config.MonthlyCoin,
 		IsDailyDeduct:      config.IsDailyDeduct,
 		DailyCoin:          config.DailyCoin,
-		MinDays:            config.MinDays,
 		SyncStatus:         "pending",
+	}
+	if config.IsDailyDeduct && config.MinDays > 0 {
+		minDays := config.MinDays
+		project.MinDays = &minDays
 	}
 	if !config.IsMonthlyDeduct && !config.IsDailyDeduct {
 		project.NeedCoin = config.NeedCoin
