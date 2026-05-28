@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>狗东.ipa</key>
+	<array>
+		<dict>
+			<key>architectures</key>
+			<array>
+				<string>arm64</string>
+			</array>
+			<key>buildNumber</key>
+			<string>1</string>
+			<key>certificate</key>
+			<dict>
+				<key>SHA1</key>
+				<string>D36851EDDDAAFD1C65CB4D02E56B6B221EB8B449</string>
+				<key>dateExpires</key>
+				<string>2026/11/26</string>
+				<key>type</key>
+				<string>Apple Development</string>
+			</dict>
+			<key>entitlements</key>
+			<dict>
+				<key>application-identifier</key>
+				<string>TS89RH735A.goudong.--</string>
+				<key>com.apple.developer.team-identifier</key>
+				<string>TS89RH735A</string>
+				<key>get-task-allow</key>
+				<true/>
+			</dict>
+			<key>name</key>
+			<string>狗东.app</string>
+			<key>profile</key>
+			<dict>
+				<key>UUID</key>
+				<string>54783e3a-4d8b-46a3-a3c5-07005203433f</string>
+				<key>dateExpires</key>
+				<string>2026/6/2</string>
+				<key>name</key>
+				<string>iOS Team Provisioning Profile: goudong.--</string>
+			</dict>
+			<key>team</key>
+			<dict>
+				<key>id</key>
+				<string>TS89RH735A</string>
+				<key>name</key>
+				<string>鸟 飞</string>
+			</dict>
+			<key>versionNumber</key>
+			<string>3.7</string>
+		</dict>
+	</array>
+</dict>
+</plist>
