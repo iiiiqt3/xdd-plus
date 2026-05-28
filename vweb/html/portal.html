@@ -1879,9 +1879,9 @@ function renderDetailActions(item) {
 function canRenewProject(item) {
     if (!item) return false;
     const activity = (state.activities || []).find(x => String(x.id) === String(item.activityId));
-    if (activity && activity.isMonthlyDeduct === true) return true;
-    if (item.isMonthlyDeduct === true) return true;
-    if (typeof item.priceText === 'string' && item.priceText.indexOf('每月') !== -1) return true;
+    if (activity && (activity.isMonthlyDeduct === true || activity.isDailyDeduct === true)) return true;
+    if (item.isMonthlyDeduct === true || item.isDailyDeduct === true) return true;
+    if (typeof item.priceText === 'string' && (item.priceText.indexOf('每月') !== -1 || item.priceText.indexOf('每天') !== -1)) return true;
     if (item.expireDate) return true;
     return false;
 }
@@ -1895,7 +1895,9 @@ function renderBizTag(item) {
 function getActivityDisplayById(activityId) {
     const found = (state.activities || []).find(item => String(item.id) === String(activityId));
     if (!found) return '';
-    return `${found.name}${found.isMonthlyDeduct ? `（每月 ${found.monthlyCoin} 积分）` : `（扣除 ${found.needCoin} 积分）`}`;
+    if (found.isDailyDeduct) return `${found.name}（每天 ${found.dailyCoin} 积分）`;
+    if (found.isMonthlyDeduct) return `${found.name}（每月 ${found.monthlyCoin} 积分）`;
+    return `${found.name}（扣除 ${found.needCoin} 积分）`;
 }
 
 function toggleGroupDetail(groupKey) {
@@ -1934,8 +1936,8 @@ function renderActivities() {
             <div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                     <span class="tag" style="background:var(--cyan-dim);color:var(--cyan);border-color:rgba(8,145,178,0.22);">编号 ${item.id}</span>
-                    <span class="tag ${item.isMonthlyDeduct ? 'expiring' : 'active'}">${item.isMonthlyDeduct ? '按月授权' : '一次性上车'}</span>
-                    <span class="tag" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(124,58,237,0.22);">${item.isMonthlyDeduct ? `每月 ${item.monthlyCoin} 积分` : `扣除 ${item.needCoin} 积分`}</span>
+                    <span class="tag ${item.isMonthlyDeduct ? 'expiring' : item.isDailyDeduct ? 'warning' : 'active'}">${item.isMonthlyDeduct ? '按月授权' : item.isDailyDeduct ? '按天计费' : '一次性上车'}</span>
+                    <span class="tag" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(124,58,237,0.22);">${item.isDailyDeduct ? `每天 ${item.dailyCoin} 积分` : item.isMonthlyDeduct ? `每月 ${item.monthlyCoin} 积分` : `扣除 ${item.needCoin} 积分`}</span>
                 </div>
             </div>
             <div class="muted" style="font-size:11.5px;line-height:1.55;">点击上车后，再填写字段与备注信息</div>
@@ -1950,8 +1952,9 @@ function openProjectModal(activityId) {
     state.currentActivity = item;
     document.getElementById('projectModalTitle').textContent = `活动中心：${item.name}`;
     const meta = document.getElementById('projectModalMeta');
+    const priceText = item.isDailyDeduct ? `每天扣 ${item.dailyCoin} 积分` : item.isMonthlyDeduct ? `每月扣 ${item.monthlyCoin} 积分` : `一次扣 ${item.needCoin} 积分`;
     meta.innerHTML = `
-        <span class="project-modal-chip">${escapeHtml(item.isMonthlyDeduct ? `每月扣 ${item.monthlyCoin} 积分` : `一次扣 ${item.needCoin} 积分`)}</span>
+        <span class="project-modal-chip">${escapeHtml(priceText)}</span>
         <span class="project-modal-chip">青龙容器：${escapeHtml(item.qingLongConfig || '默认容器')}</span>
     `;
     const guide = document.getElementById('projectModalGuide');
@@ -1997,6 +2000,14 @@ function openProjectModal(activityId) {
             <div class="field">
                 <label>授权月数<span class="field-required" title="按月扣费必填">*</span></label>
                 <input data-modal-field-key="__months" placeholder="如 1 / 3 / 6">
+            </div>`);
+    } else if (item.isDailyDeduct) {
+        const minDays = item.minDays || 1;
+        built.push(`
+            <div class="field">
+                <label>授权天数<span class="field-required" title="按天计费必填">*</span></label>
+                <input data-modal-field-key="__months" placeholder="最少${minDays}天，如 ${minDays} / 7 / 30" data-min-days="${minDays}">
+                <div style="font-size:11px;color:#e6a23c;margin-top:4px;">该活动最少购买 ${minDays} 天</div>
             </div>`);
     }
     fields.innerHTML = built.join('');
@@ -2154,7 +2165,18 @@ async function confirmProjectSubmit() {
     const months = parseInt(inputs.__months || '0', 10) || 0;
     delete inputs.__remarks;
     delete inputs.__months;
-    const confirmText = `确认提交【${getActivityDisplayById(item.id)}】吗？${remarks ? `\n备注名：${remarks}` : ''}${months ? `\n授权月数：${months}` : ''}`;
+
+    // 验证最小天数
+    if (item.isDailyDeduct && months > 0) {
+        const minDays = item.minDays || 1;
+        if (months < minDays) {
+            toast(`该活动最少需要购买 ${minDays} 天`, 'error');
+            return;
+        }
+    }
+
+    const periodLabel = item.isDailyDeduct ? '授权天数' : '授权月数';
+    const confirmText = `确认提交【${getActivityDisplayById(item.id)}】吗？${remarks ? `\n备注名：${remarks}` : ''}${months ? `\n${periodLabel}：${months}` : ''}`;
     if (!window.confirm(confirmText)) return;
     try {
         const resp = await request('/api/portal/project', {
@@ -2173,11 +2195,16 @@ async function confirmProjectSubmit() {
 }
 
 async function renewProject(activityId, remarks) {
-    const months = window.prompt('请输入续费月数（1-12）', '1');
+    const item = (state.projects || []).find(x => String(x.activityId) === String(activityId) && x.remark === remarks);
+    const isDaily = item && item.isDailyDeduct;
+    const isMonthly = item && item.isMonthlyDeduct;
+    const promptText = isDaily ? '请输入续费天数（1-365）' : '请输入续费月数（1-12）';
+    const periodLabel = isDaily ? '天' : '个月';
+    const months = window.prompt(promptText, '1');
     if (!months) return;
     const monthNum = parseInt(months, 10) || 0;
     const title = getActivityDisplayById(activityId);
-    if (!window.confirm(`确认续费【${title || activityId}】${monthNum}个月吗？`)) return;
+    if (!window.confirm(`确认续费【${title || activityId}】${monthNum}${periodLabel}吗？`)) return;
     try {
         const resp = await request('/api/portal/project/renew', {
             method: 'POST',
@@ -2195,14 +2222,19 @@ async function renewProject(activityId, remarks) {
 async function deleteProject(activityId, remarks, activityName) {
     const item = (state.projects || []).find(x => String(x.activityId) === String(activityId) && x.remark === remarks);
     let refundTip = '';
-    if (item && item.isMonthlyDeduct && item.needCoin > 0) {
+    if (item && item.isDailyDeduct && item.dailyCoin > 0 && item.daysLeft > 0) {
+        const estimated = item.dailyCoin * item.daysLeft;
+        refundTip = `\n预计返还积分：${estimated}（最终以服务端结算为准）`;
+    } else if (item && item.isDailyDeduct) {
+        refundTip = '\n预计返还积分：以服务端结算为准';
+    } else if (item && item.isMonthlyDeduct && item.needCoin > 0) {
         refundTip = '\n该账号由一次性活动转换，删除不退还积分';
     } else if (item && item.isMonthlyDeduct && item.monthlyCoin > 0 && item.daysLeft > 0) {
         const estimated = Math.round(item.monthlyCoin * item.daysLeft / 30);
         refundTip = `\n预计返还积分：${estimated}（最终以服务端结算为准）`;
     } else if (item && item.isMonthlyDeduct) {
         refundTip = '\n预计返还积分：以服务端结算为准';
-    } else if (item && !item.isMonthlyDeduct) {
+    } else if (item && !item.isMonthlyDeduct && !item.isDailyDeduct) {
         refundTip = '\n此活动为一次性扣费，删除不退还积分';
     }
     if (!window.confirm(`确认删除【${activityName}】这条项目记录吗？${refundTip}`)) return;

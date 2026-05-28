@@ -30,6 +30,7 @@ type YAMLActivityConfig struct {
 	MonthlyCoin        int                 `yaml:"每月积分"`
 	IsDailyDeduct      bool                `yaml:"是否按天扣费"`
 	DailyCoin          int                 `yaml:"每天积分"`
+	MinDays            int                 `yaml:"最小天数"`  // 按天计费时的最小购买天数
 	DisplayOrder       int                 `yaml:"排序编号"`
 	Enabled            bool                `yaml:"启用状态"`
 	Guide              string              `yaml:"玩法和说明"`
@@ -283,6 +284,10 @@ func (al *ActivityLoader) LoadConfig() error {
 
 // convertYAMLToActivity 将 YAML 配置转换为 ActivityConfig
 func (al *ActivityLoader) convertYAMLToActivity(yamlAct YAMLActivityConfig) *ActivityConfig {
+	minDays := yamlAct.MinDays
+	if minDays < 1 {
+		minDays = 1
+	}
 	act := &ActivityConfig{
 		Name:               yamlAct.Name,
 		EnvKey:             yamlAct.EnvKey,
@@ -293,6 +298,7 @@ func (al *ActivityLoader) convertYAMLToActivity(yamlAct YAMLActivityConfig) *Act
 		MonthlyCoin:        yamlAct.MonthlyCoin,
 		IsDailyDeduct:      yamlAct.IsDailyDeduct,
 		DailyCoin:          yamlAct.DailyCoin,
+		MinDays:            minDays,
 		DisplayOrder:       yamlAct.DisplayOrder,
 		Enabled:            yamlAct.Enabled,
 		InputFields:        make([]InputField, 0, len(yamlAct.InputFields)),

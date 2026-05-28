@@ -1408,6 +1408,10 @@
                         <label>每天积分 <span class="tip" id="dailyTip"></span></label>
                         <input type="number" id="actFormDailyCoin" value="10">
                     </div>
+                    <div class="form-item" id="actMinDaysWrap">
+                        <label>最小天数 <span class="tip">（按天计费时生效）</span></label>
+                        <input type="number" id="actFormMinDays" value="1" min="1" max="365">
+                    </div>
                 </div>
             </div>
             <div class="form-item full" style="margin-top:8px;">
@@ -4245,6 +4249,7 @@ function generateActivitiesYaml(acts) {
   每月积分: ${a['每月积分'] || 0}
   是否按天扣费: ${a['是否按天扣费'] === true}
   每天积分: ${a['每天积分'] || 0}
+  最小天数: ${a['最小天数'] || 1}
   排序编号: ${a['排序编号'] || 0}
   启用状态: ${a['启用状态'] === true}
 ${guideBlock}`;
@@ -4318,6 +4323,7 @@ function showActivityEditor(idx) {
     }
     document.getElementById('actFormMonthlyCoin').value = act['每月积分'] || 200;
     document.getElementById('actFormDailyCoin').value = act['每天积分'] || 10;
+    document.getElementById('actFormMinDays').value = act['最小天数'] || 1;
     document.getElementById('actFormGuide').value = act['玩法和说明'] || '';
     document.getElementById('actFormCkTpl').value = simplifyCkTemplate(act['CK构建模板']) || '';
     document.getElementById('actFormCkTpl').dataset.manualEdit = '';
@@ -4360,6 +4366,7 @@ function toggleMonthlyCoin() {
     const unitTip = document.getElementById('actCoinUnitTip');
     const monthlyWrap = document.getElementById('actMonthlyCoinWrap');
     const dailyWrap = document.getElementById('actDailyCoinWrap');
+    const minDaysWrap = document.getElementById('actMinDaysWrap');
     const coinWrap = coinInput.closest('.form-item');
 
     if (onetime) {
@@ -4368,20 +4375,24 @@ function toggleMonthlyCoin() {
         if (coinWrap) coinWrap.style.display = '';
         if (monthlyWrap) monthlyWrap.style.display = 'none';
         if (dailyWrap) dailyWrap.style.display = 'none';
+        if (minDaysWrap) minDaysWrap.style.display = 'none';
     } else if (monthly) {
         if (coinWrap) coinWrap.style.display = 'none';
         if (monthlyWrap) monthlyWrap.style.display = '';
         if (dailyWrap) dailyWrap.style.display = 'none';
+        if (minDaysWrap) minDaysWrap.style.display = 'none';
     } else if (daily) {
         if (coinWrap) coinWrap.style.display = 'none';
         if (monthlyWrap) monthlyWrap.style.display = 'none';
         if (dailyWrap) dailyWrap.style.display = '';
+        if (minDaysWrap) minDaysWrap.style.display = '';
     } else {
         coinInput.disabled = false;
         coinInput.style.background = '#fff';
         if (coinWrap) coinWrap.style.display = '';
         if (monthlyWrap) monthlyWrap.style.display = 'none';
         if (dailyWrap) dailyWrap.style.display = 'none';
+        if (minDaysWrap) minDaysWrap.style.display = 'none';
     }
 
     monthlyInput.disabled = !monthly;
@@ -4696,6 +4707,7 @@ async function saveActivity() {
         '每月积分': parseInt(document.getElementById('actFormMonthlyCoin').value) || 0,
         '是否按天扣费': monthlyVal === 'daily',
         '每天积分': parseInt(document.getElementById('actFormDailyCoin').value) || 0,
+        '最小天数': parseInt(document.getElementById('actFormMinDays').value) || 1,
         '玩法和说明': document.getElementById('actFormGuide').value,
         'CK构建模板': normalizeCkTemplate(document.getElementById('actFormCkTpl').value),
         '备注构建模板': document.getElementById('actFormRemarksTpl').value,

@@ -50,13 +50,13 @@ func initCron() {
 		Exportck_huanjing("jd_zlyhl")
 	})
 
-	// ===== 核心新增：每天凌晨1点检查并禁用过期CK（月扣活动） =====
-		c.AddFunc("20 23 * * ?", DisableExpiredCKsCronWrapper)
+	// ===== 核心新增：每天凌晨0点1分检查并禁用过期CK =====
+		c.AddFunc("1 0 * * ?", DisableExpiredCKsCronWrapper)
 
-	// ===== 按天计费每日扣费：每天凌晨0点30分执行 =====
-		c.AddFunc("30 0 * * ?", DailyDeductCronWrapper)
+	// ===== 按天计费每日扣费：每天凌晨0点5分执行（在禁用检查之后） =====
+		c.AddFunc("5 0 * * ?", DailyDeductCronWrapper)
 
-	// ===== 过期30天通知+删除：每天检查一次 =====
+	// ===== 过期30天通知+删除：每天12点30分检查一次 =====
 	c.AddFunc("30 12 * * ?", func() { NotifyDeleteExpiredCKs(nil) })
 
 	// 启动所有定时任务

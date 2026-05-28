@@ -55,6 +55,7 @@ type PortalActivityItem struct {
 	MonthlyCoin     int                   `json:"monthlyCoin"`
 	IsDailyDeduct   bool                  `json:"isDailyDeduct"`
 	DailyCoin       int                   `json:"dailyCoin"`
+	MinDays         int                   `json:"minDays"`
 	QingLongConfig  string                `json:"qingLongConfig"`
 	Guide           string                `json:"guide"`
 	InputFields     []PortalActivityField `json:"inputFields"`
@@ -245,6 +246,7 @@ func GetPortalActivities() []PortalActivityItem {
 			MonthlyCoin:     cfg.MonthlyCoin,
 			IsDailyDeduct:   cfg.IsDailyDeduct,
 			DailyCoin:       cfg.DailyCoin,
+			MinDays:         cfg.MinDays,
 			QingLongConfig:  cfg.QingLongConfigName,
 			Guide:           strings.TrimSpace(cfg.Guide),
 			CKTemplate:      cfg.CKTemplate,
@@ -422,8 +424,12 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 	}
 
 	if cfg.IsDailyDeduct {
-		if months < 1 || months > 365 {
-			return "", fmt.Errorf("授权天数需在1-365之间")
+		minDays := cfg.MinDays
+		if minDays < 1 {
+			minDays = 1
+		}
+		if months < minDays || months > 365 {
+			return "", fmt.Errorf("授权天数需在%d-365之间", minDays)
 		}
 	} else if cfg.IsMonthlyDeduct {
 		if months < 1 || months > 12 {
@@ -500,8 +506,12 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 
 	var totalCoin int
 	if cfg.IsDailyDeduct {
-		if months < 1 || months > 365 {
-			return "", fmt.Errorf("授权天数需在1-365之间")
+		minDays := cfg.MinDays
+		if minDays < 1 {
+			minDays = 1
+		}
+		if months < minDays || months > 365 {
+			return "", fmt.Errorf("授权天数需在%d-365之间", minDays)
 		}
 		totalCoin = cfg.DailyCoin * months
 	} else {

@@ -73,6 +73,7 @@ type ActivityConfig struct {
 	// 新增按天扣费配置
 	IsDailyDeduct bool   // 是否按天扣积分（默认false）
 	DailyCoin     int    // 每天扣积分值
+	MinDays       int    // 最小天数（按天计费时生效，默认1）
 
 	// 👇 核心字段：控制菜单显示顺序，数值越小越靠前
 	DisplayOrder int
@@ -1428,16 +1429,20 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		var months int
 		var totalCoin int
 		if config.IsDailyDeduct {
+			minDays := config.MinDays
+			if minDays < 1 {
+				minDays = 1
+			}
 			daysStr, exit := getUserInputByField(sender, msgChannel, InputField{
 				Key:        "days",
-				Prompt:     fmt.Sprintf("该活动每天扣费【%d】积分，您当前的积分还剩【%d】，请输入授权天数（如7/15/30）：", config.DailyCoin, GetCoin(sender.UserID)),
+				Prompt:     fmt.Sprintf("该活动每天扣费【%d】积分，您当前的积分还剩【%d】，请输入授权天数（最少%d天，如%d/7/30）：", config.DailyCoin, GetCoin(sender.UserID), minDays, minDays),
 				Validator: func(s string) (bool, string) {
 					num, err := strconv.Atoi(s)
 					if err != nil {
 						return false, "请输入有效的数字！"
 					}
-					if num < 1 || num > 365 {
-						return false, "天数需在1-365之间！"
+					if num < minDays || num > 365 {
+						return false, fmt.Sprintf("天数需在%d-365之间！", minDays)
 					}
 					return true, ""
 				},
