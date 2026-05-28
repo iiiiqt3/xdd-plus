@@ -130,6 +130,9 @@ struct PortalActivity: Decodable {
     let needCoin: Int?
     let isMonthlyDeduct: Bool?
     let monthlyCoin: Int?
+    let isDailyDeduct: Bool?
+    let dailyCoin: Int?
+    let minDays: Int?
     let qingLongConfig: String?
     let guide: String?
     let inputFields: [PortalActivityField]?
@@ -151,6 +154,8 @@ struct PortalProject: Decodable {
     let createdAt: String?
     let isMonthlyDeduct: Bool?
     let monthlyCoin: Int?
+    let isDailyDeduct: Bool?
+    let dailyCoin: Int?
     let needCoin: Int?
     let bizStatus: String?
     let bizStatusText: String?

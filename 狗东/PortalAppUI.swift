@@ -1116,9 +1116,24 @@ final class ActivitiesListViewController: UITableViewController {
             let preview = guideText.count > 52 ? String(guideText.prefix(52)) + "..." : guideText
             card.metaLabel.text = "青龙：\(item.qingLongConfig ?? "默认容器")\n玩法摘要：\(preview)"
         }
-        let price = item.isMonthlyDeduct == true ? "每月 \(item.monthlyCoin ?? 0) 积分" : "一次 \(item.needCoin ?? 0) 积分"
+        let price: String
+        let badgeText: String
+        let badgeKind: BadgeLabel.Kind
+        if item.isDailyDeduct == true {
+            price = "每天 \(item.dailyCoin ?? 0) 积分"
+            badgeText = "按天授权"
+            badgeKind = .active
+        } else if item.isMonthlyDeduct == true {
+            price = "每月 \(item.monthlyCoin ?? 0) 积分"
+            badgeText = "按月授权"
+            badgeKind = .expiring
+        } else {
+            price = "一次 \(item.needCoin ?? 0) 积分"
+            badgeText = "一次上车"
+            badgeKind = .active
+        }
         card.priceLabel.text = price
-        card.badgeLabel.configure(text: item.isMonthlyDeduct == true ? "按月授权" : "一次上车", kind: item.isMonthlyDeduct == true ? .expiring : .active)
+        card.badgeLabel.configure(text: badgeText, kind: badgeKind)
         cell.contentView.addSubview(card)
         NSLayoutConstraint.activate([
             card.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
@@ -1182,7 +1197,15 @@ final class ProjectFormViewController: BaseNativeViewController {
         ])
 
         let meta = UILabel()
-        meta.text = (activity.isMonthlyDeduct == true ? "每月扣 \(activity.monthlyCoin ?? 0) 积分" : "一次扣 \(activity.needCoin ?? 0) 积分") + " · 青龙：\(activity.qingLongConfig ?? "默认容器")"
+        let priceDesc: String
+        if activity.isDailyDeduct == true {
+            priceDesc = "每天扣 \(activity.dailyCoin ?? 0) 积分"
+        } else if activity.isMonthlyDeduct == true {
+            priceDesc = "每月扣 \(activity.monthlyCoin ?? 0) 积分"
+        } else {
+            priceDesc = "一次扣 \(activity.needCoin ?? 0) 积分"
+        }
+        meta.text = priceDesc + " · 青龙：\(activity.qingLongConfig ?? "默认容器")"
         meta.font = UIFont.systemFont(ofSize: 13)
         meta.textColor = .secondaryLabel
         meta.numberOfLines = 0
@@ -1216,7 +1239,19 @@ final class ProjectFormViewController: BaseNativeViewController {
         stack.addArrangedSubview(remarkLabel)
         stack.addArrangedSubview(remarkInput)
 
-        if activity.isMonthlyDeduct == true {
+        if activity.isDailyDeduct == true {
+            let minDays = activity.minDays ?? 1
+            let dayLabel = UILabel()
+            dayLabel.text = "授权天数（最少\(minDays)天）"
+            dayLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+            let dayInput = UITextField()
+            dayInput.applyAppInputStyle(placeholder: "最少\(minDays)天，如 \(minDays)/7/30")
+            dayInput.keyboardType = .numberPad
+            dayInput.heightAnchor.constraint(equalToConstant: 50).isActive = true
+            fieldViews["__months"] = dayInput
+            stack.addArrangedSubview(dayLabel)
+            stack.addArrangedSubview(dayInput)
+        } else if activity.isMonthlyDeduct == true {
             let monthLabel = UILabel()
             monthLabel.text = "授权月数"
             monthLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
@@ -1248,15 +1283,34 @@ final class ProjectFormViewController: BaseNativeViewController {
             showMessage("请输入备注名")
             return
         }
-        if activity.isMonthlyDeduct == true && months <= 0 {
+        // 验证输入
+        if activity.isDailyDeduct == true {
+            let minDays = activity.minDays ?? 1
+            if months < minDays {
+                showMessage("授权天数最少\(minDays)天")
+                return
+            }
+            if months > 365 {
+                showMessage("授权天数不能超过365天")
+                return
+            }
+        } else if activity.isMonthlyDeduct == true && months <= 0 {
             showMessage("请输入正确的授权月数")
             return
         }
-        let totalCoin = activity.isMonthlyDeduct == true ? (activity.monthlyCoin ?? 0) * months : (activity.needCoin ?? 0)
+        let totalCoin: Int
+        if activity.isDailyDeduct == true {
+            totalCoin = (activity.dailyCoin ?? 0) * months
+        } else if activity.isMonthlyDeduct == true {
+            totalCoin = (activity.monthlyCoin ?? 0) * months
+        } else {
+            totalCoin = activity.needCoin ?? 0
+        }
         let expireText: String? = {
-            guard activity.isMonthlyDeduct == true, months > 0 else { return nil }
+            guard (activity.isDailyDeduct == true || activity.isMonthlyDeduct == true), months > 0 else { return nil }
             let calendar = Calendar.current
-            if let date = calendar.date(byAdding: .month, value: months, to: Date()) {
+            let component: Calendar.Component = activity.isDailyDeduct == true ? .day : .month
+            if let date = calendar.date(byAdding: component, value: months, to: Date()) {
                 let formatter = DateFormatter()
                 formatter.dateFormat = "yyyy-MM-dd"
                 return formatter.string(from: date)
@@ -1264,11 +1318,18 @@ final class ProjectFormViewController: BaseNativeViewController {
             return nil
         }()
         var message = "项目：\(activity.name)\n备注名：\(remarks)\n将扣积分：\(totalCoin)"
-        if activity.isMonthlyDeduct == true {
+        if activity.isDailyDeduct == true {
+            message += "\n授权天数：\(months)"
+            if let expireText, !expireText.isEmpty {
+                message += "\n预计有效期至：\(expireText)"
+            }
+        } else if activity.isMonthlyDeduct == true {
             message += "\n授权月数：\(months)"
             if let expireText, !expireText.isEmpty {
                 message += "\n预计有效期至：\(expireText)"
             }
+        } else {
+            message += "\n生效方式：一次性上车"
         }
         message += "\n确认后才会正式上车并扣除积分。"
         let alert = UIAlertController(title: "确认上车", message: message, preferredStyle: .alert)
@@ -1588,7 +1649,9 @@ final class MyProjectsListViewController: UITableViewController {
     }
 
     private func renewProject(_ item: PortalProject) {
-        let alert = UIAlertController(title: "续费", message: "请输入续费月数", preferredStyle: .alert)
+        let isDaily = item.isDailyDeduct == true
+        let promptText = isDaily ? "请输入续费天数" : "请输入续费月数"
+        let alert = UIAlertController(title: "续费", message: promptText, preferredStyle: .alert)
         alert.addTextField { field in
             field.keyboardType = .numberPad
             field.text = "1"
@@ -1611,6 +1674,15 @@ final class MyProjectsListViewController: UITableViewController {
 
     private func deleteProject(_ item: PortalProject) {
         let refundTip: String = {
+            // 按天计费退积分
+            if item.isDailyDeduct == true, let dailyCoin = item.dailyCoin, dailyCoin > 0, let daysLeft = item.daysLeft, daysLeft > 0 {
+                let estimated = dailyCoin * daysLeft
+                return "预计返还积分：\(estimated)（最终以服务端结算为准）"
+            }
+            if item.isDailyDeduct == true {
+                return "预计返还积分：以服务端结算为准"
+            }
+            // 按月计费退积分
             if item.isMonthlyDeduct == true, let needCoin = item.needCoin, needCoin > 0 {
                 return "该账号由一次性活动转换，删除不退还积分"
             }
@@ -1621,6 +1693,7 @@ final class MyProjectsListViewController: UITableViewController {
             if item.isMonthlyDeduct == true {
                 return "预计返还积分：以服务端结算为准"
             }
+            // 一次性扣费
             return "此活动为一次性扣费，删除不退还积分"
         }()
         let alert = UIAlertController(
