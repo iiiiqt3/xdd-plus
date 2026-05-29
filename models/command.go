@@ -2003,11 +2003,15 @@ var codeSignals = []CodeSignal{
 			for _, l := range logs {
 				sign := "+"
 				if l.Amount < 0 {
-					sign = ""
+					sign = "-"
 				}
-				sb.WriteString(fmt.Sprintf("🕐 %s\n  %s%s 积分 | %s | %s\n  余额：%d\n\n",
+				absAmount := l.Amount
+				if absAmount < 0 {
+					absAmount = -absAmount
+				}
+				sb.WriteString(fmt.Sprintf("🕐 %s\n  %s%d 积分 | %s | %s\n  余额：%d\n\n",
 					l.CreatedAt.Format("2006-01-02 15:04"),
-					sign, l.Amount, l.Type, l.Detail, l.BalanceAfter))
+					sign, absAmount, l.Type, l.Detail, l.BalanceAfter))
 			}
 			return sb.String()
 		},

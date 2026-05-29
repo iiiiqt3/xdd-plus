@@ -4309,7 +4309,7 @@ function showActivityEditor(idx) {
     const act = isNew ? {} : (activitiesCache[idx] || {});
     document.getElementById('actFormName').value = act['名称'] || '';
     document.getElementById('actFormEnvKey').value = act['环境变量名'] || '';
-    document.getElementById('actFormCoin').value = act['所需积分'] || 500;
+    document.getElementById('actFormCoin').value = (act['所需积分'] != null) ? act['所需积分'] : 500;
     document.getElementById('actFormOrder').value = act['排序编号'] || 10;
     document.getElementById('actFormQlConfig').value = '';
     document.getElementById('actFormEnabled').value = isNew ? 'true' : String(act['启用状态'] === true);
@@ -4321,9 +4321,9 @@ function showActivityEditor(idx) {
     } else {
         document.getElementById('actFormMonthly').value = String(act['是否按月扣费'] === true);
     }
-    document.getElementById('actFormMonthlyCoin').value = act['每月积分'] || 200;
-    document.getElementById('actFormDailyCoin').value = act['每天积分'] || 10;
-    document.getElementById('actFormMinDays').value = act['最小天数'] || 1;
+    document.getElementById('actFormMonthlyCoin').value = (act['每月积分'] != null) ? act['每月积分'] : 200;
+    document.getElementById('actFormDailyCoin').value = (act['每天积分'] != null) ? act['每天积分'] : 10;
+    document.getElementById('actFormMinDays').value = (act['最小天数'] != null) ? act['最小天数'] : 1;
     document.getElementById('actFormGuide').value = act['玩法和说明'] || '';
     document.getElementById('actFormCkTpl').value = simplifyCkTemplate(act['CK构建模板']) || '';
     document.getElementById('actFormCkTpl').dataset.manualEdit = '';
