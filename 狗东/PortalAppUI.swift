@@ -1673,11 +1673,24 @@ final class MyProjectsListViewController: UITableViewController {
     }
 
     private func deleteProject(_ item: PortalProject) {
+        let calcPaidDays: () -> Int = {
+            guard let daysLeft = item.daysLeft, daysLeft > 0 else { return 0 }
+            guard let grantDateStr = item.grantExpireDate, !grantDateStr.isEmpty, item.needCoin == 0 else { return daysLeft }
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            guard let grantDate = formatter.date(from: grantDateStr) else { return daysLeft }
+            let calendar = Calendar.current
+            let grantEnd = calendar.date(byAdding: .day, value: 1, to: grantDate) ?? grantDate
+            let grantRemain = grantEnd.timeIntervalSinceNow / 86400.0
+            let granted = grantRemain > 1 ? Int(grantRemain - 1) : 0
+            return max(daysLeft - granted, 0)
+        }
         let refundTip: String = {
             // 按天计费退积分
             if item.isDailyDeduct == true, let dailyCoin = item.dailyCoin, dailyCoin > 0, let daysLeft = item.daysLeft, daysLeft > 0 {
-                let estimated = dailyCoin * daysLeft
-                return "预计返还积分：\(estimated)（最终以服务端结算为准）"
+                let paidDays = calcPaidDays()
+                let estimated = dailyCoin * paidDays
+                return estimated > 0 ? "预计返还积分：\(estimated)（最终以服务端结算为准）" : "赠送时长内，删除不退还积分"
             }
             if item.isDailyDeduct == true {
                 return "预计返还积分：以服务端结算为准"
@@ -1687,8 +1700,9 @@ final class MyProjectsListViewController: UITableViewController {
                 return "该账号由一次性活动转换，删除不退还积分"
             }
             if item.isMonthlyDeduct == true, let monthlyCoin = item.monthlyCoin, monthlyCoin > 0, let daysLeft = item.daysLeft, daysLeft > 0 {
-                let estimated = Int((Double(monthlyCoin) * Double(daysLeft) / 30.0) + 0.5)
-                return "预计返还积分：\(estimated)（最终以服务端结算为准）"
+                let paidDays = calcPaidDays()
+                let estimated = Int((Double(monthlyCoin) * Double(paidDays) / 30.0) + 0.5)
+                return estimated > 0 ? "预计返还积分：\(estimated)（最终以服务端结算为准）" : "赠送时长内，删除不退还积分"
             }
             if item.isMonthlyDeduct == true {
                 return "预计返还积分：以服务端结算为准"

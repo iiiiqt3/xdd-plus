@@ -157,6 +157,7 @@ struct PortalProject: Decodable {
     let isDailyDeduct: Bool?
     let dailyCoin: Int?
     let needCoin: Int?
+    let grantExpireDate: String?
     let bizStatus: String?
     let bizStatusText: String?
     let daysLeft: Int?
