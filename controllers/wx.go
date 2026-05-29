@@ -274,6 +274,7 @@ func (c *WxController) HandleWxMessage() {
 					id := models.GetWxid(args["to_wxid"])
 					// 调用 AdddCoin 函数充值
 					models.AdddCoin(id, rechargePoints)
+					models.RecordCoinLog(id, rechargePoints, "充值", fmt.Sprintf("微信转账充值 %.2f元", money))
 					// 发送充值成功消息
 					models.SendWxMsg(args["to_wxid"], fmt.Sprintf("充值成功！充值积分：%d\n充值后账户余额：%d\n注意：没收到请联系群主\n发送“菜单”获取更多功能", rechargePoints, models.GetCoin(id)))
 				}

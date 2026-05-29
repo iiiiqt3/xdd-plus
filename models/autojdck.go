@@ -1617,8 +1617,6 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 
 	if nck, err := GetJdCookie(ck.PtPin); err == nil {
 		if Auto.isUser {
-			// ========== 注释积分奖励逻辑 - 开始 ==========
-			// ========== 注释积分奖励逻辑 - 结束 ==========
 			cookieUpdate := JdCookie{
 				RWskey:    "null",
 				QQ:        sender.UserID,
@@ -1636,8 +1634,6 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 				cookieUpdate.Socks5_Account = Auto.Socks5_Account
 				cookieUpdate.Socks5_Password = Auto.Socks5_Password
 			}
-			// ========== 注释积分奖励相关的UpdateAt更新 - 开始 ==========
-			// ========== 注释积分奖励相关的UpdateAt更新 - 结束 ==========
 			switch sender.Type {
 			case "wx", "wxg":
 				cookieUpdate.WeiXin = sender.WxId
@@ -1648,8 +1644,6 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
 			(&JdCookie{}).Push(fmt.Sprintf("来自登录成功:%s", pin))
 		} else {
-			// ========== 注释积分奖励逻辑 - 开始 ==========
-			// ========== 注释积分奖励逻辑 - 结束 ==========
 			cookieUpdate := JdCookie{
 				RWskey:    "null",
 				PtKey:     ptkey,
@@ -1664,11 +1658,6 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 				cookieUpdate.Socks5_Account = Auto.Socks5_Account
 				cookieUpdate.Socks5_Password = Auto.Socks5_Password
 			}
-			// ========== 注释积分奖励相关的逻辑 - 开始 ==========
-			// 	(&JdCookie{}).Push(fmt.Sprintf("来自密码自动登录成功:%s，成功发放积分奖励", pin))
-			// 	(&JdCookie{}).Push(fmt.Sprintf("来自密码自动登录成功:%s，三日内积分已发放", pin))
-			// ========== 注释积分奖励相关的逻辑 - 结束 ==========
-			// 新增：保留自动登录成功的推送（无积分相关）
 			(&JdCookie{}).Push(fmt.Sprintf("来自密码自动登录成功:%s", pin))
 			nck.Updates(cookieUpdate)
 		}
@@ -1691,8 +1680,6 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 			ck.Update("Telegram", sender.UserID)
 		}
 		sender.Reply(fmt.Sprintf(msg))
-		// ========== 注释积分奖励逻辑 - 开始 ==========
-		// ========== 注释积分奖励逻辑 - 结束 ==========
 		sender.Reply(ck.Query())
 		(&JdCookie{}).Push(msg)
 	}
@@ -1701,12 +1688,6 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 	}()
 	return
 }
-
-// ========== 注释积分奖励核心函数 - 开始 ==========
-
-// 		coin := 20 //奖励积分数量
-// 			"coin": gorm.Expr(fmt.Sprintf("coin+%d", coin)),
-// ========== 注释积分奖励核心函数 - 结束 ==========
 
 func UpAutoCookie() {
 	logs.Info("开始密码自动登录检测（8IP多线程模式）")

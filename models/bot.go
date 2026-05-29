@@ -772,6 +772,7 @@ if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是�
 								return fmt.Sprintf("推一推需要%d个积分", Config.Tyt)
 							}
 							RemCoin(sender.UserID, Config.Tyt)
+							RecordCoinLog(sender.UserID, -Config.Tyt, "推一推", "推一推扣费")
 
 							sender.Reply(fmt.Sprintf("推一推即将开始，已扣除%d个积分,订单编号:%d，剩余%d", Config.Tyt, no, GetCoin(sender.UserID)))
 						} else {
@@ -961,6 +962,7 @@ func AutoCollectionAndAddCoin(autocollect map[string]string) {
 		rechargePoints = int(100.0 * money) // 更新 rechargePoints 的值
 		logs.Info(money)
 		AdddCoin(id, rechargePoints)
+		RecordCoinLog(id, rechargePoints, "充值", fmt.Sprintf("微信自动充值 %.2f元", money))
 	}
 	SendWxMsg(autocollect["to_wxid"], fmt.Sprintf("充值成功！充值积分：%d\n充值后账户余额：%d\n注意：没收到请联系群主\n发送“菜单”获取更多功能", rechargePoints, GetCoin(id)))
 }

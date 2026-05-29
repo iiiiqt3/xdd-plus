@@ -321,6 +321,7 @@ func JdTaskHandler(sender *Sender, taskName string, envVar string, scriptPath st
 			return
 		}
 		RemCoin(sender.UserID, jbcoin)
+		RecordCoinLog(sender.UserID, -jbcoin, "任务扣费", fmt.Sprintf("执行任务: %s", taskName))
 	}
 
 	ExecuteTask(sender, taskName, scriptPath, envs, outputParser)
@@ -852,6 +853,7 @@ func replexQuan_fcwb_help_zz(info string, sender *Sender, FileName string) strin
 
 	if successfulHelps > 0 {
 		RemCoin(sender.UserID, coinToDeduct)                                                                               // 扣除积分
+		RecordCoinLog(sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
 		msgs = append(msgs, fmt.Sprintf("成功助力%d个账号，扣除%d积分，剩余%d积分", successfulHelps, coinToDeduct, GetCoin(sender.UserID))) // 构建反馈消息
 	} else {
 		msgs = append(msgs, "未找到成功助力的账号")
@@ -909,6 +911,7 @@ func replexQuan_fcwb_help(info string, sender *Sender, FileName string) string {
 
 	if successfulHelps > 0 {
 		RemCoin(sender.UserID, coinToDeduct)                                                                               // 扣除积分
+		RecordCoinLog(sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
 		msgs = append(msgs, fmt.Sprintf("成功助力%d个账号，扣除%d积分，剩余%d积分", successfulHelps, coinToDeduct, GetCoin(sender.UserID))) // 构建反馈消息
 
 		// 如果同时存在"连续火爆，跳过"，提示重新执行助力
@@ -956,6 +959,7 @@ func replexQuan_fcwb_help1(info string, sender *Sender, FileName string) string 
 	if reFailure.MatchString(info) {
 		// 如果助力失败，直接扣除60积分
 		RemCoin(sender.UserID, 60)
+		RecordCoinLog(sender.UserID, -60, "助力扣费", "助力失败扣费")
 		return fmt.Sprintf("助力以完成，或者重复发送任务，扣除60积分，剩余%d积分", GetCoin(sender.UserID))
 	}
 
@@ -978,6 +982,7 @@ func replexQuan_fcwb_help1(info string, sender *Sender, FileName string) string 
 
 	if successfulHelps > 0 {
 		RemCoin(sender.UserID, coinToDeduct)                                                                               // 扣除积分
+		RecordCoinLog(sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
 		msgs = append(msgs, fmt.Sprintf("成功助力%d个账号，扣除%d积分，剩余%d积分", successfulHelps, coinToDeduct, GetCoin(sender.UserID))) // 构建反馈消息
 	} else {
 		msgs = append(msgs, "未找到成功助力的账号")
@@ -1061,11 +1066,11 @@ func replexQuan_ncxcx_help(info string, sender *Sender, FileName string) string 
 
 	if successfulHelps > 0 {
 		RemCoin(sender.UserID, coinToDeduct)                                                                               // 扣除积分
+		RecordCoinLog(sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
 		msgs = append(msgs, fmt.Sprintf("成功助力%d个账号，扣除%d积分，剩余%d积分", successfulHelps, coinToDeduct, GetCoin(sender.UserID))) // 构建反馈消息
 	} else {
 		msgs = append(msgs, "未找到成功助力的账号")
 	}
-	// 删除 jdCookie.txt 前面的行并返回剩余行数
 	if totalAccounts > 0 {
 		cookieFilePath := ExecPath + "/scripts/6dylan6_jdpro_help/" + FileName + ".txt" // 生成 cookie 文件路径
 		remainingLinesCount, err := removeLinesFromFile(cookieFilePath, totalAccounts)  // 使用生成的路径

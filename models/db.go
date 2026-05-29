@@ -53,6 +53,7 @@ func initDB() {
 		&PortalPrayRecord{},
 		&AppFeedback{},
 		&PortalWxDevice{},
+		&CoinLog{},
 		//&LoginSelectType{},
 	); err != nil {
 		log.Printf("[数据库迁移] AutoMigrate 失败: %v", err)

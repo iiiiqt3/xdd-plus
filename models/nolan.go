@@ -92,10 +92,6 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				QQ:        sender.UserID,
 			}
 			if nck, err := GetJdCookie(ck.PtPin); err == nil {
-				// 注释date变量定义 - 修复未使用变量错误，保留代码便于恢复
-				// 注释积分奖励调用 - 禁用积分功能，保留代码便于恢复
-
-				// 检查Password是否为空，如果为空则去掉 Smsverify: "false"
 				cookie := JdCookie{
 					RWskey:    rwskey,
 					QQ:        sender.UserID,
@@ -130,7 +126,6 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 					ck.Update("Telegram", sender.UserID)
 				}
 				sender.Reply(fmt.Sprintf(msg))
-				// 注释Recoin积分相关调用 - 禁用新增账号的积分奖励
 				sender.Reply(ck.Query())
 				(&JdCookie{}).Push(msg)
 			}
@@ -225,9 +220,6 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 			QQ:        sender.UserID,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			// 注释date变量定义 - 修复未使用变量错误，保留代码便于恢复
-			// 注释积分奖励调用 - 禁用积分功能，保留代码便于恢复
-
 			cookie := JdCookie{
 				QQ:        sender.UserID,
 				PtKey:     ptkey,
@@ -241,7 +233,6 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 				// #如果 Password 字段不为空，保持 Smsverify: "false"
 				cookie.Smsverify = "false"
 			}
-			// 注释积分结果判断 - 禁用积分相关的UpdateAt更新
 			switch sender.Type {
 			case "wx", "wxg":
 				cookie.WeiXin = sender.WxId
@@ -261,7 +252,6 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 				ck.Update("Telegram", sender.UserID)
 			}
 			sender.Reply(fmt.Sprintf(msg))
-			// 注释Recoin积分相关调用 - 禁用新增账号的积分奖励
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 		}
@@ -319,10 +309,6 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			QQ:        sender.UserID,
 		}
 		if nck, err := GetJdCookie(ck.PtPin); err == nil {
-			// 注释date变量定义 - 修复未使用变量错误，保留代码便于恢复
-			// 注释积分奖励调用 - 禁用积分功能，保留代码便于恢复
-
-			// 检查Password是否为空，如果为空则去掉 Smsverify: "false"
 			cookie := JdCookie{
 				QQ:        sender.UserID,
 				PtKey:     ptkey,
@@ -330,14 +316,11 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			}
 
 			if nck.Password == "" {
-				// #如果 Password 字段为空，不设置 Smsverify
 				cookie.Smsverify = ""
 			} else {
-				// #如果 Password 字段不为空，保持 Smsverify: "false"
 				cookie.Smsverify = "false"
 			}
 
-			// 注释积分结果判断 - 禁用积分相关的UpdateAt更新
 			switch sender.Type {
 			case "wx", "wxg":
 				cookie.WeiXin = sender.WxId
@@ -357,7 +340,6 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 				ck.Update("Telegram", sender.UserID)
 			}
 			sender.Reply(fmt.Sprintf(msg))
-			// 注释Recoin积分相关调用 - 禁用新增账号的积分奖励
 			sender.Reply(ck.Query())
 			(&JdCookie{}).Push(msg)
 
@@ -377,98 +359,5 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 			(&JdCookie{}).Push("Pro短信登录异常" + message)
 			return
 		}
-	}
-}
-
-func CompareDates(updateAt string) int {
-	updateTime, err := time.Parse("2006-01-02", updateAt)
-	if err != nil {
-		fmt.Println("无效的 UpdateAt 日期格式")
-	}
-	date := Date()
-	dateTime, err := time.Parse("2006-01-02", date)
-	if err != nil {
-		fmt.Println("无效的日期格式")
-	}
-	// 获取更新ck早三天的时间，此处三天是包含了当日所以-2
-	earlierTime := dateTime.AddDate(0, 0, -2)
-
-	if updateTime.Before(earlierTime) {
-		return -1 // 更新ck时间比三天前的日期更早
-	} else if updateTime.After(earlierTime) && updateTime.Before(earlierTime.AddDate(0, 0, 3)) {
-		return -2 // 更新ck时间比三天前的日期晚但不足三天
-	} else if updateTime.After(earlierTime) {
-		return 1 // 更新ck时间比三天前的日期更晚
-	}
-	return 0 // 更新ck时间等于三天前的日期
-}
-
-func Addcoin(updateAt2 string, sender *Sender) bool {
-	var Class2 string
-	if sender.Type == "tgg" {
-		Class2 = "tg"
-	}
-	if sender.Type == "qqg" {
-		Class2 = "qq"
-	}
-	var u User
-	ntime := time.Now()
-	err := db.Where("number = ?", sender.UserID).First(&u).Error
-	if err != nil {
-		u = User{
-			Class:    Class2,
-			Number:   sender.UserID,
-			Coin:     1,
-			ActiveAt: ntime,
-		}
-		if err := db.Create(&u).Error; err != nil {
-			fmt.Println("数据库创建失败")
-		}
-	}
-
-	result := CompareDates(updateAt2)
-	switch result {
-	case -1, 0:
-		coin := 30 //奖励积分数量
-		db.Model(&u).Updates(map[string]interface{}{
-			"coin": gorm.Expr(fmt.Sprintf("coin+%d", coin)),
-		})
-		u.Coin += coin
-		sender.Reply(fmt.Sprintf("登录成功奖励%d个积分，积分余额%d。", coin, u.Coin))
-		return true
-	default:
-		sender.Reply(fmt.Sprintf("三日内登录奖励积分已发放，无法重复获取，积分余额%d。", u.Coin))
-		return false
-	}
-}
-
-func Recoin(sender *Sender) {
-	var Class2 string // 定义变量以存储修改后的 sender.Type 值
-	if sender.Type == "tgg" {
-		Class2 = "tg"
-	}
-	if sender.Type == "qqg" {
-		Class2 = "qq"
-	}
-	var u User
-	ntime := time.Now()
-	err := db.Where("number = ?", sender.UserID).First(&u).Error
-	if err != nil {
-		u = User{
-			Class:    Class2,
-			Number:   sender.UserID,
-			Coin:     30, //奖励积分数量
-			ActiveAt: ntime,
-		}
-		sender.Reply(fmt.Sprintf("登录成功奖励%d个积分，积分余额%d。", u.Coin, u.Coin))
-		if err := db.Create(&u).Error; err != nil {
-		}
-	} else {
-		coin := 30 //奖励积分数量
-		db.Model(&u).Updates(map[string]interface{}{
-			"coin": gorm.Expr(fmt.Sprintf("coin+%d", coin)),
-		})
-		u.Coin += coin
-		sender.Reply(fmt.Sprintf("登录成功奖励%d个积分，积分余额%d。", coin, u.Coin))
 	}
 }

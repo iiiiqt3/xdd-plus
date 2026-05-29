@@ -808,6 +808,7 @@ func pollLoginStatus(sender *Sender, uuid string, deductCoin bool) {
 				if deductCoin {
 					cost := getWxScanLoginCoin()
 					RemCoin(sender.UserID, cost)
+					RecordCoinLog(sender.UserID, -cost, "微信登录", "微信扫码登录扣费")
 					sender.Reply(fmt.Sprintf("🎉 登录成功！已扣除 %d 积分，剩余积分 %d\n\n👤 昵称：%s\n🆔 微信ID：%s\n✅ 已自动绑定到你的账号，可在APP/网页查看", cost, GetCoin(sender.UserID), nickname, wxid))
 				} else {
 					sender.Reply(fmt.Sprintf("🎉 登录成功！\n\n👤 昵称：%s\n🆔 微信ID：%s\n✅ 已自动绑定到你的账号", nickname, wxid))

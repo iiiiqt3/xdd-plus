@@ -491,6 +491,7 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 	}
 
 	RemCoin(userNumber, totalCoin)
+	RecordCoinLog(userNumber, -totalCoin, "上车扣费", fmt.Sprintf("Web端%s上车", cfg.Name))
 
 	go TriggerSync(project.ID)
 
@@ -575,6 +576,7 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 	}
 
 	RemCoin(userNumber, totalCoin)
+	RecordCoinLog(userNumber, -totalCoin, "续费扣费", fmt.Sprintf("Web端%s续费", cfg.Name))
 
 	go TriggerSync(project.ID)
 
@@ -610,6 +612,7 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 
 	if returnCoin > 0 {
 		AdddCoin(userNumber, returnCoin)
+		RecordCoinLog(userNumber, returnCoin, "退还", fmt.Sprintf("Web端删除%s退还", cfg.Name))
 		return fmt.Sprintf("删除成功，已退还 %d 积分", returnCoin), nil
 	}
 	return "删除成功", nil
@@ -810,6 +813,7 @@ func portalCheckIn(userNumber int) (string, error) {
 		"continuous_sign_ins": u.ContinuousSignIns,
 		"sign_in_date":        ntime,
 	})
+	RecordCoinLog(userNumber, coin+bonus, "签到", fmt.Sprintf("连续签到%d天", u.ContinuousSignIns))
 	u.Coin += coin + bonus
 
 	nextBonus := 0
@@ -853,6 +857,7 @@ func portalPray(userNumber int) (string, error) {
 	if db.Model(User{}).Where("number = ?", userNumber).Update("coin", gorm.Expr("coin + 3")).RowsAffected == 0 {
 		return "先去打卡吧你。", nil
 	}
+	RecordCoinLog(userNumber, 3, "祈福", "祈福成功")
 	return "祈福成功，愿你事事顺心如意，积分 + 3。", nil
 }
 

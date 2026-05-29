@@ -119,6 +119,44 @@ func GetCoin(uid int) int {
 	return u.Coin
 }
 
+type CoinLog struct {
+	ID           int       `gorm:"primaryKey;autoIncrement"`
+	UserNumber   int       `gorm:"index;not null"`
+	Amount       int       `gorm:"not null"`
+	BalanceAfter int       `gorm:"not null"`
+	Type         string    `gorm:"size:32;not null"`
+	Detail       string    `gorm:"size:255"`
+	CreatedAt    time.Time `gorm:"index"`
+}
+
+func (CoinLog) TableName() string {
+	return "coin_log"
+}
+
+func GetCoinLogs(userNumber int, limit int) []CoinLog {
+	var logs []CoinLog
+	db.Where("user_number = ?", userNumber).Order("id desc").Limit(limit).Find(&logs)
+	return logs
+}
+
+func RecordCoinLog(userNumber int, amount int, typ string, detail string) {
+	if userNumber <= 0 {
+		return
+	}
+	balanceAfter := GetCoin(userNumber)
+	log := CoinLog{
+		UserNumber:   userNumber,
+		Amount:       amount,
+		BalanceAfter: balanceAfter,
+		Type:         typ,
+		Detail:       detail,
+		CreatedAt:    time.Now(),
+	}
+	if err := db.Create(&log).Error; err != nil {
+		logs.Warn("[积分日志] 记录失败 user=%d amount=%d type=%s: %v", userNumber, amount, typ, err)
+	}
+}
+
 func GetWxid(wxid string) int {
 	var u User
 	var err error

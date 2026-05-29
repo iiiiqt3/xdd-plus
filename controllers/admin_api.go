@@ -540,6 +540,7 @@ func (c *AdminApiController) UpdateUserCoin() {
 		c.ServeJSON()
 		return
 	}
+	models.RecordCoinLog(req.Number, req.Coin, "管理员操作", fmt.Sprintf("后台设置积分为%d", req.Coin))
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "修改成功"}
 	c.ServeJSON()
 }
@@ -1713,6 +1714,9 @@ func (c *AdminApiController) BatchUpdateUserCoins() {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "修改失败: " + err.Error()}
 		c.ServeJSON()
 		return
+	}
+	for _, num := range req.Numbers {
+		models.RecordCoinLog(num, req.Coin, "管理员操作", fmt.Sprintf("后台批量设置积分为%d", req.Coin))
 	}
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "修改成功"}
 	c.ServeJSON()

@@ -702,6 +702,7 @@ func HandleRecordCK(sender *Sender) interface{} {
 
 		if strings.Contains(output, "记录成功") {
 			RemCoin(sender.UserID, totalCoin)
+			RecordCoinLog(sender.UserID, -totalCoin, "上车扣费", fmt.Sprintf("%s上车", config.Name))
 			if config.IsDailyDeduct {
 				sender.Reply(fmt.Sprintf("添加%s账号成功！已扣除%d积分（%d天×%d积分/天），剩余%d积分。授权有效期至：%s",
 					config.Name, totalCoin, months, config.DailyCoin, userCoin-totalCoin, expireDate))
@@ -1132,6 +1133,7 @@ func HandleDeleteCK(sender *Sender) interface{} {
 		if strings.Contains(output, "删除成功") {
 			if (config.IsMonthlyDeduct || config.IsDailyDeduct) && returnCoin > 0 {
 				AdddCoin(qq, returnCoin)
+				RecordCoinLog(qq, returnCoin, "退还", fmt.Sprintf("删除%s退还", config.Name))
 				sender.Reply(fmt.Sprintf("【%s】删除成功！积分已退还：+%d分", GetFirstRemarkParam(selectedRemarks), returnCoin))
 			} else {
 				sender.Reply(fmt.Sprintf("【%s】删除成功！", GetFirstRemarkParam(selectedRemarks)))
@@ -1543,6 +1545,7 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 
 		// 9. 扣除积分
 		RemCoin(sender.UserID, totalCoin)
+		RecordCoinLog(sender.UserID, -totalCoin, "续费扣费", fmt.Sprintf("%s续费", config.Name))
 
 		if config.IsDailyDeduct {
 			sender.Reply(fmt.Sprintf("✅ 授权成功！\n已扣除%d积分（%d天×%d积分/天）\n剩余积分：%d\n授权有效期至：%s",
