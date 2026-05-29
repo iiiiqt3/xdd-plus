@@ -309,6 +309,7 @@ func createActivityProjectTable() {
 			{"is_daily_deduct", "TINYINT(1) NOT NULL DEFAULT 0"},
 			{"daily_coin", "INT NOT NULL DEFAULT 0"},
 			{"min_days", "INT NULL DEFAULT NULL"},
+			{"grant_expire_date", "VARCHAR(10) NOT NULL DEFAULT ''"},
 		}
 		for _, col := range missingColumns {
 			var exists int
@@ -373,6 +374,7 @@ CREATE TABLE activity_project (
 	is_monthly_deduct TINYINT(1) NOT NULL DEFAULT 0,
 	monthly_coin INT NOT NULL DEFAULT 0,
 	need_coin INT NOT NULL DEFAULT 0,
+	grant_expire_date VARCHAR(10) NOT NULL DEFAULT '',
 	created_at DATETIME,
 	updated_at DATETIME,
 	deleted_at DATETIME,
