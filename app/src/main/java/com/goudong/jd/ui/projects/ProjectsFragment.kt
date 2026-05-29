@@ -597,11 +597,29 @@ class ProjectsFragment : Fragment() {
     }
 
     private fun showDeleteConfirm(item: PortalProject) {
+        fun calcPaidDays(): Int {
+            val total = item.daysLeft ?: 0
+            if (total <= 0) return 0
+            val grantDateStr = item.grantExpireDate
+            if (grantDateStr.isNullOrEmpty() || (item.needCoin ?: 0) > 0) return total
+            return try {
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                val grantDate = sdf.parse(grantDateStr) ?: return total
+                val grantEnd = java.util.Calendar.getInstance().apply {
+                    time = grantDate
+                    add(java.util.Calendar.DAY_OF_YEAR, 1)
+                }.time
+                val grantRemain = (grantEnd.time - System.currentTimeMillis()) / 86400000.0
+                val granted = if (grantRemain > 1) (grantRemain - 1).toInt() else 0
+                maxOf(total - granted, 0)
+            } catch (_: Exception) { total }
+        }
         val refundTip = when {
             // 按天计费退积分
             item.isDailyDeduct == true && (item.daysLeft ?: 0) > 0 && (item.dailyCoin ?: 0) > 0 -> {
-                val estimated = (item.dailyCoin ?: 0) * (item.daysLeft ?: 0)
-                "预计返还积分：$estimated（最终以服务端结算为准）"
+                val paidDays = calcPaidDays()
+                val estimated = (item.dailyCoin ?: 0) * paidDays
+                if (estimated > 0) "预计返还积分：$estimated（最终以服务端结算为准）" else "赠送时长内，删除不退还积分"
             }
             item.isDailyDeduct == true -> {
                 "预计返还积分：以服务端结算为准"
@@ -611,8 +629,9 @@ class ProjectsFragment : Fragment() {
                 "该账号由一次性活动转换，删除不退还积分"
             }
             item.isMonthlyDeduct == true && (item.daysLeft ?: 0) > 0 && (item.monthlyCoin ?: 0) > 0 -> {
-                val estimated = (((item.monthlyCoin ?: 0).toDouble() * (item.daysLeft ?: 0).toDouble() / 30.0) + 0.5).toInt()
-                "预计返还积分：$estimated（最终以服务端结算为准）"
+                val paidDays = calcPaidDays()
+                val estimated = (((item.monthlyCoin ?: 0).toDouble() * paidDays.toDouble() / 30.0) + 0.5).toInt()
+                if (estimated > 0) "预计返还积分：$estimated（最终以服务端结算为准）" else "赠送时长内，删除不退还积分"
             }
             item.isMonthlyDeduct == true -> {
                 "预计返还积分：以服务端结算为准"

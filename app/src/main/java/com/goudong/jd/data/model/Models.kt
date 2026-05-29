@@ -116,6 +116,7 @@ data class PortalProject(
     val isDailyDeduct: Boolean? = null,
     val dailyCoin: Int? = null,
     val needCoin: Int? = null,
+    val grantExpireDate: String? = null,
     val bizStatus: String? = null,
     val bizStatusText: String? = null,
     val daysLeft: Int? = null,
