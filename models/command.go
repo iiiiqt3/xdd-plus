@@ -2540,9 +2540,9 @@ var codeSignals = []CodeSignal{
 			// **关键：先更新数据库**
 			db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", newCost)))
 			if newCost > 0 {
-				RecordCoinLog(sender.UserID, newCost, "游戏", "押大小获胜")
+				RecordCoinLog(sender.UserID, newCost, "游戏", "踩雷获胜")
 			} else if newCost < 0 {
-				RecordCoinLog(sender.UserID, newCost, "游戏", "押大小失败")
+				RecordCoinLog(sender.UserID, newCost, "游戏", "踩雷失败")
 			}
 			
 
