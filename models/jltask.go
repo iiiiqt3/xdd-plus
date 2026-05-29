@@ -1060,7 +1060,8 @@ func HandleDeleteCK(sender *Sender) interface{} {
 		selectedProjectMonthlyCoin := config.MonthlyCoin
 		selectedProjectDailyCoin := config.DailyCoin
 		selectedProjectNeedCoin := config.NeedCoin
-		for _, p := range projects {
+		var selectedProject *ActivityProject
+		for i, p := range projects {
 			if p.Remarks == selectedRemarks {
 				if p.MonthlyCoin > 0 {
 					selectedProjectMonthlyCoin = p.MonthlyCoin
@@ -1069,39 +1070,20 @@ func HandleDeleteCK(sender *Sender) interface{} {
 					selectedProjectDailyCoin = p.DailyCoin
 				}
 				selectedProjectNeedCoin = p.NeedCoin
+				selectedProject = &projects[i]
 				break
 			}
 		}
 
-		if (config.IsMonthlyDeduct || config.IsDailyDeduct) && selectedProjectNeedCoin == 0 {
-			remarkParts := strings.Split(selectedRemarks, "/")
-			if len(remarkParts) < 1 {
-				sender.Reply("备注格式错误，无法获取到期日期")
-				return
-			}
-			dateStr := remarkParts[len(remarkParts)-1]
-
-			expireDate, err := time.Parse("2006-01-02", dateStr)
-			if err != nil {
-				sender.Reply(fmt.Sprintf("日期格式错误：%s，必须为 2006-01-02 格式", dateStr))
-				return
-			}
-			now := time.Now()
-			expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
-			remainingDays := expireThreshold.Sub(now).Hours() / 24
-			if remainingDays < 0 {
-				remainingDays = 0
-			}
-			if remainingDays > 0 {
-				remainingDays = remainingDays - 1
-			}
+		if (config.IsMonthlyDeduct || config.IsDailyDeduct) && selectedProjectNeedCoin == 0 && selectedProject != nil {
+			paidDays := CalcPaidRemainingDays(selectedProject)
 
 			if config.IsDailyDeduct && selectedProjectDailyCoin > 0 {
-				returnCoin = selectedProjectDailyCoin * int(remainingDays)
+				returnCoin = selectedProjectDailyCoin * paidDays
 				confirmPrompt = fmt.Sprintf("【温馨提示】当前为按天计费活动\n删除后将退还积分：%d分\n确认删除【%s】？（输入y确认，其他字符取消）",
 					returnCoin, GetFirstRemarkParam(selectedRemarks))
 			} else if selectedProjectMonthlyCoin > 0 {
-				returnCoin = int(math.Round(float64(selectedProjectMonthlyCoin) * remainingDays / 30))
+				returnCoin = int(math.Round(float64(selectedProjectMonthlyCoin) * float64(paidDays) / 30))
 				confirmPrompt = fmt.Sprintf("【温馨提示】当前为月付费活动\n删除后将退还积分：%d分\n确认删除【%s】？（输入y确认，其他字符取消）",
 					returnCoin, GetFirstRemarkParam(selectedRemarks))
 			}
@@ -1505,8 +1487,15 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 
 		if config.IsDailyDeduct {
 			if hasOldDate {
-				newExpireDate = baseTime.AddDate(0, 0, months).Format(DateLayout)
-				logs.Info("按天续费：基准日期[%s] + [%d]天 = [%s]", baseTime.Format(DateLayout), months, newExpireDate)
+				now := time.Now()
+				expireThreshold := time.Date(baseTime.Year(), baseTime.Month(), baseTime.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+				if now.Before(expireThreshold) {
+					newExpireDate = baseTime.AddDate(0, 0, months).Format(DateLayout)
+					logs.Info("按天续费（未过期）：基准日期[%s] + [%d]天 = [%s]", baseTime.Format(DateLayout), months, newExpireDate)
+				} else {
+					newExpireDate = GenerateExpireDateFromDays(months)
+					logs.Info("按天续费（已过期，从今天起算）：当前时间 + [%d]天 = [%s]", months, newExpireDate)
+				}
 			} else {
 				newExpireDate = GenerateExpireDateFromDays(months)
 				logs.Info("按天新开通：当前时间 + [%d]天 = [%s]", months, newExpireDate)

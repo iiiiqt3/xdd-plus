@@ -2243,16 +2243,28 @@ async function renewProject(activityId, remarks) {
 async function deleteProject(activityId, remarks, activityName) {
     const item = (state.projects || []).find(x => String(x.activityId) === String(activityId) && x.remark === remarks);
     let refundTip = '';
+    const calcPaidDays = () => {
+        let total = item.daysLeft || 0;
+        if (!item.grantExpireDate || item.needCoin > 0) return total;
+        const now = new Date();
+        const grantDate = new Date(item.grantExpireDate + 'T23:59:59');
+        const grantRemain = (grantDate - now) / (1000 * 60 * 60 * 24);
+        const granted = grantRemain > 0 ? Math.ceil(grantRemain) : 0;
+        const paid = total - granted;
+        return paid > 0 ? paid : 0;
+    };
     if (item && item.isDailyDeduct && item.dailyCoin > 0 && item.daysLeft > 0) {
-        const estimated = item.dailyCoin * item.daysLeft;
-        refundTip = `\n预计返还积分：${estimated}（最终以服务端结算为准）`;
+        const paidDays = calcPaidDays();
+        const estimated = item.dailyCoin * paidDays;
+        refundTip = estimated > 0 ? `\n预计返还积分：${estimated}（最终以服务端结算为准）` : '\n赠送时长内，删除不退还积分';
     } else if (item && item.isDailyDeduct) {
         refundTip = '\n预计返还积分：以服务端结算为准';
     } else if (item && item.isMonthlyDeduct && item.needCoin > 0) {
         refundTip = '\n该账号由一次性活动转换，删除不退还积分';
     } else if (item && item.isMonthlyDeduct && item.monthlyCoin > 0 && item.daysLeft > 0) {
-        const estimated = Math.round(item.monthlyCoin * item.daysLeft / 30);
-        refundTip = `\n预计返还积分：${estimated}（最终以服务端结算为准）`;
+        const paidDays = calcPaidDays();
+        const estimated = Math.round(item.monthlyCoin * paidDays / 30);
+        refundTip = estimated > 0 ? `\n预计返还积分：${estimated}（最终以服务端结算为准）` : '\n赠送时长内，删除不退还积分';
     } else if (item && item.isMonthlyDeduct) {
         refundTip = '\n预计返还积分：以服务端结算为准';
     } else if (item && !item.isMonthlyDeduct && !item.isDailyDeduct) {

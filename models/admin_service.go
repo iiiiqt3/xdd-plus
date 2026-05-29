@@ -2403,10 +2403,11 @@ func buildActivityAuthAccountItemByProject(cfg *ActivityConfig, project *Activit
 			if remainDays > 0 {
 				remainDays = remainDays - 1
 			}
+			paidDays := CalcPaidRemainingDays(project)
 			if project.DailyCoin > 0 && project.NeedCoin == 0 {
-				refundCoin = project.DailyCoin * remainDays
+				refundCoin = project.DailyCoin * paidDays
 			} else if project.MonthlyCoin > 0 && project.NeedCoin == 0 {
-				refundCoin = int(math.Round(float64(project.MonthlyCoin) * float64(remainDays) / 30))
+				refundCoin = int(math.Round(float64(project.MonthlyCoin) * float64(paidDays) / 30))
 			}
 		}
 	}
@@ -2755,6 +2756,7 @@ func ConvertActivityToMonthly(activityID string, monthlyCoin int, syncUsers bool
 		project.IsMonthlyDeduct = true
 		project.MonthlyCoin = monthlyCoin
 		project.ExpireDate = newExpireStr
+		project.GrantExpireDate = newExpireStr
 		project.Remarks = newRemarks
 		project.RemarkAlias = GetFirstRemarkParam(newRemarks)
 		project.Status = 0

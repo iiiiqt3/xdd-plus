@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"log"
+	"math"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -29,6 +30,7 @@ type PortalProjectItem struct {
 	IsDailyDeduct   bool                  `json:"isDailyDeduct"`
 	DailyCoin       int                   `json:"dailyCoin"`
 	NeedCoin        int                   `json:"needCoin"`
+	GrantExpireDate string                `json:"grantExpireDate"`
 	BizStatus       string                `json:"bizStatus"`
 	BizStatusText   string                `json:"bizStatusText"`
 	DaysLeft        int                   `json:"daysLeft"`
@@ -373,6 +375,7 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 			IsDailyDeduct:   dbProj.IsDailyDeduct,
 			DailyCoin:       dbProj.DailyCoin,
 			NeedCoin:        dbProj.NeedCoin,
+			GrantExpireDate: dbProj.GrantExpireDate,
 			BizStatus:       bizStatus,
 			BizStatusText:   bizStatusText,
 			DaysLeft:        daysLeft,
@@ -539,7 +542,13 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 	var newExpireDate string
 	if cfg.IsDailyDeduct {
 		if hasOldDate {
-			newExpireDate = baseTime.AddDate(0, 0, months).Format(DateLayout)
+			now := time.Now()
+			expireThreshold := time.Date(baseTime.Year(), baseTime.Month(), baseTime.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+			if now.Before(expireThreshold) {
+				newExpireDate = baseTime.AddDate(0, 0, months).Format(DateLayout)
+			} else {
+				newExpireDate = GenerateExpireDateFromDays(months)
+			}
 		} else {
 			newExpireDate = GenerateExpireDateFromDays(months)
 		}
@@ -585,26 +594,11 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 	}
 
 	if (cfg.IsMonthlyDeduct || cfg.IsDailyDeduct) && project.NeedCoin == 0 {
-		parts := strings.Split(remarks, "/")
-		if len(parts) >= 1 {
-			dateStr := parts[len(parts)-1]
-			expireDate, err := time.Parse(DateLayout, dateStr)
-			if err == nil {
-				now := time.Now()
-				expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
-				remainingDays := expireThreshold.Sub(now).Hours() / 24
-				if remainingDays < 0 {
-					remainingDays = 0
-				}
-				if remainingDays > 0 {
-					remainingDays = remainingDays - 1
-				}
-				if cfg.IsDailyDeduct && project.DailyCoin > 0 {
-					returnCoin = project.DailyCoin * int(remainingDays)
-				} else if project.MonthlyCoin > 0 {
-					returnCoin = int((float64(project.MonthlyCoin) * remainingDays / 30) + 0.5)
-				}
-			}
+		paidDays := CalcPaidRemainingDays(project)
+		if cfg.IsDailyDeduct && project.DailyCoin > 0 {
+			returnCoin = project.DailyCoin * paidDays
+		} else if project.MonthlyCoin > 0 {
+			returnCoin = int(math.Round(float64(project.MonthlyCoin) * float64(paidDays) / 30))
 		}
 	}
 

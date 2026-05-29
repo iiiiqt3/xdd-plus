@@ -27,6 +27,7 @@ type ActivityProject struct {
 	DailyCoin          int        `gorm:"column:daily_coin;default:0"`
 	MinDays            *int       `gorm:"column:min_days"`
 	NeedCoin           int        `gorm:"column:need_coin;default:0"`
+	GrantExpireDate    string     `gorm:"column:grant_expire_date;size:10"`
 	CreatedAt          time.Time  `gorm:"column:created_at"`
 	UpdatedAt          time.Time  `gorm:"column:updated_at"`
 	DeletedAt          *time.Time `gorm:"column:deleted_at;index"`
@@ -37,6 +38,43 @@ type ActivityProject struct {
 
 func (ActivityProject) TableName() string {
 	return "activity_project"
+}
+
+func CalcPaidRemainingDays(project *ActivityProject) int {
+	if project.ExpireDate == "" {
+		return 0
+	}
+	expireDate, err := time.Parse(DateLayout, project.ExpireDate)
+	if err != nil {
+		return 0
+	}
+	now := time.Now()
+	expireThreshold := time.Date(expireDate.Year(), expireDate.Month(), expireDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+	totalRemaining := expireThreshold.Sub(now).Hours() / 24
+	if totalRemaining < 0 {
+		totalRemaining = 0
+	}
+	if totalRemaining > 0 {
+		totalRemaining = totalRemaining - 1
+	}
+
+	grantedRemaining := 0.0
+	if project.GrantExpireDate != "" {
+		grantDate, err := time.Parse(DateLayout, project.GrantExpireDate)
+		if err == nil {
+			grantThreshold := time.Date(grantDate.Year(), grantDate.Month(), grantDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+			diff := grantThreshold.Sub(now).Hours() / 24
+			if diff > 1 {
+				grantedRemaining = diff - 1
+			}
+		}
+	}
+
+	paidDays := totalRemaining - grantedRemaining
+	if paidDays < 0 {
+		paidDays = 0
+	}
+	return int(paidDays)
 }
 
 func CreateActivityProject(project *ActivityProject) error {
