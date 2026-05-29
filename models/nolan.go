@@ -10,7 +10,6 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/skip2/go-qrcode"
-	"gorm.io/gorm"
 )
 
 func NolanGetJdQrImg(sender *Sender) {
