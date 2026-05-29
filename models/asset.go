@@ -180,7 +180,7 @@ func (ck *JdCookie) Query3() string {
 		if strings.HasPrefix(ck.PtKey, "app_open") {
 			msgs = append(msgs, "登录方式：扫码登录")
 		} else if ck.Password != "" {
-			msgs = append(msgs, "登录方式：密码登录")
+			msgs = append(msgs, "登录方式：账号登录")
 		} else if ck.IsApp == "true" && ck.Password == "" {
 			msgs = append(msgs, "登录方式：APP登录")
 		} else {
@@ -216,7 +216,7 @@ func (ck *JdCookie) Query3() string {
 			}
 		}
 	} else {
-		msgs = append(msgs, "提醒：该账号已过期，请重新登录,如果需要京东自动登录不掉线 :请回复 密码登录")
+		msgs = append(msgs, "提醒：该账号已过期，请重新登录,如果需要京东自动登录不掉线 :请回复 登陆")
 		msgs = append(msgs, fmt.Sprintf("账号名称：%s", ck.PtPin))
 	}
 
@@ -243,7 +243,7 @@ func (ck *JdCookie) Query() string {
 		if strings.HasPrefix(ck.PtKey, "app_open") {
 			msgs = append(msgs, "登录方式：扫码登录")
 		} else if ck.Password != "" {
-			msgs = append(msgs, "登录方式：密码登录")
+			msgs = append(msgs, "登录方式：账号登录")
 		} else if ck.IsApp == "true" && ck.Password == "" {
 			msgs = append(msgs, "登录方式：APP登录")
 		} else {
@@ -294,7 +294,7 @@ func (ck *JdCookie) Query() string {
 			}
 		}
 	} else {
-		msgs = append(msgs, "提醒：该账号已过期，请重新登录,如果需要京东自动登录不掉线 :请回复 密码登录")
+		msgs = append(msgs, "提醒：该账号已过期，请重新登录,如果需要京东自动登录不掉线 :请回复 登陆")
 		msgs = append(msgs, fmt.Sprintf("账号名称：%s", ck.PtPin))
 	}
 

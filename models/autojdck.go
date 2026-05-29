@@ -204,7 +204,7 @@ func getSocks5ByPtPin(ptPin string) (map[string]string, error) {
 func Autojdck(sender *Sender, Auto *UserSession) {
 	Auto.apiBackend = GetEnv("apiBackend2")
 	if Auto.apiBackend == "" {
-		sender.Reply("密码登录维护中。。。。请使用短信登录，指令：【短信登录】")
+		sender.Reply("登录维护中。。。。请使用短信登录，指令：【短信登录】")
 		return
 	}
 	Auto.smsRetry = 0
@@ -370,7 +370,7 @@ func Autojdck(sender *Sender, Auto *UserSession) {
 	// 用户名下没有账号，按原有逻辑执行
 	// 如果是群聊且没有账号，提示加好友
 	if sender.Type == "qqg" || sender.Type == "wxg" {
-		sender.Reply("新增账号请加好友后再进行【密码登录】操作，防止信息泄露。")
+		sender.Reply("新增账号请加好友后再进行【登陆】操作，防止信息泄露。")
 		return
 	}
 
@@ -692,7 +692,7 @@ ProLogin:
 		log.Printf("认证提示: %s\n", message)
 		if message == "您的账号存在风险，为了您的账号安全请到京东商城App登录" || message == "登录失败: 您的账号存在风险，为了您的账号安全，打开京东商城APP重新登录，风险解除后即可正常使用" {
 			// 特定风险提示处理
-			sender.Reply("请到京东官方app登录一下，过下人脸识别，然后再次使用机器人密码登录即可")
+			sender.Reply("请到京东官方app登录一下，过下人脸识别，然后再次使用机器人登陆即可")
 
 			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB { return sb.Where("Account = ?", Auto.account) })
 			if len(cks) > 0 {
@@ -1149,7 +1149,7 @@ retryLogin:
 
 
 
-//##以下为兔子密码登录
+//##以下为兔子账号登录
 
 func RabbitInit(account string) bool {
 	logs.Info("账密初始化")
@@ -1436,7 +1436,7 @@ func Rabbit_loginAPI(sender *Sender, Auto *UserSession) bool {
 						continue
 					}
 					if code == "y" || code == "Y" {
-						sender.Reply("请耐心等待，长时间无响应请重新发送【密码登录】即可。")
+						sender.Reply("请耐心等待，长时间无响应请重新发送【登陆】即可。")
 						loginAPI(sender, Auto)
 						return false
 					}
@@ -1474,7 +1474,7 @@ func Rabbit_loginAPI(sender *Sender, Auto *UserSession) bool {
 				cks[0].Update(Available, "false")
 			}
 
-			sender.Reply("请到京东官方app登录一下，过下人脸识别，然后再次使用机器人密码登录即可")
+			sender.Reply("请到京东官方app登录一下，过下人脸识别，然后再次使用机器人登陆即可")
 		} else {
 			// 不更新状态，只回复登录失败信息
 			sender.Reply(fmt.Sprintf("登录失败: %s", message))
@@ -1538,7 +1538,7 @@ func Ds_loginAPI(sender *Sender, Auto *UserSession) bool {
 		jmpUrl, _ := result["jmp_url"].(string)
 		sender.Reply(errMsg)
 		sender.Reply(jmpUrl)
-		sender.Reply("请点击链接，或者复制到浏览器打开，验证后请回复【密码登录】再次登录即可,")
+		sender.Reply("请点击链接，或者复制到浏览器打开，验证后请回复【登陆】再次登录即可,")
 		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB { return sb.Where("Account = ?", Auto.account) })
 		if len(cks) > 0 {
 			cks[0].Update(Smsverify, "true")
@@ -1548,7 +1548,7 @@ func Ds_loginAPI(sender *Sender, Auto *UserSession) bool {
 	}
 
 	if errCode == 118 {
-		sender.Reply("账号触发特殊验证，请先使用【短信登录】后，再次尝试密码登录，如果再次失败请稍后再试")
+		sender.Reply("账号触发特殊验证，请先使用【短信登录】后，再次尝试登陆，如果再次失败请稍后再试")
 		return true
 	}
 
@@ -1646,7 +1646,7 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 			}
 			nck.Updates(cookieUpdate)
 			sender.Reply(fmt.Sprintf("登录成功:%s", pin))
-			(&JdCookie{}).Push(fmt.Sprintf("来自密码登录成功:%s", pin))
+			(&JdCookie{}).Push(fmt.Sprintf("来自登录成功:%s", pin))
 		} else {
 			// ========== 注释积分奖励逻辑 - 开始 ==========
 			// ========== 注释积分奖励逻辑 - 结束 ==========
@@ -1683,7 +1683,7 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 			ck.Socks5_Password = ""
 		}
 		NewJdCookie(&ck)
-		msg := fmt.Sprintf("来自密码登录的添加账号，账号名:%s", ck.PtPin)
+		msg := fmt.Sprintf("来自登录的添加账号，账号名:%s", ck.PtPin)
 		switch sender.Type {
 		case "wx", "wxg":
 			ck.Update("WeiXin", sender.WxId)
@@ -1905,7 +1905,7 @@ func all_UpAutoCookie() {
 
 //##所有失效都推送
 func all_initAutoCookie() {
-	(&JdCookie{}).Push("开始密码登录检测")
+	(&JdCookie{}).Push("开始登录检测")
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where("Smsverify = ? AND Account IS NOT NULL AND Account != ''", True)
 	})
@@ -1917,12 +1917,12 @@ func all_initAutoCookie() {
 		if !CookieOK(&ck) {
 			//todo 通知账号失效
 			time.Sleep(time.Second)   //#时间改成1秒
-			ck.Push(fmt.Sprintf("====尊贵的密码登录用户====\n1、您的账号：%s，已失效，回复【密码登录】体验全新密码登录，快到你不敢相信\n2、回复【删除账号】删除失效账号", ck.PtPin))
+			ck.Push(fmt.Sprintf("====尊贵的登录用户====\n1、您的账号：%s，已失效，回复【登陆】重新登录\n2、回复【删除账号】删除失效账号", ck.PtPin))
 			(&JdCookie{}).Push(fmt.Sprintf("需要验证账号：%s", ck.PtPin))
 			xj++
 		}
 	}
-	(&JdCookie{}).Push(fmt.Sprintf("密码登录检测结束，检测账号数量%d个，需要验证账号%d个", len(cks), xj))
+	(&JdCookie{}).Push(fmt.Sprintf("登录检测结束，检测账号数量%d个，需要验证账号%d个", len(cks), xj))
 	go func() {
 		Save <- &JdCookie{}
 	}()
@@ -1930,7 +1930,7 @@ func all_initAutoCookie() {
 
 //##num次数
 func initAutoCookie() {
-    (&JdCookie{}).Push("开始密码登录检测")
+    (&JdCookie{}).Push("开始登录检测")
     cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
         return sb.Where("Smsverify = ? AND Account IS NOT NULL AND Account != ''", True)
     })
@@ -1956,7 +1956,7 @@ func initAutoCookie() {
 
                 // 推送通知
                 time.Sleep(time.Second) // 时间改成1秒
-                ck.Push(fmt.Sprintf("====尊贵的密码登录用户====\n1、您的账号：%s，已失效，回复【密码登录】重新登录\n2、回复【删除账号】删除失效的账号\n3、回复【QQ群】查看Q群和QQ机器人具体信息", ck.PtPin))
+                ck.Push(fmt.Sprintf("====尊贵的登录用户====\n1、您的账号：%s，已失效，回复【登陆】重新登录\n2、回复【删除账号】删除失效的账号\n3、回复【QQ群】查看Q群和QQ机器人具体信息", ck.PtPin))
                 (&JdCookie{}).Push(fmt.Sprintf("需要验证账号：%s", ck.PtPin))
 
                 // 更新通知计数
@@ -1967,7 +1967,7 @@ func initAutoCookie() {
             }
         }
     }
-    (&JdCookie{}).Push(fmt.Sprintf("密码登录检测结束，检测账号数量%d个，需要推送账号%d个", len(cks), xj))
+    (&JdCookie{}).Push(fmt.Sprintf("登录检测结束，检测账号数量%d个，需要推送账号%d个", len(cks), xj))
     go func() {
         Save <- &JdCookie{}
     }()
