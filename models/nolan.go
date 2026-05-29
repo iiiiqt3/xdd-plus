@@ -144,7 +144,7 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 				sender.Reply("key已失效，请重新获取")
 				return
 			} else if msg == "" {
-				sender.Reply("新账号首次扫码登录失败，请使用【密码登录】，密码登录自动续期！")
+				sender.Reply("新账号首次扫码登录失败，请使用【登陆】，登录自动续期！")
 				return
 			} else if msg == "没有次数了!" {
 				JdCookie{}.Push("Pro没有次数请及时签到")
@@ -288,7 +288,7 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 				//smsList[sender.UserID] = nil
 			} else {
 				smsList[sender.UserID] = nil
-				sender.Reply("你的账号可能触发了电话语音验证，请在京东官方app登录验证后再次尝试，建议直接使用【密码登录】")
+				sender.Reply("你的账号可能触发了电话语音验证，请在京东官方app登录验证后再次尝试，建议直接使用【登陆】")
 			}
 		} else {
 			smsList[sender.UserID] = nil

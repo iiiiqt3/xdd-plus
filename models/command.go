@@ -1,4 +1,4 @@
-package models
+﻿package models
 
 import (
 	"encoding/base64"
@@ -559,6 +559,14 @@ var codeSignals = []CodeSignal{
 	// },
 
 	{
+		Command: []string{"密码登录", "密码登陆"},
+		Handle: func(sender *Sender) interface{} {
+			sender.Reply("密码登录已废弃，请发送【登陆】")
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"短信登录", "短信登陆"},
 		Handle: func(sender *Sender) interface{} {
 			c2 := make(chan string)
@@ -1074,7 +1082,7 @@ var codeSignals = []CodeSignal{
 				inputList[sender.UserID] = msg
 				go handleUserChoice(sender, msg, cks)
 			} else {
-				sender.Reply("在线账号已全部失效，请对机器人发送“密码登录”")
+				sender.Reply("在线账号已全部失效，请对机器人发送【登陆】")
 				return nil
 			}
 			return nil
@@ -1316,7 +1324,7 @@ var codeSignals = []CodeSignal{
 
 				return nil
 			} else {
-				sender.Reply("账号全部失效，或者没有挂机，请发送【密码登录】。")
+				sender.Reply("账号全部失效，或者没有挂机，请发送【登陆】。")
 			}
 
 			return nil
@@ -1837,7 +1845,7 @@ var codeSignals = []CodeSignal{
 
         // 拼接统计结果（包含调试信息）
         var result strings.Builder
-        result.WriteString(fmt.Sprintf("📊 IP统计结果（密码登录用户总数：%d）：\n", totalCookiesTraversed))
+        result.WriteString(fmt.Sprintf("📊 IP统计结果（账号登录用户总数：%d）：\n", totalCookiesTraversed))
 
         if len(statMap) == 0 {
             result.WriteString("暂无符合条件的账号数据（未查询到password非空的京东Cookie）\n")
@@ -1945,7 +1953,7 @@ var codeSignals = []CodeSignal{
 			})
 			xk := 0
 			for _, ck := range cks {
-				rt := fmt.Sprintf("你的账号【%s】已过期，快发送【密码登录】提交账号把，全新的密码登录服务，体验直接拉满，快到你无法想象。", ck.Nickname)
+				rt := fmt.Sprintf("你的账号【%s】已过期，快发送【登陆】提交账号把，全新的登录服务，体验直接拉满，快到你无法想象。", ck.Nickname)
 				time.Sleep(time.Second * time.Duration(Config.Later))
 				time.Sleep(time.Duration(rand.Intn(1000)+2000) * time.Millisecond)
 				ck.Push(rt)
@@ -1984,7 +1992,7 @@ var codeSignals = []CodeSignal{
 	{
 	Command: []string{"查询", "我的资产"},
 	Handle: func(sender *Sender) interface{} {
-		sender.Reply("正在为您查询，请耐心等待，回复 手机卡 指令可办理超值流量卡，回复 密码登录，ck不掉线")
+		sender.Reply("正在为您查询，请耐心等待，回复 手机卡 指令可办理超值流量卡，回复 登陆，ck不掉线")
 
 		// 获取用户ID和类型
 		id := sender.UserID
@@ -2063,7 +2071,7 @@ var codeSignals = []CodeSignal{
 				}
 			}()
 		} else {
-			sender.Reply("没有找到您的有效账号，请直接发送【密码登录】上车。")
+			sender.Reply("没有找到您的有效账号，请直接发送【登陆】上车。")
 		}
 
 		return nil
@@ -2074,7 +2082,7 @@ var codeSignals = []CodeSignal{
 		Command: []string{"大师查询"},
 
 		Handle: func(sender *Sender) interface{} {
-			sender.Reply("正在为您查询，请耐心等待，回复 手机卡 指令可办理超值流量卡，回复 密码登录，ck不掉线")
+			sender.Reply("正在为您查询，请耐心等待，回复 手机卡 指令可办理超值流量卡，回复 登陆，ck不掉线")
 
 			sender.handleJdCookies(func(ck *JdCookie) {
 				sender.Reply(ck.Query())
@@ -2088,7 +2096,7 @@ var codeSignals = []CodeSignal{
 		Command: []string{"京豆明细", "资产明细"},
 
 		Handle: func(sender *Sender) interface{} {
-			sender.Reply("正在为您查询，请耐心等待，回复 手机卡 指令可办理超值流量卡，回复 密码登录，ck不掉线")
+			sender.Reply("正在为您查询，请耐心等待，回复 手机卡 指令可办理超值流量卡，回复 登陆，ck不掉线")
 
 			sender.handleJdCookies(func(ck *JdCookie) {
 				sender.Reply(ck.Query3())
@@ -2924,7 +2932,7 @@ var codeSignals = []CodeSignal{
 				}
 				sender.Reply(strings.Join(msgs, "\n"))
 			} else {
-				sender.Reply("无失效账号，新增账号请对机器人发送“密码登录”")
+				sender.Reply("无失效账号，新增账号请对机器人发送【登陆】")
 				return nil
 			}
 			return nil

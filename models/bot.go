@@ -440,7 +440,7 @@ if TryHandleSshMessage(sender) {
 					})
 
 					if len(cks) == 0 {
-						sender.Reply("无法助力，您没有挂机京东账号或者账号已失效。上车请发送【密码登录】")
+						sender.Reply("无法助力，您没有挂机京东账号或者账号已失效。上车请发送【登陆】")
 						return nil
 					}
 
