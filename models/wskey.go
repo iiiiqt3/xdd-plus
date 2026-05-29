@@ -100,8 +100,15 @@ func LoginSelect(sender *Sender, msg chan string) {
 		delete(loginList, sender.UserID)
 	}()
 
+	timeout := time.After(30 * time.Second)
+
 	for {
 		select {
+		case <-timeout:
+			sender.Reply("⏰ 操作超时，已自动退出登录流程。")
+			close(msg)
+			return
+
 		case n, ok := <-msg:
 			if !ok {
 				sender.Reply("通道已关闭，退出登录流程")
