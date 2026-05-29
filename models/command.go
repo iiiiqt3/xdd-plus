@@ -561,15 +561,10 @@ var codeSignals = []CodeSignal{
 	{
 		Command: []string{"短信登录", "短信登陆"},
 		Handle: func(sender *Sender) interface{} {
-			value := GetEnv("grouplogin")
-			if value == "" && (sender.Type == "qqg" || sender.Type == "wxg") {
-				sender.Reply("\n1、请添加本机器人私聊登录，避免信息泄露，建议使用【密码登录】，不掉线\n2、上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密")
-			} else {
-				c2 := make(chan string)
-				smsList[sender.UserID] = c2
-				sender.Reply("请输入手机号...")
-				go SmsSelect(sender, c2, "Nolan")
-			}
+			c2 := make(chan string)
+			smsList[sender.UserID] = c2
+			sender.Reply("请输入手机号...\n上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密\n回复'q'退出登录流程")
+			go SmsSelect(sender, c2, "Nolan")
 			return nil
 		},
 	},

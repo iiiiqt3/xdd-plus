@@ -123,11 +123,6 @@ func LoginSelect(sender *Sender, msg chan string) {
 			switch num {
 			case 1:
 				close(msg)
-				value := GetEnv("grouplogin")
-				if value == "" && (sender.Type == "qqg" || sender.Type == "wxg") {
-					sender.Reply("短信登录请添加本机器人好友后，私聊登录，避免信息泄露")
-					return
-				}
 				c2 := make(chan string)
 				smsList[sender.UserID] = c2
 				sender.Reply("请输入手机号...\n上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密\n回复'q'退出登录流程")

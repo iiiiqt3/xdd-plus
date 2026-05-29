@@ -291,11 +291,6 @@ if TryHandleSshMessage(sender) {
 
 	{
 				if msg == "登录" || msg == "登陆" {
-					value := GetEnv("grouplogin")
-					if value == "" && (sender.Type == "qqg" || sender.Type == "wxg") {
-						sender.Reply("短信登录请添加本机器人好友后，私聊登录，避免信息泄露")
-						return nil
-					}
 					c2 := make(chan string)
 					loginList[sender.UserID] = c2
 					sender.Reply("请选择登录方式：\n1️⃣ 短信登录\n2️⃣ 微信协议自动登录\n\n回复 q 退出登录流程")
