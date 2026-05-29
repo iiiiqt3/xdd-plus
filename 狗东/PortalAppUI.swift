@@ -1118,7 +1118,7 @@ final class ActivitiesListViewController: UITableViewController {
         }
         let price: String
         let badgeText: String
-        let badgeKind: BadgeLabel.Kind
+        let badgeKind: StatusBadgeLabel.Kind
         if item.isDailyDeduct == true {
             price = "每天 \(item.dailyCoin ?? 0) 积分"
             badgeText = "按天授权"
