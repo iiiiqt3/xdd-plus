@@ -1,6 +1,87 @@
 import UIKit
 import Foundation
 import Security
+import CryptoKit
+
+
+enum SignatureHelper {
+    private static let secret = "G0uD0ng@2024#S1gn@ture!K3y"
+    private static let salt = "x9D$kL2mN#pQ7rT5"
+    static let version = "v2"
+    private static let appVersion = "2.0.0"
+
+    static func getHeaders(for path: String) -> [String: String] {
+        let timestamp = String(Int(Date().timeIntervalSince1970))
+        let nonce = generateNonce(length: 16)
+        let deviceId = getDeviceId()
+        let signature = generateSignature(
+            timestamp: timestamp,
+            nonce: nonce,
+            deviceId: deviceId,
+            appVersion: appVersion,
+            path: path
+        )
+
+        return [
+            "X-Sign-Timestamp": timestamp,
+            "X-Sign-Nonce": nonce,
+            "X-Sign-DeviceID": deviceId,
+            "X-Sign-Value": signature,
+            "X-Sign-Version": version,
+            "X-App-Version": appVersion
+        ]
+    }
+
+    private static func generateSignature(
+        timestamp: String,
+        nonce: String,
+        deviceId: String,
+        appVersion: String,
+        path: String
+    ) -> String {
+        let round1Input = "\(timestamp)|\(nonce)|\(deviceId)|\(appVersion)|\(path)|\(salt)"
+        let round1 = sha256(round1Input)
+
+        let round2 = hmacSha256(message: round1, secret: secret)
+
+        let reversedTimestamp = String(timestamp.reversed())
+        let reversedNonce = String(nonce.reversed())
+        let round3Input = "\(round2)\(reversedTimestamp)\(reversedNonce)"
+        return sha256(round3Input)
+    }
+
+    private static func sha256(_ input: String) -> String {
+        let data = Data(input.utf8)
+        let hash = SHA256.hash(data: data)
+        return hash.map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func hmacSha256(message: String, secret: String) -> String {
+        let key = SymmetricKey(data: Data(secret.utf8))
+        let data = Data(message.utf8)
+        let authenticationCode = HMAC<SHA256>.authenticationCode(for: data, using: key)
+        return authenticationCode.map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func generateNonce(length: Int) -> String {
+        let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        return String((0..<length).compactMap { _ in charset.randomElement() })
+    }
+
+    private static func getDeviceId() -> String {
+        if let uuid = UserDefaults.standard.string(forKey: "app.device.uuid") {
+            return uuid
+        }
+        let uuid = UUID().uuidString
+        UserDefaults.standard.set(uuid, forKey: "app.device.uuid")
+        return uuid
+    }
+
+    private static func needsSignature(_ path: String) -> Bool {
+        let signaturePaths = ["/api/portal/checkin", "/api/portal/pray"]
+        return signaturePaths.contains { path.contains($0) }
+    }
+}
 
 
 enum AppEnvironment {
@@ -787,11 +868,15 @@ final class PortalService {
     }
 
     func checkin(completion: @escaping (Result<String, APIError>) -> Void) {
-        APIClient.shared.requestMessage(path: "/api/portal/checkin", completion: completion)
+        let path = "/api/portal/checkin"
+        let signHeaders = SignatureHelper.getHeaders(for: path)
+        APIClient.shared.requestMessage(path: path, headers: signHeaders, completion: completion)
     }
 
     func pray(completion: @escaping (Result<String, APIError>) -> Void) {
-        APIClient.shared.requestMessage(path: "/api/portal/pray", completion: completion)
+        let path = "/api/portal/pray"
+        let signHeaders = SignatureHelper.getHeaders(for: path)
+        APIClient.shared.requestMessage(path: path, headers: signHeaders, completion: completion)
     }
 
     func markNotificationRead(id: Int, completion: @escaping (Result<Void, APIError>) -> Void) {
