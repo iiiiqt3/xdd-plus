@@ -2,12 +2,12 @@ package models
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-//	"sort"
+	"math/big"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -138,8 +138,8 @@ func generateNonce(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	result := make([]byte, length)
 	for i := range result {
-		result[i] = charset[time.Now().UnixNano()%int64(len(charset))]
-		time.Sleep(1) // 确保每次随机数不同
+		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		result[i] = charset[n.Int64()]
 	}
 	return string(result)
 }
@@ -190,114 +190,4 @@ func GetSignatureInfo() map[string]interface{} {
 		"app_id":       SignatureAppID,
 		"nonce_length": SignatureNonceLen,
 	}
-}
-
-// GenerateClientCode 生成客户端代码示例
-func GenerateClientCode(platform string) string {
-	var code string
-
-	switch strings.ToLower(platform) {
-	case "android":
-		code = generateAndroidCode()
-	case "ios":
-		code = generateIOSCode()
-	default:
-		code = "Unsupported platform"
-	}
-
-	return code
-}
-
-func generateAndroidCode() string {
-	return `// Android 签名生成代码
-import java.security.MessageDigest
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
-
-object SignatureHelper {
-    private const val SECRET = "${SignatureSecret}"
-    private const val SALT = "${SignatureSalt}"
-    private const val VERSION = "${SignatureVersion}"
-    
-    fun generateSignature(
-        timestamp: String,
-        nonce: String,
-        deviceId: String,
-        appVersion: String,
-        path: String
-    ): String {
-        // 第一轮：SHA-256
-        val round1Input = "$timestamp|$nonce|$deviceId|$appVersion|$path|$SALT"
-        val round1 = sha256(round1Input)
-        
-        // 第二轮：HMAC-SHA256
-        val round2 = hmacSha256(round1, SECRET)
-        
-        // 第三轮：SHA-256
-        val reversedTimestamp = timestamp.reversed()
-        val reversedNonce = nonce.reversed()
-        val round3Input = "$round2$reversedTimestamp$reversedNonce"
-        return sha256(round3Input)
-    }
-    
-    private fun sha256(input: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hash = digest.digest(input.toByteArray())
-        return hash.joinToString("") { "%02x".format(it) }
-    }
-    
-    private fun hmacSha256(message: String, secret: String): String {
-        val mac = Mac.getInstance("HmacSHA256")
-        val secretKey = SecretKeySpec(secret.toByteArray(), "HmacSHA256")
-        mac.init(secretKey)
-        val hash = mac.doFinal(message.toByteArray())
-        return hash.joinToString("") { "%02x".format(it) }
-    }
-}`
-}
-
-func generateIOSCode() string {
-	return `// iOS 签名生成代码
-import CryptoKit
-import Foundation
-
-struct SignatureHelper {
-    static let secret = "${SignatureSecret}"
-    static let salt = "${SignatureSalt}"
-    static let version = "${SignatureVersion}"
-    
-    static func generateSignature(
-        timestamp: String,
-        nonce: String,
-        deviceId: String,
-        appVersion: String,
-        path: String
-    ) -> String {
-        // 第一轮：SHA-256
-        let round1Input = "\\(timestamp)|\\(nonce)|\\(deviceId)|\\(appVersion)|\\(path)|\\(salt)"
-        let round1 = sha256(round1Input)
-        
-        // 第二轮：HMAC-SHA256
-        let round2 = hmacSha256(message: round1, secret: secret)
-        
-        // 第三轮：SHA-256
-        let reversedTimestamp = String(timestamp.reversed())
-        let reversedNonce = String(nonce.reversed())
-        let round3Input = "\\(round2)\\(reversedTimestamp)\\(reversedNonce)"
-        return sha256(round3Input)
-    }
-    
-    private static func sha256(_ input: String) -> String {
-        let data = Data(input.utf8)
-        let hash = SHA256.hash(data: data)
-        return hash.map { String(format: "%02x", $0) }.joined()
-    }
-    
-    private static func hmacSha256(message: String, secret: String) -> String {
-        let key = SymmetricKey(data: Data(secret.utf8))
-        let data = Data(message.utf8)
-        let signature = HMAC<SHA256>.authenticationCode(for: data, using: key)
-        return signature.map { String(format: "%02x", $0) }.joined()
-    }
-}`
 }
