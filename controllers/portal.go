@@ -269,6 +269,19 @@ func (c *PortalController) Pray() {
 	c.ServeJSON()
 }
 
+// SignParams 服务端生成签名参数（供网页端使用，避免密钥暴露在前端）
+func (c *PortalController) SignParams() {
+	path := c.GetString("path")
+	if path == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "缺少path参数"}
+		c.ServeJSON()
+		return
+	}
+	params := models.GenerateRequestParams("web-"+c.Ctx.Input.IP(), "2.0.0", path)
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": params}
+	c.ServeJSON()
+}
+
 // WxStatus 查询微信机器人连接状态
 func (c *PortalController) WxStatus() {
 	data, err := models.GetPortalWxStatus(c.PortalUserID)

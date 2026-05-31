@@ -1353,134 +1353,24 @@
     </main>
 </div>
 
-<script>
-const SIGNATURE_SECRET = 'G0uD0ng@2024#S1gn@ture!K3y';
-const SIGNATURE_SALT = 'x9D$kL2mN#pQ7rT5';
-const SIGNATURE_VERSION = 'v2';
-const APP_VERSION = '2.0.0';
-
-function sha256(ascii) {
-    function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
-    var mathPow = Math.pow, maxWord = mathPow(2, 32), lengthProperty = 'length', i, j;
-    var result = '', words = [], asciiBitLength = ascii[lengthProperty] * 8;
-    var hash = sha256.h = sha256.h || [], k = sha256.k = sha256.k || [];
-    var primeCounter = k[lengthProperty], isComposite = {};
-    for (var candidate = 2; primeCounter < 64; candidate++) {
-        if (!isComposite[candidate]) {
-            for (i = 0; i < 313; i += candidate) isComposite[i] = candidate;
-            hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
-            k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+j<script>
+async function getSignatureHeaders(path) {
+    try {
+        var resp = await fetch('/api/portal/sign-params?path=' + encodeURIComponent(path));
+        var data = await resp.json();
+        if (data.code === 0 && data.data) {
+            var p = data.data;
+            return {
+                'X-Sign-Timestamp': p.timestamp,
+                'X-Sign-Nonce': p.nonce,
+                'X-Sign-DeviceID': p.device_id,
+                'X-Sign-Value': p.signature,
+                'X-Sign-Version': p.version,
+                'X-App-Version': p.app_version
+            };
         }
-    }
-    ascii += '\x80';
-    while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
-    for (i = 0; i < ascii[lengthProperty]; i++) {
-        j = ascii.charCodeAt(i);
-        if (j >> 8) return;
-        words[i >> 2] |= j << ((3 - i) % 4) * 8;
-    }
-    words[words[lengthProperty]] = ((asciiBitLength / maxWord) | 0);
-    words[words[lengthProperty]] = asciiBitLength;
-    for (j = 0; j < words[lengthProperty];) {
-        var w = words.slice(j, j += 16);
-        var oldHash = hash;
-        hash = hash.slice(0, 8);
-        for (i = 0; i < 64; i++) {
-            var w2 = w[i - 15], w15 = w[i - 2];
-            var w16 = w[i], w7 = w[i - 7];
-            var w0 = (w[i - 16] + (rightRotate(w7, 18) ^ rightRotate(w7, 3) ^ (w7 >>> 10))) | 0;
-            var sigma0 = (w15 + (rightRotate(w17, 19) ^ rightRotate(w17, 10) ^ (w17 >>> 7))) | 0;
-            var w17 = w0 + sigma0 + (w[i - 16] >>> 0) + (w[i - 7] >>> 0);
-            var w02 = w17 + ((rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22)) + ((hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]))) | 0;
-            var t1 = w02 + ((rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25)) + ((hash[4] & hash[5]) ^ (~hash[4] & hash[6])) + k[i] + w16) | 0;
-            hash = [(t1 + w02) | 0].concat(hash);
-            hash[4] = (hash[4] + t1) | 0;
-        }
-        for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
-    }
-    for (i = 0; i < 8; i++) {
-        for (j = 3; j + 1; j--) {
-            var b = (hash[i] >> (j * 8)) & 255;
-            result += ((b < 16) ? 0 : '') + b.toString(16);
-        }
-    }
-    return result;
-}
-
-function hmacSha256(key, message) {
-    function utf8Encode(str) { return unescape(encodeURIComponent(str)); }
-    function stringToBytes(str) { var bytes = []; for (var i = 0; i < str.length; i++) bytes.push(str.charCodeAt(i) & 0xff); return bytes; }
-    function bytesToHex(bytes) { return bytes.map(function(b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
-    var keyBytes = stringToBytes(utf8Encode(key));
-    var msgBytes = stringToBytes(utf8Encode(message));
-    if (keyBytes.length > 64) keyBytes = stringToBytes(sha256(key));
-    while (keyBytes.length < 64) keyBytes.push(0);
-    var ipad = new Array(64), opad = new Array(64);
-    for (var i = 0; i < 64; i++) {
-        ipad[i] = keyBytes[i] ^ 0x36;
-        opad[i] = keyBytes[i] ^ 0x5c;
-    }
-    var inner = ipad.concat(msgBytes);
-    var innerHex = '';
-    for (var j = 0; j < inner.length; j++) innerHex += String.fromCharCode(inner[j]);
-    var innerHash = sha256(innerHex);
-    var innerHashBytes = [];
-    for (var k = 0; k < innerHash.length; k += 2) innerHashBytes.push(parseInt(innerHash.substr(k, 2), 16));
-    var outer = opad.concat(innerHashBytes);
-    var outerHex = '';
-    for (var l = 0; l < outer.length; l++) outerHex += String.fromCharCode(outer[l]);
-    return sha256(outerHex);
-}
-
-function generateNonce(length) {
-    var charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    var result = '';
-    for (var i = 0; i < length; i++) {
-        result += charset.charAt(Math.floor(Math.random() * charset.length));
-    }
-    return result;
-}
-
-function getDeviceId() {
-    var deviceId = localStorage.getItem('app.device.uuid');
-    if (!deviceId) {
-        deviceId = generateUUID();
-        localStorage.setItem('app.device.uuid', deviceId);
-    }
-    return deviceId;
-}
-
-function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0;
-        var v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
-
-function generateSignature(timestamp, nonce, deviceId, appVersion, path) {
-    var round1Input = timestamp + '|' + nonce + '|' + deviceId + '|' + appVersion + '|' + path + '|' + SIGNATURE_SALT;
-    var round1 = sha256(round1Input);
-    var round2 = hmacSha256(SIGNATURE_SECRET, round1);
-    var reversedTimestamp = timestamp.split('').reverse().join('');
-    var reversedNonce = nonce.split('').reverse().join('');
-    var round3Input = round2 + reversedTimestamp + reversedNonce;
-    return sha256(round3Input);
-}
-
-function getSignatureHeaders(path) {
-    var timestamp = Math.floor(Date.now() / 1000).toString();
-    var nonce = generateNonce(16);
-    var deviceId = getDeviceId();
-    var signature = generateSignature(timestamp, nonce, deviceId, APP_VERSION, path);
-    return {
-        'X-Sign-Timestamp': timestamp,
-        'X-Sign-Nonce': nonce,
-        'X-Sign-DeviceID': deviceId,
-        'X-Sign-Value': signature,
-        'X-Sign-Version': SIGNATURE_VERSION,
-        'X-App-Version': APP_VERSION
-    };
+    } catch (e) {}
+    return {};
 }
 
 var needsSignature = function(path) { return ['/api/portal/checkin', '/api/portal/pray'].some(function(p) { return path.includes(p); }); };
@@ -2925,7 +2815,7 @@ async function runTask(type) {
     try {
         var headers = {};
         if (needsSignature(url)) {
-            Object.assign(headers, getSignatureHeaders(url));
+            Object.assign(headers, await getSignatureHeaders(url));
         }
         const resp = await request(url, { method: 'POST', headers });
         toast(resp.msg || '操作成功', 'success');
