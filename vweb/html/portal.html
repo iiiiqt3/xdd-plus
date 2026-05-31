@@ -1354,6 +1354,76 @@
 </div>
 
 <script>
+const SIGNATURE_SECRET = 'G0uD0ng@2024#S1gn@ture!K3y';
+const SIGNATURE_SALT = 'x9D$kL2mN#pQ7rT5';
+const SIGNATURE_VERSION = 'v2';
+const APP_VERSION = '2.0.0';
+
+async function sha256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hmacSha256(message, secret) {
+    const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+    return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateNonce(length) {
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    const values = crypto.getRandomValues(new Uint8Array(length));
+    for (let i = 0; i < length; i++) {
+        result += charset[values[i] % charset.length];
+    }
+    return result;
+}
+
+function getDeviceId() {
+    let deviceId = localStorage.getItem('app.device.uuid');
+    if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem('app.device.uuid', deviceId);
+    }
+    return deviceId;
+}
+
+async function generateSignature(timestamp, nonce, deviceId, appVersion, path) {
+    const round1Input = `${timestamp}|${nonce}|${deviceId}|${appVersion}|${path}|${SIGNATURE_SALT}`;
+    const round1 = await sha256(round1Input);
+    const round2 = await hmacSha256(round1, SIGNATURE_SECRET);
+    const reversedTimestamp = timestamp.split('').reverse().join('');
+    const reversedNonce = nonce.split('').reverse().join('');
+    const round3Input = `${round2}${reversedTimestamp}${reversedNonce}`;
+    return await sha256(round3Input);
+}
+
+async function getSignatureHeaders(path) {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = generateNonce(16);
+    const deviceId = getDeviceId();
+    const signature = await generateSignature(timestamp, nonce, deviceId, APP_VERSION, path);
+    return {
+        'X-Sign-Timestamp': timestamp,
+        'X-Sign-Nonce': nonce,
+        'X-Sign-DeviceID': deviceId,
+        'X-Sign-Value': signature,
+        'X-Sign-Version': SIGNATURE_VERSION,
+        'X-App-Version': APP_VERSION
+    };
+}
+
+const needsSignature = (path) => ['/api/portal/checkin', '/api/portal/pray'].some(p => path.includes(p));
+
 const state = {
     dashboard: null,
     profile: null,
@@ -2792,7 +2862,11 @@ async function runTask(type) {
     }
     if (!window.confirm(`确认立即执行【${label}】吗？`)) return;
     try {
-        const resp = await request(url, { method: 'POST' });
+        const headers = {};
+        if (needsSignature(url)) {
+            Object.assign(headers, await getSignatureHeaders(url));
+        }
+        const resp = await request(url, { method: 'POST', headers });
         toast(resp.msg || '操作成功', 'success');
         await loadDashboardData();
     } catch (err) {
