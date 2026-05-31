@@ -211,6 +211,11 @@ func (c *PortalController) RedeemKey() {
 
 // CheckIn 每日签到，获取签到奖励
 func (c *PortalController) CheckIn() {
+	// 验证签名
+	if !verifyRequestSignature(c) {
+		return
+	}
+
 	msg, err := models.PortalCheckIn(c.PortalUserID)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
@@ -221,8 +226,39 @@ func (c *PortalController) CheckIn() {
 	c.ServeJSON()
 }
 
+// verifyRequestSignature 验证请求签名
+func verifyRequestSignature(c *PortalController) bool {
+	headers := map[string]string{
+		"X-Sign-Timestamp":  c.Ctx.Input.Header("X-Sign-Timestamp"),
+		"X-Sign-Nonce":      c.Ctx.Input.Header("X-Sign-Nonce"),
+		"X-Sign-DeviceID":   c.Ctx.Input.Header("X-Sign-DeviceID"),
+		"X-Sign-Value":      c.Ctx.Input.Header("X-Sign-Value"),
+		"X-Sign-Version":    c.Ctx.Input.Header("X-Sign-Version"),
+		"X-App-Version":     c.Ctx.Input.Header("X-App-Version"),
+	}
+
+	path := c.Ctx.Input.URL()
+	result := models.VerifyRequest(headers, path)
+
+	if !result.Valid {
+		c.Data["json"] = map[string]interface{}{
+			"code":         4003,
+			"msg":          result.Message,
+			"need_upgrade": true,
+		}
+		c.ServeJSON()
+		return false
+	}
+	return true
+}
+
 // Pray 祈祷功能，随机获取奖励
 func (c *PortalController) Pray() {
+	// 验证签名
+	if !verifyRequestSignature(c) {
+		return
+	}
+
 	msg, err := models.PortalPray(c.PortalUserID)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
