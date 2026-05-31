@@ -4922,7 +4922,7 @@ async function batchDeleteQlEnvs() {
     if (ids.length === 0) { toast('请先选择变量', 'info'); return; }
     if (!confirm('确定要删除选中的 ' + ids.length + ' 个变量吗？')) return;
     try {
-        const res = await api.post('/api/admin/qlenvs/batch/delete', { configName: qlEnvCurrentConfig, ids: ids.map(Number) });
+        const res = await api.post('/api/admin/qlenvs/batch/delete', { configName: qlEnvCurrentConfig, envIds: ids.map(Number) });
         toast(res.msg || '删除成功', res.code === 0 ? 'success' : 'error');
         if (res.code === 0) { document.getElementById('qlEnvCheckAll').checked = false; loadQLEnvs(); }
     } catch (e) { toast('删除失败: ' + e.message, 'error'); }
