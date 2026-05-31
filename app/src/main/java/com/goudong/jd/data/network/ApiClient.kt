@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit
 class ApiClient(
     private val cookieJar: PersistentCookieJar,
     val gson: Gson,
+    private val appContext: android.content.Context? = null,
 ) {
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
@@ -41,6 +42,7 @@ class ApiClient(
         headers: Map<String, String> = emptyMap(),
         body: RequestBody? = null,
         skipAuthCheck: Boolean = false,
+        skipSignature: Boolean = false,
     ): String = withContext(Dispatchers.IO) {
         val resolvedMethod = method.uppercase(Locale.ROOT)
         val safeBody = when {
@@ -48,10 +50,19 @@ class ApiClient(
             resolvedMethod == "POST" || resolvedMethod == "PUT" || resolvedMethod == "PATCH" -> "".toRequestBody(null)
             else -> null
         }
+
+        val allHeaders = mutableMapOf<String, String>()
+        allHeaders.putAll(headers)
+
+        if (!skipSignature && appContext != null && needsSignature(path)) {
+            val signHeaders = SignatureHelper.getHeaders(appContext, path)
+            allHeaders.putAll(signHeaders)
+        }
+
         val request = Request.Builder()
             .url(absoluteUrl ?: AppEnvironment.BASE_URL + path.removePrefix("/"))
             .method(resolvedMethod, safeBody)
-            .apply { headers.forEach { (key, value) -> addHeader(key, value) } }
+            .apply { allHeaders.forEach { (key, value) -> addHeader(key, value) } }
             .build()
 
         client.newCall(request).execute().use { response ->
@@ -66,6 +77,14 @@ class ApiClient(
             }
             return@withContext text
         }
+    }
+
+    private fun needsSignature(path: String): Boolean {
+        val signaturePaths = listOf(
+            "/api/portal/checkin",
+            "/api/portal/pray"
+        )
+        return signaturePaths.any { path.contains(it) }
     }
 
     suspend inline fun <reified T> requestEnvelope(

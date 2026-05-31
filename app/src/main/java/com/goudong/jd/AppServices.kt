@@ -37,7 +37,7 @@ object AppServices {
         sessionManager = SessionManager(appContext)
         cookieJar = PersistentCookieJar(appContext)
         gson = Gson()
-        apiClient = ApiClient(cookieJar, gson)
+        apiClient = ApiClient(cookieJar, gson, appContext)
         authRepository = AuthRepository(apiClient, sessionManager)
         portalRepository = PortalRepository(apiClient, sessionManager)
         jdRepository = JdRepository(apiClient, gson)
