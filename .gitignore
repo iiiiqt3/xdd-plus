@@ -1,1 +1,6 @@
-狗东.ipa
+*.ipa
+*.xcarchive
+build/
+.DS_Store
+*.dSYM
+*.dSYM.zip
