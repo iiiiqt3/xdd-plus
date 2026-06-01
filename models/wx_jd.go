@@ -437,6 +437,9 @@ func wxJdRefreshByDevice(sender *Sender, wxid string) bool {
 	}
 	sender.Reply(fmt.Sprintf("✅ [%s] CK刷新成功！", nick))
 	(&JdCookie{}).Push(fmt.Sprintf("微信协议刷新成功: %s (设备: %s)", nick, wxid))
+	go func() {
+		Save <- &JdCookie{}
+	}()
 	return true
 }
 
