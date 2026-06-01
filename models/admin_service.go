@@ -2647,7 +2647,15 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 		project.ExpireDate = newDateStr
 		project.Remarks = BuildMonthDeductRemarks(project.Remarks, newDateStr)
 		project.RemarkAlias = GetFirstRemarkParam(project.Remarks)
-		project.SyncStatus = "pending_update"
+
+		now := time.Now()
+		newExpireThreshold := time.Date(newDate.Year(), newDate.Month(), newDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+		if direction == "add" && now.Before(newExpireThreshold) && project.Status != 0 {
+			project.Status = 0
+			project.SyncStatus = "pending_enable"
+		} else {
+			project.SyncStatus = "pending_update"
+		}
 		project.SyncError = ""
 		if err := UpdateActivityProject(&project); err != nil {
 			log.Printf("[批量改备注] 更新数据库失败，ID=%d，错误：%v", project.ID, err)

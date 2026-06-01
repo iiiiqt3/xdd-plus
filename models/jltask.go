@@ -1246,11 +1246,14 @@ for index, project := range projects {
     }
 
     if (config.IsMonthlyDeduct || config.IsDailyDeduct) && expireTime != "" {
-        expireTimeObj, parseErr := time.Parse("2006-01-02", expireTime)
-        if parseErr == nil && time.Now().After(expireTimeObj) {
-            sender.Reply(fmt.Sprintf("⚠️ 第%d个账号【%s】授权已过期（过期时间：%s），无法查询，请发送【记录授权】续费！", accountNo, mainRemark, expireTime))
-            log.Printf("%s第%d个账号【%s】已过期（ExpireDate=%s），跳过查询", logPrefix, accountNo, mainRemark, expireTime)
-            continue
+        expireTimeObj, parseErr := time.ParseInLocation("2006-01-02", expireTime, time.Local)
+        if parseErr == nil {
+            expireThreshold := time.Date(expireTimeObj.Year(), expireTimeObj.Month(), expireTimeObj.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+            if time.Now().After(expireThreshold) || time.Now().Equal(expireThreshold) {
+                sender.Reply(fmt.Sprintf("⚠️ 第%d个账号【%s】授权已过期（过期时间：%s），无法查询，请发送【记录授权】续费！", accountNo, mainRemark, expireTime))
+                log.Printf("%s第%d个账号【%s】已过期（ExpireDate=%s），跳过查询", logPrefix, accountNo, mainRemark, expireTime)
+                continue
+            }
         }
     }
 
