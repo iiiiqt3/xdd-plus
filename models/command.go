@@ -1,4 +1,4 @@
-﻿package models
+package models
 
 import (
 	"encoding/base64"
@@ -3273,31 +3273,37 @@ var codeSignals = []CodeSignal{
 					return
 				}
 
-				msgs := []string{"🚀 当前可参与的项目：", ""}
+				msgs := []string{"🚀 当前可参与的项目：", "────────────────"}
 				for i, cfg := range enabledConfigs {
 					coinText := ""
-					if cfg.IsMonthlyDeduct {
-						coinText = fmt.Sprintf("每月 %d 积分", cfg.MonthlyCoin)
+					if cfg.IsDailyDeduct {
+						coinText = fmt.Sprintf("每天%d积分", cfg.DailyCoin)
+					} else if cfg.IsMonthlyDeduct {
+						coinText = fmt.Sprintf("每月%d积分", cfg.MonthlyCoin)
 					} else {
-						coinText = fmt.Sprintf("一次 %d 积分", cfg.NeedCoin)
+						coinText = fmt.Sprintf("一次%d积分", cfg.NeedCoin)
 					}
-					tag := "一次上车"
-					if cfg.IsMonthlyDeduct {
-						tag = "按月授权"
+					tag := "🟢一次性"
+					if cfg.IsDailyDeduct {
+						tag = "🔵按天"
+					} else if cfg.IsMonthlyDeduct {
+						tag = "🟡按月"
 					}
-					msgs = append(msgs, fmt.Sprintf("【%d】%s | %s | %s", i+1, cfg.Name, tag, coinText))
+					msgs = append(msgs, fmt.Sprintf("【%d】%s", i+1, cfg.Name))
+					msgs = append(msgs, fmt.Sprintf("   %s · %s", tag, coinText))
+					msgs = append(msgs, "")
 				}
-				msgs = append(msgs, "")
+				msgs = append(msgs, "────────────────")
 				msgs = append(msgs, "📲 参与方式：")
-				msgs = append(msgs, "• 安卓APP：")
-				msgs = append(msgs, "    http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk")
-				msgs = append(msgs, "• iOS版本：")
-				msgs = append(msgs, "    http://180.152.5.230:8888/down/QaWi0JBZgb3t.ipa")
-				msgs = append(msgs, "• 网页端：")
-				msgs = append(msgs, "    http://180.152.5.230:5701")
-				msgs = append(msgs, "• 机器人：发送【记录账号】即可上车（纯文字交互，操作不如APP和网页直观，推荐优先使用APP或网页端）")
-				msgs = append(msgs, "")
-				msgs = append(msgs, "输入数字查看玩法简介，输入 q 退出：")
+				msgs = append(msgs, "  📱 安卓APP：")
+				msgs = append(msgs, "     http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk")
+				msgs = append(msgs, "  🍎 iOS版本：")
+				msgs = append(msgs, "     http://180.152.5.230:8888/down/QaWi0JBZgb3t.ipa")
+				msgs = append(msgs, "  🌐 网页端：")
+				msgs = append(msgs, "     http://180.152.5.230:5701")
+				msgs = append(msgs, "  🤖 机器人：发送【记录账号】即可上车")
+				msgs = append(msgs, "────────────────")
+				msgs = append(msgs, "💡 输入数字查看玩法简介，输入 q 退出")
 				sender.Reply(strings.Join(msgs, "\n"))
 
 				timeout := time.After(60 * time.Second)
@@ -3319,18 +3325,26 @@ var codeSignals = []CodeSignal{
 						}
 						cfg := enabledConfigs[idx-1]
 						guide := strings.TrimSpace(cfg.Guide)
-						detail := fmt.Sprintf("📋【%s】", cfg.Name)
-						if cfg.IsMonthlyDeduct {
-							detail += fmt.Sprintf("\n💰 费用：每月 %d 积分", cfg.MonthlyCoin)
+						detail := fmt.Sprintf("📋【%s】\n", cfg.Name)
+						detail += "────────────────\n"
+						if cfg.IsDailyDeduct {
+							detail += fmt.Sprintf("💰 费用：每天 %d 积分\n", cfg.DailyCoin)
+							detail += "📅 计费方式：按天扣费\n"
+						} else if cfg.IsMonthlyDeduct {
+							detail += fmt.Sprintf("💰 费用：每月 %d 积分\n", cfg.MonthlyCoin)
+							detail += "📅 计费方式：按月扣费\n"
 						} else {
-							detail += fmt.Sprintf("\n💰 费用：一次 %d 积分", cfg.NeedCoin)
+							detail += fmt.Sprintf("💰 费用：%d 积分\n", cfg.NeedCoin)
+							detail += "📅 计费方式：一次性\n"
 						}
+						detail += "────────────────\n"
 						if guide != "" {
-							detail += "\n\n📖 玩法简介：\n" + guide
+							detail += "\n📖 玩法简介：\n" + guide + "\n"
 						} else {
-							detail += "\n\n暂无玩法简介"
+							detail += "\n暂无玩法简介\n"
 						}
-						detail += "\n\n请使用上述方式下载APP或访问网页端，在「活动中心」选择该项目即可上车！"
+						detail += "────────────────\n"
+						detail += "📲 请使用APP或网页端，在「活动中心」选择该项目即可上车！"
 						sender.Reply(detail)
 						return
 					case <-timeout:
