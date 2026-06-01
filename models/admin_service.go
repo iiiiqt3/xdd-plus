@@ -2653,6 +2653,9 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 		if direction == "add" && now.Before(newExpireThreshold) && project.Status != 0 {
 			project.Status = 0
 			project.SyncStatus = "pending_enable"
+		} else if direction == "sub" && (now.After(newExpireThreshold) || now.Equal(newExpireThreshold)) && project.Status == 0 {
+			project.Status = 1
+			project.SyncStatus = "pending_disable"
 		} else {
 			project.SyncStatus = "pending_update"
 		}

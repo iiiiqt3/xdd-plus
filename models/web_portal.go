@@ -394,7 +394,11 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 	return projects, nil
 }
 
-func PortalCreateProject(userNumber int, activityID string, inputs map[string]string, userRemarks string, months int) (string, error) {
+func PortalCreateProject(userNumber int, activityID string, inputs map[string]string, userRemarks string, months int, source ...string) (string, error) {
+	src := "Web端"
+	if len(source) > 0 && source[0] != "" {
+		src = source[0]
+	}
 	cfg := getActivityByID(activityID)
 	if cfg == nil {
 		return "", fmt.Errorf("活动不存在")
@@ -491,7 +495,7 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 	}
 
 	RemCoin(userNumber, totalCoin)
-	RecordCoinLog(userNumber, -totalCoin, "上车扣费", fmt.Sprintf("Web端%s上车", cfg.Name))
+	RecordCoinLog(userNumber, -totalCoin, "上车扣费", fmt.Sprintf("%s%s上车", src, cfg.Name))
 
 	go TriggerSync(project.ID)
 
@@ -503,7 +507,11 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 	return fmt.Sprintf("添加%s成功，扣除%d积分", cfg.Name, totalCoin), nil
 }
 
-func PortalRenewProject(userNumber int, activityID, remarks string, months int) (string, error) {
+func PortalRenewProject(userNumber int, activityID, remarks string, months int, source ...string) (string, error) {
+	src := "Web端"
+	if len(source) > 0 && source[0] != "" {
+		src = source[0]
+	}
 	cfg := getActivityByID(activityID)
 	if cfg == nil {
 		return "", fmt.Errorf("活动不存在")
@@ -537,6 +545,10 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 	project, err := GetActivityProjectByRemarks(activityID, remarks, cfg.EnvKey)
 	if err != nil {
 		return "", fmt.Errorf("未找到待续费账号")
+	}
+
+	if project.UserNumber != userNumber {
+		return "", fmt.Errorf("无权操作此账号")
 	}
 
 	baseTime, hasOldDate := ParseRemarksDate(remarks)
@@ -576,14 +588,18 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int) 
 	}
 
 	RemCoin(userNumber, totalCoin)
-	RecordCoinLog(userNumber, -totalCoin, "续费扣费", fmt.Sprintf("Web端%s续费", cfg.Name))
+	RecordCoinLog(userNumber, -totalCoin, "续费扣费", fmt.Sprintf("%s%s续费", src, cfg.Name))
 
 	go TriggerSync(project.ID)
 
 	return fmt.Sprintf("授权成功，扣除%d积分，有效期至%s", totalCoin, newExpireDate), nil
 }
 
-func PortalDeleteProject(userNumber int, activityID, remarks string) (string, error) {
+func PortalDeleteProject(userNumber int, activityID, remarks string, source ...string) (string, error) {
+	src := "Web端"
+	if len(source) > 0 && source[0] != "" {
+		src = source[0]
+	}
 	cfg := getActivityByID(activityID)
 	if cfg == nil {
 		return "", fmt.Errorf("活动不存在")
@@ -593,6 +609,10 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 	project, err := GetActivityProjectByRemarks(activityID, remarks, cfg.EnvKey)
 	if err != nil {
 		return "", fmt.Errorf("未找到对应项目记录")
+	}
+
+	if project.UserNumber != userNumber {
+		return "", fmt.Errorf("无权操作此账号")
 	}
 
 	if (cfg.IsMonthlyDeduct || cfg.IsDailyDeduct) && project.NeedCoin == 0 {
@@ -612,7 +632,7 @@ func PortalDeleteProject(userNumber int, activityID, remarks string) (string, er
 
 	if returnCoin > 0 {
 		AdddCoin(userNumber, returnCoin)
-		RecordCoinLog(userNumber, returnCoin, "退还", fmt.Sprintf("Web端删除%s退还", cfg.Name))
+		RecordCoinLog(userNumber, returnCoin, "退还", fmt.Sprintf("%s删除%s退还", src, cfg.Name))
 		return fmt.Sprintf("删除成功，已退还 %d 积分", returnCoin), nil
 	}
 	return "删除成功", nil
@@ -630,6 +650,10 @@ func PortalUpdateProject(userNumber int, activityID, remarks, newCkValue string)
 	project, err := GetActivityProjectByRemarks(activityID, remarks, cfg.EnvKey)
 	if err != nil {
 		return "", fmt.Errorf("未找到对应项目记录")
+	}
+
+	if project.UserNumber != userNumber {
+		return "", fmt.Errorf("无权操作此账号")
 	}
 
 	project.EnvValue = newCkValue
@@ -704,21 +728,25 @@ func PortalQueryProjectIncome(userNumber int, activityID, remarks string) (strin
 	return strings.TrimSpace(output), nil
 }
 
-func PortalRedeemKey(userNumber int, token string) (string, int, error) {
+func PortalRedeemKey(userNumber int, token string, source ...string) (string, int, error) {
+	src := ""
+	if len(source) > 0 {
+		src = source[0]
+	}
 	token = strings.TrimSpace(token)
 	if token == "" {
 		return "", 0, fmt.Errorf("请输入卡密")
 	}
 	var result string
 	if strings.HasPrefix(token, "ZSKM") {
-		result = use_ZSKey(token, userNumber)
+		result = use_ZSKey(token, userNumber, src)
 	} else if strings.HasPrefix(token, "XDD") {
-		result = useKey(token, userNumber)
+		result = useKey(token, userNumber, src)
 	} else {
 		// 两种都尝试：先试普通卡密，再试赠送卡密
-		result = useKey(token, userNumber)
+		result = useKey(token, userNumber, src)
 		if result == "查无此卡" {
-			result = use_ZSKey(token, userNumber)
+			result = use_ZSKey(token, userNumber, src)
 		}
 	}
 
@@ -736,15 +764,19 @@ func PortalRedeemKey(userNumber int, token string) (string, int, error) {
 	return errMsg, balance, fmt.Errorf(result)
 }
 
-func PortalCheckIn(userNumber int) (string, error) {
-	return portalCheckIn(userNumber)
+func PortalCheckIn(userNumber int, source ...string) (string, error) {
+	return portalCheckIn(userNumber, source...)
 }
 
-func PortalPray(userNumber int) (string, error) {
-	return portalPray(userNumber)
+func PortalPray(userNumber int, source ...string) (string, error) {
+	return portalPray(userNumber, source...)
 }
 
-func portalCheckIn(userNumber int) (string, error) {
+func portalCheckIn(userNumber int, source ...string) (string, error) {
+	src := "Web端"
+	if len(source) > 0 && source[0] != "" {
+		src = source[0]
+	}
 	var u User
 	ntime := time.Now()
 	zero, _ := time.ParseInLocation("2006-01-02", ntime.Local().Format("2006-01-02"), time.Local)
@@ -816,7 +848,7 @@ func portalCheckIn(userNumber int) (string, error) {
 		"continuous_sign_ins": u.ContinuousSignIns,
 		"sign_in_date":        ntime,
 	})
-	RecordCoinLog(userNumber, coin+bonus, "签到", fmt.Sprintf("连续签到%d天", u.ContinuousSignIns))
+	RecordCoinLog(userNumber, coin+bonus, "签到", fmt.Sprintf("%s连续签到%d天", src, u.ContinuousSignIns))
 	u.Coin += coin + bonus
 
 	nextBonus := 0
@@ -845,7 +877,11 @@ func portalCheckIn(userNumber int) (string, error) {
 	return fmt.Sprintf("今日打卡人数：%d人\n奖励积分：%d个\n您已连续打卡：%d天\n积分余额总数：%d个\n额外奖励：继续连续打卡%d天，可获得%d积分奖励。", total[0]+1, coin, u.ContinuousSignIns, u.Coin, daysUntilNextBonus, nextBonus), nil
 }
 
-func portalPray(userNumber int) (string, error) {
+func portalPray(userNumber int, source ...string) (string, error) {
+	src := "Web端"
+	if len(source) > 0 && source[0] != "" {
+		src = source[0]
+	}
 	today := time.Now().Format("2006-01-02")
 	if hasPrayedToday(userNumber) {
 		return "你今天已经祈福过了，明天再来吧。", nil
@@ -860,7 +896,7 @@ func portalPray(userNumber int) (string, error) {
 	if db.Model(User{}).Where("number = ?", userNumber).Update("coin", gorm.Expr("coin + 3")).RowsAffected == 0 {
 		return "先去打卡吧你。", nil
 	}
-	RecordCoinLog(userNumber, 3, "祈福", "祈福成功")
+	RecordCoinLog(userNumber, 3, "祈福", fmt.Sprintf("%s祈福成功", src))
 	return "祈福成功，愿你事事顺心如意，积分 + 3。", nil
 }
 

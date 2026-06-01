@@ -41,7 +41,11 @@ func createKey(num int, value int) string {
 
 
 
-func useKey(id string, use int) string {
+func useKey(id string, use int, source ...string) string {
+	src := ""
+	if len(source) > 0 {
+		src = source[0]
+	}
     var u Key
     // 查询数据库以获取具有提供的id的密钥（Token）
     err := db.Where("Token = ?", id).First(&u).Error
@@ -85,7 +89,11 @@ func useKey(id string, use int) string {
     })
 
     (&JdCookie{}).Push(fmt.Sprintf("%d通过卡密增加了%d积分，卡密：%s，使用时间：%s", use, u.Value, u.Token, u.UsedAt.Format("2006-01-02 15:04:05")))
-    RecordCoinLog(use, u.Value, "卡密兑换", fmt.Sprintf("卡密: %s", u.Token))
+    logDesc := fmt.Sprintf("卡密: %s", u.Token)
+    if src != "" {
+        logDesc = fmt.Sprintf("%s卡密: %s", src, u.Token)
+    }
+    RecordCoinLog(use, u.Value, "卡密兑换", logDesc)
     return fmt.Sprintf("使用成功，积分增加%d，使用时间：%s", u.Value, u.UsedAt.Format("2006-01-02 15:04:05"))
 }
 
@@ -117,7 +125,11 @@ func create_ZSKey(num int, value int) string {
 	return strings.Join(str, "\n")
 }
 
-func use_ZSKey(id string, use int) string {
+func use_ZSKey(id string, use int, source ...string) string {
+    src := ""
+    if len(source) > 0 {
+        src = source[0]
+    }
     var u Key
     // 查询数据库以获取具有提供的id的密钥（Token）
     err := db.Where("Token = ?", id).First(&u).Error
@@ -180,7 +192,11 @@ func use_ZSKey(id string, use int) string {
     pushMessage := fmt.Sprintf("%d通过卡密增加了%d积分，卡密：%s，使用时间：%s", use, u.Value, u.Token, u.UsedAt.Format("2006-01-02 15:04:05"))
 
     (&JdCookie{}).Push(pushMessage)
-    RecordCoinLog(use, u.Value, "卡密兑换", fmt.Sprintf("赠送卡密: %s", u.Token))
+    logDesc := fmt.Sprintf("赠送卡密: %s", u.Token)
+    if src != "" {
+        logDesc = fmt.Sprintf("%s赠送卡密: %s", src, u.Token)
+    }
+    RecordCoinLog(use, u.Value, "卡密兑换", logDesc)
 
     return fmt.Sprintf("使用成功，积分增加%d，使用时间：%s", u.Value, u.UsedAt.Format("2006-01-02 15:04:05"))
 }

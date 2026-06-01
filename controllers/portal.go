@@ -13,6 +13,14 @@ type PortalController struct {
 	BaseController
 }
 
+func (c *PortalController) requestSource() string {
+	ua := strings.ToLower(c.Ctx.Input.Header("User-Agent"))
+	if strings.Contains(ua, "okhttp") || c.Ctx.Input.Header("X-Sign-DeviceID") != "" {
+		return "App端"
+	}
+	return "Web端"
+}
+
 // NextPrepare 前置处理，验证门户用户登录状态
 func (c *PortalController) NextPrepare() {
 	c.PortalLogined()
@@ -93,7 +101,7 @@ func (c *PortalController) CreateProject() {
 		c.ServeJSON()
 		return
 	}
-	msg, err := models.PortalCreateProject(c.PortalUserID, req.ActivityID, req.Inputs, req.Remarks, req.Months)
+	msg, err := models.PortalCreateProject(c.PortalUserID, req.ActivityID, req.Inputs, req.Remarks, req.Months, c.requestSource())
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -115,7 +123,7 @@ func (c *PortalController) RenewProject() {
 		c.ServeJSON()
 		return
 	}
-	msg, err := models.PortalRenewProject(c.PortalUserID, req.ActivityID, req.Remarks, req.Months)
+	msg, err := models.PortalRenewProject(c.PortalUserID, req.ActivityID, req.Remarks, req.Months, c.requestSource())
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -136,7 +144,7 @@ func (c *PortalController) DeleteProject() {
 		c.ServeJSON()
 		return
 	}
-	msg, err := models.PortalDeleteProject(c.PortalUserID, req.ActivityID, req.Remarks)
+	msg, err := models.PortalDeleteProject(c.PortalUserID, req.ActivityID, req.Remarks, c.requestSource())
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -199,7 +207,7 @@ func (c *PortalController) RedeemKey() {
 		c.ServeJSON()
 		return
 	}
-	msg, balance, err := models.PortalRedeemKey(c.PortalUserID, req.Token)
+	msg, balance, err := models.PortalRedeemKey(c.PortalUserID, req.Token, c.requestSource())
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": msg, "balance": balance}
 		c.ServeJSON()
@@ -216,7 +224,7 @@ func (c *PortalController) CheckIn() {
 		return
 	}
 
-	msg, err := models.PortalCheckIn(c.PortalUserID)
+	msg, err := models.PortalCheckIn(c.PortalUserID, c.requestSource())
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -259,7 +267,7 @@ func (c *PortalController) Pray() {
 		return
 	}
 
-	msg, err := models.PortalPray(c.PortalUserID)
+	msg, err := models.PortalPray(c.PortalUserID, c.requestSource())
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
