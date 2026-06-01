@@ -205,11 +205,11 @@ func CountPortalProjectStats(userNumber int) (int, int, int, int, int) {
 func getNextCheckInBonus(days int) (int, int) {
 	switch {
 	case days < 10:
-		return 50, 10 - days
+		return 20, 10 - days
 	case days < 20:
-		return 150, 20 - days
+		return 30, 20 - days
 	case days < 30:
-		return 300, 30 - days
+		return 50, 30 - days
 	default:
 		return 0, 0
 	}
@@ -803,44 +803,15 @@ func portalCheckIn(userNumber int, source ...string) (string, error) {
 
 	bonus := 0
 	if u.ContinuousSignIns == 10 {
-		bonus = 50
+		bonus = 20
 	} else if u.ContinuousSignIns == 20 {
-		bonus = 150
+		bonus = 30
 	} else if u.ContinuousSignIns == 30 {
-		bonus = 300
+		bonus = 50
 	}
 
 	db.Model(User{}).Select("count(id) as total").Where("sign_in_date > ?", zero).Pluck("total", &total)
-	coin := 0
-	switch total[0] {
-	case 0:
-		coin = 15
-	case 1:
-		coin = 14
-	case 2:
-		coin = 13
-	case 3:
-		coin = 12
-	case 4:
-		coin = 11
-	case 5:
-		coin = 10
-	case 6:
-		coin = 9
-	case 7:
-		coin = 8
-	case 50:
-		coin = 10
-	case 100:
-		coin = 20
-	default:
-		if total[0]%14 == 13 {
-			coin = 10
-		}
-	}
-	if total[0] > 7 {
-		coin = time.Now().Nanosecond()%5 + 1
-	}
+	coin := time.Now().Nanosecond()%3 + 1
 
 	db.Model(&u).Updates(map[string]interface{}{
 		"last_sign_in":        ntime,
@@ -855,22 +826,22 @@ func portalCheckIn(userNumber int, source ...string) (string, error) {
 	daysUntilNextBonus := 0
 	switch {
 	case u.ContinuousSignIns == 9:
-		nextBonus = 50
+		nextBonus = 20
 		daysUntilNextBonus = 1
 	case u.ContinuousSignIns == 19:
-		nextBonus = 150
+		nextBonus = 30
 		daysUntilNextBonus = 1
 	case u.ContinuousSignIns == 29:
-		nextBonus = 300
+		nextBonus = 50
 		daysUntilNextBonus = 1
 	case u.ContinuousSignIns < 9:
-		nextBonus = 50
+		nextBonus = 20
 		daysUntilNextBonus = 10 - u.ContinuousSignIns
 	case u.ContinuousSignIns < 19:
-		nextBonus = 150
+		nextBonus = 30
 		daysUntilNextBonus = 20 - u.ContinuousSignIns
 	case u.ContinuousSignIns < 29:
-		nextBonus = 300
+		nextBonus = 50
 		daysUntilNextBonus = 30 - u.ContinuousSignIns
 	}
 
