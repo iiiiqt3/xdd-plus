@@ -1025,7 +1025,7 @@
                 <button data-panel="notifications">🔔 通知中心<span class="notify-badge" id="menuNotifyBadge" style="display:none;">0</span></button>
                 <button data-panel="projects">📦 我的项目</button>
                 <button data-panel="activities">🚀 活动中心</button>
-                <button data-panel="tasks">⭐ 积分任务</button>
+                <button data-panel="tasks">⭐ 积分相关</button>
             </div>
         </div>
         <div class="menu-group">
@@ -1234,10 +1234,10 @@
             </div>
         </section>
 
-        <!-- ===== 积分任务 ===== -->
+        <!-- ===== 积分相关 ===== -->
         <section class="panel" id="panel-tasks">
             <div class="section">
-                <div class="section-header panel-duplicate-title"><h3>⭐ 积分任务</h3><span class="muted">完成任务获取积分奖励</span></div>
+                <div class="section-header panel-duplicate-title"><h3>⭐ 积分相关</h3><span class="muted">签到、祈福、购买、兑换与积分变动记录</span></div>
                 <div class="task-grid" id="taskAuthHint" style="display:none;margin-bottom:0;">
                     <div class="task-box" style="grid-column:1/-1;background:rgba(220,38,38,0.04);border-color:rgba(220,38,38,0.15);">
                         <h3 style="color:var(--red);">⚠️ 暂无有效授权账号</h3>
@@ -1277,6 +1277,20 @@
                             </div>
                             <p style="margin-top:8px;font-size:11.5px;color:var(--text-muted);">💡 卡密格式以 XDD 或 ZSKM 开头，每人赠送卡密每批次限用一张</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 积分变动记录 -->
+                <div class="task-box" style="margin-top:14px;">
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+                        <div style="flex:1;min-width:200px;">
+                            <h3>📊 积分变动记录</h3>
+                            <p style="margin-bottom:0;">查看最近30条积分收支明细，了解积分来源与去向。</p>
+                        </div>
+                        <button class="btn" style="background:linear-gradient(135deg,#f59e0b,#ef4444);white-space:nowrap;" onclick="loadCoinLogs()">🔄 刷新记录</button>
+                    </div>
+                    <div id="coinLogsContainer">
+                        <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">点击「刷新记录」加载积分变动数据</div>
                     </div>
                 </div>
             </div>
@@ -1427,7 +1441,7 @@ function syncPanelTitle(panel) {
         projects: '📦 我的项目',
         activities: '🚀 活动中心',
         notifications: '🔔 通知中心',
-        tasks: '⭐ 积分任务',
+        tasks: '⭐ 积分相关',
         wx: '💬 微信协议',
         feedback: '📝 投稿与反馈'
     };
@@ -2861,6 +2875,50 @@ function escapeHtml(text) {
 }
 function escapeAttr(text) { return escapeHtml(text); }
 function escapeJs(text) { return String(text ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+async function loadCoinLogs() {
+    const container = document.getElementById('coinLogsContainer');
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">加载中...</div>';
+    try {
+        const resp = await request('/api/portal/coin-logs');
+        const logs = resp.data || [];
+        if (logs.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px;">暂无积分变动记录</div>';
+            return;
+        }
+        let html = '<div style="display:flex;flex-direction:column;gap:0;">';
+        for (let i = 0; i < logs.length; i++) {
+            const l = logs[i];
+            const isPositive = l.Amount > 0;
+            const sign = isPositive ? '+' : '';
+            const amountColor = isPositive ? 'var(--green)' : 'var(--red)';
+            const amountBg = isPositive ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+            const icon = isPositive ? '📈' : '📉';
+            const time = l.CreatedAt ? l.CreatedAt.replace('T', ' ').substring(0, 16) : '-';
+            const typeTag = escapeHtml(l.Type || '');
+            const detail = escapeHtml(l.Detail || '');
+            const balance = l.BalanceAfter != null ? l.BalanceAfter : '-';
+            html += '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;' + (i < logs.length - 1 ? 'border-bottom:1px solid var(--glass-border);' : '') + 'transition:background 0.15s;" onmouseover="this.style.background=\'var(--glass-bg)\'" onmouseout="this.style.background=\'transparent\'">';
+            html += '  <div style="flex-shrink:0;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;background:' + amountBg + ';">' + icon + '</div>';
+            html += '  <div style="flex:1;min-width:0;">';
+            html += '    <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">';
+            html += '      <span style="font-size:13px;font-weight:600;color:var(--text-primary);">' + typeTag + '</span>';
+            html += '      <span style="font-size:11px;color:var(--text-muted);">' + time + '</span>';
+            html += '    </div>';
+            html += '    <div style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + detail + '">' + detail + '</div>';
+            html += '  </div>';
+            html += '  <div style="flex-shrink:0;text-align:right;">';
+            html += '    <div style="font-size:16px;font-weight:800;color:' + amountColor + ';font-variant-numeric:tabular-nums;">' + sign + l.Amount + '</div>';
+            html += '    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">余额 ' + balance + '</div>';
+            html += '  </div>';
+            html += '</div>';
+        }
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red);font-size:13px;">加载失败：' + escapeHtml(err.message) + '</div>';
+    }
+}
 
 initialLoad();
 bindNotificationFilters();

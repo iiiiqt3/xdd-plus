@@ -544,3 +544,10 @@ func (c *PortalController) NotificationDetail() {
 	c.Data["json"] = map[string]interface{}{"code": 0, "data": item}
 	c.ServeJSON()
 }
+
+// CoinLogs 获取用户积分变动记录
+func (c *PortalController) CoinLogs() {
+	logs := models.GetCoinLogs(c.PortalUserID, 30)
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": logs}
+	c.ServeJSON()
+}

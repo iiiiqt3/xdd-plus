@@ -205,6 +205,7 @@ func main() {
 	web.Router("/api/portal/notifications", &controllers.PortalController{}, "get:Notifications")
 	web.Router("/api/portal/notification", &controllers.PortalController{}, "get:NotificationDetail")
 	web.Router("/api/portal/feedback", &controllers.PortalController{}, "post:SubmitFeedback")
+	web.Router("/api/portal/coin-logs", &controllers.PortalController{}, "get:CoinLogs")
 	// 管理员登录页面
 	web.Get("/admin/login", func(ctx *context.Context) {
 		file, err := vweb.WebFs.ReadFile("html/admin_login.html")
