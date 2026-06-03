@@ -562,7 +562,7 @@ func (c *PortalController) CoinLogs() {
 
 	result := make([]coinLogItem, 0)
 	for _, l := range logs {
-		src := "其他"
+		src := "后台及其他"
 		d := l.Detail
 		if len(d) >= 6 && d[:6] == "Web端" {
 			src = "Web端"
@@ -572,8 +572,6 @@ func (c *PortalController) CoinLogs() {
 			d = d[6:]
 		} else if strings.HasPrefix(d, "微信") {
 			src = "微信"
-		} else if len(d) >= 6 && d[:6] == "管理员" || l.Type == "管理员操作" {
-			src = "后台"
 		}
 		if sourceFilter != "" && src != sourceFilter {
 			continue
