@@ -1,0 +1,9 @@
+.idea
+.git
+*.md
+Dockerfile
+Dockerfile.*
+.dockerignore
+v08.dll
+zlib.dll
+staydd

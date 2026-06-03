@@ -1,0 +1,3002 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeChat08 管理后台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --border: #2a2d3a;
+  --primary: #07c160;
+  --primary-hover: #06ad56;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --text: #e4e6eb;
+  --text2: #a0a3b1;
+  --input-bg: #252836;
+  --success: #27ae60;
+  --info: #3498db;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+a { color: var(--primary); text-decoration: none; }
+
+/* Layout */
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: var(--card); border-right: 1px solid var(--border); padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; z-index: 100; }
+.sidebar .logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.sidebar .logo h2 { font-size: 18px; color: var(--primary); }
+.sidebar .logo p { font-size: 11px; color: var(--text2); margin-top: 4px; }
+.sidebar nav a { display: flex; align-items: center; padding: 10px 20px; color: var(--text2); font-size: 14px; transition: all .2s; gap: 10px; }
+.sidebar nav a:hover, .sidebar nav a.active { color: var(--text); background: rgba(7,193,96,.1); border-right: 3px solid var(--primary); }
+.sidebar nav a .icon { font-size: 18px; width: 24px; text-align: center; }
+.sidebar .section-title { padding: 15px 20px 5px; font-size: 11px; text-transform: uppercase; color: var(--text2); letter-spacing: 1px; }
+.main { margin-left: 220px; flex: 1; padding: 24px; min-height: 100vh; }
+.main .page-header { margin-bottom: 24px; }
+.main .page-header h1 { font-size: 24px; font-weight: 600; }
+.main .page-header p { color: var(--text2); font-size: 13px; margin-top: 4px; }
+
+/* Cards */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.card-header h3 { font-size: 16px; font-weight: 600; }
+
+/* Forms */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+input, select, textarea {
+  width: 100%; padding: 10px 14px; background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 14px; outline: none; transition: border .2s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a0a3b1'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+select option { background: var(--card); color: var(--text); }
+
+/* Buttons */
+.btn {
+  padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { opacity: .85; }
+.btn-warning { background: var(--warning); color: #fff; }
+.btn-warning:hover { opacity: .85; }
+.btn-info { background: var(--info); color: #fff; }
+.btn-info:hover { opacity: .85; }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* QR Display */
+.qr-container { text-align: center; padding: 20px; }
+.qr-container img { max-width: 220px; border-radius: 12px; border: 4px solid #fff; background: #fff; padding: 8px; }
+.qr-container .qr-status { margin-top: 16px; font-size: 14px; color: var(--text2); }
+.qr-container .qr-status.success { color: var(--success); }
+.qr-container .qr-status.error { color: var(--danger); }
+.qr-container .qr-status.scanning { color: var(--warning); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+th { color: var(--text2); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+tr:hover td { background: rgba(255,255,255,.02); }
+
+/* Badges */
+.badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
+.badge-success { background: rgba(39,174,96,.15); color: #27ae60; }
+.badge-danger { background: rgba(231,76,60,.15); color: #e74c3c; }
+.badge-warning { background: rgba(243,156,18,.15); color: #f39c12; }
+.badge-info { background: rgba(52,152,219,.15); color: #3498db; }
+
+/* Toast */
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+.toast { padding: 14px 20px; border-radius: 10px; font-size: 13px; margin-bottom: 10px; animation: slideIn .3s ease; max-width: 400px; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+.toast-success { background: var(--success); color: #fff; }
+.toast-error { background: var(--danger); color: #fff; }
+.toast-info { background: var(--info); color: #fff; }
+@keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* Log viewer */
+.log-viewer {
+  background: #0d0f14; border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px; max-height: 400px; overflow-y: auto; font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px; line-height: 1.6;
+}
+.log-entry { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.03); display: flex; gap: 12px; }
+.log-entry .log-time { color: #636e83; white-space: nowrap; min-width: 80px; }
+.log-entry .log-method { font-weight: 600; min-width: 50px; }
+.log-entry .log-method.GET { color: #3498db; }
+.log-entry .log-method.POST { color: #27ae60; }
+.log-entry .log-path { color: var(--text); }
+.log-entry .log-status { min-width: 40px; text-align: right; }
+.log-entry .log-status.ok { color: var(--success); }
+.log-entry .log-status.err { color: var(--danger); }
+
+/* Platform card tiles */
+.platform-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+}
+.platform-card {
+  padding: 20px 10px; border: 2px solid var(--border); border-radius: 12px; cursor: pointer;
+  text-align: center; transition: all .2s; background: transparent; color: var(--text);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.platform-card:hover { border-color: var(--primary); background: rgba(7,193,96,.04); }
+.platform-card.selected { border-color: var(--primary); background: rgba(7,193,96,.1); color: var(--primary); box-shadow: 0 0 16px rgba(7,193,96,.12); }
+.platform-card .platform-icon { font-size: 36px; }
+.platform-card .platform-name { font-size: 13px; font-weight: 500; color: var(--text2); }
+.platform-card.selected .platform-name { color: var(--primary); }
+
+/* Tabs */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab-btn { padding: 10px 20px; background: transparent; border: none; color: var(--text2); font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* Status bar */
+.status-bar { display: flex; gap: 20px; padding: 12px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.status-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.status-dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
+.status-dot.offline { background: var(--danger); }
+
+/* Info grid */
+.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.info-item { padding: 14px; background: var(--input-bg); border-radius: 10px; }
+.info-item .info-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+.info-item .info-value { font-size: 15px; margin-top: 4px; word-break: break-all; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3d4a; }
+
+/* Account action modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+  justify-content: center; align-items: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  width: 360px; max-width: 90vw; overflow: hidden; animation: modalIn .2s ease;
+}
+@keyframes modalIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.modal-header h3 { font-size: 15px; font-weight: 600; }
+.modal-close { background: none; border: none; color: var(--text2); font-size: 20px; cursor: pointer; padding: 4px; }
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 8px 0; }
+.modal-item {
+  display: flex; align-items: center; gap: 14px; padding: 13px 20px;
+  cursor: pointer; transition: background .15s; font-size: 14px;
+}
+.modal-item:hover { background: rgba(255,255,255,.04); }
+.modal-item .mi-icon { width: 22px; text-align: center; font-size: 17px; }
+.modal-item.danger { color: var(--danger); }
+.modal-divider { height: 1px; background: var(--border); margin: 4px 0; }
+.modal-footer { padding: 12px 20px; text-align: center; border-top: 1px solid var(--border); }
+/* Toggle switch */
+.toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle .toggle-slider {
+  position: absolute; cursor: pointer; inset: 0; background: var(--border);
+  border-radius: 20px; transition: .3s;
+}
+.toggle .toggle-slider::before {
+  content: ''; position: absolute; height: 14px; width: 14px; left: 3px; bottom: 3px;
+  background: #fff; border-radius: 50%; transition: .3s;
+}
+.toggle input:checked + .toggle-slider { background: var(--primary); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+/* Hidden sections */
+.section { display: none; }
+.section.active { display: block; }
+
+/* Loading spinner */
+.spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.2); border-radius: 50%; border-top-color: #fff; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Result display */
+.result-box { background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 16px; }
+.result-box pre { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; color: var(--text2); max-height: 400px; overflow-y: auto; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { width: 60px; }
+  .sidebar .logo h2, .sidebar .logo p, .sidebar nav a span, .sidebar .section-title { display: none; }
+  .sidebar nav a { justify-content: center; padding: 12px; }
+  .main { margin-left: 60px; }
+  .form-row, .form-row-3 { grid-template-columns: 1fr; }
+}
+
+/* Login Page */
+.login-page {
+  display: flex; justify-content: center; align-items: center; min-height: 100vh;
+  background: linear-gradient(135deg, #0f1117 0%, #1a1d27 100%);
+}
+.login-box {
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 40px; width: 380px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+.login-box .logo { text-align: center; margin-bottom: 30px; }
+.login-box .logo h1 { font-size: 28px; color: var(--primary); margin-bottom: 8px; }
+.login-box .logo p { color: var(--text2); font-size: 13px; }
+.login-box .form-group { margin-bottom: 20px; }
+.login-box .btn { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
+.login-error { color: var(--danger); font-size: 13px; text-align: center; margin-top: 10px; display: none; }
+
+/* Refresh button */
+.btn-refresh {
+  position: fixed; bottom: 24px; right: 24px; width: 48px; height: 48px; border-radius: 50%;
+  background: var(--primary); color: #fff; border: none; cursor: pointer; z-index: 100;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  box-shadow: 0 4px 12px rgba(7,193,96,.3); transition: all .2s;
+}
+.btn-refresh:hover { transform: scale(1.1); background: var(--primary-hover); }
+
+/* Log tabs */
+.log-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.log-tab { padding: 8px 16px; background: transparent; border: none; color: var(--text2); font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
+.log-tab:hover { color: var(--text); }
+.log-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.log-content { display: none; }
+.log-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- 登录页面 -->
+<div class="login-page" id="loginPage" style="display:none;">
+  <div class="login-box">
+    <div class="logo">
+      <h1>WeChat08</h1>
+      <p>管理后台登录</p>
+    </div>
+    <div class="form-group">
+      <label>用户名</label>
+      <input type="text" id="loginUsername" placeholder="请输入用户名" value="">
+    </div>
+    <div class="form-group">
+      <label>密码</label>
+      <input type="password" id="loginPassword" placeholder="请输入密码" value="">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">&#128274; 登录</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- 主应用 -->
+<div class="app" id="mainApp">
+  <!-- Sidebar -->
+  <aside class="sidebar" style="display:flex;flex-direction:column;">
+    <div class="logo">
+      <h2>WeChat08</h2>
+      <p>管理后台 v2.0</p>
+    </div>
+    <nav style="flex:1;display:flex;flex-direction:column;">
+      <div class="section-title">登录管理</div>
+      <a href="#" class="active" onclick="switchSection('qrlogin')">
+        <span class="icon">&#128247;</span><span>扫码登录</span>
+      </a>
+      <div class="section-title">账号管理</div>
+      <a href="#" onclick="switchSection('accounts')">
+        <span class="icon">&#128101;</span><span>账号列表</span>
+      </a>
+      <div class="section-title">系统</div>
+      <a href="#" onclick="switchSection('logs')">
+        <span class="icon">&#128196;</span><span>系统日志</span>
+      </a>
+      <a href="#" onclick="switchSection('email')">
+        <span class="icon">&#9993;</span><span>邮箱设置</span>
+      </a>
+      <a href="#" onclick="switchSection('settings')">
+        <span class="icon">&#9881;</span><span>系统设置</span>
+      </a>
+      <div style="margin-top:auto;padding:20px 0;border-top:1px solid var(--border);">
+        <a href="#" onclick="doLogout()" style="color:var(--danger);display:flex;align-items:center;padding:10px 20px;gap:10px;">
+          <span class="icon">&#128682;</span><span>退出登录</span>
+        </a>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 账号操作弹窗 -->
+    <div class="modal-overlay" id="accountModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="accountModalTitle">账号操作</h3>
+          <button class="modal-close" onclick="closeAccountModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-item" onclick="modalAction('relogin')">
+            <span class="mi-icon">&#8635;</span>
+            <div>
+              <div>重新登录</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px;">扫码登录，复用已有设备ID</div>
+            </div>
+          </div>
+          <div class="modal-item" onclick="modalAction('awaken')">
+            <span class="mi-icon">&#128276;</span>
+            <div>
+              <div>唤醒登录</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px;">唤醒已掉线的账号</div>
+            </div>
+          </div>
+          <div class="modal-item" onclick="modalAction('twice')">
+            <span class="mi-icon">&#10140;</span>
+            <div>
+              <div>二次登录</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px;">刷新Token，续期登录状态</div>
+            </div>
+          </div>
+          <div class="modal-divider"></div>
+          <div class="modal-item" onclick="modalAction('logout')">
+            <span class="mi-icon">&#10550;</span><span>退出登录</span>
+          </div>
+          <div class="modal-divider"></div>
+          <div class="modal-item" onclick="modalAction('proxy')">
+            <span class="mi-icon">&#9881;</span><span>修改代理</span>
+          </div>
+          <div class="modal-item" onclick="modalAction('heartbeat')">
+            <span class="mi-icon" style="color:var(--danger);">&#9829;</span>
+            <span>使用内置心跳</span>
+            <label class="toggle" style="margin-left:auto;" onclick="event.stopPropagation()">
+              <input type="checkbox" id="modalHeartbeatToggle">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="modal-item" onclick="modalAction('heartbeatLog')">
+            <span class="mi-icon">&#128196;</span><span>心跳日志</span>
+          </div>
+          <div class="modal-divider"></div>
+          <div class="modal-item danger" onclick="modalAction('deleteData')">
+            <span class="mi-icon">&#128465;</span><span>删除数据</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeAccountModal()">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 重新登录二维码弹窗 -->
+    <div class="modal-overlay" id="reloginModal">
+      <div class="modal" style="width:320px;">
+        <div class="modal-header">
+          <h3 id="reloginModalTitle">重新登录</h3>
+          <button class="modal-close" onclick="closeReloginModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align:center;padding:20px;">
+          <img id="reloginQrImage" src="" alt="QR Code" style="max-width:220px;border-radius:10px;background:#fff;padding:8px;">
+          <div id="reloginQrStatus" style="margin-top:12px;font-size:13px;color:var(--text2);">生成中...</div>
+          <div style="margin-top:8px;">
+            <span class="badge badge-info" id="reloginQrUuid"></span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeReloginModal()">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 心跳日志弹窗 -->
+    <div class="modal-overlay" id="heartbeatLogModal">
+      <div class="modal" style="width:520px;max-height:80vh;">
+        <div class="modal-header">
+          <h3 id="heartbeatLogTitle">心跳日志</h3>
+          <button class="modal-close" onclick="closeHeartbeatLogModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+          <div id="heartbeatLogContent" style="font-family:monospace;font-size:12px;line-height:1.8;color:var(--text1);white-space:pre-wrap;word-break:break-all;">加载中...</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-sm btn-outline" onclick="refreshHeartbeatLog()">&#8634; 刷新</button>
+          <button class="btn btn-outline" onclick="closeHeartbeatLogModal()">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar" id="statusBar">
+      <div class="status-item">
+        <div class="status-dot offline" id="serverDot"></div>
+        <span id="serverStatus">未连接</span>
+      </div>
+      <div class="status-item">
+        <span style="color:var(--text2);min-width:70px;">服务器时间:</span>
+        <span id="serverTime" style="font-family:monospace;min-width:170px;">----/--/-- --:--:--</span>
+      </div>
+      <div class="status-item" style="margin-left:auto;gap:8px;">
+        <button class="btn btn-sm btn-outline" onclick="refreshCurrentSection()">&#8634; 刷新</button>
+        <button class="btn btn-sm btn-outline" onclick="checkServerConnection()">检测连接</button>
+      </div>
+    </div>
+
+    <!-- ==================== 扫码登录 ==================== -->
+    <div class="section active" id="section-qrlogin">
+      <div class="page-header">
+        <h1>扫码登录</h1>
+        <p>选择平台生成二维码，使用微信扫码完成登录</p>
+      </div>
+
+      <!-- 左右半屏布局 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;min-height:calc(100vh - 160px);">
+
+        <!-- ===== 左半：平台选择 + 配置 ===== -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <!-- 平台选择卡片 -->
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-header" style="margin-bottom:12px;">
+              <h3>选择登录平台</h3>
+            </div>
+            <div class="platform-grid" id="qrPlatformSelect" style="margin-bottom:0;">
+              <div class="platform-card selected" data-method="iPad" onclick="selectQRPlatform(this)">
+                <span class="platform-icon">&#128241;</span>
+                <span class="platform-name">iPad</span>
+              </div>
+              <div class="platform-card" data-method="Pad" onclick="selectQRPlatform(this)">
+                <span class="platform-icon">&#128195;</span>
+                <span class="platform-name">安卓Pad</span>
+              </div>
+              <div class="platform-card" data-method="Win" onclick="selectQRPlatform(this)">
+                <span class="platform-icon">&#128187;</span>
+                <span class="platform-name">Windows</span>
+              </div>
+              <div class="platform-card" data-method="WinUwp" onclick="selectQRPlatform(this)">
+                <span class="platform-icon">&#128421;</span>
+                <span class="platform-name">WinUwp</span>
+              </div>
+              <div class="platform-card" data-method="WinUnified" onclick="selectQRPlatform(this)">
+                <span class="platform-icon">&#128421;</span>
+                <span class="platform-name">Win统一版</span>
+              </div>
+              <div class="platform-card" data-method="Mac" onclick="selectQRPlatform(this)">
+                <span class="platform-icon">&#128187;</span>
+                <span class="platform-name">Mac</span>
+              </div>
+              <div class="platform-card" data-method="Car" onclick="selectQRPlatform(this)">
+                <span class="platform-icon">&#128663;</span>
+                <span class="platform-name">Car</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 登录配置 -->
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-header" style="margin-bottom:12px;">
+              <h3>登录配置</h3>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>代理IP (可选)</label>
+                <input type="text" id="qrProxyIp" placeholder="socks5://127.0.0.1:1080">
+              </div>
+              <div class="form-group">
+                <label>设备名称</label>
+                <input type="text" id="qrDeviceName" placeholder="iPad Pro (12.9-inch) (6th generation)" value="iPad Pro (12.9-inch) (6th generation)">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>设备ID (可选，留空自动生成)</label>
+              <input type="text" id="qrDeviceId" placeholder="留空自动生成">
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="btnGenQR" onclick="generateQRCode()">&#128247; 生成二维码</button>
+              <button class="btn btn-outline" onclick="resetQRLogin()">&#8634; 重置</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 右半：二维码 + 日志 ===== -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <!-- 二维码区域 -->
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-header" style="margin-bottom:8px;">
+              <h3>扫码登录</h3>
+            </div>
+            <div id="qrResultCard" style="display:none;text-align:center;">
+              <img id="qrImage" src="" alt="QR Code" style="max-width:220px;border-radius:10px;border:3px solid #fff;background:#fff;padding:6px;">
+              <div class="qr-status" id="qrStatus" style="margin-top:14px;">等待扫码...</div>
+              <div style="margin-top:8px;">
+                <span class="badge badge-info" id="qrUuid"></span>
+              </div>
+            </div>
+            <div id="qrPlaceholder" style="text-align:center;padding:30px 0;">
+              <div style="font-size:48px;margin-bottom:12px;">&#128247;</div>
+              <div style="color:var(--text2);font-size:13px;">选择平台后点击生成二维码</div>
+            </div>
+          </div>
+
+          <!-- 日志/结果区域 -->
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-header" style="margin-bottom:8px;">
+              <h3>响应日志</h3>
+              <button class="btn btn-sm btn-outline" onclick="document.getElementById('qrResultJson').textContent='{}';">&#128465; 清空</button>
+            </div>
+            <div class="result-box" style="margin-top:0;">
+              <pre id="qrResultJson" style="max-height:320px;">{}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 62数据登录 ==================== -->
+    <div class="section" id="section-data62login">
+      <div class="page-header">
+        <h1>62数据登录</h1>
+        <p>使用账号密码或62数据进行登录</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>登录参数</h3>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>账号 (UserName)</label>
+            <input type="text" id="login62User" placeholder="微信号/QQ号/手机号">
+          </div>
+          <div class="form-group">
+            <label>密码 (Password)</label>
+            <input type="password" id="login62Pass" placeholder="登录密码">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>62数据 (Data62)</label>
+          <textarea id="login62Data" placeholder="粘贴62数据，留空自动生成"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>设备名称</label>
+            <input type="text" id="login62DeviceName" placeholder="iPad" value="iPad">
+          </div>
+          <div class="form-group">
+            <label>代理IP (可选)</label>
+            <input type="text" id="login62Proxy" placeholder="socks5://127.0.0.1:1080">
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="loginWith62()">&#128273; 62登录</button>
+          <button class="btn btn-warning" onclick="loginWith62SMS()">&#128241; 62+短信验证</button>
+          <button class="btn btn-info" onclick="loginWith62QR()">&#128247; 62+二维码验证</button>
+        </div>
+      </div>
+
+      <!-- SMS验证区 -->
+      <div class="card" id="smsVerifyCard" style="display:none;">
+        <div class="card-header">
+          <h3>短信验证码</h3>
+        </div>
+        <div class="form-group">
+          <label>验证码</label>
+          <input type="text" id="smsCode" placeholder="输入收到的短信验证码">
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="verifySMS()">&#9989; 提交验证</button>
+          <button class="btn btn-outline" onclick="resendSMS()">&#8634; 重发验证码</button>
+        </div>
+      </div>
+
+      <!-- 二维码验证区 -->
+      <div class="card" id="qrVerifyCard" style="display:none;">
+        <div class="card-header">
+          <h3>二维码验证</h3>
+        </div>
+        <div class="qr-container">
+          <img id="verifyQrImage" src="" alt="Verify QR">
+          <div class="qr-status" id="verifyQrStatus">请使用微信扫码验证</div>
+        </div>
+        <div class="btn-group" style="justify-content:center;">
+          <button class="btn btn-primary" onclick="verifyQRCode()">&#9989; 检测扫码状态</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>返回结果</h3></div>
+        <div class="result-box">
+          <pre id="login62Result">{}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== A16安卓登录 ==================== -->
+    <div class="section" id="section-a16login">
+      <div class="page-header">
+        <h1>A16安卓登录</h1>
+        <p>使用Android A16协议登录</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>A16登录参数</h3></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>账号</label>
+            <input type="text" id="a16User" placeholder="微信号/QQ号/手机号">
+          </div>
+          <div class="form-group">
+            <label>密码</label>
+            <input type="password" id="a16Pass" placeholder="登录密码">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>代理IP (可选)</label>
+          <input type="text" id="a16Proxy" placeholder="socks5://127.0.0.1:1080">
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="loginWithA16()">&#128241; A16登录</button>
+          <button class="btn btn-info" onclick="loginWithA16v2()">&#128241; A16登录(新版)</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>返回结果</h3></div>
+        <div class="result-box"><pre id="a16Result">{}</pre></div>
+      </div>
+    </div>
+
+    <!-- ==================== 账号管理 ==================== -->
+    <div class="section" id="section-accounts">
+      <div class="page-header">
+        <h1>账号管理</h1>
+        <p>管理所有已登录的微信账号，执行快捷操作</p>
+      </div>
+
+      <div class="card" id="accountsCard">
+        <div class="card-header">
+          <h3>已登录账号 (<span id="accountCount">0</span>)</h3>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-primary" onclick="switchSection('qrlogin')">+ 新增登录</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px;"><input type="checkbox" id="accountCheckAll" onchange="toggleAllAccounts(this)"></th>
+                <th>账号信息</th>
+                <th>设备类型</th>
+                <th>状态</th>
+                <th>最后登录</th>
+                <th style="text-align:right;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="accountTableBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--text2);padding:40px;">暂无登录账号，请扫码登录</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>操作结果</h3></div>
+        <div class="result-box"><pre id="accountOpResult">{}</pre></div>
+      </div>
+    </div>
+
+    <!-- ==================== 系统日志（合并） ==================== -->
+    <div class="section" id="section-logs">
+      <div class="page-header">
+        <h1>系统日志</h1>
+        <p>查看运行日志、API请求日志和心跳日志</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>日志查看</h3>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="log-tabs" style="margin-bottom:0;border-bottom:none;">
+              <button class="log-tab active" onclick="switchLogTab('sys')">运行日志</button>
+              <button class="log-tab" onclick="switchLogTab('api')">API日志</button>
+              <button class="log-tab" onclick="switchLogTab('heartbeat')">心跳日志</button>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-sm btn-outline" onclick="clearAllLogs()">&#128465; 清空</button>
+              <button class="btn btn-sm btn-outline" onclick="exportAllLogs()">&#128190; 导出</button>
+              <button class="btn btn-sm btn-outline" onclick="refreshAllLogs()">&#8634; 刷新</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;">
+
+        <!-- 运行日志 -->
+        <div class="log-content active" id="log-sys">
+          <div class="log-viewer" id="logViewer">
+            <div style="color:var(--text2);text-align:center;padding:20px;">暂无日志</div>
+          </div>
+        </div>
+
+        <!-- API日志 -->
+        <div class="log-content" id="log-api">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>方法</th>
+                  <th>接口</th>
+                  <th>状态</th>
+                  <th>耗时</th>
+                  <th>详情</th>
+                </tr>
+              </thead>
+              <tbody id="apiLogTableBody">
+                <tr><td colspan="6" style="text-align:center;color:var(--text2);">暂无日志</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 心跳日志 -->
+        <div class="log-content" id="log-heartbeat">
+          <div class="log-viewer" id="heartbeatLogViewer">
+            <div style="color:var(--text2);text-align:center;padding:20px;">暂无心跳日志</div>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 系统设置 ==================== -->
+    <div class="section" id="section-settings">
+      <div class="page-header">
+        <h1>系统设置</h1>
+        <p>配置API地址和系统参数</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>API连接配置</h3></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>API地址</label>
+            <input type="text" id="apiBaseUrl" value="" placeholder="留空则使用当前域名（推荐）">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;gap:8px;">
+            <button class="btn btn-primary" onclick="saveSettings()">&#128190; 保存设置</button>
+            <button class="btn btn-info" onclick="checkServerConnection()">&#128269; 测试连接</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>API接口列表</h3></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>模块</th><th>接口</th><th>方法</th><th>路径</th></tr></thead>
+            <tbody id="apiListBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 邮箱设置 ==================== -->
+    <div class="section" id="section-email">
+      <div class="page-header">
+        <h1>邮箱设置</h1>
+        <p>配置邮箱通知，当账号离线时自动发送邮件提醒</p>
+      </div>
+
+      <!-- 邮箱配置 - 发送者 -->
+      <div class="card">
+        <div class="card-header">
+          <h3>发送者邮箱配置 (SMTP)</h3>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-info" onclick="testSendEmail()">&#9993; 发送测试邮件</button>
+          </div>
+        </div>
+        <p style="color:var(--text2);font-size:12px;margin-bottom:16px;">配置SMTP邮箱用于发送离线通知，需开启SMTP服务并获取授权码</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label>发件人邮箱</label>
+            <input type="text" id="emailSender" placeholder="your-email@qq.com">
+          </div>
+          <div class="form-group">
+            <label>SMTP授权码 (非登录密码)</label>
+            <input type="password" id="emailAuthCode" placeholder="QQ邮箱请填写授权码">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>SMTP服务器</label>
+            <input type="text" id="emailSmtpHost" placeholder="smtp.qq.com">
+          </div>
+          <div class="form-group">
+            <label>SMTP端口</label>
+            <input type="number" id="emailSmtpPort" placeholder="465" value="465">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>发件人显示名称</label>
+            <input type="text" id="emailSenderName" placeholder="WeChat08 监控" value="WeChat08 监控">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;gap:8px;">
+            <label class="toggle" style="margin-bottom:10px;">
+              <input type="checkbox" id="emailSslEnabled" checked>
+              <span class="toggle-slider"></span>
+            </label>
+            <span style="font-size:13px;color:var(--text2);margin-bottom:10px;">SSL/TLS加密</span>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveEmailConfig()">&#128190; 保存邮箱配置</button>
+        </div>
+      </div>
+
+      <!-- 邮箱配置 - 接收者绑定 -->
+      <div class="card">
+        <div class="card-header">
+          <h3>离线通知绑定 (接收者)</h3>
+          <button class="btn btn-sm btn-primary" onclick="showAddEmailBinding()">+ 添加绑定</button>
+        </div>
+        <p style="color:var(--text2);font-size:12px;margin-bottom:16px;">绑定wxid与接收邮箱，当该账号离线时自动发送邮件通知</p>
+
+        <!-- 添加绑定表单 -->
+        <div id="emailBindingForm" style="display:none;margin-bottom:16px;padding:16px;background:var(--input-bg);border-radius:10px;border:1px solid var(--border);">
+          <div class="form-row">
+            <div class="form-group">
+              <label>微信账号 (Wxid)</label>
+              <input type="text" id="bindingWxid" placeholder="wxid_xxxxxxx">
+            </div>
+            <div class="form-group">
+              <label>接收邮箱</label>
+              <input type="email" id="bindingEmail" placeholder="notify@example.com">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>备注 (可选)</label>
+            <input type="text" id="bindingRemark" placeholder="如：张三的微信">
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-primary" onclick="addEmailBinding()">&#9989; 确认添加</button>
+            <button class="btn btn-sm btn-outline" onclick="hideAddEmailBinding()">取消</button>
+          </div>
+        </div>
+
+        <!-- 绑定列表 -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Wxid</th>
+                <th>接收邮箱</th>
+                <th>备注</th>
+                <th>状态</th>
+                <th style="text-align:right;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="emailBindingTable">
+              <tr><td colspan="5" style="text-align:center;color:var(--text2);padding:30px;">暂无绑定，点击上方"添加绑定"配置离线通知</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 邮件发送日志 -->
+      <div class="card">
+        <div class="card-header">
+          <h3>邮件发送记录</h3>
+          <button class="btn btn-sm btn-outline" onclick="clearEmailLogs()">&#128465; 清空</button>
+        </div>
+        <div class="log-viewer" id="emailLogViewer" style="max-height:200px;">
+          <div style="color:var(--text2);text-align:center;padding:20px;">暂无发送记录</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ==================== 基础配置 ====================
+let API_BASE = localStorage.getItem('apiBaseUrl') || '';
+let currentQRPlatform = 'iPad';
+let qrPollTimer = null;
+let apiLogs = [];
+let sysLogs = [];
+let smsData = {};
+let qrVerifyData = {};
+let accounts = JSON.parse(localStorage.getItem('loggedAccounts') || '[]'); // 已登录账号列表
+let currentWxid = ''; // 当前选中的wxid
+let heartbeatLogs = []; // 心跳日志
+
+// ==================== 服务器时间 ====================
+function updateServerTime() {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+  const el = document.getElementById('serverTime');
+  if (el) el.textContent = dateStr + ' ' + timeStr;
+}
+setInterval(updateServerTime, 1000);
+updateServerTime();
+
+// 页面加载时检查登录状态
+checkLogin();
+
+// ==================== 登录功能 ====================
+async function checkLogin() {
+  const secret = sessionStorage.getItem('adminSecret');
+  if (!secret) {
+    showLogin();
+    return;
+  }
+  // 向服务器验证会话（程序重启后会失效）
+  try {
+    const result = await apiPost('/Admin/CheckSession', {}, { secret });
+    if (result.Success) {
+      showApp();
+    } else {
+      sessionStorage.removeItem('adminSecret');
+      showLogin();
+    }
+  } catch (e) {
+    sessionStorage.removeItem('adminSecret');
+    showLogin();
+  }
+}
+
+function showLogin() {
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('mainApp').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'flex';
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  const errorEl = document.getElementById('loginError');
+
+  if (!username || !password) {
+    errorEl.textContent = '请输入用户名和密码';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const result = await apiPost('/Admin/Login', {}, { username, password });
+    if (result.Success) {
+      sessionStorage.setItem('adminSecret', result.Secret);
+      showApp();
+      toast('登录成功', 'success');
+    } else {
+      errorEl.textContent = result.Message || '登录失败';
+      errorEl.style.display = 'block';
+    }
+  } catch (e) {
+    errorEl.textContent = '登录请求失败: ' + e.message;
+    errorEl.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('adminSecret');
+  showLogin();
+  toast('已退出登录', 'info');
+}
+
+// 回车键登录
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && document.getElementById('loginPage').style.display !== 'none') {
+    doLogin();
+  }
+});
+
+// ==================== 日志切换 ====================
+function switchLogTab(tab) {
+  // 切换标签样式
+  document.querySelectorAll('.log-tab').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+
+  // 切换内容
+  document.querySelectorAll('.log-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('log-' + tab).classList.add('active');
+
+  // 如果是心跳日志，自动刷新
+  if (tab === 'heartbeat') {
+    refreshHeartbeatLogs();
+  }
+}
+
+// ==================== 刷新功能 ====================
+async function refreshCurrentSection() {
+  const activeSection = document.querySelector('.section.active');
+  if (!activeSection) return;
+
+  const sectionId = activeSection.id.replace('section-', '');
+  switch (sectionId) {
+    case 'qrlogin':
+      // 刷新扫码登录页面
+      break;
+    case 'accounts':
+      await syncAccountsFromServer();
+      checkAllAccountsStatus();
+      break;
+    case 'logs':
+      refreshAllLogs();
+      break;
+  }
+  toast('已刷新', 'success');
+}
+
+function refreshAllLogs() {
+  refreshHeartbeatLogs();
+  toast('日志已刷新', 'success');
+}
+
+async function refreshHeartbeatLogs() {
+  heartbeatLogs = [];
+  for (const a of accounts) {
+    try {
+      const result = await apiPost('/Login/AutoHeartBeatLog', {}, { wxid: a.wxid });
+      if (result.Success && result.Data) {
+        result.Data.forEach(log => {
+          heartbeatLogs.push({ wxid: a.wxid, nick: a.nick, log: log });
+        });
+      }
+    } catch (e) {
+      // 忽略错误
+    }
+  }
+  renderHeartbeatLogs();
+}
+
+function renderHeartbeatLogs() {
+  const viewer = document.getElementById('heartbeatLogViewer');
+  if (!viewer) return;
+
+  if (heartbeatLogs.length === 0) {
+    viewer.innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px;">暂无心跳日志</div>';
+    return;
+  }
+
+  viewer.innerHTML = heartbeatLogs.map(item => {
+    const isError = item.log.indexOf('失败') >= 0 || item.log.indexOf('错误') >= 0;
+    const color = isError ? 'var(--danger)' : 'var(--text2)';
+    return `<div class="log-entry">
+      <span class="log-time" style="color:var(--info);min-width:120px;">[${item.nick || item.wxid}]</span>
+      <span style="color:${color};">${item.log}</span>
+    </div>`;
+  }).join('');
+}
+
+function clearAllLogs() {
+  sysLogs = [];
+  apiLogs = [];
+  heartbeatLogs = [];
+  renderLogs();
+  renderApiLogs();
+  renderHeartbeatLogs();
+  toast('日志已清空', 'success');
+}
+
+function exportAllLogs() {
+  const allLogs = {
+    system: sysLogs,
+    api: apiLogs,
+    heartbeat: heartbeatLogs
+  };
+  const blob = new Blob([JSON.stringify(allLogs, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'logs_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('日志已导出', 'success');
+}
+
+// ==================== 多账号管理 ====================
+function saveAccounts() {
+  localStorage.setItem('loggedAccounts', JSON.stringify(accounts));
+}
+
+function addAccount(wxid, nick, data62, platform) {
+  if (!wxid) return;
+  const exists = accounts.find(a => a.wxid === wxid);
+  if (exists) {
+    exists.nick = nick || exists.nick;
+    if (data62) exists.data62 = data62;
+    if (platform) exists.platform = platform;
+    exists.lastLogin = new Date().toLocaleString();
+  } else {
+    accounts.push({ wxid, nick: nick || '-', data62: data62 || '', platform: platform || currentQRPlatform || 'iPad', lastLogin: new Date().toLocaleString() });
+  }
+  saveAccounts();
+  renderAccountTable();
+}
+
+async function removeAccount(wxid) {
+  // 先从服务器删除Redis数据
+  try {
+    await fetch('/api/v1/wx/user/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wxids: [wxid] })
+    });
+  } catch (e) { /* 忽略错误，仍然清理本地 */ }
+
+  // 再从本地localStorage删除
+  accounts = accounts.filter(a => a.wxid !== wxid);
+  saveAccounts();
+  renderAccountTable();
+  if (currentWxid === wxid) {
+    currentWxid = accounts.length > 0 ? accounts[0].wxid : '';
+    applyCurrentAccount();
+  }
+}
+
+function switchAccount(wxid) {
+  currentWxid = wxid;
+  applyCurrentAccount();
+}
+
+function applyCurrentAccount() {
+  const acc = accounts.find(a => a.wxid === currentWxid);
+  const nick = acc ? acc.nick : '-';
+  if (currentWxid) {
+    addSysLog('切换账号: ' + currentWxid + ' (' + nick + ')');
+  }
+  renderAccountTable();
+}
+
+function showAccountManager() {
+  renderAccountTable();
+  switchSectionByName('accounts');
+  checkAllAccountsStatus();
+}
+
+// 账号在线状态缓存: { wxid: true(在线) | false(离线) | undefined(未知) }
+const accountOnlineStatus = {};
+
+async function checkAllAccountsStatus() {
+  for (const a of accounts) {
+    const prevOnline = accountOnlineStatus[a.wxid]; // undefined=未知, true=在线, false=离线
+    try {
+      const result = await apiPost('/Login/AutoHeartBeatLog', {}, { wxid: a.wxid });
+      if (result.Success && result.Data && result.Data.length > 0) {
+        // 检查最新一条心跳日志
+        const latestLog = result.Data[0] || '';
+        // 包含"失败"或"暂停"说明已掉线
+        const isOffline = latestLog.indexOf('失败') >= 0 || latestLog.indexOf('暂停') >= 0;
+        accountOnlineStatus[a.wxid] = !isOffline;
+      } else {
+        // 没有心跳日志 = 未开启心跳或已掉线
+        accountOnlineStatus[a.wxid] = false;
+      }
+    } catch (e) {
+      accountOnlineStatus[a.wxid] = false;
+    }
+
+    // 检测掉线：之前在线（或未知），现在离线 -> 发送邮件通知
+    const nowOffline = accountOnlineStatus[a.wxid] === false;
+    const wasOnlineOrUnknown = prevOnline === true || prevOnline === undefined;
+    if (nowOffline && wasOnlineOrUnknown) {
+      const binding = emailBindings.find(b => b.wxid === a.wxid && b.enabled);
+      if (binding) {
+        // 防止重复通知：如果上次通知时间在5分钟内则跳过
+        const lastNotified = binding.lastNotified ? new Date(binding.lastNotified).getTime() : 0;
+        const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+        if (lastNotified < fiveMinAgo) {
+          addSysLog('检测到掉线，准备发送邮件通知: ' + a.wxid);
+          sendOfflineNotification(a.wxid, a.nick, binding.email);
+        }
+      }
+    }
+  }
+  renderAccountTable();
+  renderEmailBindings();
+}
+
+// 每30秒检测一次在线状态
+setInterval(checkAllAccountsStatus, 30000);
+
+function renderAccountTable() {
+  const tbody = document.getElementById('accountTableBody');
+  const countEl = document.getElementById('accountCount');
+  if (!tbody) return;
+  if (countEl) countEl.textContent = accounts.length;
+
+  if (accounts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:40px;">暂无登录账号，请扫码登录</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = accounts.map(a => {
+    const isActive = a.wxid === currentWxid;
+    const online = accountOnlineStatus[a.wxid]; // undefined=未知, true=在线, false=离线
+    let statusHtml;
+    if (online === false) {
+      statusHtml = '<span class="badge" style="background:#666;color:#fff;">已离线</span>';
+    } else if (isActive) {
+      statusHtml = '<span class="badge badge-success">当前在线</span>';
+    } else {
+      statusHtml = '<span class="badge badge-warning">在线</span>';
+    }
+    return `<tr>
+      <td><input type="checkbox" class="account-check" value="${a.wxid}"></td>
+      <td>
+        <div style="font-weight:500;">${a.nick || '-'}</div>
+        <div style="font-family:monospace;font-size:11px;color:var(--text2);">${a.wxid}</div>
+      </td>
+      <td><span class="badge badge-info">${a.platform || 'iPad'}</span></td>
+      <td>${statusHtml}</td>
+      <td style="font-size:12px;color:var(--text2);">${a.lastLogin || '-'}</td>
+      <td style="text-align:right;">
+        <button class="btn btn-sm btn-outline" onclick="openAccountModal('${a.wxid}', '${a.nick || ''}')">操作 &#9662;</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleAllAccounts(el) {
+  document.querySelectorAll('.account-check').forEach(cb => cb.checked = el.checked);
+}
+
+// 从Redis同步已登录账号（兼容xdd等外部登录）
+async function syncAccountsFromServer() {
+  try {
+    const result = await fetch('/api/v1/wx/user/status');
+    const data = await result.json();
+    if (data.status && data.data) {
+      let changed = false;
+      for (const [wxid, info] of Object.entries(data.data)) {
+        const exists = accounts.find(a => a.wxid === wxid);
+        if (!exists) {
+          accounts.push({
+            wxid: wxid,
+            nick: info.nickname || '-',
+            data62: '',
+            platform: info.device || 'Car',
+            lastLogin: info.loginDate ? new Date(info.loginDate * 1000).toLocaleString() : '-'
+          });
+          changed = true;
+        } else {
+          // 更新昵称和设备信息
+          if (info.nickname && info.nickname !== '-') exists.nick = info.nickname;
+          if (info.device) exists.platform = info.device;
+        }
+      }
+      if (changed) {
+        saveAccounts();
+        renderAccountTable();
+      }
+    }
+  } catch (e) {
+    // 静默失败，不影响正常使用
+  }
+}
+
+// 页面加载时从Redis同步账号
+syncAccountsFromServer();
+
+// Modal utilities
+let modalWxid = '';
+function openAccountModal(wxid, nick) {
+  modalWxid = wxid;
+  document.getElementById('accountModalTitle').textContent = (nick || wxid) + ' - 操作';
+  const toggle = document.getElementById('modalHeartbeatToggle');
+  const acc = accounts.find(a => a.wxid === wxid);
+  toggle.checked = acc ? !!acc.autoHeartbeat : false;
+  toggle.onchange = () => setAutoHeartbeat(wxid, toggle.checked);
+  document.getElementById('accountModal').classList.add('show');
+}
+function closeAccountModal() {
+  document.getElementById('accountModal').classList.remove('show');
+  modalWxid = '';
+}
+document.getElementById('accountModal').addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) closeAccountModal();
+});
+
+function modalAction(action) {
+  const wxid = modalWxid;
+  if (!wxid) return;
+  closeAccountModal();
+  if (action === 'relogin') accountRelogin(wxid);
+  else if (action === 'awaken') accountAwaken(wxid);
+  else if (action === 'twice') accountTwiceAuth(wxid);
+  else if (action === 'logout') accountLogout(wxid);
+  else if (action === 'proxy') accountModifyProxy(wxid);
+  else if (action === 'deleteData') accountDeleteData(wxid);
+  else if (action === 'heartbeatLog') showHeartbeatLog(wxid);
+}
+
+async function accountRelogin(wxid) {
+  const acc = accounts.find(a => a.wxid === wxid);
+  const platform = acc ? (acc.platform || 'iPad') : 'iPad';
+
+  // 打开二维码弹窗
+  document.getElementById('reloginModalTitle').textContent = '重新登录 - ' + (acc ? acc.nick : wxid);
+  document.getElementById('reloginQrImage').src = '';
+  document.getElementById('reloginQrStatus').textContent = '正在生成二维码...';
+  document.getElementById('reloginQrUuid').textContent = '';
+  document.getElementById('reloginModal').classList.add('show');
+
+  // 关闭操作弹窗
+  closeAccountModal();
+
+  try {
+    const result = await apiPost('/Login/ReLoginQR', {}, { wxid, platform });
+
+    if (result.Code < 0 || (!result.Success && result.Code !== 1)) {
+      document.getElementById('reloginQrStatus').textContent = '生成失败: ' + (result.Message || '未知错误');
+      document.getElementById('reloginQrStatus').style.color = 'var(--danger)';
+      return;
+    }
+
+    let qrData = result.Data;
+    if (qrData && qrData.Data) qrData = qrData.Data;
+
+    if (qrData && qrData.QrBase64) {
+      document.getElementById('reloginQrImage').src = qrData.QrBase64;
+      const uuid = qrData.Uuid || '';
+      document.getElementById('reloginQrUuid').textContent = uuid ? 'UUID: ' + uuid : '';
+      document.getElementById('reloginQrStatus').textContent = '请使用微信扫码...';
+      document.getElementById('reloginQrStatus').style.color = 'var(--warning)';
+
+      // 开始轮询
+      if (reloginPollTimer) clearInterval(reloginPollTimer);
+      reloginPollErrors = 0;
+      if (uuid) {
+        reloginPollTimer = setInterval(() => pollReloginStatus(uuid, wxid, platform), 3000);
+      }
+    } else {
+      document.getElementById('reloginQrStatus').textContent = '未获取到二维码数据';
+      document.getElementById('reloginQrStatus').style.color = 'var(--danger)';
+    }
+  } catch (e) {
+    document.getElementById('reloginQrStatus').textContent = '请求失败: ' + e.message;
+    document.getElementById('reloginQrStatus').style.color = 'var(--danger)';
+  }
+}
+
+let reloginPollTimer = null;
+let reloginPollErrors = 0;
+
+async function pollReloginStatus(uuid, wxid, platform) {
+  if (!uuid) return;
+  try {
+    const result = await apiPost('/Login/LoginCheckQR', {}, { uuid });
+    const statusEl = document.getElementById('reloginQrStatus');
+
+    let data = result.Data;
+    if (data && data.Data) data = data.Data;
+
+    const code = result.Code;
+    const success = result.Success;
+    const message = result.Message || '';
+    const qrStatus = extractField(data, 'Status', 'status', 'StatusCode', 'status_code');
+    const userName = extractField(data, 'UserName', 'username', 'WxId', 'wxid');
+    const nickName = extractField(data, 'NickName', 'Nickname', 'nickname');
+
+    // 后端错误
+    if (code < 0 && code !== -3) {
+      reloginPollErrors++;
+      if (reloginPollErrors >= 2) {
+        clearInterval(reloginPollTimer);
+        statusEl.textContent = '扫码异常: ' + message;
+        statusEl.style.color = 'var(--danger)';
+        return;
+      }
+    } else {
+      reloginPollErrors = 0;
+    }
+
+    // 检查嵌套的 acctSectResp
+    let realUserName = userName;
+    let realNickName = nickName;
+    if (!realUserName && data) {
+      const acct = data.acctSectResp || data.AcntSectResp || data.AcctSectResp;
+      if (acct) {
+        realUserName = extractField(acct, 'userName', 'UserName', 'username', 'WxId', 'wxid');
+        realNickName = extractField(acct, 'nickName', 'NickName', 'Nickname', 'nickname');
+      }
+    }
+    const isLoginMsg = message.indexOf('登录成功') >= 0;
+    const isRealLogin = (realUserName || isLoginMsg) && code === 0;
+
+    if (code === 0 && success && isRealLogin) {
+      statusEl.textContent = '登录成功!';
+      statusEl.style.color = 'var(--success)';
+      clearInterval(reloginPollTimer);
+      // 更新账号信息
+      if (realUserName) {
+        addAccount(realUserName, realNickName || (acc ? acc.nick : ''), '', platform);
+        currentWxid = realUserName;
+      }
+      toast('重新登录成功!', 'success');
+      renderAccountTable();
+      // 自动开启心跳
+      autoLoadAfterLogin(realUserName || wxid);
+    } else if (qrStatus === 1) {
+      statusEl.textContent = '已扫码，请在手机上确认';
+      statusEl.style.color = 'var(--warning)';
+    } else if (qrStatus === 0 || qrStatus === undefined) {
+      statusEl.textContent = '等待扫码中...';
+      statusEl.style.color = 'var(--text2)';
+    } else if (qrStatus === 2) {
+      statusEl.textContent = '已确认，正在登录...';
+      statusEl.style.color = 'var(--warning)';
+    } else {
+      statusEl.textContent = '状态: ' + (message || '等待中...');
+    }
+  } catch (e) {
+    reloginPollErrors++;
+  }
+}
+
+function closeReloginModal() {
+  if (reloginPollTimer) { clearInterval(reloginPollTimer); reloginPollTimer = null; }
+  document.getElementById('reloginModal').classList.remove('show');
+}
+document.getElementById('reloginModal').addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) closeReloginModal();
+});
+
+// 心跳日志
+let heartbeatLogWxid = '';
+async function showHeartbeatLog(wxid) {
+  heartbeatLogWxid = wxid;
+  const acc = accounts.find(a => a.wxid === wxid);
+  document.getElementById('heartbeatLogTitle').textContent = '心跳日志 - ' + (acc ? acc.nick : wxid);
+  document.getElementById('heartbeatLogContent').textContent = '加载中...';
+  document.getElementById('heartbeatLogModal').classList.add('show');
+  await refreshHeartbeatLog();
+}
+async function refreshHeartbeatLog() {
+  if (!heartbeatLogWxid) return;
+  const el = document.getElementById('heartbeatLogContent');
+  try {
+    const result = await apiPost('/Login/AutoHeartBeatLog', {}, { wxid: heartbeatLogWxid });
+    if (result.Success && result.Data && result.Data.length > 0) {
+      el.textContent = result.Data.join('\n');
+    } else {
+      el.textContent = '暂无心跳日志\n\n可能原因：\n1. 未开启内置心跳\n2. 账号已掉线\n3. 刚登录还未产生心跳';
+    }
+  } catch (e) {
+    el.textContent = '获取失败: ' + e.message;
+  }
+}
+function closeHeartbeatLogModal() {
+  heartbeatLogWxid = '';
+  document.getElementById('heartbeatLogModal').classList.remove('show');
+}
+document.getElementById('heartbeatLogModal').addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) closeHeartbeatLogModal();
+});
+
+async function accountAwaken(wxid) {
+  addSysLog('唤醒登录: ' + wxid);
+  try {
+    const result = await apiPost('/Login/LoginAwaken', { Wxid: wxid });
+    showResult('accountOpResult', result);
+    toast(result.Message || '唤醒登录', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function accountTwiceAuth(wxid) {
+  addSysLog('二次登录: ' + wxid);
+  try {
+    const result = await apiPost('/Login/LoginTwiceAutoAuth', {}, { wxid });
+    showResult('accountOpResult', result);
+    toast(result.Message || '二次登录', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function accountLogout(wxid) {
+  addSysLog('退出登录: ' + wxid);
+  try {
+    const result = await apiPost('/Login/LogOut', {}, { wxid });
+    showResult('accountOpResult', result);
+    if (result.Success) {
+      accountOnlineStatus[wxid] = false;
+      removeAccount(wxid);
+      toast('已退出: ' + wxid, 'success');
+    } else {
+      toast(result.Message || '退出失败', 'error');
+    }
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function accountModifyProxy(wxid) {
+  const proxy = prompt('输入代理地址 (如 socks5://127.0.0.1:1080，留空清除):');
+  if (proxy === null) return;
+  addSysLog('修改代理: ' + wxid + ' -> ' + (proxy || '清除'));
+  try {
+    const result = await apiPost('/Tools/setproxy', { Wxid: wxid, ProxyIp: proxy });
+    showResult('accountOpResult', result);
+    toast(result.Message || '代理已更新', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+function setAutoHeartbeat(wxid, enabled) {
+    const acc = accounts.find(a => a.wxid === wxid);
+    if (acc) {
+      acc.autoHeartbeat = enabled;
+      saveAccounts();
+    }
+    addSysLog('内置心跳 ' + (enabled ? '开启' : '关闭') + ': ' + wxid);
+    const apiPath = enabled ? '/Login/AutoHeartBeat' : '/Login/CloseAutoHeartBeat';
+    apiPost(apiPath, {}, { wxid }).then(result => {
+      showResult('accountOpResult', result);
+      toast(result.Message || ('内置心跳已' + (enabled ? '开启' : '关闭')), result.Success ? 'success' : 'error');
+    }).catch(e => {
+      toast('请求失败: ' + e.message, 'error');
+    });
+  }
+
+async function accountDeleteData(wxid) {
+  if (!confirm('确定删除 ' + wxid + ' 的所有数据？此操作不可恢复！')) return;
+  addSysLog('删除数据: ' + wxid);
+  try {
+    const result = await apiPost('/Login/LogOut', {}, { wxid });
+    showResult('accountOpResult', result);
+    removeAccount(wxid);
+    toast('数据已删除: ' + wxid, 'success');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function switchAndReload(wxid) {
+  switchAccount(wxid);
+  applyCurrentAccount();
+  await autoLoadAfterLogin(wxid);
+}
+
+function switchSectionByName(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+  const section = document.getElementById('section-' + name);
+  if (section) section.classList.add('active');
+  // 高亮对应的侧边栏链接
+  document.querySelectorAll('.sidebar nav a').forEach(a => {
+    if (a.getAttribute('onclick') && a.getAttribute('onclick').includes(name)) {
+      a.classList.add('active');
+    }
+  });
+}
+
+// ==================== 工具函数 ====================
+function getApiUrl(path) {
+  return API_BASE + '/api' + path;
+}
+
+function showResult(elementId, data) {
+  const el = document.getElementById(elementId);
+  if (el) el.textContent = JSON.stringify(data, null, 2);
+}
+
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const div = document.createElement('div');
+  div.className = 'toast toast-' + type;
+  div.textContent = msg;
+  container.appendChild(div);
+  setTimeout(() => div.remove(), 4000);
+}
+
+function addSysLog(msg) {
+  const time = new Date().toLocaleTimeString();
+  sysLogs.push({ time, msg });
+  if (sysLogs.length > 500) sysLogs.shift();
+  renderSysLogs();
+}
+
+function renderSysLogs() {
+  const viewer = document.getElementById('logViewer');
+  if (sysLogs.length === 0) {
+    viewer.innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px;">暂无日志</div>';
+    return;
+  }
+  viewer.innerHTML = sysLogs.slice(-200).map(l =>
+    `<div class="log-entry"><span class="log-time">${l.time}</span><span style="color:var(--text);">${escHtml(l.msg)}</span></div>`
+  ).join('');
+  viewer.scrollTop = viewer.scrollHeight;
+}
+
+function addApiLog(method, path, status, duration, request, response) {
+  apiLogs.push({ time: new Date().toLocaleTimeString(), method, path, status, duration, request, response });
+  if (apiLogs.length > 500) apiLogs.shift();
+  renderApiLogs();
+}
+
+function renderApiLogs() {
+  const tbody = document.getElementById('apiLogTableBody');
+  if (apiLogs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);">暂无日志</td></tr>';
+    return;
+  }
+  tbody.innerHTML = apiLogs.slice(-100).reverse().map((l, i) => {
+    const idx = apiLogs.length - 1 - i;
+    const methodClass = l.method === 'POST' ? 'POST' : 'GET';
+    const statusClass = l.status >= 200 && l.status < 400 ? 'ok' : 'err';
+    return `<tr>
+      <td>${l.time}</td>
+      <td><span class="badge badge-${methodClass === 'POST' ? 'success' : 'info'}">${l.method}</span></td>
+      <td>${l.path}</td>
+      <td><span class="badge badge-${statusClass === 'ok' ? 'success' : 'danger'}">${l.status}</span></td>
+      <td>${l.duration}ms</td>
+      <td><button class="btn btn-sm btn-outline" onclick="showApiDetail(${idx})">查看</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function showApiDetail(idx) {
+  const l = apiLogs[idx];
+  const detail = `请求:\n${JSON.stringify(l.request, null, 2)}\n\n响应:\n${typeof l.response === 'string' ? l.response : JSON.stringify(l.response, null, 2)}`;
+  const w = window.open('', '_blank', 'width=700,height=500');
+  w.document.write(`<pre style="padding:20px;font-size:13px;background:#1a1d27;color:#e4e6eb;white-space:pre-wrap;word-break:break-all;height:100%;margin:0;">${escHtml(detail)}</pre>`);
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = typeof str === 'string' ? str : JSON.stringify(str);
+  return d.innerHTML;
+}
+
+async function apiPost(path, data = {}, params = {}) {
+  let url = getApiUrl(path);
+  const paramStr = Object.entries(params).filter(([k,v]) => v).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  if (paramStr) url += '?' + paramStr;
+
+  const startTime = Date.now();
+  addSysLog(`POST ${path}`);
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const duration = Date.now() - startTime;
+    const text = await resp.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (parseErr) {
+      addApiLog('POST', path, resp.status, duration, data, text.substring(0, 200));
+      addSysLog(`POST ${path} -> ${resp.status} 非JSON响应: ${text.substring(0, 100)}`);
+      throw new Error('服务器返回非JSON响应，请确认后端已编译最新代码 (HTTP ' + resp.status + ')');
+    }
+    addApiLog('POST', path, resp.status, duration, data, json);
+    addSysLog(`POST ${path} -> ${resp.status} (${duration}ms)`);
+    return json;
+  } catch (e) {
+    const duration = Date.now() - startTime;
+    addApiLog('POST', path, 0, duration, data, e.message);
+    addSysLog(`POST ${path} -> ERROR: ${e.message}`);
+    throw e;
+  }
+}
+
+// ==================== 导航 ====================
+function switchSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+  const section = document.getElementById('section-' + name);
+  if (section) section.classList.add('active');
+  event.currentTarget.classList.add('active');
+  event.preventDefault();
+  // 切换到账号列表时自动从Redis同步
+  if (name === 'accounts') {
+    syncAccountsFromServer();
+  }
+}
+
+// ==================== 服务器连接检测 ====================
+async function checkServerConnection() {
+  const dot = document.getElementById('serverDot');
+  const status = document.getElementById('serverStatus');
+  try {
+    const resp = await fetch(API_BASE + '/api/Login/HeartBeat?wxid=test', { method: 'POST' });
+    dot.classList.remove('offline');
+    dot.classList.add('online');
+    status.textContent = '已连接';
+    toast('服务器连接成功', 'success');
+  } catch (e) {
+    dot.classList.remove('online');
+    dot.classList.add('offline');
+    status.textContent = '连接失败';
+    toast('服务器连接失败: ' + e.message, 'error');
+  }
+}
+
+// ==================== 扫码登录 ====================
+function selectQRPlatform(el) {
+  document.querySelectorAll('#qrPlatformSelect .platform-card').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  currentQRPlatform = el.dataset.method;
+  // 自动设置真实设备名称
+  const nameMap = {
+    'iPad': 'iPad Pro (12.9-inch) (6th generation)',
+    'Pad': 'Xiaomi Pad 6 Pro',
+    'Win': 'DESKTOP-7K8VQ2N',
+    'WinUwp': 'DESKTOP-7K8VQ2N',
+    'WinUnified': 'DESKTOP-7K8VQ2N',
+    'Mac': 'MacBook Pro (16-inch, 2023)',
+    'Car': 'Xiaomi HyperOS Auto'
+  };
+  document.getElementById('qrDeviceName').value = nameMap[currentQRPlatform] || 'iPad Pro (12.9-inch) (6th generation)';
+  // 清空设备ID，让后端随机生成新的
+  document.getElementById('qrDeviceId').value = '';
+}
+
+async function generateQRCode() {
+  const btn = document.getElementById('btnGenQR');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 生成中...';
+
+  const proxy = {};
+  const proxyIp = document.getElementById('qrProxyIp').value.trim();
+  // 代理格式验证：必须包含 socks 或端口号，否则忽略
+  if (proxyIp && (proxyIp.indexOf('socks') >= 0 || proxyIp.indexOf(':') >= 0)) {
+    proxy.ProxyIp = proxyIp;
+  }
+
+  // 首页扫码登录：设备ID留空，让后端随机生成
+  const data = {
+    Proxy: proxy,
+    DeviceID: document.getElementById('qrDeviceId').value.trim(),
+    DeviceName: document.getElementById('qrDeviceName').value.trim() || 'iPad'
+  };
+
+  // 根据平台选择API路径
+  const pathMap = {
+    'iPad': '/Login/LoginGetQR',
+    'Pad': '/Login/LoginGetQRPad',
+    'Win': '/Login/LoginGetQRWin',
+    'WinUwp': '/Login/LoginGetQRWinUwp',
+    'WinUnified': '/Login/LoginGetQRWinUnified',
+    'Mac': '/Login/LoginGetQRMac',
+    'Car': '/Login/LoginGetQRCar'
+  };
+
+  try {
+    const result = await apiPost(pathMap[currentQRPlatform] || '/Login/LoginGetQR', data);
+    showResult('qrResultJson', result);
+
+    addSysLog(`[${currentQRPlatform}] 响应: Code=${result.Code}, Success=${result.Success}, Msg=${result.Message || ''}`);
+
+    // 后端成功时 Code=1，错误时 Code 为负数（-8, -9 等）
+    if (result.Code < 0 || (!result.Success && result.Code !== 1)) {
+      document.getElementById('qrStatus').textContent = '生成失败: ' + (result.Message || '未知错误');
+      document.getElementById('qrStatus').className = 'qr-status error';
+      document.getElementById('qrResultCard').style.display = 'block';
+      document.getElementById('qrPlaceholder').style.display = 'none';
+      toast(`[${currentQRPlatform}] ${result.Message || '生成失败'}`, 'error');
+      return;
+    }
+
+    // 处理 ResponseResult2: Data 可能是对象或嵌套在 Data.Data 里
+    let qrData = result.Data;
+    // 有时后端把 QR 数据包了两层
+    if (qrData && qrData.Data) qrData = qrData.Data;
+
+    let qrImageSrc = null;
+    let uuid = null;
+
+    // 后端 GetQRRes 结构: QrBase64(已含 data:image/jpg;base64,... 前缀), Uuid, QrUrl
+    if (qrData) {
+      uuid = qrData.Uuid || qrData.uuid || '';
+      // QrBase64 已经是完整的 data URI，直接使用
+      if (qrData.QrBase64) {
+        qrImageSrc = qrData.QrBase64;
+      }
+      // 如果没有 QrBase64，尝试 QrUrl
+      if (!qrImageSrc && (qrData.QrUrl || qrData.Qrurl)) {
+        qrImageSrc = qrData.QrUrl || qrData.Qrurl;
+      }
+    }
+
+    // 如果仍然没找到 UUID，尝试从 DeviceId 字段或其他地方获取
+    if (!uuid) uuid = result.DeviceId || '';
+
+    // 保存设备ID到本地，仅供参考（每次生成二维码都用新ID）
+    const returnedDeviceId = result.DeviceId || qrData?.DeviceId || '';
+    if (returnedDeviceId) {
+      localStorage.setItem('devId_' + currentQRPlatform, returnedDeviceId);
+    }
+
+    if (qrImageSrc) {
+      const img = document.getElementById('qrImage');
+      img.src = qrImageSrc;
+      document.getElementById('qrResultCard').style.display = 'block';
+      document.getElementById('qrPlaceholder').style.display = 'none';
+      document.getElementById('qrUuid').textContent = uuid ? ('UUID: ' + uuid) : 'UUID: 未获取';
+      document.getElementById('qrStatus').textContent = '请使用微信扫码...';
+      document.getElementById('qrStatus').className = 'qr-status scanning';
+
+      // 开始轮询扫码状态
+      if (qrPollTimer) clearInterval(qrPollTimer);
+      qrPollErrors = 0;
+      if (uuid) {
+        qrPollTimer = setInterval(() => pollQRStatus(uuid), 3000);
+        addSysLog('轮询已启动, UUID: ' + uuid);
+      } else {
+        document.getElementById('qrStatus').textContent = '警告: 未获取到UUID，无法轮询';
+        document.getElementById('qrStatus').className = 'qr-status error';
+        addSysLog('警告: 未获取到UUID，无法轮询');
+      }
+      toast('二维码生成成功，请扫码', 'success');
+    } else {
+      document.getElementById('qrStatus').textContent = result.Message || '生成失败: 未获取到二维码数据';
+      document.getElementById('qrStatus').className = 'qr-status error';
+      document.getElementById('qrResultCard').style.display = 'block';
+      document.getElementById('qrPlaceholder').style.display = 'none';
+    }
+  } catch (e) {
+    toast('请求失败: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#128247; 生成二维码';
+  }
+}
+
+// 从各种可能的数据结构中提取字段
+function extractField(obj, ...keys) {
+  if (!obj || typeof obj !== 'object') return undefined;
+  for (const k of keys) {
+    if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+  }
+  return undefined;
+}
+
+let qrPollErrors = 0; // 连续错误计数
+
+async function pollQRStatus(uuid) {
+  if (!uuid) return;
+  try {
+    const result = await apiPost('/Login/LoginCheckQR', {}, { uuid: uuid });
+    const statusEl = document.getElementById('qrStatus');
+
+    // 每次轮询都更新结果展示
+    showResult('qrResultJson', result);
+
+    // 灵活提取数据（兼容不同字段命名）
+    let data = result.Data;
+    if (data && data.Data) data = data.Data; // 可能包了两层
+
+    const code = result.Code;
+    const success = result.Success;
+    const message = result.Message || '';
+
+    // 提取状态（兼容 Status / status / StatusCode）
+    const qrStatus = extractField(data, 'Status', 'status', 'StatusCode', 'status_code');
+    // 提取用户名（兼容 UserName / username / WxId / wxid）
+    const userName = extractField(data, 'UserName', 'username', 'WxId', 'wxid');
+    // 提取昵称
+    const nickName = extractField(data, 'NickName', 'Nickname', 'nickname', 'DisplayName', 'displayname');
+    // 提取密码（确认登录后才有）
+    const pwd = extractField(data, 'Pwd', 'pwd', 'Password', 'password');
+
+    addSysLog(`轮询结果: Code=${code}, Status=${qrStatus}, UserName=${userName || '(无)'}, Msg=${message}`);
+
+    // === 后端错误 (Code < 0): 停止轮询，显示错误 ===
+    if (code < 0 && code !== -3) {
+      qrPollErrors++;
+      // -8 通常是 CheckSecManualAuth 失败（后端二次认证异常）
+      // -9 是取码过于频繁
+      // 连续 2 次相同错误就停止轮询
+      if (qrPollErrors >= 2) {
+        clearInterval(qrPollTimer);
+        let hint = '';
+        if (code === -8) {
+          hint = '后端二次认证失败，可能是服务端配置问题。请检查服务器日志。';
+        } else if (code === -9) {
+          hint = '取码过于频繁，请稍后再试。';
+        } else {
+          hint = '请检查服务器日志。';
+        }
+        statusEl.innerHTML = `<span style="color:var(--danger);">扫码异常 (${message})</span><br><span style="font-size:12px;color:var(--text2);">${hint}</span>`;
+        statusEl.className = 'qr-status error';
+        addSysLog(`轮询异常终止: Code=${code}, 连续错误${qrPollErrors}次`);
+        return;
+      }
+    } else {
+      qrPollErrors = 0; // 成功响应则重置计数
+    }
+
+    // === 判断登录是否真正成功 ===
+    // 后端 CheckSecManualAuth 返回 Code=0, Message="登录成功", Data=UnifyAuthResponse
+    // JSON 字段: acctSectResp.userName, acctSectResp.nickName (小写驼峰)
+    let realUserName = userName;
+    let realNickName = nickName;
+    if (!realUserName && data) {
+      const acct = data.acctSectResp || data.AcntSectResp || data.AcctSectResp;
+      if (acct) {
+        realUserName = extractField(acct, 'userName', 'UserName', 'username', 'WxId', 'wxid');
+        realNickName = extractField(acct, 'nickName', 'NickName', 'Nickname', 'nickname');
+      }
+    }
+    // Code=0 + "登录成功" 消息也视为成功
+    const isLoginMsg = (message === '登录成功' || message.indexOf('登录成功') >= 0);
+    const isRealLogin = (realUserName || result.Data62 || isLoginMsg) && (code === 0);
+
+    if (code === 0 && success && isRealLogin) {
+      // 真正的登录成功
+      statusEl.textContent = '登录成功!';
+      statusEl.className = 'qr-status success';
+      clearInterval(qrPollTimer);
+      qrPollErrors = 0;
+      addSysLog('登录成功! Wxid: ' + (realUserName || '(未知)'));
+      if (realUserName) {
+        // 注册到多账号列表
+        currentWxid = realUserName;
+        addAccount(realUserName, realNickName, result.Data62 || '', currentQRPlatform);
+      }
+      toast('登录成功!', 'success');
+
+      // 自动加载设备列表和个人信息
+      autoLoadAfterLogin(realUserName);
+
+    } else if (code === -3) {
+      // 需要验证码
+      statusEl.textContent = '需要验证: ' + message;
+      statusEl.className = 'qr-status scanning';
+      addSysLog('需要验证码: ' + message);
+
+    } else if (qrStatus === 1) {
+      // 已扫码，等待确认
+      statusEl.textContent = '已扫码，请在手机上确认登录';
+      statusEl.className = 'qr-status scanning';
+
+    } else if (qrStatus === 0 || qrStatus === undefined || qrStatus === null) {
+      // 等待扫码
+      statusEl.textContent = '等待扫码中... (' + new Date().toLocaleTimeString() + ')';
+      statusEl.className = 'qr-status scanning';
+
+    } else if (qrStatus === 2) {
+      // 已确认（可能正在登录处理中）
+      statusEl.textContent = '已确认，正在登录...';
+      statusEl.className = 'qr-status scanning';
+
+    } else {
+      statusEl.textContent = '状态: ' + (message || JSON.stringify(data).substring(0, 80));
+      statusEl.className = 'qr-status scanning';
+    }
+
+  } catch (e) {
+    addSysLog('轮询请求失败: ' + e.message);
+    qrPollErrors++;
+  }
+}
+
+// 登录成功后自动开启心跳
+async function autoLoadAfterLogin(wxid) {
+  if (!wxid) return;
+  addSysLog('登录成功，自动开启心跳...');
+
+  // 自动开启内置心跳
+  try {
+    const result = await apiPost('/Login/AutoHeartBeat', {}, { wxid });
+    if (result.Success) {
+      addSysLog('心跳已自动开启: ' + wxid);
+    } else {
+      addSysLog('心跳开启失败: ' + (result.Message || ''));
+    }
+    // 更新本地状态
+    const acc = accounts.find(a => a.wxid === wxid);
+    if (acc) {
+      acc.autoHeartbeat = result.Success;
+      saveAccounts();
+    }
+  } catch (e) {
+    addSysLog('心跳请求失败: ' + e.message);
+  }
+}
+
+function resetQRLogin() {
+  if (qrPollTimer) { clearInterval(qrPollTimer); qrPollTimer = null; }
+  document.getElementById('qrResultCard').style.display = 'none';
+  document.getElementById('qrPlaceholder').style.display = 'block';
+  document.getElementById('qrImage').src = '';
+  document.getElementById('qrStatus').textContent = '等待扫码...';
+  document.getElementById('qrStatus').className = 'qr-status';
+  document.getElementById('qrResultJson').textContent = '{}';
+}
+
+// ==================== 62登录 ====================
+async function loginWith62() {
+  const data = build62LoginData();
+  try {
+    const result = await apiPost('/Login/Data62Login', data);
+    showResult('login62Result', result);
+    if (result.Success) {
+      toast('登录成功', 'success');
+      handleLoginSuccess(result);
+    } else {
+      toast(result.Message || '登录失败', 'error');
+    }
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function loginWith62SMS() {
+  const data = build62LoginData();
+  try {
+    const result = await apiPost('/Login/Data62SMSApply', data);
+    showResult('login62Result', result);
+    if (result.Success && result.Data) {
+      smsData = result.Data;
+      smsData.Data62 = result.Data62 || '';
+      document.getElementById('smsVerifyCard').style.display = 'block';
+      toast('短信已发送，请输入验证码', 'success');
+    } else {
+      toast(result.Message || '申请失败', 'error');
+    }
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function loginWith62QR() {
+  const data = build62LoginData();
+  try {
+    const result = await apiPost('/Login/Data62QRCodeApply', data);
+    showResult('login62Result', result);
+    if (result.Success && result.Data) {
+      qrVerifyData = result.Data;
+      if (result.Data.QrUrl) {
+        document.getElementById('verifyQrImage').src = result.Data.QrUrl;
+      }
+      document.getElementById('qrVerifyCard').style.display = 'block';
+      toast('请使用微信扫码验证', 'success');
+    } else {
+      toast(result.Message || '申请失败', 'error');
+    }
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+function build62LoginData() {
+  return {
+    UserName: document.getElementById('login62User').value.trim(),
+    Password: document.getElementById('login62Pass').value.trim(),
+    Data62: document.getElementById('login62Data').value.trim(),
+    DeviceName: document.getElementById('login62DeviceName').value.trim() || 'iPad',
+    Proxy: { ProxyIp: document.getElementById('login62Proxy').value.trim() }
+  };
+}
+
+async function verifySMS() {
+  const code = document.getElementById('smsCode').value.trim();
+  if (!code) { toast('请输入验证码', 'error'); return; }
+  if (!smsData.CheckUrl) { toast('未获取到验证URL', 'error'); return; }
+
+  const verifyUrl = smsData.CheckUrl.replace('[[[verifycode]]]', code);
+  try {
+    const result = await apiPost('/Login/Data62SMSVerify', {
+      Url: smsData.CheckUrl,
+      Cookie: smsData.Cookie || '',
+      Sms: code
+    });
+    showResult('login62Result', result);
+    toast(result.Message || '验证完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function resendSMS() {
+  if (!smsData.AgainUrl) { toast('未获取到重发URL', 'error'); return; }
+  try {
+    const result = await apiPost('/Login/Data62SMSAgain', {
+      Url: smsData.AgainUrl,
+      Cookie: smsData.Cookie || ''
+    });
+    showResult('login62Result', result);
+    toast(result.Message || '重发完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function verifyQRCode() {
+  if (!qrVerifyData.CheckUrl) { toast('未获取到检测URL', 'error'); return; }
+  try {
+    const result = await apiPost('/Login/Data62QRCodeVerify', {
+      Url: qrVerifyData.CheckUrl
+    });
+    showResult('login62Result', result);
+    if (result.Data) {
+      document.getElementById('verifyQrStatus').textContent = '验证完成';
+      document.getElementById('verifyQrStatus').className = 'qr-status success';
+    }
+    toast(result.Message || '验证完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+function handleLoginSuccess(result) {
+  const data = result.Data;
+  if (!data) return;
+  const wxid = data.UserName || data.WxId || '';
+  if (wxid) {
+    ['profileWxid','deviceWxid','opsWxid','friendSearchWxid','friendListWxid','friendOpWxid','groupCreateWxid','groupOpWxid','msgSendWxid','syncWxid'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = wxid;
+    });
+  }
+}
+
+// ==================== A16登录 ====================
+async function loginWithA16() {
+  const data = {
+    UserName: document.getElementById('a16User').value.trim(),
+    Password: document.getElementById('a16Pass').value.trim(),
+    Proxy: { ProxyIp: document.getElementById('a16Proxy').value.trim() }
+  };
+  try {
+    const result = await apiPost('/Login/A16Data', data);
+    showResult('a16Result', result);
+    if (result.Success) { toast('登录成功', 'success'); handleLoginSuccess(result); }
+    else toast(result.Message || '登录失败', 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function loginWithA16v2() {
+  const data = {
+    UserName: document.getElementById('a16User').value.trim(),
+    Password: document.getElementById('a16Pass').value.trim(),
+    Proxy: { ProxyIp: document.getElementById('a16Proxy').value.trim() }
+  };
+  try {
+    const result = await apiPost('/Login/A16Data1', data);
+    showResult('a16Result', result);
+    if (result.Success) { toast('登录成功', 'success'); handleLoginSuccess(result); }
+    else toast(result.Message || '登录失败', 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+// ==================== 个人信息 ====================
+async function getProfile() {
+  const wxid = document.getElementById('profileWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  try {
+    const result = await apiPost('/User/GetContractProfile', {}, { wxid: wxid });
+    showResult('profileResult', result);
+    if (result.Success && result.Data) {
+      document.getElementById('profileInfoCard').style.display = 'block';
+      const grid = document.getElementById('profileInfoGrid');
+      const fields = {
+        'WxId': result.Data.UserName || result.Data.WxId,
+        '昵称': result.Data.NickName,
+        '性别': result.Data.Sex === 1 ? '男' : result.Data.Sex === 2 ? '女' : '未知',
+        '个性签名': result.Data.Signature,
+        '国家': result.Data.Country,
+        '省份': result.Data.Province,
+        '城市': result.Data.City,
+        '头像': result.Data.HeadImgUrl,
+        '微信号': result.Data.Alias
+      };
+      grid.innerHTML = Object.entries(fields).map(([k, v]) =>
+        `<div class="info-item"><div class="info-label">${k}</div><div class="info-value">${v || '-'}</div></div>`
+      ).join('');
+    }
+    toast(result.Message || '查询完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function updateProfile() {
+  const wxid = document.getElementById('profileWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  const data = {
+    Wxid: wxid,
+    NickName: document.getElementById('updateNick').value.trim(),
+    Sex: parseInt(document.getElementById('updateSex').value),
+    Country: document.getElementById('updateCountry').value.trim(),
+    Province: document.getElementById('updateProvince').value.trim(),
+    Signature: document.getElementById('updateSignature').value.trim()
+  };
+  try {
+    const result = await apiPost('/User/UpdateProfile', data);
+    showResult('profileResult', result);
+    toast(result.Message || '修改完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function setAlias() {
+  const wxid = document.getElementById('profileWxid').value.trim();
+  const alias = document.getElementById('newAlias').value.trim();
+  if (!wxid || !alias) { toast('请填写wxid和新微信号', 'error'); return; }
+  try {
+    const result = await apiPost('/User/SetAlisa', { Wxid: wxid, Alias: alias });
+    showResult('profileResult', result);
+    toast(result.Message || '设置完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function setPassword() {
+  const wxid = document.getElementById('profileWxid').value.trim();
+  const oldP = document.getElementById('oldPasswd').value;
+  const newP = document.getElementById('newPasswd').value;
+  if (!wxid || !oldP || !newP) { toast('请填写完整', 'error'); return; }
+  try {
+    const result = await apiPost('/User/SetPasswd', { Wxid: wxid, OldPasswd: oldP, NewPasswd: newP });
+    showResult('profileResult', result);
+    toast(result.Message || '修改完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+// ==================== 设备管理 ====================
+async function getSafetyInfo() {
+  const wxid = document.getElementById('deviceWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  try {
+    const result = await apiPost('/User/GetSafetyInfo', {}, { wxid: wxid });
+    showResult('deviceResult', result);
+    if (result.Success && result.Data) {
+      document.getElementById('deviceListCard').style.display = 'block';
+      const tbody = document.getElementById('deviceTableBody');
+      const list = Array.isArray(result.Data) ? result.Data : (result.Data.List || result.Data.Items || []);
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text2);">无设备数据</td></tr>';
+      } else {
+        tbody.innerHTML = list.map(d =>
+          `<tr>
+            <td>${d.Uuid || d.UUID || '-'}</td>
+            <td>${d.DeviceName || d.Name || '-'}</td>
+            <td><span class="badge badge-success">在线</span></td>
+            <td><button class="btn btn-sm btn-danger" onclick="deleteDevice('${d.Uuid || d.UUID || ''}')">删除</button></td>
+          </tr>`
+        ).join('');
+      }
+    }
+    toast(result.Message || '查询完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function deleteDevice(uuid) {
+  if (!confirm('确认删除该设备?')) return;
+  const wxid = document.getElementById('deviceWxid').value.trim();
+  try {
+    const result = await apiPost('/User/DelSafetyInfo', { Wxid: wxid, Uuid: uuid });
+    showResult('deviceResult', result);
+    toast(result.Message || '删除完成', result.Success ? 'success' : 'error');
+    if (result.Success) getSafetyInfo();
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+// ==================== 账号绑定 ====================
+async function bindQQ() {
+  const wxid = document.getElementById('profileWxid').value.trim() || document.getElementById('opsWxid').value.trim();
+  const data = { Wxid: wxid, Account: document.getElementById('bindQQAccount').value.trim(), Password: document.getElementById('bindQQPass').value.trim() };
+  try {
+    const result = await apiPost('/User/BindQQ', data);
+    showResult('bindResult', result);
+    toast(result.Message || '操作完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function bindEmail() {
+  const wxid = document.getElementById('profileWxid').value.trim() || document.getElementById('opsWxid').value.trim();
+  const data = { Wxid: wxid, Email: document.getElementById('bindEmail').value.trim() };
+  try {
+    const result = await apiPost('/User/BindingEmail', data);
+    showResult('bindResult', result);
+    toast(result.Message || '操作完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function sendMobileCode() {
+  const wxid = document.getElementById('profileWxid').value.trim() || document.getElementById('opsWxid').value.trim();
+  const mobile = document.getElementById('bindMobile').value.trim();
+  try {
+    const result = await apiPost('/User/SendVerifyMobile', { Wxid: wxid, Opcode: 18, Mobile: mobile });
+    showResult('bindResult', result);
+    toast(result.Message || '验证码已发送', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function bindMobile() {
+  const wxid = document.getElementById('profileWxid').value.trim() || document.getElementById('opsWxid').value.trim();
+  const data = { Wxid: wxid, Mobile: document.getElementById('bindMobile').value.trim(), Verifycode: document.getElementById('bindMobileCode').value.trim() };
+  try {
+    const result = await apiPost('/User/BindingMobile', data);
+    showResult('bindResult', result);
+    toast(result.Message || '绑定完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+// ==================== 账号操作 ====================
+async function sendHeartbeat() {
+  const wxid = document.getElementById('opsWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  try {
+    const result = await apiPost('/Login/HeartBeat', {}, { wxid: wxid });
+    showResult('opsResult', result);
+    toast('心跳完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function sendLongHeartbeat() {
+  const wxid = document.getElementById('opsWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  try {
+    const result = await apiPost('/Login/HeartBeatLong', {}, { wxid: wxid });
+    showResult('opsResult', result);
+    toast('长连接心跳完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function getCacheInfo() {
+  const wxid = document.getElementById('opsWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  try {
+    const result = await apiPost('/Login/GetCacheInfo', {}, { wxid: wxid });
+    showResult('opsResult', result);
+    toast('获取缓存完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function get62Data() {
+  const wxid = document.getElementById('opsWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  try {
+    const result = await apiPost('/Login/Get62Data', {}, { wxid: wxid });
+    showResult('opsResult', result);
+    toast('获取62数据完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function getA16Data() {
+  const wxid = document.getElementById('opsWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  try {
+    const result = await apiPost('/Login/GetA16Data', {}, { wxid: wxid });
+    showResult('opsResult', result);
+    toast('获取A16数据完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function doNewInit() {
+  const wxid = document.getElementById('opsWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  try {
+    const result = await apiPost('/Login/Newinit', {}, { wxid: wxid });
+    showResult('opsResult', result);
+    toast('初始化同步完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function awakenLogin() {
+  const wxid = document.getElementById('opsWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  try {
+    const result = await apiPost('/Login/LoginAwaken', { Wxid: wxid });
+    showResult('opsResult', result);
+    toast('唤醒登录完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function doLogout() {
+  const wxid = document.getElementById('opsWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  if (!confirm('确认退出登录?')) return;
+  try {
+    const result = await apiPost('/Login/LogOut', {}, { wxid: wxid });
+    showResult('opsResult', result);
+    if (result.Success) {
+      removeAccount(wxid);
+    }
+    toast(result.Message || '退出完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function setProxy() {
+  const wxid = document.getElementById('opsWxid').value.trim();
+  const data = {
+    Wxid: wxid,
+    Proxy: {
+      ProxyIp: document.getElementById('setProxyIp').value.trim(),
+      ProxyUser: document.getElementById('setProxyUser').value.trim(),
+      ProxyPassword: document.getElementById('setProxyPass').value.trim()
+    }
+  };
+  try {
+    const result = await apiPost('/Tools/setproxy', data);
+    showResult('opsResult', result);
+    toast(result.Message || '设置代理完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function clearProxy() {
+  const wxid = document.getElementById('opsWxid').value.trim();
+  try {
+    const result = await apiPost('/Tools/setproxy', { Wxid: wxid, Proxy: {} });
+    showResult('opsResult', result);
+    toast(result.Message || '清除代理完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+// ==================== 好友管理 ====================
+async function searchFriend() {
+  const data = { Wxid: document.getElementById('friendSearchWxid').value.trim(), Keyword: document.getElementById('friendKeyword').value.trim() };
+  try {
+    const result = await apiPost('/Friend/Search', data);
+    showResult('friendResult', result);
+    toast(result.Message || '搜索完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function getFriendList() {
+  const wxid = document.getElementById('friendListWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  try {
+    const result = await apiPost('/Friend/GetMFriend', {}, { wxid: wxid });
+    showResult('friendResult', result);
+    toast(result.Message || '获取完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function addFriend() {
+  const data = {
+    Wxid: document.getElementById('friendOpWxid').value.trim(),
+    ToWxid: document.getElementById('friendTargetWxid').value.trim(),
+    Content: document.getElementById('friendVerifyMsg').value.trim()
+  };
+  try {
+    const result = await apiPost('/Friend/SayHello', data);
+    showResult('friendResult', result);
+    toast(result.Message || '发送完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function setFriendRemark() {
+  const data = {
+    Wxid: document.getElementById('friendOpWxid').value.trim(),
+    ToWxid: document.getElementById('friendTargetWxid').value.trim(),
+    Remark: document.getElementById('friendRemark').value.trim()
+  };
+  try {
+    const result = await apiPost('/Friend/SetRemarks', data);
+    showResult('friendResult', result);
+    toast(result.Message || '设置完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function getFriendRelation() {
+  const data = {
+    Wxid: document.getElementById('friendOpWxid').value.trim(),
+    ToWxid: document.getElementById('friendTargetWxid').value.trim()
+  };
+  try {
+    const result = await apiPost('/Friend/GetFriendRelation', data);
+    showResult('friendResult', result);
+    toast(result.Message || '查询完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function deleteFriend() {
+  if (!confirm('确认删除该好友?')) return;
+  const data = { Wxid: document.getElementById('friendOpWxid').value.trim(), ToWxid: document.getElementById('friendTargetWxid').value.trim() };
+  try {
+    const result = await apiPost('/Friend/Delete', data);
+    showResult('friendResult', result);
+    toast(result.Message || '删除完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function addToBlacklist() {
+  if (!confirm('确认拉黑该好友?')) return;
+  const data = { Wxid: document.getElementById('friendOpWxid').value.trim(), ToWxid: document.getElementById('friendTargetWxid').value.trim() };
+  try {
+    const result = await apiPost('/Friend/BlacklistAdd', data);
+    showResult('friendResult', result);
+    toast(result.Message || '拉黑完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+// ==================== 群组管理 ====================
+async function createGroup() {
+  const data = {
+    Wxid: document.getElementById('groupCreateWxid').value.trim(),
+    ToWxids: document.getElementById('groupMembers').value.trim()
+  };
+  try {
+    const result = await apiPost('/Group/CreateChatRoom', data);
+    showResult('groupResult', result);
+    toast(result.Message || '创建完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function addGroupMember() {
+  const data = {
+    Wxid: document.getElementById('groupOpWxid').value.trim(),
+    ChatRoom: document.getElementById('groupChatroom').value.trim(),
+    ToWxid: document.getElementById('groupMemberOp').value.trim()
+  };
+  try {
+    const result = await apiPost('/Group/AddChatRoomMember', data);
+    showResult('groupResult', result);
+    toast(result.Message || '操作完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function delGroupMember() {
+  if (!confirm('确认移除该成员?')) return;
+  const data = {
+    Wxid: document.getElementById('groupOpWxid').value.trim(),
+    ChatRoom: document.getElementById('groupChatroom').value.trim(),
+    ToWxid: document.getElementById('groupMemberOp').value.trim()
+  };
+  try {
+    const result = await apiPost('/Group/DelChatRoomMember', data);
+    showResult('groupResult', result);
+    toast(result.Message || '操作完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function setGroupAnnouncement() {
+  const data = {
+    Wxid: document.getElementById('groupOpWxid').value.trim(),
+    ChatRoom: document.getElementById('groupChatroom').value.trim(),
+    Announcement: document.getElementById('groupContent').value.trim()
+  };
+  try {
+    const result = await apiPost('/Group/SetChatRoomAnnouncement', data);
+    showResult('groupResult', result);
+    toast(result.Message || '设置完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function setGroupName() {
+  const data = {
+    Wxid: document.getElementById('groupOpWxid').value.trim(),
+    ChatRoom: document.getElementById('groupChatroom').value.trim(),
+    Name: document.getElementById('groupContent').value.trim()
+  };
+  try {
+    const result = await apiPost('/Group/SetChatRoomName', data);
+    showResult('groupResult', result);
+    toast(result.Message || '设置完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function quitGroup() {
+  if (!confirm('确认退出群聊?')) return;
+  const data = {
+    Wxid: document.getElementById('groupOpWxid').value.trim(),
+    ChatRoom: document.getElementById('groupChatroom').value.trim()
+  };
+  try {
+    const result = await apiPost('/Group/Quit', data);
+    showResult('groupResult', result);
+    toast(result.Message || '退出完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function getGroupQRCode() {
+  const data = {
+    Wxid: document.getElementById('groupOpWxid').value.trim(),
+    ChatRoom: document.getElementById('groupChatroom').value.trim()
+  };
+  try {
+    const result = await apiPost('/Group/GetQRCode', data);
+    showResult('groupResult', result);
+    toast(result.Message || '获取完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function getGroupInfo() {
+  const data = {
+    Wxid: document.getElementById('groupOpWxid').value.trim(),
+    ChatRoom: document.getElementById('groupChatroom').value.trim()
+  };
+  try {
+    const result = await apiPost('/Group/GetChatRoomInfoDetail', data);
+    showResult('groupResult', result);
+    toast(result.Message || '获取完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function getGroupMember() {
+  const data = {
+    Wxid: document.getElementById('groupOpWxid').value.trim(),
+    ChatRoom: document.getElementById('groupChatroom').value.trim()
+  };
+  try {
+    const result = await apiPost('/Group/GetChatRoomMemberDetail', data);
+    showResult('groupResult', result);
+    toast(result.Message || '获取完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+// ==================== 消息管理 ====================
+async function sendTextMsg() {
+  const data = {
+    Wxid: document.getElementById('msgSendWxid').value.trim(),
+    ToWxid: document.getElementById('msgToWxid').value.trim(),
+    Content: document.getElementById('msgContent').value.trim()
+  };
+  if (!data.Wxid || !data.ToWxid || !data.Content) { toast('请填写完整信息', 'error'); return; }
+  try {
+    const result = await apiPost('/Msg/SendNewMsg', data);
+    showResult('msgResult', result);
+    toast(result.Message || '发送完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+async function syncMsg() {
+  const wxid = document.getElementById('syncWxid').value.trim();
+  if (!wxid) { toast('请输入wxid', 'error'); return; }
+  const data = {
+    Wxid: wxid,
+    Scene: parseInt(document.getElementById('syncScene').value) || 0
+  };
+  try {
+    const result = await apiPost('/Msg/Sync', data);
+    showResult('msgResult', result);
+    toast(result.Message || '同步完成', result.Success ? 'success' : 'error');
+  } catch (e) { toast('请求失败: ' + e.message, 'error'); }
+}
+
+// ==================== 日志操作 ====================
+function clearLogs() {
+  sysLogs = [];
+  renderSysLogs();
+  toast('日志已清空', 'info');
+}
+
+function exportLogs() {
+  const text = sysLogs.map(l => l.time + ' ' + l.msg).join('\n');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'wechat08_logs_' + new Date().toISOString().slice(0, 10) + '.txt';
+  a.click();
+  toast('日志已导出', 'success');
+}
+
+function clearApiLogs() {
+  apiLogs = [];
+  renderApiLogs();
+  toast('API日志已清空', 'info');
+}
+
+function refreshApiLogs() {
+  renderApiLogs();
+}
+
+// ==================== 系统设置 ====================
+function saveSettings() {
+  API_BASE = document.getElementById('apiBaseUrl').value.trim().replace(/\/$/, '');
+  localStorage.setItem('apiBaseUrl', API_BASE);
+  toast('设置已保存', 'success');
+}
+
+// ==================== 邮箱配置 ====================
+let emailConfig = JSON.parse(localStorage.getItem('emailConfig') || '{}');
+let emailBindings = JSON.parse(localStorage.getItem('emailBindings') || '[]');
+let emailLogs = JSON.parse(localStorage.getItem('emailLogs') || '[]');
+
+// 加载邮箱配置到表单
+function loadEmailConfig() {
+  document.getElementById('emailSender').value = emailConfig.sender || '';
+  document.getElementById('emailAuthCode').value = emailConfig.authCode || '';
+  document.getElementById('emailSmtpHost').value = emailConfig.smtpHost || '';
+  document.getElementById('emailSmtpPort').value = emailConfig.smtpPort || '465';
+  document.getElementById('emailSenderName').value = emailConfig.senderName || 'WeChat08 监控';
+  document.getElementById('emailSslEnabled').checked = emailConfig.sslEnabled !== false;
+}
+
+// 保存邮箱SMTP配置
+function saveEmailConfig() {
+  emailConfig = {
+    sender: document.getElementById('emailSender').value.trim(),
+    authCode: document.getElementById('emailAuthCode').value.trim(),
+    smtpHost: document.getElementById('emailSmtpHost').value.trim(),
+    smtpPort: document.getElementById('emailSmtpPort').value.trim() || '465',
+    senderName: document.getElementById('emailSenderName').value.trim() || 'WeChat08 监控',
+    sslEnabled: document.getElementById('emailSslEnabled').checked
+  };
+  localStorage.setItem('emailConfig', JSON.stringify(emailConfig));
+  toast('邮箱配置已保存', 'success');
+  addSysLog('邮箱配置已更新: ' + emailConfig.sender + ' @ ' + emailConfig.smtpHost);
+}
+
+// 显示/隐藏添加绑定表单
+function showAddEmailBinding() {
+  document.getElementById('emailBindingForm').style.display = 'block';
+  document.getElementById('bindingWxid').value = '';
+  document.getElementById('bindingEmail').value = '';
+  document.getElementById('bindingRemark').value = '';
+  document.getElementById('bindingWxid').focus();
+}
+function hideAddEmailBinding() {
+  document.getElementById('emailBindingForm').style.display = 'none';
+}
+
+// 添加wxid→邮箱绑定
+function addEmailBinding() {
+  const wxid = document.getElementById('bindingWxid').value.trim();
+  const email = document.getElementById('bindingEmail').value.trim();
+  const remark = document.getElementById('bindingRemark').value.trim();
+
+  if (!wxid) { toast('请输入Wxid', 'error'); return; }
+  if (!email || !email.includes('@')) { toast('请输入有效的邮箱地址', 'error'); return; }
+
+  // 检查是否已存在
+  const exists = emailBindings.find(b => b.wxid === wxid);
+  if (exists) {
+    exists.email = email;
+    exists.remark = remark || exists.remark;
+    toast('绑定已更新: ' + wxid, 'success');
+  } else {
+    emailBindings.push({ wxid, email, remark, enabled: true, lastNotified: '' });
+    toast('绑定已添加', 'success');
+  }
+
+  localStorage.setItem('emailBindings', JSON.stringify(emailBindings));
+  renderEmailBindings();
+  hideAddEmailBinding();
+  addSysLog('邮箱绑定: ' + wxid + ' -> ' + email);
+}
+
+// 删除绑定
+function removeEmailBinding(wxid) {
+  if (!confirm('确认删除 ' + wxid + ' 的邮箱绑定？')) return;
+  emailBindings = emailBindings.filter(b => b.wxid !== wxid);
+  localStorage.setItem('emailBindings', JSON.stringify(emailBindings));
+  renderEmailBindings();
+  toast('绑定已删除', 'success');
+  addSysLog('删除邮箱绑定: ' + wxid);
+}
+
+// 切换绑定启用/禁用
+function toggleEmailBinding(wxid) {
+  const binding = emailBindings.find(b => b.wxid === wxid);
+  if (binding) {
+    binding.enabled = !binding.enabled;
+    localStorage.setItem('emailBindings', JSON.stringify(emailBindings));
+    renderEmailBindings();
+  }
+}
+
+// 渲染绑定列表
+function renderEmailBindings() {
+  const tbody = document.getElementById('emailBindingTable');
+  if (!tbody) return;
+
+  if (emailBindings.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:30px;">暂无绑定，点击上方"添加绑定"配置离线通知</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = emailBindings.map(b => {
+    const online = accountOnlineStatus[b.wxid];
+    let statusHtml;
+    if (online === true) {
+      statusHtml = '<span class="badge badge-success">在线</span>';
+    } else if (online === false) {
+      statusHtml = '<span class="badge badge-danger">离线</span>';
+    } else {
+      statusHtml = '<span class="badge" style="background:#666;color:#fff;">未知</span>';
+    }
+    return `<tr>
+      <td style="font-family:monospace;font-size:12px;">${escHtml(b.wxid)}</td>
+      <td>${escHtml(b.email)}</td>
+      <td style="color:var(--text2);font-size:12px;">${escHtml(b.remark || '-')}</td>
+      <td>${statusHtml}</td>
+      <td style="text-align:right;">
+        <label class="toggle" style="margin-right:8px;" onclick="toggleEmailBinding('${escHtml(b.wxid)}')">
+          <input type="checkbox" ${b.enabled ? 'checked' : ''} onchange="toggleEmailBinding('${escHtml(b.wxid)}')">
+          <span class="toggle-slider"></span>
+        </label>
+        <button class="btn btn-sm btn-danger" onclick="removeEmailBinding('${escHtml(b.wxid)}')">删除</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// 发送测试邮件
+async function testSendEmail() {
+  const config = {
+    Sender: document.getElementById('emailSender').value.trim(),
+    AuthCode: document.getElementById('emailAuthCode').value.trim(),
+    SmtpHost: document.getElementById('emailSmtpHost').value.trim(),
+    SmtpPort: parseInt(document.getElementById('emailSmtpPort').value) || 465,
+    SenderName: document.getElementById('emailSenderName').value.trim() || 'WeChat08 监控',
+    SslEnabled: document.getElementById('emailSslEnabled').checked,
+    ToEmail: document.getElementById('emailSender').value.trim(), // 发给自己测试
+    Subject: 'WeChat08 测试邮件',
+    Body: '这是一封测试邮件，如果你收到此邮件说明邮箱配置正确。\n\n发送时间: ' + new Date().toLocaleString()
+  };
+
+  if (!config.Sender || !config.AuthCode || !config.SmtpHost) {
+    toast('请先填写完整的邮箱配置', 'error');
+    return;
+  }
+
+  try {
+    toast('正在发送测试邮件...', 'info');
+    const result = await apiPost('/Tools/SendEmail', config);
+    if (result.Success) {
+      toast('测试邮件已发送，请检查收件箱', 'success');
+      addEmailLog('测试邮件', config.Sender, '发送成功');
+    } else {
+      toast('发送失败: ' + (result.Message || '未知错误'), 'error');
+      addEmailLog('测试邮件', config.Sender, '失败: ' + (result.Message || ''));
+    }
+  } catch (e) {
+    toast('发送失败: ' + e.message, 'error');
+    addEmailLog('测试邮件', config.Sender, '失败: ' + e.message);
+  }
+}
+
+// 发送离线通知邮件
+async function sendOfflineNotification(wxid, nick, email) {
+  const config = emailConfig;
+  if (!config.sender || !config.authCode || !config.smtpHost) {
+    addSysLog('邮箱未配置，跳过离线通知: ' + wxid);
+    return false;
+  }
+
+  const now = new Date().toLocaleString('zh-CN');
+  const subject = `[离线通知] ${nick || wxid} 已掉线`;
+  const body = `WeChat08 账号离线通知\n\n` +
+    `账号: ${wxid}\n` +
+    `昵称: ${nick || '未知'}\n` +
+    `检测时间: ${now}\n\n` +
+    `该账号已失去连接，请及时处理。`;
+
+  const params = {
+    Sender: config.sender,
+    AuthCode: config.authCode,
+    SmtpHost: config.smtpHost,
+    SmtpPort: parseInt(config.smtpPort) || 465,
+    SenderName: config.senderName || 'WeChat08 监控',
+    SslEnabled: config.sslEnabled !== false,
+    ToEmail: email,
+    Subject: subject,
+    Body: body
+  };
+
+  try {
+    const result = await apiPost('/Tools/SendEmail', params);
+    const success = result.Success;
+    addEmailLog(nick || wxid, email, success ? '发送成功' : ('失败: ' + (result.Message || '')));
+    addSysLog(`离线邮件通知: ${wxid} -> ${email} [${success ? '成功' : '失败'}]`);
+
+    // 更新最后通知时间
+    const binding = emailBindings.find(b => b.wxid === wxid);
+    if (binding) {
+      binding.lastNotified = new Date().toLocaleString('zh-CN');
+      localStorage.setItem('emailBindings', JSON.stringify(emailBindings));
+    }
+
+    return success;
+  } catch (e) {
+    addEmailLog(nick || wxid, email, '失败: ' + e.message);
+    addSysLog(`离线邮件通知异常: ${wxid} -> ${e.message}`);
+    return false;
+  }
+}
+
+// 邮件发送日志
+function addEmailLog(target, email, result) {
+  const time = new Date().toLocaleTimeString();
+  emailLogs.push({ time, target, email, result });
+  if (emailLogs.length > 200) emailLogs.shift();
+  localStorage.setItem('emailLogs', JSON.stringify(emailLogs));
+  renderEmailLogs();
+}
+
+function renderEmailLogs() {
+  const viewer = document.getElementById('emailLogViewer');
+  if (!viewer) return;
+
+  if (emailLogs.length === 0) {
+    viewer.innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px;">暂无发送记录</div>';
+    return;
+  }
+
+  viewer.innerHTML = emailLogs.slice(-100).reverse().map(l => {
+    const isError = l.result.indexOf('失败') >= 0 || l.result.indexOf('异常') >= 0;
+    const color = isError ? 'var(--danger)' : 'var(--success)';
+    return `<div class="log-entry">
+      <span class="log-time">${l.time}</span>
+      <span style="color:var(--info);min-width:100px;">[${escHtml(l.target)}]</span>
+      <span style="color:var(--text2);min-width:160px;">${escHtml(l.email)}</span>
+      <span style="color:${color};">${escHtml(l.result)}</span>
+    </div>`;
+  }).join('');
+  viewer.scrollTop = viewer.scrollHeight;
+}
+
+function clearEmailLogs() {
+  emailLogs = [];
+  localStorage.setItem('emailLogs', JSON.stringify(emailLogs));
+  renderEmailLogs();
+  toast('邮件记录已清空', 'success');
+}
+
+// ==================== 初始化 ====================
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('apiBaseUrl').value = API_BASE;
+  checkServerConnection();
+  renderApiList();
+  renderAccountTable();
+  // 加载邮箱配置和绑定
+  loadEmailConfig();
+  renderEmailBindings();
+  renderEmailLogs();
+  // 检测所有账号真实在线状态
+  checkAllAccountsStatus();
+  // 恢复上次选中的账号
+  if (accounts.length > 0) {
+    currentWxid = accounts[0].wxid;
+    applyCurrentAccount();
+  }
+  addSysLog('管理后台已启动');
+  addSysLog('API地址: ' + (API_BASE || '(当前域名)'));
+  if (accounts.length > 0) addSysLog('已加载 ' + accounts.length + ' 个历史账号');
+  if (emailBindings.length > 0) addSysLog('已加载 ' + emailBindings.length + ' 个邮箱绑定');
+});
+
+function renderApiList() {
+  const apis = [
+    ['登录', '获取二维码(iPad)', 'POST', '/api/Login/LoginGetQR'],
+    ['登录', '获取二维码(安卓Pad)', 'POST', '/api/Login/LoginGetQRPad'],
+    ['登录', '获取二维码(Windows)', 'POST', '/api/Login/LoginGetQRWin'],
+    ['登录', '获取二维码(Mac)', 'POST', '/api/Login/LoginGetQRMac'],
+    ['登录', '获取二维码(Car)', 'POST', '/api/Login/LoginGetQRCar'],
+    ['登录', '检测二维码', 'POST', '/api/Login/LoginCheckQR'],
+    ['登录', '二次登录', 'POST', '/api/Login/LoginTwiceAutoAuth'],
+    ['登录', '62登录', 'POST', '/api/Login/Data62Login'],
+    ['登录', 'A16登录', 'POST', '/api/Login/A16Data'],
+    ['登录', '心跳包', 'POST', '/api/Login/HeartBeat'],
+    ['登录', '长连接心跳', 'POST', '/api/Login/HeartBeatLong'],
+    ['登录', '初始化同步', 'POST', '/api/Login/Newinit'],
+    ['登录', '唤醒登录', 'POST', '/api/Login/LoginAwaken'],
+    ['登录', '获取缓存', 'POST', '/api/Login/GetCacheInfo'],
+    ['登录', '获取62数据', 'POST', '/api/Login/Get62Data'],
+    ['登录', '退出登录', 'POST', '/api/Login/LogOut'],
+    ['消息', '同步消息', 'POST', '/api/Msg/Sync'],
+    ['消息', '发送文本', 'POST', '/api/Msg/SendNewMsg'],
+    ['消息', '发送图片', 'POST', '/api/Msg/SendImageMsg'],
+    ['消息', '发送语音', 'POST', '/api/Msg/SendVoiceMsg'],
+    ['好友', '搜索联系人', 'POST', '/api/Friend/Search'],
+    ['好友', '好友列表', 'POST', '/api/Friend/GetMFriend'],
+    ['好友', '设置备注', 'POST', '/api/Friend/SetRemarks'],
+    ['好友', '添加好友', 'POST', '/api/Friend/SayHello'],
+    ['好友', '删除好友', 'POST', '/api/Friend/Delete'],
+    ['群组', '创建群聊', 'POST', '/api/Group/CreateChatRoom'],
+    ['群组', '添加成员', 'POST', '/api/Group/AddChatRoomMember'],
+    ['群组', '移除成员', 'POST', '/api/Group/DelChatRoomMember'],
+    ['群组', '群公告', 'POST', '/api/Group/SetChatRoomAnnouncement'],
+    ['群组', '群名称', 'POST', '/api/Group/SetChatRoomName'],
+    ['群组', '退出群聊', 'POST', '/api/Group/Quit'],
+    ['用户', '个人信息', 'POST', '/api/User/GetContractProfile'],
+    ['用户', '修改资料', 'POST', '/api/User/UpdateProfile'],
+    ['用户', '绑定QQ', 'POST', '/api/User/BindQQ'],
+    ['用户', '绑定邮箱', 'POST', '/api/User/BindingEmail'],
+    ['用户', '绑定手机', 'POST', '/api/User/BindingMobile'],
+    ['用户', '设置密码', 'POST', '/api/User/SetPasswd'],
+    ['用户', '设置微信号', 'POST', '/api/User/SetAlisa'],
+    ['用户', '登录设备', 'POST', '/api/User/GetSafetyInfo'],
+    ['工具', '设置代理', 'POST', '/api/Tools/setproxy'],
+    ['工具', '发送邮件', 'POST', '/api/Tools/SendEmail'],
+  ];
+  const tbody = document.getElementById('apiListBody');
+  tbody.innerHTML = apis.map(a =>
+    `<tr><td><span class="badge badge-info">${a[0]}</span></td><td>${a[1]}</td><td><span class="badge badge-success">${a[2]}</span></td><td style="font-family:monospace;font-size:12px;">${a[3]}</td></tr>`
+  ).join('');
+}
+</script>
+</body>
+</html>

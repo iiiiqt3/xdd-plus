@@ -1,0 +1,90 @@
+syntax = "proto2";
+option go_package = "/;jm";
+package jm;
+
+message BaseRequest {
+    optional  bytes  sessionKey  = 1;
+    optional  uint32  uin  = 2;
+    optional  bytes  deviceId  = 3;
+    optional  int32  clientVersion  = 4;
+    optional  bytes  deviceType  = 5;
+    optional  uint32  scene  = 6;
+}
+
+
+message BaseRequestPlus {
+    //会话key base64字符串
+    optional bytes session_key = 1;
+    optional uint32 uin = 2;
+    optional bytes deviceId = 3;
+    optional int32 clientVersion = 4;
+    optional string osType = 5;
+    optional uint32 scene = 6;
+}
+
+
+
+message SKBuiltinString_t {
+    optional  string  string  = 1;
+}
+
+message BaseResponse {
+    optional  int32  ret  = 1;
+    optional  SKBuiltinString_t  errMsg  = 2;
+}
+message SKBuiltinString_S {
+    optional  uint32  iLen  = 1;
+    optional  string  buffer  = 2;
+}
+message DecryptWxWorkChatRecordReq {
+    optional  bytes  content  = 1;
+}
+
+message DecryptWxWorkChatRecordResp {
+    optional  BaseResponse  baseResp  = 1;
+    optional  string  content  = 2;
+}
+
+
+message SKBuiltinString_ {
+    optional uint32 len = 1;
+    //base64字符串
+    optional bytes buffer = 2;
+}
+
+message MassSendRequest {
+    required  BaseRequest  baseRequest  = 1;
+    optional  string  toList  = 2;
+    optional  string  toListMd5  = 3;
+    optional  string  clientId  = 4;
+    required  uint32  msgType  = 5;
+    required  uint32  mediaTime  = 6;
+    required  SKBuiltinBuffer_t  dataBuffer  = 7;
+    required  uint32  dataStartPos  = 8;
+    required  uint32  dataTotalLen  = 9;
+    required  uint32  thumbTotalLen  = 10;
+    required  uint32  thumbStartPos  = 11;
+    required  SKBuiltinBuffer_t  thumbData  = 12;
+    required  uint32  cameraType  = 13;
+    required  uint32  videoSource  = 14;
+    required  uint32  toListCount  = 15;
+    required  uint32  isSendAgain  = 16;
+    optional  uint32  compressType  = 17;
+    optional  uint32  voiceFormat  = 18;
+    optional  string  videoUrl  = 19;
+    optional  string  thumbUrl  = 20;
+    optional  uint32  thumbWidth  = 21;
+    optional  uint32  thumbHeight  = 22;
+    optional  string  thumbAeskey  = 23;
+    optional  string  videoAeskey  = 24;
+}
+message SKBuiltinBuffer_t {
+    required  uint32  iLen  = 1;
+    optional  bytes  buffer  = 2;
+}
+message MassSendResponse {
+    required  BaseResponse  baseResponse  = 1;
+    required  uint32  dataStartPos  = 2;
+    required  uint32  thumbStartPos  = 3;
+    required  uint32  maxSupport  = 4;
+}

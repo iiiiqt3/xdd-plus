@@ -1,0 +1,30 @@
+FROM ubuntu:24.04
+
+LABEL maintainer="wechat08"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    tzdata \
+    && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /root/wechat08
+
+# 复制所有文件
+COPY wechatdll wechat08
+COPY lib/ lib/
+COPY swagger/ swagger/
+COPY 08sae.dat rqtx.dat ./
+COPY entrypoint.sh ./
+
+RUN ldconfig /root/wechat08/lib \
+    && chmod +x wechat08 entrypoint.sh
+
+ENV LD_LIBRARY_PATH=/root/wechat08/lib:$LD_LIBRARY_PATH
+
+EXPOSE 9059
+
+ENTRYPOINT ["./entrypoint.sh"]
