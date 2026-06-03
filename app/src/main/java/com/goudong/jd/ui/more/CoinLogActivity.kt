@@ -80,33 +80,32 @@ class CoinLogActivity : AppCompatActivity() {
             setOnRefreshListener { loadCoinLogs() }
             addView(scroll)
         }
-        swipeRefreshLayout.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    touchStartX = event.x
-                    touchStartY = event.y
-                    false
-                }
-                MotionEvent.ACTION_UP -> {
-                    val dx = event.x - touchStartX
-                    val dy = event.y - touchStartY
-                    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 100) {
-                        val currentIdx = filters.indexOfFirst { it.first == currentSource }
-                        if (dx < 0 && currentIdx < filters.size - 1) {
-                            selectFilter(filters[currentIdx + 1].first, filterButtons[currentIdx + 1])
-                        } else if (dx > 0 && currentIdx > 0) {
-                            selectFilter(filters[currentIdx - 1].first, filterButtons[currentIdx - 1])
-                        }
-                        true
-                    } else false
-                }
-                else -> false
-            }
-        }
         wrapper.addView(swipeRefreshLayout)
         setContentView(wrapper)
 
         selectFilter("", filterButtons[0])
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        when (ev.action) {
+            MotionEvent.ACTION_DOWN -> {
+                touchStartX = ev.x
+                touchStartY = ev.y
+            }
+            MotionEvent.ACTION_UP -> {
+                val dx = ev.x - touchStartX
+                val dy = ev.y - touchStartY
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 100) {
+                    val currentIdx = filters.indexOfFirst { it.first == currentSource }
+                    if (dx < 0 && currentIdx < filters.size - 1) {
+                        selectFilter(filters[currentIdx + 1].first, filterButtons[currentIdx + 1])
+                    } else if (dx > 0 && currentIdx > 0) {
+                        selectFilter(filters[currentIdx - 1].first, filterButtons[currentIdx - 1])
+                    }
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
     }
 
     override fun onResume() {
