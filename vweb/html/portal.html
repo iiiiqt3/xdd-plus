@@ -546,6 +546,27 @@
             transition: all 0.18s ease;
         }
         .modal-close:hover { background: rgba(220,38,38,0.08); color: var(--red); border-color: rgba(220,38,38,0.20); }
+        .coin-log-tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid var(--glass-border); background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+        .coin-log-tab.active { background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; border-color: transparent; }
+        .coin-log-tab:hover:not(.active) { background: var(--glass-bg); color: var(--text); }
+        .coin-log-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--glass-border); transition: background 0.15s; }
+        .coin-log-item:last-child { border-bottom: none; }
+        .coin-log-item:hover { background: var(--glass-bg); }
+        .coin-log-icon { flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        .coin-log-info { flex: 1; min-width: 0; }
+        .coin-log-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; flex-wrap: wrap; }
+        .coin-log-type { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .coin-log-source { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+        .coin-log-source.src-web { background: rgba(8,145,178,0.12); color: var(--cyan); }
+        .coin-log-source.src-app { background: rgba(124,58,237,0.12); color: var(--purple); }
+        .coin-log-source.src-wx { background: rgba(16,185,129,0.12); color: var(--green); }
+        .coin-log-source.src-admin { background: rgba(245,158,11,0.12); color: var(--amber); }
+        .coin-log-source.src-other { background: rgba(107,114,128,0.12); color: var(--text-muted); }
+        .coin-log-time { font-size: 11px; color: var(--text-muted); }
+        .coin-log-detail { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .coin-log-amount { flex-shrink: 0; text-align: right; }
+        .coin-log-amount .val { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .coin-log-amount .bal { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
         /* ===== 表单 ===== */
         .form-grid {
@@ -1237,7 +1258,7 @@
         <!-- ===== 积分相关 ===== -->
         <section class="panel" id="panel-tasks">
             <div class="section">
-                <div class="section-header panel-duplicate-title"><h3>⭐ 积分相关</h3><span class="muted">签到、祈福、购买、兑换与积分变动记录</span></div>
+                <div class="section-header panel-duplicate-title"><h3>⭐ 积分相关</h3><span class="muted">签到、祈福、购买、兑换与积分变动</span></div>
                 <div class="task-grid" id="taskAuthHint" style="display:none;margin-bottom:0;">
                     <div class="task-box" style="grid-column:1/-1;background:rgba(220,38,38,0.04);border-color:rgba(220,38,38,0.15);">
                         <h3 style="color:var(--red);">⚠️ 暂无有效授权账号</h3>
@@ -1245,6 +1266,8 @@
                         <button class="btn accent" onclick="document.querySelector('button[data-panel=&quot;projects&quot;]').click()">前往活动管理</button>
                     </div>
                 </div>
+
+                <!-- 签到 & 祈福 -->
                 <div class="task-grid">
                     <div class="task-box">
                         <h3>📅 今日打卡 / 签到</h3>
@@ -1257,44 +1280,55 @@
                         <button class="btn" id="taskBtnPray" onclick="runTask('pray')">立即祈福</button>
                     </div>
                 </div>
-                <div class="task-box" style="margin-top:14px;">
-                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-                        <div style="flex:1;min-width:200px;">
-                            <h3>💰 积分购买</h3>
-                            <p style="margin-bottom:0;">积分不足？点击前往积分购买页面，获取更多积分。<br><span style="color:var(--amber);font-weight:700;">💡 购买后发给机器人或者在下方兑换处填入完成充值</span></p>
-                        </div>
+
+                <!-- 积分购买 & 卡密兑换（紧凑横排） -->
+                <div class="task-grid" style="margin-top:14px;">
+                    <div class="task-box">
+                        <h3>💰 积分购买</h3>
+                        <p style="margin-bottom:10px;">积分不足？前往购买页面获取更多积分。<br><span style="color:var(--amber);font-weight:700;">💡 购买后发给机器人或在下方兑换</span></p>
                         <button class="btn" style="background:linear-gradient(135deg,#0891b2,#7c3aed);" onclick="window.open('http://180.152.5.230:8005/#/','_blank')">前往购买积分</button>
                     </div>
-                </div>
-                <div class="task-box" style="margin-top:14px;">
-                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-                        <div style="flex:1;min-width:200px;">
-                            <h3>🎟️ 卡密兑换</h3>
-                            <p style="margin-bottom:12px;">购买卡密后在此输入卡密直接兑换积分，支持普通卡密和赠送卡密。如有异常请联系大师。</p>
-                            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                                <input type="text" id="redeemKeyInput" placeholder="请输入卡密（XDD... 或 ZSKM...）" style="flex:1;min-width:200px;padding:10px 14px;border:1px solid var(--glass-border);border-radius:11px;font-size:13px;outline:none;font-family:monospace;background:rgba(255,255,255,0.035);transition:border-color 0.2s;">
-                                <button class="btn" style="background:linear-gradient(135deg,#0d9488,#0891b2);white-space:nowrap;" onclick="redeemKey()">兑换积分</button>
-                            </div>
-                            <p style="margin-top:8px;font-size:11.5px;color:var(--text-muted);">💡 卡密格式以 XDD 或 ZSKM 开头，每人赠送卡密每批次限用一张</p>
+                    <div class="task-box">
+                        <h3>🎟️ 卡密兑换</h3>
+                        <p style="margin-bottom:10px;">输入卡密直接兑换积分，支持普通卡密和赠送卡密。</p>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <input type="text" id="redeemKeyInput" placeholder="请输入卡密" style="flex:1;min-width:140px;padding:9px 12px;border:1px solid var(--glass-border);border-radius:10px;font-size:13px;outline:none;font-family:monospace;background:rgba(255,255,255,0.035);transition:border-color 0.2s;">
+                            <button class="btn" style="background:linear-gradient(135deg,#0d9488,#0891b2);white-space:nowrap;" onclick="redeemKey()">兑换</button>
                         </div>
+                        <p style="margin-top:6px;font-size:11px;color:var(--text-muted);">💡 卡密格式以 XDD 或 ZSKM 开头</p>
                     </div>
                 </div>
 
-                <!-- 积分变动记录 -->
+                <!-- 积分变动记录入口 -->
                 <div class="task-box" style="margin-top:14px;">
-                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
                         <div style="flex:1;min-width:200px;">
                             <h3>📊 积分变动记录</h3>
-                            <p style="margin-bottom:0;">查看最近30条积分收支明细，了解积分来源与去向。</p>
+                            <p style="margin-bottom:0;">查看积分收支明细，支持按来源（Web端 / App端）筛选，了解积分来源与去向。</p>
                         </div>
-                        <button class="btn" style="background:linear-gradient(135deg,#f59e0b,#ef4444);white-space:nowrap;" onclick="loadCoinLogs()">🔄 刷新记录</button>
-                    </div>
-                    <div id="coinLogsContainer">
-                        <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">点击「刷新记录」加载积分变动数据</div>
+                        <button class="btn" style="background:linear-gradient(135deg,#f59e0b,#ef4444);white-space:nowrap;" onclick="openCoinLogsModal()">📋 查看记录</button>
                     </div>
                 </div>
             </div>
         </section>
+
+        <!-- 积分变动记录弹窗 -->
+        <div class="modal-mask" id="coinLogsModal">
+            <div class="modal" style="max-width:720px;width:min(720px,100%);">
+                <div class="modal-header">
+                    <h3>📊 积分变动记录</h3>
+                    <button class="modal-close" onclick="closeCoinLogsModal()">✕</button>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+                    <button class="btn small coin-log-tab active" data-source="" onclick="switchCoinLogSource(this,'')">全部</button>
+                    <button class="btn small coin-log-tab" data-source="Web端" onclick="switchCoinLogSource(this,'Web端')">🌐 Web端</button>
+                    <button class="btn small coin-log-tab" data-source="App端" onclick="switchCoinLogSource(this,'App端')">📱 App端</button>
+                    <button class="btn small coin-log-tab" data-source="微信" onclick="switchCoinLogSource(this,'微信')">💬 微信</button>
+                    <button class="btn small coin-log-tab" data-source="后台" onclick="switchCoinLogSource(this,'后台')">🔧 后台</button>
+                </div>
+                <div id="coinLogsBody" style="max-height:60vh;overflow-y:auto;"></div>
+            </div>
+        </div>
 
         <!-- ===== 微信协议 ===== -->
         <section class="panel" id="panel-wx">
@@ -2876,48 +2910,63 @@ function escapeHtml(text) {
 function escapeAttr(text) { return escapeHtml(text); }
 function escapeJs(text) { return String(text ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
-async function loadCoinLogs() {
-    const container = document.getElementById('coinLogsContainer');
-    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">加载中...</div>';
+async function loadCoinLogs(source) {
+    const body = document.getElementById('coinLogsBody');
+    body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px;">加载中...</div>';
     try {
-        const resp = await request('/api/portal/coin-logs');
+        const url = '/api/portal/coin-logs' + (source ? '?source=' + encodeURIComponent(source) : '');
+        const resp = await request(url);
         const logs = resp.data || [];
         if (logs.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px;">暂无积分变动记录</div>';
+            body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:13px;">暂无积分变动记录</div>';
             return;
         }
-        let html = '<div style="display:flex;flex-direction:column;gap:0;">';
+        const sourceClass = { 'Web端': 'src-web', 'App端': 'src-app', '微信': 'src-wx', '后台': 'src-admin' };
+        const typeIcon = { '签到': '📅', '祈福': '🙏', '游戏': '🎮', '转账': '💸', '充值': '💰', '卡密兑换': '🎟️', '上车扣费': '🚀', '续费扣费': '🔄', '退还': '↩️', '推一推': '🤝', '助力扣费': '🫳', '任务扣费': '📋', '授权扣费': '🔑', '许愿': '⭐', '微信登录': '📱', '反馈奖励': '🎁', '管理员操作': '🔧' };
+        let html = '';
         for (let i = 0; i < logs.length; i++) {
             const l = logs[i];
-            const isPositive = l.Amount > 0;
-            const sign = isPositive ? '+' : '';
-            const amountColor = isPositive ? 'var(--green)' : 'var(--red)';
-            const amountBg = isPositive ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
-            const icon = isPositive ? '📈' : '📉';
-            const time = l.CreatedAt ? l.CreatedAt.replace('T', ' ').substring(0, 16) : '-';
-            const typeTag = escapeHtml(l.Type || '');
-            const detail = escapeHtml(l.Detail || '');
-            const balance = l.BalanceAfter != null ? l.BalanceAfter : '-';
-            html += '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;' + (i < logs.length - 1 ? 'border-bottom:1px solid var(--glass-border);' : '') + 'transition:background 0.15s;" onmouseover="this.style.background=\'var(--glass-bg)\'" onmouseout="this.style.background=\'transparent\'">';
-            html += '  <div style="flex-shrink:0;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;background:' + amountBg + ';">' + icon + '</div>';
-            html += '  <div style="flex:1;min-width:0;">';
-            html += '    <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">';
-            html += '      <span style="font-size:13px;font-weight:600;color:var(--text-primary);">' + typeTag + '</span>';
-            html += '      <span style="font-size:11px;color:var(--text-muted);">' + time + '</span>';
+            const isPos = l.amount > 0;
+            const sign = isPos ? '+' : '';
+            const color = isPos ? 'var(--green)' : 'var(--red)';
+            const bg = isPos ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+            const icon = typeIcon[l.type] || (isPos ? '📈' : '📉');
+            const srcCls = sourceClass[l.source] || 'src-other';
+            html += '<div class="coin-log-item">';
+            html += '  <div class="coin-log-icon" style="background:' + bg + ';">' + icon + '</div>';
+            html += '  <div class="coin-log-info">';
+            html += '    <div class="coin-log-meta">';
+            html += '      <span class="coin-log-type">' + escapeHtml(l.type) + '</span>';
+            html += '      <span class="coin-log-source ' + srcCls + '">' + escapeHtml(l.source) + '</span>';
+            html += '      <span class="coin-log-time">' + escapeHtml(l.createdAt) + '</span>';
             html += '    </div>';
-            html += '    <div style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + detail + '">' + detail + '</div>';
+            html += '    <div class="coin-log-detail" title="' + escapeAttr(l.detail) + '">' + escapeHtml(l.detail) + '</div>';
             html += '  </div>';
-            html += '  <div style="flex-shrink:0;text-align:right;">';
-            html += '    <div style="font-size:16px;font-weight:800;color:' + amountColor + ';font-variant-numeric:tabular-nums;">' + sign + l.Amount + '</div>';
-            html += '    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">余额 ' + balance + '</div>';
+            html += '  <div class="coin-log-amount">';
+            html += '    <div class="val" style="color:' + color + ';">' + sign + l.amount + '</div>';
+            html += '    <div class="bal">余额 ' + l.balanceAfter + '</div>';
             html += '  </div>';
             html += '</div>';
         }
-        html += '</div>';
-        container.innerHTML = html;
+        body.innerHTML = html;
     } catch (err) {
-        container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red);font-size:13px;">加载失败：' + escapeHtml(err.message) + '</div>';
+        body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--red);font-size:13px;">加载失败：' + escapeHtml(err.message) + '</div>';
     }
+}
+
+function openCoinLogsModal() {
+    document.getElementById('coinLogsModal').classList.add('show');
+    loadCoinLogs('');
+}
+
+function closeCoinLogsModal() {
+    document.getElementById('coinLogsModal').classList.remove('show');
+}
+
+function switchCoinLogSource(btn, source) {
+    document.querySelectorAll('.coin-log-tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    loadCoinLogs(source);
 }
 
 initialLoad();

@@ -547,7 +547,47 @@ func (c *PortalController) NotificationDetail() {
 
 // CoinLogs 获取用户积分变动记录
 func (c *PortalController) CoinLogs() {
-	logs := models.GetCoinLogs(c.PortalUserID, 30)
-	c.Data["json"] = map[string]interface{}{"code": 0, "data": logs}
+	logs := models.GetCoinLogs(c.PortalUserID, 50)
+	sourceFilter := c.GetString("source", "")
+
+	type coinLogItem struct {
+		ID           int    `json:"id"`
+		Amount       int    `json:"amount"`
+		BalanceAfter int    `json:"balanceAfter"`
+		Type         string `json:"type"`
+		Detail       string `json:"detail"`
+		Source       string `json:"source"`
+		CreatedAt    string `json:"createdAt"`
+	}
+
+	var result []coinLogItem
+	for _, l := range logs {
+		src := "其他"
+		d := l.Detail
+		if len(d) >= 6 && d[:6] == "Web端" {
+			src = "Web端"
+			d = d[6:]
+		} else if len(d) >= 6 && d[:6] == "App端" {
+			src = "App端"
+			d = d[6:]
+		} else if len(d) >= 12 && d[:12] == "微信自动充值" {
+			src = "微信"
+		} else if len(d) >= 6 && d[:6] == "管理员" {
+			src = "后台"
+		}
+		if sourceFilter != "" && src != sourceFilter {
+			continue
+		}
+		result = append(result, coinLogItem{
+			ID:           l.ID,
+			Amount:       l.Amount,
+			BalanceAfter: l.BalanceAfter,
+			Type:         l.Type,
+			Detail:       d,
+			Source:       src,
+			CreatedAt:    l.CreatedAt.Format("2006-01-02 15:04"),
+		})
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
 	c.ServeJSON()
 }
