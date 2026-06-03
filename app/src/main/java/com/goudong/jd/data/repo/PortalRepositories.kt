@@ -234,6 +234,12 @@ class PortalRepository(
 
     suspend fun pray(): String = apiClient.requestMessage(path = "/api/portal/pray")
 
+    suspend fun fetchCoinLogs(source: String? = null): List<com.goudong.jd.data.model.CoinLog> {
+        val param = if (!source.isNullOrEmpty()) "?source=$source" else ""
+        val text = apiClient.requestText(path = "/api/portal/coin-logs$param")
+        return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.CoinLog::class.java)
+    }
+
     suspend fun fetchNotifications(includeContent: Boolean = false): PortalNotificationPage {
         val includeParam = if (includeContent) "&includeContent=1" else ""
         return apiClient.requestData("/api/portal/notifications?${includeParam}")

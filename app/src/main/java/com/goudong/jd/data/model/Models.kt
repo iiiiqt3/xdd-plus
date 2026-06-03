@@ -156,6 +156,16 @@ data class PortalWxDevice(
     val refreshTime: String? = null,
 )
 
+data class CoinLog(
+    val id: Int = 0,
+    val amount: Int = 0,
+    val balanceAfter: Int = 0,
+    val type: String? = null,
+    val detail: String? = null,
+    val source: String? = null,
+    val createdAt: String? = null,
+)
+
 data class ResetInfoPayload(
     val username: String? = null,
 )

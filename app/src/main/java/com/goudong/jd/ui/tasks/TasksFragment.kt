@@ -120,6 +120,12 @@ class TasksFragment : Fragment() {
             addView(redeemBtn)
         })
 
+        root.addView(requireContext().heroCard("积分变动记录", "查看积分收支明细，了解积分来源与去向", ContextCompat.getColor(requireContext(), R.color.brand_orange)).apply {
+            addView(requireContext().primaryButton("查看记录") {
+                startActivity(android.content.Intent(requireContext(), com.goudong.jd.ui.more.CoinLogActivity::class.java))
+            })
+        })
+
         return scroll
     }
 

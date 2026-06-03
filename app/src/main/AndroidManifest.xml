@@ -59,6 +59,10 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
         <activity
+            android:name=".ui.more.CoinLogActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+        <activity
             android:name=".ui.more.AboutVersionActivity"
             android:exported="false"
             android:parentActivityName=".MainActivity" />

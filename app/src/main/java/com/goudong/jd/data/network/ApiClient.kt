@@ -144,7 +144,9 @@ class ApiClient(
                 val msg = jsonElement?.get("msg")?.asString ?: "请求失败"
                 throw ApiError(msg)
             }
-            val dataArray = jsonElement?.getAsJsonArray("data") ?: return emptyList()
+            val dataElement = jsonElement?.get("data")
+            if (dataElement == null || dataElement.isJsonNull) return emptyList()
+            val dataArray = dataElement.asJsonArray
             dataArray.map { gson.fromJson(it, clazz) }
         } catch (e: ApiError) {
             throw e
