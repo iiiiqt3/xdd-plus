@@ -389,6 +389,7 @@ func PortalWxPollLogin(userNumber int, uuid string, deductCoin bool) (*PortalWxA
             if actualCoin > currentCoin {
                 return nil, fmt.Errorf("积分扣除异常，请联系管理员")
             }
+            RecordCoinLog(userNumber, -cost, "微信登录", "微信扫码登录扣费")
             msg = fmt.Sprintf("登录成功，已扣除 %d 积分，剩余 %d 积分，昵称：%s，微信ID：%s", cost, GetCoin(userNumber), nickname, wxid)
         }
         wxStatus, _ := GetPortalWxStatus(userNumber)

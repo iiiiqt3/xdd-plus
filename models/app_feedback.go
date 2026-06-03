@@ -151,6 +151,7 @@ func ProcessAppFeedback(id int, status string, reply string, rewardCoin int, han
 	}
 	if rewardCoin > 0 && item.UserID > 0 {
 		AdddCoin(item.UserID, rewardCoin)
+		RecordCoinLog(item.UserID, rewardCoin, "反馈奖励", fmt.Sprintf("反馈#%d奖励积分", item.ID))
 	}
 	if isFirstReply && item.UserID > 0 && (reply != "" || rewardCoin > 0) {
 		content := reply
@@ -291,6 +292,7 @@ func BatchRewardAppFeedbacks(ids []int, rewardCoin int, handler string) (int, er
 		}
 		if item.UserID > 0 && rewardCoin > 0 {
 			AdddCoin(item.UserID, rewardCoin)
+			RecordCoinLog(item.UserID, rewardCoin, "反馈奖励", fmt.Sprintf("反馈#%d奖励积分", item.ID))
 			if item.Status == "new" {
 				content := fmt.Sprintf("你的反馈已处理\n奖励积分：%d", rewardCoin)
 				_ = CreateSystemWebNotification("反馈处理结果", content, NotifyCategoryFeedback, NotifySourceFeedback, item.UserID, NotifyChannels{Web: true, App: true})
