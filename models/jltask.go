@@ -1217,15 +1217,19 @@ func HandleQueryRecord(sender *Sender) interface{} {
 		}
 		
 		scriptExt := filepath.Ext(scriptPath)
+
+		// 非脚本文件，视为管理员自定义回复内容
+		if scriptExt != ".js" && scriptExt != ".py" {
+			sender.Reply(strings.TrimSpace(scriptPath))
+			return
+		}
+
 		var execCmd string
 		switch scriptExt {
 		case ".js":
 			execCmd = "node"
 		case ".py":
 			execCmd = "python3"
-		default:
-			sender.Reply("不支持的脚本类型，请联系管理员")
-			return
 		}
 
 

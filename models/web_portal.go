@@ -707,14 +707,18 @@ func PortalQueryProjectIncome(userNumber int, activityID, remarks string) (strin
 
 	scriptPath := cfg.ScriptPaths.Query
 	scriptExt := strings.ToLower(filepath.Ext(scriptPath))
+
+	// 非脚本文件（不以 .js/.py 结尾），视为管理员自定义回复内容
+	if scriptExt != ".js" && scriptExt != ".py" {
+		return strings.TrimSpace(scriptPath), nil
+	}
+
 	execCmd := ""
 	switch scriptExt {
 	case ".js":
 		execCmd = "node"
 	case ".py":
 		execCmd = "python3"
-	default:
-		return "", fmt.Errorf("暂不支持该查询脚本类型")
 	}
 
 	sender := &Sender{UserID: userNumber}
