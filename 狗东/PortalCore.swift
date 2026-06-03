@@ -270,6 +270,16 @@ struct PortalWxDevice: Decodable {
     let refreshTime: String?
 }
 
+struct CoinLog: Decodable {
+    let id: Int
+    let amount: Int
+    let balanceAfter: Int
+    let type: String?
+    let detail: String?
+    let source: String?
+    let createdAt: String?
+}
+
 
 struct PortalWechatActionResult: Decodable {
     let message: String?
@@ -500,6 +510,29 @@ final class APIClient {
                     let message = envelope.msg ?? "请求失败"
                     // HTTP 层认证错误已在 requestEnvelope 中处理，此处只处理业务错误
                     // 不再根据消息文本判断 isUnauthorized，避免误判
+                    let unauthorized = (envelope.code == 401 || envelope.code == 403)
+                    completion(.failure(APIError(message: message, isUnauthorized: unauthorized)))
+                }
+            }
+        }
+    }
+
+    func requestList<T: Decodable>(
+        path: String,
+        method: String = "GET",
+        headers: [String: String] = [:],
+        body: Data? = nil,
+        completion: @escaping (Result<[T], APIError>) -> Void
+    ) {
+        requestEnvelope(path: path, method: method, headers: headers, body: body) { (result: Result<APIEnvelope<[T]>, APIError>) in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let envelope):
+                if envelope.code == 0 {
+                    completion(.success(envelope.data ?? []))
+                } else {
+                    let message = envelope.msg ?? "请求失败"
                     let unauthorized = (envelope.code == 401 || envelope.code == 403)
                     completion(.failure(APIError(message: message, isUnauthorized: unauthorized)))
                 }
@@ -877,6 +910,15 @@ final class PortalService {
         let path = "/api/portal/pray"
         let signHeaders = SignatureHelper.getHeaders(for: path)
         APIClient.shared.requestMessage(path: path, headers: signHeaders, completion: completion)
+    }
+
+    func fetchCoinLogs(source: String? = nil, completion: @escaping (Result<[CoinLog], APIError>) -> Void) {
+        var path = "/api/portal/coin-logs"
+        if let source = source, !source.isEmpty {
+            path += "?source=\(source.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? source)"
+        }
+        let signHeaders = SignatureHelper.getHeaders(for: path)
+        APIClient.shared.requestList(path: path, headers: signHeaders, completion: completion)
     }
 
     func markNotificationRead(id: Int, completion: @escaping (Result<Void, APIError>) -> Void) {

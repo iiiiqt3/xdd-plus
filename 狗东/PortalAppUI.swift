@@ -456,6 +456,327 @@ final class PortalRegisterViewController: BaseNativeViewController {
     }
 }
 
+final class CoinLogViewController: BaseNativeViewController, UITableViewDataSource, UITableViewDelegate {
+    private let tableView = UITableView(frame: .zero, style: .grouped)
+    private let tabScrollView = UIScrollView()
+    private let tabStack = UIStackView()
+    private let refreshControl = UIRefreshControl()
+    private var logs: [CoinLog] = []
+    private let tabs: [(source: String, title: String, icon: String)] = [
+        ("", "全部", "tray.2.fill"),
+        ("Web端", "Web端", "globe"),
+        ("App端", "App端", "iphone"),
+        ("微信", "微信", "message.fill"),
+        ("后台及其他", "后台及其他", "gearshape.2.fill"),
+    ]
+    private var currentTabIndex = 0
+    private var tabButtons: [UIButton] = []
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = "积分变动"
+        view.backgroundColor = .systemGroupedBackground
+        navigationItem.largeTitleDisplayMode = .automatic
+
+        setupTabBar()
+        setupTableView()
+        loadLogs()
+    }
+
+    private func setupTabBar() {
+        tabScrollView.showsHorizontalScrollIndicator = false
+        tabScrollView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(tabScrollView)
+
+        tabStack.axis = .horizontal
+        tabStack.spacing = 8
+        tabStack.translatesAutoresizingMaskIntoConstraints = false
+        tabScrollView.addSubview(tabStack)
+
+        NSLayoutConstraint.activate([
+            tabScrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 4),
+            tabScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tabScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tabScrollView.heightAnchor.constraint(equalToConstant: 40),
+            tabStack.topAnchor.constraint(equalTo: tabScrollView.topAnchor),
+            tabStack.bottomAnchor.constraint(equalTo: tabScrollView.bottomAnchor),
+            tabStack.leadingAnchor.constraint(equalTo: tabScrollView.leadingAnchor, constant: 16),
+            tabStack.trailingAnchor.constraint(equalTo: tabScrollView.trailingAnchor, constant: -16),
+            tabStack.heightAnchor.constraint(equalTo: tabScrollView.heightAnchor),
+        ])
+
+        for (index, tab) in tabs.enumerated() {
+            let btn = UIButton(type: .system)
+            let config = UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
+            btn.setImage(UIImage(systemName: tab.icon, withConfiguration: config), for: .normal)
+            btn.setTitle(" \(tab.title)", for: .normal)
+            btn.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+            btn.layer.cornerRadius = 18
+            btn.contentEdgeInsets = UIEdgeInsets(top: 6, left: 14, bottom: 6, right: 14)
+            btn.tag = index
+            btn.addTarget(self, action: #selector(tabTapped(_:)), for: .touchUpInside)
+            tabButtons.append(btn)
+            tabStack.addArrangedSubview(btn)
+        }
+        updateTabAppearance(animated: false)
+    }
+
+    private func updateTabAppearance(animated: Bool) {
+        let changes = {
+            for (i, btn) in self.tabButtons.enumerated() {
+                if i == self.currentTabIndex {
+                    btn.backgroundColor = .systemBlue
+                    btn.setTitleColor(.white, for: .normal)
+                    btn.tintColor = .white
+                    btn.transform = CGAffineTransform(scaleX: 1.0, y: 1.0)
+                } else {
+                    btn.backgroundColor = .secondarySystemGroupedBackground
+                    btn.setTitleColor(.secondaryLabel, for: .normal)
+                    btn.tintColor = .secondaryLabel
+                    btn.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+                }
+            }
+        }
+        if animated {
+            UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5, options: .curveEaseInOut, animations: changes)
+        } else {
+            changes()
+        }
+    }
+
+    @objc private func tabTapped(_ sender: UIButton) {
+        guard sender.tag != currentTabIndex else { return }
+        currentTabIndex = sender.tag
+        updateTabAppearance(animated: true)
+        loadLogs()
+    }
+
+    private func setupTableView() {
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.register(CoinLogCell.self, forCellReuseIdentifier: "CoinLogCell")
+        tableView.separatorStyle = .none
+        tableView.backgroundColor = .clear
+        tableView.refreshControl = refreshControl
+        refreshControl.addTarget(self, action: #selector(loadLogs), for: .valueChanged)
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(tableView)
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: tabScrollView.bottomAnchor, constant: 4),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+
+        let swipeLeft = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
+        swipeLeft.direction = .left
+        tableView.addGestureRecognizer(swipeLeft)
+        let swipeRight = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
+        swipeRight.direction = .right
+        tableView.addGestureRecognizer(swipeRight)
+    }
+
+    @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
+        if gesture.direction == .left && currentTabIndex < tabs.count - 1 {
+            currentTabIndex += 1
+        } else if gesture.direction == .right && currentTabIndex > 0 {
+            currentTabIndex -= 1
+        } else { return }
+        updateTabAppearance(animated: true)
+        tabButtons[currentTabIndex].isHidden = false
+        tabScrollView.scrollRectToVisible(tabButtons[currentTabIndex].frame, animated: true)
+        loadLogs()
+    }
+
+    @objc @discardableResult private func loadLogs() {
+        let source = tabs[currentTabIndex].source
+        PortalService.shared.fetchCoinLogs(source: source.isEmpty ? nil : source) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.refreshControl.endRefreshing()
+                switch result {
+                case .success(let logs):
+                    self.logs = logs
+                    self.tableView.reloadData()
+                case .failure(let error):
+                    self.showMessage(error.message)
+                }
+            }
+        }
+    }
+
+    func numberOfSections(in tableView: UITableView) -> Int { 1 }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return logs.isEmpty ? 1 : logs.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        if logs.isEmpty {
+            let cell = UITableViewCell()
+            var config = cell.defaultContentConfiguration()
+            config.text = "暂无积分变动记录"
+            config.textProperties.color = .tertiaryLabel
+            config.textProperties.alignment = .center
+            cell.contentConfiguration = config
+            cell.selectionStyle = .none
+            return cell
+        }
+        let cell = tableView.dequeueReusableCell(withIdentifier: "CoinLogCell", for: indexPath) as! CoinLogCell
+        cell.configure(with: logs[indexPath.row])
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return logs.isEmpty ? 120 : UITableView.automaticDimension
+    }
+
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? { nil }
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat { 0 }
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? { nil }
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat { 0 }
+}
+
+final class CoinLogCell: UITableViewCell {
+    private let iconBg = UIView()
+    private let iconView = UIImageView()
+    private let typeLabel = UILabel()
+    private let detailLabel = UILabel()
+    private let amountLabel = UILabel()
+    private let balanceLabel = UILabel()
+    private let timeLabel = UILabel()
+    private let sourcePill = UILabel()
+    private let cardView = UIView()
+    private let hStack = UIStackView()
+    private let rightStack = UIStackView()
+
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        selectionStyle = .none
+        backgroundColor = .clear
+
+        cardView.backgroundColor = .secondarySystemGroupedBackground
+        cardView.layer.cornerRadius = 14
+        contentView.addSubview(cardView)
+        cardView.translatesAutoresizingMaskIntoConstraints = false
+
+        iconBg.layer.cornerRadius = 20
+        iconBg.translatesAutoresizingMaskIntoConstraints = false
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.contentMode = .scaleAspectFit
+        iconView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+
+        let leftStack = UIStackView(arrangedSubviews: [iconBg])
+        leftStack.alignment = .center
+        iconBg.addSubview(iconView)
+
+        typeLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        typeLabel.textColor = .label
+
+        detailLabel.font = .systemFont(ofSize: 12)
+        detailLabel.textColor = .secondaryLabel
+        detailLabel.numberOfLines = 1
+
+        sourcePill.font = .systemFont(ofSize: 10, weight: .semibold)
+        sourcePill.layer.cornerRadius = 8
+        sourcePill.clipsToBounds = true
+        sourcePill.textAlignment = .center
+
+        let middleStack = UIStackView(arrangedSubviews: [typeLabel, detailLabel, sourcePill])
+        middleStack.axis = .vertical
+        middleStack.spacing = 3
+        middleStack.alignment = .leading
+
+        amountLabel.font = .systemFont(ofSize: 17, weight: .bold)
+        amountLabel.textAlignment = .right
+
+        balanceLabel.font = .systemFont(ofSize: 11)
+        balanceLabel.textColor = .tertiaryLabel
+        balanceLabel.textAlignment = .right
+
+        rightStack.axis = .vertical
+        rightStack.alignment = .trailing
+        rightStack.spacing = 2
+        rightStack.addArrangedSubview(amountLabel)
+        rightStack.addArrangedSubview(balanceLabel)
+
+        hStack.axis = .horizontal
+        hStack.alignment = .center
+        hStack.spacing = 12
+        hStack.translatesAutoresizingMaskIntoConstraints = false
+        hStack.addArrangedSubview(leftStack)
+        hStack.addArrangedSubview(middleStack)
+        hStack.addArrangedSubview(rightStack)
+        cardView.addSubview(hStack)
+
+        NSLayoutConstraint.activate([
+            cardView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 5),
+            cardView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -5),
+            hStack.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 12),
+            hStack.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 14),
+            hStack.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -14),
+            hStack.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -12),
+            iconBg.widthAnchor.constraint(equalToConstant: 40),
+            iconBg.heightAnchor.constraint(equalToConstant: 40),
+            iconView.centerXAnchor.constraint(equalTo: iconBg.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconBg.centerYAnchor),
+            middleStack.widthAnchor.constraint(greaterThanOrEqualToConstant: 120),
+            sourcePill.heightAnchor.constraint(equalToConstant: 18),
+            sourcePill.widthAnchor.constraint(greaterThanOrEqualToConstant: 50),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func configure(with log: CoinLog) {
+        let amount = log.amount
+        let isPositive = amount > 0
+
+        typeLabel.text = log.type ?? "其他"
+        detailLabel.text = log.detail
+        detailLabel.isHidden = log.detail?.isEmpty ?? true
+
+        amountLabel.text = isPositive ? "+\(amount)" : "\(amount)"
+        amountLabel.textColor = isPositive ? .systemGreen : .systemRed
+
+        balanceLabel.text = "余额 \(log.balanceAfter)"
+
+        let sourceColors: [String: (bg: UIColor, fg: UIColor)] = [
+            "Web端": (.systemTeal.withAlphaComponent(0.15), .systemTeal),
+            "App端": (.systemPurple.withAlphaComponent(0.15), .systemPurple),
+            "微信": (.systemGreen.withAlphaComponent(0.15), .systemGreen),
+            "后台及其他": (.systemOrange.withAlphaComponent(0.15), .systemOrange),
+        ]
+        let src = log.source ?? ""
+        let colors = sourceColors[src] ?? (.systemGray.withAlphaComponent(0.12), .systemGray)
+        sourcePill.text = "  \(src)  "
+        sourcePill.backgroundColor = colors.bg
+        sourcePill.textColor = colors.fg
+
+        let iconBgColor: UIColor = isPositive ? .systemGreen.withAlphaComponent(0.12) : .systemRed.withAlphaComponent(0.12)
+        iconBg.backgroundColor = iconBgColor
+        iconView.tintColor = isPositive ? .systemGreen : .systemRed
+        let iconName: String = {
+            switch log.type {
+            case "签到": return "checkmark.circle.fill"
+            case "祈福": return "hands.sparkles.fill"
+            case "充值": return "yensign.circle.fill"
+            case "卡密兑换": return "ticket.fill"
+            case "上车扣费": return "cart.fill"
+            case "续费扣费": return "arrow.clockwise.circle.fill"
+            case "退还": return "arrow.uturn.backward"
+            case "转账": return "arrow.left.arrow.right"
+            case "微信登录": return "message.fill"
+            case "管理员操作": return "gearshape.fill"
+            case "反馈奖励": return "gift.fill"
+            default: return isPositive ? "arrow.down.circle.fill" : "arrow.up.circle.fill"
+            }
+        }()
+        iconView.image = UIImage(systemName: iconName)
+    }
+}
 
 final class PortalResetPasswordViewController: BaseNativeViewController {
     private let codeField = UITextField()
@@ -2952,6 +3273,48 @@ final class CoinTasksViewController: BaseNativeViewController {
             redeemStack.bottomAnchor.constraint(equalTo: redeemCard.bottomAnchor, constant: -18)
         ])
         stack.addArrangedSubview(redeemCard)
+
+        // 积分变动记录
+        let logCard = UIView()
+        logCard.applyCardStyle()
+        let logIcon = UIImageView()
+        logIcon.translatesAutoresizingMaskIntoConstraints = false
+        logIcon.image = UIImage(systemName: "list.bullet.rectangle.fill")
+        logIcon.tintColor = .systemPurple
+        logIcon.contentMode = .scaleAspectFit
+        let logTitle = UILabel()
+        logTitle.text = "积分变动记录"
+        logTitle.font = UIFont.systemFont(ofSize: 17, weight: .bold)
+        let logDesc = UILabel()
+        logDesc.text = "查看积分收支明细，了解积分来源与去向"
+        logDesc.font = UIFont.systemFont(ofSize: 13)
+        logDesc.textColor = .secondaryLabel
+        logDesc.numberOfLines = 0
+        let logBtn = UIButton(type: .system)
+        logBtn.setTitle("查看记录", for: .normal)
+        logBtn.applyPrimaryStyle(color: .systemPurple)
+        logBtn.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        logBtn.addTarget(self, action: #selector(showCoinLogs), for: .touchUpInside)
+        let logStack = UIStackView(arrangedSubviews: [logIcon, logTitle, logDesc, logBtn])
+        logStack.axis = .vertical
+        logStack.alignment = .fill
+        logStack.spacing = 10
+        logStack.translatesAutoresizingMaskIntoConstraints = false
+        logIcon.widthAnchor.constraint(equalToConstant: 36).isActive = true
+        logIcon.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        logCard.addSubview(logStack)
+        NSLayoutConstraint.activate([
+            logStack.topAnchor.constraint(equalTo: logCard.topAnchor, constant: 18),
+            logStack.leadingAnchor.constraint(equalTo: logCard.leadingAnchor, constant: 18),
+            logStack.trailingAnchor.constraint(equalTo: logCard.trailingAnchor, constant: -18),
+            logStack.bottomAnchor.constraint(equalTo: logCard.bottomAnchor, constant: -18)
+        ])
+        stack.addArrangedSubview(logCard)
+    }
+
+    @objc private func showCoinLogs() {
+        let vc = CoinLogViewController()
+        navigationController?.pushViewController(vc, animated: true)
     }
 
     @objc private func checkinTapped() {
