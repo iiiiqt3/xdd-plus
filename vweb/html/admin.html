@@ -209,6 +209,10 @@
         .status-dot.checking { background: #e6a23c; animation: pulse 1s infinite; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        /* ===== 积分变动时间筛选按钮 ===== */
+        .coinlog-day-btn { padding: 6px 16px; border: 1px solid #dcdfe6; background: #fff; color: #606266; border-radius: 4px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .coinlog-day-btn:hover { color: #333; border-color: #999; background: #f5f5f5; }
+        .coinlog-day-btn.active { background: #333; color: #fff; border-color: #333; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #c0c4cc; border-radius: 22px; transition: 0.3s; }
         .switch .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
@@ -451,6 +455,7 @@
         <div class="nav-item" data-page="jdcookies" onclick="switchPage('jdcookies')"><i class="fas fa-cookie"></i><span>京东账号</span></div>
         <div class="nav-item" data-page="jdcrontasks" onclick="switchPage('jdcrontasks')"><i class="fas fa-list-check"></i><span>京东任务列表</span></div>
         <div class="nav-item" data-page="users" onclick="switchPage('users')"><i class="fas fa-users"></i><span>用户管理</span></div>
+        <div class="nav-item" data-page="coinlogs" onclick="switchPage('coinlogs')"><i class="fas fa-history"></i><span>积分变动</span></div>
         <div class="nav-divider"></div>
         <div class="nav-item" data-page="activities" onclick="switchPage('activities')"><i class="fas fa-calendar-alt"></i><span>青龙活动配置</span></div>
         <div class="nav-item" data-page="actauth" onclick="switchPage('actauth')"><i class="fas fa-user-shield"></i><span>青龙活动授权</span></div>
@@ -645,6 +650,50 @@
                     </table>
                 </div>
                 <div class="pagination" id="userPagination"></div>
+            </div>
+        </div>
+
+        <!-- ========= 积分变动 ========= -->
+        <div id="page-coinlogs" class="page-section">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color:#333;"><i class="fas fa-history" style="color:#e6a23c;"></i> 积分变动记录</div>
+                </div>
+                <div style="padding:16px 0;">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <div class="search-box" style="flex:0 0 auto;">
+                            <input type="number" id="coinLogNumber" placeholder="输入用户编号" style="width:180px;">
+                        </div>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-sm coinlog-day-btn active" data-days="3" onclick="setCoinLogDays(3)">3天</button>
+                            <button class="btn btn-sm coinlog-day-btn" data-days="7" onclick="setCoinLogDays(7)">7天</button>
+                            <button class="btn btn-sm coinlog-day-btn" data-days="15" onclick="setCoinLogDays(15)">15天</button>
+                            <button class="btn btn-sm coinlog-day-btn" data-days="30" onclick="setCoinLogDays(30)">30天</button>
+                        </div>
+                        <button class="btn btn-success btn-sm" onclick="loadCoinLogs(1)"><i class="fas fa-search"></i> 查询</button>
+                        <button class="btn btn-info btn-sm" onclick="loadCoinLogs()"><i class="fas fa-sync-alt"></i> 刷新</button>
+                    </div>
+                </div>
+                <div id="coinLogSummary" style="display:none;padding:10px 16px;background:#f0f9eb;border:1px solid #e1f3d8;border-radius:6px;margin-bottom:12px;font-size:13px;color:#67c23a;"></div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead><tr>
+                            <th style="min-width:60px">ID</th>
+                            <th style="min-width:80px">变动数量</th>
+                            <th style="min-width:80px">变动后余额</th>
+                            <th style="min-width:80px">类型</th>
+                            <th style="min-width:200px">详情</th>
+                            <th style="min-width:160px">时间</th>
+                        </tr></thead>
+                        <tbody id="coinLogTableBody">
+                            <tr><td colspan="6" style="text-align:center;color:#999;padding:60px;">
+                                <i class="fas fa-search" style="font-size:36px;color:#ddd;display:block;margin-bottom:12px;"></i>
+                                请输入用户编号后点击查询
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="coinLogPagination"></div>
             </div>
         </div>
 
@@ -1875,7 +1924,8 @@ function switchPage(page) {
     if (pageEl) pageEl.classList.add('active');
     const titles = {
         dashboard: ['仪表盘', '首页 / 仪表盘'], jdcookies: ['京东账号', '账号管理 / 京东账号'],
-        users: ['用户管理', '账号管理 / 用户管理'], notifications: ['通知中心', '系统设置 / 通知中心'], feedbacks: ['意见反馈', '系统设置 / 意见反馈'], envvars: ['xdd环境变量', '系统设置 / xdd环境变量'],
+        users: ['用户管理', '账号管理 / 用户管理'], coinlogs: ['积分变动', '账号管理 / 积分变动'],
+        notifications: ['通知中心', '系统设置 / 通知中心'], feedbacks: ['意见反馈', '系统设置 / 意见反馈'], envvars: ['xdd环境变量', '系统设置 / xdd环境变量'],
         activities: ['活动配置', '系统设置 / 活动配置'], actauth: ['青龙活动授权', '系统设置 / 青龙活动授权'], actstats: ['活动人数统计', '系统设置 / 活动人数统计'],
         wxdevices: ['微信协议管理', '系统设置 / 微信协议管理'],
         containers: ['容器管理', '容器管理'],
@@ -1891,6 +1941,7 @@ function switchPage(page) {
     document.getElementById('breadcrumb').textContent = breadcrumb;
     const loaders = {
         dashboard: loadDashboard, jdcookies: () => loadJdCookies(1), users: () => loadUsers(1),
+        coinlogs: () => {},
         notifications: () => loadNotifications(1), feedbacks: () => loadFeedbacks(1), envvars: () => loadEnvVars(1), activities: loadActivities, actauth: loadActAuthList, actstats: loadActivityStats,
         wxdevices: loadWxDevices,
         containers: loadContainers,
@@ -3524,6 +3575,49 @@ async function saveBatchUserCoin() {
 }
 function toggleAllUserCheck(checked) { toggleAllCheck('user-check', checked); }
 function updateUserCheckAll() { updateCheckAll('user-check', 'userCheckAll'); }
+
+// ============ 积分变动 ============
+var coinLogPage = 1;
+var coinLogDays = 3;
+function setCoinLogDays(days) {
+    coinLogDays = days;
+    document.querySelectorAll('.coinlog-day-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
+    });
+}
+async function loadCoinLogs(page) {
+    if (page) coinLogPage = page;
+    var number = parseInt(document.getElementById('coinLogNumber').value);
+    if (!number) { toast('请输入用户编号', 'error'); return; }
+    var summaryEl = document.getElementById('coinLogSummary');
+    summaryEl.style.display = 'none';
+    try {
+        var res = await api.get('/api/admin/users/coin-logs?number=' + number + '&days=' + coinLogDays + '&page=' + coinLogPage + '&limit=20');
+        var tbody = document.getElementById('coinLogTableBody');
+        var list = (res.data || {}).list || [];
+        var total = (res.data || {}).total || 0;
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-inbox" style="font-size:36px;color:#ddd;display:block;margin-bottom:12px;"></i>暂无积分变动记录</td></tr>';
+        } else {
+            tbody.innerHTML = list.map(function(log) {
+                var amountClass = log.Amount >= 0 ? 'color:#f56c6c;font-weight:600;' : 'color:#409eff;font-weight:600;';
+                var amountText = log.Amount >= 0 ? '+' + log.Amount : '' + log.Amount;
+                var timeStr = log.CreatedAt ? new Date(log.CreatedAt).toLocaleString('zh-CN') : '-';
+                return '<tr>' +
+                    '<td>' + log.ID + '</td>' +
+                    '<td><span style="' + amountClass + '">' + amountText + '</span></td>' +
+                    '<td><span class="tag tag-warning">' + log.BalanceAfter + '</span></td>' +
+                    '<td><span class="tag tag-info">' + escapeHtml(log.Type || '-') + '</span></td>' +
+                    '<td style="max-width:300px;" title="' + escapeHtml(log.Detail || '') + '">' + escapeHtml(log.Detail || '-') + '</td>' +
+                    '<td style="font-size:12px;color:#999;">' + timeStr + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+        summaryEl.innerHTML = '<i class="fas fa-user"></i> 用户 <strong>' + number + '</strong> 的积分变动记录（' + coinLogDays + '天内共 <strong>' + total + '</strong> 条）';
+        summaryEl.style.display = 'block';
+        renderPagination('coinLogPagination', coinLogPage, total, 20, loadCoinLogs);
+    } catch (e) { toast('查询失败: ' + e.message, 'error'); }
+}
 
 // ============ 环境变量 ============
 async function loadEnvVars(page) {

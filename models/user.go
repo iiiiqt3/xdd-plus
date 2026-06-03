@@ -139,6 +139,19 @@ func GetCoinLogs(userNumber int, limit int) []CoinLog {
 	return logs
 }
 
+func GetCoinLogsFiltered(userNumber int, days int, page int, limit int) ([]CoinLog, int64) {
+	var logs []CoinLog
+	var total int64
+	query := db.Where("user_number = ?", userNumber)
+	if days > 0 {
+		since := time.Now().AddDate(0, 0, -days)
+		query = query.Where("created_at >= ?", since)
+	}
+	query.Model(&CoinLog{}).Count(&total)
+	query.Order("id desc").Offset((page - 1) * limit).Limit(limit).Find(&logs)
+	return logs, total
+}
+
 func RecordCoinLog(userNumber int, amount int, typ string, detail string) {
 	if userNumber <= 0 {
 		return

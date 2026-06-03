@@ -545,6 +545,39 @@ func (c *AdminApiController) UpdateUserCoin() {
 	c.ServeJSON()
 }
 
+// ===================== 积分变动 =====================
+
+// GetCoinLogs 查询用户积分变动记录（支持时间筛选和分页）
+func (c *AdminApiController) GetCoinLogs() {
+	userNumber := c.GetQueryInt("number")
+	days := c.GetQueryInt("days")
+	page := c.GetQueryInt("page")
+	limit := c.GetQueryInt("limit")
+	if userNumber == 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请输入用户编号"}
+		c.ServeJSON()
+		return
+	}
+	if days == 0 {
+		days = 3
+	}
+	if page == 0 {
+		page = 1
+	}
+	if limit == 0 {
+		limit = 20
+	}
+	logs, total := models.GetCoinLogsFiltered(userNumber, days, page, limit)
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"list":  logs,
+			"total": total,
+		},
+	}
+	c.ServeJSON()
+}
+
 // ===================== 系统配置 =====================
 
 // GetSystemConfig 获取系统配置
