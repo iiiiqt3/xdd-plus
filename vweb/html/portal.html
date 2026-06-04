@@ -395,20 +395,24 @@
         .dash-notice-item .time { color: var(--text-muted); font-size: 11px; white-space: nowrap; padding-top: 2px; }
         .dash-notice-empty { padding: 26px 12px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
-        /* ===== 活动列表 ===== */
-        .activities-list { display: grid; gap: 1px; }
+        /* ===== 活动列表（卡片式） ===== */
+        .activities-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
         .activity-row {
-            display: grid; grid-template-columns: minmax(0,1.2fr) minmax(140px,0.75fr) minmax(160px,0.85fr) auto;
-            gap: 14px; align-items: center; padding: 18px;
-            background: rgba(255,255,255,0.92); border: 1px solid transparent;
-            border-bottom: 1px solid rgba(148,163,184,0.10);
-            transition: all 0.25s ease;
+            display: flex; flex-direction: column; gap: 12px; padding: 20px;
+            background: rgba(255,255,255,0.92); border: 1px solid var(--glass-border);
+            border-radius: 14px; transition: all 0.25s ease; position: relative; overflow: hidden;
         }
-        .activity-row:nth-child(odd) { background: rgba(255,255,255,0.92); }
-        .activity-row:nth-child(even) { background: rgba(8,145,178,0.02); }
-        .activity-row:hover { background: rgba(8,145,178,0.04) !important; border-color: var(--glass-border-hover); }
-        .activity-title { font-size: 16px; font-weight: 900; color: var(--text); margin-bottom: 6px; letter-spacing: -0.02em; }
+        .activity-row::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--cyan), var(--purple)); opacity: 0; transition: opacity 0.25s;
+        }
+        .activity-row:hover { border-color: var(--glass-border-hover); box-shadow: 0 4px 20px rgba(8,145,178,0.08); transform: translateY(-2px); }
+        .activity-row:hover::before { opacity: 1; }
+        .activity-title { font-size: 16px; font-weight: 900; color: var(--text); letter-spacing: -0.02em; margin-bottom: 2px; }
         .activity-desc { color: rgba(30,41,59,0.5); font-size: 11.5px; line-height: 1.65; word-break: break-word; }
+        .activity-row .activity-tags { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .activity-row .activity-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(148,163,184,0.08); }
+        .activity-row .activity-bottom .muted { flex: 1; }
 
         /* ===== 微信 ===== */
         .wx-intro-box {
@@ -769,7 +773,7 @@
             .grid-cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
             .status-grid, .wx-status-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
             .task-grid { grid-template-columns: 1fr; }
-            .activity-row { grid-template-columns: 1fr; }
+            .activities-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .dash-hero-strip { grid-template-columns: repeat(2, 1fr); }
             .dash-info-grid { grid-template-columns: 1fr; }
         }
@@ -806,6 +810,7 @@
             .table-wrap::before { display: block; }
             table { min-width: 700px; }
             .account-subtable { min-width: 600px; }
+            .activities-list { grid-template-columns: 1fr; }
             .activity-row .btn { width: 100%; }
 
             /* 手机端项目表格 → 卡片布局 */
@@ -2018,20 +2023,18 @@ function renderActivities() {
     }
     box.innerHTML = list.map(item => `
         <div class="activity-row">
-            <div>
-                <div class="activity-title">${escapeHtml(item.name)}</div>
-                <div class="activity-desc">环境变量：${escapeHtml(item.envKey)} · 青龙容器：${escapeHtml(item.qingLongConfig || '默认容器')}</div>
-                ${item.guide ? `<div class="activity-desc" style="margin-top:8px;white-space:pre-wrap;line-height:1.7;color:rgba(30,41,59,0.68);">玩法摘要：${escapeHtml(item.guide.length > 88 ? item.guide.slice(0, 88) + '...' : item.guide)}</div>` : ''}
+            <div class="activity-title">${escapeHtml(item.name)}</div>
+            <div class="activity-desc">环境变量：${escapeHtml(item.envKey)} · 青龙容器：${escapeHtml(item.qingLongConfig || '默认容器')}</div>
+            ${item.guide ? `<div class="activity-desc" style="white-space:pre-wrap;line-height:1.7;color:rgba(30,41,59,0.68);">玩法摘要：${escapeHtml(item.guide.length > 88 ? item.guide.slice(0, 88) + '...' : item.guide)}</div>` : ''}
+            <div class="activity-tags">
+                <span class="tag" style="background:var(--cyan-dim);color:var(--cyan);border-color:rgba(8,145,178,0.22);">编号 ${item.id}</span>
+                <span class="tag ${item.isMonthlyDeduct ? 'expiring' : item.isDailyDeduct ? 'warning' : 'active'}">${item.isMonthlyDeduct ? '按月授权' : item.isDailyDeduct ? '按天计费' : '一次性上车'}</span>
+                <span class="tag" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(124,58,237,0.22);">${item.isDailyDeduct ? `每天 ${item.dailyCoin} 积分` : item.isMonthlyDeduct ? `每月 ${item.monthlyCoin} 积分` : `扣除 ${item.needCoin} 积分`}</span>
             </div>
-            <div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                    <span class="tag" style="background:var(--cyan-dim);color:var(--cyan);border-color:rgba(8,145,178,0.22);">编号 ${item.id}</span>
-                    <span class="tag ${item.isMonthlyDeduct ? 'expiring' : item.isDailyDeduct ? 'warning' : 'active'}">${item.isMonthlyDeduct ? '按月授权' : item.isDailyDeduct ? '按天计费' : '一次性上车'}</span>
-                    <span class="tag" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(124,58,237,0.22);">${item.isDailyDeduct ? `每天 ${item.dailyCoin} 积分` : item.isMonthlyDeduct ? `每月 ${item.monthlyCoin} 积分` : `扣除 ${item.needCoin} 积分`}</span>
-                </div>
+            <div class="activity-bottom">
+                <div class="muted" style="font-size:11.5px;line-height:1.55;">点击上车后，再填写字段与备注信息</div>
+                <button class="btn" onclick="openProjectModal('${escapeJs(item.id)}')">🚀 上车</button>
             </div>
-            <div class="muted" style="font-size:11.5px;line-height:1.55;">点击上车后，再填写字段与备注信息</div>
-            <div><button class="btn" onclick="openProjectModal('${escapeJs(item.id)}')">🚀 上车</button></div>
         </div>
     `).join('');
 }
