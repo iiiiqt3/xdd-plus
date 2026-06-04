@@ -14,6 +14,15 @@ type PortalController struct {
 }
 
 func (c *PortalController) requestSource() string {
+	// 优先检查前端显式声明的来源
+	if src := c.Ctx.Input.Header("X-Request-Source"); src != "" {
+		if src == "web" {
+			return "Web端"
+		}
+		if src == "app" {
+			return "App端"
+		}
+	}
 	ua := strings.ToLower(c.Ctx.Input.Header("User-Agent"))
 	if strings.Contains(ua, "okhttp") || c.Ctx.Input.Header("X-Sign-DeviceID") != "" {
 		return "App端"
