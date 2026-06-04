@@ -45,6 +45,8 @@
             --radius: 12px;
             --radius-sm: 8px;
             --radius-lg: 16px;
+            --glass-border: #d1d5db;
+            --glass-bg: #f9fafb;
         }
         html { min-height: 100%; background: var(--bg); }
         body {
@@ -294,6 +296,7 @@
         }
         .tag.active { background: var(--success-light); color: var(--success); border-color: #a7f3d0; }
         .tag.expiring { background: var(--warning-light); color: var(--warning); border-color: #fde68a; }
+        .tag.warning { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
         .tag.expired { background: var(--danger-light); color: var(--danger); border-color: #fecaca; }
         .tag.gray { background: #f8fafc; color: var(--text-muted); border-color: #e2e8f0; }
         .tag.notice { background: var(--primary-light); color: var(--primary); border-color: #c7d2fe; }
@@ -1202,7 +1205,7 @@
                         <h3>🎟️ 卡密兑换</h3>
                         <p style="margin-bottom:10px;">输入卡密直接兑换积分，支持普通卡密和赠送卡密。</p>
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                            <input type="text" id="redeemKeyInput" placeholder="请输入卡密" style="flex:1;min-width:140px;padding:9px 12px;border:1px solid var(--glass-border);border-radius:10px;font-size:13px;outline:none;font-family:monospace;background:rgba(255,255,255,0.035);transition:border-color 0.2s;">
+                            <input type="text" id="redeemKeyInput" placeholder="请输入卡密" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:10px;font-size:13px;outline:none;font-family:monospace;background:#f9fafb;color:#0f172a;transition:border-color 0.2s;">
                             <button class="btn" style="background:linear-gradient(135deg,#0d9488,#0891b2);white-space:nowrap;" onclick="redeemKey()">兑换</button>
                         </div>
                         <p style="margin-top:6px;font-size:11px;color:var(--text-muted);">💡 卡密格式以 XDD 或 ZSKM 开头</p>
