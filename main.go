@@ -247,6 +247,7 @@ func main() {
 	web.Router("/api/admin/envvars/:id", &controllers.AdminApiController{}, "delete:DeleteEnvVar")
 	web.Router("/api/admin/users", &controllers.AdminApiController{}, "get:GetUsers")
 	web.Router("/api/admin/users/coin", &controllers.AdminApiController{}, "post:UpdateUserCoin")
+	web.Router("/api/admin/users/coin-logs", &controllers.AdminApiController{}, "get:GetCoinLogs")
 	web.Router("/api/admin/sysconfig", &controllers.AdminApiController{}, "get:GetSystemConfig")
 	web.Router("/api/admin/sysconfig/save", &controllers.AdminApiController{}, "post:SaveSystemConfig")
 	web.Router("/api/admin/sysconfig/image-token", &controllers.AdminApiController{}, "post:GetImageToken")

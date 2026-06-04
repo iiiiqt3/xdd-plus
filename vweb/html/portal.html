@@ -1329,7 +1329,7 @@
                     <button class="btn small coin-log-tab" data-source="Web端" onclick="switchCoinLogSource(this,'Web端')">🌐 Web端</button>
                     <button class="btn small coin-log-tab" data-source="App端" onclick="switchCoinLogSource(this,'App端')">📱 App端</button>
                     <button class="btn small coin-log-tab" data-source="微信" onclick="switchCoinLogSource(this,'微信')">💬 微信</button>
-                    <button class="btn small coin-log-tab" data-source="后台" onclick="switchCoinLogSource(this,'后台')">🔧 后台</button>
+                    <button class="btn small coin-log-tab" data-source="后台及其他" onclick="switchCoinLogSource(this,'后台及其他')">🔧 后台及其他</button>
                 </div>
                 <div id="coinLogsBody" style="max-height:60vh;overflow-y:auto;"></div>
             </div>
@@ -2924,7 +2924,7 @@ async function loadCoinLogs(source) {
             body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:13px;">暂无积分变动记录</div>';
             return;
         }
-        const sourceClass = { 'Web端': 'src-web', 'App端': 'src-app', '微信': 'src-wx', '后台': 'src-admin' };
+        const sourceClass = { 'Web端': 'src-web', 'App端': 'src-app', '微信': 'src-wx', '后台及其他': 'src-admin' };
         const typeIcon = { '签到': '📅', '祈福': '🙏', '游戏': '🎮', '转账': '💸', '充值': '💰', '卡密兑换': '🎟️', '上车扣费': '🚀', '续费扣费': '🔄', '退还': '↩️', '推一推': '🤝', '助力扣费': '🫳', '任务扣费': '📋', '授权扣费': '🔑', '许愿': '⭐', '微信登录': '📱', '反馈奖励': '🎁', '管理员操作': '🔧' };
         let html = '';
         for (let i = 0; i < logs.length; i++) {

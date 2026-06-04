@@ -560,9 +560,9 @@ func (c *PortalController) CoinLogs() {
 		CreatedAt    string `json:"createdAt"`
 	}
 
-	var result []coinLogItem
+	result := make([]coinLogItem, 0)
 	for _, l := range logs {
-		src := "其他"
+		src := "后台及其他"
 		d := l.Detail
 		if len(d) >= 6 && d[:6] == "Web端" {
 			src = "Web端"
@@ -570,10 +570,8 @@ func (c *PortalController) CoinLogs() {
 		} else if len(d) >= 6 && d[:6] == "App端" {
 			src = "App端"
 			d = d[6:]
-		} else if len(d) >= 12 && d[:12] == "微信自动充值" {
+		} else if strings.HasPrefix(d, "微信") {
 			src = "微信"
-		} else if len(d) >= 6 && d[:6] == "管理员" {
-			src = "后台"
 		}
 		if sourceFilter != "" && src != sourceFilter {
 			continue
