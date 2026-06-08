@@ -27,7 +27,7 @@ func initCron() {
 	c.AddFunc("0 */6 * * ?", initCookie)       // 账号检测（每6小时执行一次）
 	c.AddFunc("59 58 23 L * ?", ClearAllContinuousSignIns) // 连续打卡次数清0（每月最后一日23点58分59秒）
 	c.AddFunc("10 9 * * ?",HandleNews) // 新闻推送
-	c.AddFunc("5 12 * * ?", CheckWxOfflineAndNotify) // 微信掉线检测推送（每天16点）
+	c.AddFunc("*/10 * * * ?", CheckWxOfflineAndNotify) // 微信掉线检测推送（每10分钟检测一次，掉线后仅通知一次）
 	
 	
 	c.AddFunc("15 10 * * ?", func() {	CheckExpiringCKs(2, nil)})    //记录ck2天开始通知

@@ -2116,7 +2116,7 @@ func (c *AdminApiController) NotifyWxOffline() {
 	}
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
 	channels := models.NormalizeNotifyChannels(req.Channels)
-	go models.CheckWxOfflineAndNotifyWithChannels(channels, req.WxIDs)
+	go models.CheckWxOfflineAndNotifyWithChannels(channels, req.WxIDs, true)
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"msg":  "通知已触发，正在后台发送",

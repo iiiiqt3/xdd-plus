@@ -9,10 +9,15 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
 )
+
+// offlineNotifiedWxIDs 记录已发送过掉线通知的wxid，避免重复通知
+// 当设备恢复上线时会清除记录，再次掉线时会重新通知
+var offlineNotifiedWxIDs sync.Map
 
 // ==================== 接口基础配置 ====================
 
@@ -834,10 +839,10 @@ func pollLoginStatus(sender *Sender, uuid string, deductCoin bool) {
 
 // CheckWxOfflineAndNotify 检查所有微信设备在线状态，给掉线用户推送通知
 func CheckWxOfflineAndNotify() {
-	CheckWxOfflineAndNotifyWithChannels(NotifyChannels{Web: true, App: true, Robot: true}, nil)
+	CheckWxOfflineAndNotifyWithChannels(NotifyChannels{Web: true, App: true, Robot: true}, nil, false)
 }
 
-func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string) {
+func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string, force bool) {
 	logs.Info("开始执行微信掉线检测推送...")
 
 	url := getWxLoginBaseURL() + "/api/v1/wx/user/status"
@@ -884,6 +889,7 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 	}
 
 	offlineCount := 0
+	notifiedCount := 0
 
 	for wxid, info := range result.Data {
 		if len(wxIDs) > 0 {
@@ -898,38 +904,58 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 				continue
 			}
 		}
-		if info.Survival != 1 {
-			offlineCount++
-			logs.Info("微信掉线检测：用户 %s (%s) 已掉线，正在推送通知", info.Nickname, wxid)
 
-			loginTime := time.Unix(info.LoginDate, 0).Format("01-02 15:04")
-			refreshTime := time.Unix(info.RefreshDate, 0).Format("01-02 15:04")
+		if info.Survival == 1 {
+			// 设备在线，清除之前的掉线通知记录，下次掉线时可以重新通知
+			if _, loaded := offlineNotifiedWxIDs.LoadAndDelete(wxid); loaded {
+				logs.Info("微信掉线检测：用户 %s (%s) 已恢复上线，清除通知记录", info.Nickname, wxid)
+			}
+			continue
+		}
 
-			notifyMsg := fmt.Sprintf(
-				"⚠️ 你的微信协议已掉线，将会影响协议本的执行，请发送 【微信唤醒登陆】或者【微信重新登陆】上线。\n\n"+
-					"📋 你的设备信息：\n"+
-					"👤 %s (🔴 掉线)\n"+
-					"🆔 %s\n"+
-					"📱 %s\n"+
-					"💡 登录：%s | 刷新：%s",
-				info.Nickname, wxid, info.Device, loginTime, refreshTime,
-			)
-			if channels.Robot {
-				go SendWxMsg(wxid, notifyMsg)
-			}
-			var user User
-			if db.Where("wxid = ?", wxid).First(&user).Error == nil {
-				CreateSystemWebNotification("微信协议掉线提醒", notifyMsg, NotifyCategoryWx, NotifySourceWx, user.Number, channels)
-			}
+		offlineCount++
 
-			if offlineCount >= 2 {
-				delay := 3 + rand.Intn(3)
-				time.Sleep(time.Duration(delay) * time.Second)
+		// 检查是否已经发送过掉线通知，如果已通知则跳过（管理员手动触发时忽略去重）
+		if !force {
+			if _, loaded := offlineNotifiedWxIDs.LoadOrStore(wxid, true); loaded {
+				logs.Info("微信掉线检测：用户 %s (%s) 已通知过掉线，跳过", info.Nickname, wxid)
+				continue
 			}
+		} else {
+			offlineNotifiedWxIDs.Store(wxid, true)
+		}
+
+		logs.Info("微信掉线检测：用户 %s (%s) 已掉线，%s推送通知", info.Nickname, wxid, map[bool]string{true: "管理员手动", false: "首次"}[!force])
+
+		loginTime := time.Unix(info.LoginDate, 0).Format("01-02 15:04")
+		refreshTime := time.Unix(info.RefreshDate, 0).Format("01-02 15:04")
+
+		notifyMsg := fmt.Sprintf(
+			"⚠️ 你的微信协议已掉线，将会影响协议本的执行，请发送 【微信唤醒登陆】或者【微信重新登陆】上线。\n\n"+
+				"📋 你的设备信息：\n"+
+				"👤 %s (🔴 掉线)\n"+
+				"🆔 %s\n"+
+				"📱 %s\n"+
+				"💡 登录：%s | 刷新：%s\n\n"+
+				"📌 本消息只发送一次，设备恢复上线后如再次掉线将重新通知。",
+			info.Nickname, wxid, info.Device, loginTime, refreshTime,
+		)
+		if channels.Robot {
+			go SendWxMsg(wxid, notifyMsg)
+		}
+		var user User
+		if db.Where("wxid = ?", wxid).First(&user).Error == nil {
+			CreateSystemWebNotification("微信协议掉线提醒", notifyMsg, NotifyCategoryWx, NotifySourceWx, user.Number, channels)
+		}
+		notifiedCount++
+
+		if offlineCount >= 2 {
+			delay := 3 + rand.Intn(3)
+			time.Sleep(time.Duration(delay) * time.Second)
 		}
 	}
 
-	logs.Info("微信掉线检测推送完成，共 %d 个设备，%d 个掉线已推送通知", len(result.Data), offlineCount)
+	logs.Info("微信掉线检测推送完成，共 %d 个设备，%d 个掉线，%d 个已发送通知", len(result.Data), offlineCount, notifiedCount)
 }
 
 // checkLoginStatus 检查扫码状态
