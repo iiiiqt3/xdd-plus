@@ -4827,7 +4827,7 @@ async function saveActivity() {
     if (editIdx >= 0) activitiesCache[editIdx] = act; else activitiesCache.push(act);
     activitiesCache = sortActivityConfigList(activitiesCache);
     const yaml = generateActivitiesYaml(activitiesCache);
-    try { const res = await api.post('/api/admin/activities/save', { activities: yaml }); toast(res.msg || '保存成功', res.code === 0 ? 'success' : 'error'); if (res.code === 0) { closeActivityModal(); loadActivities(); if (isNew) { const notifyWebApp = document.getElementById('actNotifyWebApp').checked; const notifyQQWx = document.getElementById('actNotifyQQWx').checked; const guide = document.getElementById('actFormGuide').value; const needCoin = parseInt(document.getElementById('actFormCoin').value) || 0; const billingMode = document.getElementById('actFormMonthly').value; const monthlyCoin = parseInt(document.getElementById('actFormMonthlyCoin').value) || 0; const dailyCoin = parseInt(document.getElementById('actFormDailyCoin').value) || 0; if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, billingMode, monthlyCoin, dailyCoin); } if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, billingMode, monthlyCoin, dailyCoin); } } } } catch (e) { toast('保存失败', 'error'); }
+    try { const res = await api.post('/api/admin/activities/save', { activities: yaml }); toast(res.msg || '保存成功', res.code === 0 ? 'success' : 'error'); if (res.code === 0) { closeActivityModal(); loadActivities(); if (isNew) { const notifyWebApp = document.getElementById('actNotifyWebApp').checked; const notifyQQWx = document.getElementById('actNotifyQQWx').checked; const guide = document.getElementById('actFormGuide').value; const needCoin = parseInt(document.getElementById('actFormCoin').value) || 0; const billingMode = document.getElementById('actFormMonthly').value; const monthlyCoin = parseInt(document.getElementById('actFormMonthlyCoin').value) || 0; const dailyCoin = parseInt(document.getElementById('actFormDailyCoin').value) || 0; if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, billingMode, monthlyCoin, dailyCoin); } if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, billingMode, monthlyCoin, dailyCoin, true, true); } } } } catch (e) { toast('保存失败', 'error'); }
 }
 function editActivity(idx) { showActivityEditor(idx); }
 async function sendActivityNotify(activityName, activityGuide, silent, needCoin, billingMode, monthlyCoin, dailyCoin) {
@@ -6514,7 +6514,7 @@ async function pushSelectedActivities() {
     if (ids.length === 0) { toast('请先勾选要推送的活动', 'info'); return; }
     var pushWebApp = (document.getElementById('pushChannelWebApp')||{}).checked || false;
     var pushQQWx = (document.getElementById('pushChannelQQWx')||{}).checked || false;
-    if (!pushWebApp && !pushQQWx) { toast('请至少选择一个推送渠道', 'info'); return; }
+    if (!pushWebApp && !pushQQWx) { toast('已完成，未选择推送渠道不进行推送', 'success'); return; }
     var channels = [];
     if (pushWebApp) channels.push('网页/APP');
     if (pushQQWx) channels.push('QQ群/微信群');
@@ -6534,7 +6534,7 @@ async function pushSelectedActivities() {
                 await sendActivityNotify(act['名称'] || '', act['玩法和说明'] || '', true, actNeedCoin, actBillingMode, actMonthlyCoin, actDailyCoin);
             }
             if (pushQQWx) {
-                await sendActivityToGroups(act['名称'] || '', act['玩法和说明'] || '', actNeedCoin, actBillingMode, actMonthlyCoin, actDailyCoin);
+                await sendActivityToGroups(act['名称'] || '', act['玩法和说明'] || '', actNeedCoin, actBillingMode, actMonthlyCoin, actDailyCoin, true, true);
             }
             successCount++;
             pushDetails.push('✅ ' + (act['名称'] || '未知活动'));
@@ -6550,7 +6550,7 @@ async function pushSelectedActivities() {
     toast(resultMsg, successCount > 0 ? 'success' : 'error');
 }
 
-async function sendActivityToGroups(activityName, activityGuide, needCoin, billingMode, monthlyCoin, dailyCoin) {
+async function sendActivityToGroups(activityName, activityGuide, needCoin, billingMode, monthlyCoin, dailyCoin, pushToQQ, pushToWX) {
     var content = activityName;
     if (activityGuide && activityGuide.trim()) {
         content += '\n\n📝 玩法简介：\n' + activityGuide.trim();
@@ -6571,10 +6571,18 @@ async function sendActivityToGroups(activityName, activityGuide, needCoin, billi
     content += '\n• iOS版本：http://180.152.5.230:8888/down/QaWi0JBZgb3t.ipa';
     content += '\n• 网页端：http://180.152.5.230:5701';
     content += '\n\n🚀 请下载APP或网页后台前往活动中心参与！';
+    
+    // 随机延迟30-45秒，避免被检测
+    var delay = Math.floor(Math.random() * 16) + 30; // 30-45秒
+    console.log('推送延迟 ' + delay + ' 秒后发送...');
+    await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    
     try {
         var res = await api.post('/api/admin/activity/pushgroups', {
             title: '🎉 新活动上线 - ' + activityName,
-            content: content
+            content: content,
+            pushToQQ: pushToQQ !== false,
+            pushToWX: pushToWX !== false
         });
         if (res.code !== 0) { throw new Error(res.msg || '推送失败'); }
         if (res.msg && res.msg.indexOf('已推送') >= 0) {

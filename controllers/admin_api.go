@@ -126,11 +126,21 @@ func (c *AdminApiController) SaveGameConfig() {
 
 // SendActivityToGroups 推送活动到QQ群/微信群
 func (c *AdminApiController) SendActivityToGroups() {
-	var req map[string]interface{}
+	var req struct {
+		Title    string `json:"title"`
+		Content  string `json:"content"`
+		PushToQQ bool   `json:"pushToQQ"`
+		PushToWX bool   `json:"pushToWX"`
+	}
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
-	title, _ := req["title"].(string)
-	content, _ := req["content"].(string)
-	msg := models.SendActivityToGroups(title, content)
+	
+	// 如果没有指定推送渠道，默认推送到所有渠道（兼容旧版本）
+	if !req.PushToQQ && !req.PushToWX {
+		req.PushToQQ = true
+		req.PushToWX = true
+	}
+	
+	msg := models.SendActivityToGroupsWithOptions(req.Title, req.Content, req.PushToQQ, req.PushToWX)
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
 	c.ServeJSON()
 }
