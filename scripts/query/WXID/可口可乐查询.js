@@ -3,8 +3,8 @@
  * 环境变量：
  *   WXID_KKKL: wxid，多账号用 & 或换行分隔
  *     示例: wxid_xxxxxxxx&wxid_yyyyyyyy
- *   XDD_API_URL: 后台API地址，用于获取微信协议服务器地址（可选）
- *   WECHAT_SERVER: 微信协议服务器地址（可选，优先从后台获取）
+ *   WECHAT_SERVER: 微信协议服务器地址（旧地址，由xdd后台自动传递）
+ *   WECHAT_SERVER_NEW: 微信协议服务器新地址（由xdd后台自动传递，可选）
  *
  * cron: 0 9 * * *
  * const: disabled = false
@@ -20,57 +20,24 @@ const CONFIG = {
   BASE_URL: 'https://member-api.icoke.cn',
   UA: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.59(0x18003b2e) NetType/4G Language/zh_CN',
   REFERER: 'https://servicewechat.com/wxa5811e0426a94686/499/page-frame.html',
-  // 保留环境变量兼容，但优先从后台获取
-  WECHAT_SERVER: process.env.WECHAT_SERVER || '',
-  XDD_API_URL: (process.env.XDD_API_URL || '').replace(/\/+$/, ''),
+  // 从环境变量获取地址（由xdd后台自动传递）
+  WECHAT_SERVER: (process.env.WECHAT_SERVER || 'http://180.152.5.230:8011').trim(),
+  WECHAT_SERVER_NEW: (process.env.WECHAT_SERVER_NEW || '').trim(),
   CACHE_FILE: path.join(__dirname, '可口可乐吧_cache.json'),
   TIMEOUT: 15000
 };
-
-// 缓存获取到的服务器地址
-let cachedServerUrls = null;
 
 const ENV_WXID = 'WXID_KKKL';
 
 // ==================== 服务器地址获取 ====================
 /**
- * 从后台API获取微信协议服务器地址（新旧地址）
- * 优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+ * 获取微信协议服务器地址（新旧地址）
+ * 优先尝试新地址，失败后尝试旧地址
  */
-async function getWxServerUrls() {
-  // 如果已有缓存，直接返回
-  if (cachedServerUrls) {
-    return cachedServerUrls;
-  }
-
-  // 如果环境变量明确指定了地址，直接使用
-  if (CONFIG.WECHAT_SERVER) {
-    cachedServerUrls = { oldUrl: CONFIG.WECHAT_SERVER, newUrl: CONFIG.WECHAT_SERVER };
-    return cachedServerUrls;
-  }
-
-  // 尝试从后台API获取
-  if (CONFIG.XDD_API_URL) {
-    try {
-      const url = `${CONFIG.XDD_API_URL}/api/wxserver`;
-      const response = await axios.get(url, { timeout: 5000 });
-      if (response.data?.code === 0) {
-        const oldUrl = (response.data.data?.old_url || '').replace(/\/+$/, '');
-        const newUrl = (response.data.data?.new_url || '').replace(/\/+$/, '');
-        if (oldUrl && newUrl) {
-          cachedServerUrls = { oldUrl, newUrl };
-          return cachedServerUrls;
-        }
-      }
-    } catch (e) {
-      console.log(`⚠️  从后台获取地址失败: ${e.message}`);
-    }
-  }
-
-  // 默认地址
-  const defaultUrl = 'http://180.152.5.230:8011';
-  cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
-  return cachedServerUrls;
+function getWxServerUrls() {
+  const oldUrl = CONFIG.WECHAT_SERVER.replace(/\/+$/, '');
+  const newUrl = CONFIG.WECHAT_SERVER_NEW ? CONFIG.WECHAT_SERVER_NEW.replace(/\/+$/, '') : oldUrl;
+  return { oldUrl, newUrl };
 }
 
 // ==================== 缓存管理 ====================
