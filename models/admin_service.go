@@ -343,6 +343,16 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	// 简单写入方式
 	var newLines []string
 	skipKeys := map[string]bool{"containers": true}
+	inWxProtocol := false
+	wxProtocolEndIdx := -1
+
+	wpYamlKeys := map[string]string{
+		"wp_login_base_url":     "login_base_url",
+		"wp_new_login_base_url": "new_login_base_url",
+		"wp_active_protocol":    "active_protocol",
+		"wp_scan_login_cost":    "scan_login_cost",
+		"wp_device_name":        "device_name",
+	}
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -353,6 +363,11 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		// 跳过容器配置块（由容器管理单独处理）
 		if strings.HasPrefix(trimmed, "containers:") {
 			skipKeys["containers"] = true
+			newLines = append(newLines, line)
+			continue
+		}
+		if strings.HasPrefix(trimmed, "wx_protocol:") {
+			inWxProtocol = true
 			newLines = append(newLines, line)
 			continue
 		}
@@ -367,22 +382,28 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 				}
 			}
 		}
-		// 处理 wx_protocol 嵌套配置（扫码登录协议：login_base_url/scan_login_cost/device_name）
-		if strings.HasPrefix(trimmed, "login_base_url:") || strings.HasPrefix(trimmed, "new_login_base_url:") || strings.HasPrefix(trimmed, "active_protocol:") || strings.HasPrefix(trimmed, "scan_login_cost:") || strings.HasPrefix(trimmed, "device_name:") {
-			wpMap := map[string]string{
-				"wp_login_base_url":     "login_base_url",
-				"wp_new_login_base_url": "new_login_base_url",
-				"wp_active_protocol":    "active_protocol",
-				"wp_scan_login_cost":    "scan_login_cost",
-				"wp_device_name":        "device_name",
-			}
-			for wpKey, yamlKey := range wpMap {
-				if newVal, ok := configMap[wpKey]; ok && strings.HasPrefix(trimmed, yamlKey+":") {
-					newLines = append(newLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
-					delete(configMap, wpKey)
-					goto next
+		// 处理 wx_protocol 嵌套配置
+		if inWxProtocol && len(trimmed) > 0 && !strings.HasPrefix(trimmed, "#") && strings.Contains(trimmed, ":") {
+			indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
+			for wpKey, yamlKey := range wpYamlKeys {
+				if strings.HasPrefix(trimmed, yamlKey+":") {
+					if newVal, ok := configMap[wpKey]; ok {
+						newLines = append(newLines, fmt.Sprintf("%s%s: %s", indent, yamlKey, newVal))
+						delete(configMap, wpKey)
+						goto next
+					}
 				}
 			}
+			wxProtocolEndIdx = len(newLines) + 1
+			newLines = append(newLines, line)
+			goto next
+		}
+		// 遇到新的顶级节，结束 wx_protocol
+		if inWxProtocol && !strings.HasPrefix(trimmed, "#") && len(trimmed) > 0 && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
+			inWxProtocol = false
+		}
+		if inWxProtocol {
+			wxProtocolEndIdx = len(newLines) + 1
 		}
 
 		// 处理顶级配置
@@ -398,7 +419,22 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	next:
 	}
 
-	// 追加没有匹配到的配置
+	// 将未匹配的 wx_protocol 字段插入到 wx_protocol 节末尾
+	if wxProtocolEndIdx < 0 {
+		wxProtocolEndIdx = len(newLines)
+	}
+	var wpInsertLines []string
+	for wpKey, yamlKey := range wpYamlKeys {
+		if newVal, ok := configMap[wpKey]; ok {
+			wpInsertLines = append(wpInsertLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+			delete(configMap, wpKey)
+		}
+	}
+	if len(wpInsertLines) > 0 {
+		newLines = append(newLines[:wxProtocolEndIdx], append(wpInsertLines, newLines[wxProtocolEndIdx:]...)...)
+	}
+
+	// 追加剩余没有匹配到的顶级配置
 	for k, v := range configMap {
 		newLines = append(newLines, fmt.Sprintf("%s: %s", k, v))
 	}
@@ -2946,9 +2982,18 @@ func SaveWxProtocolConfigForAdmin(req map[string]interface{}) string {
 		configMap["wp_device_name"] = v
 	}
 
+	wpYamlKeys := map[string]string{
+		"wp_login_base_url":     "login_base_url",
+		"wp_new_login_base_url": "new_login_base_url",
+		"wp_active_protocol":    "active_protocol",
+		"wp_scan_login_cost":    "scan_login_cost",
+		"wp_device_name":        "device_name",
+	}
+
 	inWxProtocol := false
+	wxProtocolEndIdx := -1
 	var newLines []string
-	for _, line := range lines {
+	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "wx_protocol:") {
 			inWxProtocol = true
@@ -2957,14 +3002,7 @@ func SaveWxProtocolConfigForAdmin(req map[string]interface{}) string {
 		}
 		if inWxProtocol && len(trimmed) > 0 && !strings.HasPrefix(trimmed, "#") && strings.Contains(trimmed, ":") {
 			indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
-			wpMap := map[string]string{
-				"wp_login_base_url":     "login_base_url",
-				"wp_new_login_base_url": "new_login_base_url",
-				"wp_active_protocol":    "active_protocol",
-				"wp_scan_login_cost":    "scan_login_cost",
-				"wp_device_name":        "device_name",
-			}
-			for wpKey, yamlKey := range wpMap {
+			for wpKey, yamlKey := range wpYamlKeys {
 				if strings.HasPrefix(trimmed, yamlKey+":") {
 					if newVal, ok := configMap[wpKey]; ok {
 						newLines = append(newLines, fmt.Sprintf("%s%s: %s", indent, yamlKey, newVal))
@@ -2975,25 +3013,34 @@ func SaveWxProtocolConfigForAdmin(req map[string]interface{}) string {
 			}
 			newLines = append(newLines, line)
 		nextWxProtocolLine:
+			wxProtocolEndIdx = len(newLines)
 			continue
 		}
-		if inWxProtocol && !strings.HasPrefix(trimmed, "#") && !strings.Contains(trimmed, ":") && trimmed != "" {
+		// 遇到下一个顶级节或非缩进行，结束 wx_protocol 范围
+		if inWxProtocol && !strings.HasPrefix(trimmed, "#") && !strings.HasPrefix(trimmed, "") && len(trimmed) > 0 {
 			inWxProtocol = false
+		}
+		// 如果在 wx_protocol 范围内遇到空行或注释，记录位置
+		if inWxProtocol {
+			wxProtocolEndIdx = len(newLines)
 		}
 		newLines = append(newLines, line)
 	}
 
-	// 追加未匹配的配置
-	for wpKey, yamlKey := range map[string]string{
-		"wp_login_base_url":     "login_base_url",
-		"wp_new_login_base_url": "new_login_base_url",
-		"wp_active_protocol":    "active_protocol",
-		"wp_scan_login_cost":    "scan_login_cost",
-		"wp_device_name":        "device_name",
-	} {
+	// 将未匹配到的 wx_protocol 字段插入到 wx_protocol 节末尾
+	if wxProtocolEndIdx < 0 {
+		wxProtocolEndIdx = len(newLines)
+	}
+	var insertLines []string
+	for wpKey, yamlKey := range wpYamlKeys {
 		if newVal, ok := configMap[wpKey]; ok {
-			newLines = append(newLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+			insertLines = append(insertLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+			delete(configMap, wpKey)
 		}
+	}
+	if len(insertLines) > 0 {
+		// 在 wx_protocol 节末尾插入
+		newLines = append(newLines[:wxProtocolEndIdx], append(insertLines, newLines[wxProtocolEndIdx:]...)...)
 	}
 
 	newContent := strings.Join(newLines, "\n")
