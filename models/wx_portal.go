@@ -399,7 +399,9 @@ func PortalWxLogout(userNumber int, targetWxid ...string) (*PortalWxActionResult
         return nil, fmt.Errorf("设备尚未登录，无需登出")
     }
 
-    body, err := wxLoginRequest("/api/v1/wx/login/logout", map[string]string{"wxid": wxid})
+    // 查找设备所在的协议地址，发送登出请求到正确的地址
+    baseURL := findWxDeviceBaseURL(wxid)
+    body, err := wxLoginRequestToURL(baseURL, "/api/v1/wx/login/logout", map[string]string{"wxid": wxid})
     if err != nil {
         return nil, err
     }
@@ -431,7 +433,9 @@ func PortalWxDelete(userNumber int, targetWxid ...string) (*PortalWxActionResult
         return nil, fmt.Errorf("当前用户未绑定微信ID")
     }
 
-    statusRaw, err := getWxUserStatusRaw()
+    // 查找设备所在的协议地址
+    baseURL := findWxDeviceBaseURL(wxid)
+    statusRaw, err := getWxUserStatusRawFromURL(baseURL)
     if err != nil {
         return nil, err
     }
@@ -450,7 +454,7 @@ func PortalWxDelete(userNumber int, targetWxid ...string) (*PortalWxActionResult
         matchedWxid = wxid
     }
 
-    body, err := wxLoginRequest("/api/v1/wx/user/delete", map[string]interface{}{"wxids": []string{matchedWxid}})
+    body, err := wxLoginRequestToURL(baseURL, "/api/v1/wx/user/delete", map[string]interface{}{"wxids": []string{matchedWxid}})
     if err != nil {
         return nil, err
     }

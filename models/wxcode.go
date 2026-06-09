@@ -375,6 +375,47 @@ func checkWxDeviceOnline(wxid string) (bool, error) {
 	return online, err
 }
 
+// findWxDeviceBaseURL 查找 wxid 所在的协议地址
+// 优先返回设备在线的地址，其次返回设备存在的地址
+// 如果都找不到，返回活跃地址
+func findWxDeviceBaseURL(wxid string) string {
+	// 先检查活跃地址
+	activeURL := getWxLoginBaseURL()
+	online, _ := checkWxDeviceOnlineFromURL(activeURL, wxid)
+	if online {
+		return activeURL
+	}
+
+	// 检查旧地址
+	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+		oldOnline, _ := checkWxDeviceOnlineFromURL(getOldWxLoginBaseURL(), wxid)
+		if oldOnline {
+			return getOldWxLoginBaseURL()
+		}
+	}
+
+	// 检查新地址
+	if Config.WxProtocol.NewLoginBaseURL != "" && getWxLoginBaseURL() != getNewWxLoginBaseURL() {
+		newOnline, _ := checkWxDeviceOnlineFromURL(getNewWxLoginBaseURL(), wxid)
+		if newOnline {
+			return getNewWxLoginBaseURL()
+		}
+	}
+
+	// 都不在线，检查设备是否存在（不限于 survival=1）
+	if exists, _ := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid); exists {
+		return getOldWxLoginBaseURL()
+	}
+	if Config.WxProtocol.NewLoginBaseURL != "" {
+		if exists, _ := checkWxDeviceExistsOnURL(getNewWxLoginBaseURL(), wxid); exists {
+			return getNewWxLoginBaseURL()
+		}
+	}
+
+	// 兜底返回活跃地址
+	return activeURL
+}
+
 // checkWxDeviceOnlineFromURL 从指定地址检查 wxid 是否在线
 // 不仅检查设备是否存在，还检查 survival 字段是否为 1（在线）
 func checkWxDeviceOnlineFromURL(baseURL, wxid string) (bool, error) {
