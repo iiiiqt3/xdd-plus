@@ -73,15 +73,42 @@ def get_wxserver_urls():
     return old_url, new_url
 
 
-def get_code(wxid):
-    """wxid -> code，自动尝试新旧地址"""
+def query_device_status(wxid):
+    """查询设备在线状态（所有地址），返回服务器地址列表（在线优先）"""
     old_url, new_url = get_wxserver_urls()
-    urls_to_try = list(dict.fromkeys([old_url, new_url]))  # 去重保持顺序
+    urls = list(dict.fromkeys([old_url, new_url]))
+    results = []
+    for url in urls:
+        try:
+            resp = requests.get(f"{url}/api/v1/wx/user/status", timeout=10, verify=False)
+            data = resp.json()
+            info = (data.get("data") or {}).get(wxid)
+            if info:
+                results.append({"url": url, "online": info.get("survival") == 1})
+        except Exception:
+            pass
+    return results
+
+
+def get_code(wxid):
+    """wxid -> code，智能选择地址"""
+    old_url, new_url = get_wxserver_urls()
+
+    # 智能选择地址：先查设备在线状态
+    priority_url = old_url
+    status_results = query_device_status(wxid)
+    if status_results:
+        online = next((r for r in status_results if r["online"]), None)
+        if online:
+            priority_url = online["url"]
+        else:
+            priority_url = status_results[0]["url"]
+
+    urls_to_try = list(dict.fromkeys([priority_url, old_url, new_url]))  # 去重保持顺序
 
     for idx, server_url in enumerate(urls_to_try):
         if not server_url:
             continue
-        label = "旧地址" if idx == 0 else "新地址"
         url = f"{server_url}{WECHAT_CODE_URL_PATH}"
         try:
             resp = requests.post(
@@ -98,15 +125,11 @@ def get_code(wxid):
             )
             if code:
                 return str(code)
-            # 业务失败（Code: -8 数据不存在 等），继续尝试下一个地址
             if body.get("Code") is not None or body.get("code") is not None:
-                print(f"⚠️  {label} 业务错误: {body.get('Message') or body.get('msg', '')}")
                 continue
         except Exception as e:
-            print(f"⚠️  {label} 请求异常: {str(e)[:60]}")
             continue
 
-    print(f"❌ 所有地址均无法换取 code")
     return None
 
 

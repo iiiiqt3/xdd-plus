@@ -109,15 +109,42 @@ def get_wxserver_urls():
     return old_url, new_url
 
 
+def query_device_status(wxid: str) -> list:
+    """查询设备在线状态（所有地址），返回服务器地址列表（在线优先）"""
+    old_url, new_url = get_wxserver_urls()
+    urls = list(dict.fromkeys([old_url, new_url]))
+    results = []
+    for url in urls:
+        try:
+            resp = requests.get(f"{url.rstrip('/')}/api/v1/wx/user/status", timeout=10)
+            data = resp.json()
+            info = (data.get("data") or {}).get(wxid)
+            if info:
+                results.append({"url": url, "online": info.get("survival") == 1})
+        except Exception:
+            pass
+    return results
+
+
 # ================== 获取 code ==================
 def get_wx_code(wxid: str) -> str:
     old_url, new_url = get_wxserver_urls()
-    urls_to_try = list(dict.fromkeys([old_url, new_url]))  # 去重保持顺序
+
+    # 智能选择地址：先查设备在线状态
+    priority_url = old_url
+    status_results = query_device_status(wxid)
+    if status_results:
+        online = next((r for r in status_results if r["online"]), None)
+        if online:
+            priority_url = online["url"]
+        else:
+            priority_url = status_results[0]["url"]
+
+    urls_to_try = list(dict.fromkeys([priority_url, old_url, new_url]))  # 去重保持顺序
 
     for idx, server_url in enumerate(urls_to_try):
         if not server_url:
             continue
-        label = "旧地址" if idx == 0 else "新地址"
         url = f"{server_url.rstrip('/')}/api/v1/wx/app/get/code"
         try:
             resp = requests.post(url, json={"wxid": wxid, "appid": WX_APPID}, timeout=BRIDGE_TIMEOUT)
@@ -130,12 +157,9 @@ def get_wx_code(wxid: str) -> str:
             )
             if code:
                 return str(code)
-            # 业务失败（Code: -8 数据不存在 等），继续尝试下一个地址
             if data.get("Code") is not None or data.get("code") is not None:
-                print(f"  ⚠️  {label} 业务错误: {data.get('Message') or data.get('msg', '')}")
                 continue
         except Exception as e:
-            print(f"  ⚠️  {label} 请求异常: {str(e)[:60]}")
             continue
 
     raise RuntimeError(f"所有地址均无法获取 code")
@@ -340,10 +364,6 @@ def main() -> int:
         print("   用法二：python 微信提现券查询.py 备注#wxid_xxx")
         print("   用法三：python 微信提现券查询.py wxid1&wxid2")
         return 1
-
-    # 显示地址获取方式
-    old_url, new_url = get_wxserver_urls()
-    print(f"\n📡 协议服务器地址：旧={old_url} 新={new_url}")
 
     ok_count = 0
     total = len(accounts)

@@ -230,14 +230,45 @@ function parseAccounts() {
 // ============================================================
 // 登录
 // ============================================================
-async function getWxCode(wxid, appid) {
-  const { oldUrl, newUrl } = await getWxServerUrls();
-  const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
+/**
+ * 查询设备在线状态（所有地址），返回设备所在的服务器地址列表
+ */
+async function queryDeviceStatus(wxid) {
+  const { oldUrl, newUrl } = getWxServerUrls();
+  const urls = [...new Set([oldUrl, newUrl])];
+  const results = [];
+  for (const url of urls) {
+    const label = url === oldUrl ? '旧地址' : '新地址';
+    try {
+      const data = await httpRequest(url + "/api/v1/wx/user/status", "GET", {});
+      const info = data?.data?.[wxid];
+      if (info) results.push({ url, online: info.survival === 1, source: label, nickname: info.nickname || '' });
+    } catch (_) {}
+  }
+  return results;
+}
 
-  for (let i = 0; i < urlsToTry.length; i++) {
-    const serverUrl = urlsToTry[i];
+async function getWxCode(wxid, appid) {
+  const { oldUrl, newUrl } = getWxServerUrls();
+
+  // 智能选择地址：先查设备在线状态
+  const statusResults = await queryDeviceStatus(wxid);
+  let priorityUrl = oldUrl;
+  if (statusResults.length > 0) {
+    const onlineResult = statusResults.find(r => r.online);
+    if (onlineResult) {
+      priorityUrl = onlineResult.url;
+    } else {
+      priorityUrl = statusResults[0].url;
+    }
+  }
+
+  const allUrls = [...new Set([priorityUrl, oldUrl, newUrl])];
+
+  for (let i = 0; i < allUrls.length; i++) {
+    const serverUrl = allUrls[i];
     if (!serverUrl) continue;
-    const label = i === 0 ? '旧地址' : '新地址';
+    const label = serverUrl === oldUrl ? '旧地址' : '新地址';
     try {
       const res = await httpRequest(
         serverUrl + "/api/v1/wx/app/get/code", "POST",

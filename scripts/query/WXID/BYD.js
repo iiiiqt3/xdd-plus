@@ -150,19 +150,54 @@ async function postEncrypted(path, payload) {
 }
 
 // ====== 核心业务 ======
+/**
+ * 查询设备在线状态（所有地址），返回设备所在的服务器地址列表
+ */
+async function queryDeviceStatus(wxid) {
+  const { oldUrl, newUrl } = getWxServerUrls();
+  const urls = [...new Set([oldUrl, newUrl])];
+  const results = [];
+  for (const url of urls) {
+    const label = url === oldUrl ? '旧地址' : '新地址';
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const resp = await fetch(`${url}/api/v1/wx/user/status`, { signal: controller.signal });
+      clearTimeout(timer);
+      const data = await resp.json();
+      const info = data?.data?.[wxid];
+      if (info) results.push({ url, online: info.survival === 1, source: label, nickname: info.nickname || '' });
+    } catch (_) {}
+  }
+  return results;
+}
+
 async function getCodeByWxid(wxid, appid) {
-  const { oldUrl, newUrl } = await getWxServerUrls();
-  const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
+  const { oldUrl, newUrl } = getWxServerUrls();
+
+  // 智能选择地址：先查设备在线状态
+  const statusResults = await queryDeviceStatus(wxid);
+  let priorityUrl = oldUrl;
+  if (statusResults.length > 0) {
+    const onlineResult = statusResults.find(r => r.online);
+    if (onlineResult) {
+      priorityUrl = onlineResult.url;
+    } else {
+      priorityUrl = statusResults[0].url;
+    }
+  }
+
+  const allUrls = [...new Set([priorityUrl, oldUrl, newUrl])];
 
   let extra = {};
   if (process.env.CODE_EXTRA_JSON) {
     try { extra = JSON.parse(process.env.CODE_EXTRA_JSON); } catch (e) {}
   }
 
-  for (let i = 0; i < urlsToTry.length; i++) {
-    const serverUrl = urlsToTry[i];
+  for (let i = 0; i < allUrls.length; i++) {
+    const serverUrl = allUrls[i];
     if (!serverUrl) continue;
-    const label = i === 0 ? '旧地址' : '新地址';
+    const label = serverUrl === oldUrl ? '旧地址' : '新地址';
     try {
       const url = `${serverUrl.replace(/\/$/, '')}${CFG.codeApiPath}`;
       const body = { wxid, appid, ...extra };

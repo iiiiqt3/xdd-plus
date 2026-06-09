@@ -32,6 +32,76 @@ function getWxServerUrls() {
   return { oldUrl, newUrl };
 }
 
+/**
+ * 查询设备在线状态（所有地址），返回设备所在的服务器地址列表（在线优先）
+ * @param {string} wxid
+ * @returns {Promise<{url: string, online: boolean, source: string}[]>}
+ */
+async function queryDeviceStatus(wxid) {
+  const { oldUrl, newUrl } = getWxServerUrls();
+  const urls = [...new Set([oldUrl, newUrl])];
+  const results = [];
+
+  for (const url of urls) {
+    const label = url === oldUrl ? '旧地址' : '新地址';
+    try {
+      const { data } = await axios.get(`${url}/api/v1/wx/user/status`, { timeout: 10000 });
+      const info = data?.data?.[wxid];
+      if (info) {
+        results.push({ url, online: info.survival === 1, source: label, nickname: info.nickname || '' });
+      }
+    } catch (e) {
+      // 查询失败不影响结果
+    }
+  }
+  return results;
+}
+
+/**
+ * 智能获取微信code —— 先查设备在线状态，优先向设备在线的服务器请求
+ */
+async function getWxCodeSmart(wxid) {
+  const { oldUrl, newUrl } = getWxServerUrls();
+
+  // 第一步：查设备在哪台服务器上线
+  const statusResults = await queryDeviceStatus(wxid);
+  let priorityUrl = oldUrl; // 默认先旧
+
+  if (statusResults.length > 0) {
+    const onlineResult = statusResults.find(r => r.online);
+    if (onlineResult) {
+      priorityUrl = onlineResult.url;
+    } else {
+      priorityUrl = statusResults[0].url;
+    }
+  }
+
+  // 第二步：按优先级尝试获取code
+  const allUrls = [...new Set([priorityUrl, oldUrl, newUrl])];
+  for (const serverUrl of allUrls) {
+    if (!serverUrl) continue;
+    const label = serverUrl === oldUrl ? '旧地址' : '新地址';
+    try {
+      const { data } = await axios.post(
+        `${serverUrl}/api/v1/wx/app/get/code`,
+        { wxid, appid: AppID },
+        { timeout: 20000 }
+      );
+      const code = (data?.data || data?.Data || {}).code || data?.Data;
+      if (code) return String(code);
+
+      const errMsg = data?.Message || data?.msg || data?.message || '';
+      if (errMsg) {
+        console.log(`⚠️  ${label} 业务错误: ${errMsg}`);
+      }
+    } catch (e) {
+      console.log(`⚠️  ${label} 请求异常: ${e.message}`);
+    }
+  }
+
+  throw new Error(`所有地址均无法获取code`);
+}
+
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
 
 // ========== 账号解析 ==========
@@ -64,34 +134,6 @@ function getAccounts() {
   return [];
 }
 
-// ========== 微信 code ==========
-async function getWxCode(wxid) {
-  const { oldUrl, newUrl } = getWxServerUrls();
-  const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
-
-  for (let i = 0; i < urlsToTry.length; i++) {
-    const serverUrl = urlsToTry[i];
-    if (!serverUrl) continue;
-    const label = i === 0 ? '旧地址' : '新地址';
-    try {
-      const url = `${serverUrl.replace(/\/$/, '')}/api/v1/wx/app/get/code`;
-      const { data } = await axios.post(url, { wxid, appid: AppID }, { timeout: 20000 });
-      const code = (data?.data || data?.Data || {}).code || data?.Data;
-      if (code) return String(code);
-      // 业务失败，继续尝试下一个地址
-      if (data?.code !== undefined || data?.Code !== undefined) {
-        console.log(`⚠️  ${label} 业务错误: ${data?.Message || data?.msg || ''}`);
-        continue;
-      }
-    } catch (e) {
-      console.log(`⚠️  ${label} 请求异常: ${e.message}`);
-      continue;
-    }
-  }
-
-  throw new Error(`所有地址均无法获取code`);
-}
-
 // ========== 获取 Token ==========
 async function getNestleToken(auth_code, wxid) {
   const url = `${baseUrl}/openapi/identityservice/connect/token`;
@@ -115,13 +157,13 @@ async function getNestleToken(auth_code, wxid) {
 
 async function ensureToken(wxid) {
   if (tokenCache[wxid]) return tokenCache[wxid];
-  const code = await getWxCode(wxid);
+  const code = await getWxCodeSmart(wxid);
   return await getNestleToken(code, wxid);
 }
 
 async function refreshToken(wxid) {
   delete tokenCache[wxid];
-  const code = await getWxCode(wxid);
+  const code = await getWxCodeSmart(wxid);
   return await getNestleToken(code, wxid);
 }
 
@@ -171,11 +213,6 @@ async function getUserBalance(ctx) {
 
 // ========== 入口 ==========
 (async () => {
-  // 获取服务器地址
-  const { oldUrl, newUrl } = await getWxServerUrls();
-  console.log(`📡 协议服务器地址：旧=${oldUrl} 新=${newUrl}`);
-
-
   const accounts = getAccounts();
   if (!accounts.length) {
     console.log('未提供账号');

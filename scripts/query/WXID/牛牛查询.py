@@ -71,6 +71,23 @@ def get_wxserver_urls():
     new_url = WX_API_BASE_NEW if WX_API_BASE_NEW else old_url
     return old_url, new_url
 
+def query_device_status(wxid: str) -> list:
+    """查询设备在线状态（所有地址），返回服务器地址列表（在线优先）"""
+    old_url, new_url = get_wxserver_urls()
+    urls = list(dict.fromkeys([old_url, new_url]))
+    results = []
+    for url in urls:
+        try:
+            resp = safe_request("GET", f"{url}/api/v1/wx/user/status")
+            if resp:
+                data = resp.json()
+                info = (data.get("data") or {}).get(wxid)
+                if info:
+                    results.append({"url": url, "online": info.get("survival") == 1})
+        except Exception:
+            pass
+    return results
+
 def parse_wxid_list(raw: str) -> list:
     """
     解析 wxid 列表，支持两种格式混用，用 & 或换行分隔：
@@ -230,12 +247,22 @@ def save_token_to_cache(cache: Dict, wxid: str, token: str):
 
 def get_wechat_code(wxid: str) -> Optional[str]:
     old_url, new_url = get_wxserver_urls()
-    urls_to_try = list(dict.fromkeys([old_url, new_url]))  # 去重保持顺序
+
+    # 智能选择地址：先查设备在线状态
+    priority_url = old_url
+    status_results = query_device_status(wxid)
+    if status_results:
+        online = next((r for r in status_results if r["online"]), None)
+        if online:
+            priority_url = online["url"]
+        else:
+            priority_url = status_results[0]["url"]
+
+    urls_to_try = list(dict.fromkeys([priority_url, old_url, new_url]))  # 去重保持顺序
 
     for idx, server_url in enumerate(urls_to_try):
         if not server_url:
             continue
-        label = "旧地址" if idx == 0 else "新地址"
         url = f"{server_url}/api/v1/wx/app/get/code"
         try:
             resp = safe_request("POST", url, json={"appid": APPID, "wxid": wxid})
@@ -245,18 +272,14 @@ def get_wechat_code(wxid: str) -> Optional[str]:
             if data.get("Code") != 0:
                 # 业务失败（Code: -8 数据不存在 等），继续尝试下一个地址
                 if data.get("Code") is not None:
-                    print(f"  ⚠️  {label} 业务错误: {data.get('Message', '未知错误')}")
                     continue
                 continue
             code = data.get("Data", {}).get("code")
             if code:
-                print(f"  ✅ 获取code成功")
                 return code
         except Exception as e:
-            print(f"  ⚠️  {label} 请求异常: {str(e)[:60]}")
             continue
 
-    print(f"  ❌ 所有地址均无法获取code")
     return None
 
 def wxlogin(code: str) -> Optional[dict]:

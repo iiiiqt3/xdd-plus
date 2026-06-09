@@ -16,7 +16,7 @@ vendor/
 # 配置文件（包含敏感信息）- 排除整个conf目录，防止更新时覆盖服务器配置
 conf/
 static/
-
+scripts/
 # 数据库和临时数据
 *.db
 userid_farmNew.json
