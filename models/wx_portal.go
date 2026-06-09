@@ -175,16 +175,13 @@ func PortalWxRelogin(userNumber int, targetWxid ...string) (*PortalWxActionResul
 		return nil, fmt.Errorf("当前用户未绑定微信ID")
 	}
 
-	online, err := checkWxDeviceOnline(wxid)
-	if err != nil {
-		return nil, err
-	}
+	online, _ := checkWxDeviceOnline(wxid)
 
 	// 判断是否为需要迁移的旧用户：wxid 在旧地址设备列表中能找到
 	isMigration := false
-	if !online && isNewProtocolEnabled() && !IsWxWxidMigrated(wxid) {
-		oldExists, oldErr := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid)
-		if oldErr == nil && oldExists {
+	if isNewProtocolEnabled() && !IsWxWxidMigrated(wxid) {
+		oldExists, _ := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid)
+		if oldExists {
 			isMigration = true
 			online = true
 		}
@@ -201,7 +198,7 @@ func PortalWxRelogin(userNumber int, targetWxid ...string) (*PortalWxActionResul
 	var msg string
 
 	if isMigration {
-		// 迁移用户：在新地址上走全新扫码登录（不扣积分）
+		// 旧用户迁移：在新地址上走全新扫码登录（不扣积分）
 		scanReqBody := map[string]interface{}{
 			"DeviceID":   "device_" + fmt.Sprintf("%d", time.Now().UnixNano()),
 			"DeviceName": getWxDeviceName(),
@@ -273,16 +270,13 @@ func PortalWxWakeLogin(userNumber int, targetWxid ...string) (*PortalWxActionRes
 		return nil, fmt.Errorf("当前用户未绑定微信ID")
 	}
 
-	online, err := checkWxDeviceOnline(wxid)
-	if err != nil {
-		return nil, err
-	}
+	online, _ := checkWxDeviceOnline(wxid)
 
 	// 判断是否为需要迁移的旧用户：wxid 在旧地址设备列表中能找到
 	isMigration := false
-	if !online && isNewProtocolEnabled() && !IsWxWxidMigrated(wxid) {
-		oldExists, oldErr := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid)
-		if oldErr == nil && oldExists {
+	if isNewProtocolEnabled() && !IsWxWxidMigrated(wxid) {
+		oldExists, _ := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid)
+		if oldExists {
 			isMigration = true
 			online = true
 		}
@@ -297,7 +291,7 @@ func PortalWxWakeLogin(userNumber int, targetWxid ...string) (*PortalWxActionRes
 	var msg string
 
 	if isMigration {
-		// 迁移用户：在新地址上走全新扫码登录（不扣积分）
+		// 旧用户迁移：在新地址上走全新扫码登录（不扣积分）
 		scanReqBody := map[string]interface{}{
 			"DeviceID":   "device_" + fmt.Sprintf("%d", time.Now().UnixNano()),
 			"DeviceName": getWxDeviceName(),

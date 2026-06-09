@@ -545,20 +545,13 @@ func WXID_RELOGIN(sender *Sender) {
 	}
 
 	// 检查该用户是否已扫码登录（是否在在线设备中）
-	online, err := checkWxDeviceOnline(wxid)
-	if err != nil {
-		sender.Reply("❌ " + err.Error())
-		return
-	}
+	online, _ := checkWxDeviceOnline(wxid)
 
-	// 判断是否为需要迁移的旧用户：
-	// 旧用户 = wxid 在旧地址设备列表中能找到
-	// 新用户 = wxid 在旧地址设备列表中找不到
+	// 判断是否为需要迁移的旧用户：旧地址有设备
 	isMigration := false
-	if !online && isNewProtocolEnabled() && !IsWxWxidMigrated(wxid) {
-		// 查询旧地址设备列表，wxid 存在即为旧用户
-		oldExists, oldErr := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid)
-		if oldErr == nil && oldExists {
+	if isNewProtocolEnabled() && !IsWxWxidMigrated(wxid) {
+		oldExists, _ := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid)
+		if oldExists {
 			isMigration = true
 			online = true
 			sender.Reply("🔄 检测到你使用的是旧协议设备，正在迁移到新协议地址（本次不扣积分）...")
@@ -659,18 +652,13 @@ func WXID_WAKE_LOGIN(sender *Sender) {
 	}
 
 	// 检查该用户是否已扫码登录（是否在在线设备中）
-	online, err := checkWxDeviceOnline(wxid)
-	if err != nil {
-		sender.Reply("❌ " + err.Error())
-		return
-	}
+	online, _ := checkWxDeviceOnline(wxid)
 
-	// 判断是否为需要迁移的旧用户
-	// 旧用户 = wxid 在旧地址设备列表中能找到
+	// 判断是否为需要迁移的旧用户：旧地址有设备
 	isMigration := false
-	if !online && isNewProtocolEnabled() && !IsWxWxidMigrated(wxid) {
-		oldExists, oldErr := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid)
-		if oldErr == nil && oldExists {
+	if isNewProtocolEnabled() && !IsWxWxidMigrated(wxid) {
+		oldExists, _ := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid)
+		if oldExists {
 			isMigration = true
 			online = true
 			sender.Reply("🔄 检测到你使用的是旧协议设备，正在迁移到新协议地址（本次不扣积分）...")
@@ -686,7 +674,7 @@ func WXID_WAKE_LOGIN(sender *Sender) {
 	var uuid string
 
 	if isMigration {
-		// 迁移用户：在新地址上走全新扫码登录（不扣积分）
+		// 旧用户迁移：在新地址上走全新扫码登录（不扣积分）
 		sender.Reply("⏳ 正在为迁移获取新协议二维码...")
 		scanReqBody := map[string]interface{}{
 			"DeviceID":   "device_" + fmt.Sprintf("%d", time.Now().UnixNano()),
