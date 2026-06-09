@@ -45,16 +45,57 @@ func getWxJdServer() string {
 	if Config.WxProtocol.JdServer != "" {
 		return strings.TrimRight(Config.WxProtocol.JdServer, "/")
 	}
+	// 使用活跃协议地址
+	if Config.WxProtocol.ActiveProtocol == "new" && Config.WxProtocol.NewLoginBaseURL != "" {
+		return strings.TrimRight(Config.WxProtocol.NewLoginBaseURL, "/")
+	}
 	return strings.TrimRight(Config.WxProtocol.LoginBaseURL, "/")
+}
+
+// getWxJdServerForDevice 根据设备所在的服务器地址返回对应的JdServer
+func getWxJdServerForDevice(wxid string) string {
+	if Config.WxProtocol.JdServer != "" {
+		return strings.TrimRight(Config.WxProtocol.JdServer, "/")
+	}
+	
+	// 检查设备在哪个地址上在线
+	// 先检查活跃地址
+	activeURL := getWxLoginBaseURL()
+	if online, _ := checkWxDeviceOnlineFromURL(activeURL, wxid); online {
+		return strings.TrimRight(activeURL, "/")
+	}
+	
+	// 如果新协议已启用，检查旧地址
+	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+		oldURL := getOldWxLoginBaseURL()
+		if online, _ := checkWxDeviceOnlineFromURL(oldURL, wxid); online {
+			return strings.TrimRight(oldURL, "/")
+		}
+	}
+	
+	// 如果活跃地址不是新地址，检查新地址
+	if Config.WxProtocol.NewLoginBaseURL != "" && activeURL != getNewWxLoginBaseURL() {
+		newURL := getNewWxLoginBaseURL()
+		if online, _ := checkWxDeviceOnlineFromURL(newURL, wxid); online {
+			return strings.TrimRight(newURL, "/")
+		}
+	}
+	
+	// 默认使用活跃地址
+	return strings.TrimRight(activeURL, "/")
 }
 
 func wxJdPost(paths []string, body interface{}, timeout int) (map[string]interface{}, error) {
 	base := getWxJdServer()
+	return wxJdPostToURL(base, paths, body, timeout)
+}
+
+func wxJdPostToURL(baseURL string, paths []string, body interface{}, timeout int) (map[string]interface{}, error) {
 	jsonData, _ := json.Marshal(body)
 	client := &http.Client{Timeout: time.Duration(timeout) * time.Second}
 	var lastErr error
 	for _, p := range paths {
-		req, err := http.NewRequest("POST", base+p, strings.NewReader(string(jsonData)))
+		req, err := http.NewRequest("POST", baseURL+p, strings.NewReader(string(jsonData)))
 		if err != nil {
 			lastErr = err
 			continue
@@ -79,7 +120,13 @@ func wxJdPost(paths []string, body interface{}, timeout int) (map[string]interfa
 }
 
 func wxJdGetWxCode(wxid string) (string, error) {
-	data, err := wxJdPost(
+	server := getWxJdServerForDevice(wxid)
+	return wxJdGetWxCodeFromURL(server, wxid)
+}
+
+func wxJdGetWxCodeFromURL(baseURL string, wxid string) (string, error) {
+	data, err := wxJdPostToURL(
+		baseURL,
 		[]string{"/api/v1/wx/app/get/code", "/wx/app/get/code"},
 		map[string]string{"wxid": wxid, "appid": wxJdAppID},
 		15,
@@ -103,12 +150,18 @@ func wxJdGetWxCode(wxid string) (string, error) {
 }
 
 func wxJdGetEidToken(wxid string) string {
+	server := getWxJdServerForDevice(wxid)
+	return wxJdGetEidTokenFromURL(server, wxid)
+}
+
+func wxJdGetEidTokenFromURL(baseURL string, wxid string) string {
 	payload := map[string]interface{}{
 		"api_name":       "webapi_getuserinfo",
 		"data":           map[string]string{"lang": "zh_CN"},
 		"with_credentials": true,
 	}
-	data, err := wxJdPost(
+	data, err := wxJdPostToURL(
+		baseURL,
 		[]string{"/api/v1/wx/app/call/function", "/wx/app/call/function"},
 		map[string]interface{}{"wxid": wxid, "appid": wxJdAppID, "data": mustJSON(payload)},
 		15,
@@ -285,13 +338,28 @@ func wxJdRefreshCK(wxid string) (string, string, error) {
 func findUserProtocolDevices(sender *Sender) []string {
 	var devices []string
 	seen := make(map[string]bool)
+	
+	// 同时查询新旧两个地址
 	raw, err := getWxUserStatusRaw()
 	if err != nil || raw == nil {
-		return devices
+		raw = &portalWxUserStatusResponse{Data: make(map[string]portalWxDeviceInfo)}
 	}
+	
+	var rawOld *portalWxUserStatusResponse
+	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+		rawOld, _ = getWxUserStatusRawFromURL(getOldWxLoginBaseURL())
+	}
+	
+	var rawNew *portalWxUserStatusResponse
+	if Config.WxProtocol.NewLoginBaseURL != "" && getWxLoginBaseURL() != getNewWxLoginBaseURL() {
+		rawNew, _ = getWxUserStatusRawFromURL(getNewWxLoginBaseURL())
+	}
+	
+	// 合并多个来源的数据（在线优先）
+	mergedRaw := mergePortalWxRaw(raw, rawOld, rawNew)
 
 	if sender.WxId != "" {
-		if info, ok := raw.Data[sender.WxId]; ok && info.Survival == 1 {
+		if info, ok := mergedRaw.Data[sender.WxId]; ok && info.Survival == 1 {
 			devices = append(devices, sender.WxId)
 			seen[sender.WxId] = true
 		}
@@ -300,7 +368,7 @@ func findUserProtocolDevices(sender *Sender) []string {
 	var user User
 	if db.Where("number = ?", sender.UserID).First(&user).Error == nil {
 		if user.Wxid != "" && !seen[user.Wxid] {
-			if info, ok := raw.Data[user.Wxid]; ok && info.Survival == 1 {
+			if info, ok := mergedRaw.Data[user.Wxid]; ok && info.Survival == 1 {
 				devices = append(devices, user.Wxid)
 				seen[user.Wxid] = true
 			}
@@ -311,7 +379,7 @@ func findUserProtocolDevices(sender *Sender) []string {
 			if seen[d.Wxid] {
 				continue
 			}
-			if info, ok := raw.Data[d.Wxid]; ok && info.Survival == 1 {
+			if info, ok := mergedRaw.Data[d.Wxid]; ok && info.Survival == 1 {
 				devices = append(devices, d.Wxid)
 				seen[d.Wxid] = true
 			}
@@ -333,15 +401,40 @@ func handleWxJdLogin(sender *Sender, msg chan string) {
 
 	var devMenu strings.Builder
 	devMenu.WriteString("📱 请选择微信协议设备：\n\n")
-	devRaw, _ := getWxUserStatusRaw()
+	
+	// 获取合并后的设备状态数据
+	raw, _ := getWxUserStatusRaw()
+	if raw == nil {
+		raw = &portalWxUserStatusResponse{Data: make(map[string]portalWxDeviceInfo)}
+	}
+	var rawOld *portalWxUserStatusResponse
+	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+		rawOld, _ = getWxUserStatusRawFromURL(getOldWxLoginBaseURL())
+	}
+	var rawNew *portalWxUserStatusResponse
+	if Config.WxProtocol.NewLoginBaseURL != "" && getWxLoginBaseURL() != getNewWxLoginBaseURL() {
+		rawNew, _ = getWxUserStatusRawFromURL(getNewWxLoginBaseURL())
+	}
+	mergedRaw := mergePortalWxRaw(raw, rawOld, rawNew)
+	
 	for i, d := range devices {
 		nick := d
-		if devRaw != nil {
-			if info, ok := devRaw.Data[d]; ok && info.Nickname != "" {
+		deviceType := ""
+		if info, ok := mergedRaw.Data[d]; ok {
+			if info.Nickname != "" {
 				nick = info.Nickname
 			}
+			deviceType = info.Device
 		}
-		devMenu.WriteString(fmt.Sprintf("%d、%s (%s)\n", i+1, nick, d))
+		// 显示设备所在的服务器地址类型
+		serverURL := getWxJdServerForDevice(d)
+		serverType := "旧"
+		if serverURL == strings.TrimRight(getNewWxLoginBaseURL(), "/") {
+			serverType = "新"
+		} else if serverURL == strings.TrimRight(getOldWxLoginBaseURL(), "/") {
+			serverType = "旧"
+		}
+		devMenu.WriteString(fmt.Sprintf("%d、%s (%s) [%s设备]\n", i+1, nick, d, serverType))
 	}
 	devMenu.WriteString("\n输入序号刷新对应设备，输入 0 刷新全部，输入 q 退出：")
 	sender.Reply(devMenu.String())
@@ -435,8 +528,16 @@ func wxJdRefreshByDevice(sender *Sender, wxid string) bool {
 		newCK.Available = True
 		NewJdCookie(newCK)
 	}
-	sender.Reply(fmt.Sprintf("✅ [%s] CK刷新成功！", nick))
-	(&JdCookie{}).Push(fmt.Sprintf("微信协议刷新成功: %s (设备: %s)", nick, wxid))
+	
+	// 获取设备所在的服务器地址类型
+	serverURL := getWxJdServerForDevice(wxid)
+	serverType := "旧"
+	if serverURL == strings.TrimRight(getNewWxLoginBaseURL(), "/") {
+		serverType = "新"
+	}
+	
+	sender.Reply(fmt.Sprintf("✅ [%s] CK刷新成功！(设备类型: %s)", nick, serverType))
+	(&JdCookie{}).Push(fmt.Sprintf("微信协议刷新成功: %s (设备: %s, 类型: %s)", nick, wxid, serverType))
 	go func() {
 		Save <- &JdCookie{}
 	}()
