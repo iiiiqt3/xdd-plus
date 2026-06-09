@@ -2993,7 +2993,7 @@ func SaveWxProtocolConfigForAdmin(req map[string]interface{}) string {
 	inWxProtocol := false
 	wxProtocolEndIdx := -1
 	var newLines []string
-	for i, line := range lines {
+	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "wx_protocol:") {
 			inWxProtocol = true
