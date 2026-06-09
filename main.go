@@ -128,6 +128,30 @@ func main() {
 		ctx.WriteString(string(jsons))
 	})
 
+	// 微信协议服务器地址查询接口（无需登录，供查询脚本使用）
+	web.Get("/api/wxserver", func(ctx *context.Context) {
+		oldURL := models.Config.WxProtocol.LoginBaseURL
+		newURL := models.Config.WxProtocol.NewLoginBaseURL
+		if oldURL == "" {
+			oldURL = "http://180.152.5.230:8011"
+		}
+		if newURL == "" {
+			newURL = oldURL
+		}
+		result := map[string]interface{}{
+			"code": 0,
+			"data": map[string]interface{}{
+				"old_url": oldURL,
+				"new_url": newURL,
+			},
+		}
+		jsons, errs := json.Marshal(result)
+		if errs != nil {
+			fmt.Println(errs.Error())
+		}
+		ctx.WriteString(string(jsons))
+	})
+
 	// VIP用户查询页面，从远程下载最新版本
 	if models.Config.VIP {
 		web.Get("/query", func(ctx *context.Context) {

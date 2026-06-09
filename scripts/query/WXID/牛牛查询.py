@@ -32,7 +32,8 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  其他环境变量
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  WECHAT_SERVER  - WX协议服务地址（WX协议模式必须配置）
+  WECHAT_SERVER  - WX协议服务地址（可选，优先从后台获取）
+  XDD_API_URL    - 后台API地址，用于获取微信协议服务器地址
   NIUNIU_APPID   - 小程序AppID（默认 wxcb95401f250e9a53）
 
  缓存文件：niuniu_cache.json（与牛牛短剧.py共用，脚本同目录）
@@ -52,7 +53,9 @@ from urllib3.util.retry import Retry
 # 基础配置
 # ============================================================================
 
-WX_API_BASE    = "http://180.152.5.230:8011"
+# 保留环境变量兼容，但优先从后台获取
+WX_API_BASE    = os.getenv("WECHAT_SERVER", "").strip().rstrip("/")
+XDD_API_URL    = os.getenv("XDD_API_URL", "").strip().rstrip("/")
 APPID          = os.getenv("NIUNIU_APPID", "wxcb95401f250e9a53")
 BUSINESS_API_BASE = "https://api.tianjinzhitongdaohe.com/sqx_fast"
 CACHE_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "niuniu_cache.json")
@@ -64,6 +67,41 @@ RETRY_DELAY     = 5
 # ============================================================================
 # 工具函数（提前定义，供参数解析使用）
 # ============================================================================
+
+# 缓存获取到的服务器地址
+_cached_server_urls = None
+
+def get_wxserver_urls():
+    """
+    从后台API获取微信协议服务器地址（新旧地址）
+    优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+    返回: (old_url, new_url)
+    """
+    global _cached_server_urls
+    if _cached_server_urls:
+        return _cached_server_urls
+
+    if WX_API_BASE:
+        _cached_server_urls = (WX_API_BASE, WX_API_BASE)
+        return _cached_server_urls
+
+    if XDD_API_URL:
+        try:
+            resp = requests.get(f"{XDD_API_URL}/api/wxserver", timeout=5, verify=False)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("code") == 0:
+                    old_url = data.get("data", {}).get("old_url", "").strip().rstrip("/")
+                    new_url = data.get("data", {}).get("new_url", "").strip().rstrip("/")
+                    if old_url and new_url:
+                        _cached_server_urls = (old_url, new_url)
+                        return _cached_server_urls
+        except Exception as e:
+            print(f"⚠️  从后台获取地址失败: {str(e)[:60]}")
+
+    default_url = "http://180.152.5.230:8011"
+    _cached_server_urls = (default_url, default_url)
+    return _cached_server_urls
 
 def parse_wxid_list(raw: str) -> list:
     """
@@ -234,23 +272,33 @@ def save_token_to_cache(cache: Dict, wxid: str, token: str):
 # ============================================================================
 
 def get_wechat_code(wxid: str) -> Optional[str]:
-    if not WX_API_BASE:
-        print(f"  ❌ 未配置 WECHAT_SERVER 环境变量")
-        return None
-    url = f"{WX_API_BASE}/api/v1/wx/app/get/code"
-    resp = safe_request("POST", url, json={"appid": APPID, "wxid": wxid})
-    if not resp:
-        print(f"  ❌ 获取code网络错误")
-        return None
-    data = resp.json()
-    if data.get("Code") != 0:
-        print(f"  ❌ 获取code失败: {data.get('Message', '未知错误')}")
-        return None
-    code = data.get("Data", {}).get("code")
-    if code:
-        print(f"  ✅ 获取code成功")
-        return code
-    print(f"  ❌ 未返回code")
+    old_url, new_url = get_wxserver_urls()
+    urls_to_try = list(dict.fromkeys([old_url, new_url]))  # 去重保持顺序
+
+    for server_url in urls_to_try:
+        if not server_url:
+            continue
+        url = f"{server_url}/api/v1/wx/app/get/code"
+        try:
+            resp = safe_request("POST", url, json={"appid": APPID, "wxid": wxid})
+            if not resp:
+                continue
+            data = resp.json()
+            if data.get("Code") != 0:
+                # 如果是明确的业务失败，不继续尝试
+                if data.get("Code") is not None:
+                    print(f"  ❌ 获取code失败: {data.get('Message', '未知错误')}")
+                    return None
+                continue
+            code = data.get("Data", {}).get("code")
+            if code:
+                print(f"  ✅ 获取code成功")
+                return code
+        except Exception as e:
+            print(f"  ⚠️  地址 {server_url} 请求异常: {str(e)[:60]}")
+            continue
+
+    print(f"  ❌ 所有地址均无法获取code")
     return None
 
 def wxlogin(code: str) -> Optional[dict]:

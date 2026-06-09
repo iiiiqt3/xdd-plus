@@ -28,7 +28,9 @@ const SCRIPT_NAME = '微信协议-金典鲜活查询';
 const APPID = 'wxf32616183fb4511e';
 const TENANT_ID = '1718857849685876737';
 const APP_KEY = String(process.env.JINDIAN_XH_APP_KEY || process.env.JINDIAN_APP_KEY || 'zd123a10187c995e97').trim();
-const WECHAT_SERVER = String(process.env.WECHAT_SERVER || 'http://180.152.5.230:8011').trim();
+// 保留环境变量兼容，但优先从后台获取
+const WECHAT_SERVER = String(process.env.WECHAT_SERVER || '').trim();
+const XDD_API_URL = (process.env.XDD_API_URL || '').replace(/\/+$/, '');
 const CACHE_FILE = path.join(__dirname, 'jindian_cache.json');
 const MS_BASE = 'https://msmarket.msx.digitalyili.com';
 const API_BASE = 'https://wx-camp-hc-api-01.mscampapi.digitalyili.com/wx-camp-jddyr/stage';
@@ -69,6 +71,38 @@ function getAccounts() {
   const raw = process.env.WXID_JD || '';
   if (raw.trim()) return parseAccounts(raw);
   return [];
+}
+
+// ========== 服务器地址获取 ==========
+let cachedServerUrls = null;
+
+async function getWxServerUrls() {
+  if (cachedServerUrls) return cachedServerUrls;
+
+  if (WECHAT_SERVER) {
+    cachedServerUrls = { oldUrl: WECHAT_SERVER, newUrl: WECHAT_SERVER };
+    return cachedServerUrls;
+  }
+
+  if (XDD_API_URL) {
+    try {
+      const response = await axios.get(`${XDD_API_URL}/api/wxserver`, { timeout: 5000 });
+      if (response.data?.code === 0) {
+        const oldUrl = (response.data.data?.old_url || '').replace(/\/+$/, '');
+        const newUrl = (response.data.data?.new_url || '').replace(/\/+$/, '');
+        if (oldUrl && newUrl) {
+          cachedServerUrls = { oldUrl, newUrl };
+          return cachedServerUrls;
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️  从后台获取地址失败: ${e.message}`);
+    }
+  }
+
+  const defaultUrl = 'http://180.152.5.230:8011';
+  cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
+  return cachedServerUrls;
 }
 
 function maskPhone(phone) {
@@ -157,18 +191,24 @@ function msHeaders(accessToken = '') {
 
 // ========== 登录链路 ==========
 async function wxGetCode(wxid) {
-  if (!WECHAT_SERVER) throw new Error('未配置 WECHAT_SERVER');
-  const base = WECHAT_SERVER.replace(/\/$/, '');
+  const { oldUrl, newUrl } = await getWxServerUrls();
+  const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
   const paths = ['/api/v1/wx/app/get/code', '/api/v1/wx/app/get/jscode', '/api/wx/app/get/code'];
   const errs = [];
-  for (const p of paths) {
-    try {
-      const { data } = await axios.post(base + p, { wxid, appid: APPID }, { timeout: 20000, validateStatus: () => true });
-      const code = data?.Data?.code || data?.data?.code || data?.code || data?.Data?.jsCode || data?.data?.jsCode || data?.jsCode;
-      if (code) return String(code).trim();
-      errs.push(`${p}: no-code`);
-    } catch (e) { errs.push(`${p}: ${e.message}`); }
+
+  for (const serverUrl of urlsToTry) {
+    if (!serverUrl) continue;
+    const base = serverUrl.replace(/\/$/, '');
+    for (const p of paths) {
+      try {
+        const { data } = await axios.post(base + p, { wxid, appid: APPID }, { timeout: 20000, validateStatus: () => true });
+        const code = data?.Data?.code || data?.data?.code || data?.code || data?.Data?.jsCode || data?.data?.jsCode || data?.jsCode;
+        if (code) return String(code).trim();
+        errs.push(`${base}${p}: no-code`);
+      } catch (e) { errs.push(`${base}${p}: ${e.message}`); }
+    }
   }
+
   throw new Error('协议接口未返回code: ' + errs.join(' | '));
 }
 async function msLogin(jsCode) {
@@ -346,10 +386,10 @@ class Client {
 
 // ========== 入口 ==========
 (async () => {
-  if (!WECHAT_SERVER) {
-    console.log('未配置 WECHAT_SERVER 环境变量');
-    process.exit(1);
-  }
+  // 获取服务器地址
+  const { oldUrl, newUrl } = await getWxServerUrls();
+  console.log(`📡 协议服务器地址：旧=${oldUrl} 新=${newUrl}`);
+
 
   const accounts = getAccounts();
   if (!accounts.length) {

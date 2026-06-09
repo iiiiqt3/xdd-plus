@@ -19,7 +19,8 @@
  *
  * 环境变量:
  *   WXID_TC        - 微信 wxid，格式：备注#wxid 或直接 wxid，& 或换行分割
- *   WECHAT_SERVER  - 微信 code 服务地址
+ *   WECHAT_SERVER  - 微信 code 服务地址（可选，优先从后台获取）
+ *   XDD_API_URL    - 后台API地址，用于获取微信协议服务器地址
  *   TC_APPID       - 小程序 appid，默认 wx336dcaf6a1ecf632
  */
 
@@ -32,7 +33,9 @@ const zlib  = require("zlib");
 // ============================================================
 // 配置区
 // ============================================================
-const WECHAT_SERVER = process.env.WECHAT_SERVER || "http://180.152.5.230:8011";
+// 保留环境变量兼容，但优先从后台获取
+const WECHAT_SERVER = process.env.WECHAT_SERVER || "";
+const XDD_API_URL = (process.env.XDD_API_URL || "").replace(/\/+$/, "");
 const DEFAULT_APPID = process.env.TC_APPID || "wx336dcaf6a1ecf632";
 const BASE_URL      = "https://wx.17u.cn";
 const LOGIN_URL     = BASE_URL + "/wechatappapi/wxUser/login";
@@ -60,6 +63,42 @@ const ALL_CARD_TYPES = [0, 1, 2, 3, 4, 5];
 // ============================================================
 function pad2(n) { return n < 10 ? "0" + n : "" + n; }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// 缓存获取到的服务器地址
+let cachedServerUrls = null;
+
+/**
+ * 从后台API获取微信协议服务器地址（新旧地址）
+ * 优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+ */
+async function getWxServerUrls() {
+  if (cachedServerUrls) return cachedServerUrls;
+
+  if (WECHAT_SERVER) {
+    cachedServerUrls = { oldUrl: WECHAT_SERVER, newUrl: WECHAT_SERVER };
+    return cachedServerUrls;
+  }
+
+  if (XDD_API_URL) {
+    try {
+      const res = await httpRequest(`${XDD_API_URL}/api/wxserver`, "GET", {}, null);
+      if (res?.code === 0) {
+        const oldUrl = (res.data?.old_url || "").replace(/\/+$/, "");
+        const newUrl = (res.data?.new_url || "").replace(/\/+$/, "");
+        if (oldUrl && newUrl) {
+          cachedServerUrls = { oldUrl, newUrl };
+          return cachedServerUrls;
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️  从后台获取地址失败: ${e.message}`);
+    }
+  }
+
+  const defaultUrl = "http://180.152.5.230:8011";
+  cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
+  return cachedServerUrls;
+}
 
 function generateApmat(openid) {
   openid = openid || "o498X0ScTl0oO6aj0taIYuXYvM9I";
@@ -232,13 +271,30 @@ function parseAccounts() {
 // 登录
 // ============================================================
 async function getWxCode(wxid, appid) {
-  const res = await httpRequest(
-    WECHAT_SERVER + "/api/v1/wx/app/get/code", "POST",
-    { "Content-Type": "application/json" }, { appid, wxid }
-  );
-  if (res.Code === 0 || res.code === 0) return res.Data?.code || res.data?.code || res.Data;
-  if (res.Success || res.status)        return res.Data?.code || res.data?.code || res.Data;
-  throw new Error(res.Message || res.msg || "获取微信 code 失败");
+  const { oldUrl, newUrl } = await getWxServerUrls();
+  const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
+
+  for (const serverUrl of urlsToTry) {
+    if (!serverUrl) continue;
+    try {
+      const res = await httpRequest(
+        serverUrl + "/api/v1/wx/app/get/code", "POST",
+        { "Content-Type": "application/json" }, { appid, wxid }
+      );
+      if (res.Code === 0 || res.code === 0) return res.Data?.code || res.data?.code || res.Data;
+      if (res.Success || res.status)        return res.Data?.code || res.data?.code || res.Data;
+      // 如果是明确的业务失败，不继续尝试
+      if (res.Code !== undefined || res.code !== undefined) {
+        throw new Error(res.Message || res.msg || "获取微信 code 失败");
+      }
+    } catch (e) {
+      if (e.message.includes("获取微信 code 失败")) throw e;
+      console.log(`⚠️  地址 ${serverUrl} 请求异常: ${e.message}`);
+      continue;
+    }
+  }
+
+  throw new Error("所有地址均无法获取微信 code");
 }
 
 async function tcLogin(wxCode) {

@@ -13,7 +13,8 @@
   7. 开放任务列表（listopentasks）
 
 环境变量：
-  WECHAT_SERVER   微信代理服务地址，如 http://127.0.0.1:8080
+  WECHAT_SERVER   微信代理服务地址（可选，优先从后台获取）
+  XDD_API_URL     后台API地址，用于获取微信协议服务器地址
   WXID_WXLQ       账号列表，纯 wxid 或 备注#wxid，& 或换行分割
   WX_APPID        小程序 AppID（默认内置）
   DEBUG           设为 1 开启详细日志
@@ -35,7 +36,9 @@ from typing import Any
 import requests
 
 # ================== 全局配置 ==================
-WECHAT_SERVER: str = (os.getenv("WECHAT_SERVER") or "http://180.152.5.230:8011").strip()
+# 保留环境变量兼容，但优先从后台获取
+WECHAT_SERVER: str = os.getenv("WECHAT_SERVER", "").strip()
+XDD_API_URL: str = os.getenv("XDD_API_URL", "").strip().rstrip("/")
 WX_APPID: str = (os.getenv("WX_APPID") or "wxdb3c0e388702f785").strip()
 
 DOMAIN = "https://discount.wxpapp.wechatpay.cn"
@@ -104,22 +107,72 @@ def get_wx_list_from_env() -> list[dict[str, str]]:
     return accounts
 
 
+# ================== 服务器地址获取 ==================
+_cached_server_urls = None
+
+def get_wxserver_urls():
+    """
+    从后台API获取微信协议服务器地址（新旧地址）
+    优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+    返回: (old_url, new_url)
+    """
+    global _cached_server_urls
+    if _cached_server_urls:
+        return _cached_server_urls
+
+    if WECHAT_SERVER:
+        _cached_server_urls = (WECHAT_SERVER, WECHAT_SERVER)
+        return _cached_server_urls
+
+    if XDD_API_URL:
+        try:
+            resp = requests.get(f"{XDD_API_URL}/api/wxserver", timeout=5, verify=False)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("code") == 0:
+                    old_url = data.get("data", {}).get("old_url", "").strip().rstrip("/")
+                    new_url = data.get("data", {}).get("new_url", "").strip().rstrip("/")
+                    if old_url and new_url:
+                        _cached_server_urls = (old_url, new_url)
+                        return _cached_server_urls
+        except Exception as e:
+            print(f"⚠️  从后台获取地址失败: {str(e)[:60]}")
+
+    default_url = "http://180.152.5.230:8011"
+    _cached_server_urls = (default_url, default_url)
+    return _cached_server_urls
+
+
 # ================== 获取 code ==================
 def get_wx_code(wxid: str) -> str:
-    if not WECHAT_SERVER:
-        raise ValueError("未配置环境变量 WECHAT_SERVER（微信代理服务地址）")
-    url = f"{WECHAT_SERVER.rstrip('/')}/api/v1/wx/app/get/code"
-    resp = requests.post(url, json={"wxid": wxid, "appid": WX_APPID}, timeout=BRIDGE_TIMEOUT)
-    resp.raise_for_status()
-    data = resp.json()
-    code = (
-        (data.get("data") or {}).get("code")
-        or (data.get("Data") or {}).get("code")
-        or data.get("Data")
-    )
-    if code:
-        return str(code)
-    raise RuntimeError(f"获取 code 失败: {data}")
+    old_url, new_url = get_wxserver_urls()
+    urls_to_try = list(dict.fromkeys([old_url, new_url]))  # 去重保持顺序
+
+    for server_url in urls_to_try:
+        if not server_url:
+            continue
+        url = f"{server_url.rstrip('/')}/api/v1/wx/app/get/code"
+        try:
+            resp = requests.post(url, json={"wxid": wxid, "appid": WX_APPID}, timeout=BRIDGE_TIMEOUT)
+            resp.raise_for_status()
+            data = resp.json()
+            code = (
+                (data.get("data") or {}).get("code")
+                or (data.get("Data") or {}).get("code")
+                or data.get("Data")
+            )
+            if code:
+                return str(code)
+            # 如果是明确的业务失败，不继续尝试
+            if data.get("Code") is not None or data.get("code") is not None:
+                raise RuntimeError(f"获取 code 失败: {data}")
+        except RuntimeError:
+            raise
+        except Exception as e:
+            print(f"  ⚠️  地址 {server_url} 请求异常: {str(e)[:60]}")
+            continue
+
+    raise RuntimeError(f"所有地址均无法获取 code")
 
 
 def get_login_codes(wxid: str, count: int = CODE_COUNT) -> list[str]:
@@ -323,9 +376,9 @@ def main() -> int:
         print("   用法四：配置环境变量 WXID_WXLQ")
         return 1
 
-    if not WECHAT_SERVER:
-        print("\n❌ 未配置 WECHAT_SERVER 环境变量")
-        return 1
+    # 显示地址获取方式
+    old_url, new_url = get_wxserver_urls()
+    print(f"\n📡 协议服务器地址：旧={old_url} 新={new_url}")
 
     ok_count = 0
     total = len(accounts)

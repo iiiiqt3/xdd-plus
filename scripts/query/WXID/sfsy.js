@@ -11,12 +11,15 @@ const CONFIG = {
     USER_AGENT: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 mediaCode=SFEXPRESSAPP-iOS-ML',
     PLATFORM: 'SFAPP',
     CHANNEL: 'apppart',
-    TIMEOUT: 15000
+    TIMEOUT: 15000,
+    // 后台API地址，用于获取微信协议服务器地址
+    XDD_API_URL: (process.env.XDD_API_URL || '').replace(/\/+$/, '')
 };
 
 // 微信协议配置（同步PY脚本）
 const WX_CONFIG = {
-    WECHAT_SERVER: 'http://180.152.5.230:8011',
+    // 保留环境变量兼容，但优先从后台获取
+    WECHAT_SERVER: process.env.WECHAT_SERVER || '',
     APPID: 'wxd4185d00bf7e08ac',
     PUBLIC_ID: 'gh_f9d9fca26a50',
     UCMP_BASE: 'https://ucmp.sf-express.com',
@@ -50,6 +53,43 @@ function loadCache() {
 function saveCache(data) {
     const cachePath = WX_CONFIG.CACHE_FILE;
     fs.writeFileSync(cachePath, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+// ==================== 服务器地址获取 ====================
+// 缓存获取到的服务器地址
+let cachedServerUrls = null;
+
+/**
+ * 从后台API获取微信协议服务器地址（新旧地址）
+ * 优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+ */
+async function getWxServerUrls() {
+    if (cachedServerUrls) return cachedServerUrls;
+
+    if (WX_CONFIG.WECHAT_SERVER) {
+        cachedServerUrls = { oldUrl: WX_CONFIG.WECHAT_SERVER, newUrl: WX_CONFIG.WECHAT_SERVER };
+        return cachedServerUrls;
+    }
+
+    if (CONFIG.XDD_API_URL) {
+        try {
+            const response = await axios.get(`${CONFIG.XDD_API_URL}/api/wxserver`, { timeout: 5000 });
+            if (response.data?.code === 0) {
+                const oldUrl = (response.data.data?.old_url || '').replace(/\/+$/, '');
+                const newUrl = (response.data.data?.new_url || '').replace(/\/+$/, '');
+                if (oldUrl && newUrl) {
+                    cachedServerUrls = { oldUrl, newUrl };
+                    return cachedServerUrls;
+                }
+            }
+        } catch (e) {
+            console.log(`⚠️  从后台获取地址失败: ${e.message}`);
+        }
+    }
+
+    const defaultUrl = 'http://180.152.5.230:8011';
+    cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
+    return cachedServerUrls;
 }
 
 // ==================== UCMP 签名工具 ====================
@@ -108,24 +148,40 @@ function buildUcmpHeaders(body = {}, sessionId = '') {
 // ==================== wxid 换取 Cookie 流程 ====================
 
 /**
- * Step1: wxid → code
+ * Step1: wxid → code（自动尝试新旧地址）
  */
 async function getWxCode(wxid) {
-    const url = `${WX_CONFIG.WECHAT_SERVER}/api/v1/wx/app/get/code`;
-    const response = await axios.post(url, { wxid, appid: WX_CONFIG.APPID }, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: CONFIG.TIMEOUT,
-        validateStatus: s => s === 200
-    });
+    const { oldUrl, newUrl } = await getWxServerUrls();
+    const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
 
-    const data = response.data;
-    const code = data?.Data?.code || data?.data?.code;
+    for (const serverUrl of urlsToTry) {
+        if (!serverUrl) continue;
+        try {
+            const url = `${serverUrl}/api/v1/wx/app/get/code`;
+            const response = await axios.post(url, { wxid, appid: WX_CONFIG.APPID }, {
+                headers: { 'Content-Type': 'application/json' },
+                timeout: CONFIG.TIMEOUT,
+                validateStatus: s => s === 200
+            });
 
-    if (!code) {
-        throw new Error(`获取code失败: ${JSON.stringify(data)}`);
+            const data = response.data;
+            const code = data?.Data?.code || data?.data?.code;
+
+            if (code) {
+                return code;
+            }
+            // 如果是明确的业务失败，不继续尝试
+            if (data?.code !== undefined) {
+                throw new Error(`获取code失败: ${JSON.stringify(data)}`);
+            }
+        } catch (e) {
+            if (e.message.includes('获取code失败')) throw e;
+            console.log(`⚠️  地址 ${serverUrl} 请求异常: ${e.message}`);
+            continue;
+        }
     }
 
-    return code;
+    throw new Error(`所有地址均无法获取code`);
 }
 
 /**

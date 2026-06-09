@@ -8,16 +8,51 @@
  *   node 雀巢_query.js wxid1&wxid2
  *
  * 环境变量：
- *   WECHAT_SERVER  微信代理服务地址（必填）
+ *   WECHAT_SERVER  微信代理服务地址（可选，优先从后台获取）
+ *   XDD_API_URL    后台API地址，用于获取微信协议服务器地址
  */
 
 const axios = require('axios');
-const WECHAT_SERVER = (process.env.WECHAT_SERVER || 'http://180.152.5.230:8011').trim();
+// 保留环境变量兼容，但优先从后台获取
+const WECHAT_SERVER = (process.env.WECHAT_SERVER || '').trim();
+const XDD_API_URL = (process.env.XDD_API_URL || '').replace(/\/+$/, '');
 const AppID = 'wxc5db704249c9bb31';
 const baseUrl = 'https://crm.nestlechinese.com';
 
 // ========== Token 缓存 ==========
 const tokenCache = {};
+
+// ========== 服务器地址获取 ==========
+let cachedServerUrls = null;
+
+async function getWxServerUrls() {
+  if (cachedServerUrls) return cachedServerUrls;
+
+  if (WECHAT_SERVER) {
+    cachedServerUrls = { oldUrl: WECHAT_SERVER, newUrl: WECHAT_SERVER };
+    return cachedServerUrls;
+  }
+
+  if (XDD_API_URL) {
+    try {
+      const response = await axios.get(`${XDD_API_URL}/api/wxserver`, { timeout: 5000 });
+      if (response.data?.code === 0) {
+        const oldUrl = (response.data.data?.old_url || '').replace(/\/+$/, '');
+        const newUrl = (response.data.data?.new_url || '').replace(/\/+$/, '');
+        if (oldUrl && newUrl) {
+          cachedServerUrls = { oldUrl, newUrl };
+          return cachedServerUrls;
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️  从后台获取地址失败: ${e.message}`);
+    }
+  }
+
+  const defaultUrl = 'http://180.152.5.230:8011';
+  cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
+  return cachedServerUrls;
+}
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
 
@@ -53,11 +88,28 @@ function getAccounts() {
 
 // ========== 微信 code ==========
 async function getWxCode(wxid) {
-  const url = `${WECHAT_SERVER.replace(/\/$/, '')}/api/v1/wx/app/get/code`;
-  const { data } = await axios.post(url, { wxid, appid: AppID }, { timeout: 20000 });
-  const code = (data?.data || data?.Data || {}).code || data?.Data;
-  if (code) return String(code);
-  throw new Error(`获取code失败: ${JSON.stringify(data)}`);
+  const { oldUrl, newUrl } = await getWxServerUrls();
+  const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
+
+  for (const serverUrl of urlsToTry) {
+    if (!serverUrl) continue;
+    try {
+      const url = `${serverUrl.replace(/\/$/, '')}/api/v1/wx/app/get/code`;
+      const { data } = await axios.post(url, { wxid, appid: AppID }, { timeout: 20000 });
+      const code = (data?.data || data?.Data || {}).code || data?.Data;
+      if (code) return String(code);
+      // 如果是明确的业务失败，不继续尝试
+      if (data?.code !== undefined || data?.Code !== undefined) {
+        throw new Error(`获取code失败: ${JSON.stringify(data)}`);
+      }
+    } catch (e) {
+      if (e.message.includes('获取code失败')) throw e;
+      console.log(`⚠️  地址 ${serverUrl} 请求异常: ${e.message}`);
+      continue;
+    }
+  }
+
+  throw new Error(`所有地址均无法获取code`);
 }
 
 // ========== 获取 Token ==========
@@ -139,10 +191,10 @@ async function getUserBalance(ctx) {
 
 // ========== 入口 ==========
 (async () => {
-  if (!WECHAT_SERVER) {
-    console.log('未配置 WECHAT_SERVER 环境变量');
-    process.exit(1);
-  }
+  // 获取服务器地址
+  const { oldUrl, newUrl } = await getWxServerUrls();
+  console.log(`📡 协议服务器地址：旧=${oldUrl} 新=${newUrl}`);
+
 
   const accounts = getAccounts();
   if (!accounts.length) {

@@ -3,7 +3,8 @@
  * 流程：wxid -> 拉 code -> decryptCode 拿 session_id -> 查询积分/签到日历
  *
  * 【环境变量模式（青龙）】
- *   WECHAT_SERVER   取 code 服务地址
+ *   WECHAT_SERVER   取 code 服务地址（可选，优先从后台获取）
+ *   XDD_API_URL     后台API地址，用于获取微信协议服务器地址
  *   WXID_BYD        wxid，多账号用 & 或换行分隔
  *
  * 【命令行模式（Go调用）】
@@ -11,10 +12,13 @@
  */
 
 const crypto = require('crypto');
+const axios = require('axios');
 
 // ====== 配置中心 ======
 const CFG = {
-  wechatServer: process.env.WECHAT_SERVER || 'http://180.152.5.230:8011' || 'http://180.152.5.230:9059' ,
+  // 保留环境变量兼容，但优先从后台获取
+  wechatServer: process.env.WECHAT_SERVER || '',
+  xddApiUrl: (process.env.XDD_API_URL || '').replace(/\/+$/, ''),
   codeApiPath: process.env.CODE_API_PATH || '/api/v1/wx/app/get/code',
   appid: process.env.APPID || 'wxa28c31d4ff7ae869',
   bydDomain: process.env.BYD_DOMAIN || 'https://weixin90.bydauto.com.cn',
@@ -41,6 +45,42 @@ const API = {
 
 // ====== 工具函数 ======
 const NONCE_CHARS = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';
+
+// 缓存获取到的服务器地址
+let cachedServerUrls = null;
+
+/**
+ * 从后台API获取微信协议服务器地址（新旧地址）
+ * 优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+ */
+async function getWxServerUrls() {
+  if (cachedServerUrls) return cachedServerUrls;
+
+  if (CFG.wechatServer) {
+    cachedServerUrls = { oldUrl: CFG.wechatServer, newUrl: CFG.wechatServer };
+    return cachedServerUrls;
+  }
+
+  if (CFG.xddApiUrl) {
+    try {
+      const response = await axios.get(`${CFG.xddApiUrl}/api/wxserver`, { timeout: 5000 });
+      if (response.data?.code === 0) {
+        const oldUrl = (response.data.data?.old_url || '').replace(/\/+$/, '');
+        const newUrl = (response.data.data?.new_url || '').replace(/\/+$/, '');
+        if (oldUrl && newUrl) {
+          cachedServerUrls = { oldUrl, newUrl };
+          return cachedServerUrls;
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️  从后台获取地址失败: ${e.message}`);
+    }
+  }
+
+  const defaultUrl = 'http://180.152.5.230:8011';
+  cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
+  return cachedServerUrls;
+}
 
 // 支持：命令行传参 / 环境变量
 function getAccounts() {
@@ -145,16 +185,34 @@ async function postEncrypted(path, payload) {
 
 // ====== 核心业务 ======
 async function getCodeByWxid(wxid, appid) {
-  const url = `${CFG.wechatServer.replace(/\/$/, '')}${CFG.codeApiPath}`;
+  const { oldUrl, newUrl } = await getWxServerUrls();
+  const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
+
   let extra = {};
   if (process.env.CODE_EXTRA_JSON) {
     try { extra = JSON.parse(process.env.CODE_EXTRA_JSON); } catch (e) {}
   }
-  const body = { wxid, appid, ...extra };
-  const res = await postJson(url, body, 15000);
-  const code = res.data?.Data?.code || res.data?.data?.code || res.data?.code;
-  if (!code) throw new Error(`获取code失败`);
-  return code;
+
+  for (const serverUrl of urlsToTry) {
+    if (!serverUrl) continue;
+    try {
+      const url = `${serverUrl.replace(/\/$/, '')}${CFG.codeApiPath}`;
+      const body = { wxid, appid, ...extra };
+      const res = await postJson(url, body, 15000);
+      const code = res.data?.Data?.code || res.data?.data?.code || res.data?.code;
+      if (code) return code;
+      // 如果是明确的业务失败，不继续尝试
+      if (res.data?.code !== undefined) {
+        throw new Error(`获取code失败`);
+      }
+    } catch (e) {
+      if (e.message.includes('获取code失败')) throw e;
+      console.log(`⚠️  地址 ${serverUrl} 请求异常: ${e.message}`);
+      continue;
+    }
+  }
+
+  throw new Error(`所有地址均无法获取code`);
 }
 
 async function getSessionByCode(code) {
@@ -263,10 +321,9 @@ async function runOne(acc, idx) {
   console.log('🚀 比亚迪查询');
 
   try {
-    if (!CFG.wechatServer) {
-      console.log('❌ 请配置 WECHAT_SERVER 环境变量');
-      process.exit(1);
-    }
+    // 获取服务器地址
+    const { oldUrl, newUrl } = await getWxServerUrls();
+    console.log(`📡 协议服务器地址：旧=${oldUrl} 新=${newUrl}`);
 
     const accounts = getAccounts();
     if (!accounts.length) {

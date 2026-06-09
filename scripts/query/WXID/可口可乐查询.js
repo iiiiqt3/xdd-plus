@@ -3,6 +3,8 @@
  * 环境变量：
  *   WXID_KKKL: wxid，多账号用 & 或换行分隔
  *     示例: wxid_xxxxxxxx&wxid_yyyyyyyy
+ *   XDD_API_URL: 后台API地址，用于获取微信协议服务器地址（可选）
+ *   WECHAT_SERVER: 微信协议服务器地址（可选，优先从后台获取）
  *
  * cron: 0 9 * * *
  * const: disabled = false
@@ -18,12 +20,58 @@ const CONFIG = {
   BASE_URL: 'https://member-api.icoke.cn',
   UA: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.59(0x18003b2e) NetType/4G Language/zh_CN',
   REFERER: 'https://servicewechat.com/wxa5811e0426a94686/499/page-frame.html',
-  WECHAT_SERVER: process.env.WECHAT_SERVER || 'http://180.152.5.230:8011',
+  // 保留环境变量兼容，但优先从后台获取
+  WECHAT_SERVER: process.env.WECHAT_SERVER || '',
+  XDD_API_URL: (process.env.XDD_API_URL || '').replace(/\/+$/, ''),
   CACHE_FILE: path.join(__dirname, '可口可乐吧_cache.json'),
   TIMEOUT: 15000
 };
 
+// 缓存获取到的服务器地址
+let cachedServerUrls = null;
+
 const ENV_WXID = 'WXID_KKKL';
+
+// ==================== 服务器地址获取 ====================
+/**
+ * 从后台API获取微信协议服务器地址（新旧地址）
+ * 优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+ */
+async function getWxServerUrls() {
+  // 如果已有缓存，直接返回
+  if (cachedServerUrls) {
+    return cachedServerUrls;
+  }
+
+  // 如果环境变量明确指定了地址，直接使用
+  if (CONFIG.WECHAT_SERVER) {
+    cachedServerUrls = { oldUrl: CONFIG.WECHAT_SERVER, newUrl: CONFIG.WECHAT_SERVER };
+    return cachedServerUrls;
+  }
+
+  // 尝试从后台API获取
+  if (CONFIG.XDD_API_URL) {
+    try {
+      const url = `${CONFIG.XDD_API_URL}/api/wxserver`;
+      const response = await axios.get(url, { timeout: 5000 });
+      if (response.data?.code === 0) {
+        const oldUrl = (response.data.data?.old_url || '').replace(/\/+$/, '');
+        const newUrl = (response.data.data?.new_url || '').replace(/\/+$/, '');
+        if (oldUrl && newUrl) {
+          cachedServerUrls = { oldUrl, newUrl };
+          return cachedServerUrls;
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️  从后台获取地址失败: ${e.message}`);
+    }
+  }
+
+  // 默认地址
+  const defaultUrl = 'http://180.152.5.230:8011';
+  cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
+  return cachedServerUrls;
+}
 
 // ==================== 缓存管理 ====================
 function loadCache() {
@@ -44,23 +92,43 @@ function saveCache(data) {
 // ==================== wxid 换取 Token 流程 ====================
 
 /**
- * Step1: wxid → code
+ * Step1: wxid → code（自动尝试新旧地址）
  */
 async function getWxCode(wxid) {
-  const url = `${CONFIG.WECHAT_SERVER}/api/v1/wx/app/get/code`;
-  const response = await axios.post(url, { wxid, appid: CONFIG.APPID }, {
-    headers: { 'Content-Type': 'application/json' },
-    timeout: CONFIG.TIMEOUT,
-    validateStatus: s => s === 200
-  });
+  const { oldUrl, newUrl } = await getWxServerUrls();
+  const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
 
-  const data = response.data;
-  const code = data?.Data?.code || data?.data?.code;
+  for (const serverUrl of urlsToTry) {
+    if (!serverUrl) continue;
+    try {
+      const url = `${serverUrl}/api/v1/wx/app/get/code`;
+      const response = await axios.post(url, { wxid, appid: CONFIG.APPID }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: CONFIG.TIMEOUT,
+        validateStatus: s => s === 200
+      });
 
-  if (!code) {
-    throw new Error(`获取code失败: ${JSON.stringify(data)}`);
+      const data = response.data;
+      const code = data?.Data?.code || data?.data?.code;
+
+      if (code) {
+        return code;
+      }
+      // 如果是明确的业务失败（非网络错误），不继续尝试其他地址
+      if (data?.code !== undefined) {
+        throw new Error(`获取code失败: ${JSON.stringify(data)}`);
+      }
+    } catch (e) {
+      // 如果是业务失败抛出的错误，直接抛出
+      if (e.message.includes('获取code失败')) {
+        throw e;
+      }
+      console.log(`⚠️  地址 ${serverUrl} 请求异常: ${e.message}`);
+      continue;
+    }
   }
-  return code;
+
+  throw new Error(`所有地址均无法获取code`);
 }
 
 /**
@@ -330,10 +398,9 @@ async function buildAccountTokensAndQuery(wxList) {
 
 // ==================== 主函数 ====================
 async function main() {
-  if (!CONFIG.WECHAT_SERVER) {
-    console.log('❌ 请设置 WECHAT_SERVER 环境变量');
-    process.exit(1);
-  }
+  // 获取服务器地址（从后台或环境变量）
+  const { oldUrl, newUrl } = await getWxServerUrls();
+  console.log(`📡 协议服务器地址：旧=${oldUrl} 新=${newUrl}`);
 
   // 从环境变量获取账号列表
   let wxList = getWxListFromEnv();
