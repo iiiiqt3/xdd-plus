@@ -3106,49 +3106,84 @@ type WxDeviceInfo struct {
 	RefreshDate int64  `json:"refreshDate"`
 }
 
-// GetWxDeviceList 获取所有微信设备列表（含统计）
+// wxDeviceRawItem 设备原始数据
+type wxDeviceRawItem struct {
+	Wxid        string `json:"wxid"`
+	Avatar      string `json:"avatar"`
+	Nickname    string `json:"nickname"`
+	Device      string `json:"device"`
+	Survival    int    `json:"survival"`
+	LoginDate   int64  `json:"loginDate"`
+	RefreshDate int64  `json:"refreshDate"`
+}
+
+// fetchWxDevicesFromURL 从指定地址获取设备列表
+func fetchWxDevicesFromURL(baseURL string) map[string]wxDeviceRawItem {
+	url := baseURL + "/api/v1/wx/user/status"
+	client := &http.Client{Timeout: HTTPTimeout}
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil
+	}
+	var result struct {
+		Status bool                      `json:"status"`
+		Data   map[string]wxDeviceRawItem `json:"data"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil || !result.Status {
+		return nil
+	}
+	return result.Data
+}
+
+// mergeWxDevices 合并两个地址的设备列表，在线优先
+func mergeWxDevices(oldData, newData map[string]wxDeviceRawItem) map[string]wxDeviceRawItem {
+	merged := make(map[string]wxDeviceRawItem)
+	// 先放入旧地址数据
+	for wxid, info := range oldData {
+		merged[wxid] = info
+	}
+	// 合并新地址数据，在线状态优先，或更新时间更新的优先
+	for wxid, newInfo := range newData {
+		if oldInfo, exists := merged[wxid]; exists {
+			// 如果新地址在线而旧地址离线，用新的
+			if newInfo.Survival == 1 && oldInfo.Survival != 1 {
+				merged[wxid] = newInfo
+			} else if newInfo.Survival == oldInfo.Survival && newInfo.RefreshDate > oldInfo.RefreshDate {
+				merged[wxid] = newInfo
+			}
+		} else {
+			merged[wxid] = newInfo
+		}
+	}
+	return merged
+}
+
+// GetWxDeviceList 获取所有微信设备列表（含统计）—— 同时读取新旧地址
 func GetWxDeviceList(search string) ([]WxDeviceInfo, int, int, int) {
 	var list []WxDeviceInfo
 	totalCount := 0
 	onlineCount := 0
 	offlineCount := 0
 
-	url := getWxLoginBaseURL() + "/api/v1/wx/user/status"
-	client := &http.Client{Timeout: HTTPTimeout}
-	resp, err := client.Get(url)
-	if err != nil {
-		return list, 0, 0, 0
-	}
-	defer resp.Body.Close()
+	// 获取旧地址数据
+	oldData := fetchWxDevicesFromURL(getOldWxLoginBaseURL())
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return list, 0, 0, 0
+	// 获取新地址数据（如果启用了新地址）
+	var newData map[string]wxDeviceRawItem
+	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+		newData = fetchWxDevicesFromURL(getNewWxLoginBaseURL())
 	}
 
-	var result struct {
-		Status bool `json:"status"`
-		Data   map[string]struct {
-			Wxid        string `json:"wxid"`
-			Avatar      string `json:"avatar"`
-			Nickname    string `json:"nickname"`
-			Device      string `json:"device"`
-			Survival    int    `json:"survival"`
-			LoginDate   int64  `json:"loginDate"`
-			RefreshDate int64  `json:"refreshDate"`
-		} `json:"data"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return list, 0, 0, 0
-	}
-
-	if !result.Status {
-		return list, 0, 0, 0
-	}
+	// 合并两个地址的数据
+	merged := mergeWxDevices(oldData, newData)
 
 	searchLower := strings.ToLower(search)
-	for _, info := range result.Data {
+	for _, info := range merged {
 		totalCount++
 		if info.Survival == 1 {
 			onlineCount++
@@ -3176,32 +3211,21 @@ func GetWxDeviceList(search string) ([]WxDeviceInfo, int, int, int) {
 	return list, totalCount, onlineCount, offlineCount
 }
 
-// GetWxDeviceStats 只获取微信设备统计数据（轻量级，用于仪表盘）
+// GetWxDeviceStats 只获取微信设备统计数据（轻量级，用于仪表盘）—— 同时读取新旧地址
 func GetWxDeviceStats() (total int, online int, offline int) {
-	url := getWxLoginBaseURL() + "/api/v1/wx/user/status"
-	client := &http.Client{Timeout: HTTPTimeout}
-	resp, err := client.Get(url)
-	if err != nil {
-		return 0, 0, 0
-	}
-	defer resp.Body.Close()
+	// 获取旧地址数据
+	oldData := fetchWxDevicesFromURL(getOldWxLoginBaseURL())
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, 0, 0
+	// 获取新地址数据（如果启用了新地址）
+	var newData map[string]wxDeviceRawItem
+	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+		newData = fetchWxDevicesFromURL(getNewWxLoginBaseURL())
 	}
 
-	var result struct {
-		Status bool `json:"status"`
-		Data   map[string]struct {
-			Survival int `json:"survival"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(body, &result); err != nil || !result.Status {
-		return 0, 0, 0
-	}
+	// 合并两个地址的数据
+	merged := mergeWxDevices(oldData, newData)
 
-	for _, info := range result.Data {
+	for _, info := range merged {
 		total++
 		if info.Survival == 1 {
 			online++

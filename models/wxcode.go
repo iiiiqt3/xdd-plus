@@ -317,34 +317,29 @@ func WXID_MY_STATUS(sender *Sender) {
 // checkWxDeviceOnline 检查指定 wxid 是否在在线设备列表中
 // 调用 /api/v1/wx/user/status 接口，返回 data 是 map[wxid]DeviceInfo 格式
 func checkWxDeviceOnline(wxid string) (bool, error) {
-	url := getWxLoginBaseURL() + "/api/v1/wx/user/status"
-	client := &http.Client{Timeout: HTTPTimeout}
-	resp, err := client.Get(url)
-	if err != nil {
-		return false, fmt.Errorf("请求设备列表失败：%s", err.Error())
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, fmt.Errorf("读取设备列表失败：%s", err.Error())
+	// 先检查活跃地址
+	online, err := checkWxDeviceOnlineFromURL(getWxLoginBaseURL(), wxid)
+	if err == nil && online {
+		return true, nil
 	}
 
-	var result struct {
-		Status bool                   `json:"status"`
-		Data   map[string]interface{} `json:"data"`
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return false, fmt.Errorf("解析设备列表失败：%s", err.Error())
-	}
-
-	if !result.Status {
-		return false, fmt.Errorf("获取设备列表失败")
+	// 如果新协议已启用且活跃地址不是旧地址，再检查旧地址
+	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+		oldOnline, oldErr := checkWxDeviceOnlineFromURL(getOldWxLoginBaseURL(), wxid)
+		if oldErr == nil && oldOnline {
+			return true, nil
+		}
 	}
 
-	// 检查目标 wxid 是否在在线设备中
-	_, ok := result.Data[wxid]
-	return ok, nil
+	// 如果活跃地址不是新地址且新地址已配置，检查新地址
+	if Config.WxProtocol.NewLoginBaseURL != "" && getWxLoginBaseURL() != getNewWxLoginBaseURL() {
+		newOnline, newErr := checkWxDeviceOnlineFromURL(getNewWxLoginBaseURL(), wxid)
+		if newErr == nil && newOnline {
+			return true, nil
+		}
+	}
+
+	return online, err
 }
 
 // checkWxDeviceOnlineFromURL 从指定地址检查 wxid 是否在线

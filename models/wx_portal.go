@@ -31,18 +31,21 @@ type PortalWxActionResult struct {
     NeedPoll  bool            `json:"needPoll,omitempty"`
 }
 
+// portalWxDeviceInfo 设备信息
+type portalWxDeviceInfo struct {
+    Wxid        string `json:"wxid"`
+    Avatar      string `json:"avatar"`
+    Nickname    string `json:"nickname"`
+    Device      string `json:"device"`
+    Survival    int    `json:"survival"`
+    LoginDate   int64  `json:"loginDate"`
+    RefreshDate int64  `json:"refreshDate"`
+}
+
 type portalWxUserStatusResponse struct {
-    Status bool `json:"status"`
-    Data   map[string]struct {
-        Wxid        string `json:"wxid"`
-        Avatar      string `json:"avatar"`
-        Nickname    string `json:"nickname"`
-        Device      string `json:"device"`
-        Survival    int    `json:"survival"`
-        LoginDate   int64  `json:"loginDate"`
-        RefreshDate int64  `json:"refreshDate"`
-    } `json:"data"`
-    Message string `json:"message"`
+    Status bool                          `json:"status"`
+    Data   map[string]portalWxDeviceInfo `json:"data"`
+    Message string                        `json:"message"`
 }
 
 func GetPortalWxStatus(userNumber int) (*PortalWxStatus, error) {
@@ -55,12 +58,43 @@ func GetPortalWxStatus(userNumber int) (*PortalWxStatus, error) {
         return nil, fmt.Errorf("当前用户未绑定微信ID")
     }
 
+    // 同时查询新旧两个地址，取在线的那个
+    var bestInfo *portalWxDeviceInfo
+
+    // 查询活跃地址
     raw, err := getWxUserStatusRaw()
-    if err != nil {
-        return nil, err
+    if err == nil && raw.Data != nil {
+        if info, ok := raw.Data[wxid]; ok {
+            bestInfo = &info
+        }
     }
-    info, ok := raw.Data[wxid]
-    if !ok {
+
+    // 如果新协议已启用，再查询旧地址
+    if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+        rawOld, errOld := getWxUserStatusRawFromURL(getOldWxLoginBaseURL())
+        if errOld == nil && rawOld.Data != nil {
+            if info, ok := rawOld.Data[wxid]; ok {
+                // 如果旧地址在线而新地址不在线，用旧地址的
+                if bestInfo == nil || (info.Survival == 1 && bestInfo.Survival != 1) {
+                    bestInfo = &info
+                }
+            }
+        }
+    }
+
+    // 如果活跃地址不是新地址且新地址已配置，也检查新地址
+    if Config.WxProtocol.NewLoginBaseURL != "" && getWxLoginBaseURL() != getNewWxLoginBaseURL() {
+        rawNew, errNew := getWxUserStatusRawFromURL(getNewWxLoginBaseURL())
+        if errNew == nil && rawNew.Data != nil {
+            if info, ok := rawNew.Data[wxid]; ok {
+                if bestInfo == nil || (info.Survival == 1 && bestInfo.Survival != 1) {
+                    bestInfo = &info
+                }
+            }
+        }
+    }
+
+    if bestInfo == nil {
         return &PortalWxStatus{
             Nickname: user.Nickname,
             Wxid:     wxid,
@@ -71,13 +105,13 @@ func GetPortalWxStatus(userNumber int) (*PortalWxStatus, error) {
     }
 
     return &PortalWxStatus{
-        Nickname:    defaultWxNickname(info.Nickname, user.Nickname),
+        Nickname:    defaultWxNickname(bestInfo.Nickname, user.Nickname),
         Wxid:        wxid,
-        Device:      info.Device,
-        Status:      wxStatusText(info.Survival),
-        Online:      info.Survival == 1,
-        LoginTime:   formatPortalWxUnix(info.LoginDate),
-        RefreshTime: formatPortalWxUnix(info.RefreshDate),
+        Device:      bestInfo.Device,
+        Status:      wxStatusText(bestInfo.Survival),
+        Online:      bestInfo.Survival == 1,
+        LoginTime:   formatPortalWxUnix(bestInfo.LoginDate),
+        RefreshTime: formatPortalWxUnix(bestInfo.RefreshDate),
     }, nil
 }
 
@@ -471,6 +505,31 @@ func getPortalUserByNumber(userNumber int) (*User, error) {
 
 func getWxUserStatusRaw() (*portalWxUserStatusResponse, error) {
     url := getWxLoginBaseURL() + "/api/v1/wx/user/status"
+    client := &http.Client{Timeout: HTTPTimeout}
+    resp, err := client.Get(url)
+    if err != nil {
+        return nil, fmt.Errorf("请求设备列表失败：%s", err.Error())
+    }
+    defer resp.Body.Close()
+
+    body, err := io.ReadAll(resp.Body)
+    if err != nil {
+        return nil, fmt.Errorf("读取设备列表失败：%s", err.Error())
+    }
+
+    var result portalWxUserStatusResponse
+    if err := json.Unmarshal(body, &result); err != nil {
+        return nil, fmt.Errorf("解析设备列表失败：%s", err.Error())
+    }
+    if !result.Status {
+        return nil, fmt.Errorf("获取设备列表失败：%s", result.Message)
+    }
+    return &result, nil
+}
+
+// getWxUserStatusRawFromURL 从指定地址获取设备状态
+func getWxUserStatusRawFromURL(baseURL string) (*portalWxUserStatusResponse, error) {
+    url := baseURL + "/api/v1/wx/user/status"
     client := &http.Client{Timeout: HTTPTimeout}
     resp, err := client.Get(url)
     if err != nil {
