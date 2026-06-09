@@ -196,47 +196,69 @@ func PortalWxRelogin(userNumber int, targetWxid ...string) (*PortalWxActionResul
 		return nil, fmt.Errorf("设备尚未登录，请先执行微信扫码登录")
 	}
 
-	reqBody := map[string]interface{}{
-		"wxid": wxid,
-		"Proxy": map[string]string{
-			"ProxyIp":       "",
-			"ProxyPassword": "",
-			"ProxyUser":     "",
-		},
-	}
-
-	// 迁移用户：先尝试新地址，失败则回退旧地址
+	// 根据是否迁移选择不同的登录方式
 	var body []byte
-	if isMigration {
-		body, err = wxLoginRequestToURL(getNewWxLoginBaseURL(), "/api/v1/wx/login/again", reqBody)
-		if err != nil {
-			logs.Info("Portal新地址重新登录失败，回退旧地址: %v", err)
-			body, err = wxLoginRequestToURL(getOldWxLoginBaseURL(), "/api/v1/wx/login/again", reqBody)
-		}
-	} else {
-		body, err = wxLoginRequest("/api/v1/wx/login/again", reqBody)
-	}
-	if err != nil {
-		return nil, err
-	}
-	var result WxLoginAgainResp
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("解析响应失败：%v", err)
-	}
-	if !result.Status {
-		return nil, fmt.Errorf("重新登录失败：%s", result.Message)
-	}
+	var qrPayload string
+	var uuid string
+	var msg string
 
-	qrPayload := normalizePortalQrBase64(result.Data.QrBase64)
-	msg := "重新登录二维码已生成，请用手机微信扫码确认"
 	if isMigration {
+		// 迁移用户：在新地址上走全新扫码登录（不扣积分）
+		scanReqBody := map[string]interface{}{
+			"DeviceID":   "device_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			"DeviceName": getWxDeviceName(),
+			"DeviceType": "car",
+			"Proxy": map[string]string{
+				"ProxyIp":       "",
+				"ProxyPassword": "",
+				"ProxyUser":     "",
+			},
+		}
+		body, err = wxLoginRequestToURL(getNewWxLoginBaseURL(), "/api/v1/wx/login/code", scanReqBody)
+		if err != nil {
+			return nil, fmt.Errorf("迁移登录失败：%v", err)
+		}
+		var scanResult WxLoginCodeResp
+		if err = json.Unmarshal(body, &scanResult); err != nil || !scanResult.Status || !scanResult.Success {
+		 errMsg := "获取二维码失败"
+		 if err == nil {
+		 	errMsg = scanResult.Message
+		 }
+			return nil, fmt.Errorf("迁移登录失败：%s", errMsg)
+		}
+		qrPayload = normalizePortalQrBase64(scanResult.Data.QrBase64)
+		uuid = scanResult.Data.Uuid
 		msg = "检测到旧协议设备，正在迁移到新协议（不扣积分），请扫码确认"
+	} else {
+		// 普通用户：走二次登录
+		reqBody := map[string]interface{}{
+			"wxid": wxid,
+			"Proxy": map[string]string{
+				"ProxyIp":       "",
+				"ProxyPassword": "",
+				"ProxyUser":     "",
+			},
+		}
+		body, err = wxLoginRequest("/api/v1/wx/login/again", reqBody)
+		if err != nil {
+			return nil, err
+		}
+		var result WxLoginAgainResp
+		if err = json.Unmarshal(body, &result); err != nil {
+			return nil, fmt.Errorf("解析响应失败：%v", err)
+		}
+		if !result.Status {
+			return nil, fmt.Errorf("重新登录失败：%s", result.Message)
+		}
+		qrPayload = normalizePortalQrBase64(result.Data.QrBase64)
+		uuid = result.Data.Uuid
+		msg = "重新登录二维码已生成，请用手机微信扫码确认"
 	}
 	return &PortalWxActionResult{
 		Message:  msg,
 		QRBase64: qrPayload,
-		UUID:     result.Data.Uuid,
-		NeedPoll: result.Data.Uuid != "",
+		UUID:     uuid,
+		NeedPoll: uuid != "",
 	}, nil
 }
 
@@ -272,65 +294,88 @@ func PortalWxWakeLogin(userNumber int, targetWxid ...string) (*PortalWxActionRes
 		return nil, fmt.Errorf("设备尚未登录，请先执行微信扫码登录")
 	}
 
-	// 根据迁移状态选择请求地址
-	activeURL := getWxLoginBaseURL()
+	var qrPayload string
+	var uuid string
+	var msg string
+
 	if isMigration {
-		activeURL = getNewWxLoginBaseURL()
-	}
-
-	awakeBody := map[string]string{"wxid": wxid}
-	body, err := wxLoginRequestToURL(activeURL, "/api/v1/wx/login/awake", awakeBody)
-	if err != nil && isMigration {
-		logs.Info("Portal新地址唤醒失败，回退旧地址: %v", err)
-		activeURL = getOldWxLoginBaseURL()
-		body, err = wxLoginRequestToURL(activeURL, "/api/v1/wx/login/awake", awakeBody)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("唤醒失败：%v", err)
-	}
-	var awakeResult struct {
-		Status  bool   `json:"status"`
-		Success bool   `json:"success"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &awakeResult); err != nil {
-		return nil, fmt.Errorf("解析唤醒响应失败：%v", err)
-	}
-	if !awakeResult.Status {
-		return nil, fmt.Errorf("唤醒设备失败：%s", awakeResult.Message)
-	}
-
-	twiceBody := map[string]string{"wxid": wxid}
-	body, err = wxLoginRequestToURL(activeURL, "/api/v1/wx/login/twice", twiceBody)
-	if err != nil {
-		return nil, fmt.Errorf("获取唤醒登录二维码失败：%v", err)
-	}
-	var twiceResult struct {
-		Status  bool   `json:"status"`
-		Success bool   `json:"success"`
-		Data    struct {
-			QrBase64 string `json:"qrbase64"`
-			Uuid     string `json:"uuid"`
-		} `json:"data"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &twiceResult); err != nil {
-		return nil, fmt.Errorf("解析唤醒登录响应失败：%v", err)
-	}
-	if !twiceResult.Status {
-		return nil, fmt.Errorf("唤醒登录失败：%s", twiceResult.Message)
-	}
-
-	msg := "设备已唤醒，请扫码完成登录"
-	if isMigration {
+		// 迁移用户：在新地址上走全新扫码登录（不扣积分）
+		scanReqBody := map[string]interface{}{
+			"DeviceID":   "device_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			"DeviceName": getWxDeviceName(),
+			"DeviceType": "car",
+			"Proxy": map[string]string{
+				"ProxyIp":       "",
+				"ProxyPassword": "",
+				"ProxyUser":     "",
+			},
+		}
+		body, err := wxLoginRequestToURL(getNewWxLoginBaseURL(), "/api/v1/wx/login/code", scanReqBody)
+		if err != nil {
+			return nil, fmt.Errorf("迁移登录失败：%v", err)
+		}
+		var scanResult WxLoginCodeResp
+		if err = json.Unmarshal(body, &scanResult); err != nil || !scanResult.Status || !scanResult.Success {
+			errMsg := "获取二维码失败"
+			if err == nil {
+				errMsg = scanResult.Message
+			}
+			return nil, fmt.Errorf("迁移登录失败：%s", errMsg)
+		}
+		qrPayload = normalizePortalQrBase64(scanResult.Data.QrBase64)
+		uuid = scanResult.Data.Uuid
 		msg = "检测到旧协议设备，正在迁移到新协议（不扣积分），请扫码确认"
+	} else {
+		// 普通用户：走唤醒+二次登录
+		activeURL := getWxLoginBaseURL()
+
+		awakeBody := map[string]string{"wxid": wxid}
+		body, err := wxLoginRequestToURL(activeURL, "/api/v1/wx/login/awake", awakeBody)
+		if err != nil {
+			return nil, fmt.Errorf("唤醒失败：%v", err)
+		}
+		var awakeResult struct {
+			Status  bool   `json:"status"`
+			Success bool   `json:"success"`
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal(body, &awakeResult); err != nil {
+			return nil, fmt.Errorf("解析唤醒响应失败：%v", err)
+		}
+		if !awakeResult.Status {
+			return nil, fmt.Errorf("唤醒设备失败：%s", awakeResult.Message)
+		}
+
+		twiceBody := map[string]string{"wxid": wxid}
+		body, err = wxLoginRequestToURL(activeURL, "/api/v1/wx/login/twice", twiceBody)
+		if err != nil {
+			return nil, fmt.Errorf("获取唤醒登录二维码失败：%v", err)
+		}
+		var twiceResult struct {
+			Status  bool   `json:"status"`
+			Success bool   `json:"success"`
+			Data    struct {
+				QrBase64 string `json:"qrbase64"`
+				Uuid     string `json:"uuid"`
+			} `json:"data"`
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal(body, &twiceResult); err != nil {
+			return nil, fmt.Errorf("解析唤醒登录响应失败：%v", err)
+		}
+		if !twiceResult.Status {
+			return nil, fmt.Errorf("唤醒登录失败：%s", twiceResult.Message)
+		}
+		qrPayload = normalizePortalQrBase64(twiceResult.Data.QrBase64)
+		uuid = twiceResult.Data.Uuid
+		msg = "设备已唤醒，请扫码完成登录"
 	}
 
 	return &PortalWxActionResult{
 		Message:  msg,
-		QRBase64: normalizePortalQrBase64(twiceResult.Data.QrBase64),
-		UUID:     twiceResult.Data.Uuid,
-		NeedPoll: twiceResult.Data.Uuid != "",
+		QRBase64: qrPayload,
+		UUID:     uuid,
+		NeedPoll: uuid != "",
 	}, nil
 }
 
