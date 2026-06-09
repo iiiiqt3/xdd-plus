@@ -6,11 +6,10 @@
   python jyxe_query.py wxid
   python jyxe_query.py 备注#wxid
   python jyxe_query.py wxid1&wxid2
-  python jyxe_query.py 大师#wxid1&小号#wxid2
 
-环境变量兜底: jyxe=备注#wxid&备注#wxid
-依赖: WECHAT_SERVER（获取微信 code 的桥接服务，由xdd后台自动传递）
-      WECHAT_SERVER_NEW（新地址，由xdd后台自动传递，可选）
+环境变量（由xdd后台自动传递）：
+  WECHAT_SERVER     获取微信 code 的桥接服务
+  WECHAT_SERVER_NEW 新地址（可选）
 缓存: 脚本同目录 jyxe_token_cache.json（与 jyxe.py 共用）
 """
 
@@ -73,14 +72,12 @@ def parse_accounts(raw):
     return accounts
 
 def get_accounts():
-    # 1. 命令行优先
     if len(sys.argv) > 1:
         raw = "&".join(sys.argv[1:])
         accounts = parse_accounts(raw)
         if accounts:
             return accounts
-    # 2. 环境变量兜底
-    return parse_accounts(os.getenv("jyxe", ""))
+    return []
 
 # ================== 缓存管理 ==================
 def load_cache():

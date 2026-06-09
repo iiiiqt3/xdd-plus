@@ -1,14 +1,12 @@
 /**
- * 比亚迪王朝（协议版）- 纯查询版【无签到 | 命令行+环境变量双支持】
+ * 比亚迪王朝（协议版）- 纯查询版【无签到】
  * 流程：wxid -> 拉 code -> decryptCode 拿 session_id -> 查询积分/签到日历
  *
- * 【环境变量模式（青龙）】
- *   WECHAT_SERVER     取 code 服务地址（由xdd后台自动传递）
- *   WECHAT_SERVER_NEW 新地址（由xdd后台自动传递，可选）
- *   WXID_BYD          wxid，多账号用 & 或换行分隔
+ * 用法：node BYD.js wxid
  *
- * 【命令行模式（Go调用）】
- *   node 脚本.js wxid
+ * 环境变量（由xdd后台自动传递）：
+ *   WECHAT_SERVER     取 code 服务地址
+ *   WECHAT_SERVER_NEW 新地址（可选）
  */
 
 const crypto = require('crypto');
@@ -55,18 +53,13 @@ function getWxServerUrls() {
   return { oldUrl, newUrl };
 }
 
-// 支持：命令行传参 / 环境变量
+// 从命令行参数获取 wxid
 function getAccounts() {
   const cliWxid = process.argv[2]?.trim();
   if (cliWxid) {
     return [{ wxid: cliWxid, appid: CFG.appid }];
   }
-
-  return (process.env.WXID_BYD || '')
-    .split(/[\n&]/)
-    .map(x => x.trim())
-    .filter(Boolean)
-    .map(wxid => ({ wxid, appid: CFG.appid }));
+  return [];
 }
 
 function randomNonce(len = 16) {
@@ -298,7 +291,7 @@ async function runOne(acc, idx) {
   try {
     const accounts = getAccounts();
     if (!accounts.length) {
-      console.log('❌ 请配置 WXID_BYD 或命令行传入 wxid');
+      console.log('❌ 请通过命令行传入 wxid');
       process.exit(1);
     }
 

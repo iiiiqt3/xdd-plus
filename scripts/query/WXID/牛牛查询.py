@@ -23,14 +23,8 @@
    python 牛牛查询.py @wxid.txt   （文件每行一个 wxid 或 备注#wxid）
    python 牛牛查询.py @token.txt  （文件每行一个 token）
 
- 方式4 - 环境变量 wxid（WX协议模式）：
-   WXID_niuniu="备注#wxid_xxx&wxid_yyy"
-
- 方式5 - 环境变量 Token（手动Token模式）：
-   NIUNIU_TOKENS="token1&token2"
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 其他环境变量
+ 其他环境变量（由xdd后台自动传递）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   WECHAT_SERVER    - WX协议服务地址（由xdd后台自动传递）
   WECHAT_SERVER_NEW - 新地址（由xdd后台自动传递，可选）
@@ -151,18 +145,7 @@ def _parse_input_source():
             WXID_LIST = parse_wxid_list(raw)
         return
 
-    # ── 2. 环境变量 ────────────────────────────────────────────
-    env_wxid   = os.getenv("WXID_niuniu", "").strip()
-    env_tokens = os.getenv("NIUNIU_TOKENS", "").strip()
-
-    if env_wxid:
-        WXID_LIST = parse_wxid_list(env_wxid)
-
-    if env_tokens:
-        for t in env_tokens.replace("\n", "&").split("&"):
-            t = t.strip()
-            if t:
-                MANUAL_TOKENS.append(t)
+    # ── 2. 无参数时不做任何事 ──────────────────────────────────────
 
 _parse_input_source()
 

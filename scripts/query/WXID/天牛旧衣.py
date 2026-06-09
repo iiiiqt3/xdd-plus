@@ -6,11 +6,10 @@
   python tnjy_query.py wxid
   python tnjy_query.py 备注#wxid
   python tnjy_query.py wxid1&wxid2
-  python tnjy_query.py 大师#wxid1&小号#wxid2
 
-环境变量兜底: tnjy=备注#wxid&备注#wxid
-依赖: WECHAT_SERVER（获取微信 code 的桥接服务，由xdd后台自动传递）
-      WECHAT_SERVER_NEW（新地址，由xdd后台自动传递，可选）
+环境变量（由xdd后台自动传递）：
+  WECHAT_SERVER     获取微信 code 的桥接服务
+  WECHAT_SERVER_NEW 新地址（可选）
 缓存: 脚本同目录 tnjy_token_cache.json（与 tnjy.py 共用）
 """
 
@@ -78,7 +77,7 @@ def get_accounts():
         accounts = parse_accounts(raw)
         if accounts:
             return accounts
-    return parse_accounts(os.getenv("tnjy", ""))
+    return []
 
 # ================== 缓存管理 ==================
 def load_cache():

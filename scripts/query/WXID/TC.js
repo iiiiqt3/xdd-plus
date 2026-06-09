@@ -1,27 +1,14 @@
 /**
  * 同程旅行 - 活动进度查询脚本（仅查询，不执行任何操作）
  *
- * 查询内容：
- *   1. 账号基础信息（里程余额）
- *   2. 每日签到状态（是否签到、连续天数）
- *   3. 每日任务完成情况
- *   4. 里程瓜分活动参与状态
- *   5. 花神祈福（集花签名）收集进度
- *   6. 连续打卡拿现金 / 挑战现金状态
- *   7. 打卡攒现金状态
+ * 用法：
+ *   node TC.js wxid1
+ *   node TC.js "备注1#wxid1" "备注2#wxid2"
  *
- * 使用方式（命令行传参，支持多账号）:
- *   node 同城查询.js <wxid1> [wxid2] [wxid3] ...
- *   node 同城查询.js "备注1#wxid1" "备注2#wxid2"
- *
- * 或通过环境变量:
- *   WXID_TC=... node 同城查询.js
- *
- * 环境变量:
- *   WXID_TC          - 微信 wxid，格式：备注#wxid 或直接 wxid，& 或换行分割
- *   WECHAT_SERVER    - 微信 code 服务地址（由xdd后台自动传递）
- *   WECHAT_SERVER_NEW - 新地址（由xdd后台自动传递，可选）
- *   TC_APPID         - 小程序 appid，默认 wx336dcaf6a1ecf632
+ * 环境变量（由xdd后台自动传递）：
+ *   WECHAT_SERVER     - 微信 code 服务地址
+ *   WECHAT_SERVER_NEW - 新地址（可选）
+ *   TC_APPID          - 小程序 appid，默认 wx336dcaf6a1ecf632
  */
 
 "use strict";
@@ -226,7 +213,7 @@ function rawPost(path, payload, extraHeaders) {
 // ============================================================
 function parseAccounts() {
   const args = process.argv.slice(2);
-  const raw  = args.length > 0 ? args.join("&") : (process.env.WXID_TC || "");
+  const raw  = args.join("&");
   if (!raw) return [];
   const lines = raw.split("&").map((s) => s.trim()).join("\n")
                    .split("\n").map((s) => s.trim()).filter(Boolean);
@@ -743,9 +730,8 @@ async function main() {
   const accts = parseAccounts();
   if (!accts.length) {
     perr("未找到有效账号");
-    pinfo("用法一（命令行）：node 同城查询.js <wxid1> [wxid2] ...");
-    pinfo("用法二（带备注）：node 同城查询.js \"备注#wxid\" ...");
-    pinfo("用法三（环境变量）：WXID_TC=... node 同城查询.js");
+    pinfo("用法一（命令行）：node TC.js <wxid1> [wxid2] ...");
+    pinfo("用法二（带备注）：node TC.js \"备注#wxid\" ...");
     console.log();
     process.exit(1);
   }

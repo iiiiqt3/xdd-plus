@@ -29,7 +29,6 @@ const WX_CONFIG = {
 };
 
 // 环境变量名
-const ENV_WXID = 'WXID_SF';
 const ENV_CK = 'sfsyUrl';
 
 // 禁用HTTPS警告（静默处理）
@@ -309,38 +308,6 @@ async function getCookieByWxid(wxid) {
 }
 
 /**
- * 从环境变量解析 wxid 列表
- * 格式：备注#wxid，多账号用 & 或换行分隔
- */
-function getWxListFromEnv() {
-    const raw = (process.env[ENV_WXID] || '').trim();
-    if (!raw) {
-        return [];
-    }
-
-    const accounts = [];
-    const lines = raw.replace(/&/g, '\n').split('\n').map(l => l.trim()).filter(l => l);
-
-    for (const line of lines) {
-        let wxid, remark;
-        if (line.includes('#')) {
-            const idx = line.indexOf('#');
-            remark = line.substring(0, idx).trim();
-            wxid = line.substring(idx + 1).trim();
-        } else {
-            wxid = line.trim();
-            remark = wxid;
-        }
-
-        if (wxid) {
-            accounts.push({ wxid, remark });
-        }
-    }
-
-    return accounts;
-}
-
-/**
  * 构建所有账号的 Cookie 列表并查询（优先缓存，失败重新换取）
  * @param {Array} wxList - 可选，外部传入的 wxid 列表；为空则从环境变量读取
  * @returns {number} 成功查询的账号数
@@ -616,125 +583,39 @@ async function queryPointMonthly(cookies) {
 
 // ==================== 主函数 ====================
 async function main() {
-    // 🔥 优先使用环境变量 WXID_SF 或 命令行传入的 wxid（wxid模式）
-    let wxList = getWxListFromEnv();
+    // 从命令行参数获取 wxid
+    const argvRaw = process.argv.slice(2).join(' ');
+    const wxList = [];
 
-    // 命令行参数补充 wxid
-    if (wxList.length === 0 && process.argv.length > 2) {
-        const argvRaw = process.argv.slice(2).join(' ');
-        // 不含 = 号视为 wxid 模式
-        const isWxidMode = !argvRaw.includes('=');
-        if (isWxidMode && argvRaw.trim()) {
-            const raw = argvRaw.replace(/&/g, '\n').replace(/\s+/g, '\n');
-            const lines = raw.split('\n').map(l => l.trim()).filter(l => l);
-            for (const line of lines) {
-                let wxid, remark;
-                if (line.includes('#')) {
-                    const idx = line.indexOf('#');
-                    remark = line.substring(0, idx).trim();
-                    wxid = line.substring(idx + 1).trim();
-                } else {
-                    wxid = line.trim();
-                    remark = wxid;
-                }
-                if (wxid) {
-                    wxList.push({ wxid, remark });
-                }
+    if (argvRaw.trim()) {
+        const raw = argvRaw.replace(/&/g, '\n').replace(/\s+/g, '\n');
+        const lines = raw.split('\n').map(l => l.trim()).filter(l => l);
+        for (const line of lines) {
+            let wxid, remark;
+            if (line.includes('#')) {
+                const idx = line.indexOf('#');
+                remark = line.substring(0, idx).trim();
+                wxid = line.substring(idx + 1).trim();
+            } else {
+                wxid = line.trim();
+                remark = wxid;
+            }
+            if (wxid) {
+                wxList.push({ wxid, remark });
             }
         }
     }
 
-    if (wxList.length > 0) {
-        // wxid模式：优先缓存 → 失败重新换取 → 查询输出
-        const count = await buildAccountCookiesAndQuery(wxList);
-        if (count === 0) {
-            console.log(`\n[❌] 所有账号查询失败`);
-            process.exit(1);
-        }
-    } else {
-        // 兼容旧模式：命令行传入 CK 字符串 或 环境变量 sfsyUrl
-        let accounts = [];
-        let ckParam = '';
+    if (wxList.length === 0) {
+        console.log('❌ 请通过命令行传入 wxid');
+        console.log('用法: node sfsy.js wxid_xxx 或 node sfsy.js "备注#wxid"');
+        process.exit(1);
+    }
 
-        if (process.env[ENV_CK]) {
-            ckParam = process.env[ENV_CK];
-        } else if (process.argv.length > 2) {
-            const argvParts = process.argv.slice(2);
-
-            if (argvParts.length > 1) {
-                ckParam = argvParts.join(';');
-            } else if (argvParts[0].startsWith('@')) {
-                const filePath = argvParts[0].substring(1);
-                try {
-                    ckParam = fs.readFileSync(filePath, 'utf-8').trim();
-                } catch (e) {
-                    console.log(`[❌] 读取CK文件失败: ${filePath}`);
-                    process.exit(1);
-                }
-            } else {
-                ckParam = argvParts[0];
-            }
-        }
-
-        if (ckParam) {
-            let decodedParam = ckParam;
-            try {
-                const testDecode = decodeURIComponent(ckParam);
-                if (testDecode.includes('sessionId') || testDecode.includes('_login_mobile_')) {
-                    decodedParam = testDecode;
-                }
-            } catch (e) { /* 解码失败就用原始值 */ }
-
-            if (decodedParam.includes('||')) {
-                accounts = decodedParam.split('||').filter(item => item.trim());
-            } else if (decodedParam.includes('&') && !decodedParam.includes('sessionId=')) {
-                accounts = decodedParam.split('&').filter(item => item.trim());
-            } else {
-                accounts = [decodedParam.trim()];
-            }
-
-            for (let i = 0; i < accounts.length; i++) {
-                console.log(`\n==================================`);
-                const cookies = parseCookies(accounts[i].trim());
-                if (!cookies.sessionId || !cookies._login_mobile_) {
-                    console.log(`[❌] 第${i + 1}个账号 - 登录失效`);
-                    continue;
-                }
-
-                const [userInfo, pointDetail, pointMonthly] = await Promise.all([
-                    queryUserInfo(cookies),
-                    queryPointDetail(cookies),
-                    queryPointMonthly(cookies)
-                ]);
-
-                if (!userInfo) {
-                    console.log(`[❌] 第${i + 1}个账号 - 查询失败`);
-                    continue;
-                }
-
-                console.log(`[👤] 手机号：${userInfo.mobile}`);
-                console.log(`[🏆] 会员等级：${userInfo.gradeName}（${userInfo.gradeVal}）`);
-                console.log(`[📈] 成长值：${userInfo.expVal} | 注册时间：${userInfo.regTm}`);
-                console.log(`[💰] 可用积分：${userInfo.usablePoint} 分`);
-                console.log(`[⚠️] 即将过期积分：${userInfo.leavePoint} 分`);
-                console.log(`[📅] 积分过期时间：${userInfo.pointClearCycle}`);
-                console.log(`[✨] 今日新增积分：${pointDetail.todayPoints} 分`);
-                console.log(`[📆] 本月新增积分：${pointMonthly.currentMonth.addSum} 分 | 本月扣除：${pointMonthly.currentMonth.subSum} 分`);
-                console.log(`[💥] 累计过期/扣除积分：${pointMonthly.expirePoints} 分`);
-                console.log(`[🕙] 最近积分变动：${pointDetail.latestPointTime}`);
-                console.log(`[📊] 累计积分变动次数：${pointDetail.totalCount} 次`);
-                console.log(`[🔑] 最后登录时间：${userInfo.appLastLoginTm}`);
-
-                if (i < accounts.length - 1) await new Promise(res => setTimeout(res, 1000));
-            }
-        } else {
-            console.log(`[❌] 未传入任何账号信息，请使用以下任一方式：`);
-            console.log(`   方式1 - 环境变量wxid: set ${ENV_WXID}=备注#wxid_xxx&备注2#wxid_yyy && node sfsy.js`);
-            console.log(`   方式2 - 环境变量CK: set ${ENV_CK}=sessionId=xxx;_login_mobile_=xxx && node sfsy.js`);
-            console.log(`   方式3 - 命令行wxid: node sfsy.js 备注#wxid_xxx`);
-            console.log(`   方式4 - 从文件读取CK: node sfsy.js @ck.txt`);
-            process.exit(1);
-        }
+    const count = await buildAccountCookiesAndQuery(wxList);
+    if (count === 0) {
+        console.log(`\n[❌] 所有账号查询失败`);
+        process.exit(1);
     }
 
     console.log(`\n==================================`);

@@ -1,13 +1,9 @@
 /**
- * 可口可乐吧 查询本 - 青龙多账号版
- * 环境变量：
- *   WXID_KKKL: wxid，多账号用 & 或换行分隔
- *     示例: wxid_xxxxxxxx&wxid_yyyyyyyy
- *   WECHAT_SERVER: 微信协议服务器地址（旧地址，由xdd后台自动传递）
- *   WECHAT_SERVER_NEW: 微信协议服务器新地址（由xdd后台自动传递，可选）
- *
- * cron: 0 9 * * *
- * const: disabled = false
+ * 可口可乐吧 查询本
+ * 用法：node 可口可乐查询.js wxid
+ * 环境变量（由xdd后台自动传递）：
+ *   WECHAT_SERVER: 微信协议服务器地址（旧地址）
+ *   WECHAT_SERVER_NEW: 微信协议服务器新地址（可选）
  */
 
 const axios = require('axios');
@@ -26,8 +22,6 @@ const CONFIG = {
   CACHE_FILE: path.join(__dirname, '可口可乐吧_cache.json'),
   TIMEOUT: 15000
 };
-
-const ENV_WXID = 'WXID_KKKL';
 
 // ==================== 服务器地址获取 ====================
 /**
@@ -132,17 +126,6 @@ async function getTokenByWxid(wxid) {
     console.log(`❌ 获取Token失败: ${wxid} -> ${e.message}`);
     return null;
   }
-}
-
-/**
- * 从环境变量解析 wxid 列表
- * 格式：wxid，多账号用 & 或换行分隔
- */
-function getWxListFromEnv() {
-  const raw = (process.env[ENV_WXID] || '').trim();
-  if (!raw) return [];
-
-  return raw.replace(/&/g, '\n').split('\n').map(l => l.trim()).filter(l => l);
 }
 
 // ==================== API 请求封装 ====================
@@ -364,13 +347,13 @@ async function buildAccountTokensAndQuery(wxList) {
 
 // ==================== 主函数 ====================
 async function main() {
-  // 从环境变量获取账号列表
-  let wxList = getWxListFromEnv();
+  // 从命令行参数获取 wxid
+  const argvRaw = process.argv.slice(2).join(' ');
+  const wxList = argvRaw.replace(/&/g, '\n').split('\n').map(l => l.trim()).filter(l => l);
 
-  // 命令行参数补充 wxid
-  if (wxList.length === 0 && process.argv.length > 2) {
-    const argvRaw = process.argv.slice(2).join(' ');
-    wxList = argvRaw.replace(/&/g, '\n').split('\n').map(l => l.trim()).filter(l => l);
+  if (wxList.length === 0) {
+    console.log('❌ 请通过命令行传入 wxid');
+    process.exit(1);
   }
 
   const count = await buildAccountTokensAndQuery(wxList);

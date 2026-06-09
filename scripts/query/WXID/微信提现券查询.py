@@ -12,10 +12,9 @@
   6. 每日礼品券状态（querydailygiftcoupons）
   7. 开放任务列表（listopentasks）
 
-环境变量：
-  WECHAT_SERVER     微信代理服务地址（由xdd后台自动传递）
-  WECHAT_SERVER_NEW 新地址（由xdd后台自动传递，可选）
-  WXID_WXLQ         账号列表，纯 wxid 或 备注#wxid，& 或换行分割
+环境变量（由xdd后台自动传递）：
+  WECHAT_SERVER     微信代理服务地址
+  WECHAT_SERVER_NEW 新地址（可选）
   WX_APPID          小程序 AppID（默认内置）
   DEBUG             设为 1 开启详细日志
 """
@@ -88,23 +87,15 @@ def parse_wxid_str(raw: str) -> list[dict[str, str]]:
 
 def get_wx_list_from_env() -> list[dict[str, str]]:
     """
-    获取账号列表：
-    1. 优先命令行参数（支持多账号 & 分隔 / 备注#wxid）
-    2. 其次环境变量 WXID_WXLQ
+    获取账号列表：从命令行参数解析（支持多账号 & 分隔 / 备注#wxid）
     """
     if len(sys.argv) > 1:
         accounts = parse_wxid_str(" ".join(sys.argv[1:]).strip())
         if accounts:
             return accounts
 
-    raw = (os.getenv("WXID_WXLQ") or "").strip()
-    if not raw:
-        print("❌ 未配置环境变量 WXID_WXLQ，且未提供命令行参数")
-        return []
-
-    accounts = parse_wxid_str(raw)
-    print(f"📋 从环境变量加载到 {len(accounts)} 个微信账号")
-    return accounts
+    print("❌ 请通过命令行传入 wxid")
+    return []
 
 
 # ================== 服务器地址获取 ==================
@@ -348,7 +339,6 @@ def main() -> int:
         print("   用法一：python 微信提现券查询.py wxid_xxx")
         print("   用法二：python 微信提现券查询.py 备注#wxid_xxx")
         print("   用法三：python 微信提现券查询.py wxid1&wxid2")
-        print("   用法四：配置环境变量 WXID_WXLQ")
         return 1
 
     # 显示地址获取方式

@@ -11,7 +11,6 @@
  * 环境变量：
  *   WECHAT_SERVER       微信代理服务地址（由xdd后台自动传递）
  *   WECHAT_SERVER_NEW   新地址（由xdd后台自动传递，可选）
- *   WXID_JD             账号列表（命令行不传时使用）
  *   JINDIAN_XH_APP_KEY   活动 app_key（默认沿用金典活动）
  *   JINDIAN_PROXY        直连代理
  *   JINDIAN_PROXY_API    代理 API
@@ -62,15 +61,11 @@ function parseAccounts(raw) {
 }
 
 function getAccounts() {
-  // 1. 优先命令行参数
   const args = process.argv.slice(2).join(' ').trim();
   if (args) {
     const list = parseAccounts(args);
     if (list.length) return list;
   }
-  // 2. 其次环境变量
-  const raw = process.env.WXID_JD || '';
-  if (raw.trim()) return parseAccounts(raw);
   return [];
 }
 

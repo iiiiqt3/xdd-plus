@@ -4,15 +4,14 @@
 天机馆用户信息查询脚本 - 纯查询版（无任务执行）
 仅供学习研究使用，严禁用于商业或违规用途。
 
-【环境变量模式（青龙）】
-  WECHAT_SERVER     取 code 服务地址（由xdd后台自动传递）
-  WECHAT_SERVER_NEW 新地址（由xdd后台自动传递，可选）
-  WXID_TJ           wxid，支持"备注#wxid"或直接"wxid"，多账号用换行或&分隔
-
-【命令行模式（Go调用 / 直接运行）】
+【命令行模式】
   python3 天机查询.py wxid
   python3 天机查询.py 备注#wxid
   python3 天机查询.py wxid1&wxid2
+
+【环境变量（由xdd后台自动传递）】
+  WECHAT_SERVER     取 code 服务地址
+  WECHAT_SERVER_NEW 新地址（可选）
 
 缓存文件：脚本同目录下 天机_token_cache.json（与天机.py 共用）
 """
@@ -38,7 +37,6 @@ WECHAT_CODE_URL_PATH = "/api/v1/wx/app/get/code"
 # 从环境变量获取地址（由xdd后台自动传递）
 WECHAT_SERVER = os.getenv("WECHAT_SERVER", "http://180.152.5.230:8011").strip().rstrip("/")
 WECHAT_SERVER_NEW = os.getenv("WECHAT_SERVER_NEW", "").strip().rstrip("/")
-WXID_TJ_ENV = os.getenv("WXID_TJ", "").strip()
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CACHE_FILE = os.path.join(SCRIPT_DIR, "天机_token_cache.json")
@@ -158,9 +156,7 @@ def parse_wxid_str(raw):
 
 def get_accounts():
     """
-    获取账号列表：
-    1. 优先命令行参数（支持多账号 & 分隔 / 备注#wxid）
-    2. 其次环境变量 WXID_TJ
+    获取账号列表：从命令行参数解析（支持多账号 & 分隔 / 备注#wxid）
     """
     if len(sys.argv) > 1:
         cli_input = " ".join(sys.argv[1:]).strip()
@@ -168,7 +164,7 @@ def get_accounts():
         if accounts:
             return accounts
 
-    return parse_wxid_str(WXID_TJ_ENV)
+    return []
 
 
 # ========== 缓存管理 ==========
@@ -378,9 +374,9 @@ if __name__ == "__main__":
     accounts = get_accounts()
     if not accounts:
         print("\n❌ 未检测到账号")
-        print("   用法一（命令行）：python3 天机查询.py wxid_xxx")
-        print("   用法二（命令行）：python3 天机查询.py 备注#wxid_xxx")
-        print("   用法三（环境变量）：WXID_TJ=备注#wxid_xxx python3 天机查询.py")
+        print("   用法一：python3 天机查询.py wxid_xxx")
+        print("   用法二：python3 天机查询.py 备注#wxid_xxx")
+        print("   用法三：python3 天机查询.py wxid1&wxid2")
         sys.exit(1)
 
     print(f"\n共检测到 {len(accounts)} 个账号")
