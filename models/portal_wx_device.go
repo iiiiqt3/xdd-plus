@@ -33,16 +33,27 @@ func GetPortalWxDevices(userNumber int) ([]PortalWxDeviceStatus, error) {
 		return nil, err
 	}
 
-	raw, err := getWxUserStatusRaw()
-	if err != nil {
-		raw = nil
+	// 同时查询新旧两个地址
+	raw, _ := getWxUserStatusRaw()
+
+	var rawOld *portalWxUserStatusResponse
+	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+		rawOld, _ = getWxUserStatusRawFromURL(getOldWxLoginBaseURL())
 	}
+
+	var rawNew *portalWxUserStatusResponse
+	if Config.WxProtocol.NewLoginBaseURL != "" && getWxLoginBaseURL() != getNewWxLoginBaseURL() {
+		rawNew, _ = getWxUserStatusRawFromURL(getNewWxLoginBaseURL())
+	}
+
+	// 合并三个来源的数据（优先在线）
+	mergedRaw := mergePortalWxRaw(raw, rawOld, rawNew)
 
 	var result []PortalWxDeviceStatus
 
 	primaryWxid := strings.TrimSpace(user.Wxid)
 	if primaryWxid != "" {
-		primaryStatus := buildWxDeviceStatus(0, primaryWxid, true, raw, user.Nickname)
+		primaryStatus := buildWxDeviceStatus(0, primaryWxid, true, mergedRaw, user.Nickname)
 		result = append(result, primaryStatus)
 	}
 
@@ -52,11 +63,37 @@ func GetPortalWxDevices(userNumber int) ([]PortalWxDeviceStatus, error) {
 		if strings.TrimSpace(d.Wxid) == primaryWxid {
 			continue
 		}
-		status := buildWxDeviceStatus(d.ID, d.Wxid, false, raw, "")
+		status := buildWxDeviceStatus(d.ID, d.Wxid, false, mergedRaw, "")
 		result = append(result, status)
 	}
 
 	return result, nil
+}
+
+// mergePortalWxRaw 合并多个来源的设备状态，在线优先
+func mergePortalWxRaw(sources ...*portalWxUserStatusResponse) *portalWxUserStatusResponse {
+	merged := &portalWxUserStatusResponse{
+		Status: true,
+		Data:   make(map[string]portalWxDeviceInfo),
+	}
+	for _, src := range sources {
+		if src == nil || src.Data == nil {
+			continue
+		}
+		for wxid, info := range src.Data {
+			if existing, ok := merged.Data[wxid]; ok {
+				// 如果新来源在线而已有数据离线，用新的
+				if info.Survival == 1 && existing.Survival != 1 {
+					merged.Data[wxid] = info
+				} else if info.Survival == existing.Survival && info.RefreshDate > existing.RefreshDate {
+					merged.Data[wxid] = info
+				}
+			} else {
+				merged.Data[wxid] = info
+			}
+		}
+	}
+	return merged
 }
 
 func AddPortalWxDevice(userNumber int, wxid string) (*PortalWxDeviceStatus, error) {
@@ -74,11 +111,14 @@ func AddPortalWxDevice(userNumber int, wxid string) (*PortalWxDeviceStatus, erro
 		return nil, fmt.Errorf("该微信ID已是您的主绑定设备，无需重复添加")
 	}
 
+	// 同时检查新旧两个地址
 	raw, err := getWxUserStatusRaw()
-	if err != nil {
+	rawOld, errOld := getWxUserStatusRawFromURL(getOldWxLoginBaseURL())
+	if err != nil && errOld != nil {
 		return nil, fmt.Errorf("无法连接微信协议服务，请稍后重试")
 	}
-	if _, ok := raw.Data[wxid]; !ok {
+	mergedRaw := mergePortalWxRaw(raw, rawOld)
+	if _, ok := mergedRaw.Data[wxid]; !ok {
 		return nil, fmt.Errorf("该微信ID未在微信协议系统中注册，请先扫码登录后再添加")
 	}
 

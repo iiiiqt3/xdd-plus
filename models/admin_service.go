@@ -3211,6 +3211,64 @@ func GetWxDeviceList(search string) ([]WxDeviceInfo, int, int, int) {
 	return list, totalCount, onlineCount, offlineCount
 }
 
+// GetWxDeviceListByURL 按指定地址获取设备列表
+// addr: "old"=旧地址, "new"=新地址, "merged"=合并(默认)
+func GetWxDeviceListByURL(addr, search string) ([]WxDeviceInfo, int, int, int) {
+	var data map[string]wxDeviceRawItem
+
+	switch addr {
+	case "old":
+		data = fetchWxDevicesFromURL(getOldWxLoginBaseURL())
+	case "new":
+		if Config.WxProtocol.NewLoginBaseURL != "" {
+			data = fetchWxDevicesFromURL(getNewWxLoginBaseURL())
+		}
+	default: // merged
+		oldData := fetchWxDevicesFromURL(getOldWxLoginBaseURL())
+		var newData map[string]wxDeviceRawItem
+		if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+			newData = fetchWxDevicesFromURL(getNewWxLoginBaseURL())
+		}
+		data = mergeWxDevices(oldData, newData)
+	}
+
+	if data == nil {
+		return nil, 0, 0, 0
+	}
+
+	var list []WxDeviceInfo
+	totalCount := 0
+	onlineCount := 0
+	offlineCount := 0
+	searchLower := strings.ToLower(search)
+
+	for _, info := range data {
+		totalCount++
+		if info.Survival == 1 {
+			onlineCount++
+		} else {
+			offlineCount++
+		}
+		if search != "" &&
+			!strings.Contains(strings.ToLower(info.Wxid), searchLower) &&
+			!strings.Contains(strings.ToLower(info.Nickname), searchLower) &&
+			!strings.Contains(strings.ToLower(info.Device), searchLower) {
+			continue
+		}
+		list = append(list, WxDeviceInfo{
+			Wxid:        info.Wxid,
+			Nickname:    info.Nickname,
+			Avatar:      info.Avatar,
+			Device:      info.Device,
+			Survival:    info.Survival,
+			LoginDate:   info.LoginDate,
+			RefreshDate: info.RefreshDate,
+		})
+	}
+
+	return list, totalCount, onlineCount, offlineCount
+}
+
 // GetWxDeviceStats 只获取微信设备统计数据（轻量级，用于仪表盘）—— 同时读取新旧地址
 func GetWxDeviceStats() (total int, online int, offline int) {
 	// 获取旧地址数据

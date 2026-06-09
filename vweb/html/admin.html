@@ -1288,6 +1288,13 @@
                 <div class="stat-card"><div class="stat-icon red"><i class="fas fa-times-circle"></i></div><div class="stat-info"><h3 id="wxOffline">-</h3><p>掉线设备</p></div></div>
             </div>
             <div class="card">
+                <!-- 地址切换页签 -->
+                <div id="wxAddrTabs" style="display:flex;gap:6px;padding:12px 16px 0;border-bottom:1px solid #ebeef5;">
+                    <button class="wx-addr-tab active" data-addr="merged" onclick="switchWxAddrTab('merged', this)">全部设备（合并）</button>
+                    <button class="wx-addr-tab" data-addr="old" onclick="switchWxAddrTab('old', this)">旧地址设备</button>
+                    <button class="wx-addr-tab" data-addr="new" onclick="switchWxAddrTab('new', this)">新地址设备</button>
+                </div>
+                <style>.wx-addr-tab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;cursor:pointer;font-size:13px;color:#606266;transition:all .2s}.wx-addr-tab:hover{color:#409eff}.wx-addr-tab.active{color:#409eff;border-bottom-color:#409eff;font-weight:600}</style>
                 <div class="toolbar">
                     <div class="search-box has-input-btn" style="max-width:280px;">
                         <input type="text" id="wxSearch" placeholder="搜索任意字段..." onkeyup="if(event.key==='Enter')loadWxDevices()">
@@ -3267,10 +3274,11 @@ let wxPage = 1;
 async function loadWxDevices(page) {
     if (page) wxPage = page;
     const search = (document.getElementById('wxSearch')||{}).value || '';
+    const addr = window._wxAddrTab || 'merged';
     const tbody = document.getElementById('wxTableBody');
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
     try {
-        const res = await api.get(`/api/admin/wx-devices?search=${encodeURIComponent(search)}`);
+        const res = await api.get(`/api/admin/wx-devices-by-url?addr=${encodeURIComponent(addr)}&search=${encodeURIComponent(search)}`);
         const d = res.data || {};
         wxAllData = d.list || [];
         animateCounter(document.getElementById('wxTotal'), d.total || 0);
@@ -3283,6 +3291,14 @@ async function loadWxDevices(page) {
         wxAllData = [];
         renderWxTable();
     }
+}
+
+function switchWxAddrTab(addr, btn) {
+    window._wxAddrTab = addr;
+    document.querySelectorAll('.wx-addr-tab').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    wxPage = 1;
+    loadWxDevices();
 }
 
 function renderWxTable() {

@@ -2098,6 +2098,24 @@ func (c *AdminApiController) GetWxDeviceStats() {
 	c.ServeJSON()
 }
 
+// GetWxDevicesByURL 按指定地址获取微信设备列表（旧地址/新地址）
+func (c *AdminApiController) GetWxDevicesByURL() {
+	addr := c.GetString("addr", "merged")
+	search := c.GetString("search", "")
+	list, total, online, offline := models.GetWxDeviceListByURL(addr, search)
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"list":    list,
+			"total":   total,
+			"online":  online,
+			"offline": offline,
+			"addr":    addr,
+		},
+	}
+	c.ServeJSON()
+}
+
 // GetUserOnlineStats 获取用户在线统计数据（仪表盘用）
 func (c *AdminApiController) GetUserOnlineStats() {
 	stats := models.GetUserOnlineStats()
