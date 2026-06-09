@@ -419,12 +419,14 @@ func handleWxJdLogin(sender *Sender, msg chan string) {
 	
 	for i, d := range devices {
 		nick := d
-		deviceType := ""
+		deviceInfo := ""
 		if info, ok := mergedRaw.Data[d]; ok {
 			if info.Nickname != "" {
 				nick = info.Nickname
 			}
-			deviceType = info.Device
+			if info.Device != "" {
+				deviceInfo = info.Device
+			}
 		}
 		// 显示设备所在的服务器地址类型
 		serverURL := getWxJdServerForDevice(d)
@@ -434,7 +436,11 @@ func handleWxJdLogin(sender *Sender, msg chan string) {
 		} else if serverURL == strings.TrimRight(getOldWxLoginBaseURL(), "/") {
 			serverType = "旧"
 		}
-		devMenu.WriteString(fmt.Sprintf("%d、%s (%s) [%s设备]\n", i+1, nick, d, serverType))
+		if deviceInfo != "" {
+			devMenu.WriteString(fmt.Sprintf("%d、%s (%s) [%s设备 - %s]\n", i+1, nick, d, serverType, deviceInfo))
+		} else {
+			devMenu.WriteString(fmt.Sprintf("%d、%s (%s) [%s设备]\n", i+1, nick, d, serverType))
+		}
 	}
 	devMenu.WriteString("\n输入序号刷新对应设备，输入 0 刷新全部，输入 q 退出：")
 	sender.Reply(devMenu.String())
