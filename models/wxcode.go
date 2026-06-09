@@ -495,6 +495,33 @@ func checkWxDeviceExistsOnURL(baseURL, wxid string) (bool, error) {
 	return ok, nil
 }
 
+// checkWxDeviceExists 检查 wxid 是否存在于任何协议地址的设备列表中（不要求在线）
+func checkWxDeviceExists(wxid string) bool {
+	// 先检查活跃地址
+	exists, _ := checkWxDeviceExistsOnURL(getWxLoginBaseURL(), wxid)
+	if exists {
+		return true
+	}
+
+	// 检查旧地址
+	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+		exists, _ = checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid)
+		if exists {
+			return true
+		}
+	}
+
+	// 检查新地址
+	if Config.WxProtocol.NewLoginBaseURL != "" && getWxLoginBaseURL() != getNewWxLoginBaseURL() {
+		exists, _ = checkWxDeviceExistsOnURL(getNewWxLoginBaseURL(), wxid)
+		if exists {
+			return true
+		}
+	}
+
+	return false
+}
+
 // WxProtocolMigration 微信协议迁移记录
 type WxProtocolMigration struct {
 	ID         uint      `gorm:"primaryKey"`

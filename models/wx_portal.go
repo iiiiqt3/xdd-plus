@@ -194,9 +194,17 @@ func PortalWxRelogin(userNumber int, targetWxid ...string) (*PortalWxActionResul
 		}
 	}
 
+	// 如果设备不在线但存在（未删除），也允许重新登录
+	if !online && checkWxDeviceExists(wxid) {
+		online = true
+	}
+
 	if !online {
 		return nil, fmt.Errorf("设备尚未登录，请先执行微信扫码登录")
 	}
+
+	// 查找设备所在的协议地址
+	baseURL := findWxDeviceBaseURL(wxid)
 
 	// 根据是否迁移选择不同的登录方式
 	var body []byte
@@ -232,7 +240,7 @@ func PortalWxRelogin(userNumber int, targetWxid ...string) (*PortalWxActionResul
 		uuid = scanResult.Data.Uuid
 		msg = "检测到旧协议设备，正在迁移到新协议（不扣积分），请扫码确认"
 	} else {
-		// 普通用户：走二次登录
+		// 普通用户：走二次登录，发送到设备所在的地址
 		reqBody := map[string]interface{}{
 			"wxid": wxid,
 			"Proxy": map[string]string{
@@ -241,7 +249,7 @@ func PortalWxRelogin(userNumber int, targetWxid ...string) (*PortalWxActionResul
 				"ProxyUser":     "",
 			},
 		}
-		body, err = wxLoginRequest("/api/v1/wx/login/again", reqBody)
+		body, err = wxLoginRequestToURL(baseURL, "/api/v1/wx/login/again", reqBody)
 		if err != nil {
 			return nil, err
 		}
@@ -289,9 +297,17 @@ func PortalWxWakeLogin(userNumber int, targetWxid ...string) (*PortalWxActionRes
 		}
 	}
 
+	// 如果设备不在线但存在（未删除），也允许唤醒登录
+	if !online && checkWxDeviceExists(wxid) {
+		online = true
+	}
+
 	if !online {
 		return nil, fmt.Errorf("设备尚未登录，请先执行微信扫码登录")
 	}
+
+	// 查找设备所在的协议地址
+	baseURL := findWxDeviceBaseURL(wxid)
 
 	var qrPayload string
 	var uuid string
@@ -325,11 +341,9 @@ func PortalWxWakeLogin(userNumber int, targetWxid ...string) (*PortalWxActionRes
 		uuid = scanResult.Data.Uuid
 		msg = "检测到旧协议设备，正在迁移到新协议（不扣积分），请扫码确认"
 	} else {
-		// 普通用户：走唤醒+二次登录
-		activeURL := getWxLoginBaseURL()
-
+		// 普通用户：走唤醒+二次登录，发送到设备所在的地址
 		awakeBody := map[string]string{"wxid": wxid}
-		body, err := wxLoginRequestToURL(activeURL, "/api/v1/wx/login/awake", awakeBody)
+		body, err := wxLoginRequestToURL(baseURL, "/api/v1/wx/login/awake", awakeBody)
 		if err != nil {
 			return nil, fmt.Errorf("唤醒失败：%v", err)
 		}
@@ -346,7 +360,7 @@ func PortalWxWakeLogin(userNumber int, targetWxid ...string) (*PortalWxActionRes
 		}
 
 		twiceBody := map[string]string{"wxid": wxid}
-		body, err = wxLoginRequestToURL(activeURL, "/api/v1/wx/login/twice", twiceBody)
+		body, err = wxLoginRequestToURL(baseURL, "/api/v1/wx/login/twice", twiceBody)
 		if err != nil {
 			return nil, fmt.Errorf("获取唤醒登录二维码失败：%v", err)
 		}
