@@ -296,6 +296,10 @@ func main() {
 	web.Router("/api/admin/user-online-stats", &controllers.AdminApiController{}, "get:GetUserOnlineStats")
 	web.Router("/api/admin/wx-notify-offline", &controllers.AdminApiController{}, "post:NotifyWxOffline")
 
+	// ===================== 微信协议配置管理 API =====================
+	web.Router("/api/admin/wx-protocol-config", &controllers.AdminApiController{}, "get:GetWxProtocolConfig")
+	web.Router("/api/admin/wx-protocol-config/save", &controllers.AdminApiController{}, "post:SaveWxProtocolConfig")
+
 	// ===================== 青龙 Cron 任务管理 API =====================
 	web.Router("/api/admin/crontasks", &controllers.AdminApiController{}, "get:GetCronTasks")
 	web.Router("/api/admin/crontasks/logs", &controllers.AdminApiController{}, "get:GetCronTaskLogs")

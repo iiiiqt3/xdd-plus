@@ -53,6 +53,7 @@ func initDB() {
 		&PortalPrayRecord{},
 		&AppFeedback{},
 		&PortalWxDevice{},
+		&WxProtocolMigration{},
 		&CoinLog{},
 		//&LoginSelectType{},
 	); err != nil {

@@ -20,10 +20,12 @@ type WxConfig struct {
 }
 
 type WxProtocolConfig struct {
-	LoginBaseURL  string `yaml:"login_base_url"`
-	ScanLoginCost int    `yaml:"scan_login_cost"`
-	DeviceName    string `yaml:"device_name"`
-	JdServer      string `yaml:"jd_server"`
+	LoginBaseURL     string `yaml:"login_base_url"`
+	NewLoginBaseURL  string `yaml:"new_login_base_url"`
+	ActiveProtocol   string `yaml:"active_protocol"`
+	ScanLoginCost    int    `yaml:"scan_login_cost"`
+	DeviceName       string `yaml:"device_name"`
+	JdServer         string `yaml:"jd_server"`
 }
 
 // GameConfig 游戏配置（支持热更新）
@@ -248,6 +250,9 @@ func initConfig() {
 func initConfigDefaults() {
 	if Config.WxProtocol.LoginBaseURL == "" {
 		Config.WxProtocol.LoginBaseURL = "http://180.152.5.230:8011"
+	}
+	if Config.WxProtocol.ActiveProtocol == "" {
+		Config.WxProtocol.ActiveProtocol = "old"
 	}
 	if Config.WxProtocol.ScanLoginCost == 0 {
 		Config.WxProtocol.ScanLoginCost = 2000

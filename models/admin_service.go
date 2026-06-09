@@ -134,6 +134,8 @@ func GetJdConfigForAdmin() map[string]interface{} {
 		"wxUrl":          Config.Wx.Url,
 		"wxRobotId":      Config.Wx.Robotid,
 		"wxLoginBaseURL": Config.WxProtocol.LoginBaseURL,
+		"wxNewLoginBaseURL": Config.WxProtocol.NewLoginBaseURL,
+		"wxActiveProtocol": Config.WxProtocol.ActiveProtocol,
 		"wxScanLoginCost": Config.WxProtocol.ScanLoginCost,
 		"wxDeviceName":   Config.WxProtocol.DeviceName,
 		// 游戏配置
@@ -271,6 +273,12 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	if v, ok := req["wxLoginBaseURL"].(string); ok {
 		configMap["wp_login_base_url"] = v
 	}
+	if v, ok := req["wxNewLoginBaseURL"].(string); ok {
+		configMap["wp_new_login_base_url"] = v
+	}
+	if v, ok := req["wxActiveProtocol"].(string); ok {
+		configMap["wp_active_protocol"] = v
+	}
 	if v, ok := req["wxScanLoginCost"].(float64); ok {
 		configMap["wp_scan_login_cost"] = fmt.Sprintf("%d", int(v))
 	}
@@ -360,11 +368,13 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 			}
 		}
 		// 处理 wx_protocol 嵌套配置（扫码登录协议：login_base_url/scan_login_cost/device_name）
-		if strings.HasPrefix(trimmed, "login_base_url:") || strings.HasPrefix(trimmed, "scan_login_cost:") || strings.HasPrefix(trimmed, "device_name:") {
+		if strings.HasPrefix(trimmed, "login_base_url:") || strings.HasPrefix(trimmed, "new_login_base_url:") || strings.HasPrefix(trimmed, "active_protocol:") || strings.HasPrefix(trimmed, "scan_login_cost:") || strings.HasPrefix(trimmed, "device_name:") {
 			wpMap := map[string]string{
-				"wp_login_base_url":  "login_base_url",
-				"wp_scan_login_cost": "scan_login_cost",
-				"wp_device_name":     "device_name",
+				"wp_login_base_url":     "login_base_url",
+				"wp_new_login_base_url": "new_login_base_url",
+				"wp_active_protocol":    "active_protocol",
+				"wp_scan_login_cost":    "scan_login_cost",
+				"wp_device_name":        "device_name",
 			}
 			for wpKey, yamlKey := range wpMap {
 				if newVal, ok := configMap[wpKey]; ok && strings.HasPrefix(trimmed, yamlKey+":") {
@@ -2860,6 +2870,180 @@ func updateActivityMonthlyFieldsInYaml(envKey string, monthlyCoin int) error {
 		return fmt.Errorf("写入配置文件失败: %v", err)
 	}
 	return nil
+}
+
+// ===================== 微信协议配置管理 =====================
+
+// GetWxProtocolConfigForAdmin 获取微信协议配置
+func GetWxProtocolConfigForAdmin() map[string]interface{} {
+	oldTotal, oldOnline, oldOffline := 0, 0, 0
+	newTotal, newOnline, newOffline := 0, 0, 0
+
+	// 获取旧地址统计
+	oldURL := Config.WxProtocol.LoginBaseURL
+	if oldURL != "" {
+		oldTotal, oldOnline, oldOffline = getWxDeviceStatsFromURL(oldURL)
+	}
+
+	// 获取新地址统计
+	newURL := Config.WxProtocol.NewLoginBaseURL
+	if newURL != "" {
+		newTotal, newOnline, newOffline = getWxDeviceStatsFromURL(newURL)
+	}
+
+	// 获取迁移统计
+	migrated, notMigrated := GetWxMigrationStats()
+
+	return map[string]interface{}{
+		"loginBaseURL":     Config.WxProtocol.LoginBaseURL,
+		"newLoginBaseURL":  Config.WxProtocol.NewLoginBaseURL,
+		"activeProtocol":   Config.WxProtocol.ActiveProtocol,
+		"scanLoginCost":    Config.WxProtocol.ScanLoginCost,
+		"deviceName":       Config.WxProtocol.DeviceName,
+		"oldStats": map[string]interface{}{
+			"total":   oldTotal,
+			"online":  oldOnline,
+			"offline": oldOffline,
+		},
+		"newStats": map[string]interface{}{
+			"total":   newTotal,
+			"online":  newOnline,
+			"offline": newOffline,
+		},
+		"migrationStats": map[string]interface{}{
+			"migrated":     migrated,
+			"notMigrated":  notMigrated,
+		},
+	}
+}
+
+// SaveWxProtocolConfigForAdmin 保存微信协议配置
+func SaveWxProtocolConfigForAdmin(req map[string]interface{}) string {
+	data, err := ioutil.ReadFile(ExecPath + "/conf/config.yaml")
+	if err != nil {
+		return "读取配置文件失败: " + err.Error()
+	}
+
+	lines := strings.Split(string(data), "\n")
+	configMap := make(map[string]string)
+
+	if v, ok := req["loginBaseURL"].(string); ok {
+		configMap["wp_login_base_url"] = v
+	}
+	if v, ok := req["newLoginBaseURL"].(string); ok {
+		configMap["wp_new_login_base_url"] = v
+	}
+	if v, ok := req["activeProtocol"].(string); ok {
+		if v != "old" && v != "new" {
+			return "activeProtocol 只能是 old 或 new"
+		}
+		configMap["wp_active_protocol"] = v
+	}
+	if v, ok := req["scanLoginCost"].(float64); ok {
+		configMap["wp_scan_login_cost"] = fmt.Sprintf("%d", int(v))
+	}
+	if v, ok := req["deviceName"].(string); ok {
+		configMap["wp_device_name"] = v
+	}
+
+	inWxProtocol := false
+	var newLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "wx_protocol:") {
+			inWxProtocol = true
+			newLines = append(newLines, line)
+			continue
+		}
+		if inWxProtocol && len(trimmed) > 0 && !strings.HasPrefix(trimmed, "#") && strings.Contains(trimmed, ":") {
+			indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
+			wpMap := map[string]string{
+				"wp_login_base_url":     "login_base_url",
+				"wp_new_login_base_url": "new_login_base_url",
+				"wp_active_protocol":    "active_protocol",
+				"wp_scan_login_cost":    "scan_login_cost",
+				"wp_device_name":        "device_name",
+			}
+			for wpKey, yamlKey := range wpMap {
+				if strings.HasPrefix(trimmed, yamlKey+":") {
+					if newVal, ok := configMap[wpKey]; ok {
+						newLines = append(newLines, fmt.Sprintf("%s%s: %s", indent, yamlKey, newVal))
+						delete(configMap, wpKey)
+						goto nextWxProtocolLine
+					}
+				}
+			}
+			newLines = append(newLines, line)
+		nextWxProtocolLine:
+			continue
+		}
+		if inWxProtocol && !strings.HasPrefix(trimmed, "#") && !strings.Contains(trimmed, ":") && trimmed != "" {
+			inWxProtocol = false
+		}
+		newLines = append(newLines, line)
+	}
+
+	// 追加未匹配的配置
+	for wpKey, yamlKey := range map[string]string{
+		"wp_login_base_url":     "login_base_url",
+		"wp_new_login_base_url": "new_login_base_url",
+		"wp_active_protocol":    "active_protocol",
+		"wp_scan_login_cost":    "scan_login_cost",
+		"wp_device_name":        "device_name",
+	} {
+		if newVal, ok := configMap[wpKey]; ok {
+			newLines = append(newLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+		}
+	}
+
+	newContent := strings.Join(newLines, "\n")
+	err = ioutil.WriteFile(ExecPath+"/conf/config.yaml", []byte(newContent), 0644)
+	if err != nil {
+		return "写入失败: " + err.Error()
+	}
+
+	if err := ReloadConfig(); err != nil {
+		logs.Warn("配置热更新失败: %v", err)
+		return "保存成功，但热更新失败（重启后生效）"
+	}
+
+	return "保存成功，微信协议配置已实时生效"
+}
+
+// getWxDeviceStatsFromURL 从指定URL获取设备统计数据
+func getWxDeviceStatsFromURL(baseURL string) (total int, online int, offline int) {
+	url := baseURL + "/api/v1/wx/user/status"
+	client := &http.Client{Timeout: HTTPTimeout}
+	resp, err := client.Get(url)
+	if err != nil {
+		return 0, 0, 0
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, 0, 0
+	}
+
+	var result struct {
+		Status bool `json:"status"`
+		Data   map[string]struct {
+			Survival int `json:"survival"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil || !result.Status {
+		return 0, 0, 0
+	}
+
+	for _, info := range result.Data {
+		total++
+		if info.Survival == 1 {
+			online++
+		} else {
+			offline++
+		}
+	}
+	return
 }
 
 // ===================== 微信协议设备管理 =====================

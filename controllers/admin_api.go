@@ -2123,3 +2123,24 @@ func (c *AdminApiController) NotifyWxOffline() {
 	}
 	c.ServeJSON()
 }
+
+// ===================== 微信协议配置管理 =====================
+
+// GetWxProtocolConfig 获取微信协议配置（含新旧地址统计）
+func (c *AdminApiController) GetWxProtocolConfig() {
+	cfg := models.GetWxProtocolConfigForAdmin()
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": cfg,
+	}
+	c.ServeJSON()
+}
+
+// SaveWxProtocolConfig 保存微信协议配置
+func (c *AdminApiController) SaveWxProtocolConfig() {
+	var req map[string]interface{}
+	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	msg := models.SaveWxProtocolConfigForAdmin(req)
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
+	c.ServeJSON()
+}
