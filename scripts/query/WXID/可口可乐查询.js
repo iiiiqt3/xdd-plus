@@ -365,10 +365,6 @@ async function buildAccountTokensAndQuery(wxList) {
 
 // ==================== 主函数 ====================
 async function main() {
-  // 获取服务器地址（从后台或环境变量）
-  const { oldUrl, newUrl } = await getWxServerUrls();
-  console.log(`📡 协议服务器地址：旧=${oldUrl} 新=${newUrl}`);
-
   // 从环境变量获取账号列表
   let wxList = getWxListFromEnv();
 

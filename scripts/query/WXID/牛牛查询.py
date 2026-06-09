@@ -32,9 +32,9 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  其他环境变量
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  WECHAT_SERVER  - WX协议服务地址（可选，优先从后台获取）
-  XDD_API_URL    - 后台API地址，用于获取微信协议服务器地址
-  NIUNIU_APPID   - 小程序AppID（默认 wxcb95401f250e9a53）
+  WECHAT_SERVER    - WX协议服务地址（由xdd后台自动传递）
+  WECHAT_SERVER_NEW - 新地址（由xdd后台自动传递，可选）
+  NIUNIU_APPID     - 小程序AppID（默认 wxcb95401f250e9a53）
 
  缓存文件：niuniu_cache.json（与牛牛短剧.py共用，脚本同目录）
 """
@@ -53,9 +53,9 @@ from urllib3.util.retry import Retry
 # 基础配置
 # ============================================================================
 
-# 保留环境变量兼容，但优先从后台获取
-WX_API_BASE    = os.getenv("WECHAT_SERVER", "").strip().rstrip("/")
-XDD_API_URL    = os.getenv("XDD_API_URL", "").strip().rstrip("/")
+# 从环境变量获取地址（由xdd后台自动传递）
+WX_API_BASE    = os.getenv("WECHAT_SERVER", "http://180.152.5.230:8011").strip().rstrip("/")
+WX_API_BASE_NEW = os.getenv("WECHAT_SERVER_NEW", "").strip().rstrip("/")
 APPID          = os.getenv("NIUNIU_APPID", "wxcb95401f250e9a53")
 BUSINESS_API_BASE = "https://api.tianjinzhitongdaohe.com/sqx_fast"
 CACHE_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "niuniu_cache.json")
@@ -68,40 +68,14 @@ RETRY_DELAY     = 5
 # 工具函数（提前定义，供参数解析使用）
 # ============================================================================
 
-# 缓存获取到的服务器地址
-_cached_server_urls = None
-
 def get_wxserver_urls():
     """
-    从后台API获取微信协议服务器地址（新旧地址）
-    优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+    获取微信协议服务器地址（新旧地址）
     返回: (old_url, new_url)
     """
-    global _cached_server_urls
-    if _cached_server_urls:
-        return _cached_server_urls
-
-    if WX_API_BASE:
-        _cached_server_urls = (WX_API_BASE, WX_API_BASE)
-        return _cached_server_urls
-
-    if XDD_API_URL:
-        try:
-            resp = requests.get(f"{XDD_API_URL}/api/wxserver", timeout=5, verify=False)
-            if resp.status_code == 200:
-                data = resp.json()
-                if data.get("code") == 0:
-                    old_url = data.get("data", {}).get("old_url", "").strip().rstrip("/")
-                    new_url = data.get("data", {}).get("new_url", "").strip().rstrip("/")
-                    if old_url and new_url:
-                        _cached_server_urls = (old_url, new_url)
-                        return _cached_server_urls
-        except Exception as e:
-            print(f"⚠️  从后台获取地址失败: {str(e)[:60]}")
-
-    default_url = "http://180.152.5.230:8011"
-    _cached_server_urls = (default_url, default_url)
-    return _cached_server_urls
+    old_url = WX_API_BASE
+    new_url = WX_API_BASE_NEW if WX_API_BASE_NEW else old_url
+    return old_url, new_url
 
 def parse_wxid_list(raw: str) -> list:
     """

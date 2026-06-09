@@ -8,14 +8,14 @@
  *   node 雀巢_query.js wxid1&wxid2
  *
  * 环境变量：
- *   WECHAT_SERVER  微信代理服务地址（可选，优先从后台获取）
- *   XDD_API_URL    后台API地址，用于获取微信协议服务器地址
+ *   WECHAT_SERVER     微信代理服务地址（由xdd后台自动传递）
+ *   WECHAT_SERVER_NEW 新地址（由xdd后台自动传递，可选）
  */
 
 const axios = require('axios');
-// 保留环境变量兼容，但优先从后台获取
-const WECHAT_SERVER = (process.env.WECHAT_SERVER || '').trim();
-const XDD_API_URL = (process.env.XDD_API_URL || '').replace(/\/+$/, '');
+// 从环境变量获取地址（由xdd后台自动传递）
+const WECHAT_SERVER = (process.env.WECHAT_SERVER || 'http://180.152.5.230:8011').trim();
+const WECHAT_SERVER_NEW = (process.env.WECHAT_SERVER_NEW || '').trim();
 const AppID = 'wxc5db704249c9bb31';
 const baseUrl = 'https://crm.nestlechinese.com';
 
@@ -23,35 +23,13 @@ const baseUrl = 'https://crm.nestlechinese.com';
 const tokenCache = {};
 
 // ========== 服务器地址获取 ==========
-let cachedServerUrls = null;
-
-async function getWxServerUrls() {
-  if (cachedServerUrls) return cachedServerUrls;
-
-  if (WECHAT_SERVER) {
-    cachedServerUrls = { oldUrl: WECHAT_SERVER, newUrl: WECHAT_SERVER };
-    return cachedServerUrls;
-  }
-
-  if (XDD_API_URL) {
-    try {
-      const response = await axios.get(`${XDD_API_URL}/api/wxserver`, { timeout: 5000 });
-      if (response.data?.code === 0) {
-        const oldUrl = (response.data.data?.old_url || '').replace(/\/+$/, '');
-        const newUrl = (response.data.data?.new_url || '').replace(/\/+$/, '');
-        if (oldUrl && newUrl) {
-          cachedServerUrls = { oldUrl, newUrl };
-          return cachedServerUrls;
-        }
-      }
-    } catch (e) {
-      console.log(`⚠️  从后台获取地址失败: ${e.message}`);
-    }
-  }
-
-  const defaultUrl = 'http://180.152.5.230:8011';
-  cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
-  return cachedServerUrls;
+/**
+ * 获取微信协议服务器地址（新旧地址）
+ */
+function getWxServerUrls() {
+  const oldUrl = WECHAT_SERVER.replace(/\/+$/, '');
+  const newUrl = WECHAT_SERVER_NEW ? WECHAT_SERVER_NEW.replace(/\/+$/, '') : oldUrl;
+  return { oldUrl, newUrl };
 }
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';

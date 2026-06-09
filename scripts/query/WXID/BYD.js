@@ -3,9 +3,9 @@
  * 流程：wxid -> 拉 code -> decryptCode 拿 session_id -> 查询积分/签到日历
  *
  * 【环境变量模式（青龙）】
- *   WECHAT_SERVER   取 code 服务地址（可选，优先从后台获取）
- *   XDD_API_URL     后台API地址，用于获取微信协议服务器地址
- *   WXID_BYD        wxid，多账号用 & 或换行分隔
+ *   WECHAT_SERVER     取 code 服务地址（由xdd后台自动传递）
+ *   WECHAT_SERVER_NEW 新地址（由xdd后台自动传递，可选）
+ *   WXID_BYD          wxid，多账号用 & 或换行分隔
  *
  * 【命令行模式（Go调用）】
  *   node 脚本.js wxid
@@ -16,9 +16,9 @@ const axios = require('axios');
 
 // ====== 配置中心 ======
 const CFG = {
-  // 保留环境变量兼容，但优先从后台获取
-  wechatServer: process.env.WECHAT_SERVER || '',
-  xddApiUrl: (process.env.XDD_API_URL || '').replace(/\/+$/, ''),
+  // 从环境变量获取地址（由xdd后台自动传递）
+  wechatServer: (process.env.WECHAT_SERVER || 'http://180.152.5.230:8011').trim(),
+  wechatServerNew: (process.env.WECHAT_SERVER_NEW || '').trim(),
   codeApiPath: process.env.CODE_API_PATH || '/api/v1/wx/app/get/code',
   appid: process.env.APPID || 'wxa28c31d4ff7ae869',
   bydDomain: process.env.BYD_DOMAIN || 'https://weixin90.bydauto.com.cn',
@@ -46,40 +46,13 @@ const API = {
 // ====== 工具函数 ======
 const NONCE_CHARS = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';
 
-// 缓存获取到的服务器地址
-let cachedServerUrls = null;
-
 /**
- * 从后台API获取微信协议服务器地址（新旧地址）
- * 优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+ * 获取微信协议服务器地址（新旧地址）
  */
-async function getWxServerUrls() {
-  if (cachedServerUrls) return cachedServerUrls;
-
-  if (CFG.wechatServer) {
-    cachedServerUrls = { oldUrl: CFG.wechatServer, newUrl: CFG.wechatServer };
-    return cachedServerUrls;
-  }
-
-  if (CFG.xddApiUrl) {
-    try {
-      const response = await axios.get(`${CFG.xddApiUrl}/api/wxserver`, { timeout: 5000 });
-      if (response.data?.code === 0) {
-        const oldUrl = (response.data.data?.old_url || '').replace(/\/+$/, '');
-        const newUrl = (response.data.data?.new_url || '').replace(/\/+$/, '');
-        if (oldUrl && newUrl) {
-          cachedServerUrls = { oldUrl, newUrl };
-          return cachedServerUrls;
-        }
-      }
-    } catch (e) {
-      console.log(`⚠️  从后台获取地址失败: ${e.message}`);
-    }
-  }
-
-  const defaultUrl = 'http://180.152.5.230:8011';
-  cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
-  return cachedServerUrls;
+function getWxServerUrls() {
+  const oldUrl = CFG.wechatServer.replace(/\/+$/, '');
+  const newUrl = CFG.wechatServerNew ? CFG.wechatServerNew.replace(/\/+$/, '') : oldUrl;
+  return { oldUrl, newUrl };
 }
 
 // 支持：命令行传参 / 环境变量
@@ -321,10 +294,6 @@ async function runOne(acc, idx) {
   console.log('🚀 比亚迪查询');
 
   try {
-    // 获取服务器地址
-    const { oldUrl, newUrl } = await getWxServerUrls();
-    console.log(`📡 协议服务器地址：旧=${oldUrl} 新=${newUrl}`);
-
     const accounts = getAccounts();
     if (!accounts.length) {
       console.log('❌ 请配置 WXID_BYD 或命令行传入 wxid');

@@ -5,9 +5,9 @@
 仅供学习研究使用，严禁用于商业或违规用途。
 
 【环境变量模式（青龙）】
-  WECHAT_SERVER   取 code 服务地址（可选，优先从后台获取）
-  XDD_API_URL     后台API地址，用于获取微信协议服务器地址
-  WXID_TJ         wxid，支持"备注#wxid"或直接"wxid"，多账号用换行或&分隔
+  WECHAT_SERVER     取 code 服务地址（由xdd后台自动传递）
+  WECHAT_SERVER_NEW 新地址（由xdd后台自动传递，可选）
+  WXID_TJ           wxid，支持"备注#wxid"或直接"wxid"，多账号用换行或&分隔
 
 【命令行模式（Go调用 / 直接运行）】
   python3 天机查询.py wxid
@@ -35,10 +35,9 @@ AUTO_LOGIN_URL = f"{BASE_URL}/api/user/autoLogin"
 USER_INFO_URL = f"{BASE_URL}/api/user/userinfo"
 WECHAT_CODE_URL_PATH = "/api/v1/wx/app/get/code"
 
-# 后台API地址，用于获取微信协议服务器地址
-XDD_API_URL = os.getenv("XDD_API_URL", "").strip().rstrip("/")
-# 保留环境变量兼容，但优先从后台获取
-WECHAT_SERVER = os.getenv("WECHAT_SERVER", "").strip().rstrip("/")
+# 从环境变量获取地址（由xdd后台自动传递）
+WECHAT_SERVER = os.getenv("WECHAT_SERVER", "http://180.152.5.230:8011").strip().rstrip("/")
+WECHAT_SERVER_NEW = os.getenv("WECHAT_SERVER_NEW", "").strip().rstrip("/")
 WXID_TJ_ENV = os.getenv("WXID_TJ", "").strip()
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -68,32 +67,12 @@ def now_ts():
 
 def get_wxserver_urls():
     """
-    从后台API获取微信协议服务器地址（新旧地址）
-    优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+    获取微信协议服务器地址（新旧地址）
     返回: (old_url, new_url)
     """
-    # 如果环境变量明确指定了地址，直接使用
-    if WECHAT_SERVER:
-        return WECHAT_SERVER, WECHAT_SERVER
-
-    # 尝试从后台API获取
-    if XDD_API_URL:
-        try:
-            url = f"{XDD_API_URL}/api/wxserver"
-            resp = requests.get(url, timeout=5, verify=False)
-            if resp.status_code == 200:
-                data = resp.json()
-                if data.get("code") == 0:
-                    old_url = data.get("data", {}).get("old_url", "").strip().rstrip("/")
-                    new_url = data.get("data", {}).get("new_url", "").strip().rstrip("/")
-                    if old_url and new_url:
-                        return old_url, new_url
-        except Exception as e:
-            print(f"⚠️  从后台获取地址失败: {str(e)[:60]}")
-
-    # 默认地址
-    default_url = "http://180.152.5.230:8011"
-    return default_url, default_url
+    old_url = WECHAT_SERVER
+    new_url = WECHAT_SERVER_NEW if WECHAT_SERVER_NEW else old_url
+    return old_url, new_url
 
 
 def get_code(wxid):
@@ -402,10 +381,6 @@ if __name__ == "__main__":
         print("   用法二（命令行）：python3 天机查询.py 备注#wxid_xxx")
         print("   用法三（环境变量）：WXID_TJ=备注#wxid_xxx python3 天机查询.py")
         sys.exit(1)
-
-    # 显示地址获取方式
-    old_url, new_url = get_wxserver_urls()
-    print(f"\n📡 协议服务器地址：旧={old_url} 新={new_url}")
 
     print(f"\n共检测到 {len(accounts)} 个账号")
 

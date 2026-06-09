@@ -13,11 +13,11 @@
   7. 开放任务列表（listopentasks）
 
 环境变量：
-  WECHAT_SERVER   微信代理服务地址（可选，优先从后台获取）
-  XDD_API_URL     后台API地址，用于获取微信协议服务器地址
-  WXID_WXLQ       账号列表，纯 wxid 或 备注#wxid，& 或换行分割
-  WX_APPID        小程序 AppID（默认内置）
-  DEBUG           设为 1 开启详细日志
+  WECHAT_SERVER     微信代理服务地址（由xdd后台自动传递）
+  WECHAT_SERVER_NEW 新地址（由xdd后台自动传递，可选）
+  WXID_WXLQ         账号列表，纯 wxid 或 备注#wxid，& 或换行分割
+  WX_APPID          小程序 AppID（默认内置）
+  DEBUG             设为 1 开启详细日志
 """
 from __future__ import annotations
 
@@ -36,9 +36,9 @@ from typing import Any
 import requests
 
 # ================== 全局配置 ==================
-# 保留环境变量兼容，但优先从后台获取
-WECHAT_SERVER: str = os.getenv("WECHAT_SERVER", "").strip()
-XDD_API_URL: str = os.getenv("XDD_API_URL", "").strip().rstrip("/")
+# 从环境变量获取地址（由xdd后台自动传递）
+WECHAT_SERVER: str = os.getenv("WECHAT_SERVER", "http://180.152.5.230:8011").strip()
+WECHAT_SERVER_NEW: str = os.getenv("WECHAT_SERVER_NEW", "").strip()
 WX_APPID: str = (os.getenv("WX_APPID") or "wxdb3c0e388702f785").strip()
 
 DOMAIN = "https://discount.wxpapp.wechatpay.cn"
@@ -108,39 +108,14 @@ def get_wx_list_from_env() -> list[dict[str, str]]:
 
 
 # ================== 服务器地址获取 ==================
-_cached_server_urls = None
-
 def get_wxserver_urls():
     """
-    从后台API获取微信协议服务器地址（新旧地址）
-    优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+    获取微信协议服务器地址（新旧地址）
     返回: (old_url, new_url)
     """
-    global _cached_server_urls
-    if _cached_server_urls:
-        return _cached_server_urls
-
-    if WECHAT_SERVER:
-        _cached_server_urls = (WECHAT_SERVER, WECHAT_SERVER)
-        return _cached_server_urls
-
-    if XDD_API_URL:
-        try:
-            resp = requests.get(f"{XDD_API_URL}/api/wxserver", timeout=5, verify=False)
-            if resp.status_code == 200:
-                data = resp.json()
-                if data.get("code") == 0:
-                    old_url = data.get("data", {}).get("old_url", "").strip().rstrip("/")
-                    new_url = data.get("data", {}).get("new_url", "").strip().rstrip("/")
-                    if old_url and new_url:
-                        _cached_server_urls = (old_url, new_url)
-                        return _cached_server_urls
-        except Exception as e:
-            print(f"⚠️  从后台获取地址失败: {str(e)[:60]}")
-
-    default_url = "http://180.152.5.230:8011"
-    _cached_server_urls = (default_url, default_url)
-    return _cached_server_urls
+    old_url = WECHAT_SERVER
+    new_url = WECHAT_SERVER_NEW if WECHAT_SERVER_NEW else old_url
+    return old_url, new_url
 
 
 # ================== 获取 code ==================

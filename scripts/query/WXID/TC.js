@@ -18,10 +18,10 @@
  *   WXID_TC=... node 同城查询.js
  *
  * 环境变量:
- *   WXID_TC        - 微信 wxid，格式：备注#wxid 或直接 wxid，& 或换行分割
- *   WECHAT_SERVER  - 微信 code 服务地址（可选，优先从后台获取）
- *   XDD_API_URL    - 后台API地址，用于获取微信协议服务器地址
- *   TC_APPID       - 小程序 appid，默认 wx336dcaf6a1ecf632
+ *   WXID_TC          - 微信 wxid，格式：备注#wxid 或直接 wxid，& 或换行分割
+ *   WECHAT_SERVER    - 微信 code 服务地址（由xdd后台自动传递）
+ *   WECHAT_SERVER_NEW - 新地址（由xdd后台自动传递，可选）
+ *   TC_APPID         - 小程序 appid，默认 wx336dcaf6a1ecf632
  */
 
 "use strict";
@@ -33,9 +33,9 @@ const zlib  = require("zlib");
 // ============================================================
 // 配置区
 // ============================================================
-// 保留环境变量兼容，但优先从后台获取
-const WECHAT_SERVER = process.env.WECHAT_SERVER || "";
-const XDD_API_URL = (process.env.XDD_API_URL || "").replace(/\/+$/, "");
+// 从环境变量获取地址（由xdd后台自动传递）
+const WECHAT_SERVER = (process.env.WECHAT_SERVER || "http://180.152.5.230:8011").trim();
+const WECHAT_SERVER_NEW = (process.env.WECHAT_SERVER_NEW || "").trim();
 const DEFAULT_APPID = process.env.TC_APPID || "wx336dcaf6a1ecf632";
 const BASE_URL      = "https://wx.17u.cn";
 const LOGIN_URL     = BASE_URL + "/wechatappapi/wxUser/login";
@@ -64,40 +64,13 @@ const ALL_CARD_TYPES = [0, 1, 2, 3, 4, 5];
 function pad2(n) { return n < 10 ? "0" + n : "" + n; }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// 缓存获取到的服务器地址
-let cachedServerUrls = null;
-
 /**
- * 从后台API获取微信协议服务器地址（新旧地址）
- * 优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+ * 获取微信协议服务器地址（新旧地址）
  */
-async function getWxServerUrls() {
-  if (cachedServerUrls) return cachedServerUrls;
-
-  if (WECHAT_SERVER) {
-    cachedServerUrls = { oldUrl: WECHAT_SERVER, newUrl: WECHAT_SERVER };
-    return cachedServerUrls;
-  }
-
-  if (XDD_API_URL) {
-    try {
-      const res = await httpRequest(`${XDD_API_URL}/api/wxserver`, "GET", {}, null);
-      if (res?.code === 0) {
-        const oldUrl = (res.data?.old_url || "").replace(/\/+$/, "");
-        const newUrl = (res.data?.new_url || "").replace(/\/+$/, "");
-        if (oldUrl && newUrl) {
-          cachedServerUrls = { oldUrl, newUrl };
-          return cachedServerUrls;
-        }
-      }
-    } catch (e) {
-      console.log(`⚠️  从后台获取地址失败: ${e.message}`);
-    }
-  }
-
-  const defaultUrl = "http://180.152.5.230:8011";
-  cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
-  return cachedServerUrls;
+function getWxServerUrls() {
+  const oldUrl = WECHAT_SERVER.replace(/\/+$/, "");
+  const newUrl = WECHAT_SERVER_NEW ? WECHAT_SERVER_NEW.replace(/\/+$/, "") : oldUrl;
+  return { oldUrl, newUrl };
 }
 
 function generateApmat(openid) {

@@ -11,15 +11,14 @@ const CONFIG = {
     USER_AGENT: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 mediaCode=SFEXPRESSAPP-iOS-ML',
     PLATFORM: 'SFAPP',
     CHANNEL: 'apppart',
-    TIMEOUT: 15000,
-    // 后台API地址，用于获取微信协议服务器地址
-    XDD_API_URL: (process.env.XDD_API_URL || '').replace(/\/+$/, '')
+    TIMEOUT: 15000
 };
 
 // 微信协议配置（同步PY脚本）
 const WX_CONFIG = {
-    // 保留环境变量兼容，但优先从后台获取
-    WECHAT_SERVER: process.env.WECHAT_SERVER || '',
+    // 从环境变量获取地址（由xdd后台自动传递）
+    WECHAT_SERVER: (process.env.WECHAT_SERVER || 'http://180.152.5.230:8011').trim(),
+    WECHAT_SERVER_NEW: (process.env.WECHAT_SERVER_NEW || '').trim(),
     APPID: 'wxd4185d00bf7e08ac',
     PUBLIC_ID: 'gh_f9d9fca26a50',
     UCMP_BASE: 'https://ucmp.sf-express.com',
@@ -57,39 +56,14 @@ function saveCache(data) {
 
 // ==================== 服务器地址获取 ====================
 // 缓存获取到的服务器地址
-let cachedServerUrls = null;
 
 /**
- * 从后台API获取微信协议服务器地址（新旧地址）
- * 优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+ * 获取微信协议服务器地址（新旧地址）
  */
-async function getWxServerUrls() {
-    if (cachedServerUrls) return cachedServerUrls;
-
-    if (WX_CONFIG.WECHAT_SERVER) {
-        cachedServerUrls = { oldUrl: WX_CONFIG.WECHAT_SERVER, newUrl: WX_CONFIG.WECHAT_SERVER };
-        return cachedServerUrls;
-    }
-
-    if (CONFIG.XDD_API_URL) {
-        try {
-            const response = await axios.get(`${CONFIG.XDD_API_URL}/api/wxserver`, { timeout: 5000 });
-            if (response.data?.code === 0) {
-                const oldUrl = (response.data.data?.old_url || '').replace(/\/+$/, '');
-                const newUrl = (response.data.data?.new_url || '').replace(/\/+$/, '');
-                if (oldUrl && newUrl) {
-                    cachedServerUrls = { oldUrl, newUrl };
-                    return cachedServerUrls;
-                }
-            }
-        } catch (e) {
-            console.log(`⚠️  从后台获取地址失败: ${e.message}`);
-        }
-    }
-
-    const defaultUrl = 'http://180.152.5.230:8011';
-    cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
-    return cachedServerUrls;
+function getWxServerUrls() {
+    const oldUrl = WX_CONFIG.WECHAT_SERVER.replace(/\/+$/, '');
+    const newUrl = WX_CONFIG.WECHAT_SERVER_NEW ? WX_CONFIG.WECHAT_SERVER_NEW.replace(/\/+$/, '') : oldUrl;
+    return { oldUrl, newUrl };
 }
 
 // ==================== UCMP 签名工具 ====================

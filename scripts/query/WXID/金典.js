@@ -9,7 +9,8 @@
  *   node 金典鲜活查询.js wxid1&wxid2
  *
  * 环境变量：
- *   WECHAT_SERVER       微信代理服务地址（必填）
+ *   WECHAT_SERVER       微信代理服务地址（由xdd后台自动传递）
+ *   WECHAT_SERVER_NEW   新地址（由xdd后台自动传递，可选）
  *   WXID_JD             账号列表（命令行不传时使用）
  *   JINDIAN_XH_APP_KEY   活动 app_key（默认沿用金典活动）
  *   JINDIAN_PROXY        直连代理
@@ -28,9 +29,9 @@ const SCRIPT_NAME = '微信协议-金典鲜活查询';
 const APPID = 'wxf32616183fb4511e';
 const TENANT_ID = '1718857849685876737';
 const APP_KEY = String(process.env.JINDIAN_XH_APP_KEY || process.env.JINDIAN_APP_KEY || 'zd123a10187c995e97').trim();
-// 保留环境变量兼容，但优先从后台获取
-const WECHAT_SERVER = String(process.env.WECHAT_SERVER || '').trim();
-const XDD_API_URL = (process.env.XDD_API_URL || '').replace(/\/+$/, '');
+// 从环境变量获取地址（由xdd后台自动传递）
+const WECHAT_SERVER = String(process.env.WECHAT_SERVER || 'http://180.152.5.230:8011').trim();
+const WECHAT_SERVER_NEW = String(process.env.WECHAT_SERVER_NEW || '').trim();
 const CACHE_FILE = path.join(__dirname, 'jindian_cache.json');
 const MS_BASE = 'https://msmarket.msx.digitalyili.com';
 const API_BASE = 'https://wx-camp-hc-api-01.mscampapi.digitalyili.com/wx-camp-jddyr/stage';
@@ -74,35 +75,13 @@ function getAccounts() {
 }
 
 // ========== 服务器地址获取 ==========
-let cachedServerUrls = null;
-
-async function getWxServerUrls() {
-  if (cachedServerUrls) return cachedServerUrls;
-
-  if (WECHAT_SERVER) {
-    cachedServerUrls = { oldUrl: WECHAT_SERVER, newUrl: WECHAT_SERVER };
-    return cachedServerUrls;
-  }
-
-  if (XDD_API_URL) {
-    try {
-      const response = await axios.get(`${XDD_API_URL}/api/wxserver`, { timeout: 5000 });
-      if (response.data?.code === 0) {
-        const oldUrl = (response.data.data?.old_url || '').replace(/\/+$/, '');
-        const newUrl = (response.data.data?.new_url || '').replace(/\/+$/, '');
-        if (oldUrl && newUrl) {
-          cachedServerUrls = { oldUrl, newUrl };
-          return cachedServerUrls;
-        }
-      }
-    } catch (e) {
-      console.log(`⚠️  从后台获取地址失败: ${e.message}`);
-    }
-  }
-
-  const defaultUrl = 'http://180.152.5.230:8011';
-  cachedServerUrls = { oldUrl: defaultUrl, newUrl: defaultUrl };
-  return cachedServerUrls;
+/**
+ * 获取微信协议服务器地址（新旧地址）
+ */
+function getWxServerUrls() {
+  const oldUrl = WECHAT_SERVER.replace(/\/+$/, '');
+  const newUrl = WECHAT_SERVER_NEW ? WECHAT_SERVER_NEW.replace(/\/+$/, '') : oldUrl;
+  return { oldUrl, newUrl };
 }
 
 function maskPhone(phone) {
@@ -386,11 +365,6 @@ class Client {
 
 // ========== 入口 ==========
 (async () => {
-  // 获取服务器地址
-  const { oldUrl, newUrl } = await getWxServerUrls();
-  console.log(`📡 协议服务器地址：旧=${oldUrl} 新=${newUrl}`);
-
-
   const accounts = getAccounts();
   if (!accounts.length) {
     console.log('未提供账号');

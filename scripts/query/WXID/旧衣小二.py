@@ -9,8 +9,8 @@
   python jyxe_query.py 大师#wxid1&小号#wxid2
 
 环境变量兜底: jyxe=备注#wxid&备注#wxid
-依赖: WECHAT_SERVER（获取微信 code 的桥接服务，可选，优先从后台获取）
-      XDD_API_URL（后台API地址，用于获取微信协议服务器地址）
+依赖: WECHAT_SERVER（获取微信 code 的桥接服务，由xdd后台自动传递）
+      WECHAT_SERVER_NEW（新地址，由xdd后台自动传递，可选）
 缓存: 脚本同目录 jyxe_token_cache.json（与 jyxe.py 共用）
 """
 
@@ -22,9 +22,9 @@ import requests
 
 # ================== 配置 ==================
 WX_APPID      = "wx426d52c8130b8559"
-# 保留环境变量兼容，但优先从后台获取
-WECHAT_SERVER = os.getenv("WECHAT_SERVER", "").strip()
-XDD_API_URL   = os.getenv("XDD_API_URL", "").strip().rstrip("/")
+# 从环境变量获取地址（由xdd后台自动传递）
+WECHAT_SERVER = os.getenv("WECHAT_SERVER", "http://180.152.5.230:8011").strip()
+WECHAT_SERVER_NEW = os.getenv("WECHAT_SERVER_NEW", "").strip()
 BASE_URL      = "https://jiuyixiaoer.fzjingzhou.com"
 SCRIPT_DIR    = os.path.dirname(os.path.abspath(__file__))
 TOKEN_FILE    = os.path.join(SCRIPT_DIR, "jyxe_token_cache.json")
@@ -100,39 +100,14 @@ def save_cache(data):
 TOKEN_CACHE = load_cache()
 
 # ================== 服务器地址获取 ==================
-_cached_server_urls = None
-
 def get_wxserver_urls():
     """
-    从后台API获取微信协议服务器地址（新旧地址）
-    优先级：环境变量 WECHAT_SERVER > 后台API > 默认值
+    获取微信协议服务器地址（新旧地址）
     返回: (old_url, new_url)
     """
-    global _cached_server_urls
-    if _cached_server_urls:
-        return _cached_server_urls
-
-    if WECHAT_SERVER:
-        _cached_server_urls = (WECHAT_SERVER, WECHAT_SERVER)
-        return _cached_server_urls
-
-    if XDD_API_URL:
-        try:
-            resp = requests.get(f"{XDD_API_URL}/api/wxserver", timeout=5, verify=False)
-            if resp.status_code == 200:
-                data = resp.json()
-                if data.get("code") == 0:
-                    old_url = data.get("data", {}).get("old_url", "").strip().rstrip("/")
-                    new_url = data.get("data", {}).get("new_url", "").strip().rstrip("/")
-                    if old_url and new_url:
-                        _cached_server_urls = (old_url, new_url)
-                        return _cached_server_urls
-        except Exception as e:
-            print(f"⚠️  从后台获取地址失败: {str(e)[:60]}")
-
-    default_url = "http://180.152.5.230:8011"
-    _cached_server_urls = (default_url, default_url)
-    return _cached_server_urls
+    old_url = WECHAT_SERVER
+    new_url = WECHAT_SERVER_NEW if WECHAT_SERVER_NEW else old_url
+    return old_url, new_url
 
 
 # ================== 登录链路 ==================
