@@ -5436,7 +5436,9 @@ async function loadSysConfig() {
             <div class="config-section">
                 <div class="config-section-title"><i class="fas fa-plug"></i> 微信协议配置 <span class="tag tag-info" style="font-size:11px;">扫码登录服务</span></div>
                 <div class="form-grid">
-                    <div class="form-item full"><label>协议接口地址</label><input type="text" id="cfg_wxLoginBaseURL" value="${v(cfg.wxLoginBaseURL)}" placeholder="http://180.152.5.230:8011"></div>
+                    <div class="form-item"><label>旧协议地址</label><input type="text" id="cfg_wxLoginBaseURL" value="${v(cfg.wxLoginBaseURL)}" placeholder="http://180.152.5.230:8011"></div>
+                    <div class="form-item"><label>新协议地址</label><input type="text" id="cfg_wxNewLoginBaseURL" value="${v(cfg.wxNewLoginBaseURL)}" placeholder="留空则不启用新地址"></div>
+                    <div class="form-item"><label>当前使用 <span class="tip">切换协议地址</span></label><select id="cfg_wxActiveProtocol"><option value="old" ${cfg.wxActiveProtocol==='old'?'selected':''}>旧地址</option><option value="new" ${cfg.wxActiveProtocol==='new'?'selected':''}>新地址</option></select></div>
                     <div class="form-item"><label>扫码登录积分</label><input type="number" id="cfg_wxScanLoginCost" value="${cfg.wxScanLoginCost||2000}"></div>
                     <div class="form-item"><label>设备名称</label><input type="text" id="cfg_wxDeviceName" value="${v(cfg.wxDeviceName)}" placeholder="Xiaomi-M2012K11AC"></div>
                 </div>
@@ -5516,6 +5518,8 @@ async function saveSysConfig() {
             wxUrl: (document.getElementById('cfg_wxUrl')||{}).value,
             wxRobotId: (document.getElementById('cfg_wxRobotId')||{}).value,
             wxLoginBaseURL: (document.getElementById('cfg_wxLoginBaseURL')||{}).value,
+            wxNewLoginBaseURL: (document.getElementById('cfg_wxNewLoginBaseURL')||{}).value,
+            wxActiveProtocol: (document.getElementById('cfg_wxActiveProtocol')||{}).value,
             wxScanLoginCost: parseInt((document.getElementById('cfg_wxScanLoginCost')||{}).value) || 2000,
             wxDeviceName: (document.getElementById('cfg_wxDeviceName')||{}).value,
             activityPushQQGroupId: (document.getElementById('cfg_activityPushQQGroupId')||{}).value || '',
