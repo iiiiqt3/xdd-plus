@@ -228,7 +228,7 @@ func WXID_USER_STATUS(sender *Sender) {
 	msg.WriteString(fmt.Sprintf("📋 微信设备状态（共 %d 个，在线 %d / 离线 %d）：\n", len(result.Data), onlineCount, offlineCount))
 
 	i := 1
-	for wxid, info := range result.Data {
+	for wxid, info := range data {
 		loginTime := time.Unix(info.LoginDate, 0).Format("01-02 15:04")
 		refreshTime := time.Unix(info.RefreshDate, 0).Format("01-02 15:04")
 
@@ -1134,45 +1134,19 @@ func CheckWxOfflineAndNotify() {
 func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string, force bool) {
 	logs.Info("开始执行微信掉线检测推送...")
 
-	url := getWxLoginBaseURL() + "/api/v1/wx/user/status"
-	client := &http.Client{Timeout: HTTPTimeout}
-	resp, err := client.Get(url)
-	if err != nil {
-		logs.Error("微信掉线检测：请求设备列表失败：%s", err.Error())
-		return
-	}
-	defer resp.Body.Close()
+	// 同时查询新旧两个地址，合并结果（在线优先）
+	data := fetchWxDevicesFromURL(getWxLoginBaseURL())
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logs.Error("微信掉线检测：读取设备列表失败：%s", err.Error())
-		return
+	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+		oldData := fetchWxDevicesFromURL(getOldWxLoginBaseURL())
+		data = mergeWxDevices(data, oldData)
+	}
+	if Config.WxProtocol.NewLoginBaseURL != "" && getWxLoginBaseURL() != getNewWxLoginBaseURL() {
+		newData := fetchWxDevicesFromURL(getNewWxLoginBaseURL())
+		data = mergeWxDevices(data, newData)
 	}
 
-	var result struct {
-		Status bool `json:"status"`
-		Data   map[string]struct {
-			Wxid        string `json:"wxid"`
-			Avatar      string `json:"avatar"`
-			Nickname    string `json:"nickname"`
-			Device      string `json:"device"`
-			Survival    int    `json:"survival"`
-			LoginDate   int64  `json:"loginDate"`
-			RefreshDate int64  `json:"refreshDate"`
-		} `json:"data"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		logs.Error("微信掉线检测：解析设备列表失败：%s", err.Error())
-		return
-	}
-
-	if !result.Status {
-		logs.Error("微信掉线检测：获取设备列表失败：%s", result.Message)
-		return
-	}
-
-	if len(result.Data) == 0 {
+	if len(data) == 0 {
 		logs.Info("微信掉线检测：当前没有微信设备，跳过推送")
 		return
 	}
@@ -1180,7 +1154,7 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 	offlineCount := 0
 	notifiedCount := 0
 
-	for wxid, info := range result.Data {
+	for wxid, info := range data {
 		if len(wxIDs) > 0 {
 			found := false
 			for _, wid := range wxIDs {
@@ -1244,7 +1218,7 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 		}
 	}
 
-	logs.Info("微信掉线检测推送完成，共 %d 个设备，%d 个掉线，%d 个已发送通知", len(result.Data), offlineCount, notifiedCount)
+	logs.Info("微信掉线检测推送完成，共 %d 个设备，%d 个掉线，%d 个已通知", len(data), offlineCount, notifiedCount)
 }
 
 // checkLoginStatus 检查扫码状态
