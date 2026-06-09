@@ -177,8 +177,13 @@ func buildWxDeviceStatus(id int, wxid string, isPrimary bool, raw *portalWxUserS
 		if info, ok := raw.Data[wxid]; ok {
 			status.Nickname = info.Nickname
 			status.Device = info.Device
-			status.Status = wxStatusText(info.Survival)
-			status.Online = info.Survival == 1
+			// 如果该 wxid 最近被主动登出（60秒内），强制显示为离线
+			online := info.Survival == 1
+			if online && isRecentlyLoggedOut(wxid) {
+				online = false
+			}
+			status.Status = wxStatusTextBool(online)
+			status.Online = online
 			status.LoginTime = formatPortalWxUnix(info.LoginDate)
 			status.RefreshTime = formatPortalWxUnix(info.RefreshDate)
 		}

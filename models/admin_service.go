@@ -3184,8 +3184,13 @@ func GetWxDeviceList(search string) ([]WxDeviceInfo, int, int, int) {
 
 	searchLower := strings.ToLower(search)
 	for _, info := range merged {
+		// 如果该 wxid 最近被主动登出（60秒内），强制显示为离线
+		survival := info.Survival
+		if survival == 1 && isRecentlyLoggedOut(info.Wxid) {
+			survival = 0
+		}
 		totalCount++
-		if info.Survival == 1 {
+		if survival == 1 {
 			onlineCount++
 		} else {
 			offlineCount++
@@ -3202,7 +3207,7 @@ func GetWxDeviceList(search string) ([]WxDeviceInfo, int, int, int) {
 			Nickname:    info.Nickname,
 			Avatar:      info.Avatar,
 			Device:      info.Device,
-			Survival:    info.Survival,
+			Survival:    survival,
 			LoginDate:   info.LoginDate,
 			RefreshDate: info.RefreshDate,
 		})
@@ -3243,8 +3248,13 @@ func GetWxDeviceListByURL(addr, search string) ([]WxDeviceInfo, int, int, int) {
 	searchLower := strings.ToLower(search)
 
 	for _, info := range data {
+		// 如果该 wxid 最近被主动登出（60秒内），强制显示为离线
+		survival := info.Survival
+		if survival == 1 && isRecentlyLoggedOut(info.Wxid) {
+			survival = 0
+		}
 		totalCount++
-		if info.Survival == 1 {
+		if survival == 1 {
 			onlineCount++
 		} else {
 			offlineCount++
@@ -3260,7 +3270,7 @@ func GetWxDeviceListByURL(addr, search string) ([]WxDeviceInfo, int, int, int) {
 			Nickname:    info.Nickname,
 			Avatar:      info.Avatar,
 			Device:      info.Device,
-			Survival:    info.Survival,
+			Survival:    survival,
 			LoginDate:   info.LoginDate,
 			RefreshDate: info.RefreshDate,
 		})
@@ -3285,7 +3295,10 @@ func GetWxDeviceStats() (total int, online int, offline int) {
 
 	for _, info := range merged {
 		total++
-		if info.Survival == 1 {
+		// 如果该 wxid 最近被主动登出（60秒内），强制显示为离线
+		if info.Survival == 1 && isRecentlyLoggedOut(info.Wxid) {
+			offline++
+		} else if info.Survival == 1 {
 			online++
 		} else {
 			offline++

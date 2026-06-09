@@ -102,12 +102,19 @@ func GetPortalWxStatus(userNumber int) (*PortalWxStatus, error) {
         }, nil
     }
 
+    // 如果该 wxid 最近被主动登出（60秒内），强制显示为离线
+    // 解决 wechat08 API 延迟更新 survival 字段的问题
+    online := bestInfo.Survival == 1
+    if online && isRecentlyLoggedOut(wxid) {
+        online = false
+    }
+
     return &PortalWxStatus{
         Nickname:    defaultWxNickname(bestInfo.Nickname, user.Nickname),
         Wxid:        wxid,
         Device:      bestInfo.Device,
-        Status:      wxStatusText(bestInfo.Survival),
-        Online:      bestInfo.Survival == 1,
+        Status:      wxStatusTextBool(online),
+        Online:      online,
         LoginTime:   formatPortalWxUnix(bestInfo.LoginDate),
         RefreshTime: formatPortalWxUnix(bestInfo.RefreshDate),
     }, nil
@@ -404,6 +411,9 @@ func PortalWxLogout(userNumber int, targetWxid ...string) (*PortalWxActionResult
         return nil, fmt.Errorf("登出失败：%s", result.Message)
     }
 
+    // 标记为最近登出，避免 wechat08 API 延迟更新 survival 时仍显示在线
+    markRecentlyLoggedOut(wxid)
+
     status, _ := GetPortalWxStatus(userNumber)
     return &PortalWxActionResult{Message: "已成功登出", Status: status}, nil
 }
@@ -481,6 +491,8 @@ func PortalWxPollLogin(userNumber int, uuid string, deductCoin bool) (*PortalWxA
         if nickname == "" {
             nickname = "微信用户"
         }
+        // 登录成功，清除登出缓存标记
+        clearRecentlyLoggedOut(wxid)
         user, err := getPortalUserByNumber(userNumber)
         if err == nil && wxid != "" {
             if strings.TrimSpace(user.Wxid) == "" {
@@ -612,6 +624,13 @@ func normalizePortalQrBase64(raw string) string {
 
 func wxStatusText(survival int) string {
     if survival == 1 {
+        return "🟢 在线"
+    }
+    return "🔴 离线"
+}
+
+func wxStatusTextBool(online bool) string {
+    if online {
         return "🟢 在线"
     }
     return "🔴 离线"

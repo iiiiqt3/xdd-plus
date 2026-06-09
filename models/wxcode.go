@@ -19,12 +19,45 @@ import (
 // 当设备恢复上线时会清除记录，再次掉线时会重新通知
 var offlineNotifiedWxIDs sync.Map
 
+// recentlyLoggedOutWxIDs 记录最近主动登出的 wxid 及登出时间戳
+// 用于在 wechat08 API 延迟更新 survival 字段时，强制将设备显示为离线
+// 记录会在 60 秒后自动过期
+var recentlyLoggedOutWxIDs sync.Map
+
 // ==================== 接口基础配置 ====================
 
 const (
 	WxLoginBaseURL = ""
 	HTTPTimeout    = 15 * time.Second
 )
+
+// markRecentlyLoggedOut 标记 wxid 为最近主动登出
+func markRecentlyLoggedOut(wxid string) {
+	recentlyLoggedOutWxIDs.Store(wxid, time.Now().Unix())
+}
+
+// isRecentlyLoggedOut 检查 wxid 是否在最近主动登出过（60秒内）
+func isRecentlyLoggedOut(wxid string) bool {
+	val, ok := recentlyLoggedOutWxIDs.Load(wxid)
+	if !ok {
+		return false
+	}
+	ts, isInt := val.(int64)
+	if !isInt {
+		recentlyLoggedOutWxIDs.Delete(wxid)
+		return false
+	}
+	if time.Now().Unix()-ts > 60 {
+		recentlyLoggedOutWxIDs.Delete(wxid)
+		return false
+	}
+	return true
+}
+
+// clearRecentlyLoggedOut 清除 wxid 的登出标记（设备重新上线时调用）
+func clearRecentlyLoggedOut(wxid string) {
+	recentlyLoggedOutWxIDs.Delete(wxid)
+}
 
 // getWxLoginBaseURL 返回当前活跃的协议地址
 func getWxLoginBaseURL() string {
@@ -343,6 +376,7 @@ func checkWxDeviceOnline(wxid string) (bool, error) {
 }
 
 // checkWxDeviceOnlineFromURL 从指定地址检查 wxid 是否在线
+// 不仅检查设备是否存在，还检查 survival 字段是否为 1（在线）
 func checkWxDeviceOnlineFromURL(baseURL, wxid string) (bool, error) {
 	url := baseURL + "/api/v1/wx/user/status"
 	client := &http.Client{Timeout: HTTPTimeout}
@@ -369,8 +403,20 @@ func checkWxDeviceOnlineFromURL(baseURL, wxid string) (bool, error) {
 		return false, fmt.Errorf("获取设备列表失败")
 	}
 
-	_, ok := result.Data[wxid]
-	return ok, nil
+	info, ok := result.Data[wxid]
+	if !ok {
+		return false, nil
+	}
+	// 检查 survival 字段，只有 survival=1 才算在线
+	if infoMap, isMap := info.(map[string]interface{}); isMap {
+		if survival, has := infoMap["survival"]; has {
+			if survivalNum, isNum := survival.(float64); isNum {
+				return survivalNum == 1, nil
+			}
+		}
+	}
+	// 无法解析 survival 时，保守地认为存在即在线（兼容旧逻辑）
+	return true, nil
 }
 
 // checkWxDeviceExistsOnURL 检查指定 wxid 是否在指定地址的设备列表中（不要求在线）
