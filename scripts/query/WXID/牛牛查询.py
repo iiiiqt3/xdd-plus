@@ -259,10 +259,10 @@ def get_wechat_code(wxid: str) -> Optional[str]:
                 continue
             data = resp.json()
             if data.get("Code") != 0:
-                # 如果是明确的业务失败，不继续尝试
+                # 业务失败（Code: -8 数据不存在 等），继续尝试下一个地址
                 if data.get("Code") is not None:
-                    print(f"  ❌ 获取code失败: {data.get('Message', '未知错误')}")
-                    return None
+                    print(f"  ⚠️  地址 {server_url} 业务错误: {data.get('Message', '未知错误')}")
+                    continue
                 continue
             code = data.get("Data", {}).get("code")
             if code:

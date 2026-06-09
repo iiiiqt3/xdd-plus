@@ -93,16 +93,16 @@ def get_code(wxid):
             )
             body = resp.json()
             code = (
-                body.get("Data", {}).get("code")
-                or body.get("data", {}).get("code")
+                (body.get("Data") or {}).get("code")
+                or (body.get("data") or {}).get("code")
                 or body.get("code")
             )
             if code:
                 return str(code)
-            # 如果是明确的业务失败（非网络错误），不继续尝试其他地址
-            if resp.status_code == 200 and body.get("code") is not None:
-                print(f"❌ 换取 code 失败，响应：{safe_json(body)}")
-                return None
+            # 业务失败（Code: -8 数据不存在 等），继续尝试下一个地址
+            if body.get("Code") is not None or body.get("code") is not None:
+                print(f"⚠️  地址 {server_url} 业务错误: {body.get('Message') or body.get('msg', '')}")
+                continue
         except Exception as e:
             print(f"⚠️  地址 {server_url} 请求异常: {str(e)[:60]}")
             continue

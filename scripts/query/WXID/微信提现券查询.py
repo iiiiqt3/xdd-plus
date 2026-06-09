@@ -138,11 +138,10 @@ def get_wx_code(wxid: str) -> str:
             )
             if code:
                 return str(code)
-            # 如果是明确的业务失败，不继续尝试
+            # 业务失败（Code: -8 数据不存在 等），继续尝试下一个地址
             if data.get("Code") is not None or data.get("code") is not None:
-                raise RuntimeError(f"获取 code 失败: {data}")
-        except RuntimeError:
-            raise
+                print(f"  ⚠️  地址 {server_url} 业务错误: {data.get('Message') or data.get('msg', '')}")
+                continue
         except Exception as e:
             print(f"  ⚠️  地址 {server_url} 请求异常: {str(e)[:60]}")
             continue
