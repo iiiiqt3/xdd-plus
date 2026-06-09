@@ -249,9 +249,10 @@ def get_wechat_code(wxid: str) -> Optional[str]:
     old_url, new_url = get_wxserver_urls()
     urls_to_try = list(dict.fromkeys([old_url, new_url]))  # 去重保持顺序
 
-    for server_url in urls_to_try:
+    for idx, server_url in enumerate(urls_to_try):
         if not server_url:
             continue
+        label = "旧地址" if idx == 0 else "新地址"
         url = f"{server_url}/api/v1/wx/app/get/code"
         try:
             resp = safe_request("POST", url, json={"appid": APPID, "wxid": wxid})
@@ -261,7 +262,7 @@ def get_wechat_code(wxid: str) -> Optional[str]:
             if data.get("Code") != 0:
                 # 业务失败（Code: -8 数据不存在 等），继续尝试下一个地址
                 if data.get("Code") is not None:
-                    print(f"  ⚠️  地址 {server_url} 业务错误: {data.get('Message', '未知错误')}")
+                    print(f"  ⚠️  {label} 业务错误: {data.get('Message', '未知错误')}")
                     continue
                 continue
             code = data.get("Data", {}).get("code")
@@ -269,7 +270,7 @@ def get_wechat_code(wxid: str) -> Optional[str]:
                 print(f"  ✅ 获取code成功")
                 return code
         except Exception as e:
-            print(f"  ⚠️  地址 {server_url} 请求异常: {str(e)[:60]}")
+            print(f"  ⚠️  {label} 请求异常: {str(e)[:60]}")
             continue
 
     print(f"  ❌ 所有地址均无法获取code")

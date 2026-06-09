@@ -166,21 +166,23 @@ async function getCodeByWxid(wxid, appid) {
     try { extra = JSON.parse(process.env.CODE_EXTRA_JSON); } catch (e) {}
   }
 
-  for (const serverUrl of urlsToTry) {
+  for (let i = 0; i < urlsToTry.length; i++) {
+    const serverUrl = urlsToTry[i];
     if (!serverUrl) continue;
+    const label = i === 0 ? '旧地址' : '新地址';
     try {
       const url = `${serverUrl.replace(/\/$/, '')}${CFG.codeApiPath}`;
       const body = { wxid, appid, ...extra };
       const res = await postJson(url, body, 15000);
       const code = res.data?.Data?.code || res.data?.data?.code || res.data?.code;
       if (code) return code;
-      // 如果是明确的业务失败，不继续尝试
+      // 业务失败，继续尝试下一个地址
       if (res.data?.code !== undefined) {
-        throw new Error(`获取code失败`);
+        console.log(`⚠️  ${label} 业务错误: ${res.data?.Message || res.data?.msg || ''}`);
+        continue;
       }
     } catch (e) {
-      if (e.message.includes('获取code失败')) throw e;
-      console.log(`⚠️  地址 ${serverUrl} 请求异常: ${e.message}`);
+      console.log(`⚠️  ${label} 请求异常: ${e.message}`);
       continue;
     }
   }

@@ -66,23 +66,25 @@ function getAccounts() {
 
 // ========== 微信 code ==========
 async function getWxCode(wxid) {
-  const { oldUrl, newUrl } = await getWxServerUrls();
+  const { oldUrl, newUrl } = getWxServerUrls();
   const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
 
-  for (const serverUrl of urlsToTry) {
+  for (let i = 0; i < urlsToTry.length; i++) {
+    const serverUrl = urlsToTry[i];
     if (!serverUrl) continue;
+    const label = i === 0 ? '旧地址' : '新地址';
     try {
       const url = `${serverUrl.replace(/\/$/, '')}/api/v1/wx/app/get/code`;
       const { data } = await axios.post(url, { wxid, appid: AppID }, { timeout: 20000 });
       const code = (data?.data || data?.Data || {}).code || data?.Data;
       if (code) return String(code);
-      // 如果是明确的业务失败，不继续尝试
+      // 业务失败，继续尝试下一个地址
       if (data?.code !== undefined || data?.Code !== undefined) {
-        throw new Error(`获取code失败: ${JSON.stringify(data)}`);
+        console.log(`⚠️  ${label} 业务错误: ${data?.Message || data?.msg || ''}`);
+        continue;
       }
     } catch (e) {
-      if (e.message.includes('获取code失败')) throw e;
-      console.log(`⚠️  地址 ${serverUrl} 请求异常: ${e.message}`);
+      console.log(`⚠️  ${label} 请求异常: ${e.message}`);
       continue;
     }
   }

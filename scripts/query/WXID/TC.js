@@ -247,8 +247,10 @@ async function getWxCode(wxid, appid) {
   const { oldUrl, newUrl } = await getWxServerUrls();
   const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
 
-  for (const serverUrl of urlsToTry) {
+  for (let i = 0; i < urlsToTry.length; i++) {
+    const serverUrl = urlsToTry[i];
     if (!serverUrl) continue;
+    const label = i === 0 ? '旧地址' : '新地址';
     try {
       const res = await httpRequest(
         serverUrl + "/api/v1/wx/app/get/code", "POST",
@@ -256,13 +258,13 @@ async function getWxCode(wxid, appid) {
       );
       if (res.Code === 0 || res.code === 0) return res.Data?.code || res.data?.code || res.Data;
       if (res.Success || res.status)        return res.Data?.code || res.data?.code || res.Data;
-      // 如果是明确的业务失败，不继续尝试
+      // 业务失败，继续尝试下一个地址
       if (res.Code !== undefined || res.code !== undefined) {
-        throw new Error(res.Message || res.msg || "获取微信 code 失败");
+        console.log(`⚠️  ${label} 业务错误: ${res.Message || res.msg || ''}`);
+        continue;
       }
     } catch (e) {
-      if (e.message.includes("获取微信 code 失败")) throw e;
-      console.log(`⚠️  地址 ${serverUrl} 请求异常: ${e.message}`);
+      console.log(`⚠️  ${label} 请求异常: ${e.message}`);
       continue;
     }
   }

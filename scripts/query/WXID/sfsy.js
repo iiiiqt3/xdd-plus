@@ -125,11 +125,13 @@ function buildUcmpHeaders(body = {}, sessionId = '') {
  * Step1: wxid → code（自动尝试新旧地址）
  */
 async function getWxCode(wxid) {
-    const { oldUrl, newUrl } = await getWxServerUrls();
+    const { oldUrl, newUrl } = getWxServerUrls();
     const urlsToTry = [...new Set([oldUrl, newUrl])]; // 去重
 
-    for (const serverUrl of urlsToTry) {
+    for (let i = 0; i < urlsToTry.length; i++) {
+        const serverUrl = urlsToTry[i];
         if (!serverUrl) continue;
+        const label = i === 0 ? '旧地址' : '新地址';
         try {
             const url = `${serverUrl}/api/v1/wx/app/get/code`;
             const response = await axios.post(url, { wxid, appid: WX_CONFIG.APPID }, {
@@ -144,13 +146,13 @@ async function getWxCode(wxid) {
             if (code) {
                 return code;
             }
-            // 如果是明确的业务失败，不继续尝试
+            // 业务失败，继续尝试下一个地址
             if (data?.code !== undefined) {
-                throw new Error(`获取code失败: ${JSON.stringify(data)}`);
+                console.log(`⚠️  ${label} 业务错误: ${data?.Message || data?.msg || ''}`);
+                continue;
             }
         } catch (e) {
-            if (e.message.includes('获取code失败')) throw e;
-            console.log(`⚠️  地址 ${serverUrl} 请求异常: ${e.message}`);
+            console.log(`⚠️  ${label} 请求异常: ${e.message}`);
             continue;
         }
     }

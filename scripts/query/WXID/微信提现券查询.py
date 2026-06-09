@@ -123,9 +123,10 @@ def get_wx_code(wxid: str) -> str:
     old_url, new_url = get_wxserver_urls()
     urls_to_try = list(dict.fromkeys([old_url, new_url]))  # 去重保持顺序
 
-    for server_url in urls_to_try:
+    for idx, server_url in enumerate(urls_to_try):
         if not server_url:
             continue
+        label = "旧地址" if idx == 0 else "新地址"
         url = f"{server_url.rstrip('/')}/api/v1/wx/app/get/code"
         try:
             resp = requests.post(url, json={"wxid": wxid, "appid": WX_APPID}, timeout=BRIDGE_TIMEOUT)
@@ -140,10 +141,10 @@ def get_wx_code(wxid: str) -> str:
                 return str(code)
             # 业务失败（Code: -8 数据不存在 等），继续尝试下一个地址
             if data.get("Code") is not None or data.get("code") is not None:
-                print(f"  ⚠️  地址 {server_url} 业务错误: {data.get('Message') or data.get('msg', '')}")
+                print(f"  ⚠️  {label} 业务错误: {data.get('Message') or data.get('msg', '')}")
                 continue
         except Exception as e:
-            print(f"  ⚠️  地址 {server_url} 请求异常: {str(e)[:60]}")
+            print(f"  ⚠️  {label} 请求异常: {str(e)[:60]}")
             continue
 
     raise RuntimeError(f"所有地址均无法获取 code")

@@ -80,9 +80,10 @@ def get_code(wxid):
     old_url, new_url = get_wxserver_urls()
     urls_to_try = list(dict.fromkeys([old_url, new_url]))  # 去重保持顺序
 
-    for server_url in urls_to_try:
+    for idx, server_url in enumerate(urls_to_try):
         if not server_url:
             continue
+        label = "旧地址" if idx == 0 else "新地址"
         url = f"{server_url}{WECHAT_CODE_URL_PATH}"
         try:
             resp = requests.post(
@@ -101,10 +102,10 @@ def get_code(wxid):
                 return str(code)
             # 业务失败（Code: -8 数据不存在 等），继续尝试下一个地址
             if body.get("Code") is not None or body.get("code") is not None:
-                print(f"⚠️  地址 {server_url} 业务错误: {body.get('Message') or body.get('msg', '')}")
+                print(f"⚠️  {label} 业务错误: {body.get('Message') or body.get('msg', '')}")
                 continue
         except Exception as e:
-            print(f"⚠️  地址 {server_url} 请求异常: {str(e)[:60]}")
+            print(f"⚠️  {label} 请求异常: {str(e)[:60]}")
             continue
 
     print(f"❌ 所有地址均无法换取 code")
