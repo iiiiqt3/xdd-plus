@@ -228,7 +228,7 @@ func WXID_USER_STATUS(sender *Sender) {
 	msg.WriteString(fmt.Sprintf("📋 微信设备状态（共 %d 个，在线 %d / 离线 %d）：\n", len(result.Data), onlineCount, offlineCount))
 
 	i := 1
-	for wxid, info := range data {
+	for wxid, info := range result.Data {
 		loginTime := time.Unix(info.LoginDate, 0).Format("01-02 15:04")
 		refreshTime := time.Unix(info.RefreshDate, 0).Format("01-02 15:04")
 
