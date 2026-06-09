@@ -574,6 +574,7 @@ func WXID_RELOGIN(sender *Sender) {
 
 	// 根据是否迁移选择不同的登录方式
 	var qrBase64 string
+	var uuid string
 
 	if isMigration {
 		// 迁移用户：在新地址上走全新扫码登录（不扣积分）
@@ -602,6 +603,7 @@ func WXID_RELOGIN(sender *Sender) {
 			return
 		}
 		qrBase64 = scanResult.Data.QrBase64
+		uuid = scanResult.Data.Uuid
 	} else {
 		// 普通用户：走二次登录
 		reqBody := map[string]interface{}{
@@ -627,6 +629,7 @@ func WXID_RELOGIN(sender *Sender) {
 			return
 		}
 		qrBase64 = result.Data.QrBase64
+		uuid = result.Data.Uuid
 	}
 
 	// 发送二维码图片
@@ -642,8 +645,8 @@ func WXID_RELOGIN(sender *Sender) {
 	}
 
 	// 异步轮询扫码状态（重新登录不扣积分，迁移也不扣积分）
-	if result.Data.Uuid != "" {
-		go pollLoginStatusWithMigration(sender, result.Data.Uuid, false, isMigration)
+	if uuid != "" {
+		go pollLoginStatusWithMigration(sender, uuid, false, isMigration)
 	}
 }
 
@@ -680,6 +683,7 @@ func WXID_WAKE_LOGIN(sender *Sender) {
 	}
 
 	var qrBase64 string
+	var uuid string
 
 	if isMigration {
 		// 迁移用户：在新地址上走全新扫码登录（不扣积分）
@@ -709,6 +713,7 @@ func WXID_WAKE_LOGIN(sender *Sender) {
 			return
 		}
 		qrBase64 = scanResult.Data.QrBase64
+		uuid = scanResult.Data.Uuid
 	} else {
 		// 普通用户：走唤醒+二次登录
 		activeURL := getWxLoginBaseURL()
@@ -761,6 +766,7 @@ func WXID_WAKE_LOGIN(sender *Sender) {
 			return
 		}
 		qrBase64 = twiceResult.Data.QrBase64
+		uuid = twiceResult.Data.Uuid
 	}
 
 	if qrBase64 != "" {
@@ -773,8 +779,8 @@ func WXID_WAKE_LOGIN(sender *Sender) {
 		} else {
 			sender.Reply("✅ [" + wxid + "] 唤醒登录二维码已发送，请使用微信扫码。\n💡 扫码后请稍等片刻，系统将自动检测登录状态...")
 		}
-		if twiceResult.Data.Uuid != "" {
-			go pollLoginStatusWithMigration(sender, twiceResult.Data.Uuid, false, isMigration)
+		if uuid != "" {
+			go pollLoginStatusWithMigration(sender, uuid, false, isMigration)
 		}
 	} else {
 		sender.Reply("✅ [" + wxid + "] 唤醒登录请求已发送成功！\n💡 请检查设备端登录状态。")

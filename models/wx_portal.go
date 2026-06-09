@@ -8,8 +8,6 @@ import (
     "net/http"
     "strings"
     "time"
-
-    "github.com/beego/beego/v2/core/logs"
 )
 
 type PortalWxStatus struct {
