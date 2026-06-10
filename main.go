@@ -12,6 +12,7 @@ import (
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/vweb"
 	"github.com/eatmoreapple/openwechat"
+	"os"
 	"time"
 )
 
@@ -325,6 +326,9 @@ func main() {
 	web.Router("/api/admin/wx-protocol-config", &controllers.AdminApiController{}, "get:GetWxProtocolConfig")
 	web.Router("/api/admin/wx-protocol-config/save", &controllers.AdminApiController{}, "post:SaveWxProtocolConfig")
 
+	// ===================== 玩法简介图片上传 =====================
+	web.Router("/api/admin/upload/guide-image", &controllers.AdminApiController{}, "post:UploadGuideImage")
+
 	// ===================== 青龙 Cron 任务管理 API =====================
 	web.Router("/api/admin/crontasks", &controllers.AdminApiController{}, "get:GetCronTasks")
 	web.Router("/api/admin/crontasks/logs", &controllers.AdminApiController{}, "get:GetCronTaskLogs")
@@ -372,6 +376,10 @@ func main() {
 		models.Config.Static = "./static"
 	}
 	web.BConfig.WebConfig.StaticDir["/static"] = models.Config.Static
+	// 上传文件静态服务（玩法简介图片等）
+	uploadsDir := models.ExecPath + "/uploads"
+	os.MkdirAll(uploadsDir+"/guide", 0755)
+	web.BConfig.WebConfig.StaticDir["/uploads"] = uploadsDir
 
 	// 配置Web服务参数
 	web.BConfig.AppName = models.AppName

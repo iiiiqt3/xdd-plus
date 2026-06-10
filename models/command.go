@@ -3339,13 +3339,39 @@ var codeSignals = []CodeSignal{
 						}
 						detail += "────────────────\n"
 						if guide != "" {
-							detail += "\n📖 玩法简介：\n" + guide + "\n"
+							// 解析Markdown中的图片，文本中去除图片语法
+							imgRe := regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
+							imgMatches := imgRe.FindAllStringSubmatch(guide, -1)
+							cleanGuide := imgRe.ReplaceAllString(guide, "")
+							cleanGuide = regexp.MustCompile(`\*\*(.+?)\*\*`).ReplaceAllString(cleanGuide, "$1")
+							cleanGuide = regexp.MustCompile(`\*(.+?)\*`).ReplaceAllString(cleanGuide, "$1")
+							cleanGuide = regexp.MustCompile(`~~(.+?)~~`).ReplaceAllString(cleanGuide, "$1")
+							cleanGuide = regexp.MustCompile(`^#{1,3} `).ReplaceAllString(cleanGuide, "")
+							cleanGuide = regexp.MustCompile("`([^`]+)`").ReplaceAllString(cleanGuide, "$1")
+							cleanGuide = strings.TrimSpace(cleanGuide)
+							if cleanGuide != "" {
+								detail += "\n📖 玩法简介：\n" + cleanGuide + "\n"
+							}
+							detail += "────────────────\n"
+							detail += "📲 请使用APP或网页端，在「活动中心」选择该项目即可上车！"
+							sender.Reply(detail)
+							// 发送图片
+							for _, m := range imgMatches {
+								if len(m) >= 3 {
+									imgURL := m[2]
+									if strings.HasPrefix(imgURL, "/") {
+										// 本地上传的图片，拼接完整URL
+										imgURL = "http://180.152.5.230:5701" + imgURL
+									}
+									sender.SendImg2(imgURL)
+								}
+							}
 						} else {
 							detail += "\n暂无玩法简介\n"
+							detail += "────────────────\n"
+							detail += "📲 请使用APP或网页端，在「活动中心」选择该项目即可上车！"
+							sender.Reply(detail)
 						}
-						detail += "────────────────\n"
-						detail += "📲 请使用APP或网页端，在「活动中心」选择该项目即可上车！"
-						sender.Reply(detail)
 						return
 					case <-timeout:
 						sender.Reply("操作超时，已退出项目中心")

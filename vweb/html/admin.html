@@ -441,6 +441,34 @@
             .activity-card-header { flex-direction: column; gap: 8px; }
             .stat-info h3 { font-size: 18px; }
         }
+        /* ===== Markdown编辑器 ===== */
+        .md-editor { border: 1px solid #dcdfe6; border-radius: 6px; overflow: hidden; background: #fff; }
+        .md-toolbar { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 8px; background: #f5f7fa; border-bottom: 1px solid #ebeef5; align-items: center; }
+        .md-toolbar .md-btn { background: none; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 13px; color: #606266; transition: all .15s; display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; }
+        .md-toolbar .md-btn:hover { background: #e8eaef; color: #333; }
+        .md-toolbar .md-btn.active { background: #ecf5ff; color: #409eff; border-color: #b3d8ff; }
+        .md-toolbar .md-sep { width: 1px; height: 20px; background: #dcdfe6; margin: 0 4px; }
+        .md-body { display: flex; min-height: 200px; }
+        .md-body textarea { flex: 1; border: none; outline: none; resize: vertical; min-height: 200px; padding: 12px; font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Consolas, monospace; font-size: 13px; line-height: 1.8; color: #333; background: #fff; }
+        .md-body textarea::placeholder { color: #c0c4cc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; }
+        .md-preview { flex: 1; padding: 12px; overflow-y: auto; min-height: 200px; max-height: 400px; background: #fafbfc; border-left: 1px solid #ebeef5; font-size: 13px; line-height: 1.8; color: #333; display: none; }
+        .md-preview.show { display: block; }
+        .md-preview h1, .md-preview h2, .md-preview h3 { margin: 12px 0 6px; font-weight: 700; }
+        .md-preview h1 { font-size: 18px; } .md-preview h2 { font-size: 16px; } .md-preview h3 { font-size: 14px; }
+        .md-preview p { margin: 6px 0; }
+        .md-preview ul, .md-preview ol { padding-left: 20px; margin: 6px 0; }
+        .md-preview code { background: #f0f2f5; padding: 2px 5px; border-radius: 3px; font-size: 12px; font-family: monospace; }
+        .md-preview pre { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0; }
+        .md-preview pre code { background: none; color: inherit; padding: 0; }
+        .md-preview blockquote { border-left: 3px solid #409eff; padding-left: 12px; color: #909399; margin: 8px 0; }
+        .md-preview img { max-width: 100%; border-radius: 6px; margin: 8px 0; }
+        .md-preview a { color: #409eff; text-decoration: none; }
+        .md-preview hr { border: none; border-top: 1px solid #ebeef5; margin: 12px 0; }
+        .md-preview table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+        .md-preview th, .md-preview td { border: 1px solid #ebeef5; padding: 6px 10px; text-align: left; font-size: 12px; }
+        .md-preview th { background: #f5f7fa; font-weight: 600; }
+        .md-upload-input { display: none; }
+        .md-tip { font-size: 11px; color: #999; margin-top: 4px; line-height: 1.7; }
     </style>
 </head>
 <body>
@@ -1478,15 +1506,46 @@
                 <div id="actFormFieldList" class="field-list" style="margin-top:6px;"></div>
             </div>
             <div class="form-item full" style="grid-column:1/-1;">
-                <label>玩法和说明 <span class="tip">建议按“适用对象 / 操作步骤 / 注意事项”分段书写，每行一个要点，便于前台与机器人原样展示</span></label>
-                <textarea id="actFormGuide" placeholder="示例：
-1. 先登录小程序并进入活动页
-2. 按提示抓取 token 或 wxid
-3. 确认账号与备注无误后再上车
-注意：
-- 输入 y 确认继续
-- 输入 q 可随时退出" style="min-height:140px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;line-height:1.7;"></textarea>
-                <div style="font-size:11px;color:#999;margin-top:4px;line-height:1.7;">这里填写的内容会同时展示在用户中心上车弹窗和机器人确认提示中，请直接写最终给用户看的文案。</div>
+                <label>玩法和说明 <span class="tip">支持Markdown语法，可插入图片。建议按“适用对象 / 操作步骤 / 注意事项”分段书写</span></label>
+                <div class="md-editor" id="mdEditor">
+                    <div class="md-toolbar">
+                        <button type="button" class="md-btn" title="加粗" onclick="mdInsert('**','**')"><i class="fas fa-bold"></i></button>
+                        <button type="button" class="md-btn" title="斜体" onclick="mdInsert('*','*')"><i class="fas fa-italic"></i></button>
+                        <button type="button" class="md-btn" title="删除线" onclick="mdInsert('~~','~~')"><i class="fas fa-strikethrough"></i></button>
+                        <div class="md-sep"></div>
+                        <button type="button" class="md-btn" title="一级标题" onclick="mdInsert('# ','')"><b>H1</b></button>
+                        <button type="button" class="md-btn" title="二级标题" onclick="mdInsert('## ','')"><b>H2</b></button>
+                        <button type="button" class="md-btn" title="三级标题" onclick="mdInsert('### ','')"><b>H3</b></button>
+                        <div class="md-sep"></div>
+                        <button type="button" class="md-btn" title="无序列表" onclick="mdInsert('- ','')"><i class="fas fa-list-ul"></i></button>
+                        <button type="button" class="md-btn" title="有序列表" onclick="mdInsert('1. ','')"><i class="fas fa-list-ol"></i></button>
+                        <button type="button" class="md-btn" title="引用" onclick="mdInsert('> ','')"><i class="fas fa-quote-left"></i></button>
+                        <div class="md-sep"></div>
+                        <button type="button" class="md-btn" title="代码" onclick="mdInsert('\x60','\x60')"><i class="fas fa-code"></i></button>
+                        <button type="button" class="md-btn" title="链接" onclick="mdInsert('[','](url)')"><i class="fas fa-link"></i></button>
+                        <button type="button" class="md-btn" title="分割线" onclick="mdInsertLine()"><i class="fas fa-minus"></i></button>
+                        <div class="md-sep"></div>
+                        <button type="button" class="md-btn" title="上传图片" onclick="document.getElementById('mdImageUpload').click()"><i class="fas fa-image"></i></button>
+                        <input type="file" id="mdImageUpload" class="md-upload-input" accept="image/*" onchange="mdUploadImage(this)">
+                        <div class="md-sep"></div>
+                        <button type="button" class="md-btn" id="mdPreviewBtn" title="预览" onclick="mdTogglePreview()"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <div class="md-body">
+                        <textarea id="actFormGuide" placeholder="支持Markdown语法，例如：
+# 标题
+**加粗文本**
+- 列表项1
+- 列表项2
+
+![图片描述](图片链接)
+
+> 引用内容
+
+插入图片：点击工具栏的图片按钮上传"></textarea>
+                        <div class="md-preview" id="mdPreview"></div>
+                    </div>
+                </div>
+                <div class="md-tip">支持Markdown语法（标题、加粗、列表、引用、代码、图片等）。点击 <i class="fas fa-image"></i> 上传图片，或直接粘贴图片到编辑框。纯文本同样兼容。</div>
             </div>
             <div class="form-item full" style="grid-column:1/-1;">
                 <label>CK 构建模板 <span class="tip">由上方输入字段自动生成，也可手动编辑</span></label>
@@ -1846,6 +1905,114 @@ async function refreshWithFeedback(btn, task) {
         btn.disabled = false;
         btn.innerHTML = oldHtml;
     }
+}
+// ===================== Markdown编辑器 =====================
+function mdInsert(before, after) {
+    var ta = document.getElementById('actFormGuide');
+    if (!ta) return;
+    var start = ta.selectionStart, end = ta.selectionEnd;
+    var sel = ta.value.substring(start, end) || '';
+    var rep = before + sel + after;
+    ta.setRangeText(rep, start, end, 'select');
+    ta.focus();
+    if (!sel) { ta.selectionStart = ta.selectionEnd = start + before.length; }
+}
+function mdInsertLine() { mdInsert('\n---\n', ''); }
+function mdTogglePreview() {
+    var preview = document.getElementById('mdPreview');
+    var btn = document.getElementById('mdPreviewBtn');
+    if (preview.classList.contains('show')) {
+        preview.classList.remove('show');
+        btn.classList.remove('active');
+    } else {
+        preview.innerHTML = renderSimpleMarkdown(document.getElementById('actFormGuide').value);
+        preview.classList.add('show');
+        btn.classList.add('active');
+    }
+}
+function mdUploadImage(input) {
+    if (!input.files || !input.files[0]) return;
+    var file = input.files[0];
+    if (file.size > 10 * 1024 * 1024) { toast('图片大小不能超过10MB', 'error'); input.value = ''; return; }
+    var fd = new FormData();
+    fd.append('image', file);
+    toast('正在上传图片...', 'info');
+    fetch('/api/admin/upload/guide-image', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.code === 0 && res.data && res.data.url) {
+                mdInsert('![' + file.name.replace(/\.[^.]+$/, '') + '](' + res.data.url + ')', '');
+                toast('图片上传成功', 'success');
+            } else {
+                toast(res.msg || '上传失败', 'error');
+            }
+        })
+        .catch(function() { toast('上传失败', 'error'); });
+    input.value = '';
+}
+// 粘贴图片支持
+document.addEventListener('paste', function(e) {
+    var ta = document.getElementById('actFormGuide');
+    if (!ta || document.activeElement !== ta) return;
+    var items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            e.preventDefault();
+            var file = items[i].getAsFile();
+            if (file) {
+                var fakeInput = { files: [file], value: '' };
+                mdUploadImage(fakeInput);
+            }
+            return;
+        }
+    }
+});
+// 简易Markdown渲染器（不依赖外部库）
+function renderSimpleMarkdown(text) {
+    if (!text) return '<p style="color:#999;">暂无内容</p>';
+    var html = escapeHtml(text);
+    // 代码块
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+    // 行内代码
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // 图片
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:6px;margin:4px 0;">');
+    // 链接
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+    // 标题
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    // 粗体、斜体、删除线
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+    // 引用
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+    // 分割线
+    html = html.replace(/^---$/gm, '<hr>');
+    // 无序列表
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+    // 有序列表
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    // 段落（换行）
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = html.replace(/\n/g, '<br>');
+    html = '<p>' + html + '</p>';
+    // 清理空段落
+    html = html.replace(/<p>\s*<\/p>/g, '');
+    html = html.replace(/<p>\s*(<h[123]>)/g, '$1');
+    html = html.replace(/(<\/h[123]>)\s*<\/p>/g, '$1');
+    html = html.replace(/<p>\s*(<hr>)\s*<\/p>/g, '$1');
+    html = html.replace(/<p>\s*(<ul>)/g, '$1');
+    html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
+    html = html.replace(/<p>\s*(<blockquote>)/g, '$1');
+    html = html.replace(/(<\/blockquote>)\s*<\/p>/g, '$1');
+    html = html.replace(/<p>\s*(<pre>)/g, '$1');
+    html = html.replace(/(<\/pre>)\s*<\/p>/g, '$1');
+    return html;
 }
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';

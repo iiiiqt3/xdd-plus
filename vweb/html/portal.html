@@ -613,8 +613,15 @@
         .project-modal-guide strong { display: block; margin-bottom: 8px; color: var(--text); font-size: 13px; font-weight: 800; }
         .project-modal-guide .guide-text {
             color: var(--text-secondary); font-size: 12.5px; line-height: 1.78;
-            white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; max-height: none;
+            word-break: break-word; overflow-wrap: anywhere; max-height: none;
         }
+        .project-modal-guide .guide-text img { max-width: 100%; border-radius: 8px; margin: 8px 0; cursor: pointer; }
+        .project-modal-guide .guide-text pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0; }
+        .project-modal-guide .guide-text pre code { background: none; color: inherit; padding: 0; }
+        .project-modal-guide .guide-text code { background: #f1f5f9; padding: 2px 5px; border-radius: 3px; font-size: 12px; }
+        .project-modal-guide .guide-text blockquote { border-left: 3px solid var(--primary); padding-left: 12px; color: var(--text-muted); margin: 8px 0; }
+        .project-modal-guide .guide-text h1, .guide-text h2, .guide-text h3 { margin: 10px 0 6px; font-weight: 700; }
+        .project-modal-guide .guide-text h1 { font-size: 16px; } .guide-text h2 { font-size: 14px; } .guide-text h3 { font-size: 13px; }
         .field-help { margin-top: 6px; color: var(--text-muted); font-size: 12px; line-height: 1.55; }
         .ck-edit-panel { display: grid; gap: 12px; }
         .ck-edit-notice {
@@ -1965,7 +1972,7 @@ function openProjectModal(activityId) {
         guide.style.display = 'block';
         guide.innerHTML = `
             <strong>玩法和说明：</strong>
-            <div class="guide-text">${escapeHtml(guideText)}</div>
+            <div class="guide-text">${renderMarkdown(guideText)}</div>
         `;
     } else {
         guide.style.display = 'none';
@@ -2821,6 +2828,40 @@ function escapeHtml(text) {
 }
 function escapeAttr(text) { return escapeHtml(text); }
 function escapeJs(text) { return String(text ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+// Markdown渲染（不依赖外部库）
+function renderMarkdown(text) {
+    if (!text) return '';
+    var h = escapeHtml(text);
+    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+    h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+    h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:6px;margin:6px 0;">');
+    h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    h = h.replace(/~~(.+?)~~/g, '<del>$1</del>');
+    h = h.replace(/^&gt; (.+)$/gm, '<blockquote style="border-left:3px solid var(--primary,#4f46e5);padding-left:12px;color:var(--text-muted,#64748b);margin:8px 0;">$1</blockquote>');
+    h = h.replace(/^---$/gm, '<hr style="border:none;border-top:1px solid var(--card-border,#e2e8f0);margin:12px 0;">');
+    h = h.replace(/^- (.+)$/gm, '<li>$1</li>');
+    h = h.replace(/(<li>.*<\/li>\n?)+/g, '<ul style="padding-left:20px;margin:6px 0;">$&</ul>');
+    h = h.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    h = h.replace(/\n\n/g, '</p><p>');
+    h = h.replace(/\n/g, '<br>');
+    h = '<p>' + h + '</p>';
+    h = h.replace(/<p>\s*<\/p>/g, '');
+    h = h.replace(/<p>\s*(<h[123]>)/g, '$1');
+    h = h.replace(/(<\/h[123]>)\s*<\/p>/g, '$1');
+    h = h.replace(/<p>\s*(<hr[^>]*>)\s*<\/p>/g, '$1');
+    h = h.replace(/<p>\s*(<ul[^>]*>)/g, '$1');
+    h = h.replace(/(<\/ul>)\s*<\/p>/g, '$1');
+    h = h.replace(/<p>\s*(<blockquote[^>]*>)/g, '$1');
+    h = h.replace(/(<\/blockquote>)\s*<\/p>/g, '$1');
+    h = h.replace(/<p>\s*(<pre>)/g, '$1');
+    h = h.replace(/(<\/pre>)\s*<\/p>/g, '$1');
+    return h;
+}
 
 async function loadCoinLogs(source) {
     const body = document.getElementById('coinLogsBody');

@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
@@ -2160,5 +2163,63 @@ func (c *AdminApiController) SaveWxProtocolConfig() {
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
 	msg := models.SaveWxProtocolConfigForAdmin(req)
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
+	c.ServeJSON()
+}
+
+// ===================== 玩法简介图片上传 =====================
+
+// UploadGuideImage 上传玩法简介中的图片
+func (c *AdminApiController) UploadGuideImage() {
+	f, h, err := c.GetFile("image")
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请选择图片文件"}
+		c.ServeJSON()
+		return
+	}
+	defer f.Close()
+
+	// 校验文件类型
+	ext := strings.ToLower(filepath.Ext(h.Filename))
+	allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true, ".bmp": true}
+	if !allowed[ext] {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "仅支持 jpg/jpeg/png/gif/webp/bmp 格式"}
+		c.ServeJSON()
+		return
+	}
+
+	// 读取文件内容校验大小
+	data, err := ioutil.ReadAll(f)
+	if err != nil || len(data) > 10*1024*1024 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "图片大小不能超过10MB"}
+		c.ServeJSON()
+		return
+	}
+
+	// 创建上传目录
+	uploadDir := filepath.Join(models.ExecPath, "uploads", "guide")
+	os.MkdirAll(uploadDir, 0755)
+
+	// 生成文件名：时间戳+随机数
+	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+	savePath := filepath.Join(uploadDir, filename)
+
+	if err := ioutil.WriteFile(savePath, data, 0644); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "保存失败: " + err.Error()}
+		c.ServeJSON()
+		return
+	}
+
+	// 返回可访问的URL
+	url := fmt.Sprintf("/uploads/guide/%s", filename)
+	logs.Info("玩法简介图片已上传: %s", url)
+
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  "上传成功",
+		"data": map[string]interface{}{
+			"url":      url,
+			"filename": filename,
+		},
+	}
 	c.ServeJSON()
 }
