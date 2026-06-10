@@ -119,17 +119,29 @@ class ProjectFormActivity : AppCompatActivity() {
                         loadDataWithBaseURL(AppEnvironment.BASE_URL, html, "text/html", "UTF-8", null)
                         webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
-                                request?.url?.let { uri ->
-                                    try { startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (_: Exception) {}
+                                val uri = request?.url?.toString() ?: return false
+                                if (uri.startsWith("openvideo:")) {
+                                    val videoUrl = uri.removePrefix("openvideo:")
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW)
+                                        intent.setDataAndType(android.net.Uri.parse(videoUrl), "video/*")
+                                        startActivity(intent)
+                                    } catch (_: Exception) {}
+                                    return true
                                 }
+                                try { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(uri))) } catch (_: Exception) {}
                                 return true
                             }
                         }
-                        settings.javaScriptEnabled = false
+                        webChromeClient = android.webkit.WebChromeClient()
+                        settings.javaScriptEnabled = true
+                        settings.mediaPlaybackRequiresUserGesture = false
                         settings.loadsImagesAutomatically = true
                         settings.builtInZoomControls = false
                         settings.displayZoomControls = false
+                        settings.domStorageEnabled = true
                         isVerticalScrollBarEnabled = false
+                        setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                         setBackgroundColor(Color.TRANSPARENT)
                     })
                 })
@@ -281,11 +293,11 @@ fun markdownToHtml(md: String): String {
         val ext = url.split('.').lastOrNull()?.split('?')?.firstOrNull()?.lowercase() ?: ""
         when {
             ext in listOf("mp4", "webm", "mov", "avi") ->
-                "<video src=\"$url\" controls preload=\"metadata\" style=\"max-width:100%;border-radius:8px;margin:6px 0;\" playsinline webkit-playsinline></video>"
+                "<div onclick=\"window.location='openvideo:$url'\" style=\"position:relative;cursor:pointer;text-align:center;margin:6px 0;border-radius:8px;overflow:hidden;background:#1e293b;\"><div style=\"width:80px;height:80px;margin:20px auto;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;\"><div style=\"width:0;height:0;border-left:30px solid white;border-top:18px solid transparent;border-bottom:18px solid transparent;margin-left:8px;\"></div></div><div style=\"padding:8px;color:white;font-size:12px;\">点击播放视频</div></div>"
             ext in listOf("mp3", "wav", "ogg", "m4a", "aac", "flac") ->
                 "<audio src=\"$url\" controls preload=\"metadata\" style=\"width:100%;margin:6px 0;\"></audio>"
             else ->
-                "<img src=\"$url\" alt=\"${m.groupValues[1]}\" style=\"max-width:100%;border-radius:8px;margin:6px 0;\">"
+                "<img src=\"$url\" alt=\"${m.groupValues[1]}\" style=\"max-width:100%;max-height:300px;object-fit:contain;border-radius:8px;margin:6px 0;\">"
         }
     }
     // 链接
@@ -317,8 +329,10 @@ fun markdownToHtml(md: String): String {
     h = h.replace(Regex("<p>\\s*</p>"), "")
     return """<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <style>body{font-family:-apple-system,sans-serif;font-size:13px;color:#475569;line-height:1.7;margin:0;padding:0;}
-img{max-width:100%;border-radius:8px;}pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;overflow-x:auto;}
+img,video{max-width:100%;max-height:300px;object-fit:contain;border-radius:8px;margin:6px 0;}
+audio{width:100%;margin:6px 0;}
+pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;overflow-x:auto;}
 code{background:#f1f5f9;padding:2px 5px;border-radius:3px;font-size:12px;}pre code{background:none;color:inherit;padding:0;}
 a{color:#6366f1;}h1{font-size:17px;font-weight:700;margin:12px 0 6px;}h2{font-size:15px;font-weight:700;margin:10px 0 6px;}
-h3{font-size:14px;font-weight:700;margin:8px 0 4px;}</style></head><body>$h</body></html>"""
+h3{font-size:14px;font-weight:700;margin:8px 0 4px;}ul{padding-left:20px;}</style></head><body>$h</body></html>"""
 }
