@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.goudong.jd.AppServices
 import com.goudong.jd.R
+import com.goudong.jd.data.model.AppEnvironment
 import com.goudong.jd.data.model.PortalActivity
 import com.goudong.jd.ui.common.alert
 import com.goudong.jd.ui.common.applySafeStatusBar
@@ -115,7 +116,7 @@ class ProjectFormActivity : AppCompatActivity() {
                             LinearLayout.LayoutParams.WRAP_CONTENT
                         ).apply { topMargin = dp(8) }
                         val html = markdownToHtml(guideText)
-                        loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
+                        loadDataWithBaseURL(AppEnvironment.BASE_URL, html, "text/html", "UTF-8", null)
                         webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
                                 request?.url?.let { uri ->
@@ -125,7 +126,7 @@ class ProjectFormActivity : AppCompatActivity() {
                             }
                         }
                         settings.javaScriptEnabled = false
-                        settings.loadImagesAutomatically = true
+                        settings.loadsImagesAutomatically = true
                         settings.builtInZoomControls = false
                         settings.displayZoomControls = false
                         isVerticalScrollBarEnabled = false
