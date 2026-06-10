@@ -153,7 +153,7 @@ func (sender *Sender) SendImg(msg []byte) {
 
 }
 func (sender *Sender) SendImg2(msg string) {
-	imageFormats := []string{".jpg", ".jpeg", ".png", ".gif", ".bmp"}
+	imageFormats := []string{".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
 	isImage := false
 	for _, format := range imageFormats {
 		pattern := fmt.Sprintf(`^https?://.*%s$`, regexp.QuoteMeta(format))
