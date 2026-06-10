@@ -1299,8 +1299,7 @@ final class PromptTipView: UIView, WKNavigationDelegate {
         <meta name="color-scheme" content="light dark">
         <style>
         body{font-family:-apple-system,sans-serif;font-size:14px;font-weight:500;color:#1c1c1e;line-height:1.7;margin:0;padding:0 4px;-webkit-text-size-adjust:100%;}
-        img{max-width:100%;border-radius:8px;margin:6px 0;}
-        video{max-width:100%;border-radius:8px;margin:6px 0;}
+        img,video{max-width:100%;max-height:300px;object-fit:contain;border-radius:8px;margin:6px 0;}
         audio{width:100%;margin:6px 0;}
         pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;overflow-x:auto;}
         code{background:#f1f5f9;padding:2px 5px;border-radius:3px;font-size:12px;}pre code{background:none;color:inherit;padding:0;}
@@ -1334,11 +1333,11 @@ final class PromptTipView: UIView, WKNavigationDelegate {
             let ext = (url.split(separator: ".").last?.split(separator: "?").first.map(String.init) ?? "").lowercased()
             let tag: String
             if ["mp4", "webm", "mov", "avi"].contains(ext) {
-                tag = #"<video src="\#(url)" controls preload="metadata" style="max-width:100%;border-radius:8px;margin:6px 0;" playsinline webkit-playsinline></video>"#
+                tag = #"<video src="\#(url)" controls preload="metadata" playsinline webkit-playsinline style="max-width:100%;max-height:300px;object-fit:contain;border-radius:8px;margin:6px 0;"></video>"#
             } else if ["mp3", "wav", "ogg", "m4a", "aac", "flac"].contains(ext) {
                 tag = #"<audio src="\#(url)" controls preload="metadata" style="width:100%;margin:6px 0;"></audio>"#
             } else {
-                tag = #"<img src="\#(url)" alt="\#(alt)" style="max-width:100%;border-radius:8px;margin:6px 0;">"#
+                tag = #"<img src="\#(url)" alt="\#(alt)" style="max-width:100%;max-height:300px;object-fit:contain;border-radius:8px;margin:6px 0;">"#
             }
             if let swiftRange = Range(fullRange, in: result) {
                 result.replaceSubrange(swiftRange, with: tag)
