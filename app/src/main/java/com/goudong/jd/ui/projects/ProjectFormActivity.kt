@@ -8,6 +8,8 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.ViewGroup
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -107,13 +109,27 @@ class ProjectFormActivity : AppCompatActivity() {
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                         setTypeface(typeface, Typeface.BOLD)
                     })
-                    addView(TextView(context).apply {
-                        text = guideText
-                        setTextColor(Color.parseColor("#475569"))
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
-                        setLineSpacing(0f, 1.35f)
-                        setPadding(0, dp(8), 0, 0)
-                        setTextIsSelectable(true)
+                    addView(WebView(context).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { topMargin = dp(8) }
+                        val html = markdownToHtml(guideText)
+                        loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
+                        webViewClient = object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                                request?.url?.let { uri ->
+                                    try { startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (_: Exception) {}
+                                }
+                                return true
+                            }
+                        }
+                        settings.javaScriptEnabled = false
+                        settings.loadImagesAutomatically = true
+                        settings.builtInZoomControls = false
+                        settings.displayZoomControls = false
+                        isVerticalScrollBarEnabled = false
+                        setBackgroundColor(Color.TRANSPARENT)
                     })
                 })
             }
@@ -249,4 +265,50 @@ class ProjectFormActivity : AppCompatActivity() {
             return Intent(context, ProjectFormActivity::class.java).putExtra(EXTRA_ACTIVITY, activity)
         }
     }
+}
+
+/** 简易Markdown转HTML，支持标题、粗体、斜体、列表、引用、代码、图片、链接 */
+fun markdownToHtml(md: String): String {
+    var h = md
+        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    // 代码块
+    h = Regex("```(\\w*)\\n([\\s\\S]*?)```").replace(h) { "<pre><code>${it.groupValues[2]}</code></pre>" }
+    h = Regex("`([^`]+)`").replace(h) { "<code>${it.groupValues[1]}</code>" }
+    // 图片
+    h = Regex("!\\[([^\\]]*)]\\(([^)]+)\\)").replace(h) {
+        "<img src=\"${it.groupValues[2]}\" alt=\"${it.groupValues[1]}\" style=\"max-width:100%;border-radius:8px;margin:6px 0;\">"
+    }
+    // 链接
+    h = Regex("\\[([^\\]]+)]\\(([^)]+)\\)").replace(h) {
+        "<a href=\"${it.groupValues[2]}\">${it.groupValues[1]}</a>"
+    }
+    // 标题
+    h = Regex("^### (.+)$", RegexOption.MULTILINE).replace(h) { "<h3>${it.groupValues[1]}</h3>" }
+    h = Regex("^## (.+)$", RegexOption.MULTILINE).replace(h) { "<h2>${it.groupValues[1]}</h2>" }
+    h = Regex("^# (.+)$", RegexOption.MULTILINE).replace(h) { "<h1>${it.groupValues[1]}</h1>" }
+    // 粗体、斜体、删除线
+    h = Regex("\\*\\*(.+?)\\*\\*").replace(h) { "<strong>${it.groupValues[1]}</strong>" }
+    h = Regex("\\*(.+?)\\*").replace(h) { "<em>${it.groupValues[1]}</em>" }
+    h = Regex("~~(.+?)~~").replace(h) { "<del>${it.groupValues[1]}</del>" }
+    // 引用
+    h = Regex("^&gt; (.+)$", RegexOption.MULTILINE).replace(h) {
+        "<blockquote style=\"border-left:3px solid #6366f1;padding-left:12px;color:#64748b;margin:8px 0;\">${it.groupValues[1]}</blockquote>"
+    }
+    // 分割线
+    h = Regex("^---$", RegexOption.MULTILINE).replace(h) { "<hr style=\"border:none;border-top:1px solid #e2e8f0;margin:12px 0;\">" }
+    // 列表
+    h = Regex("^- (.+)$", RegexOption.MULTILINE).replace(h) { "<li>${it.groupValues[1]}</li>" }
+    h = Regex("(<li>.*</li>\\n?)+").replace(h) { "<ul style=\"padding-left:20px;margin:6px 0;\">${it.value}</ul>" }
+    h = Regex("^\\d+\\. (.+)$", RegexOption.MULTILINE).replace(h) { "<li>${it.groupValues[1]}</li>" }
+    // 换行
+    h = h.replace("\n\n", "</p><p>").replace("\n", "<br>")
+    h = "<p>$h</p>"
+    // 清理
+    h = h.replace(Regex("<p>\\s*</p>"), "")
+    return """<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<style>body{font-family:-apple-system,sans-serif;font-size:13px;color:#475569;line-height:1.7;margin:0;padding:0;}
+img{max-width:100%;border-radius:8px;}pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;overflow-x:auto;}
+code{background:#f1f5f9;padding:2px 5px;border-radius:3px;font-size:12px;}pre code{background:none;color:inherit;padding:0;}
+a{color:#6366f1;}h1{font-size:17px;font-weight:700;margin:12px 0 6px;}h2{font-size:15px;font-weight:700;margin:10px 0 6px;}
+h3{font-size:14px;font-weight:700;margin:8px 0 4px;}</style></head><body>$h</body></html>"""
 }
