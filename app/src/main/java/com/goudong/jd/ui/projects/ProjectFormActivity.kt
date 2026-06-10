@@ -275,9 +275,18 @@ fun markdownToHtml(md: String): String {
     // 代码块
     h = Regex("```(\\w*)\\n([\\s\\S]*?)```").replace(h) { "<pre><code>${it.groupValues[2]}</code></pre>" }
     h = Regex("`([^`]+)`").replace(h) { "<code>${it.groupValues[1]}</code>" }
-    // 图片
-    h = Regex("!\\[([^\\]]*)]\\(([^)]+)\\)").replace(h) {
-        "<img src=\"${it.groupValues[2]}\" alt=\"${it.groupValues[1]}\" style=\"max-width:100%;border-radius:8px;margin:6px 0;\">"
+    // 图片/视频/音频
+    h = Regex("!\\[([^\\]]*)]\\(([^)]+)\\)").replace(h) { m ->
+        val url = m.groupValues[2]
+        val ext = url.split('.').lastOrNull()?.split('?')?.firstOrNull()?.lowercase() ?: ""
+        when {
+            ext in listOf("mp4", "webm", "mov", "avi") ->
+                "<video src=\"$url\" controls preload=\"metadata\" style=\"max-width:100%;border-radius:8px;margin:6px 0;\" playsinline webkit-playsinline></video>"
+            ext in listOf("mp3", "wav", "ogg", "m4a", "aac", "flac") ->
+                "<audio src=\"$url\" controls preload=\"metadata\" style=\"width:100%;margin:6px 0;\"></audio>"
+            else ->
+                "<img src=\"$url\" alt=\"${m.groupValues[1]}\" style=\"max-width:100%;border-radius:8px;margin:6px 0;\">"
+        }
     }
     // 链接
     h = Regex("\\[([^\\]]+)]\\(([^)]+)\\)").replace(h) {
