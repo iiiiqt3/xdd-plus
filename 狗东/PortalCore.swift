@@ -1205,16 +1205,18 @@ final class PromptTipView: UIView {
         badge.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         badge.textColor = .systemBlue
 
+        // 将Markdown转为NSAttributedString
+        let parsed = Self.parseMarkdown(text)
+
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.isEditable = false
         textView.isScrollEnabled = false
         textView.showsVerticalScrollIndicator = false
         textView.backgroundColor = .clear
-        textView.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        textView.textColor = .label
-        textView.text = text
+        textView.attributedText = parsed
         textView.textContainerInset = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: -4)
         textView.setContentCompressionResistancePriority(.required, for: .vertical)
+        textView.dataDetectorTypes = [.link]
 
         addSubview(badge)
         addSubview(textView)
@@ -1231,6 +1233,89 @@ final class PromptTipView: UIView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    /// 简易Markdown解析为NSAttributedString
+    static func parseMarkdown(_ text: String) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let baseFont = UIFont.systemFont(ofSize: 14, weight: .medium)
+        let baseColor = UIColor.label
+
+        let lines = text.components(separatedBy: "\n")
+        for (i, line) in lines.enumerated() {
+            let trimmed = line
+            var attrs: [NSAttributedString.Key: Any] = [.font: baseFont, .foregroundColor: baseColor]
+            var prefix = ""
+
+            // 标题
+            if trimmed.hasPrefix("### ") {
+                attrs[.font] = UIFont.systemFont(ofSize: 14, weight: .bold)
+                prefix = String(trimmed.dropFirst(4))
+            } else if trimmed.hasPrefix("## ") {
+                attrs[.font] = UIFont.systemFont(ofSize: 15, weight: .bold)
+                prefix = String(trimmed.dropFirst(3))
+            } else if trimmed.hasPrefix("# ") {
+                attrs[.font] = UIFont.systemFont(ofSize: 16, weight: .bold)
+                prefix = String(trimmed.dropFirst(2))
+            } else if trimmed.hasPrefix("> ") {
+                prefix = "  " + String(trimmed.dropFirst(2))
+                attrs[.foregroundColor] = UIColor.secondaryLabel
+            } else if trimmed.hasPrefix("- ") || trimmed.hasPrefix("1. ") {
+                prefix = "• " + (trimmed.hasPrefix("- ") ? String(trimmed.dropFirst(2)) : String(trimmed.dropFirst(3)))
+            } else if trimmed == "---" {
+                prefix = "────────────────"
+                attrs[.foregroundColor] = UIColor.systemGray4
+            } else {
+                prefix = trimmed
+            }
+
+            // 处理图片链接 ![alt](url) - 提取文本，图片暂不渲染
+            prefix = prefix.replacingOccurrences(
+                of: #"!\[([^\]]*)\]\([^)]+\)"#,
+                with: "[$1]",
+                options: .regularExpression
+            )
+
+            // 粗体 **text**
+            let boldPattern = #"\*\*(.+?)\*\*"#
+            let mutableLine = NSMutableAttributedString(string: prefix, attributes: attrs)
+            if let regex = try? NSRegularExpression(pattern: boldPattern) {
+                let matches = regex.matches(in: prefix, range: NSRange(prefix.startIndex..., in: prefix))
+                for match in matches.reversed() {
+                    if let range = Range(match.range(at: 1), in: prefix) {
+                        let boldText = String(prefix[range])
+                        let boldAttrs: [NSAttributedString.Key: Any] = [
+                            .font: UIFont.systemFont(ofSize: (attrs[.font] as? UIFont)?.pointSize ?? 14, weight: .bold),
+                            .foregroundColor: attrs[.foregroundColor] ?? baseColor
+                        ]
+                        mutableLine.replaceCharacters(in: match.range, with: NSAttributedString(string: boldText, attributes: boldAttrs))
+                    }
+                }
+            }
+
+            // 斜体 *text*
+            let italicPattern = #"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)"#
+            if let regex = try? NSRegularExpression(pattern: italicPattern) {
+                let currentStr = mutableLine.string
+                let matches = regex.matches(in: currentStr, range: NSRange(currentStr.startIndex..., in: currentStr))
+                for match in matches.reversed() {
+                    if let range = Range(match.range(at: 1), in: currentStr) {
+                        let italicText = String(currentStr[range])
+                        let italicAttrs: [NSAttributedString.Key: Any] = [
+                            .font: UIFont.italicSystemFont(ofSize: (attrs[.font] as? UIFont)?.pointSize ?? 14),
+                            .foregroundColor: attrs[.foregroundColor] ?? baseColor
+                        ]
+                        mutableLine.replaceCharacters(in: match.range, with: NSAttributedString(string: italicText, attributes: italicAttrs))
+                    }
+                }
+            }
+
+            result.append(mutableLine)
+            if i < lines.count - 1 {
+                result.append(NSAttributedString(string: "\n"))
+            }
+        }
+        return result
     }
 }
 
