@@ -120,11 +120,7 @@ func handleAccountChoice(sender *Sender, msg chan string, cks []JdCookie, select
 					// 根据选择的任务执行不同的操作
 					switch selectedTask {
 					case "Jd_newfruit_watering":
-						value := GetEnv("fruit_prox") // 变量设置代理，export fruit_prox true
-						if value == "true" {
-							//		envs["DY_PROXY"] = "http://api2.xkdaili.com/tools/XApi.ashx?apikey=XK263641C21E79DAE038&qty=1&format=txt&split=0&iv=0&sign=71e7af6c06efada8432eade4629d0933&time=3"
-							envs["DY_PROXY_RENUM"] = "10"  // #获取IP失败重试次数
-							envs["DY_PROXY_REDELAY"] = "2" //#获取失败重试间隔 单位秒
+						if IsJdTaskProxyEnabled() {
 							envs["FRUIT_NEW_DELAY"] = "5"
 						} else {
 							envs["FRUIT_NEW_DELAY"] = "8"
@@ -148,7 +144,6 @@ func handleAccountChoice(sender *Sender, msg chan string, cks []JdCookie, select
 						)
 					case "jd_dwapp":
 						envs["ONEVAL"] = "true" // 开启评价
-						//				envs["DY_PROXY"] = "http://api2.xkdaili.com/tools/XApi.ashx?apikey=XK263641C21E79DAE038&qty=1&format=txt&split=0&iv=0&sign=71e7af6c06efada8432eade4629d0933&time=3"
 						go JdTaskHandler(
 							sender,
 							"话费积分任务",
@@ -168,8 +163,6 @@ func handleAccountChoice(sender *Sender, msg chan string, cks []JdCookie, select
 						)
 					case "Jd_AutoEval":
 						envs["ONEVAL"] = "true" // 开启评价
-						//                    envs["DY_PROXY"] = "http://api2.xkdaili.com/tools/XApi.ashx?apikey=XK263641C21E79DAE038&qty=1&format=txt&split=0&iv=0&sign=71e7af6c06efada8432eade4629d0933&time=3"
-
 						go JdTaskHandler(
 							sender,
 							"一键评价",
@@ -215,12 +208,8 @@ func handleAccountChoice(sender *Sender, msg chan string, cks []JdCookie, select
 				// 根据选择的任务执行不同的操作
 				switch selectedTask {
 				case "Jd_newfruit_watering":
-					value := GetEnv("fruit_prox") // 变量设置代理，export fruit_prox true
-					if value == "true" {
-						//		envs["DY_PROXY"] = "http://api2.xkdaili.com/tools/XApi.ashx?apikey=XK263641C21E79DAE038&qty=1&format=txt&split=0&iv=0&sign=71e7af6c06efada8432eade4629d0933&time=3"
-						envs["DY_PROXY_RENUM"] = "10"  // #获取IP失败重试次数
-						envs["DY_PROXY_REDELAY"] = "2" //#获取失败重试间隔 单位秒
-						envs["FRUIT_NEW_DELAY"] = "8"
+					if IsJdTaskProxyEnabled() {
+						envs["FRUIT_NEW_DELAY"] = "5"
 					} else {
 						envs["FRUIT_NEW_DELAY"] = "8"
 					}
@@ -252,7 +241,6 @@ func handleAccountChoice(sender *Sender, msg chan string, cks []JdCookie, select
 					)
 				case "jd_dwapp":
 					envs["ONEVAL"] = "true" // 开启评价
-					//		envs["DY_PROXY"] = "http://api2.xkdaili.com/tools/XApi.ashx?apikey=XK263641C21E79DAE038&qty=1&format=txt&split=0&iv=0&sign=71e7af6c06efada8432eade4629d0933&time=3"
 					go JdTaskHandler(
 						sender,
 						"话费积分任务",
@@ -263,8 +251,6 @@ func handleAccountChoice(sender *Sender, msg chan string, cks []JdCookie, select
 					)
 				case "Jd_AutoEval":
 					envs["ONEVAL"] = "true" // 开启评价
-					//     envs["DY_PROXY"] = "http://api2.xkdaili.com/tools/XApi.ashx?apikey=XK263641C21E79DAE038&qty=1&format=txt&split=0&iv=0&sign=71e7af6c06efada8432eade4629d0933&time=3"
-
 					go JdTaskHandler(
 						sender,
 						"一键评价",
@@ -330,6 +316,7 @@ func JdTaskHandler(sender *Sender, taskName string, envVar string, scriptPath st
 // 通用任务执行函数
 func ExecuteTask(sender *Sender, taskName string, scriptPath string, envs map[string]string, outputParser func(string, *Sender) string) {
 	logs.Info("开始运行%s", taskName)
+	ApplyJdTaskProxyEnvs(envs)
 
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
 		logs.Error("JavaScript 文件不存在: %v", err)
@@ -739,6 +726,7 @@ func replexQuan_fcwb_auto(info string, sender *Sender) string {
 
 func run_fcwb_help_Task(sender *Sender, envVars map[string]string, FileName string) string {
 	logs.Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	ApplyJdTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/6dylan6_jdpro_help/" + FileName + ".js"
 
 	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {
@@ -769,6 +757,7 @@ func run_fcwb_help_Task(sender *Sender, envVars map[string]string, FileName stri
 
 func run_fcwb_help_Task_zz(sender *Sender, envVars map[string]string, FileName string) string {
 	logs.Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	ApplyJdTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/6dylan6_jdpro_help/" + FileName + ".js"
 
 	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {
@@ -799,6 +788,7 @@ func run_fcwb_help_Task_zz(sender *Sender, envVars map[string]string, FileName s
 
 func run_fcwb_help_Task1(sender *Sender, envVars map[string]string, FileName string) string {
 	logs.Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	ApplyJdProTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/huanjing/" + FileName + ".js"
 
 	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {
@@ -1022,6 +1012,7 @@ func replexQuan_fcwb_help1(info string, sender *Sender, FileName string) string 
 
 func run_ncxcx_help_Task(sender *Sender, envVars map[string]string, FileName string) string {
 	logs.Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	ApplyJdTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/6dylan6_jdpro_help/" + FileName + ".js"
 
 	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {

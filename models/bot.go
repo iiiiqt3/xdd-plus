@@ -407,7 +407,6 @@ if TryHandleSshMessage(sender) {
 					envVars := map[string]string{
 						"JD_FCWB_InviterId": inviterId,
 						"JD_FCWB_NUM":       fmt.Sprintf("%d", zl_NUM),
-						"DY_PROXY":          "http://api2.xkdaili.com/tools/XApi.ashx?apikey=XKF1492ACFB36F981667&qty=1&format=txt&split=0&iv=0&sign=fa46d34ef4c8da28ce2b2cfff4f03061",
 					}
 					taskQueue <- func() {
 						sender.Reply(fmt.Sprintf("挖宝订单编号：%d 开始运行", orderID))
@@ -571,10 +570,8 @@ if TryHandleSshMessage(sender) {
 					sender.Reply(fmt.Sprintf("助力瓜分100京豆订单%d \n助力码：%s \n预期助力%d个\n前面还有%d个任务在等待", orderID, inviterId, zl_NUM, queuePosition))
 
 					envs := map[string]string{
-						"jd_zlyhl_code":       inviterId,
-						"jd_zlyhl_num":        fmt.Sprintf("%d", zl_NUM),
-						"PRO_API_PROXY_URL":   "http://api2.xkdaili.com/tools/XApi.ashx?apikey=XKF1492ACFB36F981667&qty=1&format=txt&split=0&iv=0&sign=fa46d34ef4c8da28ce2b2cfff4f03061",
-						"PRO_PROXY_WHITELIST": "jd",
+						"jd_zlyhl_code": inviterId,
+						"jd_zlyhl_num":  fmt.Sprintf("%d", zl_NUM),
 					}
 
 					taskQueue <- func() {
@@ -744,7 +741,6 @@ if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是�
 
 				envVars := map[string]string{
 					"NEWFRUITCODES": inviterId,
-					"DY_PROXY":      "http://api2.xkdaili.com/tools/XApi.ashx?apikey=XKF1492ACFB36F981667&qty=1&format=txt&split=0&iv=0&sign=fa46d34ef4c8da28ce2b2cfff4f03061",
 				}
 
 				taskQueue <- func() {

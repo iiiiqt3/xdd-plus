@@ -46,6 +46,11 @@ type SystemConfig struct {
 	BBKWxName        string `json:"BBKWxName"`
 	BBKWxNumber      string `json:"BBKWxNumber"`
 	ProxyUrl         string `json:"ProxyUrl"`
+	// 京东任务代理（jdtask / bot 脚本 DY_PROXY）
+	JdTaskProxyEnabled bool   `json:"JdTaskProxyEnabled"`
+	JdTaskProxyUrl     string `json:"JdTaskProxyUrl"`
+	JdTaskProxyRenum   string `json:"JdTaskProxyRenum"`
+	JdTaskProxyRedelay string `json:"JdTaskProxyRedelay"`
 }
 
 func initSysConfig() {
