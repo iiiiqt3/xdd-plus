@@ -1526,7 +1526,11 @@
                         <button type="button" class="md-btn" title="分割线" onclick="mdInsertLine()"><i class="fas fa-minus"></i></button>
                         <div class="md-sep"></div>
                         <button type="button" class="md-btn" title="上传图片" onclick="document.getElementById('mdImageUpload').click()"><i class="fas fa-image"></i></button>
-                        <input type="file" id="mdImageUpload" class="md-upload-input" accept="image/*" onchange="mdUploadImage(this)">
+                        <input type="file" id="mdImageUpload" class="md-upload-input" accept="image/*" onchange="mdUploadMedia(this)">
+                        <button type="button" class="md-btn" title="上传视频" onclick="document.getElementById('mdVideoUpload').click()"><i class="fas fa-video"></i></button>
+                        <input type="file" id="mdVideoUpload" class="md-upload-input" accept="video/mp4,video/webm,video/quicktime" onchange="mdUploadMedia(this)">
+                        <button type="button" class="md-btn" title="上传音频" onclick="document.getElementById('mdAudioUpload').click()"><i class="fas fa-music"></i></button>
+                        <input type="file" id="mdAudioUpload" class="md-upload-input" accept="audio/*" onchange="mdUploadMedia(this)">
                         <div class="md-sep"></div>
                         <button type="button" class="md-btn" id="mdPreviewBtn" title="预览" onclick="mdTogglePreview()"><i class="fas fa-eye"></i></button>
                     </div>
@@ -1930,10 +1934,13 @@ function mdTogglePreview() {
         btn.classList.add('active');
     }
 }
-function mdUploadImage(input) {
+function mdUploadMedia(input) {
     if (!input.files || !input.files[0]) return;
     var file = input.files[0];
-    if (file.size > 10 * 1024 * 1024) { toast('图片大小不能超过10MB', 'error'); input.value = ''; return; }
+    var maxSize = 50 * 1024 * 1024; // 视频最大50MB
+    if (file.type.indexOf('audio') === 0) maxSize = 20 * 1024 * 1024; // 音频20MB
+    else if (file.type.indexOf('image') === 0) maxSize = 10 * 1024 * 1024; // 图片10MB
+    if (file.size > maxSize) { toast('文件大小不能超过' + (maxSize/1024/1024) + 'MB', 'error'); input.value = ''; return; }
     var fd = new FormData();
     fd.append('image', file);
     // 传递活动名称，用于按活动归类存储
@@ -1965,7 +1972,7 @@ document.addEventListener('paste', function(e) {
             var file = items[i].getAsFile();
             if (file) {
                 var fakeInput = { files: [file], value: '' };
-                mdUploadImage(fakeInput);
+                    mdUploadMedia(fakeInput);
             }
             return;
         }
@@ -1979,8 +1986,13 @@ function renderSimpleMarkdown(text) {
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
     // 行内代码
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // 图片
-    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:6px;margin:4px 0;">');
+    // 图片/视频/音频
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(match, alt, url) {
+        var ext = (url.split('.').pop() || '').toLowerCase().split('?')[0];
+        if (['mp4','webm','mov','avi'].indexOf(ext) >= 0) return '<video src="' + url + '" controls preload="metadata" style="max-width:100%;border-radius:6px;margin:4px 0;" playsinline webkit-playsinline></video>';
+        if (['mp3','wav','ogg','m4a','aac','flac'].indexOf(ext) >= 0) return '<audio src="' + url + '" controls preload="metadata" style="width:100%;margin:4px 0;"></audio>';
+        return '<img src="' + url + '" alt="' + alt + '" style="max-width:100%;border-radius:6px;margin:4px 0;">';
+    });
     // 链接
     html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
     // 标题

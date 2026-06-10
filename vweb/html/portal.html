@@ -2834,7 +2834,12 @@ function renderMarkdown(text) {
     var h = escapeHtml(text);
     h = h.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
     h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
-    h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:6px;margin:6px 0;">');
+    h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(match, alt, url) {
+        var ext = (url.split('.').pop() || '').toLowerCase().split('?')[0];
+        if (['mp4','webm','mov','avi'].indexOf(ext) >= 0) return '<video src="' + url + '" controls preload="metadata" style="max-width:100%;border-radius:8px;margin:6px 0;" playsinline webkit-playsinline></video>';
+        if (['mp3','wav','ogg','m4a','aac','flac'].indexOf(ext) >= 0) return '<audio src="' + url + '" controls preload="metadata" style="width:100%;margin:6px 0;"></audio>';
+        return '<img src="' + url + '" alt="' + alt + '" style="max-width:100%;border-radius:8px;margin:6px 0;">';
+    });
     h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
     h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
     h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');

@@ -2180,17 +2180,31 @@ func (c *AdminApiController) UploadGuideImage() {
 
 	// 校验文件类型
 	ext := strings.ToLower(filepath.Ext(h.Filename))
-	allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true, ".bmp": true}
-	if !allowed[ext] {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "仅支持 jpg/jpeg/png/gif/webp/bmp 格式"}
+	imgAllowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true, ".bmp": true}
+	videoAllowed := map[string]bool{".mp4": true, ".webm": true, ".mov": true, ".avi": true}
+	audioAllowed := map[string]bool{".mp3": true, ".wav": true, ".ogg": true, ".m4a": true, ".aac": true, ".flac": true}
+	isImg := imgAllowed[ext]
+	isVideo := videoAllowed[ext]
+	isAudio := audioAllowed[ext]
+	if !isImg && !isVideo && !isAudio {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "支持的格式：图片(jpg/png/gif/webp)、视频(mp4/webm/mov)、音频(mp3/wav/ogg/m4a)"}
 		c.ServeJSON()
 		return
 	}
 
-	// 读取文件内容校验大小
+	// 读取文件内容校验大小（图片10MB，音频20MB，视频50MB）
 	data, err := ioutil.ReadAll(f)
-	if err != nil || len(data) > 10*1024*1024 {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "图片大小不能超过10MB"}
+	maxSize := 10 * 1024 * 1024
+	typeName := "图片"
+	if isVideo {
+		maxSize = 50 * 1024 * 1024
+		typeName = "视频"
+	} else if isAudio {
+		maxSize = 20 * 1024 * 1024
+		typeName = "音频"
+	}
+	if err != nil || len(data) > maxSize {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": fmt.Sprintf("%s大小不能超过%dMB", typeName, maxSize/1024/1024)}
 		c.ServeJSON()
 		return
 	}

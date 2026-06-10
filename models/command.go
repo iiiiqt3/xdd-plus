@@ -3339,7 +3339,7 @@ var codeSignals = []CodeSignal{
 						}
 						detail += "────────────────\n"
 						if guide != "" {
-							// 解析Markdown中的图片，文本中去除图片语法
+							// 解析Markdown中的媒体（图片/视频/音频），文本中去除媒体语法
 							imgRe := regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 							imgMatches := imgRe.FindAllStringSubmatch(guide, -1)
 							cleanGuide := imgRe.ReplaceAllString(guide, "")
@@ -3355,15 +3355,28 @@ var codeSignals = []CodeSignal{
 							detail += "────────────────\n"
 							detail += "📲 请使用APP或网页端，在「活动中心」选择该项目即可上车！"
 							sender.Reply(detail)
-							// 发送图片
+							// 发送媒体文件
+							mediaRe := regexp.MustCompile(`\.(mp4|webm|mov|avi|mp3|wav|ogg|m4a|aac|flac)(\?|$)`)
 							for _, m := range imgMatches {
 								if len(m) >= 3 {
-									imgURL := m[2]
-									if strings.HasPrefix(imgURL, "/") {
-										// 本地上传的图片，拼接完整URL
-										imgURL = "http://180.152.5.230:5701" + imgURL
+									mediaURL := m[2]
+									if strings.HasPrefix(mediaURL, "/") {
+										mediaURL = "http://180.152.5.230:5701" + mediaURL
 									}
-									sender.SendImg2(imgURL)
+									if mediaRe.MatchString(strings.ToLower(mediaURL)) {
+										// 视频/音频：发送链接提示（机器人无法内嵌播放）
+										mediaType := "媒体文件"
+										lower := strings.ToLower(mediaURL)
+										if strings.Contains(lower, ".mp4") || strings.Contains(lower, ".webm") || strings.Contains(lower, ".mov") {
+											mediaType = "视频"
+										} else {
+											mediaType = "音频"
+										}
+										sender.Reply(fmt.Sprintf("🎬 %s链接（请在APP或网页端查看）：\n%s", mediaType, mediaURL))
+									} else {
+										// 图片：直接发送
+										sender.SendImg2(mediaURL)
+									}
 								}
 							}
 						} else {
