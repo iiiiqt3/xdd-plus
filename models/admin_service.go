@@ -152,8 +152,36 @@ func GetJdConfigForAdmin() map[string]interface{} {
 	}
 }
 
+// dedupeTopLevelYAMLKeys 去除重复的顶级 YAML 键（保留第一次出现，清理历史误追加的重复项）
+func dedupeTopLevelYAMLKeys(lines []string) []string {
+	seen := map[string]bool{}
+	var result []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			result = append(result, line)
+			continue
+		}
+		if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
+			result = append(result, line)
+			continue
+		}
+		idx := strings.Index(trimmed, ":")
+		if idx <= 0 {
+			result = append(result, line)
+			continue
+		}
+		key := trimmed[:idx]
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		result = append(result, line)
+	}
+	return result
+}
+
 func SaveJdConfigForAdmin(req map[string]interface{}) string {
-	// 读取现有 config.yaml
 	data, err := ioutil.ReadFile(ExecPath + "/conf/config.yaml")
 	if err != nil {
 		return "读取配置文件失败: " + err.Error()
@@ -354,6 +382,17 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		"wp_device_name":        "device_name",
 	}
 
+	isIndentedLine := func(line string) bool {
+		return strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t")
+	}
+	isTopLevelKeyLine := func(line, trimmed string) bool {
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			return false
+		}
+		return !isIndentedLine(line) && strings.Contains(trimmed, ":")
+	}
+
+	inWx := false
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" {
@@ -366,24 +405,40 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 			newLines = append(newLines, line)
 			continue
 		}
-		if strings.HasPrefix(trimmed, "wx_protocol:") {
-			inWxProtocol = true
+		if strings.HasPrefix(trimmed, "wx:") {
+			inWx = true
+			inWxProtocol = false
 			newLines = append(newLines, line)
 			continue
 		}
+		if strings.HasPrefix(trimmed, "wx_protocol:") {
+			inWxProtocol = true
+			inWx = false
+			newLines = append(newLines, line)
+			continue
+		}
+		// wx_protocol 节遇到下一个顶级键时结束（注释/空行不算）
+		if inWxProtocol && isTopLevelKeyLine(line, trimmed) && !strings.HasPrefix(trimmed, "wx_protocol:") {
+			inWxProtocol = false
+		}
+		// wx 节遇到下一个顶级键时结束
+		if inWx && isTopLevelKeyLine(line, trimmed) && !strings.HasPrefix(trimmed, "wx:") {
+			inWx = false
+		}
 
-		// 处理 wx 嵌套配置（机器人框架：model/url/robotid）— 必须在顶级配置之前，否则 model/url/robotid 会被误匹配为顶级字段
-		if strings.HasPrefix(trimmed, "model:") || strings.HasPrefix(trimmed, "url:") || strings.HasPrefix(trimmed, "robotid:") {
+		// 处理 wx 嵌套配置（model/url/robotid，必须缩进且在 wx 节内）
+		if inWx && isIndentedLine(line) {
 			for yamlKey, newVal := range configMap {
 				if strings.HasPrefix(trimmed, yamlKey+":") {
-					newLines = append(newLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+					indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
+					newLines = append(newLines, fmt.Sprintf("%s%s: %s", indent, yamlKey, newVal))
 					delete(configMap, yamlKey)
 					goto next
 				}
 			}
 		}
-		// 处理 wx_protocol 嵌套配置
-		if inWxProtocol && len(trimmed) > 0 && !strings.HasPrefix(trimmed, "#") && strings.Contains(trimmed, ":") {
+		// 处理 wx_protocol 嵌套配置（仅缩进行）
+		if inWxProtocol && isIndentedLine(line) && strings.Contains(trimmed, ":") && !strings.HasPrefix(trimmed, "#") {
 			indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
 			for wpKey, yamlKey := range wpYamlKeys {
 				if strings.HasPrefix(trimmed, yamlKey+":") {
@@ -398,20 +453,18 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 			newLines = append(newLines, line)
 			goto next
 		}
-		// 遇到新的顶级节，结束 wx_protocol
-		if inWxProtocol && !strings.HasPrefix(trimmed, "#") && len(trimmed) > 0 && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
-			inWxProtocol = false
-		}
 		if inWxProtocol {
 			wxProtocolEndIdx = len(newLines) + 1
 		}
 
 		// 处理顶级配置
-		for yamlKey, newVal := range configMap {
-			if strings.HasPrefix(trimmed, yamlKey+":") {
-				newLines = append(newLines, fmt.Sprintf("%s: %s", yamlKey, newVal))
-				delete(configMap, yamlKey)
-				goto next
+		if isTopLevelKeyLine(line, trimmed) {
+			for yamlKey, newVal := range configMap {
+				if strings.HasPrefix(trimmed, yamlKey+":") {
+					newLines = append(newLines, fmt.Sprintf("%s: %s", yamlKey, newVal))
+					delete(configMap, yamlKey)
+					goto next
+				}
 			}
 		}
 
@@ -434,10 +487,28 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		newLines = append(newLines[:wxProtocolEndIdx], append(wpInsertLines, newLines[wxProtocolEndIdx:]...)...)
 	}
 
-	// 追加剩余没有匹配到的顶级配置
+	// 剩余未匹配项：更新已有同名顶级键，避免在文件末尾重复追加
 	for k, v := range configMap {
-		newLines = append(newLines, fmt.Sprintf("%s: %s", k, v))
+		if strings.HasPrefix(k, "game.") {
+			continue
+		}
+		updated := false
+		prefix := k + ":"
+		for i, line := range newLines {
+			trimmed := strings.TrimSpace(line)
+			if isTopLevelKeyLine(line, trimmed) && strings.HasPrefix(trimmed, prefix) {
+				newLines[i] = fmt.Sprintf("%s: %s", k, v)
+				updated = true
+				break
+			}
+		}
+		if !updated {
+			newLines = append(newLines, fmt.Sprintf("%s: %s", k, v))
+		}
+		delete(configMap, k)
 	}
+
+	newLines = dedupeTopLevelYAMLKeys(newLines)
 
 	newContent := strings.Join(newLines, "\n")
 	err = ioutil.WriteFile(ExecPath+"/conf/config.yaml", []byte(newContent), 0644)
