@@ -2,6 +2,7 @@ import UIKit
 import Foundation
 import Security
 import CryptoKit
+import WebKit
 
 
 enum SignatureHelper {
@@ -1189,11 +1190,27 @@ final class SectionHeroView: UIView {
 }
 
 
-final class PromptTipView: UIView {
-    private let textView = UITextView()
+final class PromptTipView: UIView, WKNavigationDelegate {
+    private let webView: WKWebView
+    private var heightConstraint: NSLayoutConstraint?
 
     init(text: String) {
+        let config = WKWebViewConfiguration()
+        config.dataDetectorTypes = [.link]
+        if #available(iOS 10.0, *) {
+            config.mediaTypesRequiringUserActionForPlayback = []
+        }
+        webView = WKWebView(frame: .zero, configuration: config)
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        webView.scrollView.isScrollEnabled = false
+        webView.scrollView.bounces = false
+
         super.init(frame: .zero)
+        webView.navigationDelegate = self
+
         backgroundColor = UIColor.systemGray6
         layer.cornerRadius = 16
         layer.borderWidth = 1
@@ -1205,117 +1222,143 @@ final class PromptTipView: UIView {
         badge.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         badge.textColor = .systemBlue
 
-        // 将Markdown转为NSAttributedString
-        let parsed = Self.parseMarkdown(text)
-
-        textView.translatesAutoresizingMaskIntoConstraints = false
-        textView.isEditable = false
-        textView.isScrollEnabled = false
-        textView.showsVerticalScrollIndicator = false
-        textView.backgroundColor = .clear
-        textView.attributedText = parsed
-        textView.textContainerInset = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: -4)
-        textView.setContentCompressionResistancePriority(.required, for: .vertical)
-        textView.dataDetectorTypes = [.link]
+        let heightC = webView.heightAnchor.constraint(greaterThanOrEqualToConstant: 60)
+        self.heightConstraint = heightC
 
         addSubview(badge)
-        addSubview(textView)
+        addSubview(webView)
         NSLayoutConstraint.activate([
             badge.topAnchor.constraint(equalTo: topAnchor, constant: 14),
             badge.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             badge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            textView.topAnchor.constraint(equalTo: badge.bottomAnchor, constant: 6),
-            textView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            textView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            textView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+            webView.topAnchor.constraint(equalTo: badge.bottomAnchor, constant: 4),
+            webView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            webView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            webView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+            heightC,
         ])
+
+        let html = Self.markdownToHtml(text)
+        let baseURL = URL(string: "http://180.152.5.230:5701/")
+        webView.loadHTMLString(html, baseURL: baseURL)
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    /// 简易Markdown解析为NSAttributedString
-    static func parseMarkdown(_ text: String) -> NSAttributedString {
-        let result = NSMutableAttributedString()
-        let baseFont = UIFont.systemFont(ofSize: 14, weight: .medium)
-        let baseColor = UIColor.label
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        webView.evaluateJavaScript("document.body.scrollHeight") { [weak self] result, _ in
+            if let height = result as? CGFloat, height > 0 {
+                DispatchQueue.main.async {
+                    self?.heightConstraint?.constant = height + 20
+                }
+            }
+        }
+    }
 
-        let lines = text.components(separatedBy: "\n")
-        for (i, line) in lines.enumerated() {
-            let trimmed = line
-            var attrs: [NSAttributedString.Key: Any] = [.font: baseFont, .foregroundColor: baseColor]
-            var prefix = ""
+    /// Markdown转HTML
+    static func markdownToHtml(_ md: String) -> String {
+        var h = md
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
 
-            // 标题
-            if trimmed.hasPrefix("### ") {
-                attrs[.font] = UIFont.systemFont(ofSize: 14, weight: .bold)
-                prefix = String(trimmed.dropFirst(4))
-            } else if trimmed.hasPrefix("## ") {
-                attrs[.font] = UIFont.systemFont(ofSize: 15, weight: .bold)
-                prefix = String(trimmed.dropFirst(3))
-            } else if trimmed.hasPrefix("# ") {
-                attrs[.font] = UIFont.systemFont(ofSize: 16, weight: .bold)
-                prefix = String(trimmed.dropFirst(2))
-            } else if trimmed.hasPrefix("> ") {
-                prefix = "  " + String(trimmed.dropFirst(2))
-                attrs[.foregroundColor] = UIColor.secondaryLabel
-            } else if trimmed.hasPrefix("- ") || trimmed.hasPrefix("1. ") {
-                prefix = "• " + (trimmed.hasPrefix("- ") ? String(trimmed.dropFirst(2)) : String(trimmed.dropFirst(3)))
-            } else if trimmed == "---" {
-                prefix = "────────────────"
-                attrs[.foregroundColor] = UIColor.systemGray4
+        // 代码块
+        h = h.replacingOccurrences(of: #"```(\w*)\n([\s\S]*?)```"#, with: "<pre><code>$2</code></pre>", options: .regularExpression)
+        h = h.replacingOccurrences(of: #"`([^`]+)`"#, with: "<code>$1</code>", options: .regularExpression)
+        // 图片/视频/音频
+        h = replaceMediaTags(in: h)
+        // 链接
+        h = h.replacingOccurrences(of: #"\[([^\]]+)\]\(([^)]+)\)"#, with: #"<a href="$2" target="_blank">$1</a>"#, options: .regularExpression)
+        // 标题（逐行处理，不用anchorsMatchLines）
+        h = processLineByLine(h) { line in
+            if line.hasPrefix("### ") { return "<h3>" + String(line.dropFirst(4)) + "</h3>" }
+            if line.hasPrefix("## ") { return "<h2>" + String(line.dropFirst(3)) + "</h2>" }
+            if line.hasPrefix("# ") { return "<h1>" + String(line.dropFirst(2)) + "</h1>" }
+            if line.hasPrefix("&gt; ") { return #"<blockquote style="border-left:3px solid #6366f1;padding-left:12px;color:#64748b;margin:8px 0;">"# + String(line.dropFirst(5)) + "</blockquote>" }
+            if line == "---" { return #"<hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0;">"# }
+            if line.hasPrefix("- ") { return "<li>" + String(line.dropFirst(2)) + "</li>" }
+            if let r = line.range(of: #"^\d+\. "#, options: .regularExpression) {
+                return "<li>" + String(line[r.upperBound...]) + "</li>"
+            }
+            return nil
+        }
+        // 粗体、斜体、删除线
+        h = h.replacingOccurrences(of: #"\*\*(.+?)\*\*"#, with: "<strong>$1</strong>", options: .regularExpression)
+        h = h.replacingOccurrences(of: #"\*(.+?)\*"#, with: "<em>$1</em>", options: .regularExpression)
+        h = h.replacingOccurrences(of: #"~~(.+?)~~"#, with: "<del>$1</del>", options: .regularExpression)
+        // 换行
+        h = h.replacingOccurrences(of: "\n\n", with: "</p><p>")
+        h = h.replacingOccurrences(of: "\n", with: "<br>")
+        h = "<p>" + h + "</p>"
+        h = h.replacingOccurrences(of: #"<p>\s*</p>"#, with: "", options: .regularExpression)
+
+        return """
+        <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+        <meta name="color-scheme" content="light dark">
+        <style>
+        body{font-family:-apple-system,sans-serif;font-size:14px;font-weight:500;color:#1c1c1e;line-height:1.7;margin:0;padding:0 4px;-webkit-text-size-adjust:100%;}
+        img{max-width:100%;border-radius:8px;margin:6px 0;}
+        video{max-width:100%;border-radius:8px;margin:6px 0;}
+        audio{width:100%;margin:6px 0;}
+        pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;overflow-x:auto;}
+        code{background:#f1f5f9;padding:2px 5px;border-radius:3px;font-size:12px;}pre code{background:none;color:inherit;padding:0;}
+        a{color:#6366f1;}h1{font-size:17px;font-weight:700;margin:12px 0 6px;}h2{font-size:15px;font-weight:700;margin:10px 0 6px;}
+        h3{font-size:14px;font-weight:700;margin:8px 0 4px;}ul{padding-left:20px;}
+        blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#64748b;margin:8px 0;}
+        hr{border:none;border-top:1px solid #e2e8f0;margin:12px 0;}
+        @media(prefers-color-scheme:dark){
+            body{color:#e5e5e7;}
+            code{background:#2d2d3a;color:#e5e5e7;}
+            pre{background:#1a1a2e;color:#e2e8f0;}
+            blockquote{color:#a1a1aa;}
+            hr{border-top-color:#3a3a4a;}
+            a{color:#818cf8;}
+        }
+        </style></head>
+        <body>\(h)</body></html>
+        """
+    }
+
+    /// 根据文件扩展名替换媒体标签
+    private static func replaceMediaTags(in text: String) -> String {
+        guard let regex = try? NSRegularExpression(pattern: #"!\[([^\]]*)\]\(([^)]+)\)"#) else { return text }
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
+        var result = text
+        for match in matches.reversed() {
+            let fullRange = match.range
+            let url = nsText.substring(with: match.range(at: 2))
+            let alt = nsText.substring(with: match.range(at: 1))
+            let ext = (url.split(separator: ".").last?.split(separator: "?").first.map(String.init) ?? "").lowercased()
+            let tag: String
+            if ["mp4", "webm", "mov", "avi"].contains(ext) {
+                tag = #"<video src="\#(url)" controls preload="metadata" style="max-width:100%;border-radius:8px;margin:6px 0;" playsinline webkit-playsinline></video>"#
+            } else if ["mp3", "wav", "ogg", "m4a", "aac", "flac"].contains(ext) {
+                tag = #"<audio src="\#(url)" controls preload="metadata" style="width:100%;margin:6px 0;"></audio>"#
             } else {
-                prefix = trimmed
+                tag = #"<img src="\#(url)" alt="\#(alt)" style="max-width:100%;border-radius:8px;margin:6px 0;">"#
             }
-
-            // 处理图片链接 ![alt](url) - 提取文本，图片暂不渲染
-            prefix = prefix.replacingOccurrences(
-                of: #"!\[([^\]]*)\]\([^)]+\)"#,
-                with: "[$1]",
-                options: .regularExpression
-            )
-
-            // 粗体 **text**
-            let boldPattern = #"\*\*(.+?)\*\*"#
-            let mutableLine = NSMutableAttributedString(string: prefix, attributes: attrs)
-            if let regex = try? NSRegularExpression(pattern: boldPattern) {
-                let matches = regex.matches(in: prefix, range: NSRange(prefix.startIndex..., in: prefix))
-                for match in matches.reversed() {
-                    if let range = Range(match.range(at: 1), in: prefix) {
-                        let boldText = String(prefix[range])
-                        let boldAttrs: [NSAttributedString.Key: Any] = [
-                            .font: UIFont.systemFont(ofSize: (attrs[.font] as? UIFont)?.pointSize ?? 14, weight: .bold),
-                            .foregroundColor: attrs[.foregroundColor] ?? baseColor
-                        ]
-                        mutableLine.replaceCharacters(in: match.range, with: NSAttributedString(string: boldText, attributes: boldAttrs))
-                    }
-                }
-            }
-
-            // 斜体 *text*
-            let italicPattern = #"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)"#
-            if let regex = try? NSRegularExpression(pattern: italicPattern) {
-                let currentStr = mutableLine.string
-                let matches = regex.matches(in: currentStr, range: NSRange(currentStr.startIndex..., in: currentStr))
-                for match in matches.reversed() {
-                    if let range = Range(match.range(at: 1), in: currentStr) {
-                        let italicText = String(currentStr[range])
-                        let italicAttrs: [NSAttributedString.Key: Any] = [
-                            .font: UIFont.italicSystemFont(ofSize: (attrs[.font] as? UIFont)?.pointSize ?? 14),
-                            .foregroundColor: attrs[.foregroundColor] ?? baseColor
-                        ]
-                        mutableLine.replaceCharacters(in: match.range, with: NSAttributedString(string: italicText, attributes: italicAttrs))
-                    }
-                }
-            }
-
-            result.append(mutableLine)
-            if i < lines.count - 1 {
-                result.append(NSAttributedString(string: "\n"))
+            if let swiftRange = Range(fullRange, in: result) {
+                result.replaceSubrange(swiftRange, with: tag)
             }
         }
         return result
+    }
+
+    /// 逐行处理Markdown，支持标题/引用/列表/分割线
+    private static func processLineByLine(_ text: String, transform: (String) -> String?) -> String {
+        let lines = text.components(separatedBy: "\n")
+        var result: [String] = []
+        for line in lines {
+            if let transformed = transform(line) {
+                result.append(transformed)
+            } else {
+                result.append(line)
+            }
+        }
+        return result.joined(separator: "\n")
     }
 }
 
