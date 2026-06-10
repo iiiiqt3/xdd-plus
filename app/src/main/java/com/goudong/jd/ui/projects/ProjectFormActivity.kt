@@ -119,17 +119,7 @@ class ProjectFormActivity : AppCompatActivity() {
                         loadDataWithBaseURL(AppEnvironment.BASE_URL, html, "text/html", "UTF-8", null)
                         webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
-                                val uri = request?.url?.toString() ?: return false
-                                if (uri.startsWith("openvideo:")) {
-                                    val videoUrl = uri.removePrefix("openvideo:")
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW)
-                                        intent.setDataAndType(android.net.Uri.parse(videoUrl), "video/*")
-                                        startActivity(intent)
-                                    } catch (_: Exception) {}
-                                    return true
-                                }
-                                try { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(uri))) } catch (_: Exception) {}
+                                try { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(request?.url?.toString()))) } catch (_: Exception) {}
                                 return true
                             }
                         }
@@ -293,7 +283,7 @@ fun markdownToHtml(md: String): String {
         val ext = url.split('.').lastOrNull()?.split('?')?.firstOrNull()?.lowercase() ?: ""
         when {
             ext in listOf("mp4", "webm", "mov", "avi") ->
-                "<div onclick=\"window.location='openvideo:$url'\" style=\"position:relative;cursor:pointer;text-align:center;margin:6px 0;border-radius:8px;overflow:hidden;background:#1e293b;\"><div style=\"width:80px;height:80px;margin:20px auto;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;\"><div style=\"width:0;height:0;border-left:30px solid white;border-top:18px solid transparent;border-bottom:18px solid transparent;margin-left:8px;\"></div></div><div style=\"padding:8px;color:white;font-size:12px;\">点击播放视频</div></div>"
+                "<video src=\"$url\" controls preload=\"metadata\" playsinline webkit-playsinline style=\"max-width:100%;max-height:300px;object-fit:contain;border-radius:8px;margin:6px 0;\"></video>"
             ext in listOf("mp3", "wav", "ogg", "m4a", "aac", "flac") ->
                 "<audio src=\"$url\" controls preload=\"metadata\" style=\"width:100%;margin:6px 0;\"></audio>"
             else ->
