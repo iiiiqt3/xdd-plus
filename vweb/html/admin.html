@@ -1936,6 +1936,9 @@ function mdUploadImage(input) {
     if (file.size > 10 * 1024 * 1024) { toast('图片大小不能超过10MB', 'error'); input.value = ''; return; }
     var fd = new FormData();
     fd.append('image', file);
+    // 传递活动名称，用于按活动归类存储
+    var actName = (document.getElementById('actFormName') || {}).value || '';
+    if (actName) fd.append('activity', actName);
     toast('正在上传图片...', 'info');
     fetch('/api/admin/upload/guide-image', { method: 'POST', body: fd, credentials: 'same-origin' })
         .then(function(r) { return r.json(); })

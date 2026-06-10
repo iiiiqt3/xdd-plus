@@ -2195,8 +2195,20 @@ func (c *AdminApiController) UploadGuideImage() {
 		return
 	}
 
-	// 创建上传目录
-	uploadDir := filepath.Join(models.ExecPath, "uploads", "guide")
+	// 按活动名称归类到子目录，方便后续管理删除
+	activity := strings.TrimSpace(c.GetString("activity", "common"))
+	// 清理活动名称中的特殊字符，防止路径注入
+	activity = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r >= 0x4e00 {
+			return r
+		}
+		return '_'
+	}, activity)
+	if activity == "" {
+		activity = "common"
+	}
+
+	uploadDir := filepath.Join(models.ExecPath, "uploads", "guide", activity)
 	os.MkdirAll(uploadDir, 0755)
 
 	// 生成文件名：时间戳+随机数
@@ -2210,7 +2222,7 @@ func (c *AdminApiController) UploadGuideImage() {
 	}
 
 	// 返回可访问的URL
-	url := fmt.Sprintf("/uploads/guide/%s", filename)
+	url := fmt.Sprintf("/uploads/guide/%s/%s", activity, filename)
 	logs.Info("玩法简介图片已上传: %s", url)
 
 	c.Data["json"] = map[string]interface{}{
