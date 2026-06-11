@@ -3384,6 +3384,83 @@ type UserOnlineStats struct {
 	TodayActive   int64 `json:"todayActive"` // 今日活跃用户数
 }
 
+// AdminDeleteWxDevices 管理员批量删除微信设备
+// addr: "old"=仅旧地址, "new"=仅新地址, "merged"=按设备所在地址分别删除
+func AdminDeleteWxDevices(wxids []string, addr string) (int, string) {
+	if len(wxids) == 0 {
+		return 0, "未选择任何设备"
+	}
+
+	oldURL := getOldWxLoginBaseURL()
+	newURL := getNewWxLoginBaseURL()
+
+	var oldWxids, newWxids []string
+
+	switch addr {
+	case "old":
+		// 仅从旧地址删除
+		oldWxids = wxids
+	case "new":
+		// 仅从新地址删除
+		newWxids = wxids
+	default: // merged
+		// 遍历每个 wxid，判断它在哪台地址上
+		oldData := fetchWxDevicesFromURL(oldURL)
+		newData := fetchWxDevicesFromURL(newURL)
+		for _, wxid := range wxids {
+			if _, exists := oldData[wxid]; exists {
+				oldWxids = append(oldWxids, wxid)
+			}
+			if _, exists := newData[wxid]; exists {
+				newWxids = append(newWxids, wxid)
+			}
+		}
+	}
+
+	deletedCount := 0
+	var errMsgs []string
+
+	if len(oldWxids) > 0 {
+		body, err := wxLoginRequestToURL(oldURL, "/api/v1/wx/user/delete", map[string]interface{}{"wxids": oldWxids})
+		if err != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("旧地址删除失败: %v", err))
+		} else {
+			var result struct {
+				Status  bool   `json:"status"`
+				Message string `json:"message"`
+			}
+			if json.Unmarshal(body, &result) == nil && result.Status {
+				deletedCount += len(oldWxids)
+			} else {
+				errMsgs = append(errMsgs, fmt.Sprintf("旧地址删除失败: %s", result.Message))
+			}
+		}
+	}
+
+	if len(newWxids) > 0 {
+		body, err := wxLoginRequestToURL(newURL, "/api/v1/wx/user/delete", map[string]interface{}{"wxids": newWxids})
+		if err != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("新地址删除失败: %v", err))
+		} else {
+			var result struct {
+				Status  bool   `json:"status"`
+				Message string `json:"message"`
+			}
+			if json.Unmarshal(body, &result) == nil && result.Status {
+				deletedCount += len(newWxids)
+			} else {
+				errMsgs = append(errMsgs, fmt.Sprintf("新地址删除失败: %s", result.Message))
+			}
+		}
+	}
+
+	msg := fmt.Sprintf("成功删除 %d 个设备", deletedCount)
+	if len(errMsgs) > 0 {
+		msg += "，部分失败: " + strings.Join(errMsgs, "; ")
+	}
+	return deletedCount, msg
+}
+
 func GetUserOnlineStats() UserOnlineStats {
 	var stats UserOnlineStats
 	onlineThreshold := time.Now().Add(-15 * time.Minute)

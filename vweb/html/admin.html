@@ -1334,6 +1334,7 @@
                             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" name="wxNotifyChannel" value="webapp" checked>APP/网页</label>
                             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" name="wxNotifyChannel" value="robot" checked>机器人</label>
                         </div>
+                        <button class="btn btn-danger btn-sm" onclick="deleteWxDevices()"><i class="fas fa-trash-alt"></i> 批量删除</button>
                         <button class="btn btn-warning btn-sm" onclick="notifyWxOffline()"><i class="fas fa-bell"></i> 通知掉线用户</button>
                         <button class="btn btn-info btn-sm" onclick="loadWxDevices()"><i class="fas fa-sync-alt"></i> 刷新</button>
                     </div>
@@ -3534,6 +3535,28 @@ async function notifyWxOffline() {
         }
     } catch(e) {
         toast('操作失败: ' + e.message, 'error');
+    }
+}
+
+async function deleteWxDevices() {
+    var ids = getWxSelectedIds();
+    if (ids.length === 0) {
+        toast('请先勾选要删除的设备', 'warning');
+        return;
+    }
+    var addr = window._wxAddrTab || 'merged';
+    var addrLabel = { merged: '全部设备（按实际地址）', old: '旧地址设备', new: '新地址设备' }[addr] || addr;
+    if (!confirm('确认删除 ' + ids.length + ' 个设备？\n\n当前标签：' + addrLabel + '\n\n⚠️ 此操作将删除对应地址中的设备数据，删除后需重新扫码登录。')) return;
+    try {
+        const res = await api.post('/api/admin/wx-delete-devices', { wxids: ids, addr: addr });
+        if (res.code === 0) {
+            toast(res.msg || '删除成功', 'success');
+            loadWxDevices();
+        } else {
+            toast('删除失败: ' + (res.msg || '未知错误'), 'error');
+        }
+    } catch(e) {
+        toast('删除失败: ' + e.message, 'error');
     }
 }
 

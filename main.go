@@ -321,6 +321,7 @@ func main() {
 	web.Router("/api/admin/wx-device-stats", &controllers.AdminApiController{}, "get:GetWxDeviceStats")
 	web.Router("/api/admin/user-online-stats", &controllers.AdminApiController{}, "get:GetUserOnlineStats")
 	web.Router("/api/admin/wx-notify-offline", &controllers.AdminApiController{}, "post:NotifyWxOffline")
+	web.Router("/api/admin/wx-delete-devices", &controllers.AdminApiController{}, "post:DeleteWxDevices")
 
 	// ===================== 微信协议配置管理 API =====================
 	web.Router("/api/admin/wx-protocol-config", &controllers.AdminApiController{}, "get:GetWxProtocolConfig")

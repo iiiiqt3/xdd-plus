@@ -2145,6 +2145,26 @@ func (c *AdminApiController) NotifyWxOffline() {
 	c.ServeJSON()
 }
 
+// DeleteWxDevices 批量删除微信设备
+func (c *AdminApiController) DeleteWxDevices() {
+	var req struct {
+		WxIDs []string `json:"wxids"`
+		Addr  string   `json:"addr"` // "old", "new", "merged"
+	}
+	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	if len(req.WxIDs) == 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请选择要删除的设备"}
+		c.ServeJSON()
+		return
+	}
+	if req.Addr == "" {
+		req.Addr = "merged"
+	}
+	count, msg := models.AdminDeleteWxDevices(req.WxIDs, req.Addr)
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg, "data": map[string]interface{}{"deleted": count}}
+	c.ServeJSON()
+}
+
 // ===================== 微信协议配置管理 =====================
 
 // GetWxProtocolConfig 获取微信协议配置（含新旧地址统计）
