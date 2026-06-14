@@ -2213,7 +2213,10 @@ async function renewProject(activityId, remarks) {
     if (!months) return;
     const monthNum = parseInt(months, 10) || 0;
     const title = getActivityDisplayById(activityId);
-    if (!window.confirm(`确认续费【${title || activityId}】${monthNum}${periodLabel}吗？`)) return;
+    const unitPrice = isDaily ? (item.dailyCoin || 0) : (item.monthlyCoin || 0);
+    const total = unitPrice > 0 ? unitPrice * monthNum : 0;
+    const priceHint = unitPrice > 0 ? `\n单价：${unitPrice}积分/${periodLabel}\n合计：${total}积分` : '';
+    if (!window.confirm(`确认续费【${title || activityId}】${monthNum}${periodLabel}吗？${priceHint}`)) return;
     try {
         const resp = await request('/api/portal/project/renew', {
             method: 'POST',
