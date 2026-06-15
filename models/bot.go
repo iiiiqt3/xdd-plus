@@ -185,6 +185,11 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		}
 	}
 
+	// 每次收到消息，更新用户最后活跃时间
+	if sender.UserID > 0 {
+		UpdateUserActiveAt(sender.UserID)
+	}
+
 	if loginList[sender.UserID] != nil {
 		c2 := loginList[sender.UserID]
 		c2 <- msg

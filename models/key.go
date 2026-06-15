@@ -71,6 +71,7 @@ func useKey(id string, use int, source ...string) string {
     } else {
         // 如果找到用户，则更新用户的Coin值
         user.Coin += u.Value
+        user.ActiveAt = time.Now()
         db.Where("Number = ?", use).Updates(user)
     }
 
@@ -174,6 +175,7 @@ func use_ZSKey(id string, use int, source ...string) string {
     } else {
         // 如果找到用户，则更新用户的Coin值
         user.Coin += u.Value
+        user.ActiveAt = time.Now()
         db.Where("Number = ?", use).Updates(user)
 
     }

@@ -819,6 +819,7 @@ func portalCheckIn(userNumber int, source ...string) (string, error) {
 
 	db.Model(&u).Updates(map[string]interface{}{
 		"last_sign_in":        ntime,
+		"active_at":           ntime,
 		"coin":                gorm.Expr(fmt.Sprintf("coin+%d", coin+bonus)),
 		"continuous_sign_ins": u.ContinuousSignIns,
 		"sign_in_date":        ntime,
@@ -871,6 +872,7 @@ func portalPray(userNumber int, source ...string) (string, error) {
 	if db.Model(User{}).Where("number = ?", userNumber).Update("coin", gorm.Expr("coin + 3")).RowsAffected == 0 {
 		return "先去打卡吧你。", nil
 	}
+	UpdateUserActiveAt(userNumber)
 	RecordCoinLog(userNumber, 3, "祈福", fmt.Sprintf("%s祈福成功", src))
 	return "祈福成功，愿你事事顺心如意，积分 + 3。", nil
 }

@@ -61,13 +61,22 @@ func ClearCoin(uid int) int {
 	return u.Coin
 }
 
+// UpdateUserActiveAt 更新用户最后活跃时间
+func UpdateUserActiveAt(uid int) {
+	if uid <= 0 {
+		return
+	}
+	db.Model(&User{}).Where("number = ?", uid).Update("active_at", time.Now())
+}
+
 func AdddCoin(uid int, num int) int {
 	var u User
 	if db.Where("number = ?", uid).First(&u).Error != nil {
 		return 0
 	}
 	db.Model(u).Updates(map[string]interface{}{
-		"coin": gorm.Expr(fmt.Sprintf("coin+%d", num)),
+		"coin":      gorm.Expr(fmt.Sprintf("coin+%d", num)),
+		"active_at": time.Now(),
 	})
 	u.Coin += num
 	return u.Coin
@@ -79,7 +88,8 @@ func AddCoin(uid int) int {
 		return 0
 	}
 	db.Model(u).Updates(map[string]interface{}{
-		"coin": gorm.Expr("coin+1"),
+		"coin":      gorm.Expr("coin+1"),
+		"active_at": time.Now(),
 	})
 	u.Coin++
 	return u.Coin
@@ -92,7 +102,8 @@ func AddMoney(wx string, money int) bool {
 		return false
 	}
 	db.Model(u).Updates(map[string]interface{}{
-		"coin": gorm.Expr(fmt.Sprintf("coin+%d", money)),
+		"coin":      gorm.Expr(fmt.Sprintf("coin+%d", money)),
+		"active_at": time.Now(),
 	})
 	SendWxMsg(wx, fmt.Sprintf("积分剩余%d", u.Coin+money))
 	return true
@@ -107,7 +118,8 @@ func RemCoin(uid int, num int) int {
 		return u.Coin
 	}
 	db.Model(u).Updates(map[string]interface{}{
-		"coin": gorm.Expr(fmt.Sprintf("coin-%d", num)),
+		"coin":      gorm.Expr(fmt.Sprintf("coin-%d", num)),
+		"active_at": time.Now(),
 	})
 	u.Coin -= num
 	return u.Coin

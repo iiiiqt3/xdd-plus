@@ -515,6 +515,7 @@ func (c *LoginController) RegisterUser() {
 	}
 	c.SetSession("portal_account_id", account.ID)
 	c.SetSession("portal_user_number", user.Number)
+	models.UpdateUserActiveAt(user.Number)
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"msg":  "注册并绑定成功",
@@ -625,6 +626,7 @@ func (c *LoginController) IsAdmin() {
 			resetLoginFails(ip)
 			c.SetSession("portal_account_id", webAccount.ID)
 			c.SetSession("portal_user_number", user.Number)
+			models.UpdateUserActiveAt(user.Number)
 			logs.Info("用户[%s]网页登录成功，绑定编号[%d]", webAccount.Username, user.Number)
 			c.Ctx.WriteString("登录")
 			return
