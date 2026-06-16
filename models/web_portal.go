@@ -349,11 +349,12 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 		if dbProj.Status == 0 {
 			statusText = "已启用"
 		}
-		priceText := fmt.Sprintf("一次性 %d 积分", dbProj.NeedCoin)
-		if dbProj.IsDailyDeduct {
-			priceText = fmt.Sprintf("每天 %d 积分", dbProj.DailyCoin)
-		} else if dbProj.IsMonthlyDeduct {
-			priceText = fmt.Sprintf("每月 %d 积分", dbProj.MonthlyCoin)
+		// 使用当前活动配置（cfg）而非数据库快照，确保管理员修改价格后用户看到最新价格
+		priceText := fmt.Sprintf("一次性 %d 积分", cfg.NeedCoin)
+		if cfg.IsDailyDeduct {
+			priceText = fmt.Sprintf("每天 %d 积分", cfg.DailyCoin)
+		} else if cfg.IsMonthlyDeduct {
+			priceText = fmt.Sprintf("每月 %d 积分", cfg.MonthlyCoin)
 		}
 
 		projects = append(projects, PortalProjectItem{
@@ -370,11 +371,11 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 			StatusText:      statusText,
 			UpdatedAt:       dbProj.UpdatedAt.Format("2006-01-02 15:04:05"),
 			CreatedAt:       dbProj.CreatedAt.Format("2006-01-02 15:04:05"),
-			IsMonthlyDeduct: dbProj.IsMonthlyDeduct,
-			MonthlyCoin:     dbProj.MonthlyCoin,
-			IsDailyDeduct:   dbProj.IsDailyDeduct,
-			DailyCoin:       dbProj.DailyCoin,
-			NeedCoin:        dbProj.NeedCoin,
+			IsMonthlyDeduct: cfg.IsMonthlyDeduct,
+			MonthlyCoin:     cfg.MonthlyCoin,
+			IsDailyDeduct:   cfg.IsDailyDeduct,
+			DailyCoin:       cfg.DailyCoin,
+			NeedCoin:        cfg.NeedCoin,
 			GrantExpireDate: dbProj.GrantExpireDate,
 			BizStatus:       bizStatus,
 			BizStatusText:   bizStatusText,
