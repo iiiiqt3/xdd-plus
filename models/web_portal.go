@@ -375,7 +375,7 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 			MonthlyCoin:     cfg.MonthlyCoin,
 			IsDailyDeduct:   cfg.IsDailyDeduct,
 			DailyCoin:       cfg.DailyCoin,
-			NeedCoin:        cfg.NeedCoin,
+			NeedCoin:        dbProj.NeedCoin,
 			GrantExpireDate: dbProj.GrantExpireDate,
 			BizStatus:       bizStatus,
 			BizStatusText:   bizStatusText,
