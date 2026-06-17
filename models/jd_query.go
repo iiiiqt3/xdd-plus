@@ -136,49 +136,49 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 		if nick == "" {
 			nick = q.Pin
 		}
-		msgs = append(msgs, fmt.Sprintf("【账号】%s (京享值:%s)", nick, emptyDefault(result.JingXiang, "0")))
+		msgs = append(msgs, fmt.Sprintf("🧑‍💼 账号：%s (京享值:%s)", nick, emptyDefault(result.JingXiang, "0")))
 		memberType := emptyDefault(result.LevelName, "普通会员")
 		if result.IsPlus {
 			memberType += "Plus"
 		}
-		msgs = append(msgs, fmt.Sprintf("【会员】%s", memberType))
+		msgs = append(msgs, fmt.Sprintf("💎 会员：%s", memberType))
 		if result.BeanCount != "" {
 			beanNum, _ := strconv.Atoi(result.BeanCount)
-			msgs = append(msgs, fmt.Sprintf("【京豆】%s个 (约%.2f元)", result.BeanCount, float64(beanNum)/100))
+			msgs = append(msgs, fmt.Sprintf("🫘 京豆：%s个 (约%.2f元)", result.BeanCount, float64(beanNum)/100))
 		}
 	}
-	msgs = append(msgs, "--- 资产概览 ---")
-	appendIf(&msgs, result.HfJifen, "话费积分: %s 分")
+	msgs = append(msgs, "──────── 资产概览 ────────")
+	appendIf(&msgs, result.HfJifen, "🪙 话费积分: %s 分")
 	if result.ECardCount != "" || result.ECardTotal != "" {
-		msgs = append(msgs, fmt.Sprintf("E卡: %s张, 合计%s元", emptyDefault(result.ECardCount, "0"), emptyDefault(result.ECardTotal, "0.00")))
+		msgs = append(msgs, fmt.Sprintf("🎫 E卡: %s张, 合计%s元", emptyDefault(result.ECardCount, "0"), emptyDefault(result.ECardTotal, "0.00")))
 	}
-	appendIf(&msgs, result.SuperBalance, "超市卡: 余额%s元")
+	appendIf(&msgs, result.SuperBalance, "🛒 超市卡: 余额%s元")
 	if result.WangBeiUsable != "" || result.WangBeiTotal != "" {
-		msgs = append(msgs, fmt.Sprintf("汪贝: 可用%s, 总计%s", emptyDefault(result.WangBeiUsable, "0"), emptyDefault(result.WangBeiTotal, "0")))
+		msgs = append(msgs, fmt.Sprintf("🐶 汪贝: 可用%s, 总计%s", emptyDefault(result.WangBeiUsable, "0"), emptyDefault(result.WangBeiTotal, "0")))
 	}
-	appendIf(&msgs, result.WanYiWan, "玩一玩: %s券")
-	appendIf(&msgs, result.ShengQianBi, "省钱币: %s币")
-	appendIf(&msgs, result.JdHealth, "健康能量: %s")
+	appendIf(&msgs, result.WanYiWan, "🎮 玩一玩: %s券")
+	appendIf(&msgs, result.ShengQianBi, "💰 省钱币: %s币")
+	appendIf(&msgs, result.JdHealth, "⚡ 健康能量: %s")
 	if result.RedPackCount != "" || result.RedPackTotal != "" {
-		msgs = append(msgs, fmt.Sprintf("红包: %s个, 总额%s元", emptyDefault(result.RedPackCount, "0"), emptyDefault(result.RedPackTotal, "0.00")))
+		msgs = append(msgs, fmt.Sprintf("🧧 红包: %s个, 总额%s元", emptyDefault(result.RedPackCount, "0"), emptyDefault(result.RedPackTotal, "0.00")))
 	}
 	if detail {
-		msgs = append(msgs, "--- 农场状态 ---")
+		msgs = append(msgs, "──────── 农场状态 ────────")
 		if result.PlantBeanGrowth != "" || result.PlantBeanLast != "" {
-			msgs = append(msgs, fmt.Sprintf("种豆得豆: 成长值%s (%s), 上期%s豆", emptyDefault(result.PlantBeanGrowth, "0"), emptyDefault(result.PlantBeanDesc, "-"), emptyDefault(result.PlantBeanLast, "0")))
+			msgs = append(msgs, fmt.Sprintf("🌱 种豆得豆: 成长值%s (%s), 上期%s豆", emptyDefault(result.PlantBeanGrowth, "0"), emptyDefault(result.PlantBeanDesc, "-"), emptyDefault(result.PlantBeanLast, "0")))
 		}
 		if result.FarmName != "" || result.FarmStage != "" || result.FarmProgress != "" || result.FarmWater != "" {
-			msgs = append(msgs, fmt.Sprintf("新农场: %s %s/5 (%s%%), 水滴%s", emptyDefault(result.FarmName, "未种植"), emptyDefault(result.FarmStage, "0"), emptyDefault(result.FarmProgress, "0"), emptyDefault(result.FarmWater, "0")))
+			msgs = append(msgs, fmt.Sprintf("🚜 新农场: %s %s/5 (%s%%), 水滴%s", emptyDefault(result.FarmName, "未种植"), emptyDefault(result.FarmStage, "0"), emptyDefault(result.FarmProgress, "0"), emptyDefault(result.FarmWater, "0")))
 		}
 		for _, award := range result.FarmAwards {
-			msgs = append(msgs, "奖励: "+award)
+			msgs = append(msgs, "🏆 奖励: "+award)
 		}
-		msgs = append(msgs, "--- 其他 ---")
+		msgs = append(msgs, "──────── 其他 ────────")
 		if result.TrialApplyCount != "" || result.TrialWaitCount != "" {
-			msgs = append(msgs, fmt.Sprintf("试用: %s件申请中, %s件待领取", emptyDefault(result.TrialApplyCount, "0"), emptyDefault(result.TrialWaitCount, "0")))
+			msgs = append(msgs, fmt.Sprintf("🧪 试用: %s件申请中, %s件待领取", emptyDefault(result.TrialApplyCount, "0"), emptyDefault(result.TrialWaitCount, "0")))
 		}
 		if len(result.BeanExpire) > 0 {
-			msgs = append(msgs, "--- 临期京豆 ---")
+			msgs = append(msgs, "──────── 临期京豆 ────────")
 			msgs = append(msgs, result.BeanExpire...)
 		}
 	}
