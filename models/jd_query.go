@@ -23,9 +23,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 )
 
 var jdCipherDictionary = map[rune]rune{
@@ -530,7 +527,7 @@ func (h *JDH5ST) Generate(functionID, appID string, body interface{}, appid stri
 	text1 := tk + fp + fmtTime + "22" + appID + rd
 	ey1 := jdAlgoDigest(algo, text1, tk)
 	bodyJSON, _ := json.Marshal(body)
-	signBody := sha256Hex(string(bodyJSON))
+	signBody := jdSha256Hex(string(bodyJSON))
 	fts := time.Now().UnixMilli()
 	text2 := fmt.Sprintf("appid:%s&body:%s&client:android&clientVersion:12.2.0&functionId:%s", appid, signBody, functionID)
 	ey5 := hmacHexSHA256(text2, ey1)
@@ -648,9 +645,9 @@ func jdAlgoDigest(algo, text, tk string) string {
 	case strings.Contains(algo, "HmacSHA512(str,tk)"):
 		return hmacHexSHA512(text, tk)
 	case strings.Contains(algo, "SHA256(str)"):
-		return sha256Hex(text)
+		return jdSha256Hex(text)
 	case strings.Contains(algo, "SHA512(str)"):
-		return sha512Hex(text)
+		return jdSha512Hex(text)
 	default:
 		return hmacHexSHA512(text, tk)
 	}
@@ -665,7 +662,7 @@ func jdSign(functionID string, body interface{}) string {
 	sv := fmt.Sprintf("1%d%d", pick[0], pick[1])
 	allArg := fmt.Sprintf("functionId=%s&body=%s&uuid=%s&client=android&clientVersion=12.2.0&st=%d&sv=%s", functionID, string(bodyJSON), jduuid, ts, sv)
 	by := stringToBytes(allArg)
-	signVal := md5Hex(bytesToString(jdSignCore(by)))
+	signVal := jdMd5Hex(bytesToString(jdSignCore(by)))
 	ext := url.QueryEscape(`{"prstate":"0","pvcStu":"1"}`)
 	partner := strings.ToLower(dBrand)
 	return fmt.Sprintf("body=%s&clientVersion=12.2.0&build=98935&client=android&partner=%s&sdkVersion=31&lang=zh_CN&harmonyOs=0&networkType=wifi&ext=%s&oaid=%s&eid=%s&ef=1&ep=%s&st=%d&sign=%s&sv=%s", url.QueryEscape(string(bodyJSON)), partner, ext, jduuid, eid, url.QueryEscape(ep), ts, signVal, sv)
@@ -744,7 +741,7 @@ func wbSign(body map[string]interface{}) {
 	}
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	body["timestamp"] = timestamp
-	body["sign"] = md5Hex(signKey + strings.Join(parts, "") + timestamp)
+	body["sign"] = jdMd5Hex(signKey + strings.Join(parts, "") + timestamp)
 	body["signKey"] = signKey
 }
 
@@ -915,18 +912,18 @@ func pkcs7Pad(src []byte, blockSize int) []byte {
 	return append(src, padtext...)
 }
 
-func md5Hex(s string) string {
+func jdMd5Hex(s string) string {
 	sum := md5.Sum([]byte(s))
 	return hex.EncodeToString(sum[:])
 }
 
-func sha256Hex(s string) string {
+func jdSha256Hex(s string) string {
 	h := sha256.New()
 	h.Write([]byte(s))
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func sha512Hex(s string) string {
+func jdSha512Hex(s string) string {
 	h := sha512.New()
 	h.Write([]byte(s))
 	return hex.EncodeToString(h.Sum(nil))
