@@ -229,11 +229,11 @@ func (ck *JdCookie) Query() string {
 		// 计算累计挂机时间
 		createdAt, err := time.Parse("2006-01-02", ck.CreateAt)
 		if err != nil {
-			msgs = append(msgs, "⏳ 累计挂机：时间解析失败")
+			msgs = append(msgs, "累计挂机：时间解析失败")
 		} else {
 			duration := time.Since(createdAt)
 			days := int(duration.Hours() / 24)
-			msgs = append(msgs, fmt.Sprintf("⏳ 累计挂机：%d天", days))
+			msgs = append(msgs, fmt.Sprintf("累计挂机：%d天", days))
 		}
 		// 获取用户排名并添加到msgs
 		//      msgs = append(msgs, fmt.Sprintf("用户排名：%d", rank))

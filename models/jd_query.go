@@ -398,12 +398,15 @@ func (q *JDLocalQuery) queryPlantBean() (string, string, string) {
 func (q *JDLocalQuery) queryFarmNew() (string, string, string, string, bool) {
 	data, err := q.h5stRequest("farm_home", map[string]interface{}{"version": 7}, "c57f6", "signed_wh5", map[string]string{"x-referer-page": "https://h5.m.jd.com/pb/015686010/Bc9WX7MpCW7nW9QjZ5N3fFeJXMH/index.html", "origin": "https://h5.m.jd.com", "referer": "https://h5.m.jd.com/", "x-rp-client": "h5_1.0.0", "request-from": "native"})
 	if err != nil {
+		logs.Info("[jd_query farm_home] request error: %v", err)
 		return "", "", "", "", false
 	}
 	if intValue(data["code"]) != 0 {
+		logs.Info("[jd_query farm_home] bad code=%v, data=%v", data["code"], data)
 		return "", "", "", "", false
 	}
 	result := nestedMap(data, "data", "result")
+	logs.Info("[jd_query farm_home] result=%v", result)
 	if len(result) == 0 {
 		logs.Info("[jd_query farm_home] empty result, code=%v, data=%v", data["code"], data["data"])
 		return "", "", "", "", true
