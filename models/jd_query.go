@@ -639,7 +639,7 @@ func jdAlgoDigest(algo, text, tk string) string {
 	case strings.Contains(algo, "HmacMD5(str,tk)"):
 		return hmacHexMD5(text, tk)
 	case strings.Contains(algo, "MD5(str)"):
-		return md5Hex(text)
+		return jdMd5Hex(text)
 	case strings.Contains(algo, "HmacSHA256(str,tk)"):
 		return hmacHexSHA256(text, tk)
 	case strings.Contains(algo, "HmacSHA512(str,tk)"):
