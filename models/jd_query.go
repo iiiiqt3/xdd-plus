@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"crypto/sha256"
+	"github.com/beego/beego/v2/client/httplib"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
@@ -216,16 +217,16 @@ func (q *JDLocalQuery) h5stRequest(functionID string, body interface{}, appID, a
 	postBody.Set("h5st", h5st)
 	postBody.Set("x-api-eid-token", "")
 	postBody.Set("timestamp", strconv.FormatInt(ts, 10))
-	headers := map[string]string{
-		"cookie":           q.Cookie,
-		"user-agent":       q.UA,
-		"content-type":     "application/x-www-form-urlencoded;charset=UTF-8",
-		"x-requested-with": "com.jingdong.app.mall",
-	}
+	req := httplib.Post("https://api.m.jd.com/client.action")
+	req.Header("cookie", q.Cookie)
+	req.Header("user-agent", q.UA)
+	req.Header("content-type", "application/x-www-form-urlencoded;charset=UTF-8")
+	req.Header("x-requested-with", "com.jingdong.app.mall")
 	for k, v := range extraHeaders {
-		headers[k] = v
+		req.Header(k, v)
 	}
-	data, err := requestBytes("POST", "https://api.m.jd.com/client.action", postBody.Encode(), headers)
+	req.Body(postBody.Encode())
+	data, err := req.Bytes()
 	if err != nil {
 		return nil, err
 	}
@@ -234,12 +235,13 @@ func (q *JDLocalQuery) h5stRequest(functionID string, body interface{}, appID, a
 
 func (q *JDLocalQuery) signRequest(functionID string, body interface{}) (map[string]interface{}, error) {
 	signBody := jdSign(functionID, body)
-	data, err := requestBytes("POST", "https://api.m.jd.com/client.action?functionId="+functionID, signBody+"&x-api-eid-token=", map[string]string{
-		"cookie":           q.Cookie,
-		"user-agent":       q.UA,
-		"content-type":     "application/x-www-form-urlencoded;charset=UTF-8",
-		"x-requested-with": "com.jingdong.app.mall",
-	})
+	req := httplib.Post("https://api.m.jd.com/client.action?functionId=" + functionID)
+	req.Header("cookie", q.Cookie)
+	req.Header("user-agent", q.UA)
+	req.Header("content-type", "application/x-www-form-urlencoded;charset=UTF-8")
+	req.Header("x-requested-with", "com.jingdong.app.mall")
+	req.Body(signBody + "&x-api-eid-token=")
+	data, err := req.Bytes()
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +553,7 @@ func (h *JDH5ST) Generate(functionID, appID string, body interface{}, appid stri
 		"random": rdm, "v": "h5_file_v4.3.3", "fp": fp,
 	}, "", "  ")
 	ey8 := jdAESCBCEncryptHex(string(ey8Data), jdEy8AESKey, jdH5stAESIv)
-	return fmt.Sprintf("%s;%s;%s;%s;%s;4.3;%d;%s", fmtTime, fp, appID, tk, ey5, ts, ey8), fts, nil
+	return fmt.Sprintf("%s;%s;%s;%s;%s;4.3;%d;%s", fmtTime, fp, appID, tk, ey5, fts, ey8), fts, nil
 }
 
 func jdGenerateUserAgent() string {
