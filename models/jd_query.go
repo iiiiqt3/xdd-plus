@@ -64,6 +64,7 @@ type JDLocalQueryResult struct {
 	FarmStage       string
 	FarmProgress    string
 	FarmWater       string
+	FarmQueried     bool
 	TrialApplyCount string
 	TrialWaitCount  string
 	IsPlus          bool
@@ -118,7 +119,7 @@ func (q *JDLocalQuery) Query() JDLocalQueryResult {
 	result.RedPackCount, result.RedPackTotal = q.queryRedPack()
 	result.BeanExpire = q.queryBeanExpiring()
 	result.PlantBeanGrowth, result.PlantBeanDesc, result.PlantBeanLast = q.queryPlantBean()
-	result.FarmName, result.FarmStage, result.FarmProgress, result.FarmWater = q.queryFarmNew()
+	result.FarmName, result.FarmStage, result.FarmProgress, result.FarmWater, result.FarmQueried = q.queryFarmNew()
 	result.FarmAwards = q.queryFarmNewAwards()
 	result.WanYiWan = q.queryWanYiWan()
 	result.ShengQianBi = q.queryShengQianBi()
@@ -169,7 +170,7 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 		if result.PlantBeanGrowth != "" || result.PlantBeanLast != "" {
 			msgs = append(msgs, fmt.Sprintf("🌱 种豆得豆: 成长值%s (%s), 上期%s豆", emptyDefault(result.PlantBeanGrowth, "0"), emptyDefault(result.PlantBeanDesc, "-"), emptyDefault(result.PlantBeanLast, "0")))
 		}
-		if result.FarmName != "" || result.FarmStage != "" || result.FarmProgress != "" || result.FarmWater != "" {
+		if result.FarmQueried {
 			msgs = append(msgs, fmt.Sprintf("🚜 新农场: %s %s/5 (%s%%), 水滴%s", emptyDefault(result.FarmName, "未种植"), emptyDefault(result.FarmStage, "0"), emptyDefault(result.FarmProgress, "0"), emptyDefault(result.FarmWater, "0")))
 		}
 		for _, award := range result.FarmAwards {
@@ -393,16 +394,19 @@ func (q *JDLocalQuery) queryPlantBean() (string, string, string) {
 	return getMapString(curr, "growth"), getMapString(curr, "dateDesc"), getMapString(last, "awardBeans")
 }
 
-func (q *JDLocalQuery) queryFarmNew() (string, string, string, string) {
+func (q *JDLocalQuery) queryFarmNew() (string, string, string, string, bool) {
 	data, err := q.h5stRequest("farm_home", map[string]interface{}{"version": 7}, "c57f6", "signed_wh5", map[string]string{"x-referer-page": "https://h5.m.jd.com/pb/015686010/Bc9WX7MpCW7nW9QjZ5N3fFeJXMH/index.html", "origin": "https://h5.m.jd.com", "referer": "https://h5.m.jd.com/", "x-rp-client": "h5_1.0.0", "request-from": "native"})
 	if err != nil {
-		return "", "", "", ""
+		return "", "", "", "", false
 	}
 	if intValue(data["code"]) != 0 {
-		return "", "", "", ""
+		return "", "", "", "", false
 	}
 	result := nestedMap(data, "data", "result")
-	return getMapString(result, "skuName"), getMapString(result, "treeFullStage"), getMapString(result, "currentProcess"), getMapString(result, "bottleWater")
+	if len(result) == 0 {
+		return "", "", "", "", true
+	}
+	return getMapString(result, "skuName"), getMapString(result, "treeFullStage"), getMapString(result, "currentProcess"), getMapString(result, "bottleWater"), true
 }
 
 func (q *JDLocalQuery) queryFarmNewAwards() []string {
