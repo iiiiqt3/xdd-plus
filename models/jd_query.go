@@ -9,14 +9,12 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"crypto/sha256"
-	"github.com/beego/beego/v2/client/httplib"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
-	"github.com/beego/beego/v2/core/logs"
 	"math"
 	mrand "math/rand"
 	"net/http"
@@ -66,7 +64,6 @@ type JDLocalQueryResult struct {
 	FarmStage       string
 	FarmProgress    string
 	FarmWater       string
-	FarmQueried     bool
 	TrialApplyCount string
 	TrialWaitCount  string
 	IsPlus          bool
@@ -121,7 +118,7 @@ func (q *JDLocalQuery) Query() JDLocalQueryResult {
 	result.RedPackCount, result.RedPackTotal = q.queryRedPack()
 	result.BeanExpire = q.queryBeanExpiring()
 	result.PlantBeanGrowth, result.PlantBeanDesc, result.PlantBeanLast = q.queryPlantBean()
-	result.FarmName, result.FarmStage, result.FarmProgress, result.FarmWater, result.FarmQueried = q.queryFarmNew()
+	result.FarmName, result.FarmStage, result.FarmProgress, result.FarmWater = q.queryFarmNew()
 	result.FarmAwards = q.queryFarmNewAwards()
 	result.WanYiWan = q.queryWanYiWan()
 	result.ShengQianBi = q.queryShengQianBi()
@@ -172,7 +169,7 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 		if result.PlantBeanGrowth != "" || result.PlantBeanLast != "" {
 			msgs = append(msgs, fmt.Sprintf("🌱 种豆得豆: 成长值%s (%s), 上期%s豆", emptyDefault(result.PlantBeanGrowth, "0"), emptyDefault(result.PlantBeanDesc, "-"), emptyDefault(result.PlantBeanLast, "0")))
 		}
-		if result.FarmQueried {
+		if result.FarmName != "" || result.FarmStage != "" || result.FarmProgress != "" || result.FarmWater != "" {
 			msgs = append(msgs, fmt.Sprintf("🚜 新农场: %s %s/5 (%s%%), 水滴%s", emptyDefault(result.FarmName, "未种植"), emptyDefault(result.FarmStage, "0"), emptyDefault(result.FarmProgress, "0"), emptyDefault(result.FarmWater, "0")))
 		}
 		for _, award := range result.FarmAwards {
@@ -217,16 +214,16 @@ func (q *JDLocalQuery) h5stRequest(functionID string, body interface{}, appID, a
 	postBody.Set("h5st", h5st)
 	postBody.Set("x-api-eid-token", "")
 	postBody.Set("timestamp", strconv.FormatInt(ts, 10))
-	req := httplib.Post("https://api.m.jd.com/client.action")
-	req.Header("cookie", q.Cookie)
-	req.Header("user-agent", q.UA)
-	req.Header("content-type", "application/x-www-form-urlencoded;charset=UTF-8")
-	req.Header("x-requested-with", "com.jingdong.app.mall")
-	for k, v := range extraHeaders {
-		req.Header(k, v)
+	headers := map[string]string{
+		"cookie":           q.Cookie,
+		"user-agent":       q.UA,
+		"content-type":     "application/x-www-form-urlencoded;charset=UTF-8",
+		"x-requested-with": "com.jingdong.app.mall",
 	}
-	req.Body(postBody.Encode())
-	data, err := req.Bytes()
+	for k, v := range extraHeaders {
+		headers[k] = v
+	}
+	data, err := requestBytes("POST", "https://api.m.jd.com/client.action", postBody.Encode(), headers)
 	if err != nil {
 		return nil, err
 	}
@@ -235,13 +232,12 @@ func (q *JDLocalQuery) h5stRequest(functionID string, body interface{}, appID, a
 
 func (q *JDLocalQuery) signRequest(functionID string, body interface{}) (map[string]interface{}, error) {
 	signBody := jdSign(functionID, body)
-	req := httplib.Post("https://api.m.jd.com/client.action?functionId=" + functionID)
-	req.Header("cookie", q.Cookie)
-	req.Header("user-agent", q.UA)
-	req.Header("content-type", "application/x-www-form-urlencoded;charset=UTF-8")
-	req.Header("x-requested-with", "com.jingdong.app.mall")
-	req.Body(signBody + "&x-api-eid-token=")
-	data, err := req.Bytes()
+	data, err := requestBytes("POST", "https://api.m.jd.com/client.action?functionId="+functionID, signBody+"&x-api-eid-token=", map[string]string{
+		"cookie":           q.Cookie,
+		"user-agent":       q.UA,
+		"content-type":     "application/x-www-form-urlencoded;charset=UTF-8",
+		"x-requested-with": "com.jingdong.app.mall",
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -397,23 +393,16 @@ func (q *JDLocalQuery) queryPlantBean() (string, string, string) {
 	return getMapString(curr, "growth"), getMapString(curr, "dateDesc"), getMapString(last, "awardBeans")
 }
 
-func (q *JDLocalQuery) queryFarmNew() (string, string, string, string, bool) {
+func (q *JDLocalQuery) queryFarmNew() (string, string, string, string) {
 	data, err := q.h5stRequest("farm_home", map[string]interface{}{"version": 7}, "c57f6", "signed_wh5", map[string]string{"x-referer-page": "https://h5.m.jd.com/pb/015686010/Bc9WX7MpCW7nW9QjZ5N3fFeJXMH/index.html", "origin": "https://h5.m.jd.com", "referer": "https://h5.m.jd.com/", "x-rp-client": "h5_1.0.0", "request-from": "native"})
 	if err != nil {
-		logs.Info("[jd_query farm_home] request error: %v", err)
-		return "", "", "", "", false
+		return "", "", "", ""
 	}
 	if intValue(data["code"]) != 0 {
-		logs.Info("[jd_query farm_home] bad code=%v, data=%v", data["code"], data)
-		return "", "", "", "", false
+		return "", "", "", ""
 	}
 	result := nestedMap(data, "data", "result")
-	logs.Info("[jd_query farm_home] result=%v", result)
-	if len(result) == 0 {
-		logs.Info("[jd_query farm_home] empty result, code=%v, data=%v", data["code"], data["data"])
-		return "", "", "", "", true
-	}
-	return getMapString(result, "skuName"), getMapString(result, "treeFullStage"), getMapString(result, "currentProcess"), getMapString(result, "bottleWater"), true
+	return getMapString(result, "skuName"), getMapString(result, "treeFullStage"), getMapString(result, "currentProcess"), getMapString(result, "bottleWater")
 }
 
 func (q *JDLocalQuery) queryFarmNewAwards() []string {
@@ -520,7 +509,7 @@ func (q *JDLocalQuery) queryIsPlus() bool {
 }
 
 func (h *JDH5ST) Generate(functionID, appID string, body interface{}, appid string) (string, int64, error) {
-	fmtTime, _ := jdFmtTime()
+	fmtTime, ts := jdFmtTime()
 	fp := jdGetFP()
 	rdm := jdGetRdm()
 	rbparamt := map[string]interface{}{
@@ -553,7 +542,7 @@ func (h *JDH5ST) Generate(functionID, appID string, body interface{}, appid stri
 		"random": rdm, "v": "h5_file_v4.3.3", "fp": fp,
 	}, "", "  ")
 	ey8 := jdAESCBCEncryptHex(string(ey8Data), jdEy8AESKey, jdH5stAESIv)
-	return fmt.Sprintf("%s;%s;%s;%s;%s;4.3;%d;%s", fmtTime, fp, appID, tk, ey5, fts, ey8), fts, nil
+	return fmt.Sprintf("%s;%s;%s;%s;%s;4.3;%d;%s", fmtTime, fp, appID, tk, ey5, ts, ey8), fts, nil
 }
 
 func jdGenerateUserAgent() string {
