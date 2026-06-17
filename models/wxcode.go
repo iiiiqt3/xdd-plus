@@ -403,12 +403,24 @@ func findWxDeviceBaseURL(wxid string) string {
 	}
 
 	// 都不在线，检查设备是否存在（不限于 survival=1）
-	if exists, _ := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid); exists {
-		return getOldWxLoginBaseURL()
-	}
-	if Config.WxProtocol.NewLoginBaseURL != "" {
+	// 新协议启用时优先新地址，避免新旧都有记录时误路由到旧地址（出码在旧、轮询在新）
+	if isNewProtocolEnabled() && Config.WxProtocol.NewLoginBaseURL != "" {
 		if exists, _ := checkWxDeviceExistsOnURL(getNewWxLoginBaseURL(), wxid); exists {
 			return getNewWxLoginBaseURL()
+		}
+		if getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
+			if exists, _ := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid); exists {
+				return getOldWxLoginBaseURL()
+			}
+		}
+	} else {
+		if exists, _ := checkWxDeviceExistsOnURL(getOldWxLoginBaseURL(), wxid); exists {
+			return getOldWxLoginBaseURL()
+		}
+		if Config.WxProtocol.NewLoginBaseURL != "" {
+			if exists, _ := checkWxDeviceExistsOnURL(getNewWxLoginBaseURL(), wxid); exists {
+				return getNewWxLoginBaseURL()
+			}
 		}
 	}
 
@@ -721,7 +733,8 @@ func WXID_RELOGIN(sender *Sender) {
 				"ProxyUser":     "",
 			},
 		}
-		body, err := wxLoginRequest("/api/v1/wx/login/again", reqBody)
+		baseURL := findWxDeviceBaseURL(wxid)
+		body, err := wxLoginRequestToURL(baseURL, "/api/v1/wx/login/again", reqBody)
 		if err != nil {
 			sender.Reply("❌ " + err.Error())
 			return
@@ -817,13 +830,13 @@ func WXID_WAKE_LOGIN(sender *Sender) {
 		qrBase64 = scanResult.Data.QrBase64
 		uuid = scanResult.Data.Uuid
 	} else {
-		// 普通用户：走唤醒+二次登录
-		activeURL := getWxLoginBaseURL()
+		// 普通用户：走唤醒+二次登录，路由到设备所在地址
+		baseURL := findWxDeviceBaseURL(wxid)
 
 		sender.Reply("⏳ 正在唤醒 [" + wxid + "] ...")
 
 		awakeBody := map[string]string{"wxid": wxid}
-		body, err := wxLoginRequestToURL(activeURL, "/api/v1/wx/login/awake", awakeBody)
+		body, err := wxLoginRequestToURL(baseURL, "/api/v1/wx/login/awake", awakeBody)
 		if err != nil {
 			sender.Reply("❌ 唤醒失败：" + err.Error())
 			return
@@ -845,7 +858,7 @@ func WXID_WAKE_LOGIN(sender *Sender) {
 		sender.Reply("✅ [" + wxid + "] 设备已唤醒，正在获取登录二维码...")
 
 		twiceBody := map[string]string{"wxid": wxid}
-		body, err = wxLoginRequestToURL(activeURL, "/api/v1/wx/login/twice", twiceBody)
+		body, err = wxLoginRequestToURL(baseURL, "/api/v1/wx/login/twice", twiceBody)
 		if err != nil {
 			sender.Reply("❌ 获取唤醒登录二维码失败：" + err.Error())
 			return
