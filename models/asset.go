@@ -172,22 +172,23 @@ func GetUserRank(ptPin string) int {
 func (ck *JdCookie) Query3() string {
 	msgs := []string{}
 	if CookieOK(ck) {
-		msgs = append(msgs, fmt.Sprintf("👤 账号昵称：%v", ck.Nickname))
-		msgs = append(msgs, fmt.Sprintf("⭐ 用户等级：%v", ck.UserLevel))
-		msgs = append(msgs, fmt.Sprintf("🏷️ 等级名称：%v", ck.LevelName))
-		msgs = append(msgs, fmt.Sprintf("🧾 绑定userID：%v", ck.QQ))
+		msgs = append(msgs, fmt.Sprintf("账号昵称：%v", ck.Nickname))
+		msgs = append(msgs, fmt.Sprintf("用户等级：%v", ck.UserLevel))
+		msgs = append(msgs, fmt.Sprintf("等级名称：%v", ck.LevelName))
+		msgs = append(msgs, fmt.Sprintf("绑定userID：%v", ck.QQ))
 
 		if strings.HasPrefix(ck.PtKey, "app_open") {
-			msgs = append(msgs, "🔐 登录方式：扫码登录")
+			msgs = append(msgs, "登录方式：扫码登录")
 		} else if ck.Password != "" {
-			msgs = append(msgs, "🔐 登录方式：账号登录")
+			msgs = append(msgs, "登录方式：账号登录")
 		} else if ck.IsApp == "true" && ck.Password == "" {
-			msgs = append(msgs, "🔐 登录方式：APP登录")
+			msgs = append(msgs, "登录方式：APP登录")
 		} else {
-			msgs = append(msgs, "🔐 登录方式：短信登录")
+			msgs = append(msgs, "登录方式：短信登录")
 		}
 
-		msgs = append(msgs, fmt.Sprintf("🧷 优先级：%v", ck.Priority))
+		msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
+		msgs = append(msgs, "")
 		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
 		msgs = append(msgs, NewJDLocalQuery(cookie).RenderSummary(false))
 	} else {

@@ -146,6 +146,7 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 			beanNum, _ := strconv.Atoi(result.BeanCount)
 			msgs = append(msgs, fmt.Sprintf("🫘 京豆：%s个 (约%.2f元)", result.BeanCount, float64(beanNum)/100))
 		}
+		msgs = append(msgs, "")
 	}
 	msgs = append(msgs, "──────── 资产概览 ────────")
 	appendIf(&msgs, result.HfJifen, "🪙 话费积分: %s 分")
@@ -163,6 +164,7 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 		msgs = append(msgs, fmt.Sprintf("🧧 红包: %s个, 总额%s元", emptyDefault(result.RedPackCount, "0"), emptyDefault(result.RedPackTotal, "0.00")))
 	}
 	if detail {
+		msgs = append(msgs, "")
 		msgs = append(msgs, "──────── 农场状态 ────────")
 		if result.PlantBeanGrowth != "" || result.PlantBeanLast != "" {
 			msgs = append(msgs, fmt.Sprintf("🌱 种豆得豆: 成长值%s (%s), 上期%s豆", emptyDefault(result.PlantBeanGrowth, "0"), emptyDefault(result.PlantBeanDesc, "-"), emptyDefault(result.PlantBeanLast, "0")))
@@ -173,11 +175,13 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 		for _, award := range result.FarmAwards {
 			msgs = append(msgs, "🏆 奖励: "+award)
 		}
+		msgs = append(msgs, "")
 		msgs = append(msgs, "──────── 其他 ────────")
 		if result.TrialApplyCount != "" || result.TrialWaitCount != "" {
 			msgs = append(msgs, fmt.Sprintf("🧪 试用: %s件申请中, %s件待领取", emptyDefault(result.TrialApplyCount, "0"), emptyDefault(result.TrialWaitCount, "0")))
 		}
 		if len(result.BeanExpire) > 0 {
+			msgs = append(msgs, "")
 			msgs = append(msgs, "──────── 临期京豆 ────────")
 			msgs = append(msgs, result.BeanExpire...)
 		}
