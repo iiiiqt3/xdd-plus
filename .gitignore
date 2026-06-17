@@ -29,3 +29,4 @@ logs/
 tmp/
 *.tmp
 .DS_Store
+jd_query.js

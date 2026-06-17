@@ -189,32 +189,7 @@ func (ck *JdCookie) Query3() string {
 
 		msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
 		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
-		encodedCookie := url.QueryEscape(cookie)
-
-		url := GetEnv("url")
-		urlToken := GetEnv("token")
-
-		if url == "" || urlToken == "" {
-			msgs = append(msgs, "查询异常，请通知管理员！")
-			(&JdCookie{}).Push("设置Y查询的url和token")
-		} else {
-			// 构建基础的查询URL
-			baseQueryURL := fmt.Sprintf("%s?token=%s&cookie=%s", url, urlToken, encodedCookie)
-
-			// 添加"type=0"参数
-			queryURL := fmt.Sprintf("%s&type=0", baseQueryURL)
-
-			// 发起 HTTP 请求
-			req := httplib.Get(queryURL)
-			req.Header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-			data, err := req.Bytes()
-			if err != nil {
-				msgs = append(msgs, fmt.Sprintf("查询失败: %s", err.Error()))
-			} else {
-				responseData := string(data)
-				msgs = append(msgs, responseData)
-			}
-		}
+		msgs = append(msgs, NewJDLocalQuery(cookie).RenderSummary(false))
 	} else {
 		msgs = append(msgs, "提醒：该账号已过期，请重新登录,如果需要京东自动登录不掉线 :请回复 登陆")
 		msgs = append(msgs, fmt.Sprintf("账号名称：%s", ck.PtPin))
@@ -266,33 +241,7 @@ func (ck *JdCookie) Query() string {
 		msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
 
 		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
-		encodedCookie := url.QueryEscape(cookie)
-
-		url := GetEnv("url")
-		urlToken := GetEnv("token")
-
-		if url == "" || urlToken == "" {
-			msgs = append(msgs, "查询异常，请通知管理员！")
-			(&JdCookie{}).Push("设置Y查询的url和token")
-		} else {
-			// 构建基础的查询URL
-			baseQueryURL := fmt.Sprintf("%s?token=%s&cookie=%s", url, urlToken, encodedCookie)
-
-			// 添加"type=1"参数
-			queryURL := fmt.Sprintf("%s&type=1", baseQueryURL)
-
-			// 发起 HTTP 请求
-			req := httplib.Get(queryURL)
-			req.Header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-			data, err := req.Bytes()
-			if err != nil {
-				//  msgs = append(msgs, fmt.Sprintf("查询失败: %s", err.Error()))
-				msgs = append(msgs, "查询系统已崩，请联系群主,重启查询系统")
-			} else {
-				responseData := string(data)
-				msgs = append(msgs, responseData)
-			}
-		}
+		msgs = append(msgs, NewJDLocalQuery(cookie).RenderSummary(true))
 	} else {
 		msgs = append(msgs, "提醒：该账号已过期，请重新登录,如果需要京东自动登录不掉线 :请回复 登陆")
 		msgs = append(msgs, fmt.Sprintf("账号名称：%s", ck.PtPin))
