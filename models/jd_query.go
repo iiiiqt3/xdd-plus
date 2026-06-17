@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"github.com/beego/beego/v2/core/logs"
 	"math"
 	mrand "math/rand"
 	"net/http"
@@ -404,6 +405,7 @@ func (q *JDLocalQuery) queryFarmNew() (string, string, string, string, bool) {
 	}
 	result := nestedMap(data, "data", "result")
 	if len(result) == 0 {
+		logs.Info("[jd_query farm_home] empty result, code=%v, data=%v", data["code"], data["data"])
 		return "", "", "", "", true
 	}
 	return getMapString(result, "skuName"), getMapString(result, "treeFullStage"), getMapString(result, "currentProcess"), getMapString(result, "bottleWater"), true
