@@ -520,7 +520,7 @@ func (q *JDLocalQuery) queryIsPlus() bool {
 }
 
 func (h *JDH5ST) Generate(functionID, appID string, body interface{}, appid string) (string, int64, error) {
-	fmtTime, ts := jdFmtTime()
+	fmtTime, _ := jdFmtTime()
 	fp := jdGetFP()
 	rdm := jdGetRdm()
 	rbparamt := map[string]interface{}{
