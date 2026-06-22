@@ -45,8 +45,8 @@ type SystemConfig struct {
 	BBKWx            string `json:"BBKWx"`
 	BBKWxName        string `json:"BBKWxName"`
 	BBKWxNumber      string `json:"BBKWxNumber"`
-	ProxyUrl         string `json:"ProxyUrl"`
-	// 京东任务代理（jdtask / bot 脚本 DY_PROXY）
+	// ProxyUrl 已弃用，查询与任务统一使用 JdTaskProxyUrl 动态 API
+	ProxyUrl           string `json:"ProxyUrl"`
 	JdTaskProxyEnabled bool   `json:"JdTaskProxyEnabled"`
 	JdTaskProxyUrl     string `json:"JdTaskProxyUrl"`
 	JdTaskProxyRenum   string `json:"JdTaskProxyRenum"`

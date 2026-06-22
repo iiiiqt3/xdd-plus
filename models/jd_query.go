@@ -38,10 +38,11 @@ const (
 )
 
 type JDLocalQuery struct {
-	Cookie string
-	Pin    string
-	UA     string
-	H5st   *JDH5ST
+	Cookie     string
+	Pin        string
+	UA         string
+	H5st       *JDH5ST
+	httpClient *http.Client
 }
 
 type JDLocalQueryResult struct {
@@ -84,8 +85,9 @@ type JDLocalQueryResult struct {
 }
 
 type JDH5ST struct {
-	UA  string
-	Pin string
+	UA         string
+	Pin        string
+	httpClient *http.Client
 }
 
 type jdAlgoResp struct {
@@ -104,11 +106,13 @@ func NewJDLocalQuery(cookie string) *JDLocalQuery {
 		pin = decoded
 	}
 	ua := jdGenerateUserAgent()
+	client := NewJDProxyHTTPClient()
 	return &JDLocalQuery{
-		Cookie: cookie,
-		Pin:    pin,
-		UA:     ua,
-		H5st:   &JDH5ST{UA: ua, Pin: pin},
+		Cookie:     cookie,
+		Pin:        pin,
+		UA:         ua,
+		httpClient: client,
+		H5st:       &JDH5ST{UA: ua, Pin: pin, httpClient: client},
 	}
 }
 
@@ -267,7 +271,7 @@ func (q *JDLocalQuery) h5stRequest(functionID string, body interface{}, appID, a
 	for k, v := range extraHeaders {
 		headers[k] = v
 	}
-	data, err := requestBytes("POST", "https://api.m.jd.com/client.action", postBody.Encode(), headers)
+	data, err := q.requestBytes("POST", "https://api.m.jd.com/client.action", postBody.Encode(), headers)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +280,7 @@ func (q *JDLocalQuery) h5stRequest(functionID string, body interface{}, appID, a
 
 func (q *JDLocalQuery) signRequest(functionID string, body interface{}) (map[string]interface{}, error) {
 	signBody := jdSign(functionID, body)
-	data, err := requestBytes("POST", "https://api.m.jd.com/client.action?functionId="+functionID, signBody+"&x-api-eid-token=", map[string]string{
+	data, err := q.requestBytes("POST", "https://api.m.jd.com/client.action?functionId="+functionID, signBody+"&x-api-eid-token=", map[string]string{
 		"cookie":           q.Cookie,
 		"user-agent":       q.UA,
 		"content-type":     "application/x-www-form-urlencoded;charset=UTF-8",
@@ -377,7 +381,7 @@ func (q *JDLocalQuery) queryHfJifen() string {
 	body.Set("body", fmt.Sprintf(`{"t":%d,"encStr":"%s"}`, t, encStr))
 	body.Set("client", "m")
 	body.Set("clientVersion", "6.0.0")
-	data, err := requestBytes("POST", "https://api.m.jd.com/api?functionId=DATAWALLET_USER_SIGN_INFO", body.Encode(), map[string]string{"cookie": q.Cookie, "user-agent": q.UA, "content-type": "application/x-www-form-urlencoded", "referer": "https://prodev.m.jd.com/"})
+	data, err := q.requestBytes("POST", "https://api.m.jd.com/api?functionId=DATAWALLET_USER_SIGN_INFO", body.Encode(), map[string]string{"cookie": q.Cookie, "user-agent": q.UA, "content-type": "application/x-www-form-urlencoded", "referer": "https://prodev.m.jd.com/"})
 	if err != nil {
 		return ""
 	}
@@ -599,7 +603,7 @@ func (q *JDLocalQuery) queryTrial() (string, string) {
 func (q *JDLocalQuery) queryJdHealth() string {
 	body := url.Values{}
 	body.Set("body", `{"appKey":"231282000001","appId":"1EFRYwg","channel":"jdapp","activityId":8542,"taskIdList":["520953","520954","520955","674815","841731","674816","674814"],"awardType":2,"imei":"JHNFCKDL"}`)
-	data, err := requestBytes("POST", fmt.Sprintf("https://api.m.jd.com/api?appid=jdh-middle&functionId=jdh_bm_queryAwardAndScore&t=%d", time.Now().UnixMilli()), body.Encode(), map[string]string{"cookie": q.Cookie, "user-agent": q.UA, "content-type": "application/x-www-form-urlencoded;charset=UTF-8", "x-requested-with": "com.jingdong.app.mall", "referer": "https://jdhm.jd.com/", "origin": "https://jdhm.jd.com"})
+	data, err := q.requestBytes("POST", fmt.Sprintf("https://api.m.jd.com/api?appid=jdh-middle&functionId=jdh_bm_queryAwardAndScore&t=%d", time.Now().UnixMilli()), body.Encode(), map[string]string{"cookie": q.Cookie, "user-agent": q.UA, "content-type": "application/x-www-form-urlencoded;charset=UTF-8", "x-requested-with": "com.jingdong.app.mall", "referer": "https://jdhm.jd.com/", "origin": "https://jdhm.jd.com"})
 	if err != nil {
 		return ""
 	}
@@ -772,7 +776,7 @@ func (q *JDLocalQuery) getJingBeanBalanceDetail1(page int) (map[string]interface
 		"page":     strconv.Itoa(page),
 	})
 	postBody := "body=" + url.QueryEscape(string(bodyJSON)) + "&appid=ld"
-	data, err := requestBytes("POST", fmt.Sprintf("https://bean.m.jd.com/beanDetail/detail.json?page=%d", page), postBody, map[string]string{
+	data, err := q.requestBytes("POST", fmt.Sprintf("https://bean.m.jd.com/beanDetail/detail.json?page=%d", page), postBody, map[string]string{
 		"cookie":       q.Cookie,
 		"user-agent":   "Mozilla/5.0 (Linux; Android 12; SM-G9880) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Mobile Safari/537.36 EdgA/106.0.1370.47",
 		"content-type": "application/x-www-form-urlencoded",
@@ -823,7 +827,7 @@ func (h *JDH5ST) Generate(functionID, appID string, body interface{}, appid stri
 	}
 	rbparam := jdAESCBCEncryptHex(rbparamt, jdH5stAESKey, jdH5stAESIv)
 	rdb := map[string]interface{}{"version": "4.3", "fp": fp, "appId": appID, "timestamp": time.Now().UnixMilli(), "platform": "web", "expandParams": rbparam, "fv": "h5_file_v4.3.3"}
-	algoRes, err := jdGetRdAndTk(rdb)
+	algoRes, err := h.getRdAndTk(rdb)
 	if err != nil {
 		return "", 0, err
 	}
@@ -914,9 +918,9 @@ func jdAESCBCEncryptHex(word interface{}, key, iv string) string {
 	return hex.EncodeToString(cipherText)
 }
 
-func jdGetRdAndTk(body interface{}) (*jdAlgoResp, error) {
+func (h *JDH5ST) getRdAndTk(body interface{}) (*jdAlgoResp, error) {
 	payload, _ := json.Marshal(body)
-	data, err := requestBytes("POST", "https://cactus.jd.com/request_algo?g_ty=ajax", string(payload), map[string]string{"content-type": "application/json", "referer": "https://bnzf.jd.com/"})
+	data, err := h.requestBytes("POST", "https://cactus.jd.com/request_algo?g_ty=ajax", string(payload), map[string]string{"content-type": "application/json", "referer": "https://bnzf.jd.com/"})
 	if err != nil {
 		return nil, err
 	}
@@ -925,6 +929,33 @@ func jdGetRdAndTk(body interface{}) (*jdAlgoResp, error) {
 		return nil, err
 	}
 	return res, nil
+}
+
+func (h *JDH5ST) requestBytes(method, target, body string, headers map[string]string) ([]byte, error) {
+	return doRequestBytes(h.httpClient, method, target, body, headers)
+}
+
+func (q *JDLocalQuery) requestBytes(method, target, body string, headers map[string]string) ([]byte, error) {
+	return doRequestBytes(q.httpClient, method, target, body, headers)
+}
+
+func doRequestBytes(client *http.Client, method, target, body string, headers map[string]string) ([]byte, error) {
+	if client == nil {
+		client = &http.Client{Timeout: 30 * time.Second}
+	}
+	req, err := http.NewRequest(method, target, strings.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return io.ReadAll(resp.Body)
 }
 
 func jdExtractRd(algo string) string {
@@ -1049,23 +1080,6 @@ func wbSign(body map[string]interface{}) {
 	body["timestamp"] = timestamp
 	body["sign"] = jdMd5Hex(signKey + strings.Join(parts, "") + timestamp)
 	body["signKey"] = signKey
-}
-
-func requestBytes(method, target, body string, headers map[string]string) ([]byte, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequest(method, target, strings.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
 }
 
 func decodeJSONMap(data []byte) (map[string]interface{}, error) {

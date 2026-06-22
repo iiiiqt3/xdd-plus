@@ -5688,14 +5688,13 @@ async function loadSysConfig() {
                     <div class="form-item"><label>BBK 微信地址</label><input type="text" id="sys_BBKWxUrl" value="${v(sys.BBKWxUrl)}"></div>
                     <div class="form-item"><label>BBK 京东地址</label><input type="text" id="sys_BBKJdUrl" value="${v(sys.BBKJdUrl)}"></div>
                     <div class="form-item"><label>BBK Token</label><input type="text" id="sys_BBKToken" value="${v(sys.BBKToken)}"></div>
-                    <div class="form-item"><label>资产查询代理 <span class="tip">Go 请求京东 API 用，非任务脚本</span></label><input type="text" id="sys_ProxyUrl" value="${v(sys.ProxyUrl)}" placeholder="如 http://127.0.0.1:7890"></div>
                 </div>
             </div>
             <div class="config-section">
-                <div class="config-section-title"><i class="fas fa-network-wired"></i> 京东任务代理 <span class="tag tag-info" style="font-size:11px;">jdtask / bot 脚本，注入 DY_PROXY</span></div>
+                <div class="config-section-title"><i class="fas fa-network-wired"></i> 京东代理 <span class="tag tag-info" style="font-size:11px;">Go 查询 + 任务脚本共用，API 取动态 IP</span></div>
                 <div class="form-grid">
-                    <div class="form-item"><label>启用任务代理</label><select id="sys_JdTaskProxyEnabled">${sel(sys.JdTaskProxyEnabled)}</select></div>
-                    <div class="form-item full"><label>动态 IP API 地址</label><input type="text" id="sys_JdTaskProxyUrl" value="${v(sys.JdTaskProxyUrl)}" placeholder="http://api2.xkdaili.com/tools/XApi.ashx?apikey=..."></div>
+                    <div class="form-item"><label>启用代理</label><select id="sys_JdTaskProxyEnabled">${sel(sys.JdTaskProxyEnabled)}</select></div>
+                    <div class="form-item full"><label>动态 IP API 地址</label><input type="text" id="sys_JdTaskProxyUrl" value="${v(sys.JdTaskProxyUrl)}" placeholder="http://api.xiequ.cn/VAD/GetIp.aspx?act=get&uid=...&vkey=..."></div>
                     <div class="form-item"><label>取 IP 失败重试次数</label><input type="number" id="sys_JdTaskProxyRenum" value="${v(sys.JdTaskProxyRenum)||'10'}" min="1"></div>
                     <div class="form-item"><label>重试间隔 (秒)</label><input type="number" id="sys_JdTaskProxyRedelay" value="${v(sys.JdTaskProxyRedelay)||'2'}" min="1"></div>
                 </div>
@@ -5772,7 +5771,6 @@ async function saveSysConfig() {
             BBKWxUrl: (document.getElementById('sys_BBKWxUrl')||{}).value,
             BBKJdUrl: (document.getElementById('sys_BBKJdUrl')||{}).value,
             BBKToken: (document.getElementById('sys_BBKToken')||{}).value,
-            ProxyUrl: (document.getElementById('sys_ProxyUrl')||{}).value,
             JdTaskProxyEnabled: (document.getElementById('sys_JdTaskProxyEnabled')||{}).value === 'true',
             JdTaskProxyUrl: (document.getElementById('sys_JdTaskProxyUrl')||{}).value,
             JdTaskProxyRenum: String((document.getElementById('sys_JdTaskProxyRenum')||{}).value || '10'),
