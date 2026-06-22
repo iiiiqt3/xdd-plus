@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/beego/beego/v2/core/logs"
 )
 
 var jdCipherDictionary = map[rune]rune{
@@ -43,6 +45,7 @@ type JDLocalQuery struct {
 	UA         string
 	H5st       *JDH5ST
 	httpClient *http.Client
+	proxyLog   *jdProxyLogTransport
 }
 
 type JDLocalQueryResult struct {
@@ -106,17 +109,29 @@ func NewJDLocalQuery(cookie string) *JDLocalQuery {
 		pin = decoded
 	}
 	ua := jdGenerateUserAgent()
-	client := NewJDProxyHTTPClient()
+	client, proxyLog := NewJDProxyHTTPClient()
 	return &JDLocalQuery{
 		Cookie:     cookie,
 		Pin:        pin,
 		UA:         ua,
 		httpClient: client,
+		proxyLog:   proxyLog,
 		H5st:       &JDH5ST{UA: ua, Pin: pin, httpClient: client},
 	}
 }
 
 func (q *JDLocalQuery) Query() JDLocalQueryResult {
+	defer func() {
+		if q.proxyLog == nil {
+			return
+		}
+		n := q.proxyLog.RequestCount()
+		if host := q.proxyLog.ProxyHost(); host != "" {
+			logs.Info("[京东代理] [jd_query] 查询结束 pin=%s, 共 %d 次 HTTP 请求经代理 %s", q.Pin, n, host)
+		} else {
+			logs.Info("[京东代理] [jd_query] 查询结束 pin=%s, 共 %d 次 HTTP 直连", q.Pin, n)
+		}
+	}()
 	result := JDLocalQueryResult{}
 	if jingxiang := q.queryJingxiang(); jingxiang != nil {
 		result.NickName = jingxiang["nickName"]
