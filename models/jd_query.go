@@ -64,6 +64,11 @@ type JDLocalQueryResult struct {
 	PlantBeanGrowth string
 	PlantBeanDesc   string
 	PlantBeanLast   string
+	PlantBeanLastGrowth string
+	OldFarmName     string
+	OldFarmProgress string
+	OldFarmWater    string
+	OldFarmDays     string
 	FarmName        string
 	FarmStage       string
 	FarmProgress    string
@@ -122,7 +127,8 @@ func (q *JDLocalQuery) Query() JDLocalQueryResult {
 	result.WangBeiUsable, result.WangBeiTotal = q.queryWangBei()
 	result.RedPackCount, result.RedPackTotal = q.queryRedPack()
 	result.BeanExpire = q.queryBeanExpiring()
-	result.PlantBeanGrowth, result.PlantBeanDesc, result.PlantBeanLast = q.queryPlantBean()
+	result.PlantBeanGrowth, result.PlantBeanDesc, result.PlantBeanLast, result.PlantBeanLastGrowth = q.queryPlantBean()
+	result.OldFarmName, result.OldFarmProgress, result.OldFarmWater, result.OldFarmDays = q.queryOldFarm()
 	result.FarmName, result.FarmStage, result.FarmProgress, result.FarmWater = q.queryFarmNew()
 	result.FarmAwards = q.queryFarmNewAwards()
 	result.WanYiWan = q.queryWanYiWan()
@@ -136,7 +142,8 @@ func (q *JDLocalQuery) Query() JDLocalQueryResult {
 func (q *JDLocalQuery) RenderSummary(detail bool) string {
 	result := q.Query()
 	msgs := []string{}
-	if result.NickName != "" || result.JingXiang != "" {
+	hasAccount := result.NickName != "" || result.JingXiang != "" || result.BeanCount != ""
+	if hasAccount {
 		nick := result.NickName
 		if nick == "" {
 			nick = q.Pin
@@ -151,18 +158,18 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 			beanNum, _ := strconv.Atoi(result.BeanCount)
 			msgs = append(msgs, fmt.Sprintf("🫘 京豆：%s个 (约%.2f元)", result.BeanCount, float64(beanNum)/100))
 		}
-		if result.TodayIncomeBean > 0 || result.TodayOutcomeBean > 0 {
-			msgs = append(msgs, fmt.Sprintf("【今日京豆】收%d豆", result.TodayIncomeBean))
-			if result.TodayOutcomeBean > 0 {
-				msgs = append(msgs, fmt.Sprintf("【今日京豆】支%d豆", result.TodayOutcomeBean))
-			}
-		}
-		if result.YesterdayIncomeBean > 0 || result.YesterdayOutcomeBean > 0 {
-			msgs = append(msgs, fmt.Sprintf("【昨日京豆】收%d豆", result.YesterdayIncomeBean))
-			if result.YesterdayOutcomeBean > 0 {
-				msgs = append(msgs, fmt.Sprintf("【昨日京豆】支%d豆", result.YesterdayOutcomeBean))
-			}
-		}
+	}
+	todayLine := fmt.Sprintf("【今日京豆】收%d豆", result.TodayIncomeBean)
+	if result.TodayOutcomeBean > 0 {
+		todayLine += fmt.Sprintf(",支%d豆", result.TodayOutcomeBean)
+	}
+	msgs = append(msgs, todayLine)
+	yesterdayLine := fmt.Sprintf("【昨日京豆】收%d豆", result.YesterdayIncomeBean)
+	if result.YesterdayOutcomeBean > 0 {
+		yesterdayLine += fmt.Sprintf(",支%d豆", result.YesterdayOutcomeBean)
+	}
+	msgs = append(msgs, yesterdayLine)
+	if hasAccount {
 		msgs = append(msgs, "")
 	}
 	msgs = append(msgs, "──────── 资产概览 ────────")
@@ -180,11 +187,29 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 	if result.RedPackCount != "" || result.RedPackTotal != "" {
 		msgs = append(msgs, fmt.Sprintf("🧧 红包: %s个, 总额%s元", emptyDefault(result.RedPackCount, "0"), emptyDefault(result.RedPackTotal, "0.00")))
 	}
-	if detail {
+	showFarm := detail || result.PlantBeanGrowth != "" || result.PlantBeanDesc != "" || result.PlantBeanLast != "" || result.OldFarmName != "" || result.FarmName != "" || result.FarmStage != "" || result.FarmWater != ""
+	if showFarm {
 		msgs = append(msgs, "")
 		msgs = append(msgs, "──────── 农场状态 ────────")
-		if result.PlantBeanGrowth != "" || result.PlantBeanLast != "" {
-			msgs = append(msgs, fmt.Sprintf("🌱 种豆得豆: 成长值%s (%s), 上期%s豆", emptyDefault(result.PlantBeanGrowth, "0"), emptyDefault(result.PlantBeanDesc, "-"), emptyDefault(result.PlantBeanLast, "0")))
+		if result.PlantBeanGrowth != "" || result.PlantBeanDesc != "" || result.PlantBeanLast != "" {
+			desc := emptyDefault(result.PlantBeanDesc, "-")
+			if !strings.Contains(desc, "月") && desc != "-" {
+				desc = "上期 " + desc
+			}
+			msgs = append(msgs, fmt.Sprintf("🌱 种豆得豆: 成长值%s (%s), 上期%s豆", emptyDefault(result.PlantBeanGrowth, "0"), desc, emptyDefault(result.PlantBeanLast, "0")))
+		}
+		if result.OldFarmName != "" {
+			line := fmt.Sprintf("🍎 东东农场: %s", result.OldFarmName)
+			if result.OldFarmProgress != "" {
+				line += fmt.Sprintf("(%s%%)", result.OldFarmProgress)
+			}
+			if result.OldFarmDays != "" {
+				line += fmt.Sprintf(",%s天", result.OldFarmDays)
+			}
+			if result.OldFarmWater != "" {
+				line += fmt.Sprintf(", 水滴%s", result.OldFarmWater)
+			}
+			msgs = append(msgs, line)
 		}
 		if result.FarmName != "" || result.FarmStage != "" || result.FarmProgress != "" || result.FarmWater != "" {
 			msgs = append(msgs, fmt.Sprintf("🚜 新农场: %s %s/5 (%s%%), 水滴%s", emptyDefault(result.FarmName, "未种植"), emptyDefault(result.FarmStage, "0"), emptyDefault(result.FarmProgress, "0"), emptyDefault(result.FarmWater, "0")))
@@ -192,6 +217,8 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 		for _, award := range result.FarmAwards {
 			msgs = append(msgs, "🏆 奖励: "+award)
 		}
+	}
+	if detail {
 		msgs = append(msgs, "")
 		msgs = append(msgs, "──────── 其他 ────────")
 		if result.TrialApplyCount != "" || result.TrialWaitCount != "" {
@@ -203,7 +230,7 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 			msgs = append(msgs, result.BeanExpire...)
 		}
 	}
-	if len(msgs) == 1 {
+	if len(msgs) == 0 {
 		msgs = append(msgs, "暂无可用查询数据")
 	}
 	return strings.Join(msgs, "\n")
@@ -276,6 +303,9 @@ func (q *JDLocalQuery) queryJingxiang() map[string]string {
 	}
 	info := nestedMapFromSlice(floorInfoList, 1, "floorData", "userInfo")
 	beanInfo := nestedMapFromSlice(floorInfoList, 4, "floorData", "shoppingBeansParam")
+	if getMapString(beanInfo, "currentBeanNum") == "" {
+		beanInfo = nestedMapFromSlice(floorInfoList, 5, "floorData", "shoppingBeansParam")
+	}
 	return map[string]string{
 		"nickName":  getMapString(info, "showName"),
 		"levelName": getMapString(info, "vipGradeName"),
@@ -393,33 +423,106 @@ func (q *JDLocalQuery) queryBeanExpiring() []string {
 	return items
 }
 
-func (q *JDLocalQuery) queryPlantBean() (string, string, string) {
-	data, err := q.h5stRequest("plantBeanIndex", map[string]interface{}{"channel": "wojinghd", "monitor_source": "plant_m_plant_index", "version": "9.2.4.5"}, "d246a", "signed_wh5", map[string]string{"referer": "https://plantearth.m.jd.com/"})
+func (q *JDLocalQuery) queryPlantBean() (string, string, string, string) {
+	data, err := q.h5stRequest("plantBeanIndex", map[string]interface{}{
+		"channel": "wojinghd", "monitor_source": "plant_m_plant_index", "monitor_refer": "", "version": "9.2.4.5",
+	}, "d246a", "signed_wh5", map[string]string{"referer": "https://plantearth.m.jd.com/"})
 	if err != nil {
-		return "", "", ""
+		return "", "", "", ""
 	}
-	if getMapString(data, "code") != "0" {
-		return "", "", ""
+	if !jdCodeOK(data["code"]) {
+		return "", "", "", ""
 	}
 	rounds, ok := nestedSlice(data, "data", "roundList")
-	if !ok || len(rounds) < 2 {
-		return "", "", ""
+	if !ok || len(rounds) == 0 {
+		return "", "", "", ""
 	}
-	curr := mapFromIface(rounds[1])
-	last := mapFromIface(rounds[0])
-	return getMapString(curr, "growth"), getMapString(curr, "dateDesc"), getMapString(last, "awardBeans")
+	currIdx, lastIdx := 1, 0
+	if len(rounds) == 1 {
+		currIdx = 0
+		lastIdx = -1
+	}
+	curr := mapFromIface(rounds[currIdx])
+	growth := getMapString(curr, "growth")
+	desc := getMapString(curr, "dateDesc")
+	lastBeans, lastGrowth := "", ""
+	if lastIdx >= 0 {
+		last := mapFromIface(rounds[lastIdx])
+		lastBeans = getMapString(last, "awardBeans")
+		lastGrowth = getMapString(last, "growth")
+	}
+	return growth, desc, lastBeans, lastGrowth
+}
+
+func (q *JDLocalQuery) queryOldFarm() (string, string, string, string) {
+	farmHeaders := map[string]string{
+		"origin":         "https://carry.m.jd.com",
+		"referer":        "https://carry.m.jd.com/",
+		"x-referer-page": "https://carry.m.jd.com/babelDiy/Zeus/3KSjXqQabiTuD1cJ28QskrpWoBKT/index.html",
+	}
+	farmBody := map[string]interface{}{"babelChannel": "522", "version": 26, "channel": 1, "lat": "0", "lng": "0"}
+	taskData, _ := q.h5stRequest("taskInitForFarm", farmBody, "fcb5a", "signed_wh5", farmHeaders)
+	initData, err := q.h5stRequest("initForFarm", farmBody, "8a2af", "signed_wh5", farmHeaders)
+	if err != nil || initData == nil {
+		return "", "", "", ""
+	}
+	waterTaskTimes := 0
+	if taskData != nil {
+		if totalWater, ok := nestedMap(taskData, "totalWaterTaskInit"); ok && len(totalWater) > 0 {
+			waterTaskTimes = intValue(totalWater["totalWaterTaskTimes"])
+		}
+	}
+	farmUserPro := nestedMap(initData, "farmUserPro")
+	if len(farmUserPro) == 0 {
+		return "", "", "", ""
+	}
+	name := getMapString(farmUserPro, "name")
+	treeEnergy := floatValue(farmUserPro["treeEnergy"])
+	treeTotalEnergy := floatValue(farmUserPro["treeTotalEnergy"])
+	totalEnergy := getMapString(farmUserPro, "totalEnergy")
+	progress := ""
+	if treeTotalEnergy > 0 {
+		progress = strconv.Itoa(int(math.Round(treeEnergy / treeTotalEnergy * 100)))
+	}
+	days := ""
+	if waterTaskTimes > 0 && treeTotalEnergy > treeEnergy {
+		waterTotalT := (treeTotalEnergy - treeEnergy - floatValue(farmUserPro["totalEnergy"])) / 10
+		if waterTotalT > 0 {
+			days = strconv.Itoa(int(math.Ceil(waterTotalT / float64(waterTaskTimes))))
+		}
+	}
+	return name, progress, totalEnergy, days
 }
 
 func (q *JDLocalQuery) queryFarmNew() (string, string, string, string) {
-	data, err := q.h5stRequest("farm_home", map[string]interface{}{"version": 7}, "c57f6", "signed_wh5", map[string]string{"x-referer-page": "https://h5.m.jd.com/pb/015686010/Bc9WX7MpCW7nW9QjZ5N3fFeJXMH/index.html", "origin": "https://h5.m.jd.com", "referer": "https://h5.m.jd.com/", "x-rp-client": "h5_1.0.0", "request-from": "native"})
+	data, err := q.h5stRequest("farm_home", map[string]interface{}{"version": 7}, "c57f6", "signed_wh5", map[string]string{
+		"x-referer-page": "https://h5.m.jd.com/pb/015686010/Bc9WX7MpCW7nW9QjZ5N3fFeJXMH/index.html",
+		"origin": "https://h5.m.jd.com", "referer": "https://h5.m.jd.com/", "x-rp-client": "h5_1.0.0", "request-from": "native",
+	})
 	if err != nil {
 		return "", "", "", ""
 	}
-	if intValue(data["code"]) != 0 {
+	if !jdCodeOK(data["code"]) {
 		return "", "", "", ""
 	}
 	result := nestedMap(data, "data", "result")
-	return getMapString(result, "skuName"), getMapString(result, "treeFullStage"), getMapString(result, "currentProcess"), getMapString(result, "bottleWater")
+	if len(result) == 0 {
+		return "", "", "", ""
+	}
+	name := getMapString(result, "skuName")
+	if name == "" {
+		if intValue(result["treeFullStage"]) == 0 {
+			name = "水果未种植"
+		} else {
+			name = "种植中"
+		}
+	} else if intValue(result["treeCurrentState"]) == 0 {
+		tips := getMapString(result, "waterTips")
+		if tips != "" {
+			name = name + tips
+		}
+	}
+	return name, getMapString(result, "treeFullStage"), getMapString(result, "currentProcess"), getMapString(result, "bottleWater")
 }
 
 func (q *JDLocalQuery) queryFarmNewAwards() []string {
@@ -427,7 +530,7 @@ func (q *JDLocalQuery) queryFarmNewAwards() []string {
 	if err != nil {
 		return nil
 	}
-	if intValue(data["code"]) != 0 {
+	if !jdCodeOK(data["code"]) {
 		return nil
 	}
 	awards, ok := nestedSlice(data, "data", "result", "plantAwards")
@@ -507,149 +610,172 @@ func (q *JDLocalQuery) queryJdHealth() string {
 }
 
 func (q *JDLocalQuery) queryBeanStatistics() (int, int, int, int) {
-	todayIncome := 0
-	todayOutcome := 0
-	yesterdayIncome := 0
-	yesterdayOutcome := 0
+	var todayArr, yesterdayArr []map[string]interface{}
+	today := time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
+	yesterday := time.Now().In(time.FixedZone("CST", 8*3600)).Add(-24 * time.Hour).Format("2006-01-02")
 
-	// Y查询中的日期计算方式：+28800000 = 8小时（东八区）
-	// 前一天的0:0:0时间戳（东八区）
-	tm := (time.Now().UnixMilli()+28800000)/86400000*86400000 - 28800000 - 86400000
-	// 今天0:0:0时间戳（东八区）
-	tm1 := (time.Now().UnixMilli()+28800000)/86400000*86400000 - 28800000
+	testResp, testErr := q.getJingBeanBalanceDetail1(1)
+	useAPI1 := testErr == nil && testResp != nil && (jdCodeOK(testResp["code"]) || testResp["jingDetailList"] != nil)
 
 	page := 1
-	for {
-		// 先尝试使用第一种接口
-		response1, err1 := q.getJingBeanBalanceDetail1(page)
-		if err1 == nil && response1 != nil && intValue(response1["code"]) == 0 {
-			detailList, ok := response1["jingDetailList"].([]interface{})
-			if ok && len(detailList) > 0 {
-				for _, item := range detailList {
-					m, ok := item.(map[string]interface{})
-					if !ok {
-						continue
-					}
-					dateStr := getMapString(m, "date")
-					eventMassage := getMapString(m, "eventMassage")
-					amount := intValue(m["amount"])
+	done := false
+	for !done {
+		var detailList []interface{}
+		var resp map[string]interface{}
+		var err error
 
-					// 解析日期，格式如 "2024-01-15 12:34:56"
-					dateStr = strings.ReplaceAll(dateStr, "-", "/")
-					dateStr += "+08:00"
-					date, err := time.Parse("2006/01/02 15:04:05-07:00", dateStr)
-					if err != nil {
-						continue
-					}
-					dateMs := date.UnixMilli()
+		if useAPI1 {
+			resp, err = q.getJingBeanBalanceDetail1(page)
+			if err != nil || resp == nil {
+				break
+			}
+			if stringify(resp["code"]) == "3" {
+				break
+			}
+			if !jdCodeOK(resp["code"]) && resp["jingDetailList"] == nil {
+				break
+			}
+			list, ok := resp["jingDetailList"].([]interface{})
+			if !ok || len(list) == 0 {
+				break
+			}
+			detailList = list
+		} else {
+			resp, err = q.getJingBeanBalanceDetail(page)
+			if err != nil || resp == nil {
+				break
+			}
+			if stringify(resp["code"]) == "3" {
+				break
+			}
+			if !jdCodeOK(resp["code"]) {
+				break
+			}
+			list, ok := resp["detailList"].([]interface{})
+			if !ok || len(list) == 0 {
+				break
+			}
+			detailList = list
+		}
+		page++
 
-					// 过滤掉退还、物流、扣赠等记录
-					if strings.Contains(eventMassage, "退还") || strings.Contains(eventMassage, "物流") || strings.Contains(eventMassage, "扣赠") {
-						continue
-					}
-
-					if dateMs >= tm1 {
-						// 今日记录
-						if amount > 0 {
-							todayIncome += amount
-						} else {
-							todayOutcome += amount
-						}
-					} else if dateMs >= tm && dateMs < tm1 {
-						// 昨日记录
-						if amount > 0 {
-							yesterdayIncome += amount
-						} else {
-							yesterdayOutcome += amount
-						}
-					} else if dateMs < tm {
-						// 前天及之前的记录，停止查询
-						break
-					}
-				}
-				// 如果还有更多数据，继续下一页
-				page++
+		for _, item := range detailList {
+			m, ok := item.(map[string]interface{})
+			if !ok {
 				continue
 			}
-		}
-
-		// 如果第一种接口失败，尝试使用第二种接口
-		response2, err2 := q.getJingBeanBalanceDetail(page)
-		if err2 == nil && response2 != nil && getMapString(response2, "code") == "0" {
-			detailList, ok := response2["detailList"].([]interface{})
-			if ok && len(detailList) > 0 {
-				for _, item := range detailList {
-					m, ok := item.(map[string]interface{})
-					if !ok {
-						continue
-					}
-					dateStr := getMapString(m, "date")
-					eventMassage := getMapString(m, "eventMassage")
-					amount := intValue(m["amount"])
-
-					// 解析日期
-					dateStr = strings.ReplaceAll(dateStr, "-", "/")
-					dateStr += "+08:00"
-					date, err := time.Parse("2006/01/02 15:04:05-07:00", dateStr)
-					if err != nil {
-						continue
-					}
-					dateMs := date.UnixMilli()
-
-					// 过滤掉退还、物流、扣赠等记录
-					if strings.Contains(eventMassage, "退还") || strings.Contains(eventMassage, "物流") || strings.Contains(eventMassage, "扣赠") {
-						continue
-					}
-
-					if dateMs >= tm1 {
-						// 今日记录
-						if amount > 0 {
-							todayIncome += amount
-						} else {
-							todayOutcome += amount
-						}
-					} else if dateMs >= tm && dateMs < tm1 {
-						// 昨日记录
-						if amount > 0 {
-							yesterdayIncome += amount
-						} else {
-							yesterdayOutcome += amount
-						}
-					} else if dateMs < tm {
-						// 前天及之前的记录，停止查询
-						break
-					}
-				}
-				// 如果还有更多数据，继续下一页
-				page++
+			dateStr := getMapString(m, "date")
+			if dateStr == "" {
+				dateStr = getMapString(m, "createDate")
+			}
+			eventMassage := getMapString(m, "eventMassage")
+			if strings.Contains(eventMassage, "退还") || strings.Contains(eventMassage, "物流") || strings.Contains(eventMassage, "扣赠") {
 				continue
 			}
+			if jdBeanDateContains(dateStr, today) {
+				todayArr = append(todayArr, m)
+				continue
+			}
+			if jdBeanDateContains(dateStr, yesterday) {
+				yesterdayArr = append(yesterdayArr, m)
+				continue
+			}
+			if dateMs, ok := parseJDBeanDateMs(dateStr); ok {
+				tm := parseJDBeanDayStartMs(time.Now()).Add(-24 * time.Hour).UnixMilli()
+				if dateMs < tm {
+					done = true
+					break
+				}
+			} else if !strings.Contains(dateStr, today) && !strings.Contains(dateStr, yesterday) {
+				done = true
+				break
+			}
 		}
-
-		// 两种接口都失败或没有更多数据，停止查询
-		break
 	}
 
-	// 支出金额转换为正数
-	if todayOutcome < 0 {
-		todayOutcome = -todayOutcome
-	}
-	if yesterdayOutcome < 0 {
-		yesterdayOutcome = -yesterdayOutcome
-	}
-
+	todayIncome, todayOutcome := sumBeanRecords(todayArr)
+	yesterdayIncome, yesterdayOutcome := sumBeanRecords(yesterdayArr)
 	return todayIncome, todayOutcome, yesterdayIncome, yesterdayOutcome
 }
 
+func sumBeanRecords(records []map[string]interface{}) (income, outcome int) {
+	for _, item := range records {
+		amount := intValue(item["amount"])
+		if amount > 0 {
+			income += amount
+		} else if amount < 0 {
+			outcome += -amount
+		}
+	}
+	return income, outcome
+}
+
+func jdBeanDateContains(dateStr, day string) bool {
+	if dateStr == "" || day == "" {
+		return false
+	}
+	normalized := strings.ReplaceAll(dateStr, "/", "-")
+	return strings.Contains(normalized, day)
+}
+
+func parseJDBeanDayStartMs(now time.Time) time.Time {
+	loc := time.FixedZone("CST", 8*3600)
+	local := now.In(loc)
+	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, loc)
+}
+
+func parseJDBeanDateMs(dateStr string) (int64, bool) {
+	dateStr = strings.TrimSpace(dateStr)
+	if dateStr == "" {
+		return 0, false
+	}
+	loc := time.FixedZone("CST", 8*3600)
+	normalized := strings.ReplaceAll(dateStr, "-", "/")
+	formats := []string{
+		"2006/01/02 15:04:05",
+		"2006/01/02",
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+	}
+	for _, format := range formats {
+		if t, err := time.ParseInLocation(format, normalized, loc); err == nil {
+			return t.UnixMilli(), true
+		}
+	}
+	if t, err := time.Parse(time.RFC3339, dateStr); err == nil {
+		return t.UnixMilli(), true
+	}
+	return 0, false
+}
+
+func jdCodeOK(code interface{}) bool {
+	switch v := code.(type) {
+	case nil:
+		return false
+	case float64:
+		return v == 0
+	case int:
+		return v == 0
+	case int64:
+		return v == 0
+	case string:
+		return v == "0" || v == "success"
+	default:
+		return stringify(v) == "0"
+	}
+}
+
 func (q *JDLocalQuery) getJingBeanBalanceDetail1(page int) (map[string]interface{}, error) {
-	body := url.Values{}
-	body.Set("body", fmt.Sprintf(`{"pageSize":"20","page":"%d"}`, page))
-	body.Set("appid", "ld")
-	
-	data, err := requestBytes("POST", fmt.Sprintf("https://bean.m.jd.com/beanDetail/detail.json?page=%d", page), body.Encode(), map[string]string{
-		"cookie":           q.Cookie,
-		"user-agent":       "Mozilla/5.0 (Linux; Android 12; SM-G9880) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Mobile Safari/537.36 EdgA/106.0.1370.47",
-		"content-type":     "application/x-www-form-urlencoded",
+	bodyJSON, _ := json.Marshal(map[string]string{
+		"pageSize": "20",
+		"page":     strconv.Itoa(page),
+	})
+	postBody := "body=" + url.QueryEscape(string(bodyJSON)) + "&appid=ld"
+	data, err := requestBytes("POST", fmt.Sprintf("https://bean.m.jd.com/beanDetail/detail.json?page=%d", page), postBody, map[string]string{
+		"cookie":       q.Cookie,
+		"user-agent":   "Mozilla/5.0 (Linux; Android 12; SM-G9880) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Mobile Safari/537.36 EdgA/106.0.1370.47",
+		"content-type": "application/x-www-form-urlencoded",
+		"referer":      "https://bean.m.jd.com/",
 	})
 	if err != nil {
 		return nil, err
