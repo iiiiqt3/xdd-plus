@@ -49,6 +49,10 @@ type JDLocalQueryResult struct {
 	LevelName       string
 	JingXiang       string
 	BeanCount       string
+	TodayIncomeBean int
+	TodayOutcomeBean int
+	YesterdayIncomeBean int
+	YesterdayOutcomeBean int
 	HfJifen         string
 	ECardCount      string
 	ECardTotal      string
@@ -111,6 +115,7 @@ func (q *JDLocalQuery) Query() JDLocalQueryResult {
 		result.JingXiang = jingxiang["jingxiang"]
 		result.BeanCount = jingxiang["beanCount"]
 	}
+	result.TodayIncomeBean, result.TodayOutcomeBean, result.YesterdayIncomeBean, result.YesterdayOutcomeBean = q.queryBeanStatistics()
 	result.HfJifen = q.queryHfJifen()
 	result.ECardCount, result.ECardTotal = q.queryECard()
 	result.SuperBalance = q.querySuperMarket()
@@ -145,6 +150,18 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 		if result.BeanCount != "" {
 			beanNum, _ := strconv.Atoi(result.BeanCount)
 			msgs = append(msgs, fmt.Sprintf("🫘 京豆：%s个 (约%.2f元)", result.BeanCount, float64(beanNum)/100))
+		}
+		if result.TodayIncomeBean > 0 || result.TodayOutcomeBean > 0 {
+			msgs = append(msgs, fmt.Sprintf("【今日京豆】收%d豆", result.TodayIncomeBean))
+			if result.TodayOutcomeBean > 0 {
+				msgs = append(msgs, fmt.Sprintf("【今日京豆】支%d豆", result.TodayOutcomeBean))
+			}
+		}
+		if result.YesterdayIncomeBean > 0 || result.YesterdayOutcomeBean > 0 {
+			msgs = append(msgs, fmt.Sprintf("【昨日京豆】收%d豆", result.YesterdayIncomeBean))
+			if result.YesterdayOutcomeBean > 0 {
+				msgs = append(msgs, fmt.Sprintf("【昨日京豆】支%d豆", result.YesterdayOutcomeBean))
+			}
 		}
 		msgs = append(msgs, "")
 	}
@@ -487,6 +504,153 @@ func (q *JDLocalQuery) queryJdHealth() string {
 		return ""
 	}
 	return getMapString(nestedMap(m, "data"), "energyValue")
+}
+
+func (q *JDLocalQuery) queryBeanStatistics() (int, int, int, int) {
+	todayIncome := 0
+	todayOutcome := 0
+	yesterdayIncome := 0
+	yesterdayOutcome := 0
+
+	// 前一天的0:0:0时间戳
+	tm := time.Now().Add(-24 * time.Hour).Truncate(24 * time.Hour).UnixMilli()
+	// 今天0:0:0时间戳
+	tm1 := time.Now().Truncate(24 * time.Hour).UnixMilli()
+
+	page := 1
+	for {
+		// 先尝试使用第一种接口
+		response1, err1 := q.getJingBeanBalanceDetail1(page)
+		if err1 == nil && response1 != nil && intValue(response1["code"]) == 0 {
+			detailList, ok := response1["jingDetailList"].([]interface{})
+			if ok && len(detailList) > 0 {
+				for _, item := range detailList {
+					m, ok := item.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					dateStr := getMapString(m, "date")
+					eventMassage := getMapString(m, "eventMassage")
+					amount := intValue(m["amount"])
+
+					// 解析日期，格式如 "2024-01-15 12:34:56"
+					dateStr = strings.ReplaceAll(dateStr, "-", "/")
+					dateStr += "+08:00"
+					date, err := time.Parse("2006/01/02 15:04:05-07:00", dateStr)
+					if err != nil {
+						continue
+					}
+					dateMs := date.UnixMilli()
+
+					// 过滤掉退还、物流、扣赠等记录
+					if strings.Contains(eventMassage, "退还") || strings.Contains(eventMassage, "物流") || strings.Contains(eventMassage, "扣赠") {
+						continue
+					}
+
+					if dateMs >= tm1 {
+						// 今日记录
+						if amount > 0 {
+							todayIncome += amount
+						} else {
+							todayOutcome += amount
+						}
+					} else if dateMs >= tm && dateMs < tm1 {
+						// 昨日记录
+						if amount > 0 {
+							yesterdayIncome += amount
+						} else {
+							yesterdayOutcome += amount
+						}
+					} else if dateMs < tm {
+						// 前天及之前的记录，停止查询
+						break
+					}
+				}
+				// 如果还有更多数据，继续下一页
+				page++
+				continue
+			}
+		}
+
+		// 如果第一种接口失败，尝试使用第二种接口
+		response2, err2 := q.getJingBeanBalanceDetail(page)
+		if err2 == nil && response2 != nil && getMapString(response2, "code") == "0" {
+			detailList, ok := response2["detailList"].([]interface{})
+			if ok && len(detailList) > 0 {
+				for _, item := range detailList {
+					m, ok := item.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					dateStr := getMapString(m, "date")
+					eventMassage := getMapString(m, "eventMassage")
+					amount := intValue(m["amount"])
+
+					// 解析日期
+					dateStr = strings.ReplaceAll(dateStr, "-", "/")
+					dateStr += "+08:00"
+					date, err := time.Parse("2006/01/02 15:04:05-07:00", dateStr)
+					if err != nil {
+						continue
+					}
+					dateMs := date.UnixMilli()
+
+					// 过滤掉退还、物流、扣赠等记录
+					if strings.Contains(eventMassage, "退还") || strings.Contains(eventMassage, "物流") || strings.Contains(eventMassage, "扣赠") {
+						continue
+					}
+
+					if dateMs >= tm1 {
+						// 今日记录
+						if amount > 0 {
+							todayIncome += amount
+						} else {
+							todayOutcome += amount
+						}
+					} else if dateMs >= tm && dateMs < tm1 {
+						// 昨日记录
+						if amount > 0 {
+							yesterdayIncome += amount
+						} else {
+							yesterdayOutcome += amount
+						}
+					} else if dateMs < tm {
+						// 前天及之前的记录，停止查询
+						break
+					}
+				}
+				// 如果还有更多数据，继续下一页
+				page++
+				continue
+			}
+		}
+
+		// 两种接口都失败或没有更多数据，停止查询
+		break
+	}
+
+	// 支出金额转换为正数
+	if todayOutcome < 0 {
+		todayOutcome = -todayOutcome
+	}
+	if yesterdayOutcome < 0 {
+		yesterdayOutcome = -yesterdayOutcome
+	}
+
+	return todayIncome, todayOutcome, yesterdayIncome, yesterdayOutcome
+}
+
+func (q *JDLocalQuery) getJingBeanBalanceDetail1(page int) (map[string]interface{}, error) {
+	return q.signRequest("getJingBeanBalanceDetail1", map[string]interface{}{
+		"page": page,
+	})
+}
+
+func (q *JDLocalQuery) getJingBeanBalanceDetail(page int) (map[string]interface{}, error) {
+	return q.signRequest("getJingBeanBalanceDetail", map[string]interface{}{
+		"pageSize": "20",
+		"page":     strconv.Itoa(page),
+	})
 }
 
 func (q *JDLocalQuery) queryIsPlus() bool {
