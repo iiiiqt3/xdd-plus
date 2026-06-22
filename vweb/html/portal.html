@@ -492,26 +492,45 @@
         .wx-menu-card span { display: block; color: var(--text-muted); font-size: 12px; line-height: 1.7; }
         .jd-tab-panel { display: none; }
         .jd-tab-panel.active { display: block; }
-        .jd-account-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+        .jd-action-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+        .jd-action-bar .btn { font-size:12px; padding:5px 12px; border-radius:8px; }
+        .jd-account-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
         .jd-account-item {
-            display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-            padding: 12px 14px; border-radius: 12px; border: 1px solid var(--glass-border); background: var(--glass-bg);
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+            padding: 10px 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass-bg);
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
+        .jd-account-item:hover { border-color: var(--primary-light, #c7d2fe); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .jd-account-item .jd-acc-info { flex:1; min-width:0; }
+        .jd-account-item .jd-acc-info strong { font-size:13px; display:block; }
+        .jd-account-item .jd-acc-meta { font-size:11px; color:var(--text-muted); margin-top:2px; }
+        .jd-account-item .jd-acc-status { font-size:10px; padding:2px 6px; border-radius:6px; font-weight:600; }
+        .jd-account-item .jd-acc-status.valid { background:rgba(16,185,129,0.1); color:#059669; }
+        .jd-account-item .jd-acc-status.invalid { background:rgba(239,68,68,0.08); color:#dc2626; }
+        .jd-account-item .btn { font-size:11px; padding:4px 10px; border-radius:6px; flex-shrink:0; }
         .jd-query-result {
             margin-top: 14px; padding: 14px; border-radius: 12px; border: 1px solid var(--glass-border);
             background: rgba(15,23,42,0.02); white-space: pre-wrap; word-break: break-word;
             font-size: 13px; line-height: 1.7; max-height: 60vh; overflow-y: auto;
         }
-        .jd-form-grid { display: grid; gap: 14px; max-width: 480px; }
+        .jd-form-grid { display: grid; gap: 10px; max-width: 480px; }
+        .jd-form-grid label.muted { font-size:11px; margin-bottom:4px; }
         .jd-form-grid input {
-            width: 100%; padding: 10px 14px; border: 1px solid var(--glass-border); border-radius: 10px;
-            background: var(--glass-bg); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box;
+            width: 100%; padding: 8px 12px; border: 1px solid var(--glass-border); border-radius: 8px;
+            background: var(--glass-bg); color: var(--text); font-size: 13px; outline: none; box-sizing: border-box;
         }
-        .jd-device-grid { display: grid; gap: 10px; margin-bottom: 14px; }
+        .jd-form-grid .btn { font-size:12px; padding:7px 14px; border-radius:8px; }
+        .jd-device-grid { display: grid; gap: 8px; margin-bottom: 14px; }
         .jd-device-card {
-            padding: 12px 14px; border-radius: 12px; border: 1px solid var(--glass-border); background: var(--glass-bg);
+            padding: 10px 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass-bg);
             display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
+        .jd-device-card:hover { border-color: var(--primary-light, #c7d2fe); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .jd-device-card .jd-dev-info { flex:1; min-width:0; }
+        .jd-device-card .jd-dev-info strong { font-size:13px; display:block; }
+        .jd-device-card .jd-dev-meta { font-size:11px; color:var(--text-muted); margin-top:2px; }
+        .jd-device-card .btn { font-size:11px; padding:4px 10px; border-radius:6px; flex-shrink:0; }
         .iframe-modal .modal { width: min(960px, 96vw); max-width: 96vw; height: min(88vh, 900px); display: flex; flex-direction: column; }
         .iframe-modal iframe { flex: 1; width: 100%; border: none; border-radius: 0 0 14px 14px; background: #fff; min-height: 0; }
 
@@ -845,6 +864,23 @@
             #wxModalBody img { width: min(200px, 65vw) !important; height: min(200px, 65vw) !important; }
             .wx-status-line { flex-direction: column; gap: 3px; }
             .wx-status-line strong { text-align: left; }
+
+            /* 京东菜单移动端适配 */
+            .jd-action-bar { flex-direction: column; }
+            .jd-action-bar .btn { width: 100%; justify-content: center; }
+            .jd-account-item { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .jd-account-item .jd-acc-status { align-self: flex-start; }
+            .jd-account-item .btn { width: 100%; justify-content: center; }
+            .jd-device-card { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .jd-device-card .btn { width: 100%; justify-content: center; }
+            .jd-form-grid { max-width: 100%; }
+            .jd-form-grid .btn { width: 100%; justify-content: center; }
+            .jd-query-result { font-size: 12px; max-height: 50vh; }
+
+            /* 手机业务弹窗移动端适配 */
+            .iframe-modal .modal { width: calc(100vw - 4px); height: calc(100dvh - 4px); border-radius: 12px; }
+            .iframe-modal .modal-header { padding: 10px 14px; }
+            .iframe-modal .modal-header h3 { font-size: 15px; }
         }
     </style>
 </head>
@@ -1307,34 +1343,34 @@
                 </div>
 
                 <div class="jd-tab-panel active" id="jdPanel-query">
-                    <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+                    <div class="jd-action-bar">
                         <button class="btn primary" onclick="jdQueryAll()">查询全部账号</button>
                         <button class="btn secondary" onclick="loadJdAccounts()">刷新账号列表</button>
                     </div>
                     <div class="jd-account-list" id="jdAccountList">
-                        <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);">正在加载账号...</div>
+                        <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载账号...</div>
                     </div>
                     <div class="jd-query-result" id="jdQueryResult" style="display:none;"></div>
                 </div>
 
                 <div class="jd-tab-panel" id="jdPanel-sms">
-                    <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:12px;color:var(--cyan);line-height:1.8;">
+                    <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:11px;color:var(--cyan);line-height:1.8;">
                         💡 输入京东绑定的手机号，获取验证码后完成登录，账号将自动绑定到您的用户编号。
                     </div>
                     <div class="jd-form-grid">
                         <div>
-                            <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">手机号</label>
+                            <label class="muted">手机号</label>
                             <input type="tel" id="jdSmsPhone" maxlength="11" placeholder="请输入11位手机号" />
                         </div>
                         <div>
                             <button class="btn primary" onclick="jdSmsSend()" id="jdSmsSendBtn" style="width:100%;">发送验证码</button>
                         </div>
                         <div id="jdSmsCodeBox">
-                            <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">验证码</label>
+                            <label class="muted">验证码</label>
                             <input type="text" id="jdSmsCode" maxlength="6" placeholder="请输入短信验证码" />
                         </div>
                         <div id="jdSmsIdCardBox" style="display:none;">
-                            <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">身份证验证</label>
+                            <label class="muted">身份证验证</label>
                             <input type="text" id="jdSmsIdCard" maxlength="6" placeholder="身份证前两位+后四位，如 31122X" />
                         </div>
                         <div>
@@ -1345,15 +1381,15 @@
                 </div>
 
                 <div class="jd-tab-panel" id="jdPanel-wx">
-                    <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:12px;color:var(--cyan);line-height:1.8;">
+                    <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:11px;color:var(--cyan);line-height:1.8;">
                         💡 需先在「微信协议」页面扫码绑定在线设备，再选择设备刷新京东 CK。
                     </div>
-                    <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
-                        <button class="btn primary" onclick="jdWxRefreshAll()">刷新全部设备</button>
+                    <div class="jd-action-bar">
+                        <button class="btn primary" onclick="jdWxRefreshAll()">刷新全部CK</button>
                         <button class="btn secondary" onclick="loadJdWxDevices()">刷新设备列表</button>
                     </div>
                     <div class="jd-device-grid" id="jdWxDeviceList">
-                        <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);">正在加载设备...</div>
+                        <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载设备...</div>
                     </div>
                     <div id="jdWxRiskBox" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
                         <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdWxRiskMsg">账号需要短信验证</div>
@@ -3104,15 +3140,22 @@ function renderJdAccounts() {
     var list = state.jdAccounts || [];
     if (!box) return;
     if (list.length === 0) {
-        box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);">暂无绑定的京东账号，请先使用短信或微信协议登录</div>';
+        box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">暂无绑定的京东账号，请先使用短信或微信协议登录</div>';
         return;
     }
     var validCount = list.filter(function(item) { return item.valid; }).length;
-    var html = '<div class="muted" style="font-size:12px;margin-bottom:8px;">有效账号 ' + validCount + ' / ' + list.length + '</div>';
-    list.forEach(function(item) {
+    var html = '<div class="muted" style="font-size:11px;margin-bottom:8px;">有效账号 ' + validCount + ' / ' + list.length + '</div>';
+    var sorted = list.slice().sort(function(a, b) { return (b.valid ? 1 : 0) - (a.valid ? 1 : 0); });
+    sorted.forEach(function(item) {
+        var statusCls = item.valid ? 'valid' : 'invalid';
+        var statusText = item.valid ? '有效' : '失效';
         html += '<div class="jd-account-item">';
-        html += '<div><strong>【' + item.index + '】' + escapeHtml(item.nickname || item.pin) + '</strong><div class="muted" style="font-size:12px;margin-top:4px;">' + escapeHtml(item.pin) + ' · ' + escapeHtml(item.statusText) + '</div></div>';
-        html += '<button class="btn small primary" onclick="jdQueryOne(' + item.index + ')">查询</button>';
+        html += '<div class="jd-acc-info">';
+        html += '<strong>' + escapeHtml(item.nickname || item.pin) + '</strong>';
+        html += '<div class="jd-acc-meta">' + escapeHtml(item.pin) + '</div>';
+        html += '</div>';
+        html += '<span class="jd-acc-status ' + statusCls + '">' + statusText + '</span>';
+        html += '<button class="btn primary" onclick="jdQueryOne(' + item.index + ')">查询</button>';
         html += '</div>';
     });
     box.innerHTML = html;
@@ -3151,6 +3194,7 @@ async function jdSmsSend() {
     var phone = (document.getElementById('jdSmsPhone').value || '').trim();
     if (!phone) { toast('请输入手机号', 'error'); return; }
     var btn = document.getElementById('jdSmsSendBtn');
+    if (btn && btn.disabled) return;
     if (btn) { btn.disabled = true; btn.textContent = '发送中...'; }
     try {
         var resp = await request('/api/portal/jd/sms/send', {
@@ -3160,11 +3204,27 @@ async function jdSmsSend() {
         });
         toast(resp.msg || '验证码已发送', 'success');
         document.getElementById('jdSmsIdCardBox').style.display = 'none';
+        startSmsCooldown(btn, 60);
     } catch (err) {
         toast(err.message || '发送失败', 'error');
-    } finally {
         if (btn) { btn.disabled = false; btn.textContent = '发送验证码'; }
     }
+}
+
+function startSmsCooldown(btn, seconds) {
+    if (!btn) return;
+    var remaining = seconds;
+    btn.textContent = remaining + 's后重发';
+    var timer = setInterval(function() {
+        remaining--;
+        if (remaining <= 0) {
+            clearInterval(timer);
+            btn.disabled = false;
+            btn.textContent = '发送验证码';
+        } else {
+            btn.textContent = remaining + 's后重发';
+        }
+    }, 1000);
 }
 
 async function jdSmsVerify() {
@@ -3177,7 +3237,8 @@ async function jdSmsVerify() {
     if (!needId && !code) { toast('请输入验证码', 'error'); return; }
     if (needId && !idCard) { toast('请输入身份证验证信息', 'error'); return; }
     var btn = document.getElementById('jdSmsVerifyBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '提交中...'; }
+    if (btn && btn.disabled) return;
+    if (btn) { btn.disabled = true; btn.textContent = '登录中...'; }
     var resultEl = document.getElementById('jdSmsResult');
     try {
         var resp = await request('/api/portal/jd/sms/verify', {
@@ -3189,6 +3250,7 @@ async function jdSmsVerify() {
         if (data.needIdVerify) {
             if (idBox) idBox.style.display = 'block';
             toast(data.message || '需要身份证验证', 'info');
+            if (btn) { btn.disabled = false; btn.textContent = '提交登录'; }
             return;
         }
         if (idBox) idBox.style.display = 'none';
@@ -3223,17 +3285,18 @@ function renderJdWxDevices() {
     var list = state.jdWxDevices || [];
     if (!box) return;
     if (list.length === 0) {
-        box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);">暂无在线微信协议设备，请先到「微信协议」扫码登录</div>';
+        box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">暂无在线微信协议设备，请先到「微信协议」扫码登录</div>';
         return;
     }
     var html = '';
     list.forEach(function(item) {
         html += '<div class="jd-device-card">';
-        html += '<div><strong>【' + item.index + '】' + escapeHtml(item.nickname || item.wxid) + '</strong>';
-        html += '<div class="muted" style="font-size:12px;margin-top:4px;">' + escapeHtml(item.wxid);
+        html += '<div class="jd-dev-info">';
+        html += '<strong>' + escapeHtml(item.nickname || item.wxid) + '</strong>';
+        html += '<div class="jd-dev-meta">' + escapeHtml(item.wxid);
         if (item.device) html += ' · ' + escapeHtml(item.device);
         html += ' · ' + escapeHtml(item.serverType || '') + '设备</div></div>';
-        html += '<button class="btn small primary" onclick="jdWxRefreshDevice(\'' + escapeAttr(item.wxid) + '\')">刷新CK</button>';
+        html += '<button class="btn primary" onclick="jdWxRefreshDevice(\'' + escapeAttr(item.wxid) + '\')">刷新CK</button>';
         html += '</div>';
     });
     box.innerHTML = html;
