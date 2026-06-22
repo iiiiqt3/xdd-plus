@@ -150,8 +150,10 @@
         }
         .btn:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(79,70,229,0.25); }
         .btn:active { transform: translateY(0); }
-        .btn.secondary { background: var(--card); color: var(--text-secondary); border: 1px solid var(--card-border); box-shadow: none; }
-        .btn.secondary:hover { background: #f8fafc; border-color: #cbd5e1; box-shadow: var(--card-shadow); }
+        .btn.secondary { background: var(--card); color: var(--text-secondary); border: none; box-shadow: none; }
+        .btn.secondary:hover { background: #f1f5f9; box-shadow: var(--card-shadow); }
+        .btn.outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); box-shadow: none; }
+        .btn.outline:hover { background: rgba(79,70,229,0.06); box-shadow: none; transform: none; }
         .btn.small { padding: 6px 14px; min-height: 32px; font-size: 12px; border-radius: 6px; }
         .btn.danger { background: var(--danger); }
         .btn.danger:hover { background: #b91c1c; box-shadow: 0 2px 6px rgba(220,38,38,0.25); }
@@ -493,23 +495,37 @@
         .jd-tab-panel { display: none; }
         .jd-tab-panel.active { display: block; }
         .jd-action-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
-        .jd-action-bar .btn { font-size:12px; padding:5px 12px; border-radius:8px; }
+        .jd-action-bar .btn { font-size:11px; padding:4px 10px; border-radius:6px; }
         .jd-account-list {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 16px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;
         }
         .jd-account-item {
-            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-            padding: 20px 16px; border-radius: 14px; border: 1px solid var(--glass-border); background: var(--glass-bg);
-            transition: box-shadow 0.2s ease, border-color 0.2s ease; min-height: 130px;
+            display: flex; flex-direction: column; gap: 0;
+            padding: 18px 20px 14px; border-radius: 14px; border: 1px solid var(--glass-border); background: var(--glass-bg);
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
-        .jd-account-item:hover { border-color: var(--primary-light, #c7d2fe); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .jd-account-item:hover { border-color: var(--primary-light, #c7d2fe); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        .jd-account-item .jd-acc-top { display:flex; align-items:center; gap:12px; }
+        .jd-account-item .jd-acc-avatar {
+            width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+            font-size:16px; font-weight:700; color:#fff; flex-shrink:0;
+        }
         .jd-account-item .jd-acc-info { flex:1; min-width:0; }
-        .jd-account-item .jd-acc-info strong { font-size:15px; display:block; line-height:1.5; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-        .jd-account-item .jd-acc-meta { font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px; }
-        .jd-account-item .jd-acc-status { font-size:11px; padding:3px 8px; border-radius:6px; font-weight:600; margin:8px 0; }
-        .jd-account-item .jd-acc-status.valid { background:rgba(16,185,129,0.1); color:#059669; }
-        .jd-account-item .jd-acc-status.invalid { background:rgba(239,68,68,0.08); color:#dc2626; }
-        .jd-account-item .btn { font-size:13px; padding:6px 16px; border-radius:8px; width:100%; justify-content:center; }
+        .jd-account-item .jd-acc-info strong { font-size:15px; display:block; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .jd-account-item .jd-acc-meta { font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; }
+        .jd-account-item .jd-card-bottom {
+            display:flex; align-items:center; justify-content:space-between; width:100%;
+            margin-top:auto; padding-top:12px; border-top:1px solid var(--glass-border);
+        }
+        .jd-account-item .jd-acc-status-dot { font-size:12px; font-weight:600; display:flex; align-items:center; gap:5px; }
+        .jd-account-item .jd-acc-status-dot::before {
+            content:''; display:inline-block; width:8px; height:8px; border-radius:50%;
+        }
+        .jd-account-item .jd-acc-status-dot.valid { color:#059669; }
+        .jd-account-item .jd-acc-status-dot.valid::before { background:#10b981; }
+        .jd-account-item .jd-acc-status-dot.invalid { color:#dc2626; }
+        .jd-account-item .jd-acc-status-dot.invalid::before { background:#ef4444; }
+        .jd-account-item .jd-card-bottom .btn { font-size:12px; padding:5px 16px; border-radius:8px; }
         .jd-query-result {
             margin-top: 14px; padding: 14px; border-radius: 12px; border: 1px solid var(--glass-border);
             background: rgba(15,23,42,0.02); white-space: pre-wrap; word-break: break-word;
@@ -522,19 +538,35 @@
             background: var(--glass-bg); color: var(--text); font-size: 13px; outline: none; box-sizing: border-box;
         }
         .jd-form-grid .btn { font-size:12px; padding:7px 14px; border-radius:8px; }
+        .jd-sms-card {
+            max-width: 420px; padding: 28px; border-radius: 16px; border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+        }
+        .jd-sms-header { display:flex; align-items:center; gap:14px; margin-bottom:24px; }
+        .jd-sms-row { display:flex; gap:10px; align-items:flex-start; }
+        .jd-sms-field { margin-bottom:16px; }
+        .jd-sms-field label { display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px; }
+        .jd-sms-field input { width:100%; padding:10px 14px; border:1.5px solid var(--glass-border); border-radius:10px; background:var(--card); font-size:14px; outline:none; transition:border-color 0.2s; }
+        .jd-sms-field input:focus { border-color:var(--primary); }
         .jd-device-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 14px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 14px;
         }
         .jd-device-card {
-            padding: 20px 16px; border-radius: 14px; border: 1px solid var(--glass-border); background: var(--glass-bg);
-            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-            transition: box-shadow 0.2s ease, border-color 0.2s ease; min-height: 130px;
+            padding: 18px 20px 14px; border-radius: 14px; border: 1px solid var(--glass-border); background: var(--glass-bg);
+            display: flex; flex-direction: column; gap: 0;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
-        .jd-device-card:hover { border-color: var(--primary-light, #c7d2fe); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
-        .jd-device-card .jd-dev-info { flex:1; min-width:0; width:100%; }
-        .jd-device-card .jd-dev-info strong { font-size:15px; display:block; line-height:1.5; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-        .jd-device-card .jd-dev-meta { font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .jd-device-card .btn { font-size:13px; padding:6px 16px; border-radius:8px; width:100%; justify-content:center; margin-top:8px; }
+        .jd-device-card:hover { border-color: var(--primary-light, #c7d2fe); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        .jd-device-card .jd-dev-top { display:flex; align-items:center; gap:12px; }
+        .jd-device-card .jd-dev-avatar {
+            width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+            font-size:16px; font-weight:700; color:#fff; flex-shrink:0; background:#8b5cf6;
+        }
+        .jd-device-card .jd-dev-info { flex:1; min-width:0; }
+        .jd-device-card .jd-dev-info strong { font-size:15px; display:block; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .jd-device-card .jd-dev-meta { font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; }
+        .jd-device-card .jd-card-bottom { display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:auto; padding-top:12px; border-top:1px solid var(--glass-border); }
+        .jd-device-card .jd-card-bottom .btn { font-size:12px; padding:5px 16px; border-radius:8px; }
         .iframe-modal .modal { width: min(960px, 96vw); max-width: 96vw; height: min(88vh, 900px); display: flex; flex-direction: column; }
         .iframe-modal iframe { flex: 1; width: 100%; border: none; border-radius: 0 0 14px 14px; background: #fff; min-height: 0; }
 
@@ -871,13 +903,25 @@
             .wx-status-line strong { text-align: left; }
 
             /* 京东菜单移动端适配 */
-            .jd-action-bar { flex-direction: column; }
-            .jd-action-bar .btn { width: 100%; justify-content: center; }
-            .jd-account-item { flex-direction: column; align-items: flex-start; gap: 8px; }
-            .jd-account-item .jd-acc-status { align-self: flex-start; }
-            .jd-account-item .btn { width: 100%; justify-content: center; }
-            .jd-device-card { flex-direction: column; align-items: flex-start; gap: 8px; }
-            .jd-device-card .btn { width: 100%; justify-content: center; }
+            .jd-action-bar { flex-direction: row; gap: 6px; }
+            .jd-action-bar .btn { flex: 1; font-size: 11px; padding: 6px 8px; justify-content: center; white-space: nowrap; }
+            .jd-account-list { display: flex; flex-direction: column; gap: 8px; }
+            .jd-account-item { padding: 12px 14px; }
+            .jd-account-item .jd-acc-top { gap: 10px; }
+            .jd-account-item .jd-acc-avatar { width:36px; height:36px; font-size:14px; }
+            .jd-account-item .jd-acc-info strong { font-size: 14px; }
+            .jd-account-item .jd-acc-meta { font-size: 11px; }
+            .jd-account-item .jd-card-bottom { gap: 8px; padding-top:10px; }
+            .jd-account-item .jd-acc-status-dot { font-size: 11px; }
+            .jd-account-item .jd-card-bottom .btn { width:auto !important; flex:0 0 auto !important; font-size: 11px; padding: 5px 14px; }
+            .jd-device-grid { display: flex; flex-direction: column; gap: 8px; }
+            .jd-device-card { padding: 12px 14px; }
+            .jd-device-card .jd-dev-top { gap: 10px; }
+            .jd-device-card .jd-dev-avatar { width:36px; height:36px; font-size:14px; }
+            .jd-device-card .jd-dev-info strong { font-size: 14px; }
+            .jd-device-card .jd-dev-meta { font-size: 11px; }
+            .jd-device-card .jd-card-bottom { gap: 8px; padding-top:10px; }
+            .jd-device-card .jd-card-bottom .btn { width:auto !important; flex:0 0 auto !important; font-size: 11px; padding: 5px 14px; }
             .jd-form-grid { max-width: 100%; }
             .jd-form-grid .btn { width: 100%; justify-content: center; }
             .jd-query-result { font-size: 12px; max-height: 50vh; }
@@ -1362,38 +1406,43 @@
                 </div>
 
                 <div class="jd-tab-panel active" id="jdPanel-query">
-                    <div class="jd-action-bar">
-                        <button class="btn primary" onclick="jdQueryAll()">查询全部账号</button>
-                        <button class="btn secondary" onclick="loadJdAccounts()">刷新账号列表</button>
+                    <div style="border-bottom:1px solid var(--glass-border);margin:0 0 36px 0;"></div>
+                    <div style="display:flex;gap:8px;margin-bottom:14px;">
+                        <button class="btn primary small" onclick="jdQueryAll()">📋 全部查询</button>
+                        <button class="btn outline small" onclick="loadJdAccounts()">🔄 刷新</button>
                     </div>
+                    <div id="jdAccountCount" style="font-size:11px;color:var(--text-muted);margin:0 0 12px 0;"></div>
                     <div class="jd-account-list" id="jdAccountList">
                         <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载账号...</div>
                     </div>
                 </div>
 
                 <div class="jd-tab-panel" id="jdPanel-sms">
-                    <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:11px;color:var(--cyan);line-height:1.8;">
-                        💡 输入京东绑定的手机号，获取验证码后完成登录，账号将自动绑定到您的用户编号。
-                    </div>
-                    <div class="jd-form-grid">
-                        <div>
-                            <label class="muted">手机号</label>
-                            <input type="tel" id="jdSmsPhone" maxlength="11" placeholder="请输入11位手机号" />
+                    <div style="border-bottom:1px solid var(--glass-border);margin:0 0 28px 0;"></div>
+                    <div class="jd-sms-card">
+                        <div class="jd-sms-header">
+                            <div style="font-size:28px;line-height:1;">📱</div>
+                            <div>
+                                <div style="font-size:15px;font-weight:600;">短信验证码登录</div>
+                                <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">输入京东绑定的手机号，验证码登录后自动绑定</div>
+                            </div>
                         </div>
-                        <div>
-                            <button class="btn primary" onclick="jdSmsSend()" id="jdSmsSendBtn" style="width:100%;">发送验证码</button>
+                        <div class="jd-sms-row">
+                            <div class="jd-sms-field" style="flex:1;">
+                                <label>手机号</label>
+                                <input type="tel" id="jdSmsPhone" maxlength="11" placeholder="请输入11位手机号" />
+                            </div>
+                            <button class="btn primary" onclick="jdSmsSend()" id="jdSmsSendBtn" style="margin-top:22px;white-space:nowrap;">发送验证码</button>
                         </div>
-                        <div id="jdSmsCodeBox">
-                            <label class="muted">验证码</label>
+                        <div class="jd-sms-field" id="jdSmsCodeBox">
+                            <label>验证码</label>
                             <input type="text" id="jdSmsCode" maxlength="6" placeholder="请输入短信验证码" />
                         </div>
-                        <div id="jdSmsIdCardBox" style="display:none;">
-                            <label class="muted">身份证验证</label>
+                        <div class="jd-sms-field" id="jdSmsIdCardBox" style="display:none;">
+                            <label>身份证验证</label>
                             <input type="text" id="jdSmsIdCard" maxlength="6" placeholder="身份证前两位+后四位，如 31122X" />
                         </div>
-                        <div>
-                            <button class="btn accent" onclick="jdSmsVerify()" id="jdSmsVerifyBtn" style="width:100%;">提交登录</button>
-                        </div>
+                        <button class="btn accent" onclick="jdSmsVerify()" id="jdSmsVerifyBtn" style="width:100%;margin-top:8px;">提交登录</button>
                     </div>
                     <div class="jd-query-result" id="jdSmsResult" style="display:none;"></div>
                 </div>
@@ -3155,25 +3204,34 @@ async function loadJdAccounts() {
 
 function renderJdAccounts() {
     var box = document.getElementById('jdAccountList');
+    var countEl = document.getElementById('jdAccountCount');
     var list = state.jdAccounts || [];
     if (!box) return;
     if (list.length === 0) {
+        if (countEl) countEl.textContent = '';
         box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">暂无绑定的京东账号，请先使用短信或微信协议登录</div>';
         return;
     }
     var validCount = list.filter(function(item) { return item.valid; }).length;
-    var html = '<div class="muted" style="font-size:11px;margin-bottom:8px;">有效账号 ' + validCount + ' / ' + list.length + '</div>';
+    if (countEl) countEl.textContent = '有效账号 ' + validCount + ' / ' + list.length;
     var sorted = list.slice().sort(function(a, b) { return (b.valid ? 1 : 0) - (a.valid ? 1 : 0); });
+    var colors = ['#6366f1','#8b5cf6','#ec4899','#f43f5e','#f97316','#14b8a6','#3b82f6','#10b981'];
+    var html = '';
     sorted.forEach(function(item) {
         var statusCls = item.valid ? 'valid' : 'invalid';
         var statusText = item.valid ? '有效' : '失效';
+        var name = item.nickname || item.pin;
+        var initial = name.charAt(0).toUpperCase();
+        var colorIdx = item.index % colors.length;
         html += '<div class="jd-account-item">';
+        html += '<div class="jd-acc-top">';
+        html += '<div class="jd-acc-avatar" style="background:' + colors[colorIdx] + '">' + escapeHtml(initial) + '</div>';
         html += '<div class="jd-acc-info">';
-        html += '<strong>' + escapeHtml(item.nickname || item.pin) + '</strong>';
+        html += '<strong>' + escapeHtml(name) + '</strong>';
         html += '<div class="jd-acc-meta">' + escapeHtml(item.pin) + '</div>';
-        html += '</div>';
-        html += '<span class="jd-acc-status ' + statusCls + '">' + statusText + '</span>';
-        html += '<button class="btn primary" onclick="jdQueryOne(' + item.index + ')">查询</button>';
+        html += '</div></div>';
+        html += '<div class="jd-card-bottom"><span class="jd-acc-status-dot ' + statusCls + '">' + statusText + '</span>';
+        html += '<button class="btn primary" onclick="jdQueryOne(' + item.index + ')">查询</button></div>';
         html += '</div>';
     });
     box.innerHTML = html;
@@ -3317,13 +3375,17 @@ function renderJdWxDevices() {
     }
     var html = '';
     list.forEach(function(item) {
+        var name = item.nickname || item.wxid;
+        var initial = name.charAt(0).toUpperCase();
         html += '<div class="jd-device-card">';
+        html += '<div class="jd-dev-top">';
+        html += '<div class="jd-dev-avatar">' + escapeHtml(initial) + '</div>';
         html += '<div class="jd-dev-info">';
-        html += '<strong>' + escapeHtml(item.nickname || item.wxid) + '</strong>';
-        html += '<div class="jd-dev-meta">' + escapeHtml(item.wxid);
-        if (item.device) html += ' · ' + escapeHtml(item.device);
-        html += ' · ' + escapeHtml(item.serverType || '') + '设备</div></div>';
-        html += '<button class="btn primary" onclick="jdWxRefreshDevice(\'' + escapeAttr(item.wxid) + '\')">刷新CK</button>';
+        html += '<strong>' + escapeHtml(name) + '</strong>';
+        html += '<div class="jd-dev-meta">' + escapeHtml(item.wxid) + '</div>';
+        html += '</div></div>';
+        if (item.device) html += '<div class="jd-dev-meta" style="margin-top:8px;">' + escapeHtml(item.device) + ' · ' + escapeHtml(item.serverType || '') + '设备</div>';
+        html += '<div class="jd-card-bottom"><span class="jd-dev-meta">设备</span><button class="btn primary" onclick="jdWxRefreshDevice(\'' + escapeAttr(item.wxid) + '\')">刷新CK</button></div>';
         html += '</div>';
     });
     box.innerHTML = html;
