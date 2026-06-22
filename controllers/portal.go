@@ -764,8 +764,8 @@ func (c *PortalController) JdTaskLogs() {
 	c.Ctx.Output.Header("Access-Control-Allow-Origin", "*")
 	c.Ctx.Output.Header("X-Accel-Buffering", "no")
 
-	// 获取底层 ResponseWriter 和 Flusher
-	w := c.Ctx.ResponseWriter
+	// 获取底层 http.ResponseWriter 和 Flusher
+	w := c.Ctx.ResponseWriter.ResponseWriter
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		c.Ctx.WriteString("event: error\ndata: 服务器不支持SSE\n\n")
