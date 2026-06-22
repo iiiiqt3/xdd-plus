@@ -41,12 +41,15 @@ const (
 )
 
 type JDLocalQuery struct {
-	Cookie     string
-	Pin        string
-	UA         string
-	H5st       *JDH5ST
-	httpClient *http.Client
-	proxyLog   *jdProxyLogTransport
+	Cookie       string
+	Pin          string
+	UA           string
+	directClient *http.Client
+	directH5st   *JDH5ST
+	proxyOnce    sync.Once
+	proxyClient  *http.Client
+	proxyH5st    *JDH5ST
+	proxyLog     *jdProxyLogTransport
 }
 
 type JDLocalQueryResult struct {
@@ -103,6 +106,54 @@ type jdAlgoResp struct {
 	} `json:"data"`
 }
 
+func newJDQueryDirectClient() *http.Client {
+	return &http.Client{
+		Timeout: 20 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:          100,
+			MaxIdleConnsPerHost:   30,
+			MaxConnsPerHost:       30,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 15 * time.Second,
+		},
+	}
+}
+
+func (q *JDLocalQuery) initProxyIfNeeded() {
+	q.proxyOnce.Do(func() {
+		if !IsJdTaskProxyEnabled() {
+			logs.Info("[京东代理] 京豆/农场需代理但未启用，将直连")
+			return
+		}
+		logs.Info("[京东代理] 仅为京豆统计、农场接口请求 API 取 IP")
+		client, logTr := NewJDProxyHTTPClient()
+		q.proxyClient = client
+		q.proxyH5st = &JDH5ST{UA: q.UA, Pin: q.Pin, httpClient: client}
+		q.proxyLog = logTr
+	})
+}
+
+func (q *JDLocalQuery) queryClient(useProxy bool) *http.Client {
+	if useProxy {
+		q.initProxyIfNeeded()
+		if q.proxyClient != nil {
+			return q.proxyClient
+		}
+	}
+	return q.directClient
+}
+
+func (q *JDLocalQuery) queryH5st(useProxy bool) *JDH5ST {
+	if useProxy {
+		q.initProxyIfNeeded()
+		if q.proxyH5st != nil {
+			return q.proxyH5st
+		}
+	}
+	return q.directH5st
+}
+
 func NewJDLocalQuery(cookie string) *JDLocalQuery {
 	jdSeedRand()
 	pin := FetchJdCookieValue("pt_pin", cookie)
@@ -110,14 +161,13 @@ func NewJDLocalQuery(cookie string) *JDLocalQuery {
 		pin = decoded
 	}
 	ua := jdGenerateUserAgent()
-	client, proxyLog := NewJDProxyHTTPClient()
+	direct := newJDQueryDirectClient()
 	return &JDLocalQuery{
-		Cookie:     cookie,
-		Pin:        pin,
-		UA:         ua,
-		httpClient: client,
-		proxyLog:   proxyLog,
-		H5st:       &JDH5ST{UA: ua, Pin: pin, httpClient: client},
+		Cookie:       cookie,
+		Pin:          pin,
+		UA:           ua,
+		directClient: direct,
+		directH5st:   &JDH5ST{UA: ua, Pin: pin, httpClient: direct},
 	}
 }
 
@@ -129,9 +179,9 @@ func (q *JDLocalQuery) Query() JDLocalQueryResult {
 		}
 		n := q.proxyLog.RequestCount()
 		if host := q.proxyLog.ProxyHost(); host != "" {
-			logs.Info("[京东代理] [jd_query] 查询结束 pin=%s, 共 %d 次 HTTP 经代理 %s, 耗时 %v", q.Pin, n, host, time.Since(queryStart))
+			logs.Info("[京东代理] [jd_query] 查询结束 pin=%s, 京豆/农场 %d 次经代理 %s, 耗时 %v", q.Pin, n, host, time.Since(queryStart))
 		} else {
-			logs.Info("[京东代理] [jd_query] 查询结束 pin=%s, 共 %d 次 HTTP 直连, 耗时 %v", q.Pin, n, time.Since(queryStart))
+			logs.Info("[京东代理] [jd_query] 查询结束 pin=%s, 耗时 %v (其余接口直连)", q.Pin, time.Since(queryStart))
 		}
 	}()
 
@@ -355,8 +405,8 @@ func (q *JDLocalQuery) RenderSummary(detail bool) string {
 	return strings.Join(msgs, "\n")
 }
 
-func (q *JDLocalQuery) h5stRequest(functionID string, body interface{}, appID, appid string, extraHeaders map[string]string) (map[string]interface{}, error) {
-	h5st, ts, err := q.H5st.Generate(functionID, appID, body, appid)
+func (q *JDLocalQuery) h5stRequest(functionID string, body interface{}, appID, appid string, extraHeaders map[string]string, useProxy bool) (map[string]interface{}, error) {
+	h5st, ts, err := q.queryH5st(useProxy).Generate(functionID, appID, body, appid)
 	if err != nil {
 		return nil, err
 	}
@@ -386,16 +436,16 @@ func (q *JDLocalQuery) h5stRequest(functionID string, body interface{}, appID, a
 	for k, v := range extraHeaders {
 		headers[k] = v
 	}
-	data, err := q.requestBytes("POST", "https://api.m.jd.com/client.action", postBody.Encode(), headers)
+	data, err := doRequestBytes(q.queryClient(useProxy), "POST", "https://api.m.jd.com/client.action", postBody.Encode(), headers)
 	if err != nil {
 		return nil, err
 	}
 	return decodeJSONMap(data)
 }
 
-func (q *JDLocalQuery) signRequest(functionID string, body interface{}) (map[string]interface{}, error) {
+func (q *JDLocalQuery) signRequest(functionID string, body interface{}, useProxy bool) (map[string]interface{}, error) {
 	signBody := jdSign(functionID, body)
-	data, err := q.requestBytes("POST", "https://api.m.jd.com/client.action?functionId="+functionID, signBody+"&x-api-eid-token=", map[string]string{
+	data, err := doRequestBytes(q.queryClient(useProxy), "POST", "https://api.m.jd.com/client.action?functionId="+functionID, signBody+"&x-api-eid-token=", map[string]string{
 		"cookie":           q.Cookie,
 		"user-agent":       q.UA,
 		"content-type":     "application/x-www-form-urlencoded;charset=UTF-8",
@@ -412,7 +462,7 @@ func (q *JDLocalQuery) queryJingxiang() map[string]string {
 		"v": "16.3",
 		"paramData": map[string]interface{}{"token": "a243ca12-6642-4754-bc5e-0ff012681710", "lid": "Gv8zAj0mnx9iiLgIWfwBEA==", "priceChannel": 2, "device": 0},
 		"argMap":    map[string]interface{}{"channel": "APP", "upstreamChannel": "jxz"},
-	}, "6d239", "vipChannelHome", map[string]string{"referer": "https://huiyuan.m.jd.com/", "origin": "https://huiyuan.m.jd.com"})
+	}, "6d239", "vipChannelHome", map[string]string{"referer": "https://huiyuan.m.jd.com/", "origin": "https://huiyuan.m.jd.com"}, false)
 	if err != nil {
 		return nil
 	}
@@ -434,7 +484,7 @@ func (q *JDLocalQuery) queryJingxiang() map[string]string {
 }
 
 func (q *JDLocalQuery) queryECard() (string, string) {
-	data, err := q.h5stRequest("queryGiftCardCountStatusCom", map[string]interface{}{"queryList": "b,i,d,g,a"}, "42e80", "mygiftcard", map[string]string{"origin": "https://mygiftcard.jd.com", "referer": "https://mygiftcard.jd.com/"})
+	data, err := q.h5stRequest("queryGiftCardCountStatusCom", map[string]interface{}{"queryList": "b,i,d,g,a"}, "42e80", "mygiftcard", map[string]string{"origin": "https://mygiftcard.jd.com", "referer": "https://mygiftcard.jd.com/"}, false)
 	if err != nil {
 		return "", ""
 	}
@@ -458,7 +508,7 @@ func (q *JDLocalQuery) queryECard() (string, string) {
 }
 
 func (q *JDLocalQuery) querySuperMarket() string {
-	data, err := q.h5stRequest("atop_channel_marketCard_cardInfo", map[string]interface{}{"babelChannel": "ttt9", "isJdApp": "1", "isWx": "0"}, "35fa0", "jd-super-market", map[string]string{"origin": "https://pro.m.jd.com", "referer": "https://pro.m.jd.com/"})
+	data, err := q.h5stRequest("atop_channel_marketCard_cardInfo", map[string]interface{}{"babelChannel": "ttt9", "isJdApp": "1", "isWx": "0"}, "35fa0", "jd-super-market", map[string]string{"origin": "https://pro.m.jd.com", "referer": "https://pro.m.jd.com/"}, false)
 	if err != nil {
 		return ""
 	}
@@ -476,7 +526,7 @@ func (q *JDLocalQuery) querySuperMarket() string {
 func (q *JDLocalQuery) queryWangBei() (string, string) {
 	body := map[string]interface{}{"pageSize": 10, "currentPage": 1, "projectId": "1764671", "projectKey": "2nym8aW7jNKRbmxXLdbb75m3ebSH", "sourceCode": 2, "needExchangeRestScore": 1}
 	wbSign(body)
-	data, err := q.h5stRequest("arvr_queryInteractiveRewardInfo", body, "84692", "commonActivity", map[string]string{"origin": "https://pro.m.jd.com", "referer": "https://pro.m.jd.com/"})
+	data, err := q.h5stRequest("arvr_queryInteractiveRewardInfo", body, "84692", "commonActivity", map[string]string{"origin": "https://pro.m.jd.com", "referer": "https://pro.m.jd.com/"}, false)
 	if err != nil {
 		return "", ""
 	}
@@ -496,7 +546,7 @@ func (q *JDLocalQuery) queryHfJifen() string {
 	body.Set("body", fmt.Sprintf(`{"t":%d,"encStr":"%s"}`, t, encStr))
 	body.Set("client", "m")
 	body.Set("clientVersion", "6.0.0")
-	data, err := q.requestBytes("POST", "https://api.m.jd.com/api?functionId=DATAWALLET_USER_SIGN_INFO", body.Encode(), map[string]string{"cookie": q.Cookie, "user-agent": q.UA, "content-type": "application/x-www-form-urlencoded", "referer": "https://prodev.m.jd.com/"})
+	data, err := doRequestBytes(q.directClient, "POST", "https://api.m.jd.com/api?functionId=DATAWALLET_USER_SIGN_INFO", body.Encode(), map[string]string{"cookie": q.Cookie, "user-agent": q.UA, "content-type": "application/x-www-form-urlencoded", "referer": "https://prodev.m.jd.com/"})
 	if err != nil {
 		return ""
 	}
@@ -505,7 +555,7 @@ func (q *JDLocalQuery) queryHfJifen() string {
 }
 
 func (q *JDLocalQuery) queryRedPack() (string, string) {
-	data, err := q.signRequest("myhongbao_getUsableHongBaoList", map[string]interface{}{"activityArea": "-1", "activityType": "1", "appId": "appHongBao", "appToken": "apphongbao_token", "country": "cn", "platform": "1", "platformId": "appHongBao", "platformToken": "apphongbao_token"})
+	data, err := q.signRequest("myhongbao_getUsableHongBaoList", map[string]interface{}{"activityArea": "-1", "activityType": "1", "appId": "appHongBao", "appToken": "apphongbao_token", "country": "cn", "platform": "1", "platformId": "appHongBao", "platformToken": "apphongbao_token"}, false)
 	if err != nil {
 		return "", ""
 	}
@@ -523,7 +573,7 @@ func (q *JDLocalQuery) queryRedPack() (string, string) {
 }
 
 func (q *JDLocalQuery) queryBeanExpiring() []string {
-	data, err := q.signRequest("jingBeanDetail", map[string]interface{}{"pageSize": "20", "page": "1"})
+	data, err := q.signRequest("jingBeanDetail", map[string]interface{}{"pageSize": "20", "page": "1"}, false)
 	if err != nil {
 		return nil
 	}
@@ -545,7 +595,7 @@ func (q *JDLocalQuery) queryBeanExpiring() []string {
 func (q *JDLocalQuery) queryPlantBean() (string, string, string, string) {
 	data, err := q.h5stRequest("plantBeanIndex", map[string]interface{}{
 		"channel": "wojinghd", "monitor_source": "plant_m_plant_index", "monitor_refer": "", "version": "9.2.4.5",
-	}, "d246a", "signed_wh5", map[string]string{"referer": "https://plantearth.m.jd.com/"})
+	}, "d246a", "signed_wh5", map[string]string{"referer": "https://plantearth.m.jd.com/"}, true)
 	if err != nil {
 		return "", "", "", ""
 	}
@@ -586,11 +636,11 @@ func (q *JDLocalQuery) queryOldFarm() (string, string, string, string) {
 	farmWg.Add(2)
 	go func() {
 		defer farmWg.Done()
-		taskData, _ = q.h5stRequest("taskInitForFarm", farmBody, "fcb5a", "signed_wh5", farmHeaders)
+		taskData, _ = q.h5stRequest("taskInitForFarm", farmBody, "fcb5a", "signed_wh5", farmHeaders, true)
 	}()
 	go func() {
 		defer farmWg.Done()
-		initData, initErr = q.h5stRequest("initForFarm", farmBody, "8a2af", "signed_wh5", farmHeaders)
+		initData, initErr = q.h5stRequest("initForFarm", farmBody, "8a2af", "signed_wh5", farmHeaders, true)
 	}()
 	farmWg.Wait()
 	if initErr != nil || initData == nil {
@@ -629,7 +679,7 @@ func (q *JDLocalQuery) queryFarmNew() (string, string, string, string) {
 	data, err := q.h5stRequest("farm_home", map[string]interface{}{"version": 7}, "c57f6", "signed_wh5", map[string]string{
 		"x-referer-page": "https://h5.m.jd.com/pb/015686010/Bc9WX7MpCW7nW9QjZ5N3fFeJXMH/index.html",
 		"origin": "https://h5.m.jd.com", "referer": "https://h5.m.jd.com/", "x-rp-client": "h5_1.0.0", "request-from": "native",
-	})
+	}, true)
 	if err != nil {
 		return "", "", "", ""
 	}
@@ -657,7 +707,7 @@ func (q *JDLocalQuery) queryFarmNew() (string, string, string, string) {
 }
 
 func (q *JDLocalQuery) queryFarmNewAwards() []string {
-	data, err := q.h5stRequest("farm_award_detail", map[string]interface{}{"version": 3, "type": 1}, "c57f6", "signed_wh5", map[string]string{"referer": "https://h5.m.jd.com/"})
+	data, err := q.h5stRequest("farm_award_detail", map[string]interface{}{"version": 3, "type": 1}, "c57f6", "signed_wh5", map[string]string{"referer": "https://h5.m.jd.com/"}, true)
 	if err != nil {
 		return nil
 	}
@@ -679,7 +729,7 @@ func (q *JDLocalQuery) queryFarmNewAwards() []string {
 }
 
 func (q *JDLocalQuery) queryWanYiWan() string {
-	data, err := q.h5stRequest("wanyiwan_exchange_page", map[string]interface{}{"showShortcut": false, "version": 7}, "afec7", "signed_wh5", map[string]string{"origin": "https://pro.m.jd.com", "referer": "https://pro.m.jd.com/"})
+	data, err := q.h5stRequest("wanyiwan_exchange_page", map[string]interface{}{"showShortcut": false, "version": 7}, "afec7", "signed_wh5", map[string]string{"origin": "https://pro.m.jd.com", "referer": "https://pro.m.jd.com/"}, false)
 	if err != nil {
 		return ""
 	}
@@ -691,7 +741,7 @@ func (q *JDLocalQuery) queryWanYiWan() string {
 }
 
 func (q *JDLocalQuery) queryShengQianBi() string {
-	data, err := q.h5stRequest("miniTask_hbChannelPage", map[string]interface{}{"source": "task", "businessSource": "cjs"}, "60d61", "hot_channel", map[string]string{"referer": "https://servicewechat.com/"})
+	data, err := q.h5stRequest("miniTask_hbChannelPage", map[string]interface{}{"source": "task", "businessSource": "cjs"}, "60d61", "hot_channel", map[string]string{"referer": "https://servicewechat.com/"}, false)
 	if err != nil {
 		return ""
 	}
@@ -702,7 +752,7 @@ func (q *JDLocalQuery) queryShengQianBi() string {
 }
 
 func (q *JDLocalQuery) queryTrial() (string, string) {
-	data, err := q.h5stRequest("try_MyTrials", map[string]interface{}{"page": 1, "selected": 1}, "6d63a", "newtry", map[string]string{"origin": "https://prodev.m.jd.com", "referer": "https://prodev.m.jd.com/"})
+	data, err := q.h5stRequest("try_MyTrials", map[string]interface{}{"page": 1, "selected": 1}, "6d63a", "newtry", map[string]string{"origin": "https://prodev.m.jd.com", "referer": "https://prodev.m.jd.com/"}, false)
 	if err != nil {
 		return "", ""
 	}
@@ -729,7 +779,7 @@ func (q *JDLocalQuery) queryTrial() (string, string) {
 func (q *JDLocalQuery) queryJdHealth() string {
 	body := url.Values{}
 	body.Set("body", `{"appKey":"231282000001","appId":"1EFRYwg","channel":"jdapp","activityId":8542,"taskIdList":["520953","520954","520955","674815","841731","674816","674814"],"awardType":2,"imei":"JHNFCKDL"}`)
-	data, err := q.requestBytes("POST", fmt.Sprintf("https://api.m.jd.com/api?appid=jdh-middle&functionId=jdh_bm_queryAwardAndScore&t=%d", time.Now().UnixMilli()), body.Encode(), map[string]string{"cookie": q.Cookie, "user-agent": q.UA, "content-type": "application/x-www-form-urlencoded;charset=UTF-8", "x-requested-with": "com.jingdong.app.mall", "referer": "https://jdhm.jd.com/", "origin": "https://jdhm.jd.com"})
+	data, err := doRequestBytes(q.directClient, "POST", fmt.Sprintf("https://api.m.jd.com/api?appid=jdh-middle&functionId=jdh_bm_queryAwardAndScore&t=%d", time.Now().UnixMilli()), body.Encode(), map[string]string{"cookie": q.Cookie, "user-agent": q.UA, "content-type": "application/x-www-form-urlencoded;charset=UTF-8", "x-requested-with": "com.jingdong.app.mall", "referer": "https://jdhm.jd.com/", "origin": "https://jdhm.jd.com"})
 	if err != nil {
 		return ""
 	}
@@ -902,7 +952,7 @@ func (q *JDLocalQuery) getJingBeanBalanceDetail1(page int) (map[string]interface
 		"page":     strconv.Itoa(page),
 	})
 	postBody := "body=" + url.QueryEscape(string(bodyJSON)) + "&appid=ld"
-	data, err := q.requestBytes("POST", fmt.Sprintf("https://bean.m.jd.com/beanDetail/detail.json?page=%d", page), postBody, map[string]string{
+	data, err := doRequestBytes(q.queryClient(true), "POST", fmt.Sprintf("https://bean.m.jd.com/beanDetail/detail.json?page=%d", page), postBody, map[string]string{
 		"cookie":       q.Cookie,
 		"user-agent":   "Mozilla/5.0 (Linux; Android 12; SM-G9880) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Mobile Safari/537.36 EdgA/106.0.1370.47",
 		"content-type": "application/x-www-form-urlencoded",
@@ -918,7 +968,7 @@ func (q *JDLocalQuery) getJingBeanBalanceDetail(page int) (map[string]interface{
 	return q.signRequest("getJingBeanBalanceDetail", map[string]interface{}{
 		"pageSize": "20",
 		"page":     strconv.Itoa(page),
-	})
+	}, true)
 }
 
 func (q *JDLocalQuery) queryIsPlus() bool {
@@ -929,7 +979,7 @@ func (q *JDLocalQuery) queryIsPlus() bool {
 		"topicId":     176,
 		"contentType": "1_2_3_4_5_8_9_11_12_16_18",
 		"skuSourceId": 600008,
-	}, "b63ff", "plus_business", map[string]string{"referer": "https://plus.m.jd.com/index", "origin": "https://plus.m.jd.com"})
+	}, "b63ff", "plus_business", map[string]string{"referer": "https://plus.m.jd.com/index", "origin": "https://plus.m.jd.com"}, false)
 	if err != nil {
 		return false
 	}
@@ -1059,10 +1109,6 @@ func (h *JDH5ST) getRdAndTk(body interface{}) (*jdAlgoResp, error) {
 
 func (h *JDH5ST) requestBytes(method, target, body string, headers map[string]string) ([]byte, error) {
 	return doRequestBytes(h.httpClient, method, target, body, headers)
-}
-
-func (q *JDLocalQuery) requestBytes(method, target, body string, headers map[string]string) ([]byte, error) {
-	return doRequestBytes(q.httpClient, method, target, body, headers)
 }
 
 func doRequestBytes(client *http.Client, method, target, body string, headers map[string]string) ([]byte, error) {

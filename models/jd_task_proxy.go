@@ -162,13 +162,13 @@ func NewJDProxyHTTPClient() (*http.Client, *jdProxyLogTransport) {
 		}
 		return &http.Client{Timeout: 20 * time.Second, Transport: logTr}, logTr
 	}
-	logs.Info("[京东代理] Go查询开始，请求 API 取新 IP")
+	logs.Info("[京东代理] 京豆/农场查询，请求 API 取新 IP")
 	if proxyURL := refreshJDProxyURL("jd_query"); proxyURL != nil {
 		base.Proxy = http.ProxyURL(proxyURL)
 		logTr.proxyHost = proxyURL.Host
-		logs.Info("[京东代理] Go查询已绑定代理: %s", proxyURL.Host)
+		logs.Info("[京东代理] 京豆/农场已绑定代理: %s", proxyURL.Host)
 	} else {
-		logs.Warn("[京东代理] Go查询取 IP 失败，将直连")
+		logs.Warn("[京东代理] 京豆/农场取 IP 失败，将直连")
 	}
 	return &http.Client{
 		Timeout:   20 * time.Second,
