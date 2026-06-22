@@ -468,7 +468,8 @@ func (q *JDLocalQuery) queryOldFarm() (string, string, string, string) {
 	}
 	waterTaskTimes := 0
 	if taskData != nil {
-		if totalWater, ok := nestedMap(taskData, "totalWaterTaskInit"); ok && len(totalWater) > 0 {
+		totalWater := nestedMap(taskData, "totalWaterTaskInit")
+		if len(totalWater) > 0 {
 			waterTaskTimes = intValue(totalWater["totalWaterTaskTimes"])
 		}
 	}
