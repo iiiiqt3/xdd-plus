@@ -926,6 +926,20 @@
             .jd-form-grid .btn { width: 100%; justify-content: center; }
             .jd-query-result { font-size: 12px; max-height: 50vh; }
 
+            /* 短信登陆移动端适配 */
+            .jd-sms-card { max-width:100%; padding:20px 16px; margin:0; border-radius:0; border:none; background:var(--glass-bg); }
+            .jd-sms-header { flex-direction:row; align-items:center; gap:10px; margin-bottom:0; padding:14px 0; border-bottom:none; }
+            .jd-sms-header div:first-child { display:none; }
+            .jd-sms-header div:last-child div:first-child { font-size:16px; font-weight:700; }
+            .jd-sms-header div:last-child div:last-child { font-size:11px; color:var(--text-muted); }
+            .jd-sms-row { flex-direction:column; gap:0; }
+            .jd-sms-row .jd-sms-field { margin-bottom:12px; width:100%; }
+            .jd-sms-row .jd-sms-field input { width:100%; }
+            .jd-sms-row .btn { margin-top:0 !important; width:100%; border-radius:10px; padding:11px; }
+            .jd-sms-field label { font-size:11px; margin-bottom:5px; }
+            .jd-sms-field input { padding:11px 14px; font-size:16px; border-radius:10px; background:#f8f9fb; border:1px solid #e5e7eb; }
+            .jd-sms-field input:focus { background:#fff; }
+
             /* 手机业务弹窗移动端适配 */
             .iframe-modal .modal { width: calc(100vw - 4px); height: calc(100dvh - 4px); border-radius: 12px; }
             .iframe-modal .modal-header { padding: 10px 14px; }
