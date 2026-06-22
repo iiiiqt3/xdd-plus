@@ -448,6 +448,8 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 		return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, "Available"), userId, "True")
 	})
 
+	logChan <- fmt.Sprintf("查询到 %d 个有效账号 (userId=%d)", len(cks), userId)
+
 	if len(cks) == 0 {
 		logChan <- "错误: 没有找到有效的京东账号"
 		return
@@ -465,6 +467,8 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 			selectedCks = append(selectedCks, cks[idx-1])
 		}
 	}
+
+	logChan <- fmt.Sprintf("筛选后 %d 个账号 (传入索引: %v)", len(selectedCks), accountIndexes)
 
 	if len(selectedCks) == 0 {
 		logChan <- "错误: 没有选择有效的账号"
