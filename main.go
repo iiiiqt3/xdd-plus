@@ -173,7 +173,7 @@ func main() {
 
 	// 默认首页，返回门户登录页面
 	web.Get("/", func(ctx *context.Context) {
-		file, err := vweb.WebFs.ReadFile("html/portal_login.html")
+		file, err := vweb.ReadFile("html/portal_login.html")
 		if err != nil {
 			ctx.WriteString("portal login page not found")
 			return
@@ -240,7 +240,7 @@ func main() {
 	web.Router("/api/portal/jd/wx/continue-risk", &controllers.PortalController{}, "post:JdWxContinueRisk")
 	// 管理员登录页面
 	web.Get("/admin/login", func(ctx *context.Context) {
-		file, err := vweb.WebFs.ReadFile("html/admin_login.html")
+		file, err := vweb.ReadFile("html/admin_login.html")
 		if err != nil {
 			ctx.WriteString("admin login page not found")
 			return

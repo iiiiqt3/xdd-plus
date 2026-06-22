@@ -588,7 +588,7 @@ func (c *LoginController) PortalLogout() {
 }
 
 func (c *LoginController) PortalLoginPage() {
-	file, err := vweb.WebFs.ReadFile("html/portal_login.html")
+	file, err := vweb.ReadFile("html/portal_login.html")
 	if err != nil {
 		c.Ctx.WriteString("portal login page not found")
 		return

@@ -37,7 +37,7 @@ func (c *PortalController) NextPrepare() {
 
 // Index 返回门户首页HTML页面
 func (c *PortalController) Index() {
-	file, err := vweb.WebFs.ReadFile("html/portal.html")
+	file, err := vweb.ReadFile("html/portal.html")
 	if err != nil {
 		c.Ctx.WriteString("portal page not found")
 		return

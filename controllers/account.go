@@ -114,7 +114,7 @@ func (c *AccountController) CreateOrUpdate() {
 
 // Admin 返回后台管理页面HTML
 func (c *AccountController) Admin() {
-	file, _ := vweb.WebFs.ReadFile("html/admin.html")
+	file, _ := vweb.ReadFile("html/admin.html")
 	c.Ctx.WriteString(string(file))
 }
 
