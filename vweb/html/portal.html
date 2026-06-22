@@ -602,7 +602,7 @@
 
         /* ===== 京东任务 ===== */
         .jd-task-layout { display: flex; gap: 20px; align-items: flex-start; }
-        .jd-task-left { width: 420px; min-width: 360px; flex-shrink: 0; }
+        .jd-task-left { width: 640px; min-width: 560px; flex-shrink: 0; }
         .jd-task-right {
             flex: 1; min-width: 0; position: sticky; top: 20px;
             display: flex; flex-direction: column; max-height: calc(100vh - 200px);
@@ -611,7 +611,7 @@
             display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 12px; flex-shrink: 0;
         }
-        .jd-task-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+        .jd-task-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
         .jd-task-card {
             padding: 14px 16px; border-radius: 12px; border: 1px solid var(--glass-border);
             background: var(--glass-bg); transition: box-shadow 0.2s ease, border-color 0.2s ease;
@@ -3398,8 +3398,8 @@ async function loadJdTasks() {
     grid.innerHTML = html || '<div style="padding:40px;text-align:center;color:var(--text-muted);">暂无任务</div>';
 }
 
-// 当前正在运行的任务ID
-var currentRunningTaskId = null;
+// 当前正在运行的任务 {taskId: sseConnection, ...}
+var runningTasks = {};
 
 async function executeJdTask(taskId, taskName) {
     var btn = document.getElementById('taskBtn_' + taskId);
@@ -3409,12 +3409,6 @@ async function executeJdTask(taskId, taskName) {
     // 如果当前任务正在运行，点击则停止
     if (btn.classList.contains('running')) {
         stopCurrentTask(taskId, taskName);
-        return;
-    }
-    
-    // 检查是否有其他任务在运行
-    if (currentRunningTaskId) {
-        showToast('请等待当前任务执行完成', 'warning');
         return;
     }
     
@@ -3430,10 +3424,6 @@ async function executeJdTask(taskId, taskName) {
     btn.classList.add('running');
     btn.textContent = '停止任务';
     btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-    currentRunningTaskId = taskId;
-    
-    // 禁用其他任务按钮
-    disableOtherTaskBtns(taskId);
     
     // 添加日志
     addJdTaskLog(taskName, '开始执行任务...');
@@ -3450,6 +3440,7 @@ async function executeJdTask(taskId, taskName) {
         
         if (resp.code === 0 && resp.data && resp.data.taskId) {
             addJdTaskLog(taskName, '任务已启动，正在连接日志流...');
+            runningTasks[taskId] = resp.data.taskId;
             // 建立 SSE 连接接收实时日志
             connectJdTaskSSE(resp.data.taskId, taskName, taskId);
         } else {
@@ -3463,18 +3454,18 @@ async function executeJdTask(taskId, taskName) {
 }
 
 function stopCurrentTask(taskId, taskName) {
-    if (jdTaskSSE) {
-        jdTaskSSE.close();
-        jdTaskSSE = null;
-    }
     addJdTaskLog(taskName, '⚠️ 任务已手动停止');
-    resetTaskBtn(taskId);
     
     // 调用后端停止接口
-    request('/api/portal/jd/task/stop', {
-        method: 'POST',
-        body: JSON.stringify({ taskId: currentRunningTaskId })
-    }).catch(function() {});
+    var sseTaskId = runningTasks[taskId];
+    if (sseTaskId) {
+        request('/api/portal/jd/task/stop', {
+            method: 'POST',
+            body: JSON.stringify({ taskId: sseTaskId })
+        }).catch(function() {});
+    }
+    
+    resetTaskBtn(taskId);
 }
 
 function resetTaskBtn(taskId) {
@@ -3484,34 +3475,7 @@ function resetTaskBtn(taskId) {
         btn.textContent = '执行任务';
         btn.style.background = '';
     }
-    currentRunningTaskId = null;
-    enableAllTaskBtns();
-}
-
-function disableOtherTaskBtns(exceptTaskId) {
-    var tasks = ['newfruit_watering', 'plantBean', 'dwapp', 'price', 'autoEval', 'insight'];
-    tasks.forEach(function(id) {
-        if (id !== exceptTaskId) {
-            var btn = document.getElementById('taskBtn_' + id);
-            if (btn) {
-                btn.disabled = true;
-                btn.style.opacity = '0.5';
-                btn.style.cursor = 'not-allowed';
-            }
-        }
-    });
-}
-
-function enableAllTaskBtns() {
-    var tasks = ['newfruit_watering', 'plantBean', 'dwapp', 'price', 'autoEval', 'insight'];
-    tasks.forEach(function(id) {
-        var btn = document.getElementById('taskBtn_' + id);
-        if (btn) {
-            btn.disabled = false;
-            btn.style.opacity = '';
-            btn.style.cursor = '';
-        }
-    });
+    delete runningTasks[taskId];
 }
 
 var currentTaskType = null;

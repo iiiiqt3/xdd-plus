@@ -434,6 +434,61 @@ func RemoveTaskLogChannel(taskId string) {
 	}
 }
 
+// 运行中的任务管理 {userId_taskId: {taskLogId: accountIndexes}}
+var runningTasksMap = make(map[string]map[string][]int)
+var runningTasksMutex sync.Mutex
+
+// GetRunningTask 检查是否有同一任务的同一账号正在执行
+func GetRunningTask(userId int, taskId string, accountIndexes []int) string {
+	runningTasksMutex.Lock()
+	defer runningTasksMutex.Unlock()
+	
+	key := fmt.Sprintf("%d_%s", userId, taskId)
+	taskMap, exists := runningTasksMap[key]
+	if !exists {
+		return ""
+	}
+	
+	// 检查是否有账号冲突
+	for _, idx := range accountIndexes {
+		for logId, runningIndexes := range taskMap {
+			for _, runningIdx := range runningIndexes {
+				if idx == 0 || runningIdx == 0 || idx == runningIdx {
+					return logId
+				}
+			}
+		}
+	}
+	
+	return ""
+}
+
+// RegisterRunningTask 注册运行中的任务
+func RegisterRunningTask(userId int, taskId string, accountIndexes []int, taskLogId string) {
+	runningTasksMutex.Lock()
+	defer runningTasksMutex.Unlock()
+	
+	key := fmt.Sprintf("%d_%s", userId, taskId)
+	if runningTasksMap[key] == nil {
+		runningTasksMap[key] = make(map[string][]int)
+	}
+	runningTasksMap[key][taskLogId] = accountIndexes
+}
+
+// UnregisterRunningTask 注销运行中的任务
+func UnregisterRunningTask(userId int, taskId string, taskLogId string) {
+	runningTasksMutex.Lock()
+	defer runningTasksMutex.Unlock()
+	
+	key := fmt.Sprintf("%d_%s", userId, taskId)
+	if taskMap, exists := runningTasksMap[key]; exists {
+		delete(taskMap, taskLogId)
+		if len(taskMap) == 0 {
+			delete(runningTasksMap, key)
+		}
+	}
+}
+
 // StopPortalJdTask 停止正在执行的任务
 func StopPortalJdTask(taskId string) {
 	taskCmdMutex.Lock()

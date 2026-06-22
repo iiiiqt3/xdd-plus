@@ -735,14 +735,28 @@ func (c *PortalController) JdTaskExecute() {
 		return
 	}
 
+	// 检查是否有同一任务的同一账号正在执行
+	conflictTask := models.GetRunningTask(c.PortalUserID, req.TaskId, req.AccountIndexes)
+	if conflictTask != "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": fmt.Sprintf("该任务的某些账号正在执行中：%s", conflictTask)}
+		c.ServeJSON()
+		return
+	}
+
 	// 生成任务ID
 	taskLogId := fmt.Sprintf("%s_%d_%d", req.TaskId, c.PortalUserID, time.Now().UnixNano())
 
 	// 创建日志通道
 	models.CreateTaskLogChannel(taskLogId)
 
+	// 注册运行中的任务
+	models.RegisterRunningTask(c.PortalUserID, req.TaskId, req.AccountIndexes, taskLogId)
+
 	// 启动任务（异步执行）
-	go models.ExecutePortalJdTask(c.PortalUserID, req.TaskId, req.TaskName, req.AccountIndexes, taskLogId)
+	go func() {
+		defer models.UnregisterRunningTask(c.PortalUserID, req.TaskId, taskLogId)
+		models.ExecutePortalJdTask(c.PortalUserID, req.TaskId, req.TaskName, req.AccountIndexes, taskLogId)
+	}()
 
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "任务已启动", "data": map[string]string{"taskId": taskLogId}}
 	c.ServeJSON()
