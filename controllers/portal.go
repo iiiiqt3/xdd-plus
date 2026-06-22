@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -763,10 +764,19 @@ func (c *PortalController) JdTaskLogs() {
 	c.Ctx.Output.Header("Access-Control-Allow-Origin", "*")
 	c.Ctx.Output.Header("X-Accel-Buffering", "no")
 
+	// 获取底层 ResponseWriter 和 Flusher
+	w := c.Ctx.ResponseWriter
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		c.Ctx.WriteString("event: error\ndata: 服务器不支持SSE\n\n")
+		return
+	}
+
 	// 获取日志通道
 	logChan := models.GetTaskLogChannel(taskId)
 	if logChan == nil {
-		c.Ctx.WriteString("event: error\ndata: 任务不存在或已结束\n\n")
+		fmt.Fprintf(w, "event: error\ndata: 任务不存在或已结束\n\n")
+		flusher.Flush()
 		return
 	}
 
@@ -780,16 +790,19 @@ func (c *PortalController) JdTaskLogs() {
 		case log, ok := <-logChan:
 			if !ok {
 				// 通道关闭，任务结束
-				c.Ctx.WriteString("event: done\ndata: 任务执行完成\n\n")
+				fmt.Fprintf(w, "event: done\ndata: 任务执行完成\n\n")
+				flusher.Flush()
 				return
 			}
 			// 发送日志数据
-			c.Ctx.WriteString("data: " + log + "\n\n")
+			fmt.Fprintf(w, "data: %s\n\n", log)
+			flusher.Flush()
 			// 重置超时
 			timeout.Reset(5 * time.Minute)
 		case <-timeout.C:
 			// 超时，任务可能卡住
-			c.Ctx.WriteString("event: timeout\ndata: 连接超时\n\n")
+			fmt.Fprintf(w, "event: timeout\ndata: 连接超时\n\n")
+			flusher.Flush()
 			return
 		}
 	}

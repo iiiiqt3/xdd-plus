@@ -496,6 +496,34 @@
         .jd-tab-panel.active { display: block; }
         .jd-login-tab-panel { display: none; }
         .jd-login-tab-panel.active { display: block; }
+        /* 一级菜单样式 */
+        .jd-main-tabs { justify-content: center; gap: 12px; margin-bottom: 20px; }
+        .jd-main-tabs button {
+            font-size: 15px; font-weight: 700; padding: 10px 24px; border-radius: 10px;
+            background: var(--glass-bg); border: 2px solid var(--glass-border); color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+        .jd-main-tabs button:hover { background: var(--card); border-color: var(--primary-light, #c7d2fe); }
+        .jd-main-tabs button.active {
+            background: linear-gradient(135deg, var(--primary, #818cf8), var(--accent, #f472b6));
+            color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(129,140,248,0.3);
+        }
+        /* 分隔线 */
+        .jd-divider { border: none; border-top: 1px solid var(--glass-border); margin: 20px 0; }
+        /* 二级菜单样式（药丸形状） */
+        .jd-sub-tabs { display: flex; gap: 0; background: var(--glass-bg); border-radius: 10px; padding: 4px; border: 1px solid var(--glass-border); }
+        .jd-sub-tabs button {
+            font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 8px;
+            background: transparent; border: none; color: var(--text-muted);
+            transition: all 0.2s ease; white-space: nowrap;
+        }
+        .jd-sub-tabs button:hover { color: var(--text); background: rgba(129,140,248,0.1); }
+        .jd-sub-tabs button.active {
+            background: var(--primary, #818cf8); color: #fff; box-shadow: 0 2px 8px rgba(129,140,248,0.3);
+        }
+        /* 菜单栏布局 */
+        .jd-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+        .jd-toolbar-actions { display: flex; gap: 8px; }
         .jd-action-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
         .jd-action-bar .btn { font-size:11px; padding:4px 10px; border-radius:6px; }
         .jd-account-list {
@@ -1447,25 +1475,29 @@
                     <h3>🛒 京东菜单</h3>
                     <span class="muted">查询资产、登录、京东任务</span>
                 </div>
-                <div class="tabs" id="jdTabs" style="justify-content:center;">
-                    <button class="active" id="jdTab-login" onclick="switchJdTab('login')">🔍 查询、登录</button>
+                <div class="tabs jd-main-tabs" id="jdTabs">
+                    <button class="active" id="jdTab-login" onclick="switchJdTab('login')">🔍 查询与登录</button>
                     <button id="jdTab-task" onclick="switchJdTab('task')">⚡ 京东任务</button>
                 </div>
 
+                <hr class="jd-divider">
+
                 <div class="jd-tab-panel active" id="jdPanel-login">
                     <!-- 二级菜单 -->
-                    <div class="tabs" id="jdLoginTabs" style="justify-content:center;margin-bottom:20px;">
-                        <button class="active" id="jdLoginTab-query" onclick="switchJdLoginTab('query')">🔍 查询</button>
-                        <button id="jdLoginTab-sms" onclick="switchJdLoginTab('sms')">📱 短信登录</button>
-                        <button id="jdLoginTab-wx" onclick="switchJdLoginTab('wx')">💬 微信协议登录</button>
+                    <div class="jd-toolbar">
+                        <div class="jd-sub-tabs">
+                            <button class="active" id="jdLoginTab-query" onclick="switchJdLoginTab('query')">🔍 查询</button>
+                            <button id="jdLoginTab-sms" onclick="switchJdLoginTab('sms')">📱 短信登录</button>
+                            <button id="jdLoginTab-wx" onclick="switchJdLoginTab('wx')">💬 微信协议登录</button>
+                        </div>
+                        <div class="jd-toolbar-actions" id="jdToolbarActions">
+                            <button class="btn primary small" onclick="jdQueryAll()">📋 全部查询</button>
+                            <button class="btn outline small" onclick="loadJdAccounts()">🔄 刷新</button>
+                        </div>
                     </div>
 
                     <!-- 查询面板 -->
                     <div class="jd-login-tab-panel active" id="jdLoginPanel-query">
-                        <div style="display:flex;gap:8px;margin-bottom:14px;">
-                            <button class="btn primary small" onclick="jdQueryAll()">📋 全部查询</button>
-                            <button class="btn outline small" onclick="loadJdAccounts()">🔄 刷新</button>
-                        </div>
                         <div id="jdAccountCount" style="font-size:11px;color:var(--text-muted);margin:0 0 12px 0;"></div>
                         <div class="jd-account-list" id="jdAccountList">
                             <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载账号...</div>
@@ -1506,10 +1538,6 @@
                     <div class="jd-login-tab-panel" id="jdLoginPanel-wx">
                         <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:11px;color:var(--cyan);line-height:1.8;">
                             💡 需先在「微信协议」页面扫码绑定在线设备，再选择设备刷新京东 CK。
-                        </div>
-                        <div class="jd-action-bar">
-                            <button class="btn primary" onclick="jdWxRefreshAll()">刷新全部CK</button>
-                            <button class="btn secondary" onclick="loadJdWxDevices()">刷新设备列表</button>
                         </div>
                         <div class="jd-device-grid" id="jdWxDeviceList">
                             <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载设备...</div>
@@ -3267,8 +3295,22 @@ function switchJdLoginTab(tab) {
         if (btn) btn.classList.toggle('active', name === tab);
         if (panel) panel.classList.toggle('active', name === tab);
     });
-    if (tab === 'query') loadJdAccounts().catch(function() {});
-    if (tab === 'wx') loadJdWxDevices().catch(function() {});
+    
+    // 更新右侧操作按钮
+    var actions = document.getElementById('jdToolbarActions');
+    if (actions) {
+        if (tab === 'query') {
+            actions.innerHTML = '<button class="btn primary small" onclick="jdQueryAll()">📋 全部查询</button>' +
+                               '<button class="btn outline small" onclick="loadJdAccounts()">🔄 刷新</button>';
+            loadJdAccounts().catch(function() {});
+        } else if (tab === 'sms') {
+            actions.innerHTML = '';
+        } else if (tab === 'wx') {
+            actions.innerHTML = '<button class="btn primary small" onclick="jdWxRefreshAll()">刷新全部CK</button>' +
+                               '<button class="btn secondary small" onclick="loadJdWxDevices()">刷新设备列表</button>';
+            loadJdWxDevices().catch(function() {});
+        }
+    }
 }
 
 async function loadJdPanelData() {

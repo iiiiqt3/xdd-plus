@@ -561,10 +561,15 @@ func executeTaskWithLogs(taskId string, taskName string, scriptPath string, envs
 		reader := bufio.NewReader(stderr)
 		for {
 			line, err2 := reader.ReadString('\n')
-			if err2 != nil || io.EOF == err2 {
+			if err2 != nil {
+				if err2 != io.EOF && len(strings.TrimSpace(line)) > 0 {
+					logChan <- fmt.Sprintf("[stderr] %s", strings.TrimSpace(line))
+				}
 				break
 			}
-			logChan <- fmt.Sprintf("[stderr] %s", strings.TrimSpace(line))
+			if len(strings.TrimSpace(line)) > 0 {
+				logChan <- fmt.Sprintf("[stderr] %s", strings.TrimSpace(line))
+			}
 		}
 	}()
 
@@ -573,11 +578,18 @@ func executeTaskWithLogs(taskId string, taskName string, scriptPath string, envs
 	reader := bufio.NewReader(stdout)
 	for {
 		line, err2 := reader.ReadString('\n')
-		if err2 != nil || io.EOF == err2 {
+		if err2 != nil {
+			if err2 != io.EOF && len(strings.TrimSpace(line)) > 0 {
+				fullOutput.WriteString(line)
+				logChan <- strings.TrimSpace(line)
+			}
 			break
 		}
 		fullOutput.WriteString(line)
-		logChan <- strings.TrimSpace(line)
+		trimmed := strings.TrimSpace(line)
+		if len(trimmed) > 0 {
+			logChan <- trimmed
+		}
 	}
 
 	err = cmd.Wait()
