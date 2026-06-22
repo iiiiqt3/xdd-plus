@@ -1,7 +1,9 @@
 package models
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -329,17 +331,60 @@ func ExecuteTask(sender *Sender, taskName string, scriptPath string, envs map[st
 	for key, value := range envs {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 	}
-	// 获取并输出脚本执行结果
-	output, err := cmd.CombinedOutput()
-	logs.Info("脚本输出: %s", string(output))
 
-	if err != nil && strings.TrimSpace(string(output)) == "" {
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		logs.Error("cmd.StdoutPipe: ", err)
+		sender.Reply(fmt.Sprintf("%s任务失败：获取输出管道失败", taskName))
+		return
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		logs.Error("cmd.StderrPipe: ", err)
+		sender.Reply(fmt.Sprintf("%s任务失败：获取错误管道失败", taskName))
+		return
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		logs.Error("cmd.Start: ", err)
+		sender.Reply(fmt.Sprintf("%s任务失败：启动失败", taskName))
+		return
+	}
+
+	// 异步读取 stderr（实时记录到后台日志）
+	go func() {
+		reader := bufio.NewReader(stderr)
+		for {
+			line, err2 := reader.ReadString('\n')
+			if err2 != nil || io.EOF == err2 {
+				break
+			}
+			logs.Info("[%s] stderr: %s", taskName, strings.TrimSpace(line))
+		}
+	}()
+
+	// 实时读取 stdout，同时累积完整输出
+	var fullOutput strings.Builder
+	reader := bufio.NewReader(stdout)
+	for {
+		line, err2 := reader.ReadString('\n')
+		if err2 != nil || io.EOF == err2 {
+			break
+		}
+		fullOutput.WriteString(line)
+		logs.Info("[%s] %s", taskName, strings.TrimSpace(line)) // 实时记录到后台日志
+	}
+
+	err = cmd.Wait()
+	if err != nil && strings.TrimSpace(fullOutput.String()) == "" {
 		logs.Error("执行 JavaScript 脚本失败: %v", err)
 		sender.Reply(fmt.Sprintf("%s任务失败：执行脚本错误", taskName))
 		return
 	}
 
-	sender.Reply(outputParser(string(output), sender))
+	// 脚本结束后，使用完整输出进行匹配（用户只看到这个结果）
+	sender.Reply(outputParser(fullOutput.String(), sender))
 }
 
 func replexQuan_Watering(info string, sender *Sender) string {
@@ -453,7 +498,7 @@ func replexQuan_newWatering(info string, sender *Sender) string {
 		// 如果匹配到“黑号”，返回相应信息
 		return "新农场都进不去了，浇什么水，，如果你京东APP能进入农场，说明IP黑了，请重新执行"
 	}
-	sender.Reply("新农场黑ip较为严重，如果失败请重新执行")
+	msgs = append(msgs, "新农场黑ip较为严重，如果失败请重新执行")
 	msgs = append(msgs, "========================================\n提示：新农场兑换，请注意有效期！\n========================================")
 
 	return strings.Join(msgs, "\n")
