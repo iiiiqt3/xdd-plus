@@ -391,6 +391,7 @@ func ExecuteTask(sender *Sender, taskName string, scriptPath string, envs map[st
 // 任务日志通道管理
 var taskLogChannels = make(map[string]chan string)
 var taskLogMutex sync.Mutex
+var taskLogTimers = make(map[string]*time.Timer)
 
 // GetTaskLogChannel 获取任务日志通道
 func GetTaskLogChannel(taskId string) chan string {
@@ -405,6 +406,13 @@ func CreateTaskLogChannel(taskId string) chan string {
 	defer taskLogMutex.Unlock()
 	ch := make(chan string, 100)
 	taskLogChannels[taskId] = ch
+	
+	// 设置最大存活时间 10 分钟，防止通道泄漏
+	timer := time.AfterFunc(10*time.Minute, func() {
+		RemoveTaskLogChannel(taskId)
+	})
+	taskLogTimers[taskId] = timer
+	
 	return ch
 }
 
@@ -416,6 +424,10 @@ func RemoveTaskLogChannel(taskId string) {
 		close(ch)
 		delete(taskLogChannels, taskId)
 	}
+	if timer, ok := taskLogTimers[taskId]; ok {
+		timer.Stop()
+		delete(taskLogTimers, taskId)
+	}
 }
 
 // ExecutePortalJdTask 执行网页端京东任务
@@ -425,7 +437,6 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 	if logChan == nil {
 		logChan = CreateTaskLogChannel(taskLogId)
 	}
-	defer RemoveTaskLogChannel(taskLogId)
 
 	// 发送开始日志
 	logChan <- fmt.Sprintf("开始执行任务: %s", taskName)
@@ -434,7 +445,7 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 	var idType string
 	idType = QQ // 默认使用QQ
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), userId, True)
+		return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, "Available"), userId, "True")
 	})
 
 	if len(cks) == 0 {
@@ -511,7 +522,7 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 		executeTaskWithLogs(taskLogId, taskName, scriptPath, envs, parser, logChan)
 	}
 
-	logChan <- "所有账号任务执行完成"
+	logChan <- "=====DONE=====所有账号任务执行完成"
 }
 
 // executeTaskWithLogs 执行任务并实时推送日志
