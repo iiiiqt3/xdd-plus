@@ -63,11 +63,16 @@ func ApplyJdProTaskProxyEnvs(envs map[string]string) {
 
 // JDProxyFunc 返回 httplib / http 可用的代理函数；未启用代理时返回 nil
 func JDProxyFunc() func(*http.Request) (*url.URL, error) {
+	if !IsJdTaskProxyEnabled() {
+		return nil
+	}
 	if u := GetJDProxyURL(); u != nil {
+		logs.Info("[京东代理] asset 请求走代理: %s", u.Host)
 		return func(*http.Request) (*url.URL, error) {
 			return u, nil
 		}
 	}
+	logs.Warn("[京东代理] asset 请求未获取到代理，将直连")
 	return nil
 }
 
@@ -79,21 +84,33 @@ func GetJDProxyURL() *url.URL {
 	jdProxyCacheMu.Lock()
 	if jdProxyCache != nil && time.Since(jdProxyCacheTime) < jdProxyCacheTTL {
 		u := jdProxyCache
+		age := time.Since(jdProxyCacheTime)
 		jdProxyCacheMu.Unlock()
+		logs.Info("[京东代理] 使用缓存 IP: %s (已缓存 %.0fs / %ds)", u.Host, age.Seconds(), int(jdProxyCacheTTL.Seconds()))
 		return u
 	}
 	jdProxyCacheMu.Unlock()
-	return refreshJDProxyURL()
+	logs.Info("[京东代理] 缓存过期或为空，准备请求 API 取 IP")
+	return refreshJDProxyURL("asset")
 }
 
 // NewJDProxyHTTPClient 每次 Go 资产查询强制取新 IP（IP 仅 30 秒有效，整次查询共用）
 func NewJDProxyHTTPClient() *http.Client {
 	transport := &http.Transport{}
 	if !IsJdTaskProxyEnabled() {
+		if strings.TrimSpace(sysConfig.JdTaskProxyUrl) == "" {
+			logs.Info("[京东代理] Go查询直连: 未配置动态 IP API")
+		} else {
+			logs.Info("[京东代理] Go查询直连: 代理开关未启用")
+		}
 		return &http.Client{Timeout: 30 * time.Second, Transport: transport}
 	}
-	if proxyURL := refreshJDProxyURL(); proxyURL != nil {
+	logs.Info("[京东代理] Go查询开始，请求 API 取新 IP")
+	if proxyURL := refreshJDProxyURL("jd_query"); proxyURL != nil {
 		transport.Proxy = http.ProxyURL(proxyURL)
+		logs.Info("[京东代理] Go查询已绑定代理: %s", proxyURL.Host)
+	} else {
+		logs.Warn("[京东代理] Go查询取 IP 失败，将直连")
 	}
 	return &http.Client{
 		Timeout:   30 * time.Second,
@@ -101,24 +118,27 @@ func NewJDProxyHTTPClient() *http.Client {
 	}
 }
 
-func refreshJDProxyURL() *url.URL {
+func refreshJDProxyURL(caller string) *url.URL {
 	if !IsJdTaskProxyEnabled() {
 		return nil
 	}
-	u, err := fetchDynamicProxyURL()
+	u, err := fetchDynamicProxyURL(caller)
 	jdProxyCacheMu.Lock()
 	defer jdProxyCacheMu.Unlock()
 	if err != nil {
-		logs.Warn("[京东代理] 获取动态 IP 失败: %v", err)
+		logs.Warn("[京东代理] [%s] 获取动态 IP 失败: %v", caller, err)
+		if jdProxyCache != nil {
+			logs.Warn("[京东代理] [%s] 回退使用缓存 IP: %s", caller, jdProxyCache.Host)
+		}
 		return jdProxyCache
 	}
 	jdProxyCache = u
 	jdProxyCacheTime = time.Now()
-	logs.Info("[京东代理] 获取动态 IP: %s", u.String())
+	logs.Info("[京东代理] [%s] API 取 IP 成功: %s", caller, u.String())
 	return u
 }
 
-func fetchDynamicProxyURL() (*url.URL, error) {
+func fetchDynamicProxyURL(caller string) (*url.URL, error) {
 	apiURL := strings.TrimSpace(sysConfig.JdTaskProxyUrl)
 	if apiURL == "" {
 		return nil, fmt.Errorf("动态 IP API 地址为空")
@@ -135,35 +155,45 @@ func fetchDynamicProxyURL() (*url.URL, error) {
 			redelay = n
 		}
 	}
+	logs.Info("[京东代理] [%s] 调用 API: %s (最多重试%d次)", caller, maskProxyAPIURL(apiURL), renum)
 	client := &http.Client{Timeout: 15 * time.Second}
 	var lastErr error
 	for i := 0; i < renum; i++ {
 		if i > 0 {
+			logs.Info("[京东代理] [%s] 第%d次重试，等待%ds...", caller, i+1, redelay)
 			time.Sleep(time.Duration(redelay) * time.Second)
 		}
 		req, err := http.NewRequest(http.MethodGet, apiURL, nil)
 		if err != nil {
 			lastErr = err
+			logs.Warn("[京东代理] [%s] 第%d次请求构建失败: %v", caller, i+1, err)
 			continue
 		}
+		start := time.Now()
 		resp, err := client.Do(req)
 		if err != nil {
 			lastErr = err
+			logs.Warn("[京东代理] [%s] 第%d次请求失败(%v): %v", caller, i+1, time.Since(start), err)
 			continue
 		}
 		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			lastErr = err
+			logs.Warn("[京东代理] [%s] 第%d次读取响应失败: %v", caller, i+1, err)
 			continue
 		}
+		bodyText := strings.TrimSpace(string(body))
 		if resp.StatusCode != http.StatusOK {
-			lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+			lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, bodyText)
+			logs.Warn("[京东代理] [%s] 第%d次 HTTP %d，响应: %s", caller, i+1, resp.StatusCode, truncateLog(bodyText, 200))
 			continue
 		}
+		logs.Info("[京东代理] [%s] 第%d次 API 响应(%v): %s", caller, i+1, time.Since(start), truncateLog(bodyText, 200))
 		proxyURL, err := parseDynamicProxyResponse(body)
 		if err != nil {
 			lastErr = err
+			logs.Warn("[京东代理] [%s] 第%d次解析 IP 失败: %v", caller, i+1, err)
 			continue
 		}
 		return proxyURL, nil
@@ -172,6 +202,28 @@ func fetchDynamicProxyURL() (*url.URL, error) {
 		lastErr = fmt.Errorf("未知错误")
 	}
 	return nil, fmt.Errorf("动态代理 API 获取失败(重试%d次): %w", renum, lastErr)
+}
+
+func maskProxyAPIURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	q := u.Query()
+	for _, key := range []string{"vkey", "apikey", "key", "secret", "token"} {
+		if q.Get(key) != "" {
+			q.Set(key, "***")
+		}
+	}
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
+func truncateLog(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "..."
 }
 
 // parseDynamicProxyResponse 解析代理 API 响应，兼容携趣等「标准文本 ip:port」及 JSON 格式
