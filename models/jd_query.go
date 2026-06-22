@@ -512,10 +512,11 @@ func (q *JDLocalQuery) queryBeanStatistics() (int, int, int, int) {
 	yesterdayIncome := 0
 	yesterdayOutcome := 0
 
-	// 前一天的0:0:0时间戳
-	tm := time.Now().Add(-24 * time.Hour).Truncate(24 * time.Hour).UnixMilli()
-	// 今天0:0:0时间戳
-	tm1 := time.Now().Truncate(24 * time.Hour).UnixMilli()
+	// Y查询中的日期计算方式：+28800000 = 8小时（东八区）
+	// 前一天的0:0:0时间戳（东八区）
+	tm := (time.Now().UnixMilli()+28800000)/86400000*86400000 - 28800000 - 86400000
+	// 今天0:0:0时间戳（东八区）
+	tm1 := (time.Now().UnixMilli()+28800000)/86400000*86400000 - 28800000
 
 	page := 1
 	for {
@@ -641,9 +642,19 @@ func (q *JDLocalQuery) queryBeanStatistics() (int, int, int, int) {
 }
 
 func (q *JDLocalQuery) getJingBeanBalanceDetail1(page int) (map[string]interface{}, error) {
-	return q.signRequest("getJingBeanBalanceDetail1", map[string]interface{}{
-		"page": page,
+	body := url.Values{}
+	body.Set("body", fmt.Sprintf(`{"pageSize":"20","page":"%d"}`, page))
+	body.Set("appid", "ld")
+	
+	data, err := requestBytes("POST", fmt.Sprintf("https://bean.m.jd.com/beanDetail/detail.json?page=%d", page), body.Encode(), map[string]string{
+		"cookie":           q.Cookie,
+		"user-agent":       "Mozilla/5.0 (Linux; Android 12; SM-G9880) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Mobile Safari/537.36 EdgA/106.0.1370.47",
+		"content-type":     "application/x-www-form-urlencoded",
 	})
+	if err != nil {
+		return nil, err
+	}
+	return decodeJSONMap(data)
 }
 
 func (q *JDLocalQuery) getJingBeanBalanceDetail(page int) (map[string]interface{}, error) {
