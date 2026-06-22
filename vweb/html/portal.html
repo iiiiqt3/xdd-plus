@@ -570,6 +570,38 @@
         .iframe-modal .modal { width: min(960px, 96vw); max-width: 96vw; height: min(88vh, 900px); display: flex; flex-direction: column; }
         .iframe-modal iframe { flex: 1; width: 100%; border: none; border-radius: 0 0 14px 14px; background: #fff; min-height: 0; }
 
+        /* ===== 京东任务 ===== */
+        .jd-task-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .jd-task-card {
+            padding: 18px 20px; border-radius: 14px; border: 1px solid var(--glass-border);
+            background: var(--glass-bg); transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .jd-task-card:hover { border-color: var(--primary-light, #c7d2fe); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        .jd-task-card .task-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .jd-task-card .task-icon { font-size: 24px; }
+        .jd-task-card .task-info { flex: 1; }
+        .jd-task-card .task-info h4 { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+        .jd-task-card .task-info p { font-size: 12px; color: var(--text-muted); }
+        .jd-task-card .task-accounts { margin-bottom: 12px; }
+        .jd-task-card .task-accounts label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+        .jd-task-card .task-account-select {
+            width: 100%; padding: 8px 12px; border: 1px solid var(--glass-border); border-radius: 8px;
+            background: var(--card); font-size: 13px; outline: none; min-height: 80px;
+        }
+        .jd-task-card .task-account-select option { padding: 4px 8px; }
+        .jd-task-card .task-actions { display: flex; gap: 8px; }
+        .jd-task-card .task-actions .btn { flex: 1; font-size: 13px; padding: 8px 16px; border-radius: 8px; }
+        .jd-task-log {
+            background: #1e1e2e; border-radius: 12px; padding: 16px; min-height: 200px; max-height: 500px;
+            overflow-y: auto; font-family: 'SF Mono', 'Consolas', 'Monaco', monospace; font-size: 12px;
+            line-height: 1.8; color: #a9b7c6; white-space: pre-wrap; word-break: break-all;
+        }
+        .jd-task-log .log-line { margin-bottom: 2px; }
+        .jd-task-log .log-time { color: #6a737d; margin-right: 8px; }
+        .jd-task-log .log-task { color: #98c379; margin-right: 8px; }
+        .jd-task-log .log-content { color: #abb2bf; }
+        .jd-task-log .log-error { color: #e06c75; }
+
         .wx-empty-state {
             text-align: center; padding: 40px 20px; color: var(--text-muted);
             border: 1px dashed var(--card-border); border-radius: var(--radius);
@@ -1411,75 +1443,103 @@
             <div class="section">
                 <div class="section-header panel-duplicate-title">
                     <h3>🛒 京东菜单</h3>
-                    <span class="muted">查询资产、短信登录、微信协议登录</span>
+                    <span class="muted">查询资产、登录、京东任务</span>
                 </div>
                 <div class="tabs" id="jdTabs">
-                    <button class="active" id="jdTab-query" onclick="switchJdTab('query')">🔍 查询</button>
-                    <button id="jdTab-sms" onclick="switchJdTab('sms')">📱 短信登陆</button>
-                    <button id="jdTab-wx" onclick="switchJdTab('wx')">💬 微信协议登陆</button>
+                    <button class="active" id="jdTab-login" onclick="switchJdTab('login')">🔍 查询、登录</button>
+                    <button id="jdTab-task" onclick="switchJdTab('task')">⚡ 京东任务</button>
                 </div>
 
-                <div class="jd-tab-panel active" id="jdPanel-query">
-                    <div style="border-bottom:1px solid var(--glass-border);margin:0 0 36px 0;"></div>
-                    <div style="display:flex;gap:8px;margin-bottom:14px;">
-                        <button class="btn primary small" onclick="jdQueryAll()">📋 全部查询</button>
-                        <button class="btn outline small" onclick="loadJdAccounts()">🔄 刷新</button>
+                <div class="jd-tab-panel active" id="jdPanel-login">
+                    <!-- 查询子菜单 -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">🔍 查询资产</div>
+                        <div style="display:flex;gap:8px;margin-bottom:14px;">
+                            <button class="btn primary small" onclick="jdQueryAll()">📋 全部查询</button>
+                            <button class="btn outline small" onclick="loadJdAccounts()">🔄 刷新</button>
+                        </div>
+                        <div id="jdAccountCount" style="font-size:11px;color:var(--text-muted);margin:0 0 12px 0;"></div>
+                        <div class="jd-account-list" id="jdAccountList">
+                            <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载账号...</div>
+                        </div>
                     </div>
-                    <div id="jdAccountCount" style="font-size:11px;color:var(--text-muted);margin:0 0 12px 0;"></div>
-                    <div class="jd-account-list" id="jdAccountList">
-                        <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载账号...</div>
-                    </div>
-                </div>
 
-                <div class="jd-tab-panel" id="jdPanel-sms">
-                    <div style="border-bottom:1px solid var(--glass-border);margin:0 0 28px 0;"></div>
-                    <div class="jd-sms-card">
-                        <div class="jd-sms-header">
-                            <div style="font-size:28px;line-height:1;">📱</div>
-                            <div>
-                                <div style="font-size:15px;font-weight:600;">短信验证码登录</div>
-                                <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">输入京东绑定的手机号，验证码登录后自动绑定</div>
+                    <div style="border-bottom:1px solid var(--glass-border);margin:20px 0;"></div>
+
+                    <!-- 短信登录子菜单 -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">📱 短信验证码登录</div>
+                        <div class="jd-sms-card">
+                            <div class="jd-sms-header">
+                                <div style="font-size:28px;line-height:1;">📱</div>
+                                <div>
+                                    <div style="font-size:15px;font-weight:600;">短信验证码登录</div>
+                                    <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">输入京东绑定的手机号，验证码登录后自动绑定</div>
+                                </div>
+                            </div>
+                            <div class="jd-sms-row">
+                                <div class="jd-sms-field" style="flex:1;">
+                                    <label>手机号</label>
+                                    <input type="tel" id="jdSmsPhone" maxlength="11" placeholder="请输入11位手机号" />
+                                </div>
+                                <button class="btn primary" onclick="jdSmsSend()" id="jdSmsSendBtn" style="margin-top:22px;white-space:nowrap;">发送验证码</button>
+                            </div>
+                            <div class="jd-sms-field" id="jdSmsCodeBox">
+                                <label>验证码</label>
+                                <input type="text" id="jdSmsCode" maxlength="6" placeholder="请输入短信验证码" />
+                            </div>
+                            <div class="jd-sms-field" id="jdSmsIdCardBox" style="display:none;">
+                                <label>身份证验证</label>
+                                <input type="text" id="jdSmsIdCard" maxlength="6" placeholder="身份证前两位+后四位，如 31122X" />
+                            </div>
+                            <button class="btn accent" onclick="jdSmsVerify()" id="jdSmsVerifyBtn" style="width:100%;margin-top:8px;">提交登录</button>
+                        </div>
+                        <div class="jd-query-result" id="jdSmsResult" style="display:none;"></div>
+                    </div>
+
+                    <div style="border-bottom:1px solid var(--glass-border);margin:20px 0;"></div>
+
+                    <!-- 微信协议登录子菜单 -->
+                    <div>
+                        <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">💬 微信协议登录</div>
+                        <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:11px;color:var(--cyan);line-height:1.8;">
+                            💡 需先在「微信协议」页面扫码绑定在线设备，再选择设备刷新京东 CK。
+                        </div>
+                        <div class="jd-action-bar">
+                            <button class="btn primary" onclick="jdWxRefreshAll()">刷新全部CK</button>
+                            <button class="btn secondary" onclick="loadJdWxDevices()">刷新设备列表</button>
+                        </div>
+                        <div class="jd-device-grid" id="jdWxDeviceList">
+                            <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载设备...</div>
+                        </div>
+                        <div id="jdWxRiskBox" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
+                            <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdWxRiskMsg">账号需要短信验证</div>
+                            <a id="jdWxRiskLink" href="#" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">验证链接</a>
+                            <div style="margin-top:10px;">
+                                <button class="btn accent" onclick="jdWxContinueRisk()">验证完成，继续刷新</button>
                             </div>
                         </div>
-                        <div class="jd-sms-row">
-                            <div class="jd-sms-field" style="flex:1;">
-                                <label>手机号</label>
-                                <input type="tel" id="jdSmsPhone" maxlength="11" placeholder="请输入11位手机号" />
-                            </div>
-                            <button class="btn primary" onclick="jdSmsSend()" id="jdSmsSendBtn" style="margin-top:22px;white-space:nowrap;">发送验证码</button>
-                        </div>
-                        <div class="jd-sms-field" id="jdSmsCodeBox">
-                            <label>验证码</label>
-                            <input type="text" id="jdSmsCode" maxlength="6" placeholder="请输入短信验证码" />
-                        </div>
-                        <div class="jd-sms-field" id="jdSmsIdCardBox" style="display:none;">
-                            <label>身份证验证</label>
-                            <input type="text" id="jdSmsIdCard" maxlength="6" placeholder="身份证前两位+后四位，如 31122X" />
-                        </div>
-                        <button class="btn accent" onclick="jdSmsVerify()" id="jdSmsVerifyBtn" style="width:100%;margin-top:8px;">提交登录</button>
+                        <div class="jd-query-result" id="jdWxResult" style="display:none;"></div>
                     </div>
-                    <div class="jd-query-result" id="jdSmsResult" style="display:none;"></div>
                 </div>
 
-                <div class="jd-tab-panel" id="jdPanel-wx">
-                    <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:11px;color:var(--cyan);line-height:1.8;">
-                        💡 需先在「微信协议」页面扫码绑定在线设备，再选择设备刷新京东 CK。
+                <!-- 京东任务面板 -->
+                <div class="jd-tab-panel" id="jdPanel-task">
+                    <div style="margin-bottom:16px;">
+                        <div style="font-size:14px;color:var(--text-muted);">选择任务和账号，点击执行按钮开始任务</div>
                     </div>
-                    <div class="jd-action-bar">
-                        <button class="btn primary" onclick="jdWxRefreshAll()">刷新全部CK</button>
-                        <button class="btn secondary" onclick="loadJdWxDevices()">刷新设备列表</button>
+                    <div class="jd-task-grid" id="jdTaskGrid">
+                        <!-- 任务卡片将通过 JS 动态生成 -->
                     </div>
-                    <div class="jd-device-grid" id="jdWxDeviceList">
-                        <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载设备...</div>
-                    </div>
-                    <div id="jdWxRiskBox" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
-                        <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdWxRiskMsg">账号需要短信验证</div>
-                        <a id="jdWxRiskLink" href="#" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">验证链接</a>
-                        <div style="margin-top:10px;">
-                            <button class="btn accent" onclick="jdWxContinueRisk()">验证完成，继续刷新</button>
+                    <div style="margin-top:20px;border-top:1px solid var(--glass-border);padding-top:16px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <div style="font-size:14px;font-weight:700;color:var(--text);">📋 执行日志</div>
+                            <button class="btn secondary small" onclick="clearJdTaskLogs()">清空日志</button>
+                        </div>
+                        <div class="jd-task-log" id="jdTaskLog">
+                            <div style="color:var(--text-muted);text-align:center;padding:40px 0;">暂无日志，请执行任务</div>
                         </div>
                     </div>
-                    <div class="jd-query-result" id="jdWxResult" style="display:none;"></div>
                 </div>
             </div>
         </section>
@@ -3185,21 +3245,181 @@ function closeMobileBusinessModal() {
 
 function switchJdTab(tab) {
     state.jdTab = tab;
-    ['query', 'sms', 'wx'].forEach(function(name) {
+    ['login', 'task'].forEach(function(name) {
         var btn = document.getElementById('jdTab-' + name);
         var panel = document.getElementById('jdPanel-' + name);
         if (btn) btn.classList.toggle('active', name === tab);
         if (panel) panel.classList.toggle('active', name === tab);
     });
-    if (tab === 'query') loadJdAccounts().catch(function() {});
-    if (tab === 'wx') loadJdWxDevices().catch(function() {});
+    if (tab === 'login') {
+        loadJdAccounts().catch(function() {});
+        loadJdWxDevices().catch(function() {});
+    }
+    if (tab === 'task') loadJdTasks().catch(function() {});
 }
 
 async function loadJdPanelData() {
-    if (state.jdTab === 'wx') {
-        await loadJdWxDevices();
+    if (state.jdTab === 'task') {
+        await loadJdTasks();
     } else {
         await loadJdAccounts();
+        await loadJdWxDevices();
+    }
+}
+
+// 京东任务相关函数
+var jdTaskSSE = null;
+var jdTaskAccounts = [];
+
+async function loadJdTasks() {
+    var grid = document.getElementById('jdTaskGrid');
+    if (!grid) return;
+    
+    // 先加载账号列表
+    try {
+        var resp = await request('/api/portal/jd/accounts');
+        jdTaskAccounts = resp.data || [];
+    } catch (err) {
+        jdTaskAccounts = [];
+    }
+    
+    // 任务定义
+    var tasks = [
+        { id: 'newfruit_watering', name: '新农场浇水', icon: '🌱', desc: '自动浇水，收获水果' },
+        { id: 'plantBean', name: '种豆得豆', icon: '🫘', desc: '种豆得豆任务' },
+        { id: 'dwapp', name: '话费积分', icon: '📱', desc: '话费积分签到' },
+        { id: 'price', name: '一键保价', icon: '💰', desc: '自动保价退款' },
+        { id: 'autoEval', name: '一键评价', icon: '⭐', desc: '自动评价订单' },
+        { id: 'delLjq', name: '删除垃圾券', icon: '🗑️', desc: '清理过期优惠券' },
+        { id: 'insight', name: '问卷调查', icon: '📝', desc: '问卷调查得豆' }
+    ];
+    
+    // 渲染任务卡片
+    var html = '';
+    tasks.forEach(function(task) {
+        html += '<div class="jd-task-card">';
+        html += '<div class="task-header">';
+        html += '<span class="task-icon">' + task.icon + '</span>';
+        html += '<div class="task-info"><h4>' + task.name + '</h4><p>' + task.desc + '</p></div>';
+        html += '</div>';
+        html += '<div class="task-accounts">';
+        html += '<label>选择账号（按住Ctrl多选）</label>';
+        html += '<select class="task-account-select" id="taskAccounts_' + task.id + '" multiple>';
+        html += '<option value="0">所有账号</option>';
+        jdTaskAccounts.forEach(function(acc, idx) {
+            var status = acc.valid ? '有效' : '失效';
+            html += '<option value="' + (idx + 1) + '">' + acc.nickname + ' (' + status + ')</option>';
+        });
+        html += '</select>';
+        html += '</div>';
+        html += '<div class="task-actions">';
+        html += '<button class="btn primary" onclick="executeJdTask(\'' + task.id + '\', \'' + task.name + '\')">执行任务</button>';
+        html += '</div>';
+        html += '</div>';
+    });
+    grid.innerHTML = html || '<div style="padding:40px;text-align:center;color:var(--text-muted);">暂无任务</div>';
+}
+
+async function executeJdTask(taskId, taskName) {
+    var select = document.getElementById('taskAccounts_' + taskId);
+    if (!select) return;
+    
+    var selectedOptions = Array.from(select.selectedOptions);
+    var accountIndexes = selectedOptions.map(function(opt) { return parseInt(opt.value); });
+    
+    if (accountIndexes.length === 0) {
+        showToast('请至少选择一个账号', 'warning');
+        return;
+    }
+    
+    // 添加日志
+    addJdTaskLog(taskName, '开始执行任务...');
+    
+    try {
+        var resp = await request('/api/portal/jd/task/execute', {
+            method: 'POST',
+            body: JSON.stringify({
+                taskId: taskId,
+                taskName: taskName,
+                accountIndexes: accountIndexes
+            })
+        });
+        
+        if (resp.code === 0 && resp.data && resp.data.taskId) {
+            addJdTaskLog(taskName, '任务已启动，正在连接日志流...');
+            // 建立 SSE 连接接收实时日志
+            connectJdTaskSSE(resp.data.taskId, taskName);
+        } else {
+            addJdTaskLog(taskName, '任务启动失败: ' + (resp.msg || '未知错误'), true);
+        }
+    } catch (err) {
+        addJdTaskLog(taskName, '请求失败: ' + err.message, true);
+    }
+}
+
+function connectJdTaskSSE(taskId, taskName) {
+    // 关闭之前的连接
+    if (jdTaskSSE) {
+        jdTaskSSE.close();
+        jdTaskSSE = null;
+    }
+    
+    var url = '/api/portal/jd/task/logs?taskId=' + encodeURIComponent(taskId);
+    jdTaskSSE = new EventSource(url);
+    
+    jdTaskSSE.onmessage = function(event) {
+        addJdTaskLog(taskName, event.data);
+    };
+    
+    jdTaskSSE.addEventListener('done', function(event) {
+        addJdTaskLog(taskName, '任务执行完成');
+        jdTaskSSE.close();
+        jdTaskSSE = null;
+    });
+    
+    jdTaskSSE.addEventListener('error', function(event) {
+        if (event.data) {
+            addJdTaskLog(taskName, '错误: ' + event.data, true);
+        }
+        jdTaskSSE.close();
+        jdTaskSSE = null;
+    });
+    
+    jdTaskSSE.onerror = function() {
+        addJdTaskLog(taskName, '日志连接断开', true);
+        jdTaskSSE.close();
+        jdTaskSSE = null;
+    };
+}
+
+function addJdTaskLog(taskName, content, isError) {
+    var logBox = document.getElementById('jdTaskLog');
+    if (!logBox) return;
+    
+    // 如果是空状态，清空
+    if (logBox.querySelector('div[style*="text-align:center"]')) {
+        logBox.innerHTML = '';
+    }
+    
+    var now = new Date();
+    var timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                  now.getMinutes().toString().padStart(2, '0') + ':' + 
+                  now.getSeconds().toString().padStart(2, '0');
+    
+    var line = document.createElement('div');
+    line.className = 'log-line';
+    line.innerHTML = '<span class="log-time">[' + timeStr + ']</span>' +
+                     '<span class="log-task">[' + taskName + ']</span>' +
+                     '<span class="' + (isError ? 'log-error' : 'log-content') + '">' + escapeHtml(content) + '</span>';
+    
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+function clearJdTaskLogs() {
+    var logBox = document.getElementById('jdTaskLog');
+    if (logBox) {
+        logBox.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px 0;">暂无日志，请执行任务</div>';
     }
 }
 

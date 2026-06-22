@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"regexp"
@@ -385,6 +386,199 @@ func ExecuteTask(sender *Sender, taskName string, scriptPath string, envs map[st
 
 	// 脚本结束后，使用完整输出进行匹配（用户只看到这个结果）
 	sender.Reply(outputParser(fullOutput.String(), sender))
+}
+
+// 任务日志通道管理
+var taskLogChannels = make(map[string]chan string)
+var taskLogMutex sync.Mutex
+
+// GetTaskLogChannel 获取任务日志通道
+func GetTaskLogChannel(taskId string) chan string {
+	taskLogMutex.Lock()
+	defer taskLogMutex.Unlock()
+	return taskLogChannels[taskId]
+}
+
+// CreateTaskLogChannel 创建任务日志通道
+func CreateTaskLogChannel(taskId string) chan string {
+	taskLogMutex.Lock()
+	defer taskLogMutex.Unlock()
+	ch := make(chan string, 100)
+	taskLogChannels[taskId] = ch
+	return ch
+}
+
+// RemoveTaskLogChannel 移除任务日志通道
+func RemoveTaskLogChannel(taskId string) {
+	taskLogMutex.Lock()
+	defer taskLogMutex.Unlock()
+	if ch, ok := taskLogChannels[taskId]; ok {
+		close(ch)
+		delete(taskLogChannels, taskId)
+	}
+}
+
+// ExecutePortalJdTask 执行网页端京东任务
+func ExecutePortalJdTask(userId int, taskId string, taskName string, accountIndexes []int, taskLogId string) {
+	// 获取日志通道
+	logChan := GetTaskLogChannel(taskLogId)
+	if logChan == nil {
+		logChan = CreateTaskLogChannel(taskLogId)
+	}
+	defer RemoveTaskLogChannel(taskLogId)
+
+	// 发送开始日志
+	logChan <- fmt.Sprintf("开始执行任务: %s", taskName)
+
+	// 获取用户的京东账号
+	var idType string
+	idType = QQ // 默认使用QQ
+	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+		return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), userId, True)
+	})
+
+	if len(cks) == 0 {
+		logChan <- "错误: 没有找到有效的京东账号"
+		return
+	}
+
+	// 筛选要执行的账号
+	var selectedCks []JdCookie
+	for _, idx := range accountIndexes {
+		if idx == 0 {
+			// 选择所有账号
+			selectedCks = cks
+			break
+		}
+		if idx > 0 && idx <= len(cks) {
+			selectedCks = append(selectedCks, cks[idx-1])
+		}
+	}
+
+	if len(selectedCks) == 0 {
+		logChan <- "错误: 没有选择有效的账号"
+		return
+	}
+
+	logChan <- fmt.Sprintf("已选择 %d 个账号", len(selectedCks))
+
+	// 根据任务类型执行
+	for _, ck := range selectedCks {
+		logChan <- fmt.Sprintf("执行账号: %s (%s)", ck.Nickname, ck.PtPin)
+
+		envs := map[string]string{
+			"pins": "&" + ck.PtPin,
+		}
+
+		var scriptPath string
+		var parser func(string, *Sender) string
+
+		switch taskId {
+		case "newfruit_watering":
+			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_fruit_new.js"
+			parser = replexQuan_newWatering
+			if IsJdTaskProxyEnabled() {
+				envs["FRUIT_NEW_DELAY"] = "5"
+			} else {
+				envs["FRUIT_NEW_DELAY"] = "8"
+			}
+		case "plantBean":
+			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_plantBean.js"
+			parser = replexQuan_jd_plantBean
+		case "dwapp":
+			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_dwapp.js"
+			parser = replexQuan_jd_dwapp
+			envs["ONEVAL"] = "true"
+		case "price":
+			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_OnceApply.js"
+			parser = replexQuan_Price
+		case "autoEval":
+			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_AutoEval.js"
+			parser = replexQuan_AutoEval
+			envs["ONEVAL"] = "true"
+		case "delLjq":
+			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_delLjq.js"
+			parser = replexQuan_jd_delLjq
+		case "insight":
+			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_insight.js"
+			parser = replexQuan_jd_insight
+		default:
+			logChan <- fmt.Sprintf("错误: 未知的任务类型 %s", taskId)
+			return
+		}
+
+		// 执行任务并实时推送日志
+		executeTaskWithLogs(taskLogId, taskName, scriptPath, envs, parser, logChan)
+	}
+
+	logChan <- "所有账号任务执行完成"
+}
+
+// executeTaskWithLogs 执行任务并实时推送日志
+func executeTaskWithLogs(taskId string, taskName string, scriptPath string, envs map[string]string, outputParser func(string, *Sender) string, logChan chan string) {
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		logChan <- fmt.Sprintf("错误: 脚本文件不存在 %s", scriptPath)
+		return
+	}
+
+	ApplyJdTaskProxyEnvs(envs)
+
+	cmd := exec.Command("node", scriptPath)
+	for key, value := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		logChan <- fmt.Sprintf("错误: 获取输出管道失败 %v", err)
+		return
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		logChan <- fmt.Sprintf("错误: 获取错误管道失败 %v", err)
+		return
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		logChan <- fmt.Sprintf("错误: 启动脚本失败 %v", err)
+		return
+	}
+
+	// 异步读取 stderr
+	go func() {
+		reader := bufio.NewReader(stderr)
+		for {
+			line, err2 := reader.ReadString('\n')
+			if err2 != nil || io.EOF == err2 {
+				break
+			}
+			logChan <- fmt.Sprintf("[stderr] %s", strings.TrimSpace(line))
+		}
+	}()
+
+	// 实时读取 stdout
+	var fullOutput strings.Builder
+	reader := bufio.NewReader(stdout)
+	for {
+		line, err2 := reader.ReadString('\n')
+		if err2 != nil || io.EOF == err2 {
+			break
+		}
+		fullOutput.WriteString(line)
+		logChan <- strings.TrimSpace(line)
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		logChan <- fmt.Sprintf("脚本执行完成，退出码: %v", err)
+	}
+
+	// 输出匹配后的结果
+	sender := &Sender{}
+	result := outputParser(fullOutput.String(), sender)
+	logChan <- fmt.Sprintf("===== 任务结果 =====")
+	logChan <- result
 }
 
 func replexQuan_Watering(info string, sender *Sender) string {

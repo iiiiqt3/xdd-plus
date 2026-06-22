@@ -238,6 +238,8 @@ func main() {
 	web.Router("/api/portal/jd/wx/devices", &controllers.PortalController{}, "get:JdWxDevices")
 	web.Router("/api/portal/jd/wx/refresh", &controllers.PortalController{}, "post:JdWxRefresh")
 	web.Router("/api/portal/jd/wx/continue-risk", &controllers.PortalController{}, "post:JdWxContinueRisk")
+	web.Router("/api/portal/jd/task/execute", &controllers.PortalController{}, "post:JdTaskExecute")
+	web.Router("/api/portal/jd/task/logs", &controllers.PortalController{}, "get:JdTaskLogs")
 	// 管理员登录页面
 	web.Get("/admin/login", func(ctx *context.Context) {
 		file, err := vweb.ReadFile("html/admin_login.html")

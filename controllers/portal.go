@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/vweb"
@@ -711,4 +713,78 @@ func (c *PortalController) JdWxContinueRisk() {
 	}
 	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
 	c.ServeJSON()
+}
+
+// JdTaskExecute 执行京东任务
+func (c *PortalController) JdTaskExecute() {
+	var req struct {
+		TaskId         string `json:"taskId"`
+		TaskName       string `json:"taskName"`
+		AccountIndexes []int  `json:"accountIndexes"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+
+	if req.TaskId == "" || len(req.AccountIndexes) == 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "参数不完整"}
+		c.ServeJSON()
+		return
+	}
+
+	// 生成任务ID
+	taskLogId := fmt.Sprintf("%s_%d_%d", req.TaskId, c.PortalUserID, time.Now().UnixNano())
+
+	// 创建日志通道
+	models.CreateTaskLogChannel(taskLogId)
+
+	// 启动任务（异步执行）
+	go models.ExecutePortalJdTask(c.PortalUserID, req.TaskId, req.TaskName, req.AccountIndexes, taskLogId)
+
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "任务已启动", "data": map[string]string{"taskId": taskLogId}}
+	c.ServeJSON()
+}
+
+// JdTaskLogs SSE 实时日志流
+func (c *PortalController) JdTaskLogs() {
+	taskId := c.GetString("taskId")
+	if taskId == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "缺少taskId参数"}
+		c.ServeJSON()
+		return
+	}
+
+	// 设置 SSE 响应头
+	c.Ctx.Output.Header("Content-Type", "text/event-stream")
+	c.Ctx.Output.Header("Cache-Control", "no-cache")
+	c.Ctx.Output.Header("Connection", "keep-alive")
+	c.Ctx.Output.Header("Access-Control-Allow-Origin", "*")
+
+	// 获取日志通道
+	logChan := models.GetTaskLogChannel(taskId)
+	if logChan == nil {
+		c.Ctx.WriteString("event: error\ndata: 任务不存在或已结束\n\n")
+		return
+	}
+
+	// 持续发送日志
+	for {
+		select {
+		case log, ok := <-logChan:
+			if !ok {
+				// 通道关闭，任务结束
+				c.Ctx.WriteString("event: done\ndata: 任务执行完成\n\n")
+				c.Ctx.Output.Body(nil)
+				return
+			}
+			// 发送日志数据
+			c.Ctx.WriteString("data: " + log + "\n\n")
+			c.Ctx.Output.Body(nil)
+		case <-c.Ctx.Done():
+			// 客户端断开连接
+			return
+		}
+	}
 }
