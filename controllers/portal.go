@@ -598,3 +598,117 @@ func (c *PortalController) CoinLogs() {
 	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
 	c.ServeJSON()
 }
+
+// JdAccounts 获取用户绑定的京东账号列表
+func (c *PortalController) JdAccounts() {
+	accounts := models.GetPortalJdAccounts(c.PortalUserID)
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": accounts}
+	c.ServeJSON()
+}
+
+// JdQuery 查询京东账号资产
+func (c *PortalController) JdQuery() {
+	var req struct {
+		Index int `json:"index"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	result, err := models.PortalJdQuery(c.PortalUserID, req.Index)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
+	c.ServeJSON()
+}
+
+// JdSmsSend 发送京东短信验证码
+func (c *PortalController) JdSmsSend() {
+	var req struct {
+		Phone string `json:"phone"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	msg, err := models.PortalJdSmsSend(c.PortalUserID, strings.TrimSpace(req.Phone))
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
+	c.ServeJSON()
+}
+
+// JdSmsVerify 提交京东短信验证码
+func (c *PortalController) JdSmsVerify() {
+	var req struct {
+		Phone  string `json:"phone"`
+		Code   string `json:"code"`
+		IdCard string `json:"idCard"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	result, err := models.PortalJdSmsVerify(c.PortalUserID, strings.TrimSpace(req.Phone), strings.TrimSpace(req.Code), strings.TrimSpace(req.IdCard))
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
+	c.ServeJSON()
+}
+
+// JdWxDevices 获取可用于京东登录的微信协议设备
+func (c *PortalController) JdWxDevices() {
+	devices, err := models.GetPortalJdWxDevices(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": devices}
+	c.ServeJSON()
+}
+
+// JdWxRefresh 通过微信协议刷新京东CK
+func (c *PortalController) JdWxRefresh() {
+	var req struct {
+		Wxid          string `json:"wxid"`
+		RiskConfirmed bool   `json:"riskConfirmed"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	result, err := models.PortalJdWxRefresh(c.PortalUserID, strings.TrimSpace(req.Wxid), req.RiskConfirmed)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
+	c.ServeJSON()
+}
+
+// JdWxContinueRisk 风控验证完成后继续刷新
+func (c *PortalController) JdWxContinueRisk() {
+	result, err := models.PortalJdWxContinueAfterRisk(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
+	c.ServeJSON()
+}

@@ -231,6 +231,13 @@ func main() {
 	web.Router("/api/portal/notification", &controllers.PortalController{}, "get:NotificationDetail")
 	web.Router("/api/portal/feedback", &controllers.PortalController{}, "post:SubmitFeedback")
 	web.Router("/api/portal/coin-logs", &controllers.PortalController{}, "get:CoinLogs")
+	web.Router("/api/portal/jd/accounts", &controllers.PortalController{}, "get:JdAccounts")
+	web.Router("/api/portal/jd/query", &controllers.PortalController{}, "post:JdQuery")
+	web.Router("/api/portal/jd/sms/send", &controllers.PortalController{}, "post:JdSmsSend")
+	web.Router("/api/portal/jd/sms/verify", &controllers.PortalController{}, "post:JdSmsVerify")
+	web.Router("/api/portal/jd/wx/devices", &controllers.PortalController{}, "get:JdWxDevices")
+	web.Router("/api/portal/jd/wx/refresh", &controllers.PortalController{}, "post:JdWxRefresh")
+	web.Router("/api/portal/jd/wx/continue-risk", &controllers.PortalController{}, "post:JdWxContinueRisk")
 	// 管理员登录页面
 	web.Get("/admin/login", func(ctx *context.Context) {
 		file, err := vweb.WebFs.ReadFile("html/admin_login.html")

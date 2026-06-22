@@ -102,6 +102,12 @@
             color: var(--sidebar-text-active);
         }
         .menu button.active::before { background: #818cf8; box-shadow: 0 0 6px rgba(129,140,248,0.5); }
+        .menu-link-btn {
+            display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+            padding: 10px 14px; border-radius: 10px; border: none; background: transparent;
+            color: var(--sidebar-text); font-size: 14px; cursor: pointer; transition: all 0.15s ease;
+        }
+        .menu-link-btn:hover { background: var(--sidebar-hover); color: #d1d5db; }
 
         /* ===== 主内容 ===== */
         .main { min-width: 0; padding: 24px; overflow-y: auto; }
@@ -484,6 +490,30 @@
         .wx-menu-card:hover { transform: translateY(-2px); box-shadow: var(--card-shadow-hover); border-color: #c7d2fe; }
         .wx-menu-card strong { display: block; color: var(--primary); font-size: 14px; margin-bottom: 8px; font-weight: 800; }
         .wx-menu-card span { display: block; color: var(--text-muted); font-size: 12px; line-height: 1.7; }
+        .jd-tab-panel { display: none; }
+        .jd-tab-panel.active { display: block; }
+        .jd-account-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+        .jd-account-item {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+            padding: 12px 14px; border-radius: 12px; border: 1px solid var(--glass-border); background: var(--glass-bg);
+        }
+        .jd-query-result {
+            margin-top: 14px; padding: 14px; border-radius: 12px; border: 1px solid var(--glass-border);
+            background: rgba(15,23,42,0.02); white-space: pre-wrap; word-break: break-word;
+            font-size: 13px; line-height: 1.7; max-height: 60vh; overflow-y: auto;
+        }
+        .jd-form-grid { display: grid; gap: 14px; max-width: 480px; }
+        .jd-form-grid input {
+            width: 100%; padding: 10px 14px; border: 1px solid var(--glass-border); border-radius: 10px;
+            background: var(--glass-bg); color: var(--text); font-size: 14px; outline: none; box-sizing: border-box;
+        }
+        .jd-device-grid { display: grid; gap: 10px; margin-bottom: 14px; }
+        .jd-device-card {
+            padding: 12px 14px; border-radius: 12px; border: 1px solid var(--glass-border); background: var(--glass-bg);
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+        }
+        .iframe-modal .modal { width: min(960px, 96vw); max-width: 96vw; height: min(88vh, 900px); display: flex; flex-direction: column; }
+        .iframe-modal iframe { flex: 1; width: 100%; border: none; border-radius: 0 0 14px 14px; background: #fff; min-height: 0; }
 
         .wx-empty-state {
             text-align: center; padding: 40px 20px; color: var(--text-muted);
@@ -897,6 +927,17 @@
     </div>
 </div>
 
+<!-- 手机业务弹窗 -->
+<div class="modal-mask iframe-modal" id="mobileBusinessModalMask">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>📱 手机业务 · 流量卡办理</h3>
+            <button class="modal-close" onclick="closeMobileBusinessModal()">×</button>
+        </div>
+        <iframe id="mobileBusinessFrame" src="about:blank" title="手机流量卡办理" allow="payment *; clipboard-write"></iframe>
+    </div>
+</div>
+
 <!-- 微信协议模态框 -->
 <div class="modal-mask" id="wxModalMask">
     <div class="modal">
@@ -966,6 +1007,8 @@
                 <button data-panel="notifications">🔔 通知中心<span class="notify-badge" id="menuNotifyBadge" style="display:none;">0</span></button>
                 <button data-panel="projects">📦 我的项目</button>
                 <button data-panel="activities">🚀 活动中心</button>
+                <button data-panel="jd">🛒 京东菜单</button>
+                <button type="button" class="menu-link-btn" onclick="openMobileBusinessModal()">📱 手机业务</button>
                 <button data-panel="tasks">⭐ 积分相关</button>
             </div>
         </div>
@@ -1250,6 +1293,80 @@
             </div>
         </div>
 
+        <!-- ===== 京东菜单 ===== -->
+        <section class="panel" id="panel-jd">
+            <div class="section">
+                <div class="section-header panel-duplicate-title">
+                    <h3>🛒 京东菜单</h3>
+                    <span class="muted">查询资产、短信登录、微信协议登录</span>
+                </div>
+                <div class="tabs" id="jdTabs">
+                    <button class="active" id="jdTab-query" onclick="switchJdTab('query')">🔍 查询</button>
+                    <button id="jdTab-sms" onclick="switchJdTab('sms')">📱 短信登陆</button>
+                    <button id="jdTab-wx" onclick="switchJdTab('wx')">💬 微信协议登陆</button>
+                </div>
+
+                <div class="jd-tab-panel active" id="jdPanel-query">
+                    <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+                        <button class="btn primary" onclick="jdQueryAll()">查询全部账号</button>
+                        <button class="btn secondary" onclick="loadJdAccounts()">刷新账号列表</button>
+                    </div>
+                    <div class="jd-account-list" id="jdAccountList">
+                        <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);">正在加载账号...</div>
+                    </div>
+                    <div class="jd-query-result" id="jdQueryResult" style="display:none;"></div>
+                </div>
+
+                <div class="jd-tab-panel" id="jdPanel-sms">
+                    <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:12px;color:var(--cyan);line-height:1.8;">
+                        💡 输入京东绑定的手机号，获取验证码后完成登录，账号将自动绑定到您的用户编号。
+                    </div>
+                    <div class="jd-form-grid">
+                        <div>
+                            <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">手机号</label>
+                            <input type="tel" id="jdSmsPhone" maxlength="11" placeholder="请输入11位手机号" />
+                        </div>
+                        <div>
+                            <button class="btn primary" onclick="jdSmsSend()" id="jdSmsSendBtn" style="width:100%;">发送验证码</button>
+                        </div>
+                        <div id="jdSmsCodeBox">
+                            <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">验证码</label>
+                            <input type="text" id="jdSmsCode" maxlength="6" placeholder="请输入短信验证码" />
+                        </div>
+                        <div id="jdSmsIdCardBox" style="display:none;">
+                            <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">身份证验证</label>
+                            <input type="text" id="jdSmsIdCard" maxlength="6" placeholder="身份证前两位+后四位，如 31122X" />
+                        </div>
+                        <div>
+                            <button class="btn accent" onclick="jdSmsVerify()" id="jdSmsVerifyBtn" style="width:100%;">提交登录</button>
+                        </div>
+                    </div>
+                    <div class="jd-query-result" id="jdSmsResult" style="display:none;"></div>
+                </div>
+
+                <div class="jd-tab-panel" id="jdPanel-wx">
+                    <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:12px;color:var(--cyan);line-height:1.8;">
+                        💡 需先在「微信协议」页面扫码绑定在线设备，再选择设备刷新京东 CK。
+                    </div>
+                    <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+                        <button class="btn primary" onclick="jdWxRefreshAll()">刷新全部设备</button>
+                        <button class="btn secondary" onclick="loadJdWxDevices()">刷新设备列表</button>
+                    </div>
+                    <div class="jd-device-grid" id="jdWxDeviceList">
+                        <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);">正在加载设备...</div>
+                    </div>
+                    <div id="jdWxRiskBox" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
+                        <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdWxRiskMsg">账号需要短信验证</div>
+                        <a id="jdWxRiskLink" href="#" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">验证链接</a>
+                        <div style="margin-top:10px;">
+                            <button class="btn accent" onclick="jdWxContinueRisk()">验证完成，继续刷新</button>
+                        </div>
+                    </div>
+                    <div class="jd-query-result" id="jdWxResult" style="display:none;"></div>
+                </div>
+            </div>
+        </section>
+
         <!-- ===== 微信协议 ===== -->
         <section class="panel" id="panel-wx">
             <div class="section">
@@ -1367,7 +1484,10 @@ var state = {
     wxPollingUuid: '',
     wxPollingDeduct: false,
     projectSearch: '',
-    activitySearch: ''
+    activitySearch: '',
+    jdTab: 'query',
+    jdAccounts: [],
+    jdWxDevices: []
 };
 
 document.querySelectorAll('.menu button[data-panel]').forEach(btn => {
@@ -1394,6 +1514,7 @@ function syncPanelTitle(panel) {
         dashboard: '⚡ 仪表盘',
         projects: '📦 我的项目',
         activities: '🚀 活动中心',
+        jd: '🛒 京东菜单',
         notifications: '🔔 通知中心',
         tasks: '⭐ 积分相关',
         wx: '💬 微信协议',
@@ -1628,6 +1749,7 @@ async function refreshCurrentPanel(showToast = true) {
         switch (state.currentPanel) {
             case 'projects':   await loadProjectData(); break;
             case 'activities': await loadActivitiesData(); break;
+            case 'jd':         await loadJdPanelData(); break;
             case 'notifications': await loadNotificationsData(); break;
             case 'tasks':      await loadDashboardData(); break;
             case 'wx':         await loadWxDevices(); break;
@@ -2928,6 +3050,278 @@ function switchCoinLogSource(btn, source) {
     document.querySelectorAll('.coin-log-tab').forEach(function(t) { t.classList.remove('active'); });
     btn.classList.add('active');
     loadCoinLogs(source);
+}
+
+var MOBILE_BUSINESS_URL = 'https://h5.lot-ml.com/ProductEn/Index/7ee6c54f2d550fab';
+
+function openMobileBusinessModal() {
+    var frame = document.getElementById('mobileBusinessFrame');
+    if (frame && frame.src !== MOBILE_BUSINESS_URL) {
+        frame.src = MOBILE_BUSINESS_URL;
+    }
+    document.getElementById('mobileBusinessModalMask').classList.add('show');
+}
+
+function closeMobileBusinessModal() {
+    document.getElementById('mobileBusinessModalMask').classList.remove('show');
+}
+
+function switchJdTab(tab) {
+    state.jdTab = tab;
+    ['query', 'sms', 'wx'].forEach(function(name) {
+        var btn = document.getElementById('jdTab-' + name);
+        var panel = document.getElementById('jdPanel-' + name);
+        if (btn) btn.classList.toggle('active', name === tab);
+        if (panel) panel.classList.toggle('active', name === tab);
+    });
+    if (tab === 'query') loadJdAccounts().catch(function() {});
+    if (tab === 'wx') loadJdWxDevices().catch(function() {});
+}
+
+async function loadJdPanelData() {
+    if (state.jdTab === 'wx') {
+        await loadJdWxDevices();
+    } else {
+        await loadJdAccounts();
+    }
+}
+
+async function loadJdAccounts() {
+    var box = document.getElementById('jdAccountList');
+    if (!box) return;
+    box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);">正在加载账号...</div>';
+    try {
+        var resp = await request('/api/portal/jd/accounts');
+        state.jdAccounts = resp.data || [];
+        renderJdAccounts();
+    } catch (err) {
+        box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--red);">' + escapeHtml(err.message || '加载失败') + '</div>';
+    }
+}
+
+function renderJdAccounts() {
+    var box = document.getElementById('jdAccountList');
+    var list = state.jdAccounts || [];
+    if (!box) return;
+    if (list.length === 0) {
+        box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);">暂无绑定的京东账号，请先使用短信或微信协议登录</div>';
+        return;
+    }
+    var validCount = list.filter(function(item) { return item.valid; }).length;
+    var html = '<div class="muted" style="font-size:12px;margin-bottom:8px;">有效账号 ' + validCount + ' / ' + list.length + '</div>';
+    list.forEach(function(item) {
+        html += '<div class="jd-account-item">';
+        html += '<div><strong>【' + item.index + '】' + escapeHtml(item.nickname || item.pin) + '</strong><div class="muted" style="font-size:12px;margin-top:4px;">' + escapeHtml(item.pin) + ' · ' + escapeHtml(item.statusText) + '</div></div>';
+        html += '<button class="btn small primary" onclick="jdQueryOne(' + item.index + ')">查询</button>';
+        html += '</div>';
+    });
+    box.innerHTML = html;
+}
+
+function showJdQueryResult(text) {
+    var el = document.getElementById('jdQueryResult');
+    if (!el) return;
+    el.style.display = 'block';
+    el.textContent = text || '';
+}
+
+async function jdQueryOne(index) {
+    var resultEl = document.getElementById('jdQueryResult');
+    if (resultEl) {
+        resultEl.style.display = 'block';
+        resultEl.textContent = '正在查询，请耐心等待...';
+    }
+    try {
+        var resp = await request('/api/portal/jd/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: index })
+        });
+        showJdQueryResult(resp.data || '');
+    } catch (err) {
+        showJdQueryResult('查询失败：' + (err.message || '未知错误'));
+    }
+}
+
+async function jdQueryAll() {
+    await jdQueryOne(0);
+}
+
+async function jdSmsSend() {
+    var phone = (document.getElementById('jdSmsPhone').value || '').trim();
+    if (!phone) { toast('请输入手机号', 'error'); return; }
+    var btn = document.getElementById('jdSmsSendBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '发送中...'; }
+    try {
+        var resp = await request('/api/portal/jd/sms/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: phone })
+        });
+        toast(resp.msg || '验证码已发送', 'success');
+        document.getElementById('jdSmsIdCardBox').style.display = 'none';
+    } catch (err) {
+        toast(err.message || '发送失败', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '发送验证码'; }
+    }
+}
+
+async function jdSmsVerify() {
+    var phone = (document.getElementById('jdSmsPhone').value || '').trim();
+    var code = (document.getElementById('jdSmsCode').value || '').trim();
+    var idCard = (document.getElementById('jdSmsIdCard').value || '').trim();
+    var idBox = document.getElementById('jdSmsIdCardBox');
+    var needId = idBox && idBox.style.display !== 'none';
+    if (!phone) { toast('请输入手机号', 'error'); return; }
+    if (!needId && !code) { toast('请输入验证码', 'error'); return; }
+    if (needId && !idCard) { toast('请输入身份证验证信息', 'error'); return; }
+    var btn = document.getElementById('jdSmsVerifyBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '提交中...'; }
+    var resultEl = document.getElementById('jdSmsResult');
+    try {
+        var resp = await request('/api/portal/jd/sms/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: phone, code: code, idCard: idCard })
+        });
+        var data = resp.data || {};
+        if (data.needIdVerify) {
+            if (idBox) idBox.style.display = 'block';
+            toast(data.message || '需要身份证验证', 'info');
+            return;
+        }
+        if (idBox) idBox.style.display = 'none';
+        if (resultEl) {
+            resultEl.style.display = 'block';
+            resultEl.textContent = data.queryResult || data.message || '登录成功';
+        }
+        toast(data.message || '登录成功', 'success');
+        await loadJdAccounts();
+    } catch (err) {
+        toast(err.message || '登录失败', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '提交登录'; }
+    }
+}
+
+async function loadJdWxDevices() {
+    var box = document.getElementById('jdWxDeviceList');
+    if (!box) return;
+    box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);">正在加载设备...</div>';
+    try {
+        var resp = await request('/api/portal/jd/wx/devices');
+        state.jdWxDevices = resp.data || [];
+        renderJdWxDevices();
+    } catch (err) {
+        box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--red);">' + escapeHtml(err.message || '加载失败') + '</div>';
+    }
+}
+
+function renderJdWxDevices() {
+    var box = document.getElementById('jdWxDeviceList');
+    var list = state.jdWxDevices || [];
+    if (!box) return;
+    if (list.length === 0) {
+        box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);">暂无在线微信协议设备，请先到「微信协议」扫码登录</div>';
+        return;
+    }
+    var html = '';
+    list.forEach(function(item) {
+        html += '<div class="jd-device-card">';
+        html += '<div><strong>【' + item.index + '】' + escapeHtml(item.nickname || item.wxid) + '</strong>';
+        html += '<div class="muted" style="font-size:12px;margin-top:4px;">' + escapeHtml(item.wxid);
+        if (item.device) html += ' · ' + escapeHtml(item.device);
+        html += ' · ' + escapeHtml(item.serverType || '') + '设备</div></div>';
+        html += '<button class="btn small primary" onclick="jdWxRefreshDevice(\'' + escapeAttr(item.wxid) + '\')">刷新CK</button>';
+        html += '</div>';
+    });
+    box.innerHTML = html;
+}
+
+function showJdWxResult(data) {
+    var el = document.getElementById('jdWxResult');
+    var riskBox = document.getElementById('jdWxRiskBox');
+    if (!el) return;
+    if (data && data.needRiskVerify) {
+        if (riskBox) {
+            riskBox.style.display = 'block';
+            document.getElementById('jdWxRiskMsg').textContent = data.riskMsg || '账号需要短信验证，请打开链接完成验证';
+            var link = document.getElementById('jdWxRiskLink');
+            if (link) { link.href = data.riskUrl || '#'; link.textContent = data.riskUrl || '验证链接'; }
+        }
+    } else if (riskBox) {
+        riskBox.style.display = 'none';
+    }
+    var lines = (data && data.details) ? data.details : [];
+    if (data && (data.success || data.fail)) {
+        lines.unshift('刷新完成：成功 ' + (data.success || 0) + '，失败 ' + (data.fail || 0));
+    }
+    el.style.display = 'block';
+    el.textContent = lines.join('\n');
+}
+
+async function jdWxRefreshDevice(wxid) {
+    var resultEl = document.getElementById('jdWxResult');
+    if (resultEl) {
+        resultEl.style.display = 'block';
+        resultEl.textContent = '正在刷新，请稍候...';
+    }
+    try {
+        var resp = await request('/api/portal/jd/wx/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wxid: wxid, riskConfirmed: false })
+        });
+        showJdWxResult(resp.data || {});
+        if (!(resp.data && resp.data.needRiskVerify)) {
+            toast('刷新完成', 'success');
+            await loadJdAccounts();
+        }
+    } catch (err) {
+        if (resultEl) resultEl.textContent = '刷新失败：' + (err.message || '未知错误');
+        toast(err.message || '刷新失败', 'error');
+    }
+}
+
+async function jdWxRefreshAll() {
+    var resultEl = document.getElementById('jdWxResult');
+    if (resultEl) {
+        resultEl.style.display = 'block';
+        resultEl.textContent = '正在刷新全部设备，请稍候...';
+    }
+    try {
+        var resp = await request('/api/portal/jd/wx/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wxid: 'all', riskConfirmed: false })
+        });
+        showJdWxResult(resp.data || {});
+        if (!(resp.data && resp.data.needRiskVerify)) {
+            toast('批量刷新完成', 'success');
+            await loadJdAccounts();
+        }
+    } catch (err) {
+        if (resultEl) resultEl.textContent = '刷新失败：' + (err.message || '未知错误');
+        toast(err.message || '刷新失败', 'error');
+    }
+}
+
+async function jdWxContinueRisk() {
+    try {
+        var resp = await request('/api/portal/jd/wx/continue-risk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
+        });
+        showJdWxResult(resp.data || {});
+        if (!(resp.data && resp.data.needRiskVerify)) {
+            toast('刷新完成', 'success');
+            await loadJdAccounts();
+        }
+    } catch (err) {
+        toast(err.message || '继续刷新失败', 'error');
+    }
 }
 
 initialLoad();
