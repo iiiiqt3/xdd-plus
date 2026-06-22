@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -121,40 +122,139 @@ func NewJDLocalQuery(cookie string) *JDLocalQuery {
 }
 
 func (q *JDLocalQuery) Query() JDLocalQueryResult {
+	queryStart := time.Now()
 	defer func() {
 		if q.proxyLog == nil {
 			return
 		}
 		n := q.proxyLog.RequestCount()
 		if host := q.proxyLog.ProxyHost(); host != "" {
-			logs.Info("[京东代理] [jd_query] 查询结束 pin=%s, 共 %d 次 HTTP 请求经代理 %s", q.Pin, n, host)
+			logs.Info("[京东代理] [jd_query] 查询结束 pin=%s, 共 %d 次 HTTP 经代理 %s, 耗时 %v", q.Pin, n, host, time.Since(queryStart))
 		} else {
-			logs.Info("[京东代理] [jd_query] 查询结束 pin=%s, 共 %d 次 HTTP 直连", q.Pin, n)
+			logs.Info("[京东代理] [jd_query] 查询结束 pin=%s, 共 %d 次 HTTP 直连, 耗时 %v", q.Pin, n, time.Since(queryStart))
 		}
 	}()
+
 	result := JDLocalQueryResult{}
-	if jingxiang := q.queryJingxiang(); jingxiang != nil {
-		result.NickName = jingxiang["nickName"]
-		result.LevelName = jingxiang["levelName"]
-		result.JingXiang = jingxiang["jingxiang"]
-		result.BeanCount = jingxiang["beanCount"]
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	parallel := func(fn func()) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			fn()
+		}()
 	}
-	result.TodayIncomeBean, result.TodayOutcomeBean, result.YesterdayIncomeBean, result.YesterdayOutcomeBean = q.queryBeanStatistics()
-	result.HfJifen = q.queryHfJifen()
-	result.ECardCount, result.ECardTotal = q.queryECard()
-	result.SuperBalance = q.querySuperMarket()
-	result.WangBeiUsable, result.WangBeiTotal = q.queryWangBei()
-	result.RedPackCount, result.RedPackTotal = q.queryRedPack()
-	result.BeanExpire = q.queryBeanExpiring()
-	result.PlantBeanGrowth, result.PlantBeanDesc, result.PlantBeanLast, result.PlantBeanLastGrowth = q.queryPlantBean()
-	result.OldFarmName, result.OldFarmProgress, result.OldFarmWater, result.OldFarmDays = q.queryOldFarm()
-	result.FarmName, result.FarmStage, result.FarmProgress, result.FarmWater = q.queryFarmNew()
-	result.FarmAwards = q.queryFarmNewAwards()
-	result.WanYiWan = q.queryWanYiWan()
-	result.ShengQianBi = q.queryShengQianBi()
-	result.TrialApplyCount, result.TrialWaitCount = q.queryTrial()
-	result.IsPlus = q.queryIsPlus()
-	result.JdHealth = q.queryJdHealth()
+
+	parallel(func() {
+		if jingxiang := q.queryJingxiang(); jingxiang != nil {
+			mu.Lock()
+			result.NickName = jingxiang["nickName"]
+			result.LevelName = jingxiang["levelName"]
+			result.JingXiang = jingxiang["jingxiang"]
+			result.BeanCount = jingxiang["beanCount"]
+			mu.Unlock()
+		}
+	})
+	parallel(func() {
+		t1, t2, y1, y2 := q.queryBeanStatistics()
+		mu.Lock()
+		result.TodayIncomeBean, result.TodayOutcomeBean = t1, t2
+		result.YesterdayIncomeBean, result.YesterdayOutcomeBean = y1, y2
+		mu.Unlock()
+	})
+	parallel(func() {
+		v := q.queryHfJifen()
+		mu.Lock()
+		result.HfJifen = v
+		mu.Unlock()
+	})
+	parallel(func() {
+		c, t := q.queryECard()
+		mu.Lock()
+		result.ECardCount, result.ECardTotal = c, t
+		mu.Unlock()
+	})
+	parallel(func() {
+		v := q.querySuperMarket()
+		mu.Lock()
+		result.SuperBalance = v
+		mu.Unlock()
+	})
+	parallel(func() {
+		u, t := q.queryWangBei()
+		mu.Lock()
+		result.WangBeiUsable, result.WangBeiTotal = u, t
+		mu.Unlock()
+	})
+	parallel(func() {
+		c, t := q.queryRedPack()
+		mu.Lock()
+		result.RedPackCount, result.RedPackTotal = c, t
+		mu.Unlock()
+	})
+	parallel(func() {
+		v := q.queryBeanExpiring()
+		mu.Lock()
+		result.BeanExpire = v
+		mu.Unlock()
+	})
+	parallel(func() {
+		g, d, l, lg := q.queryPlantBean()
+		mu.Lock()
+		result.PlantBeanGrowth, result.PlantBeanDesc, result.PlantBeanLast, result.PlantBeanLastGrowth = g, d, l, lg
+		mu.Unlock()
+	})
+	parallel(func() {
+		n, p, w, days := q.queryOldFarm()
+		mu.Lock()
+		result.OldFarmName, result.OldFarmProgress, result.OldFarmWater, result.OldFarmDays = n, p, w, days
+		mu.Unlock()
+	})
+	parallel(func() {
+		n, s, p, w := q.queryFarmNew()
+		mu.Lock()
+		result.FarmName, result.FarmStage, result.FarmProgress, result.FarmWater = n, s, p, w
+		mu.Unlock()
+	})
+	parallel(func() {
+		v := q.queryFarmNewAwards()
+		mu.Lock()
+		result.FarmAwards = v
+		mu.Unlock()
+	})
+	parallel(func() {
+		v := q.queryWanYiWan()
+		mu.Lock()
+		result.WanYiWan = v
+		mu.Unlock()
+	})
+	parallel(func() {
+		v := q.queryShengQianBi()
+		mu.Lock()
+		result.ShengQianBi = v
+		mu.Unlock()
+	})
+	parallel(func() {
+		a, w := q.queryTrial()
+		mu.Lock()
+		result.TrialApplyCount, result.TrialWaitCount = a, w
+		mu.Unlock()
+	})
+	parallel(func() {
+		v := q.queryIsPlus()
+		mu.Lock()
+		result.IsPlus = v
+		mu.Unlock()
+	})
+	parallel(func() {
+		v := q.queryJdHealth()
+		mu.Lock()
+		result.JdHealth = v
+		mu.Unlock()
+	})
+
+	wg.Wait()
 	return result
 }
 
@@ -480,9 +580,20 @@ func (q *JDLocalQuery) queryOldFarm() (string, string, string, string) {
 		"x-referer-page": "https://carry.m.jd.com/babelDiy/Zeus/3KSjXqQabiTuD1cJ28QskrpWoBKT/index.html",
 	}
 	farmBody := map[string]interface{}{"babelChannel": "522", "version": 26, "channel": 1, "lat": "0", "lng": "0"}
-	taskData, _ := q.h5stRequest("taskInitForFarm", farmBody, "fcb5a", "signed_wh5", farmHeaders)
-	initData, err := q.h5stRequest("initForFarm", farmBody, "8a2af", "signed_wh5", farmHeaders)
-	if err != nil || initData == nil {
+	var taskData, initData map[string]interface{}
+	var initErr error
+	var farmWg sync.WaitGroup
+	farmWg.Add(2)
+	go func() {
+		defer farmWg.Done()
+		taskData, _ = q.h5stRequest("taskInitForFarm", farmBody, "fcb5a", "signed_wh5", farmHeaders)
+	}()
+	go func() {
+		defer farmWg.Done()
+		initData, initErr = q.h5stRequest("initForFarm", farmBody, "8a2af", "signed_wh5", farmHeaders)
+	}()
+	farmWg.Wait()
+	if initErr != nil || initData == nil {
 		return "", "", "", ""
 	}
 	waterTaskTimes := 0
