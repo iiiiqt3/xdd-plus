@@ -807,3 +807,26 @@ func (c *PortalController) JdTaskLogs() {
 		}
 	}
 }
+
+// JdTaskStop 停止正在执行的任务
+func (c *PortalController) JdTaskStop() {
+	var req struct {
+		TaskId string `json:"taskId"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+
+	if req.TaskId == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "缺少taskId参数"}
+		c.ServeJSON()
+		return
+	}
+
+	models.StopPortalJdTask(req.TaskId)
+
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "已发送停止指令"}
+	c.ServeJSON()
+}

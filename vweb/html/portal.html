@@ -601,9 +601,19 @@
         .iframe-modal iframe { flex: 1; width: 100%; border: none; border-radius: 0 0 14px 14px; background: #fff; min-height: 0; }
 
         /* ===== 京东任务 ===== */
-        .jd-task-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .jd-task-layout { display: flex; gap: 20px; align-items: flex-start; }
+        .jd-task-left { width: 420px; min-width: 360px; flex-shrink: 0; }
+        .jd-task-right {
+            flex: 1; min-width: 0; position: sticky; top: 20px;
+            display: flex; flex-direction: column; max-height: calc(100vh - 200px);
+        }
+        .jd-task-log-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; flex-shrink: 0;
+        }
+        .jd-task-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
         .jd-task-card {
-            padding: 18px 20px; border-radius: 14px; border: 1px solid var(--glass-border);
+            padding: 14px 16px; border-radius: 12px; border: 1px solid var(--glass-border);
             background: var(--glass-bg); transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
         .jd-task-card:hover { border-color: var(--primary-light, #c7d2fe); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
@@ -622,7 +632,7 @@
         .jd-task-card .task-actions { display: flex; gap: 8px; }
         .jd-task-card .task-actions .btn { flex: 1; font-size: 13px; padding: 8px 16px; border-radius: 8px; }
         .jd-task-log {
-            background: #1e1e2e; border-radius: 12px; padding: 16px; min-height: 200px; max-height: 500px;
+            background: #1e1e2e; border-radius: 12px; padding: 16px; min-height: 300px; flex: 1;
             overflow-y: auto; font-family: 'SF Mono', 'Consolas', 'Monaco', monospace; font-size: 12px;
             line-height: 1.8; color: #a9b7c6; white-space: pre-wrap; word-break: break-all;
         }
@@ -631,6 +641,11 @@
         .jd-task-log .log-task { color: #98c379; margin-right: 8px; }
         .jd-task-log .log-content { color: #abb2bf; }
         .jd-task-log .log-error { color: #e06c75; }
+        @media (max-width: 800px) {
+            .jd-task-layout { flex-direction: column; }
+            .jd-task-left { width: 100%; min-width: auto; }
+            .jd-task-right { width: 100%; min-width: auto; position: static; max-height: 400px; }
+        }
 
         .wx-empty-state {
             text-align: center; padding: 40px 20px; color: var(--text-muted);
@@ -1555,19 +1570,25 @@
 
                 <!-- 京东任务面板 -->
                 <div class="jd-tab-panel" id="jdPanel-task">
-                    <div style="margin-bottom:16px;">
-                        <div style="font-size:14px;color:var(--text-muted);">选择任务和账号，点击执行按钮开始任务</div>
-                    </div>
-                    <div class="jd-task-grid" id="jdTaskGrid">
-                        <!-- 任务卡片将通过 JS 动态生成 -->
-                    </div>
-                    <div style="margin-top:20px;border-top:1px solid var(--glass-border);padding-top:16px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                            <div style="font-size:14px;font-weight:700;color:var(--text);">📋 执行日志</div>
-                            <button class="btn secondary small" onclick="clearJdTaskLogs()">清空日志</button>
+                    <div class="jd-task-layout">
+                        <!-- 左侧：任务卡片 -->
+                        <div class="jd-task-left">
+                            <div style="margin-bottom:16px;">
+                                <div style="font-size:14px;color:var(--text-muted);">选择任务和账号，点击执行按钮开始任务</div>
+                            </div>
+                            <div class="jd-task-grid" id="jdTaskGrid">
+                                <!-- 任务卡片将通过 JS 动态生成 -->
+                            </div>
                         </div>
-                        <div class="jd-task-log" id="jdTaskLog">
-                            <div style="color:var(--text-muted);text-align:center;padding:40px 0;">暂无日志，请执行任务</div>
+                        <!-- 右侧：日志区域 -->
+                        <div class="jd-task-right">
+                            <div class="jd-task-log-header">
+                                <div style="font-size:14px;font-weight:700;color:var(--text);">📋 执行日志</div>
+                                <button class="btn secondary small" onclick="clearJdTaskLogs()">清空</button>
+                            </div>
+                            <div class="jd-task-log" id="jdTaskLog">
+                                <div style="color:var(--text-muted);text-align:center;padding:40px 0;">暂无日志，请执行任务</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3345,7 +3366,6 @@ async function loadJdTasks() {
         { id: 'dwapp', name: '话费积分', icon: '📱', desc: '话费积分签到' },
         { id: 'price', name: '一键保价', icon: '💰', desc: '自动保价退款' },
         { id: 'autoEval', name: '一键评价', icon: '⭐', desc: '自动评价订单' },
-        { id: 'delLjq', name: '删除垃圾券', icon: '🗑️', desc: '清理过期优惠券' },
         { id: 'insight', name: '问卷调查', icon: '📝', desc: '问卷调查得豆' }
     ];
     
@@ -3361,24 +3381,42 @@ async function loadJdTasks() {
         html += '<label>选择账号（按住Ctrl多选）</label>';
         html += '<select class="task-account-select" id="taskAccounts_' + task.id + '" multiple>';
         html += '<option value="0">所有有效账号</option>';
+        var validIdx = 1;
         jdTaskAccounts.forEach(function(acc, idx) {
             if (acc.valid) {
-                html += '<option value="' + (idx + 1) + '">' + acc.nickname + '</option>';
+                html += '<option value="' + validIdx + '">' + acc.nickname + '</option>';
+                validIdx++;
             }
         });
         html += '</select>';
         html += '</div>';
         html += '<div class="task-actions">';
-        html += '<button class="btn primary" onclick="executeJdTask(\'' + task.id + '\', \'' + task.name + '\')">执行任务</button>';
+        html += '<button class="btn primary" id="taskBtn_' + task.id + '" onclick="executeJdTask(\'' + task.id + '\', \'' + task.name + '\')">执行任务</button>';
         html += '</div>';
         html += '</div>';
     });
     grid.innerHTML = html || '<div style="padding:40px;text-align:center;color:var(--text-muted);">暂无任务</div>';
 }
 
+// 当前正在运行的任务ID
+var currentRunningTaskId = null;
+
 async function executeJdTask(taskId, taskName) {
+    var btn = document.getElementById('taskBtn_' + taskId);
     var select = document.getElementById('taskAccounts_' + taskId);
-    if (!select) return;
+    if (!select || !btn) return;
+    
+    // 如果当前任务正在运行，点击则停止
+    if (btn.classList.contains('running')) {
+        stopCurrentTask(taskId, taskName);
+        return;
+    }
+    
+    // 检查是否有其他任务在运行
+    if (currentRunningTaskId) {
+        showToast('请等待当前任务执行完成', 'warning');
+        return;
+    }
     
     var selectedOptions = Array.from(select.selectedOptions);
     var accountIndexes = selectedOptions.map(function(opt) { return parseInt(opt.value); });
@@ -3387,6 +3425,15 @@ async function executeJdTask(taskId, taskName) {
         showToast('请至少选择一个账号', 'warning');
         return;
     }
+    
+    // 设置按钮为运行状态
+    btn.classList.add('running');
+    btn.textContent = '停止任务';
+    btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+    currentRunningTaskId = taskId;
+    
+    // 禁用其他任务按钮
+    disableOtherTaskBtns(taskId);
     
     // 添加日志
     addJdTaskLog(taskName, '开始执行任务...');
@@ -3404,16 +3451,73 @@ async function executeJdTask(taskId, taskName) {
         if (resp.code === 0 && resp.data && resp.data.taskId) {
             addJdTaskLog(taskName, '任务已启动，正在连接日志流...');
             // 建立 SSE 连接接收实时日志
-            connectJdTaskSSE(resp.data.taskId, taskName);
+            connectJdTaskSSE(resp.data.taskId, taskName, taskId);
         } else {
             addJdTaskLog(taskName, '任务启动失败: ' + (resp.msg || '未知错误'), true);
+            resetTaskBtn(taskId);
         }
     } catch (err) {
         addJdTaskLog(taskName, '请求失败: ' + err.message, true);
+        resetTaskBtn(taskId);
     }
 }
 
-function connectJdTaskSSE(taskId, taskName) {
+function stopCurrentTask(taskId, taskName) {
+    if (jdTaskSSE) {
+        jdTaskSSE.close();
+        jdTaskSSE = null;
+    }
+    addJdTaskLog(taskName, '⚠️ 任务已手动停止');
+    resetTaskBtn(taskId);
+    
+    // 调用后端停止接口
+    request('/api/portal/jd/task/stop', {
+        method: 'POST',
+        body: JSON.stringify({ taskId: currentRunningTaskId })
+    }).catch(function() {});
+}
+
+function resetTaskBtn(taskId) {
+    var btn = document.getElementById('taskBtn_' + taskId);
+    if (btn) {
+        btn.classList.remove('running');
+        btn.textContent = '执行任务';
+        btn.style.background = '';
+    }
+    currentRunningTaskId = null;
+    enableAllTaskBtns();
+}
+
+function disableOtherTaskBtns(exceptTaskId) {
+    var tasks = ['newfruit_watering', 'plantBean', 'dwapp', 'price', 'autoEval', 'insight'];
+    tasks.forEach(function(id) {
+        if (id !== exceptTaskId) {
+            var btn = document.getElementById('taskBtn_' + id);
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+            }
+        }
+    });
+}
+
+function enableAllTaskBtns() {
+    var tasks = ['newfruit_watering', 'plantBean', 'dwapp', 'price', 'autoEval', 'insight'];
+    tasks.forEach(function(id) {
+        var btn = document.getElementById('taskBtn_' + id);
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+        }
+    });
+}
+
+var currentTaskType = null;
+
+function connectJdTaskSSE(taskId, taskName, taskType) {
+    currentTaskType = taskType;
     // 关闭之前的连接
     if (jdTaskSSE) {
         jdTaskSSE.close();
@@ -3431,6 +3535,7 @@ function connectJdTaskSSE(taskId, taskName) {
             addJdTaskLog(taskName, '✅ 任务执行完成', false, true);
             jdTaskSSE.close();
             jdTaskSSE = null;
+            resetTaskBtn(currentTaskType);
             return;
         }
         addJdTaskLog(taskName, data);
@@ -3440,6 +3545,7 @@ function connectJdTaskSSE(taskId, taskName) {
         addJdTaskLog(taskName, '✅ 任务执行完成', false, true);
         jdTaskSSE.close();
         jdTaskSSE = null;
+        resetTaskBtn(currentTaskType);
     });
     
     jdTaskSSE.addEventListener('error', function(event) {
@@ -3448,12 +3554,14 @@ function connectJdTaskSSE(taskId, taskName) {
         }
         jdTaskSSE.close();
         jdTaskSSE = null;
+        resetTaskBtn(currentTaskType);
     });
     
     jdTaskSSE.onerror = function() {
         addJdTaskLog(taskName, '日志连接断开', true);
         jdTaskSSE.close();
         jdTaskSSE = null;
+        resetTaskBtn(currentTaskType);
     };
 }
 

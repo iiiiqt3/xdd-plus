@@ -393,6 +393,10 @@ var taskLogChannels = make(map[string]chan string)
 var taskLogMutex sync.Mutex
 var taskLogTimers = make(map[string]*time.Timer)
 
+// 任务命令管理（用于停止任务）
+var taskCmds = make(map[string]*exec.Cmd)
+var taskCmdMutex sync.Mutex
+
 // GetTaskLogChannel 获取任务日志通道
 func GetTaskLogChannel(taskId string) chan string {
 	taskLogMutex.Lock()
@@ -427,6 +431,16 @@ func RemoveTaskLogChannel(taskId string) {
 	if timer, ok := taskLogTimers[taskId]; ok {
 		timer.Stop()
 		delete(taskLogTimers, taskId)
+	}
+}
+
+// StopPortalJdTask 停止正在执行的任务
+func StopPortalJdTask(taskId string) {
+	taskCmdMutex.Lock()
+	defer taskCmdMutex.Unlock()
+	if cmd, ok := taskCmds[taskId]; ok && cmd.Process != nil {
+		cmd.Process.Kill()
+		delete(taskCmds, taskId)
 	}
 }
 
@@ -559,6 +573,18 @@ func executeTaskWithLogs(taskId string, taskName string, scriptPath string, envs
 		logChan <- fmt.Sprintf("错误: 启动脚本失败 %v", err)
 		return
 	}
+
+	// 注册命令到任务命令管理器
+	taskCmdMutex.Lock()
+	taskCmds[taskId] = cmd
+	taskCmdMutex.Unlock()
+
+	// 任务完成后注销命令
+	defer func() {
+		taskCmdMutex.Lock()
+		delete(taskCmds, taskId)
+		taskCmdMutex.Unlock()
+	}()
 
 	// 异步读取 stderr
 	go func() {

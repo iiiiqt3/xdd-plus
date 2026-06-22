@@ -240,6 +240,7 @@ func main() {
 	web.Router("/api/portal/jd/wx/continue-risk", &controllers.PortalController{}, "post:JdWxContinueRisk")
 	web.Router("/api/portal/jd/task/execute", &controllers.PortalController{}, "post:JdTaskExecute")
 	web.Router("/api/portal/jd/task/logs", &controllers.PortalController{}, "get:JdTaskLogs")
+	web.Router("/api/portal/jd/task/stop", &controllers.PortalController{}, "post:JdTaskStop")
 	// 管理员登录页面
 	web.Get("/admin/login", func(ctx *context.Context) {
 		file, err := vweb.ReadFile("html/admin_login.html")
