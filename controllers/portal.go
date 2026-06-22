@@ -761,6 +761,7 @@ func (c *PortalController) JdTaskLogs() {
 	c.Ctx.Output.Header("Cache-Control", "no-cache")
 	c.Ctx.Output.Header("Connection", "keep-alive")
 	c.Ctx.Output.Header("Access-Control-Allow-Origin", "*")
+	c.Ctx.Output.Header("X-Accel-Buffering", "no")
 
 	// 获取日志通道
 	logChan := models.GetTaskLogChannel(taskId)
@@ -769,6 +770,10 @@ func (c *PortalController) JdTaskLogs() {
 		return
 	}
 
+	// 使用超时机制检测客户端断开
+	timeout := time.NewTimer(5 * time.Minute)
+	defer timeout.Stop()
+
 	// 持续发送日志
 	for {
 		select {
@@ -776,14 +781,15 @@ func (c *PortalController) JdTaskLogs() {
 			if !ok {
 				// 通道关闭，任务结束
 				c.Ctx.WriteString("event: done\ndata: 任务执行完成\n\n")
-				c.Ctx.Output.Body(nil)
 				return
 			}
 			// 发送日志数据
 			c.Ctx.WriteString("data: " + log + "\n\n")
-			c.Ctx.Output.Body(nil)
-		case <-c.Ctx.Done():
-			// 客户端断开连接
+			// 重置超时
+			timeout.Reset(5 * time.Minute)
+		case <-timeout.C:
+			// 超时，任务可能卡住
+			c.Ctx.WriteString("event: timeout\ndata: 连接超时\n\n")
 			return
 		}
 	}
