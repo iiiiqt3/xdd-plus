@@ -25,12 +25,7 @@ class MoreFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val (scroll, root) = requireContext().makeScrollContainer()
 
-        root.addView(requireContext().heroCard(
-            title = "更多",
-            subtitle = "消息通知、反馈与系统信息",
-            tint = requireContext().getColor(R.color.brand_primary),
-            iconRes = android.R.drawable.ic_menu_manage,
-        ))
+        // 移除顶部卡片栏
 
         root.addView(requireContext().cardView().apply {
             addView(requireContext().captionText("常用功能"))

@@ -78,21 +78,6 @@ class ProjectsFragment : Fragment() {
             addView(scroll)
         }
 
-        wrapper.addView(
-            requireContext().heroCard(
-                "项目中心",
-                "活动中心、我的项目与收益查询",
-                ContextCompat.getColor(requireContext(), R.color.brand_primary),
-                android.R.drawable.ic_menu_agenda,
-            ).apply {
-                layoutParams = (layoutParams as ViewGroup.MarginLayoutParams).apply {
-                    marginStart = requireContext().dp(14)
-                    marginEnd = requireContext().dp(14)
-                    topMargin = requireContext().dp(14)
-                }
-            }
-        )
-
         tabs = TabLayout(requireContext()).apply {
             setPadding(requireContext().dp(14), 0, requireContext().dp(14), requireContext().dp(8))
             addTab(newTab().setText("活动中心"))

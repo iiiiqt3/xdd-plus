@@ -8,6 +8,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
@@ -183,44 +184,54 @@ class ApiClient(
         onLine: (String) -> Unit,
         onDone: () -> Unit,
         onError: (Throwable) -> Unit,
-    ) = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url(AppEnvironment.BASE_URL + path.removePrefix("/"))
-            .get()
-            .build()
-        try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    throw ApiError("日志连接失败（${response.code}）")
-                }
-                val reader = response.body?.charStream() ?: throw ApiError("无响应体")
-                reader.buffered().useLines { lines ->
-                    for (line in lines) {
-                        ensureActive()
-                        when {
-                            line.startsWith("data: ") -> {
-                                val data = line.removePrefix("data: ").trim()
-                                if (data.contains("任务执行完成") || data.contains("DONE")) {
-                                    onDone()
-                                    return@withContext
+    ) {
+        val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            val thread = Thread {
+                val request = Request.Builder()
+                    .url(AppEnvironment.BASE_URL + path.removePrefix("/"))
+                    .get()
+                    .build()
+                try {
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            mainHandler.post { onError(ApiError("日志连接失败（${response.code}）")) }
+                            if (cont.isActive) cont.resumeWith(Result.success(Unit))
+                            return@Thread
+                        }
+                        val reader = response.body?.charStream() ?: throw ApiError("无响应体")
+                        reader.buffered().useLines { lines ->
+                            for (line in lines) {
+                                when {
+                                    line.startsWith("data: ") -> {
+                                        val data = line.removePrefix("data: ").trim()
+                                        if (data.contains("任务执行完成") || data.contains("DONE")) {
+                                            mainHandler.post { onDone() }
+                                            if (cont.isActive) cont.resumeWith(Result.success(Unit))
+                                            return@Thread
+                                        }
+                                        mainHandler.post { onLine(data) }
+                                    }
+                                    line.startsWith("event: done") -> {
+                                        mainHandler.post { onDone() }
+                                        if (cont.isActive) cont.resumeWith(Result.success(Unit))
+                                        return@Thread
+                                    }
+                                    line.startsWith("event: error") -> {
+                                    }
                                 }
-                                onLine(data)
-                            }
-                            line.startsWith("event: done") -> {
-                                onDone()
-                                return@withContext
-                            }
-                            line.startsWith("event: error") -> {
-                                // next data line handled in loop
                             }
                         }
+                        mainHandler.post { onDone() }
+                        if (cont.isActive) cont.resumeWith(Result.success(Unit))
                     }
+                } catch (error: Exception) {
+                    mainHandler.post { onError(error) }
+                    if (cont.isActive) cont.resumeWith(Result.success(Unit))
                 }
-                onDone()
             }
-        } catch (error: Exception) {
-            ensureActive()
-            onError(error)
+            cont.invokeOnCancellation { thread.interrupt() }
+            thread.start()
         }
     }
 

@@ -142,7 +142,7 @@ class MainActivity : AppCompatActivity() {
             )
             menu.add(Menu.NONE, TAB_HOME, 0, "首页").setIcon(android.R.drawable.ic_menu_view)
             menu.add(Menu.NONE, TAB_PROJECTS, 1, "项目").setIcon(android.R.drawable.ic_menu_agenda)
-            menu.add(Menu.NONE, TAB_TASKS, 2, "积分任务").setIcon(android.R.drawable.star_big_on)
+            menu.add(Menu.NONE, TAB_TASKS, 2, "任务").setIcon(android.R.drawable.star_big_on)
             menu.add(Menu.NONE, TAB_JD, 3, "京东").setIcon(android.R.drawable.ic_menu_send)
             menu.add(Menu.NONE, TAB_MORE, 4, "更多").setIcon(android.R.drawable.ic_menu_manage)
             setOnItemSelectedListener { item ->

@@ -138,6 +138,94 @@ fun Context.softCard(@ColorInt tint: Int): LinearLayout {
     }
 }
 
+// 紧凑版 heroCard，用于积分任务等页面
+fun Context.compactHeroCard(
+    title: String,
+    subtitle: String,
+    @ColorInt tint: Int,
+): LinearLayout {
+    return LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        val p = dp(12)
+        setPadding(p, p, p, p)
+        background = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(adjustAlpha(tint, 0.10f), Color.WHITE)
+        ).apply {
+            cornerRadius = dp(16).toFloat()
+            setStroke(dp(1), adjustAlpha(tint, 0.14f))
+        }
+        elevation = dp(1).toFloat()
+        layoutParams = ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            bottomMargin = dp(8)
+        }
+
+        val topRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val iconWrap = LinearLayout(context).apply {
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                setColor(adjustAlpha(tint, 0.14f))
+                cornerRadius = dp(8).toFloat()
+            }
+            layoutParams = LinearLayout.LayoutParams(dp(28), dp(28))
+        }
+        iconWrap.addView(ImageView(context).apply {
+            setImageResource(android.R.drawable.ic_menu_info_details)
+            setColorFilter(tint)
+            layoutParams = LinearLayout.LayoutParams(dp(14), dp(14))
+        })
+        val textWrap = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(8)
+            }
+        }
+        textWrap.addView(TextView(context).apply {
+            text = title
+            setTextColor(Color.parseColor("#0F172A"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setTypeface(typeface, Typeface.BOLD)
+            setTextIsSelectable(true)
+        })
+        textWrap.addView(TextView(context).apply {
+            text = subtitle
+            setTextColor(Color.parseColor("#475569"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
+            setLineSpacing(0f, 1.2f)
+            setTextIsSelectable(true)
+        })
+        topRow.addView(iconWrap)
+        topRow.addView(textWrap)
+        addView(topRow)
+    }
+}
+
+// 紧凑版 primaryButton，用于积分任务等页面
+fun Context.compactPrimaryButton(text: String, @ColorInt color: Int = ContextCompat.getColor(this, R.color.brand_primary)): Button {
+    return Button(this).apply {
+        this.text = text
+        setTextColor(Color.WHITE)
+        setAllCaps(false)
+        textSize = 12f
+        background = GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            intArrayOf(color, blendColor(color, Color.WHITE, 0.16f))
+        ).apply { cornerRadius = dp(12).toFloat() }
+        layoutParams = ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            bottomMargin = dp(6)
+        }
+        minHeight = dp(36)
+        elevation = dp(1).toFloat()
+    }
+}
+
+fun Context.compactPrimaryButton(text: String, onClick: () -> Unit): Button {
+    return compactPrimaryButton(text).apply { setOnClickListener { onClick() } }
+}
+
 fun Context.sectionTitle(text: String): TextView {
     return TextView(this).apply {
         this.text = text

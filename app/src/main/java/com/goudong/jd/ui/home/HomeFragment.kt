@@ -73,12 +73,6 @@ class HomeFragment : Fragment() {
 
         val primaryColor = ContextCompat.getColor(requireContext(), R.color.brand_primary)
 
-        root.addView(requireContext().heroCard(
-            title = "首页",
-            subtitle = "通知中心 · 项目概览 · 账号状态",
-            tint = ContextCompat.getColor(requireContext(), R.color.brand_primary)
-        ))
-
         val brandBlue = ContextCompat.getColor(requireContext(), R.color.brand_secondary)
 
         notificationSection = requireContext().cardView().apply {
