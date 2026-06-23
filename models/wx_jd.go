@@ -522,7 +522,8 @@ func wxJdRefreshByDevice(sender *Sender, wxid string) bool {
 		return false
 	}
 	nick := ptPin
-	if existingCK, e := GetJdCookie(ptPin); e == nil {
+	encodedPin := url.QueryEscape(ptPin)
+	if existingCK, e := GetJdCookie(encodedPin); e == nil {
 		existingCK.Updates(JdCookie{PtKey: ptKey, Available: True, WeiXin: wxid, WxPid: wxid, UpdateAt: Date()})
 		if existingCK.Nickname != "" {
 			nick = existingCK.Nickname

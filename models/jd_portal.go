@@ -465,7 +465,8 @@ func portalWxJdRefreshOne(userNumber int, wxid string, riskConfirmed bool) (deta
 		return fmt.Sprintf("❌ %s 刷新成功但CK验证无效", wxid), false, "", "", false
 	}
 	nick := ptPin
-	if existingCK, e := GetJdCookie(ptPin); e == nil {
+	encodedPin := url.QueryEscape(ptPin)
+	if existingCK, e := GetJdCookie(encodedPin); e == nil {
 		existingCK.Updates(JdCookie{PtKey: ptKey, Available: True, WeiXin: wxid, WxPid: wxid, UpdateAt: Date()})
 		if existingCK.Nickname != "" {
 			nick = existingCK.Nickname
