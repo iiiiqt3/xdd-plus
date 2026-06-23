@@ -138,44 +138,16 @@ func initCookie() {
 	})
 
 	xj := 0
-	autoRefreshOK := 0
-	autoRefreshFail := 0
 	for _, ck := range cks {
 		if ck.Available == True && !CookieOK(&ck) {
-			refreshed := false
-			if ck.WxPid != "" {
-				online, _ := checkWxDeviceOnline(ck.WxPid)
-				if online {
-					ptKey, ptPin, err := wxJdRefreshCK(ck.WxPid)
-					if err == nil && ptKey != "" && ptPin != "" {
-						newCK := &JdCookie{PtKey: ptKey, PtPin: ptPin}
-						if CookieOK(newCK) {
-							ck.Updates(JdCookie{PtKey: ptKey, Available: True, UpdateAt: Date()})
-							autoRefreshOK++
-							refreshed = true
-							(&JdCookie{}).Push(fmt.Sprintf("自动刷新成功: %s (设备: %s)", ck.PtPin, ck.WxPid))
-						} else {
-							autoRefreshFail++
-						}
-					} else {
-						autoRefreshFail++
-					}
-				}
-			}
-			if !refreshed {
-				ck.Updates(JdCookie{Available: False})
-				time.Sleep(time.Duration(rand.Intn(3000)+1000) * time.Millisecond)
-				ck.Push(fmt.Sprintf("1、失效账号，%s，你的账号%s已过期，快发送【登录】提交账号把。", ck.PtPin, ck.Nickname))
-				(&JdCookie{}).Push(fmt.Sprintf("失效账号：%s", ck.PtPin))
-				xj++
-			}
+			ck.Updates(JdCookie{Available: False})
+			time.Sleep(time.Duration(rand.Intn(3000)+1000) * time.Millisecond)
+			ck.Push(fmt.Sprintf("1、失效账号，%s，你的账号%s已过期，快发送【登录】提交账号把。", ck.PtPin, ck.Nickname))
+			(&JdCookie{}).Push(fmt.Sprintf("失效账号：%s", ck.PtPin))
+			xj++
 		}
 	}
-	summary := fmt.Sprintf("账号检测结束，失效账号%d个", xj)
-	if autoRefreshOK > 0 || autoRefreshFail > 0 {
-		summary += fmt.Sprintf("（微信协议自动刷新：成功%d，失败%d）", autoRefreshOK, autoRefreshFail)
-	}
-	(&JdCookie{}).Push(summary)
+	(&JdCookie{}).Push(fmt.Sprintf("账号检测结束，失效账号%d个", xj))
 	go func() {
 		Save <- &JdCookie{}
 	}()
@@ -184,6 +156,45 @@ func initCookie() {
 
 
 
+
+// refreshWxCKAuto 微信协议CK自动刷新（每4小时执行，不通知用户）
+func refreshWxCKAuto() {
+	(&JdCookie{}).Push("开始微信协议CK自动刷新")
+	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+		return sb.Where(fmt.Sprintf("%s >= ? and %s = ? and %s != ''", Priority, Available, "wx_pid"), 0, True)
+	})
+
+	refreshOK := 0
+	refreshFail := 0
+	for _, ck := range cks {
+		if ck.Available == True && !CookieOK(&ck) && ck.WxPid != "" {
+			online, _ := checkWxDeviceOnline(ck.WxPid)
+			if online {
+				ptKey, ptPin, err := wxJdRefreshCK(ck.WxPid)
+				if err == nil && ptKey != "" && ptPin != "" {
+					newCK := &JdCookie{PtKey: ptKey, PtPin: ptPin}
+					if CookieOK(newCK) {
+						ck.Updates(JdCookie{PtKey: ptKey, Available: True, UpdateAt: Date()})
+						refreshOK++
+						(&JdCookie{}).Push(fmt.Sprintf("微信协议自动刷新成功: %s (设备: %s)", ck.PtPin, ck.WxPid))
+					} else {
+						refreshFail++
+						ck.Updates(JdCookie{Available: False})
+					}
+				} else {
+					refreshFail++
+					ck.Updates(JdCookie{Available: False})
+				}
+			}
+		}
+	}
+	if refreshOK > 0 || refreshFail > 0 {
+		(&JdCookie{}).Push(fmt.Sprintf("微信协议自动刷新完成：成功%d，失败%d", refreshOK, refreshFail))
+	}
+	go func() {
+		Save <- &JdCookie{}
+	}()
+}
 
 func cleanCookie() {
 	cks := GetJdCookies()

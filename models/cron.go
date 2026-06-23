@@ -24,7 +24,8 @@ func initCron() {
 //	c.AddFunc("0 8-20/1 * * ?", GetNewVersion)   // 检查新版本（每天8-20点每小时0分）
 //	c.AddFunc("0 0 * * ?", ResetOrderNumber)     // 重置编号（每天0点）
 //	c.AddFunc("5 0,6,12,18 * * ?", UpAutoCookie) // 账密自动登录更新ck（每天0、6、12、18点5分）
-	c.AddFunc("0 */6 * * ?", initCookie)       // 账号检测（每6小时执行一次）
+	c.AddFunc("0 */4 * * ?", refreshWxCKAuto)  // 微信协议CK自动刷新（每4小时执行，不通知用户）
+	c.AddFunc("0 9,18 * * ?", initCookie)      // CK失效检测+通知（每天9点和18点执行）
 	c.AddFunc("59 58 23 L * ?", ClearAllContinuousSignIns) // 连续打卡次数清0（每月最后一日23点58分59秒）
 	c.AddFunc("10 9 * * ?",HandleNews) // 新闻推送
 	c.AddFunc("0 10 * * ?", CheckWxOfflineAndNotify) // 微信掉线检测推送（每天早上10点检测一次，掉线后仅通知一次）
