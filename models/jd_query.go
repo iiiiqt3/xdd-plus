@@ -1592,7 +1592,7 @@ func (ck *JdCookie) Query3() string {
 
 		msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
 		msgs = append(msgs, "")
-		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
+		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, url.QueryEscape(ck.PtPin))
 		msgs = append(msgs, NewJDLocalQuery(cookie).RenderSummary(false))
 	} else {
 		msgs = append(msgs, "提醒：该账号已过期，请重新登录,如果需要京东自动登录不掉线 :请回复 登陆")
@@ -1640,7 +1640,7 @@ func (ck *JdCookie) Query() string {
 
 		msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
 
-		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
+		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, url.QueryEscape(ck.PtPin))
 		msgs = append(msgs, NewJDLocalQuery(cookie).RenderSummary(true))
 	} else {
 		msgs = append(msgs, "提醒：该账号已过期，请重新登录,如果需要京东自动登录不掉线 :请回复 登陆")

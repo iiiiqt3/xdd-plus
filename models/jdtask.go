@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -551,7 +552,7 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 		logChan <- fmt.Sprintf("执行账号: %s (%s)", ck.Nickname, ck.PtPin)
 
 		envs := map[string]string{
-			"pins": "&" + ck.PtPin,
+			"pins": "&" + url.QueryEscape(ck.PtPin),
 		}
 
 		var scriptPath string
