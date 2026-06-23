@@ -87,6 +87,12 @@ type QQuery struct {
 	Message string `json:"message"`
 }
 
+// Int 字符串转整数
+func Int(s string) int {
+	i, _ := strconv.Atoi(s)
+	return i
+}
+
 func (sender *Sender) Reply(msg string) {
 	switch sender.Type {
 	case "tg":
