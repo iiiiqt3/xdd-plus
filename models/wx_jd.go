@@ -516,7 +516,7 @@ func wxJdRefreshByDevice(sender *Sender, wxid string) bool {
 		sender.Reply(fmt.Sprintf("❌ 刷新失败: %v", err))
 		return false
 	}
-	newCK := &JdCookie{PtKey: ptKey, PtPin: ptPin}
+	newCK := &JdCookie{PtKey: ptKey, PtPin: url.QueryEscape(ptPin)}
 	if !CookieOK(newCK) {
 		sender.Reply("❌ 刷新成功但CK验证无效，可能被风控，请稍后重试")
 		return false

@@ -172,9 +172,10 @@ func refreshWxCKAuto() {
 			if online {
 				ptKey, ptPin, err := wxJdRefreshCK(ck.WxPid)
 				if err == nil && ptKey != "" && ptPin != "" {
-					newCK := &JdCookie{PtKey: ptKey, PtPin: ptPin}
+					encodedPin := url.QueryEscape(ptPin)
+					newCK := &JdCookie{PtKey: ptKey, PtPin: encodedPin}
 					if CookieOK(newCK) {
-						ck.Updates(JdCookie{PtKey: ptKey, Available: True, UpdateAt: Date()})
+						ck.Updates(JdCookie{PtKey: ptKey, PtPin: encodedPin, Available: True, UpdateAt: Date()})
 						refreshOK++
 						(&JdCookie{}).Push(fmt.Sprintf("微信协议自动刷新成功: %s (设备: %s)", ck.PtPin, ck.WxPid))
 					} else {
@@ -236,9 +237,9 @@ func getAuthFlag() {
 			return sb.Where(fmt.Sprintf("%s >= ? and %s = ?", Priority, Available), 0, True)
 		})
 		for _, ck := range cks {
-			authcode := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, url.QueryEscape(ck.PtPin))
+			authcode := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
 			if len(ck.WsKey) > 0 {
-				authcode = fmt.Sprintf("pin=%s;wskey=%s;", url.QueryEscape(ck.PtPin), ck.WsKey)
+				authcode = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
 			}
 			fdb(authcode)
 		}
@@ -402,7 +403,7 @@ func CheckWskeyOK(ck *JdCookie) (bool, string) {
 
 func CookieOK(ck *JdCookie) bool {
 const dateFormat = "2006-01-02"
-	cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + url.QueryEscape(ck.PtPin) + ";"
+	cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
 	if ck == nil {
 		return true
 	}
@@ -460,7 +461,7 @@ const dateFormat = "2006-01-02"
 
 
 func av2(ck *JdCookie) bool {
-	cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + url.QueryEscape(ck.PtPin) + ";"
+	cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
 	req := httplib.Get(`https://plogin.m.jd.com/cgi-bin/ml/islogin`)
 	req.Header("User-Agent", "jdapp;iPhone;10.1.2;15.0;network/wifi;Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1")
 	req.Header("Referer", "https://h5.m.jd.com/")

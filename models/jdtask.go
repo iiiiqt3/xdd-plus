@@ -552,7 +552,7 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 		logChan <- fmt.Sprintf("执行账号: %s (%s)", ck.Nickname, ck.PtPin)
 
 		envs := map[string]string{
-			"pins": "&" + url.QueryEscape(ck.PtPin),
+			"pins": "&" + ck.PtPin,
 		}
 
 		var scriptPath string

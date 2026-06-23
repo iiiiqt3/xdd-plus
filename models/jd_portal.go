@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -58,9 +59,10 @@ func GetPortalJdAccounts(userNumber int) []PortalJdAccount {
 	result := make([]PortalJdAccount, 0, len(cks))
 	for i, ck := range cks {
 		statusText, valid := GetAccountStatusText(&ck)
+		decodedPin, _ := url.QueryUnescape(ck.PtPin)
 		result = append(result, PortalJdAccount{
 			Index:      i + 1,
-			Pin:        ck.PtPin,
+			Pin:        decodedPin,
 			Nickname:   ck.Nickname,
 			StatusText: statusText,
 			Valid:      valid,
@@ -216,8 +218,9 @@ func PortalJdSmsVerify(userNumber int, phone, code, idCard string) (*PortalJdSms
 }
 
 func portalSaveJdCookieFromSms(userNumber int, ptKey, ptPin string) (string, error) {
+	encodedPin := url.QueryEscape(ptPin)
 	ck := JdCookie{
-		PtPin:     ptPin,
+		PtPin:     encodedPin,
 		PtKey:     ptKey,
 		Available: True,
 		QQ:        userNumber,
@@ -457,7 +460,7 @@ func portalWxJdRefreshOne(userNumber int, wxid string, riskConfirmed bool) (deta
 		}
 		return fmt.Sprintf("❌ %s 刷新失败: %v", wxid, err), false, "", "", false
 	}
-	newCK := &JdCookie{PtKey: ptKey, PtPin: ptPin}
+	newCK := &JdCookie{PtKey: ptKey, PtPin: url.QueryEscape(ptPin)}
 	if !CookieOK(newCK) {
 		return fmt.Sprintf("❌ %s 刷新成功但CK验证无效", wxid), false, "", "", false
 	}
