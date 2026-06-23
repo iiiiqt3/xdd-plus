@@ -659,23 +659,57 @@ class ProjectsFragment : Fragment() {
     }
 
     private fun showRenewDialog(item: PortalProject) {
+        val isDaily = item.isDailyDeduct == true
+        val unit = if (isDaily) "天" else "月"
+        val unitPrice = if (isDaily) item.dailyCoin else item.monthlyCoin
+        val priceLine = unitPrice?.let { "每${unit}约扣 $it 积分" } ?: item.priceText ?: "将按当前项目规则扣除积分"
+
         val input = EditText(requireContext()).apply {
-            hint = "请输入续费月数，例如 1"
+            hint = "请输入续费${unit}数，例如 1"
             inputType = InputType.TYPE_CLASS_NUMBER
             setText("1")
             setSelectAllOnFocus(true)
             setPadding(requireContext().dp(14), requireContext().dp(10), requireContext().dp(14), requireContext().dp(10))
         }
-        val priceTip = item.monthlyCoin?.let { "每月约扣 $it 积分" } ?: item.priceText ?: "将按当前项目规则扣除积分"
+        val msgView = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(requireContext().dp(14), requireContext().dp(8), requireContext().dp(14), 0)
+        }
+        msgView.addView(TextView(requireContext()).apply {
+            text = "账号：${item.displayName ?: item.remark ?: "项目"}\n$priceLine"
+            textSize = 15f
+        })
+        val totalView = TextView(requireContext()).apply {
+            textSize = 14f
+            setPadding(0, requireContext().dp(6), 0, 0)
+        }
+        fun updateTotal() {
+            val n = input.text?.toString()?.toIntOrNull() ?: 0
+            if (unitPrice != null && n > 0) {
+                val total = unitPrice * n
+                totalView.text = "💰 预计扣除：$total 积分（${n}${unit} × ${unitPrice}积分/${unit}）"
+                totalView.setTextColor(android.graphics.Color.parseColor("#E53935"))
+            } else {
+                totalView.text = ""
+            }
+        }
+        updateTotal()
+        input.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) { updateTotal() }
+        })
+        msgView.addView(totalView)
+        msgView.addView(input)
+
         AlertDialog.Builder(requireContext())
             .setTitle("确认续费")
-            .setMessage("账号：${item.displayName ?: item.remark ?: "项目"}\n$priceTip\n请输入续费月数后确认。")
-            .setView(input)
+            .setView(msgView)
             .setNegativeButton("取消", null)
             .setPositiveButton("确认续费") { _, _ ->
                 val months = input.text?.toString()?.toIntOrNull() ?: 0
                 if (months <= 0) {
-                    alert("请输入正确的续费月数")
+                    alert("请输入正确的续费${unit}数")
                     return@setPositiveButton
                 }
                 lifecycleScope.launch {
