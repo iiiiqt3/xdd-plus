@@ -1937,7 +1937,7 @@ async function openNotificationDetail(id, isPopup = false) {
             <span class="tag admin">${escapeHtml(item.source || '-')}</span>
             <span class="tag gray">${formatPortalTime(item.createdAt)}</span>
             <span class="tag gray">点击 ${item.clickCount || 0}</span>`;
-        document.getElementById('notifyModalContent').textContent = item.content || '';
+        document.getElementById('notifyModalContent').innerHTML = renderMarkdown(item.content || '');
         document.getElementById('notifyModalMask').classList.add('show');
         await loadNotificationsData();
     } catch (err) {
