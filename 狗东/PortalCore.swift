@@ -1096,36 +1096,116 @@ final class PortalService {
         requestMessageJSON(path: "/api/portal/jd/task/stop", payload: ["taskId": taskId], completion: completion)
     }
 
-    func streamJdTaskLogs(taskId: String, onLine: @escaping (String) -> Void, onDone: @escaping () -> Void, onError: @escaping (APIError) -> Void) {
-        guard let url = URL(string: "/api/portal/jd/task/logs?taskId=\(taskId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? taskId)", relativeTo: AppEnvironment.baseURL) else {
+    @discardableResult
+    func streamJdTaskLogs(taskId: String, onLine: @escaping (String) -> Void, onDone: @escaping () -> Void, onError: @escaping (APIError) -> Void) -> JdTaskLogStreamer {
+        let streamer = JdTaskLogStreamer(taskId: taskId, onLine: onLine, onDone: onDone, onError: onError)
+        streamer.start()
+        return streamer
+    }
+}
+
+/// 京东任务 SSE 日志流（与 portal.html EventSource 行为一致）
+final class JdTaskLogStreamer: NSObject, URLSessionDataDelegate {
+    private let taskId: String
+    private let onLine: (String) -> Void
+    private let onDone: () -> Void
+    private let onError: (APIError) -> Void
+    private var buffer = ""
+    private var session: URLSession!
+    private var dataTask: URLSessionDataTask?
+    private var finished = false
+
+    init(taskId: String, onLine: @escaping (String) -> Void, onDone: @escaping () -> Void, onError: @escaping (APIError) -> Void) {
+        self.taskId = taskId
+        self.onLine = onLine
+        self.onDone = onDone
+        self.onError = onError
+        super.init()
+        let config = URLSessionConfiguration.default
+        config.httpCookieStorage = HTTPCookieStorage.shared
+        config.httpShouldSetCookies = true
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 600
+        session = URLSession(configuration: config, delegate: self, delegateQueue: .main)
+    }
+
+    func start() {
+        guard let url = URL(
+            string: "/api/portal/jd/task/logs?taskId=\(taskId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? taskId)",
+            relativeTo: AppEnvironment.baseURL
+        ) else {
             onError(APIError(message: "日志地址无效", isUnauthorized: false))
             return
         }
         var request = URLRequest(url: url)
         request.timeoutInterval = 300
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    onError(APIError(message: error.localizedDescription, isUnauthorized: false))
-                    return
-                }
-                guard let data = data, let text = String(data: data, encoding: .utf8) else {
-                    onDone()
-                    return
-                }
-                text.components(separatedBy: "\n").forEach { line in
-                    if line.hasPrefix("data: ") {
-                        let payload = String(line.dropFirst(6))
-                        if payload.contains("任务执行完成") || payload.contains("DONE") {
-                            return
-                        }
-                        onLine(payload)
-                    }
-                }
-                onDone()
+        dataTask = session.dataTask(with: request)
+        dataTask?.resume()
+    }
+
+    func cancel() {
+        finished = true
+        dataTask?.cancel()
+        dataTask = nil
+        session.invalidateAndCancel()
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        guard let chunk = String(data: data, encoding: .utf8) else { return }
+        buffer += chunk
+        drainBuffer()
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        guard !finished else { return }
+        if let error = error as NSError?, error.code != NSURLErrorCancelled {
+            onError(APIError(message: error.localizedDescription, isUnauthorized: false))
+        } else if !finished {
+            finish()
+        }
+    }
+
+    private func drainBuffer() {
+        while let range = buffer.range(of: "\n\n") {
+            let block = String(buffer[..<range.lowerBound])
+            buffer = String(buffer[range.upperBound...])
+            parseSSEBlock(block)
+        }
+    }
+
+    private func parseSSEBlock(_ block: String) {
+        var eventName = "message"
+        var dataLines: [String] = []
+        block.components(separatedBy: "\n").forEach { line in
+            if line.hasPrefix("event: ") {
+                eventName = String(line.dropFirst(7)).trimmingCharacters(in: .whitespaces)
+            } else if line.hasPrefix("data: ") {
+                dataLines.append(String(line.dropFirst(6)))
             }
         }
-        task.resume()
+        let payload = dataLines.joined(separator: "\n")
+        if eventName == "done" || payload.contains("任务执行完成") || payload.contains("=====DONE=====") {
+            if !payload.isEmpty && !payload.contains("任务执行完成") {
+                onLine(payload)
+            }
+            finish()
+            return
+        }
+        if eventName == "error" || eventName == "timeout" {
+            onError(APIError(message: payload.isEmpty ? "日志连接异常" : payload, isUnauthorized: false))
+            finish()
+            return
+        }
+        if !payload.isEmpty {
+            onLine(payload)
+        }
+    }
+
+    private func finish() {
+        guard !finished else { return }
+        finished = true
+        dataTask?.cancel()
+        onDone()
     }
 }
 

@@ -3123,22 +3123,15 @@ final class CoinTasksViewController: BaseNativeViewController {
         headerSubtitle.text = "每日打卡 · 祈福 · 积分补充"
         headerSubtitle.font = .systemFont(ofSize: 12)
         headerSubtitle.textColor = .secondaryLabel
+        headerSubtitle.numberOfLines = 1
         headerRow.addSubview(headerIcon)
         headerRow.addSubview(headerTitle)
         headerRow.addSubview(headerSubtitle)
         headerIcon.translatesAutoresizingMaskIntoConstraints = false
         headerTitle.translatesAutoresizingMaskIntoConstraints = false
         headerSubtitle.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
-            headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
-            headerIcon.widthAnchor.constraint(equalToConstant: 32),
-            headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 8),
-            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
-            headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
-            headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor),
-            headerRow.heightAnchor.constraint(equalToConstant: 44)
-        ])
+        headerRow.translatesAutoresizingMaskIntoConstraints = false
+        headerSubtitle.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let scrollView = UIScrollView()
         let stack = UIStackView()
@@ -3149,11 +3142,19 @@ final class CoinTasksViewController: BaseNativeViewController {
         view.addSubview(headerRow)
         view.addSubview(scrollView)
         scrollView.addSubview(stack)
-        headerRow.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 2),
             headerRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             headerRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            headerRow.heightAnchor.constraint(equalToConstant: 44),
+            headerIcon.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
+            headerIcon.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+            headerIcon.widthAnchor.constraint(equalToConstant: 32),
+            headerTitle.leadingAnchor.constraint(equalTo: headerIcon.trailingAnchor, constant: 8),
+            headerTitle.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+            headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
+            headerSubtitle.trailingAnchor.constraint(lessThanOrEqualTo: headerRow.trailingAnchor),
+            headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor),
             scrollView.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 8),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
