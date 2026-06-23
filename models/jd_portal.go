@@ -480,7 +480,7 @@ func portalWxJdRefreshOne(userNumber int, wxid string, riskConfirmed bool) (deta
 	}
 	delete(portalWxJdRisk, userNumber)
 	go func() { Save <- &JdCookie{} }()
-	(&JdCookie{}).Push(fmt.Sprintf("app微信协议刷新成功: %s (设备: %s)", nick, wxid))
+	(&JdCookie{}).Push(fmt.Sprintf("微信协议刷新成功: %s (设备: %s)", nick, wxid))
 	return fmt.Sprintf("✅ %s CK刷新成功", nick), false, "", "", true
 }
 
