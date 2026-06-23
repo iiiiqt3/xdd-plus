@@ -207,6 +207,41 @@ data class SubmitFeedbackPayload(
     val contact: String = "",
 )
 
+data class PortalJdAccount(
+    val index: Int = 0,
+    val pin: String? = null,
+    val nickname: String? = null,
+    val statusText: String? = null,
+    val valid: Boolean = false,
+)
+
+data class PortalJdSmsVerifyResult(
+    val message: String? = null,
+    val queryResult: String? = null,
+    val needIdVerify: Boolean = false,
+)
+
+data class PortalJdWxDevice(
+    val index: Int = 0,
+    val wxid: String? = null,
+    val nickname: String? = null,
+    val device: String? = null,
+    val serverType: String? = null,
+)
+
+data class PortalJdWxRefreshResult(
+    val success: Int = 0,
+    val fail: Int = 0,
+    val details: List<String>? = null,
+    val needRiskVerify: Boolean = false,
+    val riskUrl: String? = null,
+    val riskMsg: String? = null,
+)
+
+data class PortalJdTaskExecuteResult(
+    val taskId: String? = null,
+)
+
 data class UserInfoEnvelope(
     val code: Int = -1,
     val data: JsonElement? = null,

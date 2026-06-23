@@ -7,6 +7,7 @@ import com.goudong.jd.data.session.PersistentCookieJar
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
@@ -176,6 +177,52 @@ class ApiClient(
     }
 
     fun urlEncode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8.name())
+
+    suspend fun streamSse(
+        path: String,
+        onLine: (String) -> Unit,
+        onDone: () -> Unit,
+        onError: (Throwable) -> Unit,
+    ) = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(AppEnvironment.BASE_URL + path.removePrefix("/"))
+            .get()
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw ApiError("日志连接失败（${response.code}）")
+                }
+                val reader = response.body?.charStream() ?: throw ApiError("无响应体")
+                reader.buffered().useLines { lines ->
+                    for (line in lines) {
+                        ensureActive()
+                        when {
+                            line.startsWith("data: ") -> {
+                                val data = line.removePrefix("data: ").trim()
+                                if (data.contains("任务执行完成") || data.contains("DONE")) {
+                                    onDone()
+                                    return@withContext
+                                }
+                                onLine(data)
+                            }
+                            line.startsWith("event: done") -> {
+                                onDone()
+                                return@withContext
+                            }
+                            line.startsWith("event: error") -> {
+                                // next data line handled in loop
+                            }
+                        }
+                    }
+                }
+                onDone()
+            }
+        } catch (error: Exception) {
+            ensureActive()
+            onError(error)
+        }
+    }
 
     private fun looksUnauthorized(text: String): Boolean {
         return text.startsWith("<!DOCTYPE html", ignoreCase = true) ||

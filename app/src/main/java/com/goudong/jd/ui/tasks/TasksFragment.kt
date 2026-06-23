@@ -81,6 +81,12 @@ class TasksFragment : Fragment() {
             addView(grid)
         })
 
+        root.addView(requireContext().heroCard("手机卡业务", "办理超值大流量手机卡", ContextCompat.getColor(requireContext(), R.color.brand_primary)).apply {
+            addView(requireContext().primaryButton("前往办理") {
+                startActivity(WebBrowserActivity.intent(requireContext(), AppEnvironment.MORE_WOOL_URL, "手机卡业务"))
+            })
+        })
+
         root.addView(requireContext().heroCard("积分购买", "积分不足时可通过购买页面补充积分", ContextCompat.getColor(requireContext(), R.color.brand_secondary)).apply {
             addView(requireContext().primaryButton("前往购买") {
                 startActivity(WebBrowserActivity.intent(requireContext(), AppEnvironment.COIN_PURCHASE_URL, "积分购买"))

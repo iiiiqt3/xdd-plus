@@ -262,4 +262,87 @@ class PortalRepository(
             )),
         )
     }
+
+    suspend fun fetchJdAccounts(): List<com.goudong.jd.data.model.PortalJdAccount> {
+        val text = apiClient.requestText(path = "/api/portal/jd/accounts")
+        return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.PortalJdAccount::class.java)
+    }
+
+    suspend fun queryJdAccount(index: Int): String {
+        return apiClient.requestData(
+            path = "/api/portal/jd/query",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("index" to index)),
+        )
+    }
+
+    suspend fun sendJdSms(phone: String): String {
+        return apiClient.requestMessage(
+            path = "/api/portal/jd/sms/send",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("phone" to phone)),
+        )
+    }
+
+    suspend fun verifyJdSms(phone: String, code: String, idCard: String): com.goudong.jd.data.model.PortalJdSmsVerifyResult {
+        return apiClient.requestData(
+            path = "/api/portal/jd/sms/verify",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("phone" to phone, "code" to code, "idCard" to idCard)),
+        )
+    }
+
+    suspend fun fetchJdWxDevices(): List<com.goudong.jd.data.model.PortalJdWxDevice> {
+        val text = apiClient.requestText(path = "/api/portal/jd/wx/devices")
+        return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.PortalJdWxDevice::class.java)
+    }
+
+    suspend fun refreshJdWx(wxid: String, riskConfirmed: Boolean = false): com.goudong.jd.data.model.PortalJdWxRefreshResult {
+        return apiClient.requestData(
+            path = "/api/portal/jd/wx/refresh",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("wxid" to wxid, "riskConfirmed" to riskConfirmed)),
+        )
+    }
+
+    suspend fun continueJdWxRisk(): com.goudong.jd.data.model.PortalJdWxRefreshResult {
+        return apiClient.requestData(path = "/api/portal/jd/wx/continue-risk", method = "POST")
+    }
+
+    suspend fun executeJdTask(taskId: String, taskName: String, accountIndexes: List<Int>): com.goudong.jd.data.model.PortalJdTaskExecuteResult {
+        return apiClient.requestData(
+            path = "/api/portal/jd/task/execute",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(
+                mapOf(
+                    "taskId" to taskId,
+                    "taskName" to taskName,
+                    "accountIndexes" to accountIndexes,
+                )
+            ),
+        )
+    }
+
+    suspend fun stopJdTask(taskId: String) {
+        apiClient.requestMessage(
+            path = "/api/portal/jd/task/stop",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("taskId" to taskId)),
+        )
+    }
+
+    suspend fun streamJdTaskLogs(
+        taskId: String,
+        onLine: (String) -> Unit,
+        onDone: () -> Unit,
+        onError: (Throwable) -> Unit,
+    ) {
+        apiClient.streamSse("/api/portal/jd/task/logs?taskId=${apiClient.urlEncode(taskId)}", onLine, onDone, onError)
+    }
 }
