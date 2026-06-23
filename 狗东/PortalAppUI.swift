@@ -43,9 +43,9 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
         projects.tabBarItem = UITabBarItem(title: "项目", image: UIImage(systemName: "shippingbox"), selectedImage: UIImage(systemName: "shippingbox.fill"))
 
         let tasks = AppNavigationController(rootViewController: CoinTasksViewController())
-        tasks.tabBarItem = UITabBarItem(title: "任务", image: UIImage(systemName: "star"), selectedImage: UIImage(systemName: "star.fill"))
+        tasks.tabBarItem = UITabBarItem(title: "积分任务", image: UIImage(systemName: "star"), selectedImage: UIImage(systemName: "star.fill"))
 
-        let jd = AppNavigationController(rootViewController: MainUIViewController())
+        let jd = AppNavigationController(rootViewController: JdTabRootViewController())
         jd.tabBarItem = UITabBarItem(title: "京东", image: UIImage(systemName: "bag"), selectedImage: UIImage(systemName: "bag.fill"))
 
         let more = AppNavigationController(rootViewController: MoreViewController())
@@ -3117,7 +3117,7 @@ final class CoinTasksViewController: BaseNativeViewController {
         headerIcon.text = "⭐"
         headerIcon.font = .systemFont(ofSize: 24)
         let headerTitle = UILabel()
-        headerTitle.text = "任务"
+        headerTitle.text = "积分任务"
         headerTitle.font = .systemFont(ofSize: 20, weight: .bold)
         let headerSubtitle = UILabel()
         headerSubtitle.text = "每日打卡 · 祈福 · 积分补充"
@@ -3188,6 +3188,42 @@ final class CoinTasksViewController: BaseNativeViewController {
             actionsStack.bottomAnchor.constraint(equalTo: actionsCard.bottomAnchor, constant: -18)
         ])
         stack.addArrangedSubview(actionsCard)
+
+        let phoneCard = UIView()
+        phoneCard.applyCardStyle()
+        let phoneIcon = UIImageView()
+        phoneIcon.translatesAutoresizingMaskIntoConstraints = false
+        phoneIcon.image = UIImage(systemName: "simcard.fill")
+        phoneIcon.tintColor = .systemTeal
+        phoneIcon.contentMode = .scaleAspectFit
+        let phoneTitle = UILabel()
+        phoneTitle.text = "手机卡业务"
+        phoneTitle.font = UIFont.systemFont(ofSize: 17, weight: .bold)
+        let phoneDesc = UILabel()
+        phoneDesc.text = "办理超值大流量手机卡"
+        phoneDesc.font = UIFont.systemFont(ofSize: 13)
+        phoneDesc.textColor = .secondaryLabel
+        phoneDesc.numberOfLines = 0
+        let phoneBtn = UIButton(type: .system)
+        phoneBtn.setTitle("前往办理", for: .normal)
+        phoneBtn.applyPrimaryStyle(color: .systemTeal)
+        phoneBtn.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        phoneBtn.addTarget(self, action: #selector(phoneCardTapped), for: .touchUpInside)
+        let phoneStack = UIStackView(arrangedSubviews: [phoneIcon, phoneTitle, phoneDesc, phoneBtn])
+        phoneStack.axis = .vertical
+        phoneStack.alignment = .fill
+        phoneStack.spacing = 10
+        phoneStack.translatesAutoresizingMaskIntoConstraints = false
+        phoneIcon.widthAnchor.constraint(equalToConstant: 36).isActive = true
+        phoneIcon.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        phoneCard.addSubview(phoneStack)
+        NSLayoutConstraint.activate([
+            phoneStack.topAnchor.constraint(equalTo: phoneCard.topAnchor, constant: 18),
+            phoneStack.leadingAnchor.constraint(equalTo: phoneCard.leadingAnchor, constant: 18),
+            phoneStack.trailingAnchor.constraint(equalTo: phoneCard.trailingAnchor, constant: -18),
+            phoneStack.bottomAnchor.constraint(equalTo: phoneCard.bottomAnchor, constant: -18)
+        ])
+        stack.addArrangedSubview(phoneCard)
 
         let buyCard = UIView()
         buyCard.applyCardStyle()
@@ -3339,6 +3375,12 @@ final class CoinTasksViewController: BaseNativeViewController {
                 AppSessionStore.shared.refreshIfPossible(silent: true)
             }
         }
+    }
+
+    @objc private func phoneCardTapped() {
+        guard let url = URL(string: "https://h5.lot-ml.com/ProductEn/Index/7ee6c54f2d550fab") else { return }
+        let vc = WebBrowserViewController(url: url)
+        navigationController?.pushViewController(vc, animated: true)
     }
 
     @objc private func buyTapped() {

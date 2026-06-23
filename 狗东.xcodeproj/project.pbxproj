@@ -17,7 +17,8 @@
 		20DEE4AC2ED86A5A009C4BE3 /* QueryResultManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DEE4AB2ED86A5A009C4BE3 /* QueryResultManager.swift */; };
 		20F000000000000000000001 /* PortalCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000101 /* PortalCore.swift */; };
 		20F000000000000000000002 /* PortalAppUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000102 /* PortalAppUI.swift */; };
-		20F000000000000000000003 /* PortalMoreViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000103 /* PortalMoreViews.swift */; };
+		20F000000000000000000004 /* JdTabRootViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000104 /* JdTabRootViewController.swift */; };
+		20F000000000000000000005 /* JdPortalViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000105 /* JdPortalViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,8 @@
 		20F000000000000000000101 /* PortalCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalCore.swift; sourceTree = "<group>"; };
 		20F000000000000000000102 /* PortalAppUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalAppUI.swift; sourceTree = "<group>"; };
 		20F000000000000000000103 /* PortalMoreViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalMoreViews.swift; sourceTree = "<group>"; };
+		20F000000000000000000104 /* JdTabRootViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JdTabRootViewController.swift; sourceTree = "<group>"; };
+		20F000000000000000000105 /* JdPortalViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JdPortalViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +81,8 @@
 				20F000000000000000000102 /* PortalAppUI.swift */,
 				20F000000000000000000103 /* PortalMoreViews.swift */,
 				20F000000000000000000101 /* PortalCore.swift */,
+				20F000000000000000000104 /* JdTabRootViewController.swift */,
+				20F000000000000000000105 /* JdPortalViewController.swift */,
 			);
 			path = "狗东";
 			sourceTree = "<group>";
@@ -169,6 +174,8 @@
 				20F000000000000000000002 /* PortalAppUI.swift in Sources */,
 				20F000000000000000000003 /* PortalMoreViews.swift in Sources */,
 				20F000000000000000000001 /* PortalCore.swift in Sources */,
+				20F000000000000000000004 /* JdTabRootViewController.swift in Sources */,
+				20F000000000000000000005 /* JdPortalViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

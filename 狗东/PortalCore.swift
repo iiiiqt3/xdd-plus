@@ -89,6 +89,7 @@ enum AppEnvironment {
     static let baseURL = URL(string: "http://180.152.5.230:5701")!
     static let coinPurchaseURL = URL(string: "http://180.152.5.230:8005/#/")!
     static let groupURL = URL(string: "https://qm.qq.com/q/4gYwV6YzPW")!
+    static let moreWoolURL = URL(string: "https://h5.lot-ml.com/ProductEn/Index/7ee6c54f2d550fab")!
 }
 
 
@@ -167,6 +168,46 @@ struct SubmitFeedbackPayload: Encodable {
     let title: String
     let content: String
     let contact: String
+}
+
+
+struct PortalJdAccount: Decodable {
+    let index: Int
+    let pin: String?
+    let nickname: String?
+    let statusText: String?
+    let valid: Bool
+}
+
+
+struct PortalJdSmsVerifyResult: Decodable {
+    let message: String?
+    let queryResult: String?
+    let needIdVerify: Bool?
+}
+
+
+struct PortalJdWxDevice: Decodable {
+    let index: Int
+    let wxid: String?
+    let nickname: String?
+    let device: String?
+    let serverType: String?
+}
+
+
+struct PortalJdWxRefreshResult: Decodable {
+    let success: Int?
+    let fail: Int?
+    let details: [String]?
+    let needRiskVerify: Bool?
+    let riskUrl: String?
+    let riskMsg: String?
+}
+
+
+struct PortalJdTaskExecuteResult: Decodable {
+    let taskId: String?
 }
 
 
@@ -997,6 +1038,94 @@ final class PortalService {
             return
         }
         APIClient.shared.requestMessage(path: path, method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func fetchJdAccounts(completion: @escaping (Result<[PortalJdAccount], APIError>) -> Void) {
+        APIClient.shared.requestList(path: "/api/portal/jd/accounts", completion: completion)
+    }
+
+    func queryJdAccount(index: Int, completion: @escaping (Result<String, APIError>) -> Void) {
+        let payload: [String: Any] = ["index": index]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: "/api/portal/jd/query", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func sendJdSms(phone: String, completion: @escaping (Result<String, APIError>) -> Void) {
+        requestMessageJSON(path: "/api/portal/jd/sms/send", payload: ["phone": phone], completion: completion)
+    }
+
+    func verifyJdSms(phone: String, code: String, idCard: String, completion: @escaping (Result<PortalJdSmsVerifyResult, APIError>) -> Void) {
+        let payload: [String: Any] = ["phone": phone, "code": code, "idCard": idCard]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: "/api/portal/jd/sms/verify", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func fetchJdWxDevices(completion: @escaping (Result<[PortalJdWxDevice], APIError>) -> Void) {
+        APIClient.shared.requestList(path: "/api/portal/jd/wx/devices", completion: completion)
+    }
+
+    func refreshJdWx(wxid: String, riskConfirmed: Bool = false, completion: @escaping (Result<PortalJdWxRefreshResult, APIError>) -> Void) {
+        let payload: [String: Any] = ["wxid": wxid, "riskConfirmed": riskConfirmed]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: "/api/portal/jd/wx/refresh", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func continueJdWxRisk(completion: @escaping (Result<PortalJdWxRefreshResult, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/jd/wx/continue-risk", method: "POST", completion: completion)
+    }
+
+    func executeJdTask(taskId: String, taskName: String, accountIndexes: [Int], completion: @escaping (Result<PortalJdTaskExecuteResult, APIError>) -> Void) {
+        let payload: [String: Any] = ["taskId": taskId, "taskName": taskName, "accountIndexes": accountIndexes]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: "/api/portal/jd/task/execute", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func stopJdTask(taskId: String, completion: @escaping (Result<String, APIError>) -> Void) {
+        requestMessageJSON(path: "/api/portal/jd/task/stop", payload: ["taskId": taskId], completion: completion)
+    }
+
+    func streamJdTaskLogs(taskId: String, onLine: @escaping (String) -> Void, onDone: @escaping () -> Void, onError: @escaping (APIError) -> Void) {
+        guard let url = URL(string: "/api/portal/jd/task/logs?taskId=\(taskId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? taskId)", relativeTo: AppEnvironment.baseURL) else {
+            onError(APIError(message: "日志地址无效", isUnauthorized: false))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 300
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    onError(APIError(message: error.localizedDescription, isUnauthorized: false))
+                    return
+                }
+                guard let data = data, let text = String(data: data, encoding: .utf8) else {
+                    onDone()
+                    return
+                }
+                text.components(separatedBy: "\n").forEach { line in
+                    if line.hasPrefix("data: ") {
+                        let payload = String(line.dropFirst(6))
+                        if payload.contains("任务执行完成") || payload.contains("DONE") {
+                            return
+                        }
+                        onLine(payload)
+                    }
+                }
+                onDone()
+            }
+        }
+        task.resume()
     }
 }
 
