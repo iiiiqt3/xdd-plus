@@ -402,13 +402,13 @@ func main() {
 	web.BConfig.WebConfig.Session.SessionName = models.AppName
 	// 配置CORS跨域访问
 	web.InsertFilter("*", web.BeforeRouter, cors.Allow(&cors.Options{
-		//允许访问所有源
+		//允许所有源（如需限制可改为具体域名列表）
 		AllowAllOrigins: true,
 		//可选参数"GET", "POST", "PUT", "DELETE", "OPTIONS" (*为所有)
 		//其中Options跨域复杂请求预检
-		AllowMethods: []string{"*"},
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		//指的是允许的Header的种类
-		AllowHeaders: []string{"*"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Authorization", "X-Request-Source"},
 		//公开的HTTP标头列表
 		ExposeHeaders: []string{"Content-Length"},
 		//如果设置，则允许共享身份验证凭据，例如cookie

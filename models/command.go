@@ -2743,8 +2743,24 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			ct := sender.JoinContens()
-			if regexp.MustCompile(`rm\s+-rf`).FindString(ct) != "" {
-				return "over"
+			// 过滤危险命令，防止命令注入
+			dangerousPatterns := []string{
+				`rm\s+-rf`,
+				`;\s*(cat|more|less|head|tail|curl|wget|nc|ncat|bash|sh|python|perl|ruby|php)\s`,
+				`\|\s*(bash|sh|python|perl|ruby|php)`,
+				`>\s*/etc/`,
+				`>\s*/proc/`,
+				`>\s*/sys/`,
+				`chmod\s+777`,
+				`mkfs\.`,
+				`dd\s+if=`,
+				`wget\s+.*\|\s*(bash|sh)`,
+				`curl\s+.*\|\s*(bash|sh)`,
+			}
+			for _, pattern := range dangerousPatterns {
+				if regexp.MustCompile(pattern).FindString(ct) != "" {
+					return "检测到危险命令，已拦截"
+				}
 			}
 			cmd(ct, sender)
 			return nil
@@ -4392,7 +4408,7 @@ func InviteGroup(uid string, gid string) {
 func GetPinList(qq string) []string {
 	cks := []JdCookie{}
 	var pins []string
-	db.Where(fmt.Sprintf("QQ = %s", qq)).Find(&cks)
+	db.Where("QQ = ?", qq).Find(&cks)
 	if len(cks) > 0 {
 		for _, ck := range cks {
 			pins = append(pins, ck.PtPin)
@@ -4406,7 +4422,7 @@ func GetPinList(qq string) []string {
 func getUserNameList(qq string) []string {
 	cks := []JdCookie{}
 	var names []string
-	db.Where(fmt.Sprintf("QQ = %s", qq)).Find(&cks)
+	db.Where("QQ = ?", qq).Find(&cks)
 	t, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
 	if len(cks) > 0 {
 		for _, ck := range cks {
