@@ -1967,29 +1967,7 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	{
-		Command: []string{"我的2资产", "query"},
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("正在为您查询，请耐心等待,如报错可使用 查询 口令确认ck是否失效")
-			if sender.IsAdmin {
-				sender.handleJdCookies(func(ck *JdCookie) {
-					time.Sleep(time.Second * time.Duration(Config.Later))
-					sender.Reply(ck.Query1())
-				})
-			} else {
-				if getLimit(sender.UserID, 1) {
-					time.Sleep(time.Second * time.Duration(Config.Later))
-					sender.handleJdCookies(func(ck *JdCookie) {
-						sender.Reply(ck.Query1())
-					})
-				} else {
-					sender.Reply(fmt.Sprintf("鉴于东哥对接口限流，为了不影响大家的任务正常运行，即日起每日限流%d次，已超过今日限制", Config.Lim))
-				}
-			}
 
-			return nil
-		},
-	},
 
 	{
 		Command: []string{"积分变动"},
@@ -2106,19 +2084,6 @@ var codeSignals = []CodeSignal{
 	 },
 	},
 
-	{
-		Command: []string{"大师查询"},
-
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("正在为您查询，请耐心等待，回复 手机卡 指令可办理超值流量卡，回复 登陆，ck不掉线")
-
-			sender.handleJdCookies(func(ck *JdCookie) {
-				sender.Reply(ck.Query())
-			})
-
-			return nil
-		},
-	},
 
 	{
 		Command: []string{"京豆明细", "资产明细"},

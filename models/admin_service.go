@@ -3287,6 +3287,53 @@ func GetWxDeviceList(search string) ([]WxDeviceInfo, int, int, int) {
 	return list, totalCount, onlineCount, offlineCount
 }
 
+// Count 统计用户信息
+func Count() string {
+	zs := 0  // 总数
+	yx := 0  // 有效数
+	wx := 0  // 无效数
+	ts := 0  // 今日更新
+	tc := 0  // 今日新增
+	mm := 0  // 密码用户
+	app := 0  // app用户
+	Hack := 0 //屏蔽任务用户
+	Smsverify := 0  // 需要验证账号
+	dt := Date()  // 当前日期
+	cks := GetJdCookies()  // 获取京东Cookies列表
+	for _, ck := range cks {
+		zs++  // 总数加一
+		if ck.Available == "true" {
+			yx++  // 有效数加一
+			if ck.Password != "" {
+				mm++  // 密码不为空时加一
+			}
+			if ck.IsApp == "true" {
+				app++  // 只有当密码为空时，才增加 app 用户计数
+			}
+			if ck.CreateAt == dt {
+				tc++  // 创建日期与当前日期相等时加一
+			}
+		}
+
+		// 不再依赖于 Available 进行计数
+		if ck.Smsverify == "true" {
+			Smsverify++
+		}
+		if ck.Hack == "true" {
+			Hack++
+		}
+		if ck.UpdateAt == dt {
+			ts++  // 更新日期与当前日期相等时加一
+		}
+	}
+
+	// 无效用户数为总数减去有效用户数
+	wx = zs - yx
+
+	// 返回统计结果的字符串格式
+	return fmt.Sprintf("当前用户总数：%d\n有效用户总数：%d\n有效密码用户：%d\nAPP用户总数：%d\n任务屏蔽总数：%d\n无效用户总数：%d\n密码验证用户：%d\n今日更新总数：%d\n今日新增总数：%d", zs, yx, mm, app, Hack, wx, Smsverify, ts, tc)
+}
+
 // GetWxDeviceListByURL 按指定地址获取设备列表
 // addr: "old"=旧地址, "new"=新地址, "merged"=合并(默认)
 func GetWxDeviceListByURL(addr, search string) ([]WxDeviceInfo, int, int, int) {

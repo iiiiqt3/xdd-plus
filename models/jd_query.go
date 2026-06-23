@@ -1570,3 +1570,88 @@ func jdSUA(ua string) string {
 	}
 	return ua[start : start+end]
 }
+
+// Query3 京豆明细查询
+func (ck *JdCookie) Query3() string {
+	msgs := []string{}
+	if CookieOK(ck) {
+		msgs = append(msgs, fmt.Sprintf("账号昵称：%v", ck.Nickname))
+		msgs = append(msgs, fmt.Sprintf("用户等级：%v", ck.UserLevel))
+		msgs = append(msgs, fmt.Sprintf("等级名称：%v", ck.LevelName))
+		msgs = append(msgs, fmt.Sprintf("绑定userID：%v", ck.QQ))
+
+		if strings.HasPrefix(ck.PtKey, "app_open") {
+			msgs = append(msgs, "登录方式：扫码登录")
+		} else if ck.Password != "" {
+			msgs = append(msgs, "登录方式：账号登录")
+		} else if ck.IsApp == "true" && ck.Password == "" {
+			msgs = append(msgs, "登录方式：APP登录")
+		} else {
+			msgs = append(msgs, "登录方式：短信登录")
+		}
+
+		msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
+		msgs = append(msgs, "")
+		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
+		msgs = append(msgs, NewJDLocalQuery(cookie).RenderSummary(false))
+	} else {
+		msgs = append(msgs, "提醒：该账号已过期，请重新登录,如果需要京东自动登录不掉线 :请回复 登陆")
+		msgs = append(msgs, fmt.Sprintf("账号名称：%s", ck.PtPin))
+	}
+
+	ck.PtPin, _ = url.QueryUnescape(ck.PtPin)
+
+	if Config.Query1 != "" {
+		msgs = append(msgs, Config.Query1)
+	}
+
+	return strings.Join(msgs, "\n")
+}
+
+// Query 查询账号信息
+func (ck *JdCookie) Query() string {
+	msgs := []string{}
+
+	if CookieOK(ck) {
+		msgs = append(msgs, fmt.Sprintf("账号昵称：%v", ck.Nickname))
+		msgs = append(msgs, fmt.Sprintf("用户等级：%v", ck.UserLevel))
+		msgs = append(msgs, fmt.Sprintf("等级名称：%v", ck.LevelName))
+		msgs = append(msgs, fmt.Sprintf("绑定userID：%v", ck.QQ))
+
+		if strings.HasPrefix(ck.PtKey, "app_open") {
+			msgs = append(msgs, "登录方式：扫码登录")
+		} else if ck.Password != "" {
+			msgs = append(msgs, "登录方式：账号登录")
+		} else if ck.IsApp == "true" && ck.Password == "" {
+			msgs = append(msgs, "登录方式：APP登录")
+		} else {
+			msgs = append(msgs, "登录方式：短信登录")
+		}
+
+		// 计算累计挂机时间
+		createdAt, err := time.Parse("2006-01-02", ck.CreateAt)
+		if err != nil {
+			msgs = append(msgs, "累计挂机：时间解析失败")
+		} else {
+			duration := time.Since(createdAt)
+			days := int(duration.Hours() / 24)
+			msgs = append(msgs, fmt.Sprintf("累计挂机：%d天", days))
+		}
+
+		msgs = append(msgs, fmt.Sprintf("优先级：%v", ck.Priority))
+
+		cookie := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
+		msgs = append(msgs, NewJDLocalQuery(cookie).RenderSummary(true))
+	} else {
+		msgs = append(msgs, "提醒：该账号已过期，请重新登录,如果需要京东自动登录不掉线 :请回复 登陆")
+		msgs = append(msgs, fmt.Sprintf("账号名称：%s", ck.PtPin))
+	}
+
+	ck.PtPin, _ = url.QueryUnescape(ck.PtPin)
+
+	if Config.Query1 != "" {
+		msgs = append(msgs, Config.Query1)
+	}
+
+	return strings.Join(msgs, "\n")
+}
