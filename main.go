@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
@@ -339,6 +340,20 @@ func main() {
 
 	// ===================== 玩法简介图片上传 =====================
 	web.Router("/api/admin/upload/guide-image", &controllers.AdminApiController{}, "post:UploadGuideImage")
+
+	// ===================== 静态文件服务（上传的图片/视频） =====================
+	web.Get("/uploads/*", func(ctx *context.Context) {
+		filePath := ctx.Input.Param(":filepath")
+		absPath := filepath.Join(models.ExecPath, "uploads", filePath)
+		// 安全检查：防止路径穿越
+		if strings.Contains(absPath, "..") {
+			ctx.Output.SetStatus(403)
+			ctx.WriteString("forbidden")
+			return
+		}
+		// 使用 http.ServeFile 提供静态文件服务
+		http.ServeFile(ctx.ResponseWriter, ctx.Request, absPath)
+	})
 
 	// ===================== 青龙 Cron 任务管理 API =====================
 	web.Router("/api/admin/crontasks", &controllers.AdminApiController{}, "get:GetCronTasks")
