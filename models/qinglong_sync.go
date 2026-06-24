@@ -32,10 +32,10 @@ var (
 )
 
 const (
-	syncInterval       = 30 * time.Second
+	syncInterval       = 10 * time.Minute
 	syncBatchSize      = 50
 	syncMaxRetries     = 3
-	fullSyncInterval   = 30 * time.Minute
+	fullSyncInterval   = 1 * time.Hour
 )
 
 func GetSyncQueue() *SyncQueue {
