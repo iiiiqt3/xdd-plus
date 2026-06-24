@@ -434,6 +434,15 @@ func RemoveTaskLogChannel(taskId string) {
 	}
 }
 
+// safeLogSend 安全发送日志到通道，避免向已关闭的通道发送导致 panic
+func safeLogSend(ch chan string, msg string) {
+	defer func() { recover() }()
+	select {
+	case ch <- msg:
+	default:
+	}
+}
+
 // 运行中的任务管理 {userId_taskId: {taskLogId: accountIndexes}}
 var runningTasksMap = make(map[string]map[string][]int)
 var runningTasksMutex sync.Mutex
@@ -508,7 +517,7 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 	}
 
 	// 发送开始日志
-	logChan <- fmt.Sprintf("开始执行任务: %s", taskName)
+	safeLogSend(logChan, fmt.Sprintf("开始执行任务: %s", taskName))
 
 	// 获取用户的京东账号
 	var idType string
@@ -517,10 +526,10 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 		return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, "Available"), userId, "True")
 	})
 
-	logChan <- fmt.Sprintf("查询到 %d 个有效账号 (userId=%d)", len(cks), userId)
+	safeLogSend(logChan, fmt.Sprintf("查询到 %d 个有效账号 (userId=%d)", len(cks), userId))
 
 	if len(cks) == 0 {
-		logChan <- "错误: 没有找到有效的京东账号"
+		safeLogSend(logChan, "错误: 没有找到有效的京东账号")
 		return
 	}
 
@@ -537,18 +546,18 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 		}
 	}
 
-	logChan <- fmt.Sprintf("筛选后 %d 个账号 (传入索引: %v)", len(selectedCks), accountIndexes)
+	safeLogSend(logChan, fmt.Sprintf("筛选后 %d 个账号 (传入索引: %v)", len(selectedCks), accountIndexes))
 
 	if len(selectedCks) == 0 {
-		logChan <- "错误: 没有选择有效的账号"
+		safeLogSend(logChan, "错误: 没有选择有效的账号")
 		return
 	}
 
-	logChan <- fmt.Sprintf("已选择 %d 个账号", len(selectedCks))
+	safeLogSend(logChan, fmt.Sprintf("已选择 %d 个账号", len(selectedCks)))
 
 	// 根据任务类型执行
 	for _, ck := range selectedCks {
-		logChan <- fmt.Sprintf("执行账号: %s (%s)", ck.Nickname, ck.PtPin)
+		safeLogSend(logChan, fmt.Sprintf("执行账号: %s (%s)", ck.Nickname, ck.PtPin))
 
 		envs := map[string]string{
 			"pins": "&" + ck.PtPin,
@@ -587,7 +596,7 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_insight.js"
 			parser = replexQuan_jd_insight
 		default:
-			logChan <- fmt.Sprintf("错误: 未知的任务类型 %s", taskId)
+			safeLogSend(logChan, fmt.Sprintf("错误: 未知的任务类型 %s", taskId))
 			return
 		}
 
@@ -595,13 +604,13 @@ func ExecutePortalJdTask(userId int, taskId string, taskName string, accountInde
 		executeTaskWithLogs(taskLogId, taskName, scriptPath, envs, parser, logChan)
 	}
 
-	logChan <- "=====DONE=====所有账号任务执行完成"
+	safeLogSend(logChan, "=====DONE=====所有账号任务执行完成")
 }
 
 // executeTaskWithLogs 执行任务并实时推送日志
 func executeTaskWithLogs(taskId string, taskName string, scriptPath string, envs map[string]string, outputParser func(string, *Sender) string, logChan chan string) {
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		logChan <- fmt.Sprintf("错误: 脚本文件不存在 %s", scriptPath)
+		safeLogSend(logChan, fmt.Sprintf("错误: 脚本文件不存在 %s", scriptPath))
 		return
 	}
 
@@ -614,18 +623,18 @@ func executeTaskWithLogs(taskId string, taskName string, scriptPath string, envs
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logChan <- fmt.Sprintf("错误: 获取输出管道失败 %v", err)
+		safeLogSend(logChan, fmt.Sprintf("错误: 获取输出管道失败 %v", err))
 		return
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		logChan <- fmt.Sprintf("错误: 获取错误管道失败 %v", err)
+		safeLogSend(logChan, fmt.Sprintf("错误: 获取错误管道失败 %v", err))
 		return
 	}
 
 	err = cmd.Start()
 	if err != nil {
-		logChan <- fmt.Sprintf("错误: 启动脚本失败 %v", err)
+		safeLogSend(logChan, fmt.Sprintf("错误: 启动脚本失败 %v", err))
 		return
 	}
 
@@ -648,12 +657,12 @@ func executeTaskWithLogs(taskId string, taskName string, scriptPath string, envs
 			line, err2 := reader.ReadString('\n')
 			if err2 != nil {
 				if err2 != io.EOF && len(strings.TrimSpace(line)) > 0 {
-					logChan <- fmt.Sprintf("[stderr] %s", strings.TrimSpace(line))
+					safeLogSend(logChan, fmt.Sprintf("[stderr] %s", strings.TrimSpace(line)))
 				}
 				break
 			}
 			if len(strings.TrimSpace(line)) > 0 {
-				logChan <- fmt.Sprintf("[stderr] %s", strings.TrimSpace(line))
+				safeLogSend(logChan, fmt.Sprintf("[stderr] %s", strings.TrimSpace(line)))
 			}
 		}
 	}()
@@ -666,27 +675,27 @@ func executeTaskWithLogs(taskId string, taskName string, scriptPath string, envs
 		if err2 != nil {
 			if err2 != io.EOF && len(strings.TrimSpace(line)) > 0 {
 				fullOutput.WriteString(line)
-				logChan <- strings.TrimSpace(line)
+				safeLogSend(logChan, strings.TrimSpace(line))
 			}
 			break
 		}
 		fullOutput.WriteString(line)
 		trimmed := strings.TrimSpace(line)
 		if len(trimmed) > 0 {
-			logChan <- trimmed
+			safeLogSend(logChan, trimmed)
 		}
 	}
 
 	err = cmd.Wait()
 	if err != nil {
-		logChan <- fmt.Sprintf("脚本执行完成，退出码: %v", err)
+		safeLogSend(logChan, fmt.Sprintf("脚本执行完成，退出码: %v", err))
 	}
 
 	// 输出匹配后的结果
 	sender := &Sender{}
 	result := outputParser(fullOutput.String(), sender)
-	logChan <- fmt.Sprintf("===== 任务结果 =====")
-	logChan <- result
+	safeLogSend(logChan, fmt.Sprintf("===== 任务结果 ====="))
+	safeLogSend(logChan, result)
 }
 
 func replexQuan_Watering(info string, sender *Sender) string {
