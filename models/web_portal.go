@@ -89,6 +89,8 @@ type PortalDashboard struct {
 	NextCheckInBonus          int    `json:"nextCheckInBonus"`
 	DaysUntilNextCheckInBonus int    `json:"daysUntilNextCheckInBonus"`
 	PrayedToday               bool   `json:"prayedToday"`
+	CanCheckIn                bool   `json:"canCheckIn"`
+	CanCheckInMessage         string `json:"canCheckInMessage"`
 }
 
 type PortalPrayRecord struct {
@@ -127,6 +129,7 @@ func GetPortalDashboard(accountID int) (*PortalDashboard, error) {
 	checkedInToday, continuousDays := getPortalCheckInStatus(profile.User)
 	nextBonus, daysUntilNextBonus := getNextCheckInBonus(continuousDays)
 	prayedToday := hasPrayedToday(profile.User.Number)
+	canCheckIn, canCheckInMessage := CanUserCheckIn(profile.User.Number)
 
 	return &PortalDashboard{
 		Number:                    profile.User.Number,
@@ -152,6 +155,8 @@ func GetPortalDashboard(accountID int) (*PortalDashboard, error) {
 		NextCheckInBonus:          nextBonus,
 		DaysUntilNextCheckInBonus: daysUntilNextBonus,
 		PrayedToday:               prayedToday,
+		CanCheckIn:                canCheckIn,
+		CanCheckInMessage:         canCheckInMessage,
 	}, nil
 }
 
@@ -200,6 +205,34 @@ func CountPortalProjectStats(userNumber int) (int, int, int, int, int) {
 		}
 	}
 	return len(projects), len(joined), activeCount, expiringCount, expiredCount
+}
+
+// CanUserCheckIn 检查用户是否可以打卡
+// 条件：有按月或按天的项目，且项目未过期
+func CanUserCheckIn(userNumber int) (bool, string) {
+	projects, err := GetPortalProjects(userNumber)
+	if err != nil || len(projects) == 0 {
+		return false, "您还没有挂上任何项目，请先前往「项目中心」上车活动"
+	}
+	
+	hasValidMonthlyOrDaily := false
+	for _, project := range projects {
+		// 跳过已过期的项目
+		if project.BizStatus == "expired" {
+			continue
+		}
+		// 检查是否有按月或按天的项目
+		if project.IsMonthlyDeduct || project.IsDailyDeduct {
+			hasValidMonthlyOrDaily = true
+			break
+		}
+	}
+	
+	if !hasValidMonthlyOrDaily {
+		return false, "您没有有效的按月/按天项目（可能已过期），打卡需要有效的按月或按天项目"
+	}
+	
+	return true, ""
 }
 
 func getNextCheckInBonus(days int) (int, int) {
@@ -782,6 +815,13 @@ func portalCheckIn(userNumber int, source ...string) (string, error) {
 	if len(source) > 0 && source[0] != "" {
 		src = source[0]
 	}
+	
+	// 检查用户是否有权限打卡
+	canCheckIn, errMsg := CanUserCheckIn(userNumber)
+	if !canCheckIn {
+		return errMsg, nil
+	}
+	
 	var u User
 	ntime := time.Now()
 	zero, _ := time.ParseInLocation("2006-01-02", ntime.Local().Format("2006-01-02"), time.Local)
@@ -859,6 +899,13 @@ func portalPray(userNumber int, source ...string) (string, error) {
 	if len(source) > 0 && source[0] != "" {
 		src = source[0]
 	}
+	
+	// 检查用户是否有权限祈福
+	canCheckIn, errMsg := CanUserCheckIn(userNumber)
+	if !canCheckIn {
+		return errMsg, nil
+	}
+	
 	today := time.Now().Format("2006-01-02")
 	if hasPrayedToday(userNumber) {
 		return "你今天已经祈福过了，明天再来吧。", nil

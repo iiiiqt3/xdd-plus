@@ -1414,9 +1414,9 @@
                 <div class="section-header panel-duplicate-title"><h3>⭐ 积分相关</h3><span class="muted">签到、祈福、购买、兑换与积分变动</span></div>
                 <div class="task-grid" id="taskAuthHint" style="display:none;margin-bottom:0;">
                     <div class="task-box" style="grid-column:1/-1;background:rgba(220,38,38,0.04);border-color:rgba(220,38,38,0.15);">
-                        <h3 style="color:var(--red);">⚠️ 暂无有效授权账号</h3>
-                        <p>您还没有挂上青龙活动或授权已失效，打卡和祈福需要至少一个有效授权的活动账号才能使用。请先前往<span style="font-weight:700;">活动管理</span>挂上活动并确保授权有效。</p>
-                        <button class="btn accent" onclick="document.querySelector('button[data-panel=&quot;projects&quot;]').click()">前往活动管理</button>
+                        <h3 style="color:var(--red);">⚠️ 暂无有效授权项目</h3>
+                        <p id="taskAuthHintMsg">打卡和祈福需要按月或按天的项目才能使用，请先前往「项目中心」上车活动。</p>
+                        <button class="btn accent" onclick="document.querySelector('button[data-panel=&quot;projects&quot;]').click()">前往项目中心</button>
                     </div>
                 </div>
 
@@ -2035,12 +2035,26 @@ function renderDashboard() {
     document.getElementById('cardExpiredCount').textContent = d.expiredCount ?? 0;
 
     const hasValidAccount = (d.activeCount || 0) > 0;
+    const canCheckIn = d.canCheckIn ?? false;
+    const canCheckInMessage = d.canCheckInMessage ?? '';
+    
     const authHint = document.getElementById('taskAuthHint');
-    if (authHint) authHint.style.display = hasValidAccount ? 'none' : '';
+    if (authHint) {
+        if (hasValidAccount && canCheckIn) {
+            authHint.style.display = 'none';
+        } else {
+            authHint.style.display = '';
+            const hintMsg = document.getElementById('taskAuthHintMsg');
+            if (hintMsg && canCheckInMessage) {
+                hintMsg.textContent = canCheckInMessage;
+            }
+        }
+    }
+    
     const btnCheckin = document.getElementById('taskBtnCheckin');
     const btnPray = document.getElementById('taskBtnPray');
-    if (btnCheckin) { btnCheckin.disabled = !hasValidAccount; btnCheckin.style.opacity = hasValidAccount ? '' : '0.5'; btnCheckin.style.cursor = hasValidAccount ? '' : 'not-allowed'; }
-    if (btnPray) { btnPray.disabled = !hasValidAccount; btnPray.style.opacity = hasValidAccount ? '' : '0.5'; btnPray.style.cursor = hasValidAccount ? '' : 'not-allowed'; }
+    if (btnCheckin) { btnCheckin.disabled = !canCheckIn; btnCheckin.style.opacity = canCheckIn ? '' : '0.5'; btnCheckin.style.cursor = canCheckIn ? '' : 'not-allowed'; }
+    if (btnPray) { btnPray.disabled = !canCheckIn; btnPray.style.opacity = canCheckIn ? '' : '0.5'; btnPray.style.cursor = canCheckIn ? '' : 'not-allowed'; }
 
     const dashNotifyTotal = document.getElementById('dashNotifyTotal');
     const dashNotifyUnread = document.getElementById('dashNotifyUnread');
