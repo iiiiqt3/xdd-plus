@@ -41,6 +41,7 @@ final class JdPortalViewController: BaseNativeViewController {
     private let wxDeviceGridStack = UIStackView()
     private let wxRiskStack = UIStackView()
     private let wxRiskLabel = UILabel()
+    private let wxRiskLink = UILabel()
     private let wxResultLabel = UILabel()
 
     private let taskDefs: [TaskDef] = [
@@ -539,6 +540,13 @@ final class JdPortalViewController: BaseNativeViewController {
         wxRiskStack.isHidden = true
         wxRiskLabel.numberOfLines = 0
         wxRiskStack.addArrangedSubview(wxRiskLabel)
+        wxRiskLink.numberOfLines = 0
+        wxRiskLink.font = .systemFont(ofSize: 13)
+        wxRiskLink.textColor = .systemBlue
+        wxRiskLink.isUserInteractionEnabled = true
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openRiskUrl))
+        wxRiskLink.addGestureRecognizer(tapGesture)
+        wxRiskStack.addArrangedSubview(wxRiskLink)
         var riskBtn: UIButton!
         riskBtn = compactButton("验证完成，继续刷新", color: .systemOrange) { [weak self] in
             self?.continueWxRisk(button: riskBtn)
@@ -662,12 +670,26 @@ final class JdPortalViewController: BaseNativeViewController {
                     self.wxRiskStack.isHidden = data.needRiskVerify != true
                     if data.needRiskVerify == true {
                         self.wxRiskLabel.text = data.riskMsg ?? "账号需要短信验证"
+                        self.currentRiskUrl = data.riskUrl
+                        if let url = data.riskUrl, !url.isEmpty {
+                            self.wxRiskLink.text = url
+                            self.wxRiskLink.isHidden = false
+                        } else {
+                            self.wxRiskLink.isHidden = true
+                        }
                     }
                     self.wxResultLabel.text = "成功 \(data.success ?? 0) / 失败 \(data.fail ?? 0)\n\(data.details?.joined(separator: "\n") ?? "")"
                     self.wxResultLabel.isHidden = false
                 }
             }
         }
+    }
+
+    private var currentRiskUrl: String?
+
+    @objc private func openRiskUrl() {
+        guard let urlStr = currentRiskUrl, let url = URL(string: urlStr) else { return }
+        UIApplication.shared.open(url)
     }
 
     private func continueWxRisk(button: UIButton) {
@@ -681,7 +703,17 @@ final class JdPortalViewController: BaseNativeViewController {
                 case .failure(let error): self.handle(error)
                 case .success(let data):
                     self.flashButtonSuccess(button, message: "✅ 刷新完成", restore: "验证完成，继续刷新")
-                    self.wxRiskStack.isHidden = true
+                    if data.needRiskVerify == true {
+                        self.wxRiskStack.isHidden = false
+                        self.wxRiskLabel.text = data.riskMsg ?? "账号需要短信验证"
+                        self.currentRiskUrl = data.riskUrl
+                        if let url = data.riskUrl, !url.isEmpty {
+                            self.wxRiskLink.text = url
+                            self.wxRiskLink.isHidden = false
+                        }
+                    } else {
+                        self.wxRiskStack.isHidden = true
+                    }
                     self.wxResultLabel.text = data.details?.joined(separator: "\n") ?? "刷新完成"
                     self.wxResultLabel.isHidden = false
                 }
