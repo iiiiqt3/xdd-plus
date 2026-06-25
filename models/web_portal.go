@@ -241,11 +241,11 @@ func CanUserCheckIn(userNumber int) (bool, string) {
 func getNextCheckInBonus(days int) (int, int) {
 	switch {
 	case days < 10:
-		return 20, 10 - days
+		return 10, 10 - days
 	case days < 20:
-		return 30, 20 - days
+		return 20, 20 - days
 	case days < 30:
-		return 50, 30 - days
+		return 30, 30 - days
 	default:
 		return 0, 0
 	}
