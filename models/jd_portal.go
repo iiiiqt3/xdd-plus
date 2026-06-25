@@ -46,7 +46,14 @@ type PortalJdWxRefreshResult struct {
 
 var portalSmsRisk = make(map[int]bool)
 var portalSmsPhone = make(map[int]string)
-var portalWxJdRisk = make(map[int]string)
+
+type portalWxRiskInfo struct {
+	wxid    string
+	riskUrl string
+	riskMsg string
+}
+
+var portalWxJdRisk = make(map[int]portalWxRiskInfo)
 
 func getPortalJdCookies(userNumber int) []JdCookie {
 	cks := []JdCookie{}
@@ -433,7 +440,9 @@ func PortalJdWxRefresh(userNumber int, wxid string, riskConfirmed bool) (*Portal
 			result.NeedRiskVerify = true
 			result.RiskURL = riskURL
 			result.RiskMsg = riskMsg
-			portalWxJdRisk[userNumber] = d
+			if _, exists := portalWxJdRisk[userNumber]; !exists {
+				portalWxJdRisk[userNumber] = portalWxRiskInfo{wxid: d, riskUrl: riskURL, riskMsg: riskMsg}
+			}
 			return result, nil
 		}
 		if ok {
@@ -447,15 +456,15 @@ func PortalJdWxRefresh(userNumber int, wxid string, riskConfirmed bool) (*Portal
 }
 
 func portalWxJdRefreshOne(userNumber int, wxid string, riskConfirmed bool) (detail string, needRisk bool, riskURL, riskMsg string, ok bool) {
-	if pending, exists := portalWxJdRisk[userNumber]; exists && pending == wxid && !riskConfirmed {
-		return "请先完成短信验证后再继续", true, "", "验证完成后请点击继续刷新", false
+	if pending, exists := portalWxJdRisk[userNumber]; exists && pending.wxid == wxid && !riskConfirmed {
+		return "请先完成短信验证后再继续", true, pending.riskUrl, pending.riskMsg, false
 	}
 
 	ptKey, ptPin, err := wxJdRefreshCK(wxid)
 	if err != nil {
 		var riskErr *RiskVerifyError
 		if errors.As(err, &riskErr) {
-			portalWxJdRisk[userNumber] = wxid
+			portalWxJdRisk[userNumber] = portalWxRiskInfo{wxid: wxid, riskUrl: riskErr.JmpURL, riskMsg: riskErr.ErrMsg}
 			return fmt.Sprintf("账号需要短信验证"), true, riskErr.JmpURL, riskErr.ErrMsg, false
 		}
 		return fmt.Sprintf("❌ %s 刷新失败: %v", wxid, err), false, "", "", false
@@ -485,9 +494,9 @@ func portalWxJdRefreshOne(userNumber int, wxid string, riskConfirmed bool) (deta
 }
 
 func PortalJdWxContinueAfterRisk(userNumber int) (*PortalJdWxRefreshResult, error) {
-	wxid, ok := portalWxJdRisk[userNumber]
-	if !ok || wxid == "" {
+	info, ok := portalWxJdRisk[userNumber]
+	if !ok || info.wxid == "" {
 		return nil, fmt.Errorf("没有待继续的验证任务")
 	}
-	return PortalJdWxRefresh(userNumber, wxid, true)
+	return PortalJdWxRefresh(userNumber, info.wxid, true)
 }
