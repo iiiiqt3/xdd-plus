@@ -1,5 +1,6 @@
 package com.goudong.jd.ui.jd
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -68,6 +69,10 @@ class JdPortalFragment : Fragment() {
     private var smsIdCardBox: LinearLayout? = null
     private var smsResultText: TextView? = null
     private var wxResultText: TextView? = null
+    private var wxRiskBox: LinearLayout? = null
+    private var wxRiskMsg: TextView? = null
+    private var wxRiskLink: TextView? = null
+    private var wxRiskUrl: String? = null
     private var logText: TextView? = null
 
     private val taskDefs = listOf(
@@ -359,6 +364,17 @@ class JdPortalFragment : Fragment() {
         })
         toolbarRow.addView(makeSmallBtn("刷新设备") { loadWxDevices() })
         contentHost.addView(LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; tag = "wx_device_list" })
+        // 风险验证区域
+        wxRiskBox = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#FEF3C7")); cornerRadius = ctx.dp(10).toFloat(); setStroke(ctx.dp(1), Color.parseColor("#FDE68A")) }
+            wxRiskMsg = TextView(ctx).apply { setTextColor(Color.parseColor("#D97706")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); text = "账号需要短信验证" }.also { addView(it) }
+            wxRiskLink = TextView(ctx).apply { setTextColor(Color.parseColor("#2563EB")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f); paint?.isUnderlineText = true; setPadding(0, ctx.dp(6), 0, 0); setOnClickListener { wxRiskUrl?.let { url -> try { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) } catch (_: Exception) {} } } }.also { addView(it) }
+            val continueBtn = TextView(ctx).apply { text = "验证完成，继续刷新"; setTextColor(Color.WHITE); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); background = GradientDrawable().apply { setColor(Color.parseColor("#F59E0B")); cornerRadius = ctx.dp(8).toFloat() }; setPadding(ctx.dp(14), ctx.dp(8), ctx.dp(14), ctx.dp(8)); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = ctx.dp(10) }; setOnClickListener { continueWxRisk() } }
+            addView(continueBtn)
+        }.also { contentHost.addView(it) }
         wxResultText = ctx.bodyText("").apply { visibility = View.GONE; setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) }.also { contentHost.addView(it) }
         loadWxDevices()
     }
@@ -406,9 +422,44 @@ class JdPortalFragment : Fragment() {
         showBtnLoading(btn, "刷新CK")
         lifecycleScope.launch {
             runCatching { AppServices.portalRepository.refreshJdWx(wxid) }
-                .onSuccess { wxResultText?.apply { text = it.details?.joinToString("\n") ?: "刷新完成"; visibility = View.VISIBLE } }
+                .onSuccess { result ->
+                    if (result.needRiskVerify) {
+                        wxRiskBox?.visibility = View.VISIBLE
+                        wxRiskMsg?.text = result.riskMsg ?: "账号需要短信验证"
+                        wxRiskUrl = result.riskUrl
+                        wxRiskLink?.apply {
+                            text = result.riskUrl ?: "验证链接"
+                            visibility = if (result.riskUrl.isNullOrBlank()) View.GONE else View.VISIBLE
+                        }
+                    } else {
+                        wxRiskBox?.visibility = View.GONE
+                    }
+                    wxResultText?.apply { text = result.details?.joinToString("\n") ?: "刷新完成"; visibility = View.VISIBLE }
+                }
                 .onFailure { handlePortalError(it) }
             hideBtnLoading(btn)
+        }
+    }
+
+    private fun continueWxRisk() {
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.continueJdWxRisk() }
+                .onSuccess { result ->
+                    if (result.needRiskVerify) {
+                        wxRiskBox?.visibility = View.VISIBLE
+                        wxRiskMsg?.text = result.riskMsg ?: "账号需要短信验证"
+                        wxRiskUrl = result.riskUrl
+                        wxRiskLink?.apply {
+                            text = result.riskUrl ?: "验证链接"
+                            visibility = if (result.riskUrl.isNullOrBlank()) View.GONE else View.VISIBLE
+                        }
+                    } else {
+                        wxRiskBox?.visibility = View.GONE
+                        alert("刷新完成")
+                    }
+                    wxResultText?.apply { text = result.details?.joinToString("\n") ?: "刷新完成"; visibility = View.VISIBLE }
+                }
+                .onFailure { handlePortalError(it) }
         }
     }
 
