@@ -21,9 +21,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("../goudong.jks")
-            storePassword = "goudong"
+            storePassword = "goudong123"
             keyAlias = "goudong"
-            keyPassword = "goudong"
+            keyPassword = "goudong123"
         }
     }
 
