@@ -247,23 +247,25 @@ class MainActivity : AppCompatActivity() {
         AppServices.isAuthInProgress = true
 
         lifecycleScope.launch {
-            val credentials = AppServices.sessionManager.loadCredentials()
-            if (credentials != null) {
-                val success = runCatching {
-                    AppServices.authRepository.login(credentials.first, credentials.second)
-                }.isSuccess
-
-                if (success) {
-                    AppServices.isAuthInProgress = false
-                    reloadVisibleFragment()
-                    return@launch
+            try {
+                val credentials = AppServices.sessionManager.loadCredentials()
+                if (credentials != null) {
+                    val loginResult = runCatching {
+                        AppServices.authRepository.login(credentials.first, credentials.second)
+                    }
+                    if (loginResult.isSuccess) {
+                        reloadVisibleFragment()
+                        return@launch
+                    }
                 }
-            }
 
-            AppServices.isAuthInProgress = false
-            AppServices.sessionManager.setAuthenticated(false)
-            pendingTabId = tabOrder[viewPager.currentItem]
-            authLauncher.launch(Intent(this@MainActivity, AuthActivity::class.java))
+                AppServices.sessionManager.setAuthenticated(false)
+                AppServices.apiClient.clearCookies()
+                pendingTabId = tabOrder[viewPager.currentItem]
+                authLauncher.launch(Intent(this@MainActivity, AuthActivity::class.java))
+            } finally {
+                AppServices.isAuthInProgress = false
+            }
         }
     }
 

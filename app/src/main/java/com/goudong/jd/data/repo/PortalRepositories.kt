@@ -24,15 +24,36 @@ class AuthRepository(
                 "pin" to password,
             )
         )
-        apiClient.requestText(
+        val text = apiClient.requestText(
             path = "/api/login/admin",
             method = "POST",
             headers = mapOf("Content-Type" to "application/x-www-form-urlencoded"),
             body = body,
             skipAuthCheck = true,
-        )
-        sessionManager.saveCredentials(username, password)
-        sessionManager.setAuthenticated(true)
+        ).trim()
+        if (text == "登录") {
+            sessionManager.saveCredentials(username, password)
+            sessionManager.setAuthenticated(true)
+            return
+        }
+        throw parseLoginFailure(text)
+    }
+
+    private fun parseLoginFailure(text: String): ApiError {
+        return runCatching {
+            val json = apiClient.gson.fromJson(text, com.google.gson.JsonObject::class.java)
+            val msg = json?.get("msg")?.asString ?: "登录失败，请重新输入账号密码"
+            ApiError(msg, unauthorized = true)
+        }.getOrElse {
+            ApiError(
+                if (text.contains("用户中心登录") || text.contains("/portal/login")) {
+                    "登录状态失效，请重新登录"
+                } else {
+                    "登录失败，请重新输入账号密码"
+                },
+                unauthorized = true,
+            )
+        }
     }
 
     suspend fun register(username: String, password: String, bindCode: String): String {
@@ -101,6 +122,10 @@ class PortalRepository(
             throw ApiError(message, true)
         }
         sessionManager.setAuthenticated(true)
+    }
+
+    suspend fun fetchDashboard(): PortalDashboard {
+        return apiClient.requestData("/api/portal/dashboard")
     }
 
     suspend fun fetchHomeSnapshot(): PortalHomeSnapshot = coroutineScope {

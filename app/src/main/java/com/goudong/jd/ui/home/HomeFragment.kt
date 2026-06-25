@@ -289,11 +289,14 @@ class HomeFragment : Fragment() {
                 .onFailure { error ->
                     val apiError = error as? ApiError
                     if (apiError?.unauthorized == true) {
-                        if (!AppServices.isAuthInProgress) {
+                        if (AppServices.isAuthInProgress) {
+                            summaryText.text = "正在重新登录..."
+                            detailText.text = "请稍候"
+                        } else {
+                            summaryText.text = "登录已过期"
+                            detailText.text = "正在跳转登录页..."
                             (activity as? MainActivity)?.handleUnauthorized()
                         }
-                        summaryText.text = "正在重新登录..."
-                        detailText.text = "请稍候"
                     } else {
                         summaryText.text = "加载失败"
                         detailText.text = com.goudong.jd.ui.common.sanitizeErrorMessage(error.message)

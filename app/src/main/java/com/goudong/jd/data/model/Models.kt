@@ -47,6 +47,9 @@ data class PortalDashboard(
     val nextCheckInBonus: Int = 0,
     val daysUntilNextCheckInBonus: Int = 0,
     val prayedToday: Boolean = false,
+    val canCheckIn: Boolean = false,
+    val canCheckInMessage: String? = null,
+    val todayCheckInCount: Int = 0,
 )
 
 data class PortalProfile(
