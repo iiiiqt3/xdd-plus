@@ -138,7 +138,12 @@ struct PortalDashboard: Decodable {
     let notificationUnread: Int?
     let checkedInToday: Bool?
     let continuousDays: Int?
+    let nextCheckInBonus: Int?
+    let daysUntilNextCheckInBonus: Int?
     let prayedToday: Bool?
+    let canCheckIn: Bool?
+    let canCheckInMessage: String?
+    let todayCheckInCount: Int?
 }
 
 
@@ -999,7 +1004,7 @@ final class PortalService {
     }
 
     func verifySession(completion: @escaping (Result<Void, APIError>) -> Void) {
-        APIClient.shared.requestData(path: "/api/portal/dashboard") { (result: Result<PortalDashboard, APIError>) in
+        fetchDashboard { result in
             switch result {
             case .success:
                 completion(.success(()))
@@ -1007,6 +1012,10 @@ final class PortalService {
                 completion(.failure(error))
             }
         }
+    }
+
+    func fetchDashboard(completion: @escaping (Result<PortalDashboard, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/dashboard", completion: completion)
     }
 
     func performWechatActionForDevice(path: String, wxid: String, completion: @escaping (Result<PortalWechatActionResult, APIError>) -> Void) {
@@ -1681,9 +1690,21 @@ final class ActionButton: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    @objc private func tapped() { tapAction?() }
+    @objc private func tapped() {
+        guard isEnabled else { return }
+        tapAction?()
+    }
 
     func updateDesc(_ text: String) { descLabel.text = text }
+
+    func updateTitle(_ text: String) { titleLabel.text = text }
+
+    var isEnabled = true {
+        didSet {
+            alpha = isEnabled ? 1 : 0.5
+            isUserInteractionEnabled = isEnabled
+        }
+    }
 }
 
 

@@ -3093,6 +3093,11 @@ final class CoinTasksViewController: BaseNativeViewController {
     private let redeemField = UITextField()
     private let redeemButton = UIButton(type: .system)
     private var isRedeeming = false
+    private var dashboard: PortalDashboard?
+    private let authHintLabel = UILabel()
+    private let statsHost = UIStackView()
+    private var checkinAction: ActionButton?
+    private var prayAction: ActionButton?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -3104,6 +3109,7 @@ final class CoinTasksViewController: BaseNativeViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
+        loadDashboard()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -3170,13 +3176,29 @@ final class CoinTasksViewController: BaseNativeViewController {
         checkinAction.tapAction = { [weak self] in self?.checkinTapped() }
         let prayAction = ActionButton(icon: "hands.sparkles.fill", title: "每日祈福", desc: "祈福获得额外积分", tint: .systemPurple)
         prayAction.tapAction = { [weak self] in self?.prayTapped() }
+        self.checkinAction = checkinAction
+        self.prayAction = prayAction
+
+        authHintLabel.font = UIFont.systemFont(ofSize: 12)
+        authHintLabel.textColor = .systemRed
+        authHintLabel.numberOfLines = 0
+        authHintLabel.isHidden = true
+
+        statsHost.axis = .vertical
+        statsHost.spacing = 8
+
+        let actionsCaption = UILabel()
+        actionsCaption.text = "打卡与祈福需有效的按月/按天项目"
+        actionsCaption.font = UIFont.systemFont(ofSize: 12)
+        actionsCaption.textColor = .secondaryLabel
+        actionsCaption.numberOfLines = 0
 
         let actionsCard = UIView()
         actionsCard.applyCardStyle()
         let actionsTitle = UILabel()
         actionsTitle.text = "每日任务"
         actionsTitle.font = UIFont.systemFont(ofSize: 17, weight: .bold)
-        let actionsStack = UIStackView(arrangedSubviews: [actionsTitle, checkinAction, prayAction])
+        let actionsStack = UIStackView(arrangedSubviews: [actionsTitle, actionsCaption, statsHost, authHintLabel, checkinAction, prayAction])
         actionsStack.axis = .vertical
         actionsStack.spacing = 10
         actionsStack.translatesAutoresizingMaskIntoConstraints = false
@@ -3349,12 +3371,110 @@ final class CoinTasksViewController: BaseNativeViewController {
         stack.addArrangedSubview(logCard)
     }
 
+    private func loadDashboard() {
+        PortalService.shared.fetchDashboard { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .failure(let error):
+                self.handle(error)
+            case .success(let dashboard):
+                self.dashboard = dashboard
+                self.applyDashboard(dashboard)
+            }
+        }
+    }
+
+    private func applyDashboard(_ d: PortalDashboard) {
+        statsHost.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        let continuous = d.continuousDays ?? 0
+        let checkedIn = d.checkedInToday ?? false
+        let nextBonus = d.nextCheckInBonus ?? 0
+        let daysUntil = d.daysUntilNextCheckInBonus ?? 0
+        let todayCount = d.todayCheckInCount ?? 0
+        let bonusText = nextBonus > 0 ? "+\(nextBonus)（还差\(daysUntil)天）" : "已达最高档"
+        let statusText = checkedIn ? "已打卡" : "未打卡"
+        let statusColor: UIColor = checkedIn ? .systemGreen : .secondaryLabel
+
+        let topRow = UIStackView(arrangedSubviews: [
+            makeStatTile(label: "连续打卡", value: "\(continuous) 天", color: .systemBlue),
+            makeStatTile(label: "今日状态", value: statusText, color: statusColor),
+        ])
+        topRow.axis = .horizontal
+        topRow.spacing = 8
+        topRow.distribution = .fillEqually
+
+        let bottomRow = UIStackView(arrangedSubviews: [
+            makeStatTile(label: "下次奖励", value: bonusText, color: .systemOrange),
+            makeStatTile(label: "今日打卡", value: "\(todayCount) 人", color: .systemPurple),
+        ])
+        bottomRow.axis = .horizontal
+        bottomRow.spacing = 8
+        bottomRow.distribution = .fillEqually
+
+        statsHost.addArrangedSubview(topRow)
+        statsHost.addArrangedSubview(bottomRow)
+
+        let canCheckIn = d.canCheckIn ?? false
+        if canCheckIn {
+            authHintLabel.isHidden = true
+        } else {
+            authHintLabel.text = d.canCheckInMessage?.isEmpty == false
+                ? d.canCheckInMessage
+                : "请先前往「项目中心」上车有效的按月/按天活动"
+            authHintLabel.isHidden = false
+        }
+
+        let checkinEnabled = canCheckIn && !checkedIn
+        checkinAction?.isEnabled = checkinEnabled
+        checkinAction?.updateTitle(checkedIn ? "今日已打卡" : "每日打卡")
+
+        let prayedToday = d.prayedToday ?? false
+        let prayEnabled = canCheckIn && !prayedToday
+        prayAction?.isEnabled = prayEnabled
+        prayAction?.updateTitle(prayedToday ? "今日已祈福" : "每日祈福")
+    }
+
+    private func makeStatTile(label: String, value: String, color: UIColor) -> UIView {
+        let container = UIView()
+        container.backgroundColor = UIColor.secondarySystemBackground
+        container.layer.cornerRadius = 10
+
+        let labelView = UILabel()
+        labelView.text = label
+        labelView.font = UIFont.systemFont(ofSize: 11, weight: .semibold)
+        labelView.textColor = .secondaryLabel
+
+        let valueView = UILabel()
+        valueView.text = value
+        valueView.font = UIFont.systemFont(ofSize: 14, weight: .bold)
+        valueView.textColor = color
+        valueView.numberOfLines = 2
+
+        let stack = UIStackView(arrangedSubviews: [labelView, valueView])
+        stack.axis = .vertical
+        stack.spacing = 4
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 10),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -10),
+        ])
+        return container
+    }
+
     @objc private func showCoinLogs() {
         let vc = CoinLogViewController()
         navigationController?.pushViewController(vc, animated: true)
     }
 
     @objc private func checkinTapped() {
+        if let d = dashboard, d.canCheckIn != true {
+            showMessage(d.canCheckInMessage ?? "暂无法打卡")
+            return
+        }
         PortalService.shared.checkin { result in
             switch result {
             case .failure(let error):
@@ -3362,11 +3482,16 @@ final class CoinTasksViewController: BaseNativeViewController {
             case .success(let message):
                 self.showMessage(message)
                 AppSessionStore.shared.refreshIfPossible(silent: true)
+                self.loadDashboard()
             }
         }
     }
 
     @objc private func prayTapped() {
+        if let d = dashboard, d.canCheckIn != true {
+            showMessage(d.canCheckInMessage ?? "暂无法祈福")
+            return
+        }
         PortalService.shared.pray { result in
             switch result {
             case .failure(let error):
@@ -3374,6 +3499,7 @@ final class CoinTasksViewController: BaseNativeViewController {
             case .success(let message):
                 self.showMessage(message)
                 AppSessionStore.shared.refreshIfPossible(silent: true)
+                self.loadDashboard()
             }
         }
     }
