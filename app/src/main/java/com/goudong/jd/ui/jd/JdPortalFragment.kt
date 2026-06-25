@@ -109,6 +109,7 @@ class JdPortalFragment : Fragment() {
             addTab(newTab().setText("京东任务"))
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
+                    if (mainTabIndex == tab.position) return
                     mainTabIndex = tab.position
                     renderContent()
                 }
@@ -139,8 +140,11 @@ class JdPortalFragment : Fragment() {
         scroll.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
         wrapper.addView(scroll)
 
-        // 所有字段初始化完成后才触发tab选中
-        mainTabs.getTabAt(mainTabIndex)?.select()
+        // 布局完成后再渲染，并同步 Tab 选中态（避免 construction 阶段重入）
+        wrapper.post {
+            renderContent()
+            mainTabs.getTabAt(mainTabIndex)?.select()
+        }
         return wrapper
     }
 
@@ -153,6 +157,7 @@ class JdPortalFragment : Fragment() {
     // ==================== 内容渲染 ====================
 
     private fun renderContent() {
+        if (!::contentHost.isInitialized || !::subTabRow.isInitialized || !::toolbarRow.isInitialized) return
         subTabRow.removeAllViews()
         toolbarRow.removeAllViews()
         contentHost.removeAllViews()
@@ -221,7 +226,9 @@ class JdPortalFragment : Fragment() {
             // 头像 + 信息行
             val infoRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
             // 头像圆圈
-            val initial = (acc.nickname ?: acc.pin ?: "?").first().toString()
+            val initial = (acc.nickname?.takeIf { it.isNotBlank() }
+                ?: acc.pin?.takeIf { it.isNotBlank() }
+                ?: "?").first().toString()
             infoRow.addView(TextView(ctx).apply {
                 text = initial
                 setTextColor(Color.WHITE)
