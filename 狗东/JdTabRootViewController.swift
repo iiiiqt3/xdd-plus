@@ -26,27 +26,30 @@ final class JdTabRootViewController: UIViewController {
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         navigationController?.setNavigationBarHidden(false, animated: animated)
+        dismissChildEditing()
     }
 
     @objc private func sessionChanged() {
-        updateChildIfNeeded(force: true)
+        updateChildIfNeeded()
     }
 
-    private func updateChildIfNeeded(force: Bool = false) {
+    private func updateChildIfNeeded() {
         let portal = AppSessionStore.shared.isAuthenticated
-        if !force, showingPortal == portal { return }
-        showingPortal = portal
+        if showingPortal == portal { return }
 
-        guestController?.willMove(toParent: nil)
-        guestController?.view.removeFromSuperview()
-        guestController?.removeFromParent()
-        portalController?.willMove(toParent: nil)
-        portalController?.view.removeFromSuperview()
-        portalController?.removeFromParent()
+        dismissChildEditing()
+        detachChild(guestController)
+        guestController = nil
+        detachChild(portalController)
+        if !portal {
+            portalController = nil
+        }
+
+        showingPortal = portal
 
         let child: UIViewController
         if portal {
-            let vc = JdPortalViewController()
+            let vc = portalController ?? JdPortalViewController()
             portalController = vc
             child = vc
         } else {
@@ -55,6 +58,24 @@ final class JdTabRootViewController: UIViewController {
             child = vc
         }
 
+        attachChild(child)
+    }
+
+    private func dismissChildEditing() {
+        view.endEditing(true)
+        guestController?.view.endEditing(true)
+        portalController?.view.endEditing(true)
+    }
+
+    private func detachChild(_ child: UIViewController?) {
+        guard let child = child else { return }
+        child.view.endEditing(true)
+        child.willMove(toParent: nil)
+        child.view.removeFromSuperview()
+        child.removeFromParent()
+    }
+
+    private func attachChild(_ child: UIViewController) {
         addChild(child)
         child.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(child.view)

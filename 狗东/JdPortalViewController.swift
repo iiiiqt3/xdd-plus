@@ -1,7 +1,9 @@
 import UIKit
 
 @available(iOS 13.0, *)
-final class JdPortalViewController: BaseNativeViewController {
+final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegate {
+    override var shouldEnableKeyboardDismissOnTap: Bool { false }
+
     private enum MainTab { case query, login, task }
     private enum LoginTab { case sms, wx }
 
@@ -14,10 +16,13 @@ final class JdPortalViewController: BaseNativeViewController {
 
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
+    private let loginPanel = UIView()
     private let headerRow = UIView()
     private let mainSegmented = UISegmentedControl(items: ["查询", "登录", "京东任务"])
     private let loginTabRow = UIStackView()
-    private let contentStack = UIStackView()
+    private let queryContentStack = UIStackView()
+    private let loginContentStack = UIStackView()
+    private let taskContentStack = UIStackView()
 
     private var mainTab: MainTab = .query
     private var loginTab: LoginTab = .sms
@@ -38,6 +43,12 @@ final class JdPortalViewController: BaseNativeViewController {
     private let smsIdCardField = UITextField()
     private let smsIdCardStack = UIStackView()
     private let smsResultLabel = UILabel()
+    private lazy var smsLoginCard = buildSmsLoginCard()
+    private var smsSendButton: UIButton!
+    private var smsVerifyButton: UIButton!
+    private var accountsRequestToken = 0
+    private var lastRenderedMainTab: MainTab?
+    private var lastRenderedLoginTab: LoginTab?
     private let wxDeviceGridStack = UIStackView()
     private let wxRiskStack = UIStackView()
     private let wxRiskLabel = UILabel()
@@ -59,12 +70,41 @@ final class JdPortalViewController: BaseNativeViewController {
         setupLayout()
         buttonHaptic.prepare()
         renderAll()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillChangeFrame(_:)),
+            name: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        view.endEditing(true)
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
         if mainTab == .query { loadAccounts() }
+    }
+
+    @objc private func keyboardWillChangeFrame(_ notification: Notification) {
+        guard mainTab != .login else { return }
+        guard
+            let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+            let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval
+        else { return }
+        let keyboardInView = view.convert(frame, from: nil)
+        let overlap = max(0, view.bounds.maxY - keyboardInView.minY - view.safeAreaInsets.bottom)
+        UIView.animate(withDuration: duration) {
+            self.scrollView.contentInset.bottom = overlap
+            self.scrollView.verticalScrollIndicatorInsets.bottom = overlap
+        }
     }
 
     // MARK: - Layout
@@ -91,13 +131,43 @@ final class JdPortalViewController: BaseNativeViewController {
         headerSubtitle.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.keyboardDismissMode = .onDrag
+        scrollView.keyboardDismissMode = .interactive
+        scrollView.delaysContentTouches = false
+        scrollView.canCancelContentTouches = false
         stack.axis = .vertical
-        stack.spacing = 14
+        stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
+
+        mainSegmented.translatesAutoresizingMaskIntoConstraints = false
+        loginTabRow.translatesAutoresizingMaskIntoConstraints = false
+        loginPanel.translatesAutoresizingMaskIntoConstraints = false
+
         view.addSubview(headerRow)
+        view.addSubview(mainSegmented)
+        view.addSubview(loginTabRow)
+        view.addSubview(loginPanel)
         view.addSubview(scrollView)
         scrollView.addSubview(stack)
+
+        mainSegmented.selectedSegmentIndex = 0
+        mainSegmented.addTarget(self, action: #selector(mainSegmentChanged), for: .valueChanged)
+
+        loginTabRow.axis = .horizontal
+        loginTabRow.spacing = 8
+        loginTabRow.distribution = .fillEqually
+        loginTabRow.isHidden = true
+
+        [queryContentStack, loginContentStack, taskContentStack].forEach {
+            $0.axis = .vertical
+            $0.spacing = 12
+            $0.alignment = .fill
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
+
+        loginPanel.addSubview(loginContentStack)
+        stack.addArrangedSubview(queryContentStack)
+        stack.addArrangedSubview(taskContentStack)
+
         NSLayoutConstraint.activate([
             headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 2),
             headerRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
@@ -111,10 +181,31 @@ final class JdPortalViewController: BaseNativeViewController {
             headerSubtitle.leadingAnchor.constraint(equalTo: headerTitle.trailingAnchor, constant: 8),
             headerSubtitle.trailingAnchor.constraint(lessThanOrEqualTo: headerRow.trailingAnchor),
             headerSubtitle.centerYAnchor.constraint(equalTo: headerTitle.centerYAnchor),
-            scrollView.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 8),
+
+            mainSegmented.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 10),
+            mainSegmented.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            mainSegmented.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+
+            loginTabRow.topAnchor.constraint(equalTo: mainSegmented.bottomAnchor, constant: 8),
+            loginTabRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            loginTabRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            loginTabRow.heightAnchor.constraint(equalToConstant: 40),
+
+            loginPanel.topAnchor.constraint(equalTo: loginTabRow.bottomAnchor, constant: 8),
+            loginPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            loginPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            loginPanel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
+
+            loginContentStack.topAnchor.constraint(equalTo: loginPanel.topAnchor),
+            loginContentStack.leadingAnchor.constraint(equalTo: loginPanel.leadingAnchor),
+            loginContentStack.trailingAnchor.constraint(equalTo: loginPanel.trailingAnchor),
+            loginContentStack.bottomAnchor.constraint(lessThanOrEqualTo: loginPanel.bottomAnchor),
+
+            scrollView.topAnchor.constraint(equalTo: mainSegmented.bottomAnchor, constant: 10),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+
             stack.topAnchor.constraint(equalTo: scrollView.topAnchor),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
@@ -122,19 +213,89 @@ final class JdPortalViewController: BaseNativeViewController {
             stack.widthAnchor.constraint(equalTo: view.widthAnchor, constant: -32),
         ])
 
-        mainSegmented.selectedSegmentIndex = 0
-        mainSegmented.addTarget(self, action: #selector(mainSegmentChanged), for: .valueChanged)
-        stack.addArrangedSubview(mainSegmented)
+        setupSmsFields()
+    }
 
-        loginTabRow.axis = .horizontal
-        loginTabRow.spacing = 8
-        loginTabRow.distribution = .fillEqually
-        contentStack.axis = .vertical
-        contentStack.spacing = 12
-        contentStack.alignment = .fill
+    private var activeContentStack: UIStackView {
+        switch mainTab {
+        case .query: return queryContentStack
+        case .login: return loginContentStack
+        case .task: return taskContentStack
+        }
+    }
 
-        stack.addArrangedSubview(loginTabRow)
-        stack.addArrangedSubview(contentStack)
+    private func clearContentStack(_ stack: UIStackView) {
+        stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+    }
+
+    // MARK: - 查询
+
+    private func renderQuery() {
+        clearContentStack(queryContentStack)
+        queryContentStack.addArrangedSubview(placeholderLabel("加载账号中..."))
+        loadAccounts()
+    }
+
+    private func loadAccounts(refreshButton: UIButton? = nil) {
+        accountsRequestToken += 1
+        let requestToken = accountsRequestToken
+        setButtonLoading(refreshButton, loading: true, title: "刷新中...")
+        PortalService.shared.fetchJdAccounts { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                self.setButtonLoading(refreshButton, loading: false, title: "刷新")
+                guard requestToken == self.accountsRequestToken, self.mainTab == .query else { return }
+                self.clearContentStack(self.queryContentStack)
+                switch result {
+                case .failure(let error):
+                    self.handle(error)
+                    self.queryContentStack.addArrangedSubview(self.placeholderLabel(error.message))
+                case .success(let list):
+                    self.accounts = list
+                    self.renderAccountGrid(list)
+                }
+            }
+        }
+    }
+
+    private func setupSmsFields() {
+        [smsPhoneField, smsCodeField, smsIdCardField].forEach {
+            $0.delegate = self
+            $0.isUserInteractionEnabled = true
+            $0.autocorrectionType = .no
+            $0.inputAccessoryView = Self.numberPadToolbar(target: self, action: #selector(dismissNumberPad))
+        }
+        _ = smsLoginCard
+    }
+
+    func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool {
+        textField.isUserInteractionEnabled && textField.window != nil
+    }
+
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        true
+    }
+
+    @objc private func dismissNumberPad() {
+        view.endEditing(true)
+    }
+
+    private static func numberPadToolbar(target: Any?, action: Selector) -> UIToolbar {
+        let toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44))
+        toolbar.sizeToFit()
+        let flex = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        let done = UIBarButtonItem(title: "完成", style: .done, target: target, action: action)
+        toolbar.items = [flex, done]
+        return toolbar
+    }
+
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        if textField === smsPhoneField {
+            smsCodeField.becomeFirstResponder()
+        } else {
+            textField.resignFirstResponder()
+        }
+        return true
     }
 
     @objc private func mainSegmentChanged() {
@@ -144,20 +305,35 @@ final class JdPortalViewController: BaseNativeViewController {
         default: mainTab = .task
         }
         renderAll()
+        if mainTab == .login {
+            lastRenderedLoginTab = nil
+        }
         if mainTab == .query { loadAccounts() }
     }
 
     private func renderAll() {
         syncMainSegmentIndex()
-        loginTabRow.isHidden = mainTab != .login
-        stack.setCustomSpacing(mainTab == .login ? 8 : 14, after: mainSegmented)
-        contentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        taskButtonRefs.removeAll()
-        switch mainTab {
-        case .query: renderQuery()
-        case .login: renderLogin()
-        case .task: renderTasks()
+        if lastRenderedMainTab != mainTab {
+            view.endEditing(true)
         }
+
+        let isLogin = mainTab == .login
+        loginTabRow.isHidden = !isLogin
+        loginPanel.isHidden = !isLogin
+        scrollView.isHidden = isLogin
+        queryContentStack.isHidden = mainTab != .query
+        taskContentStack.isHidden = mainTab != .task
+
+        switch mainTab {
+        case .query:
+            if queryContentStack.arrangedSubviews.isEmpty { renderQuery() }
+        case .login:
+            renderLogin()
+        case .task:
+            if taskContentStack.arrangedSubviews.isEmpty { renderTasks() }
+        }
+
+        lastRenderedMainTab = mainTab
     }
 
     private func syncMainSegmentIndex() {
@@ -170,33 +346,9 @@ final class JdPortalViewController: BaseNativeViewController {
 
     // MARK: - 查询
 
-    private func renderQuery() {
-        contentStack.addArrangedSubview(placeholderLabel("加载账号中..."))
-        loadAccounts()
-    }
-
-    private func loadAccounts(refreshButton: UIButton? = nil) {
-        setButtonLoading(refreshButton, loading: true, title: "刷新中...")
-        PortalService.shared.fetchJdAccounts { [weak self] result in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                self.setButtonLoading(refreshButton, loading: false, title: "刷新")
-                self.contentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-                switch result {
-                case .failure(let error):
-                    self.handle(error)
-                    self.contentStack.addArrangedSubview(self.placeholderLabel(error.message))
-                case .success(let list):
-                    self.accounts = list
-                    self.renderAccountGrid(list)
-                }
-            }
-        }
-    }
-
     private func renderAccountGrid(_ list: [PortalJdAccount]) {
         if list.isEmpty {
-            contentStack.addArrangedSubview(placeholderLabel("暂无绑定的京东账号\n请前往「登录」使用短信或微信协议刷新"))
+            queryContentStack.addArrangedSubview(placeholderLabel("暂无绑定的京东账号\n请前往「登录」使用短信或微信协议刷新"))
             return
         }
 
@@ -236,7 +388,7 @@ final class JdPortalViewController: BaseNativeViewController {
             btnRow.centerYAnchor.constraint(equalTo: toolbar.centerYAnchor),
             stats.trailingAnchor.constraint(lessThanOrEqualTo: btnRow.leadingAnchor, constant: -8),
         ])
-        contentStack.addArrangedSubview(toolbar)
+        queryContentStack.addArrangedSubview(toolbar)
 
         let sorted = list.sorted { $0.valid && !$1.valid }
         var index = 0
@@ -251,7 +403,7 @@ final class JdPortalViewController: BaseNativeViewController {
             } else {
                 row.addArrangedSubview(UIView())
             }
-            contentStack.addArrangedSubview(row)
+            queryContentStack.addArrangedSubview(row)
             index += 2
         }
     }
@@ -365,24 +517,35 @@ final class JdPortalViewController: BaseNativeViewController {
     // MARK: - 登录
 
     private func renderLogin() {
-        loginTabRow.isHidden = false
         loginTabRow.arrangedSubviews.forEach { $0.removeFromSuperview() }
         loginTabRow.addArrangedSubview(segmentButton("短信登录", active: loginTab == .sms) { [weak self] in
-            self?.loginTab = .sms
-            self?.renderAll()
+            guard let self = self, self.loginTab != .sms else { return }
+            self.loginTab = .sms
+            self.renderLogin()
         })
         loginTabRow.addArrangedSubview(segmentButton("协议刷新", active: loginTab == .wx) { [weak self] in
-            self?.loginTab = .wx
-            self?.renderAll()
+            guard let self = self, self.loginTab != .wx else { return }
+            self.loginTab = .wx
+            self.renderLogin()
         })
 
-        switch loginTab {
-        case .sms: renderSms()
-        case .wx: renderWx()
+        guard lastRenderedLoginTab != loginTab else { return }
+
+        if loginTab != .sms {
+            view.endEditing(true)
         }
+
+        clearContentStack(loginContentStack)
+        switch loginTab {
+        case .sms:
+            loginContentStack.addArrangedSubview(smsLoginCard)
+        case .wx:
+            renderWx()
+        }
+        lastRenderedLoginTab = loginTab
     }
 
-    private func renderSms() {
+    private func buildSmsLoginCard() -> UIStackView {
         let card = UIStackView()
         card.axis = .vertical
         card.spacing = 16
@@ -407,17 +570,19 @@ final class JdPortalViewController: BaseNativeViewController {
 
         smsPhoneField.applyAppInputStyle(placeholder: "请输入11位手机号")
         smsPhoneField.keyboardType = .numberPad
+        smsPhoneField.translatesAutoresizingMaskIntoConstraints = false
         smsPhoneField.heightAnchor.constraint(equalToConstant: 48).isActive = true
         card.addArrangedSubview(smsPhoneField)
 
-        var sendBtn: UIButton!
-        sendBtn = compactButton("发送验证码", color: .systemBlue) { [weak self] in
-            self?.sendSms(button: sendBtn)
+        smsSendButton = compactButton("发送验证码", color: .systemBlue) { [weak self] in
+            guard let self = self else { return }
+            self.sendSms(button: self.smsSendButton)
         }
-        card.addArrangedSubview(sendBtn)
+        card.addArrangedSubview(smsSendButton)
 
         smsCodeField.applyAppInputStyle(placeholder: "请输入短信验证码")
         smsCodeField.keyboardType = .numberPad
+        smsCodeField.translatesAutoresizingMaskIntoConstraints = false
         smsCodeField.heightAnchor.constraint(equalToConstant: 48).isActive = true
         card.addArrangedSubview(smsCodeField)
 
@@ -430,15 +595,16 @@ final class JdPortalViewController: BaseNativeViewController {
         idHint.textColor = .systemOrange
         smsIdCardStack.addArrangedSubview(idHint)
         smsIdCardField.applyAppInputStyle(placeholder: "身份证前两位 + 后四位")
+        smsIdCardField.translatesAutoresizingMaskIntoConstraints = false
         smsIdCardField.heightAnchor.constraint(equalToConstant: 48).isActive = true
         smsIdCardStack.addArrangedSubview(smsIdCardField)
         card.addArrangedSubview(smsIdCardStack)
 
-        var verifyBtn: UIButton!
-        verifyBtn = compactButton("提交登录", color: .systemPurple) { [weak self] in
-            self?.verifySms(button: verifyBtn)
+        smsVerifyButton = compactButton("提交登录", color: .systemPurple) { [weak self] in
+            guard let self = self else { return }
+            self.verifySms(button: self.smsVerifyButton)
         }
-        card.addArrangedSubview(verifyBtn)
+        card.addArrangedSubview(smsVerifyButton)
 
         smsResultLabel.numberOfLines = 0
         smsResultLabel.font = .systemFont(ofSize: 13)
@@ -446,7 +612,7 @@ final class JdPortalViewController: BaseNativeViewController {
         smsResultLabel.isHidden = true
         card.addArrangedSubview(smsResultLabel)
 
-        contentStack.addArrangedSubview(card)
+        return card
     }
 
     private func sendSms(button: UIButton) {
@@ -512,7 +678,7 @@ final class JdPortalViewController: BaseNativeViewController {
         tip.numberOfLines = 0
         tipCard.addArrangedSubview(tipTitle)
         tipCard.addArrangedSubview(tip)
-        contentStack.addArrangedSubview(tipCard)
+        loginContentStack.addArrangedSubview(tipCard)
 
         let refreshBar = UIView()
         refreshBar.translatesAutoresizingMaskIntoConstraints = false
@@ -528,12 +694,12 @@ final class JdPortalViewController: BaseNativeViewController {
             refreshBtn.centerYAnchor.constraint(equalTo: refreshBar.centerYAnchor),
             refreshBtn.widthAnchor.constraint(greaterThanOrEqualToConstant: 110),
         ])
-        contentStack.addArrangedSubview(refreshBar)
+        loginContentStack.addArrangedSubview(refreshBar)
 
         wxDeviceGridStack.axis = .vertical
         wxDeviceGridStack.spacing = 10
         wxDeviceGridStack.addArrangedSubview(placeholderLabel("加载中..."))
-        contentStack.addArrangedSubview(wxDeviceGridStack)
+        loginContentStack.addArrangedSubview(wxDeviceGridStack)
 
         wxRiskStack.axis = .vertical
         wxRiskStack.spacing = 8
@@ -552,13 +718,13 @@ final class JdPortalViewController: BaseNativeViewController {
             self?.continueWxRisk(button: riskBtn)
         }
         wxRiskStack.addArrangedSubview(riskBtn)
-        contentStack.addArrangedSubview(wxRiskStack)
+        loginContentStack.addArrangedSubview(wxRiskStack)
 
         wxResultLabel.numberOfLines = 0
         wxResultLabel.font = .systemFont(ofSize: 13)
         wxResultLabel.textColor = .secondaryLabel
         wxResultLabel.isHidden = true
-        contentStack.addArrangedSubview(wxResultLabel)
+        loginContentStack.addArrangedSubview(wxResultLabel)
 
         loadWxDevices()
     }
@@ -569,6 +735,7 @@ final class JdPortalViewController: BaseNativeViewController {
             guard let self = self else { return }
             DispatchQueue.main.async {
                 self.setButtonLoading(refreshButton, loading: false, title: "刷新设备列表")
+                guard self.mainTab == .login, self.loginTab == .wx else { return }
                 self.wxDeviceGridStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
                 switch result {
                 case .failure(let error):
@@ -725,32 +892,35 @@ final class JdPortalViewController: BaseNativeViewController {
 
     private func renderTasks() {
         let hint = placeholderLabel("选择任务和账号，点击执行开始（每行 2 个任务）")
-        contentStack.addArrangedSubview(hint)
+        taskContentStack.addArrangedSubview(hint)
 
         let gridPlaceholder = UIStackView()
         gridPlaceholder.axis = .vertical
         gridPlaceholder.spacing = 10
         gridPlaceholder.tag = 9001
-        contentStack.addArrangedSubview(gridPlaceholder)
+        taskContentStack.addArrangedSubview(gridPlaceholder)
 
         PortalService.shared.fetchJdAccounts { [weak self] result in
             guard let self = self else { return }
-            if case .success(let list) = result { self.accounts = list }
-            gridPlaceholder.arrangedSubviews.forEach { $0.removeFromSuperview() }
-            var idx = 0
-            while idx < self.taskDefs.count {
-                let row = UIStackView()
-                row.axis = .horizontal
-                row.spacing = 10
-                row.distribution = .fillEqually
-                row.addArrangedSubview(self.buildTaskCard(self.taskDefs[idx]))
-                if idx + 1 < self.taskDefs.count {
-                    row.addArrangedSubview(self.buildTaskCard(self.taskDefs[idx + 1]))
-                } else {
-                    row.addArrangedSubview(UIView())
+            DispatchQueue.main.async {
+                guard self.mainTab == .task else { return }
+                if case .success(let list) = result { self.accounts = list }
+                gridPlaceholder.arrangedSubviews.forEach { $0.removeFromSuperview() }
+                var idx = 0
+                while idx < self.taskDefs.count {
+                    let row = UIStackView()
+                    row.axis = .horizontal
+                    row.spacing = 10
+                    row.distribution = .fillEqually
+                    row.addArrangedSubview(self.buildTaskCard(self.taskDefs[idx]))
+                    if idx + 1 < self.taskDefs.count {
+                        row.addArrangedSubview(self.buildTaskCard(self.taskDefs[idx + 1]))
+                    } else {
+                        row.addArrangedSubview(UIView())
+                    }
+                    gridPlaceholder.addArrangedSubview(row)
+                    idx += 2
                 }
-                gridPlaceholder.addArrangedSubview(row)
-                idx += 2
             }
         }
 
@@ -781,7 +951,7 @@ final class JdPortalViewController: BaseNativeViewController {
         logLabel.layer.cornerRadius = 8
         logLabel.clipsToBounds = true
         logCard.addArrangedSubview(logLabel)
-        contentStack.addArrangedSubview(logCard)
+        taskContentStack.addArrangedSubview(logCard)
         refreshLogs()
     }
 

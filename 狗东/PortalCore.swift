@@ -1214,16 +1214,32 @@ final class JdTaskLogStreamer: NSObject, URLSessionDataDelegate {
     func resetToInitialState()
 }
 
-class BaseNativeViewController: UIViewController, ResetableViewController {
+class BaseNativeViewController: UIViewController, ResetableViewController, UIGestureRecognizerDelegate {
+    /// 子类可关闭全屏点击收键盘（如京东短信登录页）
+    var shouldEnableKeyboardDismissOnTap: Bool { true }
+
     override func viewDidLoad() {
         super.viewDidLoad()
+        guard shouldEnableKeyboardDismissOnTap else { return }
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboardAnywhere))
         tap.cancelsTouchesInView = false
+        tap.delegate = self
         view.addGestureRecognizer(tap)
     }
 
     @objc private func dismissKeyboardAnywhere() {
         view.endEditing(true)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        var current: UIView? = touch.view
+        while let view = current {
+            if view is UIControl || view is UITextField || view is UITextView {
+                return false
+            }
+            current = view.superview
+        }
+        return true
     }
 
     func showMessage(_ message: String, title: String = "提示", completion: (() -> Void)? = nil) {
