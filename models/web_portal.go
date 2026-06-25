@@ -91,6 +91,7 @@ type PortalDashboard struct {
 	PrayedToday               bool   `json:"prayedToday"`
 	CanCheckIn                bool   `json:"canCheckIn"`
 	CanCheckInMessage         string `json:"canCheckInMessage"`
+	TodayCheckInCount         int    `json:"todayCheckInCount"`
 }
 
 type PortalPrayRecord struct {
@@ -130,6 +131,7 @@ func GetPortalDashboard(accountID int) (*PortalDashboard, error) {
 	nextBonus, daysUntilNextBonus := getNextCheckInBonus(continuousDays)
 	prayedToday := hasPrayedToday(profile.User.Number)
 	canCheckIn, canCheckInMessage := CanUserCheckIn(profile.User.Number)
+	todayCheckInCount := countTodayCheckIns()
 
 	return &PortalDashboard{
 		Number:                    profile.User.Number,
@@ -157,6 +159,7 @@ func GetPortalDashboard(accountID int) (*PortalDashboard, error) {
 		PrayedToday:               prayedToday,
 		CanCheckIn:                canCheckIn,
 		CanCheckInMessage:         canCheckInMessage,
+		TodayCheckInCount:         todayCheckInCount,
 	}, nil
 }
 
@@ -254,6 +257,13 @@ func getPortalCheckInStatus(user *User) (bool, int) {
 	}
 	today, _ := time.ParseInLocation("2006-01-02", time.Now().Local().Format("2006-01-02"), time.Local)
 	return user.SignInDate.Unix() >= today.Unix(), user.ContinuousSignIns
+}
+
+func countTodayCheckIns() int {
+	zero := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Local)
+	var count int64
+	db.Model(&User{}).Where("sign_in_date >= ?", zero).Count(&count)
+	return int(count)
 }
 
 func hasPrayedToday(userNumber int) bool {
