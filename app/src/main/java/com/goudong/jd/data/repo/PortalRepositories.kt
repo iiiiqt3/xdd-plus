@@ -2,6 +2,7 @@ package com.goudong.jd.data.repo
 
 import com.goudong.jd.data.model.ApiEnvelope
 import com.goudong.jd.data.model.ApiError
+import com.goudong.jd.data.model.PortalDashboard
 import com.goudong.jd.data.model.PortalHomeSnapshot
 import com.goudong.jd.data.model.PortalNotificationPage
 import com.goudong.jd.data.model.PortalWechatActionResult
@@ -125,7 +126,7 @@ class PortalRepository(
     }
 
     suspend fun fetchDashboard(): PortalDashboard {
-        return apiClient.requestData("/api/portal/dashboard")
+        return apiClient.requestData<PortalDashboard>("/api/portal/dashboard")
     }
 
     suspend fun fetchHomeSnapshot(): PortalHomeSnapshot = coroutineScope {

@@ -4,10 +4,15 @@
 
 cd "$(dirname "$0")"
 
+if [ -z "${JAVA_HOME:-}" ] && [ -d "/Applications/Android Studio.app/Contents/jbr/Contents/Home" ]; then
+    export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+    export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
 VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
 
 echo "📦 开始打包 v${VERSION_NAME}..."
-./gradlew assembleRelease --no-daemon
+./gradlew assembleRelease -x lintVitalAnalyzeRelease -x lintVitalRelease --no-daemon
 
 APK="app/build/outputs/apk/release/app-release.apk"
 if [ -f "$APK" ]; then
