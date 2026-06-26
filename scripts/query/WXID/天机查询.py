@@ -63,73 +63,51 @@ def now_ts():
     return int(time.time())
 
 
-def get_wxserver_urls():
-    """
-    获取微信协议服务器地址（新旧地址）
-    返回: (old_url, new_url)
-    """
-    old_url = WECHAT_SERVER
-    new_url = WECHAT_SERVER_NEW if WECHAT_SERVER_NEW else old_url
-    return old_url, new_url
+def get_wxserver_url():
+    """获取微信协议服务器地址（仅新地址）"""
+    return (WECHAT_SERVER_NEW or WECHAT_SERVER).rstrip("/")
 
 
 def query_device_status(wxid):
-    """查询设备在线状态（所有地址），返回服务器地址列表（在线优先）"""
-    old_url, new_url = get_wxserver_urls()
-    urls = list(dict.fromkeys([old_url, new_url]))
+    """查询设备在线状态"""
+    url = get_wxserver_url()
+    if not url:
+        return []
     results = []
-    for url in urls:
-        try:
-            resp = requests.get(f"{url}/api/v1/wx/user/status", timeout=10, verify=False)
-            data = resp.json()
-            info = (data.get("data") or {}).get(wxid)
-            if info:
-                results.append({"url": url, "online": info.get("survival") == 1})
-        except Exception:
-            pass
+    try:
+        resp = requests.get(f"{url}/api/v1/wx/user/status", timeout=10, verify=False)
+        data = resp.json()
+        info = (data.get("data") or {}).get(wxid)
+        if info:
+            results.append({"url": url, "online": info.get("survival") == 1})
+    except Exception:
+        pass
     return results
 
 
 def get_code(wxid):
-    """wxid -> code，智能选择地址"""
-    old_url, new_url = get_wxserver_urls()
-
-    # 智能选择地址：先查设备在线状态
-    priority_url = old_url
-    status_results = query_device_status(wxid)
-    if status_results:
-        online = next((r for r in status_results if r["online"]), None)
-        if online:
-            priority_url = online["url"]
-        else:
-            priority_url = status_results[0]["url"]
-
-    urls_to_try = list(dict.fromkeys([priority_url, old_url, new_url]))  # 去重保持顺序
-
-    for idx, server_url in enumerate(urls_to_try):
-        if not server_url:
-            continue
-        url = f"{server_url}{WECHAT_CODE_URL_PATH}"
-        try:
-            resp = requests.post(
-                url,
-                json={"wxid": wxid, "appid": APPID},
-                timeout=10,
-                verify=False,
-            )
-            body = resp.json()
-            code = (
-                (body.get("Data") or {}).get("code")
-                or (body.get("data") or {}).get("code")
-                or body.get("code")
-            )
-            if code:
-                return str(code)
-            if body.get("Code") is not None or body.get("code") is not None:
-                continue
-        except Exception as e:
-            continue
-
+    """wxid -> code"""
+    server_url = get_wxserver_url()
+    if not server_url:
+        return None
+    url = f"{server_url}{WECHAT_CODE_URL_PATH}"
+    try:
+        resp = requests.post(
+            url,
+            json={"wxid": wxid, "appid": APPID},
+            timeout=10,
+            verify=False,
+        )
+        body = resp.json()
+        code = (
+            (body.get("Data") or {}).get("code")
+            or (body.get("data") or {}).get("code")
+            or body.get("code")
+        )
+        if code:
+            return str(code)
+    except Exception:
+        pass
     return None
 
 

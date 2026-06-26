@@ -22,84 +22,48 @@ const baseUrl = 'https://crm.nestlechinese.com';
 // ========== Token 缓存 ==========
 const tokenCache = {};
 
-// ========== 服务器地址获取 ==========
-/**
- * 获取微信协议服务器地址（新旧地址）
- */
-function getWxServerUrls() {
-  const oldUrl = WECHAT_SERVER.replace(/\/+$/, '');
-  const newUrl = WECHAT_SERVER_NEW ? WECHAT_SERVER_NEW.replace(/\/+$/, '') : oldUrl;
-  return { oldUrl, newUrl };
+/** 获取微信协议服务器地址（仅新地址） */
+function getWxServerUrl() {
+  return (WECHAT_SERVER_NEW || WECHAT_SERVER).replace(/\/+$/, '');
 }
 
 /**
- * 查询设备在线状态（所有地址），返回设备所在的服务器地址列表（在线优先）
- * @param {string} wxid
- * @returns {Promise<{url: string, online: boolean, source: string}[]>}
+ * 查询设备在线状态
  */
 async function queryDeviceStatus(wxid) {
-  const { oldUrl, newUrl } = getWxServerUrls();
-  const urls = [...new Set([oldUrl, newUrl])];
+  const url = getWxServerUrl();
+  if (!url) return [];
   const results = [];
-
-  for (const url of urls) {
-    const label = url === oldUrl ? '旧地址' : '新地址';
-    try {
-      const { data } = await axios.get(`${url}/api/v1/wx/user/status`, { timeout: 10000 });
-      const info = data?.data?.[wxid];
-      if (info) {
-        results.push({ url, online: info.survival === 1, source: label, nickname: info.nickname || '' });
-      }
-    } catch (e) {
-      // 查询失败不影响结果
+  try {
+    const { data } = await axios.get(`${url}/api/v1/wx/user/status`, { timeout: 10000 });
+    const info = data?.data?.[wxid];
+    if (info) {
+      results.push({ url, online: info.survival === 1, nickname: info.nickname || '' });
     }
+  } catch (e) {
+    // 查询失败不影响结果
   }
   return results;
 }
 
 /**
- * 智能获取微信code —— 先查设备在线状态，优先向设备在线的服务器请求
+ * 获取微信 code
  */
 async function getWxCodeSmart(wxid) {
-  const { oldUrl, newUrl } = getWxServerUrls();
-
-  // 第一步：查设备在哪台服务器上线
-  const statusResults = await queryDeviceStatus(wxid);
-  let priorityUrl = oldUrl; // 默认先旧
-
-  if (statusResults.length > 0) {
-    const onlineResult = statusResults.find(r => r.online);
-    if (onlineResult) {
-      priorityUrl = onlineResult.url;
-    } else {
-      priorityUrl = statusResults[0].url;
-    }
+  const serverUrl = getWxServerUrl();
+  if (!serverUrl) throw new Error('未配置微信协议服务器地址');
+  try {
+    const { data } = await axios.post(
+      `${serverUrl}/api/v1/wx/app/get/code`,
+      { wxid, appid: AppID },
+      { timeout: 20000 }
+    );
+    const code = (data?.data || data?.Data || {}).code || data?.Data;
+    if (code) return String(code);
+    throw new Error(data?.Message || data?.msg || data?.message || '获取 code 失败');
+  } catch (e) {
+    throw new Error(e.message || '获取 code 失败');
   }
-
-  // 第二步：按优先级尝试获取code
-  const allUrls = [...new Set([priorityUrl, oldUrl, newUrl])];
-  for (const serverUrl of allUrls) {
-    if (!serverUrl) continue;
-    const label = serverUrl === oldUrl ? '旧地址' : '新地址';
-    try {
-      const { data } = await axios.post(
-        `${serverUrl}/api/v1/wx/app/get/code`,
-        { wxid, appid: AppID },
-        { timeout: 20000 }
-      );
-      const code = (data?.data || data?.Data || {}).code || data?.Data;
-      if (code) return String(code);
-
-      const errMsg = data?.Message || data?.msg || data?.message || '';
-      if (errMsg) {
-        console.log(`⚠️  ${label} 业务错误: ${errMsg}`);
-      }
-    } catch (e) {
-      console.log(`⚠️  ${label} 请求异常: ${e.message}`);
-    }
-  }
-
-  throw new Error(`所有地址均无法获取code`);
 }
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';

@@ -62,30 +62,25 @@ RETRY_DELAY     = 5
 # 工具函数（提前定义，供参数解析使用）
 # ============================================================================
 
-def get_wxserver_urls():
-    """
-    获取微信协议服务器地址（新旧地址）
-    返回: (old_url, new_url)
-    """
-    old_url = WX_API_BASE
-    new_url = WX_API_BASE_NEW if WX_API_BASE_NEW else old_url
-    return old_url, new_url
+def get_wxserver_url():
+    """获取微信协议服务器地址（仅新地址）"""
+    return (WX_API_BASE_NEW or WX_API_BASE).rstrip("/")
 
 def query_device_status(wxid: str) -> list:
-    """查询设备在线状态（所有地址），返回服务器地址列表（在线优先）"""
-    old_url, new_url = get_wxserver_urls()
-    urls = list(dict.fromkeys([old_url, new_url]))
+    """查询设备在线状态"""
+    url = get_wxserver_url()
+    if not url:
+        return []
     results = []
-    for url in urls:
-        try:
-            resp = safe_request("GET", f"{url}/api/v1/wx/user/status")
-            if resp:
-                data = resp.json()
-                info = (data.get("data") or {}).get(wxid)
-                if info:
-                    results.append({"url": url, "online": info.get("survival") == 1})
-        except Exception:
-            pass
+    try:
+        resp = safe_request("GET", f"{url}/api/v1/wx/user/status")
+        if resp:
+            data = resp.json()
+            info = (data.get("data") or {}).get(wxid)
+            if info:
+                results.append({"url": url, "online": info.get("survival") == 1})
+    except Exception:
+        pass
     return results
 
 def parse_wxid_list(raw: str) -> list:
@@ -246,40 +241,22 @@ def save_token_to_cache(cache: Dict, wxid: str, token: str):
 # ============================================================================
 
 def get_wechat_code(wxid: str) -> Optional[str]:
-    old_url, new_url = get_wxserver_urls()
-
-    # 智能选择地址：先查设备在线状态
-    priority_url = old_url
-    status_results = query_device_status(wxid)
-    if status_results:
-        online = next((r for r in status_results if r["online"]), None)
-        if online:
-            priority_url = online["url"]
-        else:
-            priority_url = status_results[0]["url"]
-
-    urls_to_try = list(dict.fromkeys([priority_url, old_url, new_url]))  # 去重保持顺序
-
-    for idx, server_url in enumerate(urls_to_try):
-        if not server_url:
-            continue
-        url = f"{server_url}/api/v1/wx/app/get/code"
-        try:
-            resp = safe_request("POST", url, json={"appid": APPID, "wxid": wxid})
-            if not resp:
-                continue
-            data = resp.json()
-            if data.get("Code") != 0:
-                # 业务失败（Code: -8 数据不存在 等），继续尝试下一个地址
-                if data.get("Code") is not None:
-                    continue
-                continue
-            code = data.get("Data", {}).get("code")
-            if code:
-                return code
-        except Exception as e:
-            continue
-
+    server_url = get_wxserver_url()
+    if not server_url:
+        return None
+    url = f"{server_url}/api/v1/wx/app/get/code"
+    try:
+        resp = safe_request("POST", url, json={"appid": APPID, "wxid": wxid})
+        if not resp:
+            return None
+        data = resp.json()
+        if data.get("Code") != 0:
+            return None
+        code = data.get("Data", {}).get("code")
+        if code:
+            return code
+    except Exception:
+        pass
     return None
 
 def wxlogin(code: str) -> Optional[dict]:

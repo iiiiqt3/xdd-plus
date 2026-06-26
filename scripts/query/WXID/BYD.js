@@ -44,13 +44,9 @@ const API = {
 // ====== 工具函数 ======
 const NONCE_CHARS = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';
 
-/**
- * 获取微信协议服务器地址（新旧地址）
- */
-function getWxServerUrls() {
-  const oldUrl = CFG.wechatServer.replace(/\/+$/, '');
-  const newUrl = CFG.wechatServerNew ? CFG.wechatServerNew.replace(/\/+$/, '') : oldUrl;
-  return { oldUrl, newUrl };
+/** 获取微信协议服务器地址（仅新地址） */
+function getWxServerUrl() {
+  return (CFG.wechatServerNew || CFG.wechatServer).replace(/\/+$/, '');
 }
 
 // 从命令行参数获取 wxid
@@ -151,71 +147,43 @@ async function postEncrypted(path, payload) {
 
 // ====== 核心业务 ======
 /**
- * 查询设备在线状态（所有地址），返回设备所在的服务器地址列表
+ * 查询设备在线状态
  */
 async function queryDeviceStatus(wxid) {
-  const { oldUrl, newUrl } = getWxServerUrls();
-  const urls = [...new Set([oldUrl, newUrl])];
+  const url = getWxServerUrl();
+  if (!url) return [];
   const results = [];
-  for (const url of urls) {
-    const label = url === oldUrl ? '旧地址' : '新地址';
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
-      const resp = await fetch(`${url}/api/v1/wx/user/status`, { signal: controller.signal });
-      clearTimeout(timer);
-      const data = await resp.json();
-      const info = data?.data?.[wxid];
-      if (info) results.push({ url, online: info.survival === 1, source: label, nickname: info.nickname || '' });
-    } catch (_) {}
-  }
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const resp = await fetch(`${url}/api/v1/wx/user/status`, { signal: controller.signal });
+    clearTimeout(timer);
+    const data = await resp.json();
+    const info = data?.data?.[wxid];
+    if (info) results.push({ url, online: info.survival === 1, nickname: info.nickname || '' });
+  } catch (_) {}
   return results;
 }
 
 async function getCodeByWxid(wxid, appid) {
-  const { oldUrl, newUrl } = getWxServerUrls();
-
-  // 智能选择地址：先查设备在线状态
-  const statusResults = await queryDeviceStatus(wxid);
-  let priorityUrl = oldUrl;
-  if (statusResults.length > 0) {
-    const onlineResult = statusResults.find(r => r.online);
-    if (onlineResult) {
-      priorityUrl = onlineResult.url;
-    } else {
-      priorityUrl = statusResults[0].url;
-    }
-  }
-
-  const allUrls = [...new Set([priorityUrl, oldUrl, newUrl])];
+  const serverUrl = getWxServerUrl();
+  if (!serverUrl) throw new Error('未配置微信协议服务器地址');
 
   let extra = {};
   if (process.env.CODE_EXTRA_JSON) {
     try { extra = JSON.parse(process.env.CODE_EXTRA_JSON); } catch (e) {}
   }
 
-  for (let i = 0; i < allUrls.length; i++) {
-    const serverUrl = allUrls[i];
-    if (!serverUrl) continue;
-    const label = serverUrl === oldUrl ? '旧地址' : '新地址';
-    try {
-      const url = `${serverUrl.replace(/\/$/, '')}${CFG.codeApiPath}`;
-      const body = { wxid, appid, ...extra };
-      const res = await postJson(url, body, 15000);
-      const code = res.data?.Data?.code || res.data?.data?.code || res.data?.code;
-      if (code) return code;
-      // 业务失败，继续尝试下一个地址
-      if (res.data?.code !== undefined) {
-        console.log(`⚠️  ${label} 业务错误: ${res.data?.Message || res.data?.msg || ''}`);
-        continue;
-      }
-    } catch (e) {
-      console.log(`⚠️  ${label} 请求异常: ${e.message}`);
-      continue;
-    }
+  try {
+    const url = `${serverUrl.replace(/\/$/, '')}${CFG.codeApiPath}`;
+    const body = { wxid, appid, ...extra };
+    const res = await postJson(url, body, 15000);
+    const code = res.data?.Data?.code || res.data?.data?.code || res.data?.code;
+    if (code) return code;
+    throw new Error(res.data?.Message || res.data?.msg || '获取 code 失败');
+  } catch (e) {
+    throw new Error(e.message || '获取 code 失败');
   }
-
-  throw new Error(`所有地址均无法获取code`);
 }
 
 async function getSessionByCode(code) {

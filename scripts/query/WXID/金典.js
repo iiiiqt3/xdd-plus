@@ -69,14 +69,9 @@ function getAccounts() {
   return [];
 }
 
-// ========== 服务器地址获取 ==========
-/**
- * 获取微信协议服务器地址（新旧地址）
- */
-function getWxServerUrls() {
-  const oldUrl = WECHAT_SERVER.replace(/\/+$/, '');
-  const newUrl = WECHAT_SERVER_NEW ? WECHAT_SERVER_NEW.replace(/\/+$/, '') : oldUrl;
-  return { oldUrl, newUrl };
+/** 获取微信协议服务器地址（仅新地址） */
+function getWxServerUrl() {
+  return (WECHAT_SERVER_NEW || WECHAT_SERVER).replace(/\/+$/, '');
 }
 
 function maskPhone(phone) {
@@ -165,56 +160,36 @@ function msHeaders(accessToken = '') {
 
 // ========== 登录链路 ==========
 /**
- * 查询设备在线状态（所有地址），返回设备所在的服务器地址列表
+ * 查询设备在线状态
  */
 async function queryDeviceStatus(wxid) {
-  const { oldUrl, newUrl } = getWxServerUrls();
-  const urls = [...new Set([oldUrl, newUrl])];
+  const url = getWxServerUrl();
+  if (!url) return [];
   const results = [];
-  for (const url of urls) {
-    const label = url === oldUrl ? '旧地址' : '新地址';
-    try {
-      const { data } = await axios.get(`${url}/api/v1/wx/user/status`, { timeout: 10000 });
-      const info = data?.data?.[wxid];
-      if (info) results.push({ url, online: info.survival === 1, source: label, nickname: info.nickname || '' });
-    } catch (_) {}
-  }
+  try {
+    const { data } = await axios.get(`${url}/api/v1/wx/user/status`, { timeout: 10000 });
+    const info = data?.data?.[wxid];
+    if (info) results.push({ url, online: info.survival === 1, nickname: info.nickname || '' });
+  } catch (_) {}
   return results;
 }
 
 async function wxGetCode(wxid) {
-  const { oldUrl, newUrl } = getWxServerUrls();
+  const serverUrl = getWxServerUrl();
+  if (!serverUrl) throw new Error('未配置微信协议服务器地址');
   const paths = ['/api/v1/wx/app/get/code', '/api/v1/wx/app/get/jscode', '/api/wx/app/get/code'];
-
-  // 智能选择地址：先查设备在线状态
-  const statusResults = await queryDeviceStatus(wxid);
-  let priorityUrl = oldUrl;
-  if (statusResults.length > 0) {
-    const onlineResult = statusResults.find(r => r.online);
-    if (onlineResult) {
-      priorityUrl = onlineResult.url;
-    } else {
-      priorityUrl = statusResults[0].url;
-    }
-  }
-
-  const allUrls = [...new Set([priorityUrl, oldUrl, newUrl])];
+  const base = serverUrl.replace(/\/$/, '');
   const errs = [];
 
-  for (const serverUrl of allUrls) {
-    if (!serverUrl) continue;
-    const base = serverUrl.replace(/\/$/, '');
-    const label = base === oldUrl.replace(/\/$/, '') ? '旧地址' : '新地址';
-    for (const p of paths) {
-      try {
-        const { data } = await axios.post(base + p, { wxid, appid: APPID }, { timeout: 20000, validateStatus: () => true });
-        const code = data?.Data?.code || data?.data?.code || data?.code || data?.Data?.jsCode || data?.data?.jsCode || data?.jsCode;
-        if (code) return String(code).trim();
-        const errMsg = data?.Message || data?.msg || '';
-        if (errMsg) log(`⚠️  ${label} 业务错误: ${errMsg}`);
-        errs.push(`${base}${p}: no-code`);
-      } catch (e) { errs.push(`${base}${p}: ${e.message}`); }
-    }
+  for (const p of paths) {
+    try {
+      const { data } = await axios.post(base + p, { wxid, appid: APPID }, { timeout: 20000, validateStatus: () => true });
+      const code = data?.Data?.code || data?.data?.code || data?.code || data?.Data?.jsCode || data?.data?.jsCode || data?.jsCode;
+      if (code) return String(code).trim();
+      const errMsg = data?.Message || data?.msg || '';
+      if (errMsg) log(`⚠️  业务错误: ${errMsg}`);
+      errs.push(`${base}${p}: no-code`);
+    } catch (e) { errs.push(`${base}${p}: ${e.message}`); }
   }
 
   throw new Error('协议接口未返回code: ' + errs.join(' | '));

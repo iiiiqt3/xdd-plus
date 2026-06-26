@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -147,6 +148,35 @@ func GetActivityProjectsByActivity(activityID string) ([]ActivityProject, error)
 
 func GetActivityProjectsByActivityID(activityID string) ([]ActivityProject, error) {
 	return GetActivityProjectsByActivity(activityID)
+}
+
+// SyncActivityProjectNames 将已上车记录的活动名称与当前配置对齐（管理员改名后同步）
+func SyncActivityProjectNames(configs []*ActivityConfig) int {
+	if db == nil || len(configs) == 0 {
+		return 0
+	}
+	updated := 0
+	now := time.Now()
+	for _, cfg := range configs {
+		if cfg == nil || cfg.ID == "" || cfg.Name == "" {
+			continue
+		}
+		result := db.Model(&ActivityProject{}).
+			Where("activity_id = ? AND activity_name <> ? AND deleted_at IS NULL", cfg.ID, cfg.Name).
+			Updates(map[string]interface{}{
+				"activity_name": cfg.Name,
+				"updated_at":    now,
+			})
+		if result.Error != nil {
+			log.Printf("[活动名称同步] activity_id=%s 失败: %v", cfg.ID, result.Error)
+			continue
+		}
+		updated += int(result.RowsAffected)
+	}
+	if updated > 0 {
+		log.Printf("[活动名称同步] 已更新 %d 条上车记录", updated)
+	}
+	return updated
 }
 
 func GetActivityProjectsByActivityAndEnvKey(activityID, envKey string) ([]ActivityProject, error) {

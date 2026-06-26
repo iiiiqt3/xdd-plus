@@ -97,70 +97,48 @@ def save_cache(data):
 TOKEN_CACHE = load_cache()
 
 # ================== 服务器地址获取 ==================
-def get_wxserver_urls():
-    """
-    获取微信协议服务器地址（新旧地址）
-    返回: (old_url, new_url)
-    """
-    old_url = WECHAT_SERVER
-    new_url = WECHAT_SERVER_NEW if WECHAT_SERVER_NEW else old_url
-    return old_url, new_url
+def get_wxserver_url():
+    """获取微信协议服务器地址（仅新地址）"""
+    return (WECHAT_SERVER_NEW or WECHAT_SERVER).rstrip("/")
 
 
 def query_device_status(wxid):
-    """查询设备在线状态（所有地址），返回服务器地址列表（在线优先）"""
-    old_url, new_url = get_wxserver_urls()
-    urls = list(dict.fromkeys([old_url, new_url]))
+    """查询设备在线状态"""
+    url = get_wxserver_url()
+    if not url:
+        return []
     results = []
-    for url in urls:
-        try:
-            resp = requests.get(f"{url.rstrip('/')}/api/v1/wx/user/status", timeout=10)
-            data = resp.json()
-            info = (data.get("data") or {}).get(wxid)
-            if info:
-                results.append({"url": url, "online": info.get("survival") == 1})
-        except Exception:
-            pass
+    try:
+        resp = requests.get(f"{url.rstrip('/')}/api/v1/wx/user/status", timeout=10)
+        data = resp.json()
+        info = (data.get("data") or {}).get(wxid)
+        if info:
+            results.append({"url": url, "online": info.get("survival") == 1})
+    except Exception:
+        pass
     return results
 
 
 # ================== 登录链路 ==================
 def get_wx_code(wxid):
-    old_url, new_url = get_wxserver_urls()
-
-    # 智能选择地址：先查设备在线状态
-    priority_url = old_url
-    status_results = query_device_status(wxid)
-    if status_results:
-        online = next((r for r in status_results if r["online"]), None)
-        if online:
-            priority_url = online["url"]
-        else:
-            priority_url = status_results[0]["url"]
-
-    urls_to_try = list(dict.fromkeys([priority_url, old_url, new_url]))  # 去重保持顺序
-
-    for idx, server_url in enumerate(urls_to_try):
-        if not server_url:
-            continue
-        url = f"{server_url.rstrip('/')}/api/v1/wx/app/get/code"
-        try:
-            resp = requests.post(url, json={"wxid": wxid, "appid": WX_APPID}, timeout=BRIDGE_TIMEOUT)
-            resp.raise_for_status()
-            data = resp.json()
-            code = (
-                (data.get("data") or {}).get("code")
-                or (data.get("Data") or {}).get("code")
-                or data.get("Data")
-            )
-            if code:
-                return str(code)
-            if data.get("Code") is not None or data.get("code") is not None:
-                continue
-        except Exception as e:
-            continue
-
-    raise Exception(f"所有地址均无法获取 code")
+    server_url = get_wxserver_url()
+    if not server_url:
+        raise Exception("未配置微信协议服务器地址")
+    url = f"{server_url.rstrip('/')}/api/v1/wx/app/get/code"
+    try:
+        resp = requests.post(url, json={"wxid": wxid, "appid": WX_APPID}, timeout=BRIDGE_TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json()
+        code = (
+            (data.get("data") or {}).get("code")
+            or (data.get("Data") or {}).get("code")
+            or data.get("Data")
+        )
+        if code:
+            return str(code)
+    except Exception as e:
+        raise Exception(f"获取 code 失败: {e}")
+    raise Exception("获取 code 失败")
 
 def wx_login(code):
     url = f"{BASE_URL}/api/login/getWxMiniProgramSessionKey"

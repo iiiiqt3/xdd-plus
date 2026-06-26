@@ -278,6 +278,8 @@ func (al *ActivityLoader) LoadConfig() error {
 	ActivityConfigs = newConfigs
 	activityConfigsMu.Unlock()
 
+	SyncActivityProjectNames(newConfigs)
+
 	log.Printf("[热加载] 成功加载 %d 个活动", len(newConfigs))
 	return nil
 }

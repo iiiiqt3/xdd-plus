@@ -2,8 +2,8 @@
  * 可口可乐吧 查询本
  * 用法：node 可口可乐查询.js wxid
  * 环境变量（由xdd后台自动传递）：
- *   WECHAT_SERVER: 微信协议服务器地址（旧地址）
- *   WECHAT_SERVER_NEW: 微信协议服务器新地址（可选）
+ *   WECHAT_SERVER: 微信协议服务器地址（兼容字段，优先使用 WECHAT_SERVER_NEW）
+ *   WECHAT_SERVER_NEW: 微信协议服务器新地址（优先）
  */
 
 const axios = require('axios');
@@ -24,14 +24,9 @@ const CONFIG = {
 };
 
 // ==================== 服务器地址获取 ====================
-/**
- * 获取微信协议服务器地址（新旧地址）
- * 优先尝试新地址，失败后尝试旧地址
- */
-function getWxServerUrls() {
-  const oldUrl = CONFIG.WECHAT_SERVER.replace(/\/+$/, '');
-  const newUrl = CONFIG.WECHAT_SERVER_NEW ? CONFIG.WECHAT_SERVER_NEW.replace(/\/+$/, '') : oldUrl;
-  return { oldUrl, newUrl };
+/** 获取微信协议服务器地址（仅新地址） */
+function getWxServerUrl() {
+  return (CONFIG.WECHAT_SERVER_NEW || CONFIG.WECHAT_SERVER).replace(/\/+$/, '');
 }
 
 // ==================== 缓存管理 ====================
@@ -53,73 +48,39 @@ function saveCache(data) {
 // ==================== wxid 换取 Token 流程 ====================
 
 /**
- * 查询设备在线状态（所有地址），返回设备所在的服务器地址列表
+ * 查询设备在线状态
  */
 async function queryDeviceStatus(wxid) {
-  const { oldUrl, newUrl } = getWxServerUrls();
-  const urls = [...new Set([oldUrl, newUrl])];
-  const results = [];
-  for (const url of urls) {
-    const label = url === oldUrl ? '旧地址' : '新地址';
-    try {
-      const { data } = await axios.get(`${url}/api/v1/wx/user/status`, { timeout: 10000 });
-      const info = data?.data?.[wxid];
-      if (info) results.push({ url, online: info.survival === 1, source: label, nickname: info.nickname || '' });
-    } catch (_) {}
-  }
-  return results;
+  const url = getWxServerUrl();
+  if (!url) return [];
+  try {
+    const { data } = await axios.get(`${url}/api/v1/wx/user/status`, { timeout: 10000 });
+    const info = data?.data?.[wxid];
+    if (info) return [{ url, online: info.survival === 1, nickname: info.nickname || '' }];
+  } catch (_) {}
+  return [];
 }
 
 /**
- * Step1: wxid → code（智能选择地址）
+ * Step1: wxid → code
  */
 async function getWxCode(wxid) {
-  const { oldUrl, newUrl } = getWxServerUrls();
-
-  // 智能选择地址：先查设备在线状态
-  const statusResults = await queryDeviceStatus(wxid);
-  let priorityUrl = oldUrl;
-  if (statusResults.length > 0) {
-    const onlineResult = statusResults.find(r => r.online);
-    if (onlineResult) {
-      priorityUrl = onlineResult.url;
-    } else {
-      priorityUrl = statusResults[0].url;
-    }
+  const serverUrl = getWxServerUrl();
+  if (!serverUrl) throw new Error('未配置微信协议服务器地址');
+  try {
+    const url = `${serverUrl}/api/v1/wx/app/get/code`;
+    const response = await axios.post(url, { wxid, appid: CONFIG.APPID }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: CONFIG.TIMEOUT,
+      validateStatus: s => s === 200
+    });
+    const data = response.data;
+    const code = data?.Data?.code || data?.data?.code;
+    if (code) return code;
+    throw new Error(data?.Message || data?.msg || '获取 code 失败');
+  } catch (e) {
+    throw new Error(e.message || '获取 code 失败');
   }
-
-  const allUrls = [...new Set([priorityUrl, oldUrl, newUrl])];
-
-  for (let i = 0; i < allUrls.length; i++) {
-    const serverUrl = allUrls[i];
-    if (!serverUrl) continue;
-    const label = serverUrl === oldUrl ? '旧地址' : '新地址';
-    try {
-      const url = `${serverUrl}/api/v1/wx/app/get/code`;
-      const response = await axios.post(url, { wxid, appid: CONFIG.APPID }, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: CONFIG.TIMEOUT,
-        validateStatus: s => s === 200
-      });
-
-      const data = response.data;
-      const code = data?.Data?.code || data?.data?.code;
-
-      if (code) {
-        return code;
-      }
-      // 业务失败，继续尝试下一个地址
-      if (data?.code !== undefined) {
-        console.log(`⚠️  ${label} 业务错误: ${data?.Message || data?.msg || JSON.stringify(data)}`);
-        continue;
-      }
-    } catch (e) {
-      console.log(`⚠️  ${label} 请求异常: ${e.message}`);
-      continue;
-    }
-  }
-
-  throw new Error(`所有地址均无法获取code`);
 }
 
 /**

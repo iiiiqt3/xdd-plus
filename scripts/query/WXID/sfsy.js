@@ -56,13 +56,9 @@ function saveCache(data) {
 // ==================== 服务器地址获取 ====================
 // 缓存获取到的服务器地址
 
-/**
- * 获取微信协议服务器地址（新旧地址）
- */
-function getWxServerUrls() {
-    const oldUrl = WX_CONFIG.WECHAT_SERVER.replace(/\/+$/, '');
-    const newUrl = WX_CONFIG.WECHAT_SERVER_NEW ? WX_CONFIG.WECHAT_SERVER_NEW.replace(/\/+$/, '') : oldUrl;
-    return { oldUrl, newUrl };
+/** 获取微信协议服务器地址（仅新地址） */
+function getWxServerUrl() {
+    return (WX_CONFIG.WECHAT_SERVER_NEW || WX_CONFIG.WECHAT_SERVER).replace(/\/+$/, '');
 }
 
 // ==================== UCMP 签名工具 ====================
@@ -121,73 +117,36 @@ function buildUcmpHeaders(body = {}, sessionId = '') {
 // ==================== wxid 换取 Cookie 流程 ====================
 
 /**
- * 查询设备在线状态（所有地址），返回设备所在的服务器地址列表
+ * 查询设备在线状态
  */
 async function queryDeviceStatus(wxid) {
-    const { oldUrl, newUrl } = getWxServerUrls();
-    const urls = [...new Set([oldUrl, newUrl])];
-    const results = [];
-    for (const url of urls) {
-        const label = url === oldUrl ? '旧地址' : '新地址';
-        try {
-            const { data } = await axios.get(`${url}/api/v1/wx/user/status`, { timeout: 10000 });
-            const info = data?.data?.[wxid];
-            if (info) results.push({ url, online: info.survival === 1, source: label, nickname: info.nickname || '' });
-        } catch (_) {}
-    }
-    return results;
+    const url = getWxServerUrl();
+    if (!url) return [];
+    try {
+        const { data } = await axios.get(`${url}/api/v1/wx/user/status`, { timeout: 10000 });
+        const info = data?.data?.[wxid];
+        if (info) return [{ url, online: info.survival === 1, nickname: info.nickname || '' }];
+    } catch (_) {}
+    return [];
 }
 
-/**
- * Step1: wxid → code（智能选择地址）
- */
 async function getWxCode(wxid) {
-    const { oldUrl, newUrl } = getWxServerUrls();
-
-    // 智能选择地址：先查设备在线状态
-    const statusResults = await queryDeviceStatus(wxid);
-    let priorityUrl = oldUrl;
-    if (statusResults.length > 0) {
-        const onlineResult = statusResults.find(r => r.online);
-        if (onlineResult) {
-            priorityUrl = onlineResult.url;
-        } else {
-            priorityUrl = statusResults[0].url;
-        }
+    const serverUrl = getWxServerUrl();
+    if (!serverUrl) throw new Error('未配置微信协议服务器地址');
+    try {
+        const url = `${serverUrl}/api/v1/wx/app/get/code`;
+        const response = await axios.post(url, { wxid, appid: WX_CONFIG.APPID }, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: CONFIG.TIMEOUT,
+            validateStatus: s => s === 200
+        });
+        const data = response.data;
+        const code = data?.Data?.code || data?.data?.code;
+        if (code) return code;
+        throw new Error(data?.Message || data?.msg || '获取 code 失败');
+    } catch (e) {
+        throw new Error(e.message || '获取 code 失败');
     }
-
-    const allUrls = [...new Set([priorityUrl, oldUrl, newUrl])];
-
-    for (let i = 0; i < allUrls.length; i++) {
-        const serverUrl = allUrls[i];
-        if (!serverUrl) continue;
-        const label = serverUrl === oldUrl ? '旧地址' : '新地址';
-        try {
-            const url = `${serverUrl}/api/v1/wx/app/get/code`;
-            const response = await axios.post(url, { wxid, appid: WX_CONFIG.APPID }, {
-                headers: { 'Content-Type': 'application/json' },
-                timeout: CONFIG.TIMEOUT,
-                validateStatus: s => s === 200
-            });
-
-            const data = response.data;
-            const code = data?.Data?.code || data?.data?.code;
-
-            if (code) {
-                return code;
-            }
-            // 业务失败，继续尝试下一个地址
-            if (data?.code !== undefined) {
-                console.log(`⚠️  ${label} 业务错误: ${data?.Message || data?.msg || ''}`);
-                continue;
-            }
-        } catch (e) {
-            console.log(`⚠️  ${label} 请求异常: ${e.message}`);
-            continue;
-        }
-    }
-
-    throw new Error(`所有地址均无法获取code`);
 }
 
 /**

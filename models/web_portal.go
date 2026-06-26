@@ -392,7 +392,7 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 		if dbProj.Status == 0 {
 			statusText = "已启用"
 		}
-		// 使用当前活动配置（cfg）而非数据库快照，确保管理员修改价格后用户看到最新价格
+		// 使用当前活动配置（cfg）而非数据库快照，确保管理员修改名称/价格后用户看到最新信息
 		priceText := fmt.Sprintf("一次性 %d 积分", cfg.NeedCoin)
 		if cfg.IsDailyDeduct {
 			priceText = fmt.Sprintf("每天 %d 积分", cfg.DailyCoin)
@@ -402,7 +402,7 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 
 		projects = append(projects, PortalProjectItem{
 			ActivityID:      dbProj.ActivityID,
-			ActivityName:    dbProj.ActivityName,
+			ActivityName:    cfg.Name,
 			EnvKey:          dbProj.EnvKey,
 			EnvID:           dbProj.QingLongEnvID,
 			EnvValue:        dbProj.EnvValue,
