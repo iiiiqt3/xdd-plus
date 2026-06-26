@@ -657,6 +657,19 @@
 
         /* ===== 任务 ===== */
         .task-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+        .checkin-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
+        .checkin-stat-card {
+            padding: 14px 16px; border-radius: var(--radius-sm);
+            background: var(--card); border: 1px solid var(--card-border);
+            box-shadow: var(--card-shadow);
+        }
+        .checkin-stat-card span { display: block; color: var(--text-muted); font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+        .checkin-stat-card strong { display: block; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.3; }
+        .checkin-stat-card .stat-blue { color: #2563eb; }
+        .checkin-stat-card .stat-green { color: #059669; }
+        .checkin-stat-card .stat-amber { color: #d97706; }
+        .checkin-stat-card .stat-purple { color: #7c3aed; }
+        .checkin-stat-card .stat-muted { color: var(--text-muted); }
         .task-box {
             padding: 22px; border-radius: var(--radius);
             background: var(--card); border: 1px solid var(--card-border);
@@ -873,7 +886,7 @@
             .menu button::before { width: 5px; height: 5px; }
             .menu-link-btn { width: auto !important; }
             .main { padding: 14px; }
-            .grid-cards, .status-grid, .meta-grid, .form-grid, .wx-feature-grid, .notify-summary-grid { grid-template-columns: 1fr; }
+            .grid-cards, .status-grid, .meta-grid, .form-grid, .wx-feature-grid, .notify-summary-grid, .checkin-stats-grid { grid-template-columns: 1fr; }
             .notify-layout { grid-template-columns: 1fr; }
             .notify-filter-card { position: static; }
             .dash-hero-strip { grid-template-columns: 1fr; }
@@ -1412,10 +1425,16 @@
         <section class="panel" id="panel-tasks">
             <div class="section">
                 <div class="section-header panel-duplicate-title"><h3>⭐ 积分相关</h3><span class="muted">签到、祈福、购买、兑换与积分变动</span></div>
+                <div class="checkin-stats-grid" id="taskCheckinStats">
+                    <div class="checkin-stat-card"><span>连续打卡</span><strong id="taskContinuousDays" class="stat-blue">-</strong></div>
+                    <div class="checkin-stat-card"><span>今日状态</span><strong id="taskCheckinStatus" class="stat-muted">-</strong></div>
+                    <div class="checkin-stat-card"><span>下次奖励</span><strong id="taskNextBonus" class="stat-amber">-</strong></div>
+                    <div class="checkin-stat-card"><span>今日打卡</span><strong id="taskTodayCheckinCount" class="stat-purple">-</strong></div>
+                </div>
                 <div class="task-grid" id="taskAuthHint" style="display:none;margin-bottom:0;">
                     <div class="task-box" style="grid-column:1/-1;background:rgba(220,38,38,0.04);border-color:rgba(220,38,38,0.15);">
-                        <h3 style="color:var(--red);">⚠️ 暂无有效授权项目</h3>
-                        <p id="taskAuthHintMsg">打卡和祈福需要按月或按天的项目才能使用，请先前往「项目中心」上车活动。</p>
+                        <h3 style="color:var(--red);">⚠️ 暂无法打卡 / 祈福</h3>
+                        <p id="taskAuthHintMsg">打卡和祈福需要有效的按月或按天项目，请先前往「项目中心」上车活动。</p>
                         <button class="btn accent" onclick="document.querySelector('button[data-panel=&quot;projects&quot;]').click()">前往项目中心</button>
                     </div>
                 </div>
@@ -2034,27 +2053,58 @@ function renderDashboard() {
     document.getElementById('cardExpiringCount').textContent = d.expiringCount ?? 0;
     document.getElementById('cardExpiredCount').textContent = d.expiredCount ?? 0;
 
-    const hasValidAccount = (d.activeCount || 0) > 0;
     const canCheckIn = d.canCheckIn ?? false;
     const canCheckInMessage = d.canCheckInMessage ?? '';
-    
+    const checkedInToday = d.checkedInToday ?? false;
+    const prayedToday = d.prayedToday ?? false;
+    const continuousDays = d.continuousDays ?? 0;
+    const nextBonus = d.nextCheckInBonus ?? 0;
+    const daysUntilBonus = d.daysUntilNextCheckInBonus ?? 0;
+    const todayCheckInCount = d.todayCheckInCount ?? 0;
+
+    const taskContinuousDays = document.getElementById('taskContinuousDays');
+    const taskCheckinStatus = document.getElementById('taskCheckinStatus');
+    const taskNextBonus = document.getElementById('taskNextBonus');
+    const taskTodayCheckinCount = document.getElementById('taskTodayCheckinCount');
+    if (taskContinuousDays) taskContinuousDays.textContent = continuousDays + ' 天';
+    if (taskCheckinStatus) {
+        taskCheckinStatus.textContent = checkedInToday ? '已打卡' : '未打卡';
+        taskCheckinStatus.className = checkedInToday ? 'stat-green' : 'stat-muted';
+    }
+    if (taskNextBonus) {
+        taskNextBonus.textContent = nextBonus > 0 ? ('+' + nextBonus + '（还差' + daysUntilBonus + '天）') : '已达最高档';
+    }
+    if (taskTodayCheckinCount) taskTodayCheckinCount.textContent = todayCheckInCount + ' 人';
+
     const authHint = document.getElementById('taskAuthHint');
     if (authHint) {
-        if (hasValidAccount && canCheckIn) {
+        if (canCheckIn) {
             authHint.style.display = 'none';
         } else {
             authHint.style.display = '';
             const hintMsg = document.getElementById('taskAuthHintMsg');
-            if (hintMsg && canCheckInMessage) {
-                hintMsg.textContent = canCheckInMessage;
+            if (hintMsg) {
+                hintMsg.textContent = canCheckInMessage || '请先前往「项目中心」上车有效的按月/按天活动。';
             }
         }
     }
-    
+
     const btnCheckin = document.getElementById('taskBtnCheckin');
     const btnPray = document.getElementById('taskBtnPray');
-    if (btnCheckin) { btnCheckin.disabled = !canCheckIn; btnCheckin.style.opacity = canCheckIn ? '' : '0.5'; btnCheckin.style.cursor = canCheckIn ? '' : 'not-allowed'; }
-    if (btnPray) { btnPray.disabled = !canCheckIn; btnPray.style.opacity = canCheckIn ? '' : '0.5'; btnPray.style.cursor = canCheckIn ? '' : 'not-allowed'; }
+    const checkinEnabled = canCheckIn && !checkedInToday;
+    const prayEnabled = canCheckIn && !prayedToday;
+    if (btnCheckin) {
+        btnCheckin.disabled = !checkinEnabled;
+        btnCheckin.textContent = checkedInToday ? '今日已打卡' : '立即打卡';
+        btnCheckin.style.opacity = checkinEnabled ? '' : '0.5';
+        btnCheckin.style.cursor = checkinEnabled ? '' : 'not-allowed';
+    }
+    if (btnPray) {
+        btnPray.disabled = !prayEnabled;
+        btnPray.textContent = prayedToday ? '今日已祈福' : '立即祈福';
+        btnPray.style.opacity = prayEnabled ? '' : '0.5';
+        btnPray.style.cursor = prayEnabled ? '' : 'not-allowed';
+    }
 
     const dashNotifyTotal = document.getElementById('dashNotifyTotal');
     const dashNotifyUnread = document.getElementById('dashNotifyUnread');
@@ -3139,10 +3189,18 @@ async function submitFeedbackFromPage() {
 async function runTask(type) {
     const label = type === 'pray' ? '祈福' : '打卡';
     const url = type === 'pray' ? '/api/portal/pray' : '/api/portal/checkin';
-    const activeCount = (state.dashboard && state.dashboard.activeCount) || 0;
-    if (activeCount < 1) {
-        toast('暂无有效授权的活动账号，请先挂上青龙活动且授权有效后再' + label + '～', 'error');
+    const d = state.dashboard || {};
+    if (!d.canCheckIn) {
+        toast(d.canCheckInMessage || ('暂无法' + label + '，请先前往项目中心上车有效的按月/按天活动'), 'error');
         document.querySelector('button[data-panel="projects"]')?.click();
+        return;
+    }
+    if (type === 'checkin' && d.checkedInToday) {
+        toast('你今天已经打卡过了', 'error');
+        return;
+    }
+    if (type === 'pray' && d.prayedToday) {
+        toast('你今天已经祈福过了', 'error');
         return;
     }
     if (!window.confirm(`确认立即执行【${label}】吗？`)) return;
