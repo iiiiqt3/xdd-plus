@@ -132,8 +132,8 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.keyboardDismissMode = .interactive
-        scrollView.delaysContentTouches = false
-        scrollView.canCancelContentTouches = false
+        scrollView.delaysContentTouches = true
+        scrollView.canCancelContentTouches = true
         stack.axis = .vertical
         stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -206,11 +206,12 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
 
-            stack.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -20),
-            stack.widthAnchor.constraint(equalTo: view.widthAnchor, constant: -32),
+            // 使用 contentLayoutGuide 约束，让 scrollView 可以滚动
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -16),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -20),
+            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -32),
         ])
 
         setupSmsFields()
@@ -945,13 +946,12 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         logCard.addArrangedSubview(logHeader)
 
         logTextView.isEditable = false
-        logTextView.isScrollEnabled = true
+        logTextView.isScrollEnabled = false   // 禁用内部滚动，让外层 scrollView 统一滚动
         logTextView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         logTextView.text = "暂无日志，请执行任务"
         logTextView.backgroundColor = UIColor.tertiarySystemBackground
         logTextView.layer.cornerRadius = 8
         logTextView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
-        logTextView.heightAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
         logCard.addArrangedSubview(logTextView)
         taskContentStack.addArrangedSubview(logCard)
         refreshLogs()
