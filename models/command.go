@@ -3346,10 +3346,7 @@ var codeSignals = []CodeSignal{
 							mediaRe := regexp.MustCompile(`\.(mp4|webm|mov|avi|mp3|wav|ogg|m4a|aac|flac)(\?|$)`)
 							for _, m := range imgMatches {
 								if len(m) >= 3 {
-									mediaURL := m[2]
-									if strings.HasPrefix(mediaURL, "/") {
-										mediaURL = "http://180.152.5.230:5701" + mediaURL
-									}
+									mediaURL := buildPublicMediaURL(m[2])
 									if mediaRe.MatchString(strings.ToLower(mediaURL)) {
 										// 视频/音频：发送链接提示（机器人无法内嵌播放）
 										mediaType := "媒体文件"

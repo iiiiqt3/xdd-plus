@@ -658,10 +658,7 @@ func SendActivityToGroupsWithOptions(title, content string, toQQ, toWX bool) str
 		return "推送内容为空，未发送"
 	}
 
-	fullMsg := "【活动通知】\n" + title
-	if content != "" {
-		fullMsg += "\n\n" + content
-	}
+	textMsg, media := PrepareGroupPushMessage(title, content)
 
 	var results []string
 
@@ -671,13 +668,15 @@ func SendActivityToGroupsWithOptions(title, content string, toQQ, toWX bool) str
 			parts := strings.Split(gidStr, ",")
 			for _, part := range parts {
 				part = strings.TrimSpace(part)
-				if part == "" { continue }
+				if part == "" {
+					continue
+				}
 				gid, err := strconv.Atoi(part)
 				if err != nil {
 					results = append(results, "QQ群号格式错误: "+part)
 					continue
 				}
-				SendQQGroup(gid, 0, fullMsg)
+				PushRichTextToQQGroup(gid, textMsg, media)
 				results = append(results, "已推送到QQ群: "+part)
 			}
 		} else {
@@ -691,8 +690,10 @@ func SendActivityToGroupsWithOptions(title, content string, toQQ, toWX bool) str
 			parts := strings.Split(gidStr, ",")
 			for _, part := range parts {
 				part = strings.TrimSpace(part)
-				if part == "" { continue }
-				SendWxGroupMsg("", part, fullMsg)
+				if part == "" {
+					continue
+				}
+				PushRichTextToWxGroup(part, textMsg, media)
 				results = append(results, "已推送到微信群: "+part)
 			}
 		} else {
