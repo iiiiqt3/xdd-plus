@@ -9,7 +9,7 @@ SCHEME="狗东"
 CONFIG="Release"
 DERIVED="$ROOT/build/DerivedData"
 APP_PATH="$DERIVED/Build/Products/Release-iphoneos/狗东.app"
-IPA_PATH="$ROOT/狗东-4.3.ipa"
+IPA_PATH="$ROOT/狗东-4.4.ipa"
 
 echo "==> 编译 $SCHEME ($CONFIG, 无签名)..."
 xcodebuild \

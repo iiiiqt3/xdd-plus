@@ -32,7 +32,7 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     private var logStreamers: [String: JdTaskLogStreamer] = [:]
     private var taskButtonRefs: [String: UIButton] = [:]
     private var logLines: [String] = []
-    private let logLabel = UILabel()
+    private let logTextView = UITextView()
     private var buttonActions: [ObjectIdentifier: () -> Void] = [:]
     private var buttonOriginalTitles: [ObjectIdentifier: String] = [:]
     private var isQueryingAll = false
@@ -944,13 +944,15 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         })
         logCard.addArrangedSubview(logHeader)
 
-        logLabel.numberOfLines = 0
-        logLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-        logLabel.text = "暂无日志，请执行任务"
-        logLabel.backgroundColor = UIColor.tertiarySystemBackground
-        logLabel.layer.cornerRadius = 8
-        logLabel.clipsToBounds = true
-        logCard.addArrangedSubview(logLabel)
+        logTextView.isEditable = false
+        logTextView.isScrollEnabled = true
+        logTextView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        logTextView.text = "暂无日志，请执行任务"
+        logTextView.backgroundColor = UIColor.tertiarySystemBackground
+        logTextView.layer.cornerRadius = 8
+        logTextView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        logTextView.heightAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        logCard.addArrangedSubview(logTextView)
         taskContentStack.addArrangedSubview(logCard)
         refreshLogs()
     }
@@ -1122,7 +1124,12 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     }
 
     private func refreshLogs() {
-        logLabel.text = logLines.isEmpty ? "暂无日志，请执行任务" : logLines.joined(separator: "\n")
+        logTextView.text = logLines.isEmpty ? "暂无日志，请执行任务" : logLines.joined(separator: "\n")
+        // 自动滚动到底部
+        if !logLines.isEmpty {
+            let bottom = NSMakeRange(logTextView.text.count - 1, 1)
+            logTextView.scrollRangeToVisible(bottom)
+        }
     }
 
     // MARK: - UI Helpers
