@@ -937,6 +937,8 @@ func (c *PortalController) KuwoSendSms() {
 		c.ServeJSON()
 		return
 	}
+	// 缓存session，到点抢兑时直接用，避免重新登录
+	models.KuwoCacheSession(phone, session)
 	if err := models.KuwoSendSms(session); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -999,12 +1001,18 @@ func (c *PortalController) KuwoWithdraw() {
 
 	sessions := make([]*models.KuwoSession, 0, len(req.Sessions))
 	for _, s := range req.Sessions {
-		sessions = append(sessions, &models.KuwoSession{
-			Phone:          s.Phone,
-			EncryptedPhone: s.EncryptedPhone,
-			LoginUid:       s.LoginUID,
-			LoginSid:       s.LoginSID,
-		})
+		// 优先使用缓存的session（避免重新登录浪费时间）
+		cached := models.KuwoGetCachedSession(s.Phone)
+		if cached != nil {
+			sessions = append(sessions, cached)
+		} else {
+			sessions = append(sessions, &models.KuwoSession{
+				Phone:          s.Phone,
+				EncryptedPhone: s.EncryptedPhone,
+				LoginUid:       s.LoginUID,
+				LoginSid:       s.LoginSID,
+			})
+		}
 	}
 
 	results := models.KuwoConcurrentWithdrawRetry(sessions, quotaId, smsCode, retryCount)

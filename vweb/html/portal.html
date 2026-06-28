@@ -4220,6 +4220,19 @@ function kuwoRunCountdown(info, phone, password, smsCode, quotaId) {
     const targetHour = info.hour;
     const targetLabel = String(targetHour).padStart(2,'0') + ':00';
 
+    // 预热连接：提前建立HTTP连接，减少到点时的握手延迟
+    let warmupDone = false;
+    async function warmupConnection() {
+        if (warmupDone) return;
+        try {
+            await fetch('/api/portal/kuwo/check-auth', { method: 'GET', headers: { 'X-Request-Source': 'web' } });
+            warmupDone = true;
+            kuwoLog('🔗 预热连接完成');
+        } catch (e) { /* 忽略 */ }
+    }
+    warmupConnection();
+    const warmupInterval = setInterval(warmupConnection, 30000); // 每30秒刷新一次
+
     kuwoTimerInterval = setInterval(() => {
         const bj = kuwoGetBeijingTime();
         const currentMs = bj.totalMs + new Date().getMilliseconds();
@@ -4235,13 +4248,15 @@ function kuwoRunCountdown(info, phone, password, smsCode, quotaId) {
 
         // 到点了（500ms内）
         if (currentMs - targetMs < 500) {
+            clearInterval(warmupInterval);
             countdownEl.textContent = '🚀 正在抢兑 ' + targetLabel + '...';
-            kuwoLog('⏰ 到达抢兑时间 ' + targetLabel + '，开始执行（3次并发）...');
+            kuwoLog('⏰ 到达抢兑时间 ' + targetLabel + '，开始执行（3次错峰并发）...');
             kuwoStopTimer();
             kuwoExecuteWithdraw(phone, password, smsCode, quotaId);
             return;
         }
 
+        clearInterval(warmupInterval);
         countdownEl.textContent = '✅ 抢兑已完成';
         kuwoStopTimer();
     }, 100);

@@ -39,6 +39,35 @@ type KuwoSession struct {
 	EncryptedPhone string
 }
 
+// kuwoSessionCache 登录session缓存，避免到点时重新登录浪费时间
+// key: phone, value: *KuwoSession
+var kuwoSessionCache = struct {
+	sync.RWMutex
+	sessions map[string]*KuwoSession
+ expiry   map[string]time.Time
+}{sessions: make(map[string]*KuwoSession), expiry: make(map[string]time.Time)}
+
+const kuwoSessionCacheTTL = 4 * time.Minute // 缓存4分钟，与验证码获取窗口一致
+
+// KuwoCacheSession 缓存登录session，到点抢兑时直接用
+func KuwoCacheSession(phone string, session *KuwoSession) {
+	kuwoSessionCache.Lock()
+	defer kuwoSessionCache.Unlock()
+	kuwoSessionCache.sessions[phone] = session
+	kuwoSessionCache.expiry[phone] = time.Now().Add(kuwoSessionCacheTTL)
+}
+
+// KuwoGetCachedSession 获取缓存的登录session
+func KuwoGetCachedSession(phone string) *KuwoSession {
+	kuwoSessionCache.RLock()
+	defer kuwoSessionCache.RUnlock()
+	session, ok := kuwoSessionCache.sessions[phone]
+	if !ok || time.Now().After(kuwoSessionCache.expiry[phone]) {
+		return nil
+	}
+	return session
+}
+
 // KuwoTask holds a withdrawal task configuration.
 type KuwoTask struct {
 	Session  *KuwoSession
@@ -394,7 +423,7 @@ func KuwoConcurrentWithdraw(sessions []*KuwoSession, quotaId, smsCode string) []
 	return results
 }
 
-// KuwoConcurrentWithdrawRetry 并发抢兑，每个session发retryCount次请求，取第一次成功的结果
+// KuwoConcurrentWithdrawRetry 并发抢兑，错峰50ms间隔，取第一个成功的结果
 func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode string, retryCount int) []KuwoWithdrawResult {
 	if retryCount < 1 {
 		retryCount = 1
@@ -406,21 +435,24 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 		wg.Add(1)
 		go func(idx int, s *KuwoSession) {
 			defer wg.Done()
-			// 用 channel 收集结果，取第一个成功的
 			type attemptResult struct {
-				msg string
-				err error
+				msg   string
+				err   error
+				index int
 			}
 			ch := make(chan attemptResult, retryCount)
 
+			// 错峰发送：每个请求间隔50ms，避免同时到达被限流
 			for t := 0; t < retryCount; t++ {
 				go func(attempt int) {
+					if attempt > 0 {
+						time.Sleep(time.Duration(attempt*50) * time.Millisecond)
+					}
 					msg, err := KuwoExecuteWithdraw(s, quotaId, smsCode)
-					ch <- attemptResult{msg: msg, err: err}
+					ch <- attemptResult{msg: msg, err: err, index: attempt}
 				}(t)
 			}
 
-			// 取第一个成功的结果，或最后一个失败结果
 			var lastResult attemptResult
 			successFound := false
 			for t := 0; t < retryCount; t++ {
@@ -432,7 +464,7 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 						Success: true,
 						Message: r.msg,
 					}
-					fmt.Printf("[kuwo] withdraw uid=%s success (attempt %d): %s\n", s.LoginUid, t+1, r.msg)
+					fmt.Printf("[kuwo] withdraw uid=%s success (attempt %d/%d): %s\n", s.LoginUid, r.index+1, retryCount, r.msg)
 					successFound = true
 				}
 				lastResult = r
