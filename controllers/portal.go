@@ -847,7 +847,7 @@ func (c *PortalController) JdTaskStop() {
 
 // KuwoCheckAuth 检查用户是否有酷我活动授权
 func (c *PortalController) KuwoCheckAuth() {
-	profile, err := models.GetPortalProfile(c.getAccountID())
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 0, "authorized": false, "msg": err.Error()}
 		c.ServeJSON()
