@@ -140,59 +140,99 @@ func kuwoDoRequest(req *http.Request) ([]byte, int, error) {
 	return body, resp.StatusCode, err
 }
 
-func kuwoGetCaptcha() (string, error) {
-	req, err := http.NewRequest("GET", kuwoCapURL, nil)
+func kuwoGetCaptcha() (imgBase64 string, token string, err error) {
+	// 1. 获取验证码（返回JSON，含 data.img 和 data.token）
+	reqURL := kuwoCapURL + "?reqId=" + kuwoRandomAppUID() + "&httpsStatus=1"
+	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	req.Header.Set("User-Agent", kuwoUserAgent)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.95 Safari/537.36")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
 	req.Header.Set("Referer", "http://www.kuwo.cn/")
+	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
 
 	body, _, err := kuwoDoRequest(req)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	// body is the captcha image; send to OCR service
-	ocrReq, err := http.NewRequest("POST", kuwoOCRURL, bytes.NewReader(body))
-	if err != nil {
-		return "", err
+	var capResp struct {
+		Data struct {
+			Img   string `json:"img"`
+			Token string `json:"token"`
+		} `json:"data"`
 	}
-	ocrReq.Header.Set("Content-Type", "image/png")
-	ocrReq.Header.Set("User-Agent", kuwoUserAgent)
+	if err := json.Unmarshal(body, &capResp); err != nil {
+		return "", "", fmt.Errorf("parse captcha response: %w", err)
+	}
+	if capResp.Data.Img == "" || capResp.Data.Token == "" {
+		return "", "", fmt.Errorf("captcha response missing img or token")
+	}
+
+	// 去掉 data:image/jpeg;base64, 前缀
+	imgStr := capResp.Data.Img
+	if idx := strings.Index(imgStr, ","); idx >= 0 {
+		imgStr = imgStr[idx+1:]
+	}
+
+	// 2. OCR识别验证码（发送JSON {image: base64}）
+	ocrPayload, _ := json.Marshal(map[string]string{"image": imgStr})
+	ocrReq, err := http.NewRequest("POST", kuwoOCRURL, bytes.NewReader(ocrPayload))
+	if err != nil {
+		return "", "", err
+	}
+	ocrReq.Header.Set("Content-Type", "application/json")
+	ocrReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
 	ocrBody, _, err := kuwoDoRequest(ocrReq)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return strings.TrimSpace(string(ocrBody)), nil
+
+	var ocrResp struct {
+		Result string `json:"result"`
+	}
+	if err := json.Unmarshal(ocrBody, &ocrResp); err != nil {
+		// fallback: treat entire body as text
+		return strings.TrimSpace(string(ocrBody)), capResp.Data.Token, nil
+	}
+	return strings.TrimSpace(ocrResp.Result), capResp.Data.Token, nil
 }
 
 // ---------- login ----------
 
 // KuwoLogin performs the full login flow: captcha -> OCR -> login.
-// phone is the plain phone number; password is the Kuwo password.
 func KuwoLogin(phone, password string) (*KuwoSession, error) {
 	encPhone := KuwoEncryptPhone(phone)
 
 	for attempt := 0; attempt < 5; attempt++ {
-		captcha, err := kuwoGetCaptcha()
+		// 1. 获取验证码 + token
+		captchaCode, captchaToken, err := kuwoGetCaptcha()
 		if err != nil {
 			return nil, fmt.Errorf("get captcha failed: %w", err)
 		}
+		fmt.Printf("[kuwo] captcha attempt %d: code=%s token=%s\n", attempt+1, captchaCode, captchaToken)
 
-		data := url.Values{}
-		data.Set("phone", encPhone)
-		data.Set("password", kuwoMD5(password))
-		data.Set("code", captcha)
+		// 2. 登录（JSON body）
+		loginBody, _ := json.Marshal(map[string]string{
+			"userIp":          "www.kuwo.cn",
+			"uname":           phone,
+			"password":        password,
+			"verifyCode":      captchaCode,
+			"img":             "", // 不需要回传图片
+			"verifyCodeToken": captchaToken,
+		})
 
-		req, err := http.NewRequest("POST", kuwoLoginURL, strings.NewReader(data.Encode()))
+		req, err := http.NewRequest("POST", kuwoLoginURL+"?httpsStatus=1", bytes.NewReader(loginBody))
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("User-Agent", kuwoUserAgent)
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.95 Safari/537.36")
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", "http://www.kuwo.cn")
 		req.Header.Set("Referer", "http://www.kuwo.cn/")
+		req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
 
 		body, _, err := kuwoDoRequest(req)
 		if err != nil {
@@ -200,27 +240,31 @@ func KuwoLogin(phone, password string) (*KuwoSession, error) {
 		}
 
 		var resp struct {
-			Status int    `json:"status"`
-			Msg    string `json:"msg"`
-			Data   struct {
-				LoginUID string `json:"loginUid"`
-				LoginSID string `json:"loginSid"`
+			Code int    `json:"code"`
+			Msg  string `json:"msg"`
+			Data struct {
+				Cookies struct {
+					Websid string `json:"websid"`
+					Userid string `json:"userid"`
+				} `json:"cookies"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(body, &resp); err != nil {
 			return nil, fmt.Errorf("parse login response: %w", err)
 		}
 
-		if resp.Status == 200 && resp.Data.LoginUID != "" {
+		fmt.Printf("[kuwo] login response: code=%d msg=%s\n", resp.Code, resp.Msg)
+
+		if resp.Code == 200 && resp.Data.Cookies.Websid != "" && resp.Data.Cookies.Userid != "" {
 			return &KuwoSession{
-				LoginUid:       resp.Data.LoginUID,
-				LoginSid:       resp.Data.LoginSID,
+				LoginUid:       resp.Data.Cookies.Userid,
+				LoginSid:       resp.Data.Cookies.Websid,
 				Phone:          phone,
 				EncryptedPhone: encPhone,
 			}, nil
 		}
 
-		// captcha likely wrong, retry
+		// captcha识别错误，重试
 		fmt.Printf("[kuwo] login attempt %d failed: %s\n", attempt+1, resp.Msg)
 	}
 
