@@ -845,6 +845,24 @@ func (c *PortalController) JdTaskStop() {
 	c.ServeJSON()
 }
 
+// KuwoGetCredentials 读取用户挂活动提交的酷我账号密码
+func (c *PortalController) KuwoGetCredentials() {
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 0, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	phone, password, err := models.GetKuwoCredentials(profile.User.Number)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 0, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 1, "data": map[string]interface{}{"phone": phone, "password": password}}
+	c.ServeJSON()
+}
+
 // KuwoCheckAuth 检查用户是否有酷我活动授权
 func (c *PortalController) KuwoCheckAuth() {
 	profile, err := models.GetPortalProfile(c.PortalAccount.ID)

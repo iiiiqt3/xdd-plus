@@ -440,6 +440,24 @@ func KuwoFormatQuotaDisplay() string {
 	return strings.Join(parts, ", ")
 }
 
+// GetKuwoCredentials 从用户的KWYY活动项目中读取酷我账号密码
+func GetKuwoCredentials(userNumber int) (phone, password string, err error) {
+	projects, err := GetPortalProjects(userNumber)
+	if err != nil {
+		return "", "", err
+	}
+	for _, p := range projects {
+		if p.ActivityID == "KWYY" && p.EnvValue != "" {
+			parts := strings.SplitN(p.EnvValue, "#", 2)
+			if len(parts) == 2 {
+				return parts[0], parts[1], nil
+			}
+			return p.EnvValue, "", nil
+		}
+	}
+	return "", "", fmt.Errorf("未找到酷我音乐活动配置")
+}
+
 // CheckKuwoAuth 检查当前用户是否有酷我音乐(KWYY)活动授权
 func CheckKuwoAuth(userNumber int) (bool, string) {
 	projects, err := GetPortalProjects(userNumber)

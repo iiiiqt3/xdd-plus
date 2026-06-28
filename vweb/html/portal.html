@@ -4032,6 +4032,16 @@ async function checkKuwoAuth() {
             if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; sendBtn.style.cursor = 'pointer'; }
             if (withdrawBtn) { withdrawBtn.disabled = false; withdrawBtn.style.opacity = '1'; withdrawBtn.style.cursor = 'pointer'; }
             if (hint) hint.style.display = 'none';
+            // 自动填充活动提交的账号密码
+            try {
+                const cred = await request('/api/portal/kuwo/credentials');
+                if (cred.data) {
+                    const phoneInput = document.getElementById('kuwoPhone');
+                    const pwdInput = document.getElementById('kuwoPassword');
+                    if (phoneInput && cred.data.phone && !phoneInput.value) phoneInput.value = cred.data.phone;
+                    if (pwdInput && cred.data.password && !pwdInput.value) pwdInput.value = cred.data.password;
+                }
+            } catch (e) { console.log('自动填充酷我账号失败:', e); }
         } else {
             if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.4'; sendBtn.style.cursor = 'not-allowed'; }
             if (withdrawBtn) { withdrawBtn.disabled = true; withdrawBtn.style.opacity = '0.4'; withdrawBtn.style.cursor = 'not-allowed'; }
