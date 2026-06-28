@@ -955,7 +955,7 @@ func (c *PortalController) KuwoSendSms() {
 	c.ServeJSON()
 }
 
-// KuwoWithdraw 酷我提现（支持并发）
+// KuwoWithdraw 酷我提现（支持并发+重试）
 func (c *PortalController) KuwoWithdraw() {
 	var req struct {
 		Sessions []struct {
@@ -965,8 +965,9 @@ func (c *PortalController) KuwoWithdraw() {
 			LoginUID      string `json:"loginUid"`
 			LoginSID      string `json:"loginSid"`
 		} `json:"sessions"`
-		QuotaId string `json:"quotaId"`
-		SmsCode string `json:"smsCode"`
+		QuotaId    string `json:"quotaId"`
+		SmsCode    string `json:"smsCode"`
+		RetryCount int    `json:"retryCount"`
 	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
@@ -988,6 +989,13 @@ func (c *PortalController) KuwoWithdraw() {
 		c.ServeJSON()
 		return
 	}
+	retryCount := req.RetryCount
+	if retryCount < 1 {
+		retryCount = 1
+	}
+	if retryCount > 5 {
+		retryCount = 5
+	}
 
 	sessions := make([]*models.KuwoSession, 0, len(req.Sessions))
 	for _, s := range req.Sessions {
@@ -999,7 +1007,7 @@ func (c *PortalController) KuwoWithdraw() {
 		})
 	}
 
-	results := models.KuwoConcurrentWithdraw(sessions, quotaId, smsCode)
+	results := models.KuwoConcurrentWithdrawRetry(sessions, quotaId, smsCode, retryCount)
 
 	type withdrawResult struct {
 		Phone   string `json:"phone"`

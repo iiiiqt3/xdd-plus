@@ -4233,10 +4233,10 @@ function kuwoRunCountdown(info, phone, password, smsCode, quotaId) {
             return;
         }
 
-        // 到点了（3秒内）
-        if (currentMs - targetMs < 3000) {
+        // 到点了（500ms内）
+        if (currentMs - targetMs < 500) {
             countdownEl.textContent = '🚀 正在抢兑 ' + targetLabel + '...';
-            kuwoLog('⏰ 到达抢兑时间 ' + targetLabel + '，开始执行...');
+            kuwoLog('⏰ 到达抢兑时间 ' + targetLabel + '，开始执行（3次并发）...');
             kuwoStopTimer();
             kuwoExecuteWithdraw(phone, password, smsCode, quotaId);
             return;
@@ -4244,7 +4244,7 @@ function kuwoRunCountdown(info, phone, password, smsCode, quotaId) {
 
         countdownEl.textContent = '✅ 抢兑已完成';
         kuwoStopTimer();
-    }, 200);
+    }, 100);
 }
 
 function kuwoStopTimer() {
@@ -4271,11 +4271,11 @@ async function kuwoExecuteWithdraw(phone, password, smsCode, quotaId) {
         }
     }
 
-    kuwoLog('提交提现，档位: ' + quotaId);
+    kuwoLog('提交提现，档位: ' + quotaId + '，并发次数: 3');
     try {
         const data = await request('/api/portal/kuwo/withdraw', {
             method: 'POST',
-            body: JSON.stringify({ sessions: [kuwoSessionData], quotaId, smsCode })
+            body: JSON.stringify({ sessions: [kuwoSessionData], quotaId, smsCode, retryCount: 3 })
         });
         if (data.code === 0 && data.data) {
             for (const r of data.data) {

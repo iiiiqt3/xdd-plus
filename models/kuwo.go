@@ -394,6 +394,66 @@ func KuwoConcurrentWithdraw(sessions []*KuwoSession, quotaId, smsCode string) []
 	return results
 }
 
+// KuwoConcurrentWithdrawRetry 并发抢兑，每个session发retryCount次请求，取第一次成功的结果
+func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode string, retryCount int) []KuwoWithdrawResult {
+	if retryCount < 1 {
+		retryCount = 1
+	}
+	results := make([]KuwoWithdrawResult, len(sessions))
+	var wg sync.WaitGroup
+
+	for i, sess := range sessions {
+		wg.Add(1)
+		go func(idx int, s *KuwoSession) {
+			defer wg.Done()
+			// 用 channel 收集结果，取第一个成功的
+			type attemptResult struct {
+				msg string
+				err error
+			}
+			ch := make(chan attemptResult, retryCount)
+
+			for t := 0; t < retryCount; t++ {
+				go func(attempt int) {
+					msg, err := KuwoExecuteWithdraw(s, quotaId, smsCode)
+					ch <- attemptResult{msg: msg, err: err}
+				}(t)
+			}
+
+			// 取第一个成功的结果，或最后一个失败结果
+			var lastResult attemptResult
+			successFound := false
+			for t := 0; t < retryCount; t++ {
+				r := <-ch
+				if r.err == nil && !successFound {
+					results[idx] = KuwoWithdrawResult{
+						UID:     s.LoginUid,
+						Phone:   s.Phone,
+						Success: true,
+						Message: r.msg,
+					}
+					fmt.Printf("[kuwo] withdraw uid=%s success (attempt %d): %s\n", s.LoginUid, t+1, r.msg)
+					successFound = true
+				}
+				lastResult = r
+			}
+			if !successFound {
+				results[idx] = KuwoWithdrawResult{
+					UID:     s.LoginUid,
+					Phone:   s.Phone,
+					Success: false,
+					Message: lastResult.msg,
+					Error:   lastResult.err,
+				}
+				fmt.Printf("[kuwo] withdraw uid=%s failed after %d attempts: %v\n", s.LoginUid, retryCount, lastResult.err)
+			}
+		}(i, sess)
+	}
+
+	wg.Wait()
+	return results
+}
+
 // ---------- convenience ----------
 
 // KuwoGetQuotaID returns the quota ID for the given amount string ("1","3","5","10","30").
@@ -440,40 +500,47 @@ func KuwoFormatQuotaDisplay() string {
 	return strings.Join(parts, ", ")
 }
 
-// GetKuwoCredentials 从用户的KWYY活动项目中读取酷我账号密码
+// GetKuwoCredentials 从用户的KWYY活动项目中读取酷我账号密码（直接查数据库，不过滤）
 func GetKuwoCredentials(userNumber int) (phone, password string, err error) {
-	projects, err := GetPortalProjects(userNumber)
+	projects, err := GetActivityProjectsByUserAndEnv(userNumber, "KWYY", "KWYY")
 	if err != nil {
 		return "", "", err
 	}
-	for _, p := range projects {
-		if p.ActivityID == "KWYY" && p.EnvValue != "" {
-			parts := strings.SplitN(p.EnvValue, "#", 2)
-			if len(parts) == 2 {
-				return parts[0], parts[1], nil
-			}
-			return p.EnvValue, "", nil
-		}
+	if len(projects) == 0 {
+		return "", "", fmt.Errorf("未找到酷我音乐活动配置")
 	}
-	return "", "", fmt.Errorf("未找到酷我音乐活动配置")
+	envValue := projects[0].EnvValue
+	if envValue == "" {
+		return "", "", fmt.Errorf("酷我音乐活动账号数据为空")
+	}
+	parts := strings.SplitN(envValue, "#", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1], nil
+	}
+	return envValue, "", nil
 }
 
-// CheckKuwoAuth 检查当前用户是否有酷我音乐(KWYY)活动授权
+// CheckKuwoAuth 检查当前用户是否有酷我音乐(KWYY)活动授权（直接查数据库）
 func CheckKuwoAuth(userNumber int) (bool, string) {
-	projects, err := GetPortalProjects(userNumber)
+	projects, err := GetActivityProjectsByUserAndEnv(userNumber, "KWYY", "KWYY")
 	if err != nil || len(projects) == 0 {
-		return false, "您还没有上车任何活动，请先前往「项目中心」上车酷我音乐活动"
+		return false, "您还没有上车酷我音乐活动，请先前往「项目中心」上车"
 	}
 
+	// 检查是否过期
+	now := time.Now()
 	for _, p := range projects {
-		if p.ActivityID == "KWYY" {
-			if p.BizStatus == "expired" {
-				return false, "您的酷我音乐活动授权已到期，请前往「项目中心」续费"
+		if p.ExpireDate != "" {
+			expireTime, err := time.Parse("2006-01-02", p.ExpireDate)
+			if err == nil {
+				expireThreshold := time.Date(expireTime.Year(), expireTime.Month(), expireTime.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+				if now.After(expireThreshold) {
+					return false, "您的酷我音乐活动授权已到期，请前往「项目中心」续费"
+				}
 			}
-			return true, ""
 		}
 	}
-	return false, "您还没有上车酷我音乐活动，请先前往「项目中心」上车"
+	return true, ""
 }
 
 func init() {
