@@ -440,6 +440,26 @@ func KuwoFormatQuotaDisplay() string {
 	return strings.Join(parts, ", ")
 }
 
+// CheckKuwoAuth 检查当前用户是否有酷我活动授权（至少有一个未过期的活动项目）
+func CheckKuwoAuth(userNumber int) (bool, string) {
+	projects, err := GetPortalProjects(userNumber)
+	if err != nil || len(projects) == 0 {
+		return false, "您还没有挂上任何项目，请先前往「项目中心」上车活动"
+	}
+
+	hasActive := false
+	for _, p := range projects {
+		if p.BizStatus == "active" {
+			hasActive = true
+			break
+		}
+	}
+	if !hasActive {
+		return false, "您的活动授权已全部到期，请前往「项目中心」续费后再使用酷我提现功能"
+	}
+	return true, ""
+}
+
 func init() {
 	fmt.Printf("[kuwo] module loaded, available quotas: %s\n", KuwoFormatQuotaDisplay())
 }

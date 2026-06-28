@@ -845,6 +845,19 @@ func (c *PortalController) JdTaskStop() {
 	c.ServeJSON()
 }
 
+// KuwoCheckAuth 检查用户是否有酷我活动授权
+func (c *PortalController) KuwoCheckAuth() {
+	profile, err := models.GetPortalProfile(c.getAccountID())
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 0, "authorized": false, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	authorized, msg := models.CheckKuwoAuth(profile.User.Number)
+	c.Data["json"] = map[string]interface{}{"code": 1, "authorized": authorized, "msg": msg}
+	c.ServeJSON()
+}
+
 // KuwoLogin 酷我账号登录，获取loginUid和loginSid
 func (c *PortalController) KuwoLogin() {
 	var req struct {

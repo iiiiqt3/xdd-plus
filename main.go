@@ -246,6 +246,7 @@ func main() {
 	web.Router("/api/portal/jd/task/logs", &controllers.PortalController{}, "get:JdTaskLogs")
 	web.Router("/api/portal/jd/task/stop", &controllers.PortalController{}, "post:JdTaskStop")
 	// ===================== 酷我提现 API =====================
+	web.Router("/api/portal/kuwo/check-auth", &controllers.PortalController{}, "get:KuwoCheckAuth")
 	web.Router("/api/portal/kuwo/login", &controllers.PortalController{}, "post:KuwoLogin")
 	web.Router("/api/portal/kuwo/send-sms", &controllers.PortalController{}, "post:KuwoSendSms")
 	web.Router("/api/portal/kuwo/withdraw", &controllers.PortalController{}, "post:KuwoWithdraw")
