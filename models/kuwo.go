@@ -282,13 +282,15 @@ func KuwoSendSms(session *KuwoSession) error {
 	params.Set("loginSid", session.LoginSid)
 	params.Set("mobile", session.EncryptedPhone)
 
-	req, err := http.NewRequest("POST", kuwoSmsURL, strings.NewReader(params.Encode()))
+	reqURL := kuwoSmsURL + "?" + params.Encode()
+	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("User-Agent", kuwoUserAgent)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Referer", "https://www.kuwo.cn/")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("Origin", "https://h5app.kuwo.cn")
+	req.Header.Set("Referer", "https://h5app.kuwo.cn/apps/earning-sign/cash_out.html")
 
 	body, _, err := kuwoDoRequest(req)
 	if err != nil {
@@ -296,13 +298,13 @@ func KuwoSendSms(session *KuwoSession) error {
 	}
 
 	var resp struct {
-		Status int    `json:"status"`
-		Msg    string `json:"msg"`
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return fmt.Errorf("parse sms response: %w", err)
 	}
-	if resp.Status != 200 {
+	if resp.Code != 200 {
 		return fmt.Errorf("send sms failed: %s", resp.Msg)
 	}
 	return nil
@@ -313,20 +315,26 @@ func KuwoSendSms(session *KuwoSession) error {
 // KuwoExecuteWithdraw executes a single withdrawal request.
 func KuwoExecuteWithdraw(session *KuwoSession, quotaId, smsCode string) (string, error) {
 	params := url.Values{}
+	params.Set("encry", "")
+	params.Set("type", "")
+	params.Set("quotaId", quotaId)
 	params.Set("loginUid", session.LoginUid)
 	params.Set("loginSid", session.LoginSid)
-	params.Set("phone", session.EncryptedPhone)
-	params.Set("quotaId", quotaId)
-	params.Set("code", smsCode)
 	params.Set("appuid", kuwoRandomAppUID())
+	params.Set("source", "kwplayer_ar_12.1.4.0_40.apk")
+	params.Set("version", "1")
+	params.Set("phone", session.EncryptedPhone)
+	params.Set("code", smsCode)
 
-	req, err := http.NewRequest("POST", kuwoWithdrawURL, strings.NewReader(params.Encode()))
+	reqURL := kuwoWithdrawURL + "?" + params.Encode()
+	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("User-Agent", kuwoUserAgent)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Referer", "https://www.kuwo.cn/")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("Origin", "https://h5app.kuwo.cn")
+	req.Header.Set("Referer", "https://h5app.kuwo.cn/apps/earning-sign/cash_out.html")
 
 	body, _, err := kuwoDoRequest(req)
 	if err != nil {
@@ -334,25 +342,25 @@ func KuwoExecuteWithdraw(session *KuwoSession, quotaId, smsCode string) (string,
 	}
 
 	var resp struct {
-		Status int    `json:"status"`
-		Msg    string `json:"msg"`
-		Data   struct {
-			Msg string `json:"msg"`
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+		Data struct {
+			Text string `json:"text"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return "", fmt.Errorf("parse withdraw response: %w", err)
 	}
 
-	msg := resp.Msg
-	if resp.Data.Msg != "" {
-		msg = resp.Data.Msg
+	text := resp.Data.Text
+	if text == "" {
+		text = resp.Msg
 	}
 
-	if resp.Status == 200 {
-		return msg, nil
+	if strings.Contains(text, "提现成功") || strings.Contains(text, "提现申请发起成功") {
+		return text, nil
 	}
-	return msg, fmt.Errorf("withdraw failed: %s", msg)
+	return text, fmt.Errorf("withdraw failed: %s", text)
 }
 
 // ---------- concurrent ----------
