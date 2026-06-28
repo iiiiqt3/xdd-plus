@@ -255,7 +255,7 @@ func KuwoLogin(phone, password string) (*KuwoSession, error) {
 
 		fmt.Printf("[kuwo] login response: code=%d msg=%s\n", resp.Code, resp.Msg)
 
-		uid := fmt.Sprintf("%v", resp.Data.Cookies.Userid)
+		uid := fmt.Sprintf("%.0f", resp.Data.Cookies.Userid)
 		sid := fmt.Sprintf("%v", resp.Data.Cookies.Websid)
 		if resp.Code == 200 && uid != "" && uid != "<nil>" && sid != "" && sid != "<nil>" {
 			return &KuwoSession{
