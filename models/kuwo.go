@@ -440,24 +440,22 @@ func KuwoFormatQuotaDisplay() string {
 	return strings.Join(parts, ", ")
 }
 
-// CheckKuwoAuth 检查当前用户是否有酷我活动授权（至少有一个未过期的活动项目）
+// CheckKuwoAuth 检查当前用户是否有酷我音乐(KWYY)活动授权
 func CheckKuwoAuth(userNumber int) (bool, string) {
 	projects, err := GetPortalProjects(userNumber)
 	if err != nil || len(projects) == 0 {
-		return false, "您还没有挂上任何项目，请先前往「项目中心」上车活动"
+		return false, "您还没有上车任何活动，请先前往「项目中心」上车酷我音乐活动"
 	}
 
-	hasActive := false
 	for _, p := range projects {
-		if p.BizStatus == "active" {
-			hasActive = true
-			break
+		if p.ActivityID == "KWYY" {
+			if p.BizStatus == "expired" {
+				return false, "您的酷我音乐活动授权已到期，请前往「项目中心」续费"
+			}
+			return true, ""
 		}
 	}
-	if !hasActive {
-		return false, "您的活动授权已全部到期，请前往「项目中心」续费后再使用酷我提现功能"
-	}
-	return true, ""
+	return false, "您还没有上车酷我音乐活动，请先前往「项目中心」上车"
 }
 
 func init() {
