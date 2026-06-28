@@ -1401,8 +1401,7 @@
 
                     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                         <button onclick="kuwoStartWithdraw()" id="kuwoWithdrawBtn" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:14px;font-weight:700;cursor:pointer;">开始抢兑</button>
-                        <button onclick="kuwoStopTimer()" id="kuwoStopBtn" style="padding:10px 24px;border:none;border-radius:10px;background:#ef4444;color:white;font-size:14px;font-weight:700;cursor:pointer;display:none;">停止</button>
-                        <span id="kuwoCountdown" style="font-size:14px;color:var(--primary);font-weight:700;font-variant-numeric:tabular-nums;"></span>
+                        <div id="kuwoCountdown" style="display:none;padding:10px 24px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:white;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;"></div>
                     </div>
                 </div>
 
@@ -4199,16 +4198,19 @@ function kuwoStartWithdraw() {
 
     const info = kuwoGetNextWithdrawInfo();
 
-    // 在4分钟窗口内且还没到点 → 倒计时
+    // 在4分钟窗口内且还没到点 → 进入自动抢兑模式
     if (info.inWindow && info.diffMin > 0) {
-        kuwoLog('当前在 ' + String(info.hour).padStart(2,'0') + ':00 抢兑窗口内，启动倒计时...');
+        kuwoLog('🎯 进入自动抢兑模式，' + String(info.hour).padStart(2,'0') + ':00 准时执行');
+        kuwoLog('⏳ 倒计时期间无需操作，程序将自动执行');
+        // 隐藏按钮，显示倒计时，禁用输入
         document.getElementById('kuwoWithdrawBtn').style.display = 'none';
-        document.getElementById('kuwoStopBtn').style.display = '';
+        document.getElementById('kuwoCountdown').style.display = '';
+        document.querySelectorAll('#kuwoPhone, #kuwoPassword, #kuwoSmsCode').forEach(el => el.disabled = true);
         kuwoRunCountdown(info, phone, password, smsCode, quotaId);
         return;
     }
 
-    // 直接执行
+    // 非抢兑窗口 → 直接执行
     kuwoLog('直接执行提现...');
     kuwoExecuteWithdraw(phone, password, smsCode, quotaId);
 }
@@ -4220,7 +4222,7 @@ function kuwoRunCountdown(info, phone, password, smsCode, quotaId) {
     const targetHour = info.hour;
     const targetLabel = String(targetHour).padStart(2,'0') + ':00';
 
-    // 预热连接：提前建立HTTP连接，减少到点时的握手延迟
+    // 预热连接
     let warmupDone = false;
     async function warmupConnection() {
         if (warmupDone) return;
@@ -4231,7 +4233,7 @@ function kuwoRunCountdown(info, phone, password, smsCode, quotaId) {
         } catch (e) { /* 忽略 */ }
     }
     warmupConnection();
-    const warmupInterval = setInterval(warmupConnection, 30000); // 每30秒刷新一次
+    const warmupInterval = setInterval(warmupConnection, 30000);
 
     kuwoTimerInterval = setInterval(() => {
         const bj = kuwoGetBeijingTime();
@@ -4242,7 +4244,7 @@ function kuwoRunCountdown(info, phone, password, smsCode, quotaId) {
             const remaining = targetMs - currentMs;
             const rMin = Math.floor(remaining / 60000);
             const rSec = Math.floor((remaining % 60000) / 1000);
-            countdownEl.textContent = '⏳ ' + targetLabel + ' 抢兑 — 剩余 ' + rMin + '分' + rSec + '秒';
+            countdownEl.textContent = '⏳ ' + targetLabel + ' 自动抢兑 — 剩余 ' + rMin + '分' + rSec + '秒';
             return;
         }
 
@@ -4250,23 +4252,16 @@ function kuwoRunCountdown(info, phone, password, smsCode, quotaId) {
         if (currentMs - targetMs < 500) {
             clearInterval(warmupInterval);
             countdownEl.textContent = '🚀 正在抢兑 ' + targetLabel + '...';
-            kuwoLog('⏰ 到达抢兑时间 ' + targetLabel + '，开始执行（3次错峰并发）...');
-            kuwoStopTimer();
+            kuwoLog('⏰ 到达抢兑时间 ' + targetLabel + '，自动执行中...');
+            if (kuwoTimerInterval) { clearInterval(kuwoTimerInterval); kuwoTimerInterval = null; }
             kuwoExecuteWithdraw(phone, password, smsCode, quotaId);
             return;
         }
 
         clearInterval(warmupInterval);
         countdownEl.textContent = '✅ 抢兑已完成';
-        kuwoStopTimer();
+        if (kuwoTimerInterval) { clearInterval(kuwoTimerInterval); kuwoTimerInterval = null; }
     }, 100);
-}
-
-function kuwoStopTimer() {
-    if (kuwoTimerInterval) { clearInterval(kuwoTimerInterval); kuwoTimerInterval = null; }
-    document.getElementById('kuwoWithdrawBtn').style.display = '';
-    document.getElementById('kuwoStopBtn').style.display = 'none';
-    document.getElementById('kuwoCountdown').textContent = '';
 }
 
 async function kuwoExecuteWithdraw(phone, password, smsCode, quotaId) {
@@ -4304,6 +4299,11 @@ async function kuwoExecuteWithdraw(phone, password, smsCode, quotaId) {
         kuwoLog('网络错误: ' + err.message);
         toast(err.message, 'error');
     }
+    // 恢复UI：显示按钮，隐藏倒计时，启用输入
+    document.getElementById('kuwoWithdrawBtn').style.display = '';
+    document.getElementById('kuwoCountdown').style.display = 'none';
+    document.getElementById('kuwoCountdown').textContent = '';
+    document.querySelectorAll('#kuwoPhone, #kuwoPassword, #kuwoSmsCode').forEach(el => el.disabled = false);
 }
 
 initialLoad();
