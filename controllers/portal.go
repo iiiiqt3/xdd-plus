@@ -844,3 +844,151 @@ func (c *PortalController) JdTaskStop() {
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "已发送停止指令"}
 	c.ServeJSON()
 }
+
+// KuwoLogin 酷我账号登录，获取loginUid和loginSid
+func (c *PortalController) KuwoLogin() {
+	var req struct {
+		Phone    string `json:"phone"`
+		Password string `json:"password"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	phone := strings.TrimSpace(req.Phone)
+	password := strings.TrimSpace(req.Password)
+	if phone == "" || password == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "手机号和密码不能为空"}
+		c.ServeJSON()
+		return
+	}
+	session, err := models.KuwoLogin(phone, password)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  "登录成功",
+		"data": map[string]string{
+			"phone":         session.Phone,
+			"encryptedPhone": session.EncryptedPhone,
+			"loginUid":      session.LoginUID,
+			"loginSid":      session.LoginSID,
+		},
+	}
+	c.ServeJSON()
+}
+
+// KuwoSendSms 发送酷我提现短信验证码
+func (c *PortalController) KuwoSendSms() {
+	var req struct {
+		Phone    string `json:"phone"`
+		Password string `json:"password"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	phone := strings.TrimSpace(req.Phone)
+	password := strings.TrimSpace(req.Password)
+	if phone == "" || password == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "手机号和密码不能为空"}
+		c.ServeJSON()
+		return
+	}
+	session, err := models.KuwoLogin(phone, password)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	if err := models.KuwoSendSms(session); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  "验证码已发送",
+		"data": map[string]string{
+			"phone":         session.Phone,
+			"encryptedPhone": session.EncryptedPhone,
+			"loginUid":      session.LoginUID,
+			"loginSid":      session.LoginSID,
+		},
+	}
+	c.ServeJSON()
+}
+
+// KuwoWithdraw 酷我提现（支持并发）
+func (c *PortalController) KuwoWithdraw() {
+	var req struct {
+		Sessions []struct {
+			Phone         string `json:"phone"`
+			Password      string `json:"password"`
+			EncryptedPhone string `json:"encryptedPhone"`
+			LoginUID      string `json:"loginUid"`
+			LoginSID      string `json:"loginSid"`
+		} `json:"sessions"`
+		QuotaId string `json:"quotaId"`
+		SmsCode string `json:"smsCode"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	if len(req.Sessions) == 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "没有可提现的账号"}
+		c.ServeJSON()
+		return
+	}
+	quotaId := strings.TrimSpace(req.QuotaId)
+	smsCode := strings.TrimSpace(req.SmsCode)
+	if quotaId == "" {
+		quotaId = "30002"
+	}
+	if smsCode == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "验证码不能为空"}
+		c.ServeJSON()
+		return
+	}
+
+	sessions := make([]*models.KuwoSession, 0, len(req.Sessions))
+	for _, s := range req.Sessions {
+		sessions = append(sessions, &models.KuwoSession{
+			Phone:          s.Phone,
+			EncryptedPhone: s.EncryptedPhone,
+			LoginUid:       s.LoginUID,
+			LoginSid:       s.LoginSID,
+		})
+	}
+
+	results := models.KuwoConcurrentWithdraw(sessions, quotaId, smsCode)
+
+	type withdrawResult struct {
+		Phone   string `json:"phone"`
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+		Error   string `json:"error,omitempty"`
+	}
+	resultList := make([]withdrawResult, 0, len(results))
+	for _, r := range results {
+		errMsg := ""
+		if r.Error != nil {
+			errMsg = r.Error.Error()
+		}
+		resultList = append(resultList, withdrawResult{
+			Phone:   r.Phone,
+			Success: r.Success,
+			Message: r.Message,
+			Error:   errMsg,
+		})
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": resultList}
+	c.ServeJSON()
+}

@@ -245,6 +245,10 @@ func main() {
 	web.Router("/api/portal/jd/task/execute", &controllers.PortalController{}, "post:JdTaskExecute")
 	web.Router("/api/portal/jd/task/logs", &controllers.PortalController{}, "get:JdTaskLogs")
 	web.Router("/api/portal/jd/task/stop", &controllers.PortalController{}, "post:JdTaskStop")
+	// ===================== 酷我提现 API =====================
+	web.Router("/api/portal/kuwo/login", &controllers.PortalController{}, "post:KuwoLogin")
+	web.Router("/api/portal/kuwo/send-sms", &controllers.PortalController{}, "post:KuwoSendSms")
+	web.Router("/api/portal/kuwo/withdraw", &controllers.PortalController{}, "post:KuwoWithdraw")
 	// 管理员登录页面
 	web.Get("/admin/login", func(ctx *context.Context) {
 		file, err := vweb.ReadFile("html/admin_login.html")
