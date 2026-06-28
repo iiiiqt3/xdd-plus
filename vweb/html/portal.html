@@ -1335,15 +1335,18 @@
 
                 <!-- 账号配置 -->
                 <div class="card" style="margin-bottom:20px;">
-                    <h4 style="margin:0 0 14px;font-size:14px;color:var(--text);">账号配置</h4>
+                    <h4 style="margin:0 0 6px;font-size:14px;color:var(--text);">账号配置</h4>
+                    <div style="padding:8px 12px;border-radius:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.12);font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.6;">
+                        账号密码自动读取自您上车的<b>「酷我音乐」</b>活动中填写的信息，如需修改请前往「项目中心」更新。
+                    </div>
                     <div class="form-grid">
                         <div>
                             <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">手机号</label>
-                            <input type="text" id="kuwoPhone" placeholder="酷我账号手机号" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;" />
+                            <input type="text" id="kuwoPhone" readonly placeholder="自动读取中..." style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(128,128,128,0.06);color:var(--text-muted);font-size:14px;outline:none;cursor:not-allowed;" />
                         </div>
                         <div>
                             <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">密码</label>
-                            <input type="password" id="kuwoPassword" placeholder="酷我账号密码" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;" />
+                            <input type="password" id="kuwoPassword" readonly placeholder="自动读取中..." style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(128,128,128,0.06);color:var(--text-muted);font-size:14px;outline:none;cursor:not-allowed;" />
                         </div>
                     </div>
                     <div class="form-grid" style="margin-top:12px;">
