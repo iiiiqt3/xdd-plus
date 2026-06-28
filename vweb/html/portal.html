@@ -4286,11 +4286,11 @@ async function kuwoExecuteWithdraw(phone, password, smsCode, quotaId) {
         }
     }
 
-    kuwoLog('提交提现，档位: ' + quotaId + '，并发次数: 3');
+    kuwoLog('提交提现，档位: ' + quotaId);
     try {
         const data = await request('/api/portal/kuwo/withdraw', {
             method: 'POST',
-            body: JSON.stringify({ sessions: [kuwoSessionData], quotaId, smsCode, retryCount: 3 })
+            body: JSON.stringify({ sessions: [kuwoSessionData], quotaId, smsCode, retryCount: 1 })
         });
         if (data.code === 0 && data.data) {
             for (const r of data.data) {
