@@ -244,8 +244,8 @@ func KuwoLogin(phone, password string) (*KuwoSession, error) {
 			Msg  string `json:"msg"`
 			Data struct {
 				Cookies struct {
-					Websid string `json:"websid"`
-					Userid string `json:"userid"`
+					Websid interface{} `json:"websid"`
+					Userid interface{} `json:"userid"`
 				} `json:"cookies"`
 			} `json:"data"`
 		}
@@ -255,10 +255,12 @@ func KuwoLogin(phone, password string) (*KuwoSession, error) {
 
 		fmt.Printf("[kuwo] login response: code=%d msg=%s\n", resp.Code, resp.Msg)
 
-		if resp.Code == 200 && resp.Data.Cookies.Websid != "" && resp.Data.Cookies.Userid != "" {
+		uid := fmt.Sprintf("%v", resp.Data.Cookies.Userid)
+		sid := fmt.Sprintf("%v", resp.Data.Cookies.Websid)
+		if resp.Code == 200 && uid != "" && uid != "<nil>" && sid != "" && sid != "<nil>" {
 			return &KuwoSession{
-				LoginUid:       resp.Data.Cookies.Userid,
-				LoginSid:       resp.Data.Cookies.Websid,
+				LoginUid:       uid,
+				LoginSid:       sid,
 				Phone:          phone,
 				EncryptedPhone: encPhone,
 			}, nil
