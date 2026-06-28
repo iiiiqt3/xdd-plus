@@ -849,17 +849,17 @@ func (c *PortalController) JdTaskStop() {
 func (c *PortalController) KuwoGetCredentials() {
 	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
 	if err != nil {
-		c.Data["json"] = map[string]interface{}{"code": 0, "msg": err.Error()}
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
 	phone, password, err := models.GetKuwoCredentials(profile.User.Number)
 	if err != nil {
-		c.Data["json"] = map[string]interface{}{"code": 0, "msg": err.Error()}
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
-	c.Data["json"] = map[string]interface{}{"code": 1, "data": map[string]interface{}{"phone": phone, "password": password}}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": map[string]interface{}{"phone": phone, "password": password}}
 	c.ServeJSON()
 }
 
@@ -867,12 +867,12 @@ func (c *PortalController) KuwoGetCredentials() {
 func (c *PortalController) KuwoCheckAuth() {
 	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
 	if err != nil {
-		c.Data["json"] = map[string]interface{}{"code": 0, "authorized": false, "msg": err.Error()}
+		c.Data["json"] = map[string]interface{}{"code": 1, "authorized": false, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
 	authorized, msg := models.CheckKuwoAuth(profile.User.Number)
-	c.Data["json"] = map[string]interface{}{"code": 1, "authorized": authorized, "msg": msg}
+	c.Data["json"] = map[string]interface{}{"code": 0, "authorized": authorized, "msg": msg}
 	c.ServeJSON()
 }
 
