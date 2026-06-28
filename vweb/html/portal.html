@@ -1330,7 +1330,7 @@
             <div class="section">
                 <div class="section-header"><h3>🎵 酷我提现</h3><span class="muted">酷我音乐签到提现，支持并发抢兑</span></div>
 
-                <!-- 配置区域 -->
+                <!-- 账号配置 -->
                 <div class="card" style="margin-bottom:20px;">
                     <h4 style="margin:0 0 14px;font-size:14px;color:var(--text);">账号配置</h4>
                     <div class="form-grid">
@@ -1343,62 +1343,57 @@
                             <input type="password" id="kuwoPassword" placeholder="酷我账号密码" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;" />
                         </div>
                     </div>
-                    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
-                        <button onclick="kuwoSendSms()" id="kuwoSendSmsBtn" style="padding:10px 20px;border:none;border-radius:10px;background:#3b82f6;color:white;font-size:14px;font-weight:600;cursor:pointer;">发送验证码</button>
-                        <span id="kuwoSmsStatus" style="line-height:42px;font-size:13px;color:var(--text-muted);"></span>
+                    <div class="form-grid" style="margin-top:12px;">
+                        <div>
+                            <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">短信验证码</label>
+                            <input type="text" id="kuwoSmsCode" placeholder="输入短信验证码" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;" />
+                        </div>
+                        <div>
+                            <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">获取验证码</label>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <button onclick="kuwoSendSms()" id="kuwoSendSmsBtn" style="padding:10px 16px;border:none;border-radius:10px;background:#3b82f6;color:white;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">发送验证码</button>
+                                <span id="kuwoSmsStatus" style="font-size:12px;color:var(--text-muted);"></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 提现配置 -->
+                <!-- 提现设置 -->
                 <div class="card" style="margin-bottom:20px;">
                     <h4 style="margin:0 0 14px;font-size:14px;color:var(--text);">提现设置</h4>
-                    <div class="form-grid">
-                        <div>
-                            <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">抢兑档位</label>
-                            <select id="kuwoQuota" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;">
-                                <option value="60004">1元</option>
-                                <option value="30002">2元</option>
-                                <option value="60001">10元</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">验证码</label>
-                            <input type="text" id="kuwoSmsCode" placeholder="输入短信验证码" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;" />
+
+                    <!-- 抢兑档位（单选按钮） -->
+                    <div style="margin-bottom:14px;">
+                        <label class="muted" style="font-size:12px;margin-bottom:8px;display:block;">抢兑档位</label>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="kuwoQuotaGroup">
+                            <label class="kuwo-quota-opt" style="display:flex;align-items:center;gap:6px;padding:10px 18px;border:2px solid var(--glass-border);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text);background:var(--glass-bg);transition:all .15s;">
+                                <input type="radio" name="kuwoQuota" value="60004" checked style="accent-color:#6366f1;" /> 1元
+                            </label>
+                            <label class="kuwo-quota-opt" style="display:flex;align-items:center;gap:6px;padding:10px 18px;border:2px solid var(--glass-border);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text);background:var(--glass-bg);transition:all .15s;">
+                                <input type="radio" name="kuwoQuota" value="30002" style="accent-color:#6366f1;" /> 2元
+                            </label>
+                            <label class="kuwo-quota-opt" style="display:flex;align-items:center;gap:6px;padding:10px 18px;border:2px solid var(--glass-border);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text);background:var(--glass-bg);transition:all .15s;">
+                                <input type="radio" name="kuwoQuota" value="60001" style="accent-color:#6366f1;" /> 10元
+                            </label>
                         </div>
                     </div>
 
-                    <!-- 抢兑时间选择 -->
-                    <div style="margin-top:14px;">
-                        <label class="muted" style="font-size:12px;margin-bottom:8px;display:block;">抢兑时间（选择时段，到点自动提交）</label>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="kuwoTimeSlots">
-                            <label style="display:flex;align-items:center;gap:4px;padding:8px 14px;border:1px solid var(--glass-border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);background:var(--glass-bg);">
-                                <input type="checkbox" value="0" /> 00:00
-                            </label>
-                            <label style="display:flex;align-items:center;gap:4px;padding:8px 14px;border:1px solid var(--glass-border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);background:var(--glass-bg);">
-                                <input type="checkbox" value="9" /> 09:00
-                            </label>
-                            <label style="display:flex;align-items:center;gap:4px;padding:8px 14px;border:1px solid var(--glass-border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);background:var(--glass-bg);">
-                                <input type="checkbox" value="13" /> 13:00
-                            </label>
-                            <label style="display:flex;align-items:center;gap:4px;padding:8px 14px;border:1px solid var(--glass-border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);background:var(--glass-bg);">
-                                <input type="checkbox" value="17" /> 17:00
-                            </label>
-                            <label style="display:flex;align-items:center;gap:4px;padding:8px 14px;border:1px solid var(--glass-border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);background:var(--glass-bg);">
-                                <input type="checkbox" value="20" /> 20:00
-                            </label>
-                        </div>
+                    <!-- 当前北京时间 & 抢兑状态 -->
+                    <div id="kuwoTimeInfo" style="padding:12px 16px;border-radius:10px;background:var(--glass-bg);border:1px solid var(--glass-border);font-size:13px;line-height:1.8;color:var(--text);margin-bottom:14px;">
+                        <div>🕐 当前北京时间：<b id="kuwoNowTime">--:--:--</b></div>
+                        <div>⏰ 下次抢兑：<b id="kuwoNextTime">计算中...</b></div>
+                        <div id="kuwoTimeHint" style="color:var(--primary);font-weight:600;"></div>
                     </div>
 
                     <!-- 提示信息 -->
-                    <div style="margin-top:12px;padding:12px 16px;border-radius:10px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.15);font-size:12px;line-height:1.8;color:var(--text-muted);">
+                    <div style="padding:12px 16px;border-radius:10px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.15);font-size:12px;line-height:1.8;color:var(--text-muted);margin-bottom:14px;">
                         <div style="font-weight:700;color:var(--primary);margin-bottom:4px;">💡 抢兑说明</div>
                         <div>• 抢兑时段：<b>00:00、09:00、13:00、17:00、20:00</b></div>
                         <div>• 在抢兑时段<b>前4分钟内</b>点击开始，将自动<b>倒计时到点抢兑</b></div>
                         <div>• 在<b>非抢兑时段</b>点击开始，验证码将<b>直接提交抢兑</b></div>
-                        <div>• 建议提前填写好手机号、密码、验证码，选择好档位和时段</div>
                     </div>
 
-                    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                         <button onclick="kuwoStartWithdraw()" id="kuwoWithdrawBtn" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:14px;font-weight:700;cursor:pointer;">开始抢兑</button>
                         <button onclick="kuwoStopTimer()" id="kuwoStopBtn" style="padding:10px 24px;border:none;border-radius:10px;background:#ef4444;color:white;font-size:14px;font-weight:700;cursor:pointer;display:none;">停止</button>
                         <span id="kuwoCountdown" style="font-size:14px;color:var(--primary);font-weight:700;font-variant-numeric:tabular-nums;"></span>
@@ -4017,225 +4012,241 @@ async function jdWxContinueRisk() {
 }
 
 // ===================== 酷我提现 =====================
-let kuwoSessionData = null; // 保存登录后的session信息
+let kuwoSessionData = null;
 let kuwoTimerInterval = null;
+const KUWO_WITHDRAW_HOURS = [0, 9, 13, 17, 20];
 
 function kuwoLog(msg) {
     const el = document.getElementById('kuwoLogContent');
     if (!el) return;
     const now = new Date();
-    const ts = now.toLocaleTimeString('zh-CN', { hour12: false });
+    const ts = now.toLocaleTimeString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' });
     el.textContent += '[' + ts + '] ' + msg + '\n';
     el.scrollTop = el.scrollHeight;
 }
 
+// 获取北京时间信息
+function kuwoGetBeijingTime() {
+    const now = new Date();
+    const bjHour = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', hour: 'numeric', hour12: false }));
+    const bjMin = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', minute: 'numeric' }));
+    const bjSec = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', second: 'numeric' }));
+    return { hour: bjHour, min: bjMin, sec: bjSec, totalMs: (bjHour * 3600 + bjMin * 60 + bjSec) * 1000 };
+}
+
+// 计算下次抢兑时间（自动判断，无需用户选择）
+function kuwoGetNextWithdrawInfo() {
+    const { hour, min, totalMs } = kuwoGetBeijingTime();
+    const currentMin = hour * 60 + min;
+
+    for (const h of KUWO_WITHDRAW_HOURS) {
+        const targetMin = h * 60;
+        const diffMin = targetMin - currentMin;
+
+        // 在前4分钟窗口内 → 可以等待倒计时
+        if (diffMin > 0 && diffMin <= 4 * 60) {
+            return { hour: h, inWindow: true, diffMin, diffMs: diffMin * 60 * 1000 };
+        }
+        // 到点了（0-3秒内）→ 立即执行
+        if (diffMin === 0) {
+            return { hour: h, inWindow: true, diffMin: 0, diffMs: 0 };
+        }
+    }
+
+    // 找下一个时段
+    for (const h of KUWO_WITHDRAW_HOURS) {
+        if (h * 60 > currentMin) {
+            return { hour: h, inWindow: false, diffMin: h * 60 - currentMin, diffMs: (h * 60 - currentMin) * 60 * 1000 };
+        }
+    }
+    // 明天第一个
+    const nextDayMin = (24 * 60 - currentMin) + KUWO_WITHDRAW_HOURS[0] * 60;
+    return { hour: KUWO_WITHDRAW_HOURS[0], inWindow: false, diffMin: nextDayMin, diffMs: nextDayMin * 60 * 1000 };
+}
+
+// 更新时间显示
+function kuwoUpdateTimeDisplay() {
+    const nowEl = document.getElementById('kuwoNowTime');
+    const nextEl = document.getElementById('kuwoNextTime');
+    const hintEl = document.getElementById('kuwoTimeHint');
+    if (!nowEl || !nextEl || !hintEl) return;
+
+    const bj = kuwoGetBeijingTime();
+    nowEl.textContent = String(bj.hour).padStart(2,'0') + ':' + String(bj.min).padStart(2,'0') + ':' + String(bj.sec).padStart(2,'0');
+
+    const info = kuwoGetNextWithdrawInfo();
+    const nextLabel = String(info.hour).padStart(2,'0') + ':00';
+
+    if (info.inWindow && info.diffMin > 0) {
+        nextEl.textContent = nextLabel + '（' + info.diffMin + '分钟后）';
+        hintEl.textContent = '✅ 可点击【开始抢兑】自动倒计时到点提交';
+        hintEl.style.color = '#10b981';
+    } else if (info.inWindow && info.diffMin === 0) {
+        nextEl.textContent = nextLabel + '（当前时段）';
+        hintEl.textContent = '🚀 当前为抢兑时段，点击可直接提交';
+        hintEl.style.color = '#ef4444';
+    } else {
+        nextEl.textContent = nextLabel + '（还有' + info.diffMin + '分钟）';
+        hintEl.textContent = '💡 点击【开始抢兑】将直接提交（非倒计时）';
+        hintEl.style.color = 'var(--primary)';
+    }
+}
+
+// 启动时间显示更新
+setInterval(kuwoUpdateTimeDisplay, 1000);
+setTimeout(kuwoUpdateTimeDisplay, 500);
+
+// 单选按钮高亮
+document.querySelectorAll('input[name="kuwoQuota"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        document.querySelectorAll('.kuwo-quota-opt').forEach(label => {
+            label.style.borderColor = label.querySelector('input').checked ? '#6366f1' : 'var(--glass-border)';
+            label.style.background = label.querySelector('input').checked ? 'rgba(99,102,241,0.08)' : 'var(--glass-bg)';
+        });
+    });
+});
+setTimeout(() => {
+    const checked = document.querySelector('input[name="kuwoQuota"]:checked');
+    if (checked) checked.dispatchEvent(new Event('change'));
+}, 100);
+
 async function kuwoSendSms() {
     const phone = document.getElementById('kuwoPhone').value.trim();
     const password = document.getElementById('kuwoPassword').value.trim();
-    if (!phone || !password) {
-        toast('请填写手机号和密码', 'error');
-        return;
-    }
+    if (!phone || !password) { toast('请填写手机号和密码', 'error'); return; }
     const btn = document.getElementById('kuwoSendSmsBtn');
     const status = document.getElementById('kuwoSmsStatus');
     btn.disabled = true;
     btn.textContent = '发送中...';
     status.textContent = '正在登录并发送验证码...';
+    status.style.color = '';
     kuwoLog('正在登录酷我账号...');
     try {
-        const resp = await apiFetch('/api/portal/kuwo/send-sms', {
+        const data = await request('/api/portal/kuwo/send-sms', {
             method: 'POST',
             body: JSON.stringify({ phone, password })
         });
-        const data = await resp.json();
-        if (data.code === 0) {
-            kuwoSessionData = data.data;
-            status.textContent = '✅ 验证码已发送至 ' + phone.substring(0, 3) + '****' + phone.substring(7);
-            status.style.color = '#10b981';
-            kuwoLog('验证码已发送，请输入验证码');
-            toast('验证码已发送');
-        } else {
-            status.textContent = '❌ ' + (data.msg || '发送失败');
-            status.style.color = '#ef4444';
-            kuwoLog('发送失败: ' + (data.msg || '未知错误'));
-            toast(data.msg || '发送失败', 'error');
-        }
+        kuwoSessionData = data.data;
+        status.textContent = '✅ 已发送至 ' + phone.substring(0, 3) + '****' + phone.substring(7);
+        status.style.color = '#10b981';
+        kuwoLog('验证码已发送，请输入验证码');
+        toast('验证码已发送');
     } catch (err) {
-        status.textContent = '❌ 网络错误';
+        status.textContent = '❌ ' + err.message;
         status.style.color = '#ef4444';
-        kuwoLog('网络错误: ' + err.message);
-        toast('网络错误', 'error');
+        kuwoLog('发送失败: ' + err.message);
+        toast(err.message, 'error');
     } finally {
         btn.disabled = false;
         btn.textContent = '发送验证码';
     }
 }
 
-function kuwoGetNextWithdrawTime() {
-    const now = new Date();
-    const hours = [0, 9, 13, 17, 20];
-    // 获取当前北京时间
-    const bjHour = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', hour: 'numeric', hour12: false }));
-    const bjMin = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', minute: 'numeric' }));
-    const bjSec = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', second: 'numeric' }));
-
-    // 找到最近的抢兑时间（需要提前4分钟获取验证码）
-    for (const h of hours) {
-        const targetMin = h * 60; // 目标时间的分钟数
-        const currentMin = bjHour * 60 + bjMin;
-        // 如果当前时间在目标时间前4分钟以内，且验证码已填写，可以等待
-        if (targetMin > currentMin && targetMin - currentMin <= 4 * 60) {
-            return { hour: h, minutesLeft: targetMin - currentMin, secondsLeft: (targetMin - currentMin) * 60 - bjSec };
-        }
-    }
-    // 找下一个可用时间
-    for (const h of hours) {
-        if (h * 60 > bjHour * 60 + bjMin) {
-            return { hour: h, minutesLeft: h * 60 - (bjHour * 60 + bjMin), secondsLeft: (h * 60 - bjHour * 60 - bjMin) * 60 - bjSec };
-        }
-    }
-    // 今天的都已经过了，返回明天第一个
-    return { hour: hours[0], minutesLeft: (24 * 60 - bjHour * 60 - bjMin) + hours[0] * 60, secondsLeft: ((24 * 60 - bjHour * 60 - bjMin) + hours[0] * 60) * 60 - bjSec };
+function kuwoGetSelectedQuota() {
+    const checked = document.querySelector('input[name="kuwoQuota"]:checked');
+    return checked ? checked.value : '60004';
 }
 
 function kuwoStartWithdraw() {
     const phone = document.getElementById('kuwoPhone').value.trim();
     const password = document.getElementById('kuwoPassword').value.trim();
     const smsCode = document.getElementById('kuwoSmsCode').value.trim();
-    const quotaId = document.getElementById('kuwoQuota').value;
+    const quotaId = kuwoGetSelectedQuota();
 
-    if (!phone || !password) {
-        toast('请填写手机号和密码', 'error');
-        return;
-    }
-    if (!smsCode) {
-        toast('请输入验证码', 'error');
-        return;
-    }
+    if (!phone || !password) { toast('请填写手机号和密码', 'error'); return; }
+    if (!smsCode) { toast('请输入验证码', 'error'); return; }
 
-    // 获取选中的抢兑时间
-    const checkedSlots = [];
-    document.querySelectorAll('#kuwoTimeSlots input[type="checkbox"]:checked').forEach(cb => {
-        checkedSlots.push(parseInt(cb.value));
-    });
+    const info = kuwoGetNextWithdrawInfo();
 
-    if (checkedSlots.length === 0) {
-        // 没有选择时间，直接执行
-        kuwoLog('未选择抢兑时间，直接执行提现...');
-        kuwoExecuteWithdraw(phone, password, smsCode, quotaId);
+    // 在4分钟窗口内且还没到点 → 倒计时
+    if (info.inWindow && info.diffMin > 0) {
+        kuwoLog('当前在 ' + String(info.hour).padStart(2,'0') + ':00 抢兑窗口内，启动倒计时...');
+        document.getElementById('kuwoWithdrawBtn').style.display = 'none';
+        document.getElementById('kuwoStopBtn').style.display = '';
+        kuwoRunCountdown(info, phone, password, smsCode, quotaId);
         return;
     }
 
-    // 启动倒计时
-    kuwoLog('已设置抢兑时间，等待倒计时...');
-    document.getElementById('kuwoWithdrawBtn').style.display = 'none';
-    document.getElementById('kuwoStopBtn').style.display = '';
-
-    kuwoRunCountdown(checkedSlots, phone, password, smsCode, quotaId);
+    // 直接执行
+    kuwoLog('直接执行提现...');
+    kuwoExecuteWithdraw(phone, password, smsCode, quotaId);
 }
 
-function kuwoRunCountdown(slots, phone, password, smsCode, quotaId) {
+function kuwoRunCountdown(info, phone, password, smsCode, quotaId) {
     const countdownEl = document.getElementById('kuwoCountdown');
-
     if (kuwoTimerInterval) clearInterval(kuwoTimerInterval);
 
+    const targetHour = info.hour;
+    const targetLabel = String(targetHour).padStart(2,'0') + ':00';
+
     kuwoTimerInterval = setInterval(() => {
-        const now = new Date();
-        const bjHour = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', hour: 'numeric', hour12: false }));
-        const bjMin = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', minute: 'numeric' }));
-        const bjSec = parseInt(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', second: 'numeric' }));
-        const bjMs = now.getMilliseconds();
+        const bj = kuwoGetBeijingTime();
+        const currentMs = bj.totalMs + new Date().getMilliseconds();
+        const targetMs = targetHour * 3600 * 1000;
 
-        // 检查是否在某个抢兑时间的4分钟窗口内
-        for (const h of slots) {
-            const targetMs = h * 3600 * 1000; // 目标时间的毫秒数
-            const currentMs = (bjHour * 3600 + bjMin * 60 + bjSec) * 1000 + bjMs;
-
-            if (targetMs > currentMs) {
-                const remaining = targetMs - currentMs;
-                const rMin = Math.floor(remaining / 60000);
-                const rSec = Math.floor((remaining % 60000) / 1000);
-                const rMs = remaining % 1000;
-                countdownEl.textContent = '⏳ 下次抢兑 ' + String(h).padStart(2, '0') + ':00 — 剩余 ' + rMin + '分' + rSec + '秒';
-                return;
-            }
-
-            // 到点了，立即执行
-            if (currentMs - targetMs < 3000) { // 3秒内
-                countdownEl.textContent = '🚀 正在抢兑 ' + String(h).padStart(2, '0') + ':00...';
-                kuwoLog('⏰ 到达抢兑时间 ' + String(h).padStart(2, '0') + ':00，开始并发执行...');
-                kuwoStopTimer();
-                kuwoExecuteWithdraw(phone, password, smsCode, quotaId);
-                return;
-            }
+        if (targetMs > currentMs) {
+            const remaining = targetMs - currentMs;
+            const rMin = Math.floor(remaining / 60000);
+            const rSec = Math.floor((remaining % 60000) / 1000);
+            countdownEl.textContent = '⏳ ' + targetLabel + ' 抢兑 — 剩余 ' + rMin + '分' + rSec + '秒';
+            return;
         }
 
-        // 所有时间都过了，显示明天
-        countdownEl.textContent = '已完成今日所有抢兑时段';
-    }, 100);
+        // 到点了（3秒内）
+        if (currentMs - targetMs < 3000) {
+            countdownEl.textContent = '🚀 正在抢兑 ' + targetLabel + '...';
+            kuwoLog('⏰ 到达抢兑时间 ' + targetLabel + '，开始执行...');
+            kuwoStopTimer();
+            kuwoExecuteWithdraw(phone, password, smsCode, quotaId);
+            return;
+        }
+
+        countdownEl.textContent = '✅ 抢兑已完成';
+        kuwoStopTimer();
+    }, 200);
 }
 
 function kuwoStopTimer() {
-    if (kuwoTimerInterval) {
-        clearInterval(kuwoTimerInterval);
-        kuwoTimerInterval = null;
-    }
+    if (kuwoTimerInterval) { clearInterval(kuwoTimerInterval); kuwoTimerInterval = null; }
     document.getElementById('kuwoWithdrawBtn').style.display = '';
     document.getElementById('kuwoStopBtn').style.display = 'none';
     document.getElementById('kuwoCountdown').textContent = '';
 }
 
 async function kuwoExecuteWithdraw(phone, password, smsCode, quotaId) {
-    // 如果没有session数据，先登录获取
     if (!kuwoSessionData || kuwoSessionData.phone !== phone) {
         kuwoLog('正在登录获取凭证...');
         try {
-            const resp = await apiFetch('/api/portal/kuwo/send-sms', {
+            const data = await request('/api/portal/kuwo/send-sms', {
                 method: 'POST',
                 body: JSON.stringify({ phone, password })
             });
-            const data = await resp.json();
-            if (data.code !== 0) {
-                kuwoLog('登录失败: ' + (data.msg || '未知错误'));
-                toast(data.msg || '登录失败', 'error');
-                return;
-            }
             kuwoSessionData = data.data;
-            kuwoLog('登录成功，等待验证码...');
+            kuwoLog('登录成功');
         } catch (err) {
-            kuwoLog('登录网络错误: ' + err.message);
-            toast('网络错误', 'error');
+            kuwoLog('登录失败: ' + err.message);
+            toast(err.message, 'error');
             return;
         }
     }
 
-    kuwoLog('开始并发提现，验证码: ' + smsCode + '，档位: ' + quotaId);
-
+    kuwoLog('提交提现，档位: ' + quotaId);
     try {
-        const resp = await apiFetch('/api/portal/kuwo/withdraw', {
+        const data = await request('/api/portal/kuwo/withdraw', {
             method: 'POST',
-            body: JSON.stringify({
-                sessions: [kuwoSessionData],
-                quotaId: quotaId,
-                smsCode: smsCode
-            })
+            body: JSON.stringify({ sessions: [kuwoSessionData], quotaId, smsCode })
         });
-        const data = await resp.json();
         if (data.code === 0 && data.data) {
             for (const r of data.data) {
-                if (r.success) {
-                    kuwoLog('✅ ' + r.phone + ' 提现成功: ' + r.message);
-                } else {
-                    kuwoLog('❌ ' + r.phone + ' 提现失败: ' + (r.error || r.message));
-                }
+                kuwoLog((r.success ? '✅ ' : '❌ ') + r.phone + ' ' + (r.message || r.error || ''));
             }
         } else {
-            kuwoLog('提现请求失败: ' + (data.msg || '未知错误'));
+            kuwoLog('提现失败: ' + (data.msg || '未知错误'));
             toast(data.msg || '提现失败', 'error');
         }
     } catch (err) {
-        kuwoLog('提现网络错误: ' + err.message);
-        toast('网络错误', 'error');
+        kuwoLog('网络错误: ' + err.message);
+        toast(err.message, 'error');
     }
 }
 
