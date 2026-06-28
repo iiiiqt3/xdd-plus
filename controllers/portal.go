@@ -875,8 +875,8 @@ func (c *PortalController) KuwoLogin() {
 		"data": map[string]string{
 			"phone":         session.Phone,
 			"encryptedPhone": session.EncryptedPhone,
-			"loginUid":      session.LoginUID,
-			"loginSid":      session.LoginSID,
+			"loginUid":      session.LoginUid,
+			"loginSid":      session.LoginSid,
 		},
 	}
 	c.ServeJSON()
@@ -917,8 +917,8 @@ func (c *PortalController) KuwoSendSms() {
 		"data": map[string]string{
 			"phone":         session.Phone,
 			"encryptedPhone": session.EncryptedPhone,
-			"loginUid":      session.LoginUID,
-			"loginSid":      session.LoginSID,
+			"loginUid":      session.LoginUid,
+			"loginSid":      session.LoginSid,
 		},
 	}
 	c.ServeJSON()
