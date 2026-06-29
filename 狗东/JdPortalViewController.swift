@@ -905,7 +905,14 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             guard let self = self else { return }
             DispatchQueue.main.async {
                 guard self.mainTab == .task else { return }
-                if case .success(let list) = result { self.accounts = list }
+                if case .success(let list) = result {
+                    self.accounts = list
+                    // 默认勾选所有有效账号（1-based索引），失效账号不勾选
+                    let validIndices = Set(list.enumerated().filter { $0.element.valid }.map { $0.offset + 1 })
+                    for task in self.taskDefs {
+                        self.taskSelections[task.id] = validIndices
+                    }
+                }
                 gridPlaceholder.arrangedSubviews.forEach { $0.removeFromSuperview() }
                 var idx = 0
                 while idx < self.taskDefs.count {
