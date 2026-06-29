@@ -39,6 +39,10 @@ import com.goudong.jd.ui.common.heroCard
 import com.goudong.jd.ui.common.inputField
 import com.goudong.jd.ui.common.sanitizeErrorMessage
 import com.goudong.jd.ui.common.toast
+import com.goudong.jd.ui.common.applyCompactTabs
+import com.goudong.jd.ui.common.InnerTabSwipeHost
+import com.goudong.jd.ui.common.MainTabResettable
+import com.goudong.jd.ui.common.findFirstScrollView
 import com.goudong.jd.ui.common.makeScrollContainer
 import com.goudong.jd.ui.common.primaryButton
 import com.google.android.material.tabs.TabLayout
@@ -46,7 +50,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
-class ProjectsFragment : Fragment() {
+class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private lateinit var contentRoot: LinearLayout
     private lateinit var tabs: TabLayout
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
@@ -61,6 +65,7 @@ class ProjectsFragment : Fragment() {
     private var categoryContainer: HorizontalScrollView? = null
     private var categoryChipRow: LinearLayout? = null
     private var rushHost: FrameLayout? = null
+    private var contentScroll: android.widget.ScrollView? = null
     private val rushFragment = ProjectRushFragment()
     private val categories = listOf("全部", "现金类", "积分换实物", "抽奖类", "其他类")
 
@@ -72,6 +77,7 @@ class ProjectsFragment : Fragment() {
         loadedOnce = false // 重新创建视图时重置，确保 onResume 能触发加载
         val wrapper = LinearLayout(requireContext()).apply { orientation = LinearLayout.VERTICAL }
         val (scroll, root) = requireContext().makeScrollContainer()
+        contentScroll = scroll
         contentRoot = root
         swipeRefreshLayout = SwipeRefreshLayout(requireContext()).apply {
             setColorSchemeColors(ContextCompat.getColor(requireContext(), R.color.brand_primary))
@@ -87,11 +93,12 @@ class ProjectsFragment : Fragment() {
         }
 
         tabs = TabLayout(requireContext()).apply {
-            setPadding(requireContext().dp(14), 0, requireContext().dp(14), requireContext().dp(8))
+            setPadding(requireContext().dp(4), 0, requireContext().dp(4), requireContext().dp(8))
             addTab(newTab().setText("活动中心"))
             addTab(newTab().setText("我的项目"))
             addTab(newTab().setText("项目抢兑"))
             addTab(newTab().setText("微信协议"))
+            applyCompactTabs()
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
                     currentTab = tab.position
@@ -1327,5 +1334,54 @@ class ProjectsFragment : Fragment() {
             val bytes = android.util.Base64.decode(padded, android.util.Base64.DEFAULT)
             android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
         }.getOrNull()
+    }
+
+    override val innerTabCount: Int
+        get() = tabs.tabCount
+
+    override val innerTabIndex: Int
+        get() = currentTab
+
+    override fun selectInnerTab(index: Int) {
+        tabs.getTabAt(index)?.select()
+    }
+
+    fun consumeBackPress(): Boolean {
+        if (currentTab == 2 && rushFragment.isAdded &&
+            rushFragment.childFragmentManager.backStackEntryCount > 0
+        ) {
+            rushFragment.childFragmentManager.popBackStack()
+            return true
+        }
+        return false
+    }
+
+    override fun onInnerSwipeBoundary(direction: Int): Boolean {
+        if (currentTab == 2 && rushFragment.isAdded) {
+            val backStack = rushFragment.childFragmentManager.backStackEntryCount
+            if (direction < 0 && backStack > 0) {
+                rushFragment.childFragmentManager.popBackStack()
+                return true
+            }
+        }
+        return false
+    }
+
+    override fun resetToInitialState() {
+        if (!::tabs.isInitialized) return
+        currentTab = 0
+        tabs.getTabAt(0)?.select()
+        searchQuery = ""
+        searchBox?.setText("")
+        selectedCategory = ""
+        renderCategoryChips()
+        expandedKeys.clear()
+        if (rushFragment.isAdded) rushFragment.popToList()
+        contentScroll?.scrollTo(0, 0)
+        view?.findFirstScrollView()?.scrollTo(0, 0)
+        if (::swipeRefreshLayout.isInitialized) {
+            swipeRefreshLayout.isRefreshing = false
+        }
+        renderCurrentTab(forceRefresh = false)
     }
 }

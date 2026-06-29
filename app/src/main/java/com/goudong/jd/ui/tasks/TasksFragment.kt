@@ -23,6 +23,9 @@ import com.goudong.jd.ui.common.cardView
 import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.common.inputField
+import com.goudong.jd.ui.common.InnerTabSwipeHost
+import com.goudong.jd.ui.common.MainTabResettable
+import com.goudong.jd.ui.common.findFirstScrollView
 import com.goudong.jd.ui.common.makeScrollContainer
 import com.goudong.jd.ui.common.toast
 import com.goudong.jd.ui.common.WebBrowserActivity
@@ -31,7 +34,7 @@ import com.goudong.jd.data.model.AppEnvironment
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
 
-class TasksFragment : Fragment() {
+class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
 
     private lateinit var tabs: TabLayout
     private lateinit var contentHost: LinearLayout
@@ -383,5 +386,24 @@ class TasksFragment : Fragment() {
     fun refreshDashboard() {
         renderCurrentTab()
         loadDashboard()
+    }
+
+    override fun resetToInitialState() {
+        if (!::tabs.isInitialized) return
+        currentTab = 0
+        tabs.getTabAt(0)?.select()
+        view?.findFirstScrollView()?.scrollTo(0, 0)
+        renderCurrentTab()
+        loadDashboard()
+    }
+
+    override val innerTabCount: Int
+        get() = if (::tabs.isInitialized) tabs.tabCount else 0
+
+    override val innerTabIndex: Int
+        get() = currentTab
+
+    override fun selectInnerTab(index: Int) {
+        tabs.getTabAt(index)?.select()
     }
 }

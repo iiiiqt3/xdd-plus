@@ -21,6 +21,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
+import android.view.MotionEvent
+import androidx.activity.OnBackPressedCallback
+import com.goudong.jd.ui.common.InnerTabSwipeHost
+import com.goudong.jd.ui.common.MainSwipeHandler
+import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.auth.AuthActivity
 import com.goudong.jd.ui.common.alert
 import com.goudong.jd.ui.common.cardView
@@ -41,6 +46,7 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var viewPager: ViewPager2
+    private lateinit var mainSwipeHandler: MainSwipeHandler
     private var pendingTabId: Int? = null
     private var isSyncing = false
 
@@ -79,7 +85,7 @@ class MainActivity : AppCompatActivity() {
             id = View.generateViewId()
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
             adapter = MainPagerAdapter(this@MainActivity)
-            isUserInputEnabled = true
+            isUserInputEnabled = false
             offscreenPageLimit = 4
             registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                 override fun onPageSelected(position: Int) {
@@ -96,6 +102,7 @@ class MainActivity : AppCompatActivity() {
                     isSyncing = true
                     bottomNav.selectedItemId = tabId
                     isSyncing = false
+                    resetMainTabFragment(position)
                     onTabChanged(tabId)
                 }
             })
@@ -157,14 +164,30 @@ class MainActivity : AppCompatActivity() {
                     isSyncing = true
                     viewPager.setCurrentItem(position, true)
                     isSyncing = false
+                    resetMainTabFragment(position)
                     onTabChanged(item.itemId)
                 }
                 true
+            }
+            setOnItemReselectedListener { item ->
+                val position = tabOrder.indexOf(item.itemId)
+                if (position >= 0) resetMainTabFragment(position)
             }
         }
 
         root.addView(viewPager)
         root.addView(bottomNav)
+        mainSwipeHandler = MainSwipeHandler(this) { direction ->
+            handleNestedTabSwipe(viewPager, direction)
+        }
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (consumeNestedBack()) return
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
+            }
+        })
         setContentView(root)
 
         if (savedInstanceState == null) {
@@ -281,8 +304,80 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        mainSwipeHandler.onTouchEvent(ev)
+        return super.dispatchTouchEvent(ev)
+    }
+
     private fun requiresAuth(tabId: Int): Boolean {
         return tabId == TAB_HOME || tabId == TAB_PROJECTS || tabId == TAB_MORE || tabId == TAB_TASKS
+    }
+
+    private fun consumeNestedBack(): Boolean {
+        val tag = "android:switcher:${viewPager.id}:${viewPager.currentItem}"
+        val main = supportFragmentManager.findFragmentByTag(tag) ?: return false
+        if (main is ProjectsFragment && main.consumeBackPress()) return true
+        return false
+    }
+
+    private fun handleNestedTabSwipe(pager: ViewPager2, direction: Int): Boolean {
+        val host = findInnerTabSwipeHost(pager)
+        if (host != null) {
+            if (host.onInnerSwipeBoundary(direction)) return true
+            val index = host.innerTabIndex
+            val count = host.innerTabCount
+            if (direction > 0 && index < count - 1) {
+                host.selectInnerTab(index + 1)
+                return true
+            }
+            if (direction < 0 && index > 0) {
+                host.selectInnerTab(index - 1)
+                return true
+            }
+        }
+        val next = pager.currentItem + direction
+        if (next !in 0 until pager.adapter!!.itemCount) return false
+        val tabId = tabOrder[next]
+        if (requiresAuth(tabId) && !AppServices.sessionManager.isAuthenticated()) {
+            pendingTabId = tabId
+            authLauncher.launch(Intent(this, AuthActivity::class.java))
+            return true
+        }
+        isSyncing = true
+        pager.setCurrentItem(next, true)
+        bottomNav.selectedItemId = tabId
+        isSyncing = false
+        resetMainTabFragment(next)
+        onTabChanged(tabId)
+        return true
+    }
+
+    private fun resetMainTabFragment(position: Int) {
+        if (position !in tabOrder.indices) return
+        val tag = "android:switcher:${viewPager.id}:$position"
+        val fragment = supportFragmentManager.findFragmentByTag(tag) ?: return
+        if (!fragment.isAdded || fragment.view == null) return
+        when (fragment) {
+            is MainTabResettable -> fragment.resetToInitialState()
+            else -> {
+                for (child in fragment.childFragmentManager.fragments) {
+                    if (child is MainTabResettable) {
+                        child.resetToInitialState()
+                        return
+                    }
+                }
+            }
+        }
+    }
+
+    private fun findInnerTabSwipeHost(pager: ViewPager2): InnerTabSwipeHost? {
+        val tag = "android:switcher:${pager.id}:${pager.currentItem}"
+        val main = supportFragmentManager.findFragmentByTag(tag) ?: return null
+        if (main is InnerTabSwipeHost) return main
+        for (child in main.childFragmentManager.fragments) {
+            if (child is InnerTabSwipeHost) return child
+        }
+        return null
     }
 
     private inner class MainPagerAdapter(activity: AppCompatActivity) : FragmentStateAdapter(activity) {

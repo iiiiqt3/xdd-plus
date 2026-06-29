@@ -580,3 +580,33 @@ fun Context.closeButton(onClick: () -> Unit): ImageButton {
         setOnClickListener { onClick() }
     }
 }
+
+fun com.google.android.material.tabs.TabLayout.applyCompactTabs() {
+    tabMode = com.google.android.material.tabs.TabLayout.MODE_FIXED
+    tabGravity = com.google.android.material.tabs.TabLayout.GRAVITY_FILL
+    isTabIndicatorFullWidth = false
+    post {
+        val strip = getChildAt(0) as? ViewGroup ?: return@post
+        val padH = context.dp(2)
+        for (i in 0 until strip.childCount) {
+            val tabView = strip.getChildAt(i)
+            tabView.minimumWidth = 0
+            tabView.setPadding(padH, tabView.paddingTop, padH, tabView.paddingBottom)
+            applyCompactTabText(tabView as? ViewGroup)
+        }
+    }
+}
+
+private fun applyCompactTabText(group: ViewGroup?) {
+    if (group == null) return
+    for (i in 0 until group.childCount) {
+        when (val child = group.getChildAt(i)) {
+            is TextView -> {
+                child.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                child.maxLines = 1
+                child.isSingleLine = true
+            }
+            is ViewGroup -> applyCompactTabText(child)
+        }
+    }
+}

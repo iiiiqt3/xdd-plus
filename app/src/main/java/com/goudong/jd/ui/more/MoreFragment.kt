@@ -16,10 +16,12 @@ import com.goudong.jd.ui.common.cardView
 import com.goudong.jd.ui.common.captionText
 import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.heroCard
+import com.goudong.jd.ui.common.MainTabResettable
+import com.goudong.jd.ui.common.findFirstScrollView
 import com.goudong.jd.ui.common.makeScrollContainer
 import kotlinx.coroutines.launch
 
-class MoreFragment : Fragment() {
+class MoreFragment : Fragment(), MainTabResettable {
     private var notificationBadge: TextView? = null
     
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -139,5 +141,10 @@ class MoreFragment : Fragment() {
                 badge.visibility = View.GONE
             }
         }
+    }
+
+    override fun resetToInitialState() {
+        view?.findFirstScrollView()?.scrollTo(0, 0)
+        loadUnreadCount()
     }
 }

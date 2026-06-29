@@ -12,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -31,19 +32,22 @@ import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.common.heroCard
 import com.goudong.jd.ui.common.makeScrollContainer
+import com.goudong.jd.ui.common.MainTabResettable
+import com.goudong.jd.ui.common.findFirstScrollView
 import com.goudong.jd.push.NotificationHelper
 import com.goudong.jd.push.PushCheckWorker
 import com.goudong.jd.ui.more.NotificationListActivity
 import android.os.Handler
 import android.os.Looper
 
-class HomeFragment : Fragment() {
+class HomeFragment : Fragment(), MainTabResettable {
     private lateinit var summaryText: TextView
     private lateinit var detailText: TextView
     private lateinit var coinText: TextView
     private lateinit var notificationSection: LinearLayout
     private lateinit var statsSection: LinearLayout
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
+    private var contentScroll: ScrollView? = null
     
     private val handler = Handler(Looper.getMainLooper())
     private val pollRunnable = object : Runnable {
@@ -55,6 +59,7 @@ class HomeFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val (scroll, root) = requireContext().makeScrollContainer()
+        contentScroll = scroll
 
         val swipeRefresh = SwipeRefreshLayout(requireContext()).apply {
             swipeRefreshLayout = this
@@ -439,5 +444,16 @@ class HomeFragment : Fragment() {
         )
         
         android.util.Log.d("HomeFragment", "前台检测到 ${newMessages.size} 条新消息，已发送通知")
+    }
+
+    override fun resetToInitialState() {
+        contentScroll?.scrollTo(0, 0)
+        view?.findFirstScrollView()?.scrollTo(0, 0)
+        if (::swipeRefreshLayout.isInitialized) {
+            swipeRefreshLayout.isRefreshing = false
+        }
+        if (AppServices.sessionManager.isAuthenticated()) {
+            loadData(forceRefresh = false)
+        }
     }
 }

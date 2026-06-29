@@ -17,6 +17,7 @@ import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
+import androidx.activity.addCallback
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -82,6 +83,13 @@ class KuwoRushFragment : Fragment() {
         return wrapper
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
+            parentFragmentManager.popBackStack()
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         clockHandler.post(clockRunnable)
@@ -99,25 +107,12 @@ class KuwoRushFragment : Fragment() {
         val ctx = requireContext()
         contentRoot.removeAllViews()
 
-        contentRoot.addView(LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(ctx.dp(8), ctx.dp(4), ctx.dp(14), ctx.dp(8))
-            addView(TextView(ctx).apply {
-                text = "‹ 返回"
-                setTextColor(ContextCompat.getColor(ctx, R.color.brand_secondary))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                setTypeface(typeface, Typeface.BOLD)
-                setPadding(ctx.dp(8), ctx.dp(8), ctx.dp(8), ctx.dp(8))
-                setOnClickListener { parentFragmentManager.popBackStack() }
-            })
-            addView(TextView(ctx).apply {
-                text = "酷我提现"
-                setTextColor(Color.parseColor("#0F172A"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
-                setTypeface(typeface, Typeface.BOLD)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            })
+        contentRoot.addView(TextView(ctx).apply {
+            text = "酷我提现"
+            setTextColor(Color.parseColor("#0F172A"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(ctx.dp(14), ctx.dp(4), ctx.dp(14), ctx.dp(8))
         })
 
         contentRoot.addView(ctx.captionText("定时抢兑，与网页端功能一致").apply {

@@ -11,8 +11,10 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentContainerView
 import androidx.fragment.app.commit
 import com.goudong.jd.AppServices
+import com.goudong.jd.ui.common.MainTabResettable
+import com.goudong.jd.ui.common.findFirstScrollView
 
-class JdFragment : Fragment() {
+class JdFragment : Fragment(), MainTabResettable {
     private var containerId = View.NO_ID
     private var showingPortal: Boolean? = null
     private var pendingSync = false
@@ -96,5 +98,16 @@ class JdFragment : Fragment() {
         private const val TAG = "JdFragment"
         private const val TAG_GUEST = "jd_guest"
         private const val TAG_PORTAL = "jd_portal"
+    }
+
+    override fun resetToInitialState() {
+        if (!isAdded) return
+        val portal = childFragmentManager.findFragmentByTag(TAG_PORTAL)
+        if (portal is MainTabResettable) {
+            portal.resetToInitialState()
+            return
+        }
+        val guest = childFragmentManager.findFragmentByTag(TAG_GUEST)
+        guest?.view?.findFirstScrollView()?.scrollTo(0, 0)
     }
 }

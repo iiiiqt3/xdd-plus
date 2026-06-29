@@ -29,6 +29,9 @@ import com.goudong.jd.ui.common.cardView
 import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.common.inputField
+import com.goudong.jd.ui.common.applyCompactTabs
+import com.goudong.jd.ui.common.InnerTabSwipeHost
+import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.common.makeScrollContainer
 import com.goudong.jd.ui.common.primaryButton
 import com.goudong.jd.ui.common.sectionTitle
@@ -43,7 +46,7 @@ import kotlinx.coroutines.launch
 
 private data class JdTaskDef(val id: String, val name: String, val icon: String, val desc: String)
 
-class JdPortalFragment : Fragment() {
+class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     // 主Tab: 0=查询, 1=登录, 2=京东任务
     private var mainTabIndex = 0
     // 登录子Tab: 0=短信登录, 1=协议刷新
@@ -53,6 +56,7 @@ class JdPortalFragment : Fragment() {
     private lateinit var subTabRow: LinearLayout
     private lateinit var toolbarRow: LinearLayout
     private lateinit var contentHost: LinearLayout
+    private lateinit var contentScroll: android.widget.ScrollView
 
     private var accounts: List<PortalJdAccount> = emptyList()
     private val taskSelections = mutableMapOf<String, MutableSet<Int>>()
@@ -94,6 +98,7 @@ class JdPortalFragment : Fragment() {
     private fun buildFullView(): View {
         val wrapper = LinearLayout(requireContext()).apply { orientation = LinearLayout.VERTICAL }
         val (scroll, root) = requireContext().makeScrollContainer()
+        contentScroll = scroll
         val dp14 = requireContext().dp(14)
 
         // 点击任意位置收起键盘
@@ -107,6 +112,7 @@ class JdPortalFragment : Fragment() {
             addTab(newTab().setText("查询"))
             addTab(newTab().setText("登录"))
             addTab(newTab().setText("京东任务"))
+            applyCompactTabs()
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
                     if (mainTabIndex == tab.position) return
@@ -702,6 +708,28 @@ class JdPortalFragment : Fragment() {
         when (v) {
             is TextView -> { v.text = orig; v.isEnabled = true; v.alpha = 1f }
             is Button -> { v.text = orig; v.isEnabled = true; v.alpha = 1f }
+        }
+    }
+
+    override val innerTabCount: Int
+        get() = mainTabs.tabCount
+
+    override val innerTabIndex: Int
+        get() = mainTabIndex
+
+    override fun selectInnerTab(index: Int) {
+        mainTabs.getTabAt(index)?.select()
+    }
+
+    override fun resetToInitialState() {
+        if (!::mainTabs.isInitialized) return
+        hideKeyboard()
+        mainTabIndex = 0
+        loginSubIndex = 0
+        mainTabs.getTabAt(0)?.select()
+        renderContent()
+        if (::contentScroll.isInitialized) {
+            contentScroll.scrollTo(0, 0)
         }
     }
 }
