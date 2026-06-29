@@ -4353,25 +4353,39 @@ async function kuwoExecuteWithdraw(phone, password, smsCode, quotaId) {
         }
     }
 
-    kuwoLog('提交提现，档位: ' + quotaId);
-    try {
-        const data = await request('/api/portal/kuwo/withdraw', {
-            method: 'POST',
-            body: JSON.stringify({ sessions: [kuwoSessionData], quotaId, smsCode, retryCount: 3 })
-        });
-        if (data.code === 0 && data.data) {
-            for (const r of data.data) {
-                kuwoLog((r.success ? '✅ ' : '❌ ') + r.phone + ' ' + (r.message || r.error || ''));
+    const CONCURRENT = 3;
+    const STAGGER_MS = 200;
+    kuwoLog('提交提现，档位: ' + quotaId + '，并发: ' + CONCURRENT);
+
+    async function doOne(index) {
+        // 错峰延迟
+        await new Promise(r => setTimeout(r, index * STAGGER_MS));
+        try {
+            const data = await request('/api/portal/kuwo/withdraw', {
+                method: 'POST',
+                body: JSON.stringify({ sessions: [kuwoSessionData], quotaId, smsCode, retryCount: 0 })
+            });
+            if (data.code === 0 && data.data) {
+                for (const r of data.data) {
+                    kuwoLog('#' + (index + 1) + ' ' + (r.success ? '✅ ' : '❌ ') + r.phone + ' ' + (r.message || r.error || ''));
+                }
+            } else {
+                kuwoLog('#' + (index + 1) + ' ❌ ' + (data.msg || '未知错误'));
             }
-        } else {
-            kuwoLog('提现失败: ' + (data.msg || '未知错误'));
-            toast(data.msg || '提现失败', 'error');
+        } catch (err) {
+            kuwoLog('#' + (index + 1) + ' ❌ 网络错误: ' + err.message);
         }
-    } catch (err) {
-        kuwoLog('网络错误: ' + err.message);
-        toast(err.message, 'error');
     }
-    // 恢复UI：显示按钮，隐藏倒计时，启用输入
+
+    // 并发执行3个请求
+    const tasks = [];
+    for (let i = 0; i < CONCURRENT; i++) {
+        tasks.push(doOne(i));
+    }
+    await Promise.all(tasks);
+    kuwoLog('--- 全部请求完成 ---');
+
+    // 恢复UI
     document.getElementById('kuwoWithdrawBtn').style.display = '';
     document.getElementById('kuwoCountdown').style.display = 'none';
     document.getElementById('kuwoCountdown').textContent = '';
