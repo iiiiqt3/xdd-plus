@@ -578,3 +578,167 @@ func CheckKuwoAuth(userNumber int) (bool, string) {
 func init() {
 	fmt.Printf("[kuwo] module loaded, available quotas: %s\n", KuwoFormatQuotaDisplay())
 }
+
+// ===================== 后端定时抢兑 =====================
+
+// KuwoScheduledTask 定时抢兑任务
+type KuwoScheduledTask struct {
+	ID          string              `json:"id"`
+	Phone       string              `json:"phone"`
+	QuotaID     string              `json:"quotaID"`
+	SmsCode     string              `json:"smsCode"`
+	TargetHour  int                 `json:"targetHour"`
+	Sessions    []*KuwoSession     `json:"-"`
+	CreatedAt   time.Time           `json:"createdAt"`
+	ExecuteAt   time.Time           `json:"executeAt"`
+	Status      string              `json:"status"` // pending / running / completed
+	Results     []KuwoWithdrawResult `json:"results,omitempty"`
+	ResultsJSON []WithdrawResultJSON `json:"resultsDetail,omitempty"`
+}
+
+// WithdrawResultJSON 提现结果JSON格式
+type WithdrawResultJSON struct {
+	Phone   string `json:"phone"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Error   string `json:"error,omitempty"`
+}
+
+var kuwoScheduledTasks = struct {
+	sync.RWMutex
+	tasks map[string]*KuwoScheduledTask
+}{tasks: make(map[string]*KuwoScheduledTask)}
+
+// KuwoScheduleWithdraw 创建定时抢兑任务
+func KuwoScheduleWithdraw(sessions []*KuwoSession, quotaID, smsCode string, targetHour int) *KuwoScheduledTask {
+	now := time.Now()
+	bjNow, _ := time.LoadLocation("Asia/Shanghai")
+	bjTime := now.In(bjNow)
+
+	// 计算目标执行时间
+	targetTime := time.Date(bjTime.Year(), bjTime.Month(), bjTime.Day(), targetHour, 0, 0, 0, bjNow)
+	if targetTime.Before(bjTime) {
+		targetTime = targetTime.Add(24 * time.Hour)
+	}
+
+	taskID := fmt.Sprintf("kuwo_%d_%s", now.UnixMilli(), quotaID)
+	task := &KuwoScheduledTask{
+		ID:         taskID,
+		Phone:      sessions[0].Phone,
+		QuotaID:    quotaID,
+		SmsCode:    smsCode,
+		TargetHour: targetHour,
+		Sessions:   sessions,
+		CreatedAt:  now,
+		ExecuteAt:  targetTime,
+		Status:     "pending",
+	}
+
+	kuwoScheduledTasks.Lock()
+	kuwoScheduledTasks.tasks[taskID] = task
+	kuwoScheduledTasks.Unlock()
+
+	// 启动定时器
+	delay := time.Until(targetTime)
+	fmt.Printf("[kuwo] 定时任务已创建: id=%s target=%s delay=%v\n", taskID, targetTime.Format("15:04:05"), delay)
+
+	go func() {
+		// 到点前50ms开始执行（给一点缓冲）
+		execDelay := delay - 50*time.Millisecond
+		if execDelay < 0 {
+			execDelay = 0
+		}
+		time.AfterFunc(execDelay, func() {
+			kuwoExecuteScheduledTask(taskID)
+		})
+	}()
+
+	return task
+}
+
+// kuwoExecuteScheduledTask 执行定时抢兑任务
+func kuwoExecuteScheduledTask(taskID string) {
+	kuwoScheduledTasks.RLock()
+	task, ok := kuwoScheduledTasks.tasks[taskID]
+	kuwoScheduledTasks.RUnlock()
+	if !ok {
+		return
+	}
+
+	task.Status = "running"
+	fmt.Printf("[kuwo] 定时任务开始执行: id=%s\n", taskID)
+
+	// 3次并发抢兑，错峰200ms
+	const concurrency = 3
+	const stagger = 200 * time.Millisecond
+	var allResults []KuwoWithdrawResult
+
+	for round := 0; round < concurrency; round++ {
+		if round > 0 {
+			time.Sleep(stagger)
+		}
+		results := make([]KuwoWithdrawResult, len(task.Sessions))
+		var wg sync.WaitGroup
+		for i, sess := range task.Sessions {
+			wg.Add(1)
+			go func(idx int, s *KuwoSession) {
+				defer wg.Done()
+				msg, err := KuwoExecuteWithdraw(s, task.QuotaID, task.SmsCode)
+				results[idx] = KuwoWithdrawResult{
+					UID:     s.LoginUid,
+					Phone:   s.Phone,
+					Success: err == nil,
+					Message: msg,
+					Error:   err,
+				}
+			}(i, sess)
+		}
+		wg.Wait()
+		allResults = append(allResults, results...)
+	}
+
+	// 转换为JSON格式
+	resultDetails := make([]WithdrawResultJSON, 0, len(allResults))
+	for _, r := range allResults {
+		errMsg := ""
+		if r.Error != nil {
+			errMsg = r.Error.Error()
+		}
+		resultDetails = append(resultDetails, WithdrawResultJSON{
+			Phone:   r.Phone,
+			Success: r.Success,
+			Message: r.Message,
+			Error:   errMsg,
+		})
+	}
+
+	task.Results = allResults
+	task.ResultsJSON = resultDetails
+	task.Status = "completed"
+
+	successCount := 0
+	for _, r := range allResults {
+		if r.Success {
+			successCount++
+		}
+	}
+	fmt.Printf("[kuwo] 定时任务执行完成: id=%s 成功%d/%d\n", taskID, successCount, len(allResults))
+}
+
+// KuwoGetScheduledTask 查询定时任务状态
+func KuwoGetScheduledTask(taskID string) *KuwoScheduledTask {
+	kuwoScheduledTasks.RLock()
+	defer kuwoScheduledTasks.RUnlock()
+	return kuwoScheduledTasks.tasks[taskID]
+}
+
+// KuwoListScheduledTasks 查询所有定时任务（最近的）
+func KuwoListScheduledTasks() []*KuwoScheduledTask {
+	kuwoScheduledTasks.RLock()
+	defer kuwoScheduledTasks.RUnlock()
+	tasks := make([]*KuwoScheduledTask, 0)
+	for _, t := range kuwoScheduledTasks.tasks {
+		tasks = append(tasks, t)
+	}
+	return tasks
+}

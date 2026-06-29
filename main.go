@@ -251,6 +251,8 @@ func main() {
 	web.Router("/api/portal/kuwo/login", &controllers.PortalController{}, "post:KuwoLogin")
 	web.Router("/api/portal/kuwo/send-sms", &controllers.PortalController{}, "post:KuwoSendSms")
 	web.Router("/api/portal/kuwo/withdraw", &controllers.PortalController{}, "post:KuwoWithdraw")
+	web.Router("/api/portal/kuwo/schedule-withdraw", &controllers.PortalController{}, "post:KuwoScheduleWithdraw")
+	web.Router("/api/portal/kuwo/withdraw-status", &controllers.PortalController{}, "get:KuwoGetWithdrawStatus")
 	// 管理员登录页面
 	web.Get("/admin/login", func(ctx *context.Context) {
 		file, err := vweb.ReadFile("html/admin_login.html")

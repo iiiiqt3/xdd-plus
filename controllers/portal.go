@@ -1039,3 +1039,124 @@ func (c *PortalController) KuwoWithdraw() {
 	c.Data["json"] = map[string]interface{}{"code": 0, "data": resultList}
 	c.ServeJSON()
 }
+
+// KuwoScheduleWithdraw 创建后端定时抢兑任务
+func (c *PortalController) KuwoScheduleWithdraw() {
+	var req struct {
+		Sessions []struct {
+			Phone         string `json:"phone"`
+			Password      string `json:"password"`
+			EncryptedPhone string `json:"encryptedPhone"`
+			LoginUID      string `json:"loginUid"`
+			LoginSID      string `json:"loginSid"`
+		} `json:"sessions"`
+		QuotaId     string `json:"quotaId"`
+		SmsCode     string `json:"smsCode"`
+		TargetHour  int    `json:"targetHour"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	if len(req.Sessions) == 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "没有可提现的账号"}
+		c.ServeJSON()
+		return
+	}
+	quotaId := strings.TrimSpace(req.QuotaId)
+	smsCode := strings.TrimSpace(req.SmsCode)
+	if quotaId == "" {
+		quotaId = "30002"
+	}
+	if smsCode == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "验证码不能为空"}
+		c.ServeJSON()
+		return
+	}
+	if req.TargetHour < 0 || req.TargetHour > 23 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "无效的目标小时"}
+		c.ServeJSON()
+		return
+	}
+
+	sessions := make([]*models.KuwoSession, 0, len(req.Sessions))
+	for _, s := range req.Sessions {
+		cached := models.KuwoGetCachedSession(s.Phone)
+		if cached != nil {
+			sessions = append(sessions, cached)
+		} else {
+			sessions = append(sessions, &models.KuwoSession{
+				Phone:          s.Phone,
+				EncryptedPhone: s.EncryptedPhone,
+				LoginUid:       s.LoginUID,
+				LoginSid:       s.LoginSID,
+			})
+		}
+	}
+
+	task := models.KuwoScheduleWithdraw(sessions, quotaId, smsCode, req.TargetHour)
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"taskId":     task.ID,
+			"targetHour": task.TargetHour,
+			"executeAt":  task.ExecuteAt.Format("2006-01-02 15:04:05"),
+			"status":     task.Status,
+		},
+	}
+	c.ServeJSON()
+}
+
+// KuwoGetWithdrawStatus 查询定时抢兑任务状态
+func (c *PortalController) KuwoGetWithdrawStatus() {
+	taskID := c.Ctx.Input.Query("taskId")
+	if taskID == "" {
+		// 返回所有任务
+		tasks := models.KuwoListScheduledTasks()
+		type taskJSON struct {
+			ID           string                        `json:"id"`
+			Phone        string                        `json:"phone"`
+			QuotaID      string                        `json:"quotaID"`
+			TargetHour   int                           `json:"targetHour"`
+			ExecuteAt    string                        `json:"executeAt"`
+			Status       string                        `json:"status"`
+			ResultsJSON  []models.WithdrawResultJSON   `json:"resultsDetail,omitempty"`
+		}
+		list := make([]taskJSON, 0, len(tasks))
+		for _, t := range tasks {
+			list = append(list, taskJSON{
+				ID:          t.ID,
+				Phone:       t.Phone,
+				QuotaID:     t.QuotaID,
+				TargetHour:  t.TargetHour,
+				ExecuteAt:   t.ExecuteAt.Format("15:04"),
+				Status:      t.Status,
+				ResultsJSON: t.ResultsJSON,
+			})
+		}
+		c.Data["json"] = map[string]interface{}{"code": 0, "data": list}
+		c.ServeJSON()
+		return
+	}
+
+	task := models.KuwoGetScheduledTask(taskID)
+	if task == nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "任务不存在"}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"id":          task.ID,
+			"phone":       task.Phone,
+			"quotaID":     task.QuotaID,
+			"targetHour":  task.TargetHour,
+			"executeAt":   task.ExecuteAt.Format("15:04:05"),
+			"status":      task.Status,
+			"results":     task.ResultsJSON,
+		},
+	}
+	c.ServeJSON()
+}
