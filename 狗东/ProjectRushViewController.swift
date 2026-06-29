@@ -89,6 +89,7 @@ final class KuwoRushViewController: BaseNativeViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "酷我提现"
+        navigationItem.hidesBackButton = true
         navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = .systemGroupedBackground
         setupUI()
@@ -96,6 +97,9 @@ final class KuwoRushViewController: BaseNativeViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+        navigationController?.interactivePopGestureRecognizer?.delegate = nil
         loadKuwoPage()
         startClock()
     }

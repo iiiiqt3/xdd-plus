@@ -1,7 +1,7 @@
 import UIKit
 
 @available(iOS 13.0, *)
-final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegate {
+final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegate, InnerTabSwipeHandling {
     override var shouldEnableKeyboardDismissOnTap: Bool { false }
 
     private enum MainTab { case query, login, task }
@@ -150,6 +150,9 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         scrollView.addSubview(stack)
 
         mainSegmented.selectedSegmentIndex = 0
+        if #available(iOS 13.0, *) {
+            mainSegmented.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 12, weight: .semibold)], for: .normal)
+        }
         mainSegmented.addTarget(self, action: #selector(mainSegmentChanged), for: .valueChanged)
 
         loginTabRow.axis = .horizontal
@@ -1266,6 +1269,16 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             button.isEnabled = true
             button.setTitle(restore, for: .normal)
         }
+    }
+
+    var innerTabCount: Int { mainSegmented.numberOfSegments }
+
+    var innerTabIndex: Int { mainSegmented.selectedSegmentIndex }
+
+    func selectInnerTab(at index: Int) {
+        guard index >= 0, index < innerTabCount else { return }
+        mainSegmented.selectedSegmentIndex = index
+        mainSegmentChanged()
     }
 }
 

@@ -14,7 +14,7 @@ final class ProjectRushListViewController: BaseNativeViewController, UITableView
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "项目抢兑"
+        navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = .systemGroupedBackground
         tableView.dataSource = self
         tableView.delegate = self
@@ -27,6 +27,11 @@ final class ProjectRushListViewController: BaseNativeViewController, UITableView
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
     }
 
     override func resetToInitialState() {

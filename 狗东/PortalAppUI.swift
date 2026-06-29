@@ -67,6 +67,23 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
 
     @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
         guard let count = viewControllers?.count, count > 0 else { return }
+        let direction: Int = gesture.direction == .left ? 1 : (gesture.direction == .right ? -1 : 0)
+        if direction == 0 { return }
+
+        if let handler = currentInnerTabHandler() {
+            if handler.consumeInnerSwipeBoundary?(direction: direction) == true { return }
+            let idx = handler.innerTabIndex
+            let total = handler.innerTabCount
+            if direction > 0 && idx < total - 1 {
+                handler.selectInnerTab(at: idx + 1)
+                return
+            }
+            if direction < 0 && idx > 0 {
+                handler.selectInnerTab(at: idx - 1)
+                return
+            }
+        }
+
         if gesture.direction == .left {
             let next = selectedIndex + 1
             if next < count {
@@ -78,6 +95,18 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
                 animateTabSlide(to: prev, fromRight: false)
             }
         }
+    }
+
+    private func currentInnerTabHandler() -> InnerTabSwipeHandling? {
+        guard let nav = selectedViewController as? UINavigationController else { return nil }
+        let top = nav.visibleViewController ?? nav.topViewController
+        if let handler = top as? InnerTabSwipeHandling { return handler }
+        if let jdRoot = top as? JdTabRootViewController {
+            for child in jdRoot.children {
+                if let handler = child as? InnerTabSwipeHandling { return handler }
+            }
+        }
+        return nil
     }
 
     private func animateTabSlide(to index: Int, fromRight: Bool) {
@@ -1207,7 +1236,7 @@ final class HomeDashboardViewController: BaseNativeViewController {
 }
 
 
-final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDelegate {
+final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDelegate, InnerTabSwipeHandling {
     private let segmented = UISegmentedControl(items: ["活动中心", "我的项目", "项目抢兑", "微信协议"])
     private let container = UIView()
     private let searchBar = UISearchBar()
@@ -1216,7 +1245,10 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
     private let activitiesVC = ActivitiesListViewController()
     private let myProjectsVC = MyProjectsListViewController()
     private lazy var projectRushNav: UINavigationController = {
-        AppNavigationController(rootViewController: ProjectRushListViewController())
+        let nav = AppNavigationController(rootViewController: ProjectRushListViewController())
+        nav.navigationBar.prefersLargeTitles = false
+        nav.setNavigationBarHidden(true, animated: false)
+        return nav
     }()
     private let wechatVC = WechatProtocolViewController()
     private var currentVC: UIViewController?
@@ -1288,6 +1320,9 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
 
         segmented.selectedSegmentIndex = 0
         segmented.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
+        if #available(iOS 13.0, *) {
+            segmented.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 12, weight: .semibold)], for: .normal)
+        }
         segmented.translatesAutoresizingMaskIntoConstraints = false
         container.translatesAutoresizingMaskIntoConstraints = false
         searchBar.delegate = self
@@ -1436,6 +1471,25 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         searchBar.resignFirstResponder()
         activitiesVC.applySearch("")
         myProjectsVC.applySearch("")
+    }
+
+    var innerTabCount: Int { segmented.numberOfSegments }
+
+    var innerTabIndex: Int { segmented.selectedSegmentIndex }
+
+    func selectInnerTab(at index: Int) {
+        guard index >= 0, index < innerTabCount else { return }
+        segmented.selectedSegmentIndex = index
+        switchTo(index: index)
+    }
+
+    func consumeInnerSwipeBoundary(direction: Int) -> Bool {
+        guard segmented.selectedSegmentIndex == 2,
+              let nav = currentVC as? UINavigationController,
+              nav.viewControllers.count > 1,
+              direction < 0 else { return false }
+        nav.popViewController(animated: true)
+        return true
     }
 }
 

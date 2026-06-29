@@ -1337,6 +1337,13 @@ final class JdTaskLogStreamer: NSObject, URLSessionDataDelegate {
     func resetToInitialState()
 }
 
+@objc protocol InnerTabSwipeHandling: AnyObject {
+    var innerTabCount: Int { get }
+    var innerTabIndex: Int { get }
+    func selectInnerTab(at index: Int)
+    @objc optional func consumeInnerSwipeBoundary(direction: Int) -> Bool
+}
+
 class BaseNativeViewController: UIViewController, ResetableViewController, UIGestureRecognizerDelegate {
     /// 子类可关闭全屏点击收键盘（如京东短信登录页）
     var shouldEnableKeyboardDismissOnTap: Bool { true }
