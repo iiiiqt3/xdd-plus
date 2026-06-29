@@ -182,15 +182,23 @@ class JdPortalFragment : Fragment() {
         loadAccounts()
     }
 
+    private fun defaultValidTaskSelection(): MutableSet<Int> {
+        val validCount = accounts.count { it.valid }
+        if (validCount == 0) return mutableSetOf()
+        return (1..validCount).toMutableSet()
+    }
+
+    private fun applyDefaultTaskSelections() {
+        val selection = defaultValidTaskSelection()
+        taskDefs.forEach { task ->
+            taskSelections[task.id] = selection.toMutableSet()
+        }
+        taskDefs.forEach { updateSelectedLabel(it) }
+    }
+
     private fun renderAccountList(list: List<PortalJdAccount>, error: String? = null) {
         accounts = list
-        // 默认勾选所有有效账号（1-based索引），失效账号不勾选
-        val validIndices = list.mapIndexedNotNull { i, acc -> if (acc.valid) i + 1 else null }.toMutableSet()
-        taskDefs.forEach { task ->
-            taskSelections[task.id] = validIndices.toMutableSet()
-        }
-        // 更新已选标签
-        taskDefs.forEach { updateSelectedLabel(it) }
+        applyDefaultTaskSelections()
         val host = contentHost.findViewWithTag<LinearLayout>("account_list") ?: return
         host.removeAllViews()
         val ctx = requireContext()
@@ -503,7 +511,10 @@ class JdPortalFragment : Fragment() {
         })
 
         lifecycleScope.launch {
-            runCatching { AppServices.portalRepository.fetchJdAccounts() }.onSuccess { accounts = it }.onFailure { accounts = emptyList() }
+            runCatching { AppServices.portalRepository.fetchJdAccounts() }
+                .onSuccess { accounts = it }
+                .onFailure { accounts = emptyList() }
+            applyDefaultTaskSelections()
             taskDefs.forEachIndexed { i, task ->
                 val card = buildTaskCard(task)
                 if (i % 2 == 0) left.addView(card) else right.addView(card)
@@ -521,8 +532,9 @@ class JdPortalFragment : Fragment() {
             addView(TextView(ctx).apply { text = "${task.icon} ${task.name}"; setTextColor(Color.parseColor("#0F172A")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTypeface(typeface, Typeface.BOLD) })
             addView(ctx.captionText(task.desc).apply { setPadding(0, ctx.dp(2), 0, ctx.dp(4)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f) })
             // 已选账号（动态更新）
-            val label = TextView(ctx).apply { text = "已选：未选择账号"; setTextColor(Color.parseColor("#64748B")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f); setPadding(0, 0, 0, ctx.dp(6)) }
+            val label = TextView(ctx).apply { setTextColor(Color.parseColor("#64748B")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f); setPadding(0, 0, 0, ctx.dp(6)) }
             selectedLabels[task.id] = label
+            updateSelectedLabel(task)
             addView(label)
             // 选账号按钮（紧凑）
             addView(TextView(ctx).apply {
@@ -568,12 +580,7 @@ class JdPortalFragment : Fragment() {
                     else selection.remove(which)
                 }
             }
-            .setPositiveButton("确定") { _, _ ->
-                if (selection.isEmpty() || selection.contains(-1)) {
-                    selection.clear(); selection.add(-1)
-                }
-                updateSelectedLabel(task)
-            }
+            .setPositiveButton("确定") { _, _ -> updateSelectedLabel(task) }
             .show()
     }
 
@@ -582,7 +589,8 @@ class JdPortalFragment : Fragment() {
         val sel = taskSelections[task.id]
         val validAccounts = accounts.filter { it.valid }
         label.text = when {
-            sel == null || sel.isEmpty() || sel.contains(-1) -> "已选：所有有效账号"
+            sel == null || sel.isEmpty() -> "已选：未选择账号"
+            sel.contains(-1) -> "已选：所有有效账号"
             else -> {
                 val names = sel.mapNotNull { pos -> validAccounts.getOrNull(pos - 1)?.nickname ?: validAccounts.getOrNull(pos - 1)?.pin }
                 "已选：${names.joinToString(", ")}"

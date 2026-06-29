@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -56,7 +57,8 @@ class ProjectsFragment : Fragment() {
     private var searchBox: EditText? = null
     private var searchQuery: String = ""
     private var selectedCategory: String = ""
-    private var categoryContainer: LinearLayout? = null
+    private var categoryContainer: HorizontalScrollView? = null
+    private var categoryChipRow: LinearLayout? = null
     private val categories = listOf("全部", "现金类", "积分换实物", "抽奖类", "其他类")
 
     // 缓存
@@ -125,11 +127,16 @@ class ProjectsFragment : Fragment() {
         }
         wrapper.addView(searchBox)
 
-        // 分类筛选栏（仅活动中心tab可见）
-        categoryContainer = LinearLayout(requireContext()).apply {
+        // 分类筛选栏（仅活动中心tab可见，横向滚动避免最后一项被裁切）
+        categoryChipRow = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        categoryContainer = HorizontalScrollView(requireContext()).apply {
+            isHorizontalScrollBarEnabled = false
             setPadding(requireContext().dp(14), 0, requireContext().dp(14), requireContext().dp(8))
             visibility = View.GONE
+            addView(categoryChipRow)
         }
         renderCategoryChips()
         wrapper.addView(categoryContainer)
@@ -184,7 +191,7 @@ class ProjectsFragment : Fragment() {
     }
 
     private fun renderCategoryChips() {
-        val container = categoryContainer ?: return
+        val container = categoryChipRow ?: return
         container.removeAllViews()
         val brandBlue = ContextCompat.getColor(requireContext(), R.color.brand_primary)
         for (cat in categories) {
