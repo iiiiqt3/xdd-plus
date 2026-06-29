@@ -907,8 +907,9 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
                 guard self.mainTab == .task else { return }
                 if case .success(let list) = result {
                     self.accounts = list
-                    // 默认勾选所有有效账号（1-based索引），失效账号不勾选
-                    let validIndices = Set(list.enumerated().filter { $0.element.valid }.map { $0.offset + 1 })
+                    // 默认勾选所有有效账号（有效账号内的 1-based 索引），无有效账号则不勾选
+                    let validCount = list.filter { $0.valid }.count
+                    let validIndices: Set<Int> = validCount > 0 ? Set(1...validCount) : []
                     for task in self.taskDefs {
                         self.taskSelections[task.id] = validIndices
                     }
