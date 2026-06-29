@@ -991,31 +991,22 @@ func (c *PortalController) KuwoWithdraw() {
 		c.ServeJSON()
 		return
 	}
-	retryCount := req.RetryCount
-	if retryCount < 1 {
-		retryCount = 1
-	}
-	if retryCount > 5 {
-		retryCount = 5
-	}
 
-	sessions := make([]*models.KuwoSession, 0, len(req.Sessions))
+	accounts := make([]*models.KuwoAccountInput, 0, len(req.Sessions))
 	for _, s := range req.Sessions {
-		// 优先使用缓存的session（避免重新登录浪费时间）
-		cached := models.KuwoGetCachedSession(s.Phone)
-		if cached != nil {
-			sessions = append(sessions, cached)
-		} else {
-			sessions = append(sessions, &models.KuwoSession{
-				Phone:          s.Phone,
-				EncryptedPhone: s.EncryptedPhone,
-				LoginUid:       s.LoginUID,
-				LoginSid:       s.LoginSID,
-			})
-		}
+		accounts = append(accounts, &models.KuwoAccountInput{
+			Phone:    strings.TrimSpace(s.Phone),
+			Password: strings.TrimSpace(s.Password),
+		})
+	}
+	sessions := models.KuwoBuildSessionsFromRequest(accounts)
+	if len(sessions) == 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "登录失败，无法获取有效会话"}
+		c.ServeJSON()
+		return
 	}
 
-	results := models.KuwoConcurrentWithdrawRetry(sessions, quotaId, smsCode, retryCount)
+	results := models.KuwoSingleWithdraw(sessions, quotaId, smsCode)
 
 	type withdrawResult struct {
 		Phone   string `json:"phone"`
@@ -1044,15 +1035,16 @@ func (c *PortalController) KuwoWithdraw() {
 func (c *PortalController) KuwoScheduleWithdraw() {
 	var req struct {
 		Sessions []struct {
-			Phone         string `json:"phone"`
-			Password      string `json:"password"`
+			Phone          string `json:"phone"`
+			Password       string `json:"password"`
 			EncryptedPhone string `json:"encryptedPhone"`
-			LoginUID      string `json:"loginUid"`
-			LoginSID      string `json:"loginSid"`
+			LoginUID       string `json:"loginUid"`
+			LoginSID       string `json:"loginSid"`
 		} `json:"sessions"`
-		QuotaId     string `json:"quotaId"`
-		SmsCode     string `json:"smsCode"`
-		TargetHour  int    `json:"targetHour"`
+		QuotaId    string `json:"quotaId"`
+		SmsCode    string `json:"smsCode"`
+		TargetHour int    `json:"targetHour"`
+		Immediate  bool   `json:"immediate"`
 	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
@@ -1074,28 +1066,23 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 		c.ServeJSON()
 		return
 	}
-	if req.TargetHour < 0 || req.TargetHour > 23 {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "无效的目标小时"}
-		c.ServeJSON()
-		return
-	}
-
-	sessions := make([]*models.KuwoSession, 0, len(req.Sessions))
-	for _, s := range req.Sessions {
-		cached := models.KuwoGetCachedSession(s.Phone)
-		if cached != nil {
-			sessions = append(sessions, cached)
-		} else {
-			sessions = append(sessions, &models.KuwoSession{
-				Phone:          s.Phone,
-				EncryptedPhone: s.EncryptedPhone,
-				LoginUid:       s.LoginUID,
-				LoginSid:       s.LoginSID,
-			})
+	if !req.Immediate {
+		if req.TargetHour < 0 || req.TargetHour > 23 {
+			c.Data["json"] = map[string]interface{}{"code": 1, "msg": "无效的目标小时"}
+			c.ServeJSON()
+			return
 		}
 	}
 
-	task := models.KuwoScheduleWithdraw(sessions, quotaId, smsCode, req.TargetHour)
+	accounts := make([]*models.KuwoAccountInput, 0, len(req.Sessions))
+	for _, s := range req.Sessions {
+		accounts = append(accounts, &models.KuwoAccountInput{
+			Phone:    strings.TrimSpace(s.Phone),
+			Password: strings.TrimSpace(s.Password),
+		})
+	}
+
+	task := models.KuwoScheduleWithdraw(accounts, quotaId, smsCode, req.TargetHour, req.Immediate)
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"data": map[string]interface{}{
@@ -1115,13 +1102,14 @@ func (c *PortalController) KuwoGetWithdrawStatus() {
 		// 返回所有任务
 		tasks := models.KuwoListScheduledTasks()
 		type taskJSON struct {
-			ID           string                        `json:"id"`
-			Phone        string                        `json:"phone"`
-			QuotaID      string                        `json:"quotaID"`
-			TargetHour   int                           `json:"targetHour"`
-			ExecuteAt    string                        `json:"executeAt"`
-			Status       string                        `json:"status"`
-			ResultsJSON  []models.WithdrawResultJSON   `json:"resultsDetail,omitempty"`
+			ID          string                      `json:"id"`
+			Phone       string                      `json:"phone"`
+			QuotaID     string                      `json:"quotaID"`
+			TargetHour  int                         `json:"targetHour"`
+			ExecuteAt   string                      `json:"executeAt"`
+			Status      string                      `json:"status"`
+			ResultsJSON []models.WithdrawResultJSON `json:"resultsDetail,omitempty"`
+			Logs        []models.KuwoTaskLog        `json:"logs,omitempty"`
 		}
 		list := make([]taskJSON, 0, len(tasks))
 		for _, t := range tasks {
@@ -1133,6 +1121,7 @@ func (c *PortalController) KuwoGetWithdrawStatus() {
 				ExecuteAt:   t.ExecuteAt.Format("15:04"),
 				Status:      t.Status,
 				ResultsJSON: t.ResultsJSON,
+				Logs:        t.LogsSnapshot(),
 			})
 		}
 		c.Data["json"] = map[string]interface{}{"code": 0, "data": list}
@@ -1155,7 +1144,10 @@ func (c *PortalController) KuwoGetWithdrawStatus() {
 			"targetHour":  task.TargetHour,
 			"executeAt":   task.ExecuteAt.Format("15:04:05"),
 			"status":      task.Status,
+			"immediate":   task.Immediate,
 			"results":     task.ResultsJSON,
+			"resultsDetail": task.ResultsJSON,
+			"logs":        task.LogsSnapshot(),
 		},
 	}
 	c.ServeJSON()
