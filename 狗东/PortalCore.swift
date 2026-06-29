@@ -264,6 +264,7 @@ struct PortalActivity: Decodable {
     let qingLongConfig: String?
     let guide: String?
     let inputFields: [PortalActivityField]?
+    let category: String?
 }
 
 

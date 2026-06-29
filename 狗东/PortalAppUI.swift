@@ -1211,12 +1211,18 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
     private let segmented = UISegmentedControl(items: ["活动中心", "我的项目", "微信协议"])
     private let container = UIView()
     private let searchBar = UISearchBar()
+    private let categoryFilterScroll = UIScrollView()
+    private let categoryFilterStack = UIStackView()
     private let activitiesVC = ActivitiesListViewController()
     private let myProjectsVC = MyProjectsListViewController()
     private let wechatVC = WechatProtocolViewController()
     private var currentVC: UIViewController?
     private var containerTopToSearchBar: NSLayoutConstraint!
     private var containerTopToSegmented: NSLayoutConstraint!
+    private var selectedCategoryFilter = ""
+    private let activityCategories: [(value: String, title: String)] = [
+        ("", "全部"), ("现金类", "现金类"), ("积分换实物", "积分换实物"), ("抽奖类", "抽奖类"), ("其他类", "其他类")
+    ]
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -1285,7 +1291,17 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         searchBar.placeholder = "搜索项目名、活动名称…"
         searchBar.searchBarStyle = .minimal
         searchBar.translatesAutoresizingMaskIntoConstraints = false
+        categoryFilterScroll.showsHorizontalScrollIndicator = false
+        categoryFilterScroll.translatesAutoresizingMaskIntoConstraints = false
+        categoryFilterStack.axis = .horizontal
+        categoryFilterStack.spacing = 8
+        categoryFilterStack.alignment = .fill
+        categoryFilterStack.distribution = .fill
+        categoryFilterStack.translatesAutoresizingMaskIntoConstraints = false
+        categoryFilterScroll.addSubview(categoryFilterStack)
+        setupCategoryFilterButtons()
         view.addSubview(segmented)
+        view.addSubview(categoryFilterScroll)
         view.addSubview(searchBar)
         view.addSubview(container)
         containerTopToSearchBar = container.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 4)
@@ -1296,13 +1312,58 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
             segmented.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 6),
             segmented.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             segmented.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            searchBar.topAnchor.constraint(equalTo: segmented.bottomAnchor, constant: 4),
+            categoryFilterScroll.topAnchor.constraint(equalTo: segmented.bottomAnchor, constant: 6),
+            categoryFilterScroll.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            categoryFilterScroll.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            categoryFilterScroll.heightAnchor.constraint(equalToConstant: 36),
+            categoryFilterStack.topAnchor.constraint(equalTo: categoryFilterScroll.topAnchor),
+            categoryFilterStack.leadingAnchor.constraint(equalTo: categoryFilterScroll.leadingAnchor),
+            categoryFilterStack.trailingAnchor.constraint(equalTo: categoryFilterScroll.trailingAnchor),
+            categoryFilterStack.bottomAnchor.constraint(equalTo: categoryFilterScroll.bottomAnchor),
+            categoryFilterStack.heightAnchor.constraint(equalTo: categoryFilterScroll.heightAnchor),
+            searchBar.topAnchor.constraint(equalTo: categoryFilterScroll.bottomAnchor, constant: 4),
             searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             container.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        updateCategoryFilterVisibility(for: segmented.selectedSegmentIndex)
+    }
+
+    private func setupCategoryFilterButtons() {
+        categoryFilterStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        for item in activityCategories {
+            let button = UIButton(type: .system)
+            button.setTitle(item.title, for: .normal)
+            button.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+            button.layer.cornerRadius = 16
+            button.contentEdgeInsets = UIEdgeInsets(top: 7, left: 14, bottom: 7, right: 14)
+            button.tag = activityCategories.firstIndex(where: { $0.value == item.value }) ?? 0
+            button.addTarget(self, action: #selector(categoryFilterTapped(_:)), for: .touchUpInside)
+            categoryFilterStack.addArrangedSubview(button)
+        }
+        refreshCategoryFilterButtons()
+    }
+
+    private func refreshCategoryFilterButtons() {
+        for case let button as UIButton in categoryFilterStack.arrangedSubviews {
+            let value = activityCategories[button.tag].value
+            let selected = value == selectedCategoryFilter
+            button.backgroundColor = selected ? UIColor.systemIndigo : UIColor.secondarySystemGroupedBackground
+            button.setTitleColor(selected ? .white : .secondaryLabel, for: .normal)
+        }
+    }
+
+    private func updateCategoryFilterVisibility(for index: Int) {
+        let show = index == 0
+        categoryFilterScroll.isHidden = !show
+    }
+
+    @objc private func categoryFilterTapped(_ sender: UIButton) {
+        selectedCategoryFilter = activityCategories[sender.tag].value
+        refreshCategoryFilterButtons()
+        activitiesVC.applyCategory(selectedCategoryFilter)
     }
 
     @objc private func segmentChanged() {
@@ -1325,6 +1386,7 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         searchBar.resignFirstResponder()
         activitiesVC.applySearch("")
         myProjectsVC.applySearch("")
+        updateCategoryFilterVisibility(for: index)
         if index == 2 {
             searchBar.isHidden = true
             containerTopToSearchBar.isActive = false
@@ -1374,6 +1436,27 @@ final class ActivitiesListViewController: UITableViewController {
     private var activities: [PortalActivity] = []
     private var filteredActivities: [PortalActivity] = []
     private var isFiltering = false
+    private var categoryFilter = ""
+    private var currentSearchText = ""
+
+    private func normalizeActivityCategory(_ category: String?) -> String {
+        switch category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" {
+        case "现金类", "积分换实物", "抽奖类", "其他类":
+            return category!.trimmingCharacters(in: .whitespacesAndNewlines)
+        default:
+            return "其他类"
+        }
+    }
+
+    private func currentSource() -> [PortalActivity] {
+        if categoryFilter.isEmpty { return activities }
+        return activities.filter { normalizeActivityCategory($0.category) == categoryFilter }
+    }
+
+    func applyCategory(_ category: String) {
+        categoryFilter = category
+        applySearch(currentSearchText)
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -1389,13 +1472,15 @@ final class ActivitiesListViewController: UITableViewController {
     }
 
     func applySearch(_ text: String) {
+        currentSearchText = text
+        let source = currentSource()
         if text.isEmpty {
             isFiltering = false
             filteredActivities = []
         } else {
             isFiltering = true
             let q = text.lowercased()
-            filteredActivities = activities.filter { ($0.name.lowercased().contains(q)) || ($0.qingLongConfig?.lowercased().contains(q) ?? false) }
+            filteredActivities = source.filter { ($0.name.lowercased().contains(q)) || ($0.qingLongConfig?.lowercased().contains(q) ?? false) }
         }
         tableView.reloadData()
     }
@@ -1417,7 +1502,7 @@ final class ActivitiesListViewController: UITableViewController {
     }
 
     private var displayedActivities: [PortalActivity] {
-        return isSearching ? filteredActivities : activities
+        return isFiltering ? filteredActivities : currentSource()
     }
 
     override func numberOfSections(in tableView: UITableView) -> Int { 1 }
@@ -1455,6 +1540,7 @@ final class ActivitiesListViewController: UITableViewController {
         }
         card.priceLabel.text = price
         card.badgeLabel.configure(text: badgeText, kind: badgeKind)
+        card.metaLabel.text = (card.metaLabel.text ?? "") + "\n类型：\(normalizeActivityCategory(item.category))"
         cell.contentView.addSubview(card)
         NSLayoutConstraint.activate([
             card.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
