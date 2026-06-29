@@ -184,6 +184,13 @@ class JdPortalFragment : Fragment() {
 
     private fun renderAccountList(list: List<PortalJdAccount>, error: String? = null) {
         accounts = list
+        // 默认勾选所有有效账号（1-based索引），失效账号不勾选
+        val validIndices = list.mapIndexedNotNull { i, acc -> if (acc.valid) i + 1 else null }.toMutableSet()
+        taskDefs.forEach { task ->
+            taskSelections[task.id] = validIndices.toMutableSet()
+        }
+        // 更新已选标签
+        taskDefs.forEach { updateSelectedLabel(it) }
         val host = contentHost.findViewWithTag<LinearLayout>("account_list") ?: return
         host.removeAllViews()
         val ctx = requireContext()
