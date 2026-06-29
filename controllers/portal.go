@@ -1082,14 +1082,20 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 		})
 	}
 
-	task := models.KuwoScheduleWithdraw(accounts, quotaId, smsCode, req.TargetHour, req.Immediate)
+	task, reused := models.KuwoScheduleWithdraw(accounts, quotaId, smsCode, req.TargetHour, req.Immediate)
+	msg := "任务已创建"
+	if reused {
+		msg = "已有进行中的抢兑任务，已返回现有任务"
+	}
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
+		"msg":  msg,
 		"data": map[string]interface{}{
 			"taskId":     task.ID,
 			"targetHour": task.TargetHour,
 			"executeAt":  task.ExecuteAt.Format("2006-01-02 15:04:05"),
 			"status":     task.Status,
+			"reused":     reused,
 		},
 	}
 	c.ServeJSON()
@@ -1098,6 +1104,21 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 // KuwoGetWithdrawStatus 查询定时抢兑任务状态
 func (c *PortalController) KuwoGetWithdrawStatus() {
 	taskID := c.Ctx.Input.Query("taskId")
+	phone := strings.TrimSpace(c.Ctx.Input.Query("phone"))
+	if taskID == "" && phone != "" {
+		task := models.KuwoGetActiveTaskByPhone(phone)
+		if task == nil {
+			c.Data["json"] = map[string]interface{}{"code": 0, "data": nil}
+			c.ServeJSON()
+			return
+		}
+		c.Data["json"] = map[string]interface{}{
+			"code": 0,
+			"data": kuwoTaskStatusPayload(task),
+		}
+		c.ServeJSON()
+		return
+	}
 	if taskID == "" {
 		// 返回所有任务
 		tasks := models.KuwoListScheduledTasks()
@@ -1137,18 +1158,22 @@ func (c *PortalController) KuwoGetWithdrawStatus() {
 	}
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
-		"data": map[string]interface{}{
-			"id":          task.ID,
-			"phone":       task.Phone,
-			"quotaID":     task.QuotaID,
-			"targetHour":  task.TargetHour,
-			"executeAt":   task.ExecuteAt.Format("15:04:05"),
-			"status":      task.Status,
-			"immediate":   task.Immediate,
-			"results":     task.ResultsJSON,
-			"resultsDetail": task.ResultsJSON,
-			"logs":        task.LogsSnapshot(),
-		},
+		"data": kuwoTaskStatusPayload(task),
 	}
 	c.ServeJSON()
+}
+
+func kuwoTaskStatusPayload(task *models.KuwoScheduledTask) map[string]interface{} {
+	return map[string]interface{}{
+		"id":            task.ID,
+		"phone":         task.Phone,
+		"quotaID":       task.QuotaID,
+		"targetHour":    task.TargetHour,
+		"executeAt":     task.ExecuteAt.Format("15:04:05"),
+		"status":        task.Status,
+		"immediate":     task.Immediate,
+		"results":       task.ResultsJSON,
+		"resultsDetail": task.ResultsJSON,
+		"logs":          task.LogsSnapshot(),
+	}
 }

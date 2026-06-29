@@ -34,8 +34,10 @@ const (
 	kuwoWithdrawRetryPerRound = 10
 	kuwoWithdrawStaggerMs   = 30
 	kuwoScheduledLeadMs       = 30 // 整点前提前触发（毫秒）
-	kuwoWarmupBeforeSec       = 15
+	kuwoWarmupBeforeSec       = 5
 	kuwoSessionRefreshBefore  = 35 * time.Second
+	kuwoLoginMaxRetry         = 3
+	kuwoTaskRetainDuration    = 2 * time.Hour
 )
 
 var kuwoHTTPClient = &http.Client{
@@ -237,7 +239,7 @@ func kuwoEnsureSessions(accounts []*KuwoAccountInput) []*KuwoSession {
 			continue
 		}
 		if acc.Password != "" {
-			sess, err := KuwoLogin(acc.Phone, acc.Password)
+			sess, err := kuwoLoginWithRetry(acc.Phone, acc.Password)
 			if err != nil {
 				fmt.Printf("[kuwo] 刷新登录失败 phone=%s: %v\n", acc.Phone, err)
 				continue
@@ -249,6 +251,21 @@ func kuwoEnsureSessions(accounts []*KuwoAccountInput) []*KuwoSession {
 		fmt.Printf("[kuwo] 无法获取有效session phone=%s\n", acc.Phone)
 	}
 	return sessions
+}
+
+func kuwoLoginWithRetry(phone, password string) (*KuwoSession, error) {
+	var lastErr error
+	for attempt := 1; attempt <= kuwoLoginMaxRetry; attempt++ {
+		sess, err := KuwoLogin(phone, password)
+		if err == nil {
+			return sess, nil
+		}
+		lastErr = err
+		if attempt < kuwoLoginMaxRetry {
+			time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+		}
+	}
+	return nil, lastErr
 }
 
 func kuwoAnySuccess(results []KuwoWithdrawResult) bool {
@@ -792,8 +809,22 @@ var kuwoScheduledTasks = struct {
 	tasks map[string]*KuwoScheduledTask
 }{tasks: make(map[string]*KuwoScheduledTask)}
 
-// KuwoScheduleWithdraw 创建抢兑任务；immediate=true 时立即执行
-func KuwoScheduleWithdraw(accounts []*KuwoAccountInput, quotaID, smsCode string, targetHour int, immediate bool) *KuwoScheduledTask {
+// KuwoScheduleWithdraw 创建抢兑任务；immediate=true 时立即执行。
+// 第二个返回值 reused=true 表示返回了同手机号已有的 pending/running 任务。
+func KuwoScheduleWithdraw(accounts []*KuwoAccountInput, quotaID, smsCode string, targetHour int, immediate bool) (*KuwoScheduledTask, bool) {
+	kuwoPruneOldTasks()
+
+	phone := ""
+	if len(accounts) > 0 && accounts[0] != nil {
+		phone = strings.TrimSpace(accounts[0].Phone)
+	}
+	if phone != "" {
+		if existing := kuwoFindActiveTaskByPhone(phone); existing != nil {
+			fmt.Printf("[kuwo] 复用已有任务: id=%s phone=%s status=%s\n", existing.ID, kuwoMaskPhone(phone), existing.Status)
+			return existing, true
+		}
+	}
+
 	now := time.Now()
 	bjLoc := kuwoBeijingLocation()
 	bjTime := now.In(bjLoc)
@@ -806,11 +837,6 @@ func KuwoScheduleWithdraw(accounts []*KuwoAccountInput, quotaID, smsCode string,
 		if executeAt.Before(bjTime) {
 			executeAt = executeAt.Add(24 * time.Hour)
 		}
-	}
-
-	phone := ""
-	if len(accounts) > 0 && accounts[0] != nil {
-		phone = accounts[0].Phone
 	}
 
 	taskID := fmt.Sprintf("kuwo_%d_%s", now.UnixMilli(), quotaID)
@@ -843,7 +869,40 @@ func KuwoScheduleWithdraw(accounts []*KuwoAccountInput, quotaID, smsCode string,
 		go kuwoRunScheduledTask(taskID)
 	}
 
-	return task
+	return task, false
+}
+
+func kuwoFindActiveTaskByPhone(phone string) *KuwoScheduledTask {
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		return nil
+	}
+	kuwoScheduledTasks.RLock()
+	defer kuwoScheduledTasks.RUnlock()
+	for _, t := range kuwoScheduledTasks.tasks {
+		if t == nil {
+			continue
+		}
+		if strings.TrimSpace(t.Phone) == phone && (t.Status == "pending" || t.Status == "running") {
+			return t
+		}
+	}
+	return nil
+}
+
+func kuwoPruneOldTasks() {
+	cutoff := time.Now().Add(-kuwoTaskRetainDuration)
+	kuwoScheduledTasks.Lock()
+	defer kuwoScheduledTasks.Unlock()
+	for id, t := range kuwoScheduledTasks.tasks {
+		if t == nil {
+			delete(kuwoScheduledTasks.tasks, id)
+			continue
+		}
+		if (t.Status == "completed" || t.Status == "failed") && t.CreatedAt.Before(cutoff) {
+			delete(kuwoScheduledTasks.tasks, id)
+		}
+	}
 }
 
 func kuwoRunImmediateTask(taskID string) {
@@ -904,6 +963,12 @@ func kuwoRunScheduledTask(taskID string) {
 	task.AddLog("info", "到点前刷新登录会话…")
 	sessions := kuwoEnsureSessions(task.Accounts)
 	task.Sessions = sessions
+	if len(sessions) == 0 {
+		task.AddLog("warn", "首次登录失败，%d 秒后重试…", 2)
+		time.Sleep(2 * time.Second)
+		sessions = kuwoEnsureSessions(task.Accounts)
+		task.Sessions = sessions
+	}
 	if len(sessions) == 0 {
 		task.Status = "failed"
 		task.AddLog("error", "到点前登录失败，无法获取有效会话")
@@ -999,6 +1064,11 @@ func KuwoGetScheduledTask(taskID string) *KuwoScheduledTask {
 	kuwoScheduledTasks.RLock()
 	defer kuwoScheduledTasks.RUnlock()
 	return kuwoScheduledTasks.tasks[taskID]
+}
+
+// KuwoGetActiveTaskByPhone 查询手机号下 pending/running 任务
+func KuwoGetActiveTaskByPhone(phone string) *KuwoScheduledTask {
+	return kuwoFindActiveTaskByPhone(phone)
 }
 
 // KuwoListScheduledTasks 查询所有任务
