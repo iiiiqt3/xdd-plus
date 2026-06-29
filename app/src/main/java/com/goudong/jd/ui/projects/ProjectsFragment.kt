@@ -55,6 +55,9 @@ class ProjectsFragment : Fragment() {
     private var deviceLoadingIndicator: ProgressBar? = null
     private var searchBox: EditText? = null
     private var searchQuery: String = ""
+    private var selectedCategory: String = ""
+    private var categoryContainer: LinearLayout? = null
+    private val categories = listOf("全部", "现金类", "积分换实物", "抽奖类", "其他类")
 
     // 缓存
     private var cachedActivities: List<PortalActivity>? = null
@@ -122,6 +125,15 @@ class ProjectsFragment : Fragment() {
         }
         wrapper.addView(searchBox)
 
+        // 分类筛选栏（仅活动中心tab可见）
+        categoryContainer = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(requireContext().dp(14), 0, requireContext().dp(14), requireContext().dp(8))
+            visibility = View.GONE
+        }
+        renderCategoryChips()
+        wrapper.addView(categoryContainer)
+
         wrapper.addView(swipeRefreshLayout)
         return wrapper
     }
@@ -144,6 +156,8 @@ class ProjectsFragment : Fragment() {
         if (!swipeRefreshLayout.isRefreshing && forceRefresh) {
             swipeRefreshLayout.isRefreshing = true
         }
+        // 活动中心tab显示分类筛选栏，其他tab隐藏
+        categoryContainer?.visibility = if (currentTab == 0) View.VISIBLE else View.GONE
         when (currentTab) {
             0 -> loadActivities(forceRefresh)
             1 -> loadProjects(forceRefresh)
@@ -167,6 +181,35 @@ class ProjectsFragment : Fragment() {
                 setPadding(0, requireContext().dp(10), 0, 0)
             })
         })
+    }
+
+    private fun renderCategoryChips() {
+        val container = categoryContainer ?: return
+        container.removeAllViews()
+        val brandBlue = ContextCompat.getColor(requireContext(), R.color.brand_primary)
+        for (cat in categories) {
+            val isSelected = (cat == "全部" && selectedCategory == "") || cat == selectedCategory
+            val chip = TextView(requireContext()).apply {
+                text = cat
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(if (isSelected) Color.WHITE else Color.parseColor("#475569"))
+                background = GradientDrawable().apply {
+                    setColor(if (isSelected) brandBlue else Color.parseColor("#F1F5F9"))
+                    cornerRadius = requireContext().dp(16).toFloat()
+                }
+                setPadding(requireContext().dp(14), requireContext().dp(6), requireContext().dp(14), requireContext().dp(6))
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginEnd = requireContext().dp(8)
+                }
+                setOnClickListener {
+                    selectedCategory = if (cat == "全部") "" else cat
+                    renderCategoryChips()
+                    renderCurrentTab(forceRefresh = false)
+                }
+            }
+            container.addView(chip)
+        }
     }
 
     private fun loadActivities(forceRefresh: Boolean) {
@@ -194,11 +237,17 @@ class ProjectsFragment : Fragment() {
     }
 
     private fun renderActivities(list: List<PortalActivity>) {
-        val filtered = if (searchQuery.isEmpty()) list else list.filter {
-            val q = searchQuery.lowercase()
-            (it.name ?: "").lowercase().contains(q) ||
-            (it.envKey ?: "").lowercase().contains(q) ||
-            (it.qingLongConfig ?: "").lowercase().contains(q)
+        val filtered = list.filter { item ->
+            // 分类筛选
+            val matchCategory = selectedCategory.isEmpty() || item.category == selectedCategory
+            // 搜索筛选
+            val matchSearch = searchQuery.isEmpty() || run {
+                val q = searchQuery.lowercase()
+                (item.name ?: "").lowercase().contains(q) ||
+                (item.envKey ?: "").lowercase().contains(q) ||
+                (item.qingLongConfig ?: "").lowercase().contains(q)
+            }
+            matchCategory && matchSearch
         }
         if (filtered.isEmpty()) contentRoot.addView(emptyCard("暂无可用活动"))
         else filtered.forEach { contentRoot.addView(activityCard(it)) }

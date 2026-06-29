@@ -87,6 +87,7 @@ data class PortalActivity(
     val id: String? = null,
     val name: String? = null,
     val envKey: String? = null,
+    val category: String? = null,
     val needCoin: Int? = null,
     val isMonthlyDeduct: Boolean? = null,
     val monthlyCoin: Int? = null,

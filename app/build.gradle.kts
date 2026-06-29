@@ -11,8 +11,8 @@ android {
         applicationId = "com.goudong.jd"
         minSdk = 23
         targetSdk = 36
-        versionCode = 27
-        versionName = "2.8.3"
+        versionCode = 28
+        versionName = "2.8.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -20,7 +20,12 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("../goudong.jks")
+            val keystoreFile = rootProject.file("goudong.jks")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+            } else {
+                storeFile = file("../goudong.jks")
+            }
             storePassword = "goudong123"
             keyAlias = "goudong"
             keyPassword = "goudong123"
