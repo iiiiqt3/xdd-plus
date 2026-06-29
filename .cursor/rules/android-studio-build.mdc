@@ -1,0 +1,23 @@
+---
+description: 安卓狗东项目使用本机 Android Studio 编译打包
+globs: 安卓狗东/**
+alwaysApply: false
+---
+
+# 安卓狗东编译方式
+
+本机已安装 Android Studio，编译/打包 **必须** 使用其自带环境，不要依赖系统 Java 或其他 JDK。
+
+## 环境
+
+- `JAVA_HOME`：`/Applications/Android Studio.app/Contents/jbr/Contents/Home`
+- Android SDK：`/Users/feiniao/Library/Android/sdk`（见 `local.properties`）
+- 构建命令：项目根目录执行 `./gradlew`（通过 `build.sh` 或 `build-debug.sh`）
+
+## 打包
+
+- 清理缓存：`./clean-cache.sh`
+- Debug：`./build-debug.sh` → 输出 `goudong-v{versionName}-debug.apk`
+- Release：`./build.sh` → 输出 `goudong-v{versionName}.apk`
+
+不要在没有设置 Android Studio JBR 的情况下直接运行 `gradlew`。
