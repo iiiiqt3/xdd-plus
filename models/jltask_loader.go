@@ -33,6 +33,7 @@ type YAMLActivityConfig struct {
 	MinDays            int                 `yaml:"最小天数"`  // 按天计费时的最小购买天数
 	DisplayOrder       int                 `yaml:"排序编号"`
 	Enabled            bool                `yaml:"启用状态"`
+	Category           string              `yaml:"活动类型"`
 	Guide              string              `yaml:"玩法和说明"`
 	InputFields        []YAMLInputField    `yaml:"输入字段"`
 	CKBuilderTemplate  string              `yaml:"CK构建模板"`
@@ -350,6 +351,7 @@ func (al *ActivityLoader) convertYAMLToActivity(yamlAct YAMLActivityConfig) *Act
 		MinDays:            minDays,
 		DisplayOrder:       yamlAct.DisplayOrder,
 		Enabled:            yamlAct.Enabled,
+		Category:           NormalizeActivityCategory(yamlAct.Category),
 		InputFields:        make([]InputField, 0, len(yamlAct.InputFields)),
 		CKTemplate:         yamlAct.CKBuilderTemplate,
 		ScriptPaths: struct {

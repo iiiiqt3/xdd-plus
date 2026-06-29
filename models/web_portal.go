@@ -63,6 +63,7 @@ type PortalActivityItem struct {
 	InputFields     []PortalActivityField `json:"inputFields"`
 	CKTemplate      string                `json:"ckTemplate"`
 	Enabled         bool                  `json:"enabled"`
+	Category        string                `json:"category"`
 }
 
 type PortalDashboard struct {
@@ -296,6 +297,7 @@ func GetPortalActivities() []PortalActivityItem {
 			Guide:           strings.TrimSpace(cfg.Guide),
 			CKTemplate:      cfg.CKTemplate,
 			Enabled:         cfg.Enabled,
+			Category:        NormalizeActivityCategory(cfg.Category),
 		}
 		for _, field := range cfg.InputFields {
 			prompt := field.Prompt

@@ -855,6 +855,17 @@
         }
         .filter-bar .search-clear:hover { background: var(--danger-light); color: var(--danger); }
         .filter-bar .search-clear.show { display: inline-flex; }
+        .activity-category-filters { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; margin-bottom: 2px; }
+        .activity-category-filters button {
+            border: 1px solid var(--border); background: #fff; color: var(--text-muted);
+            border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+            transition: all .18s ease;
+        }
+        .activity-category-filters button.active {
+            background: linear-gradient(135deg, var(--primary), #6366f1); color: #fff; border-color: transparent;
+            box-shadow: 0 6px 16px rgba(79,70,229,0.18);
+        }
+        .activity-category-filters button:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
 
         /* ===== 自定义滚动条 ===== */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -1483,6 +1494,13 @@
         <section class="panel" id="panel-activities">
             <div class="section">
                 <div class="section-header panel-duplicate-title"><h3>🚀 活动中心</h3><span class="muted">选择活动并填写信息参与</span></div>
+                <div class="activity-category-filters" id="activityCategoryFilters">
+                    <button type="button" class="active" data-category="" onclick="setActivityCategoryFilter('')">全部</button>
+                    <button type="button" data-category="现金类" onclick="setActivityCategoryFilter('现金类')">现金类</button>
+                    <button type="button" data-category="积分换实物" onclick="setActivityCategoryFilter('积分换实物')">积分换实物</button>
+                    <button type="button" data-category="抽奖类" onclick="setActivityCategoryFilter('抽奖类')">抽奖类</button>
+                    <button type="button" data-category="其他类" onclick="setActivityCategoryFilter('其他类')">其他类</button>
+                </div>
                 <div class="filter-bar">
                     <input class="search-input" id="activitySearchInput" type="text" placeholder="搜索项目名、编号、环境变量…" oninput="onActivitySearch(this.value)">
                     <button class="search-clear" id="activitySearchClear" onclick="clearActivitySearch()">✕</button>
@@ -1832,6 +1850,7 @@ var state = {
     wxPollingDeduct: false,
     projectSearch: '',
     activitySearch: '',
+    activityCategoryFilter: '',
     jdTab: 'query',
     jdAccounts: [],
     jdWxDevices: []
@@ -2278,6 +2297,20 @@ function clearProjectSearch() {
     renderProjects();
 }
 
+function normalizeActivityCategory(cat) {
+    const options = ['现金类', '积分换实物', '抽奖类', '其他类'];
+    const value = (cat || '').trim();
+    return options.includes(value) ? value : '其他类';
+}
+
+function setActivityCategoryFilter(category) {
+    state.activityCategoryFilter = category || '';
+    document.querySelectorAll('#activityCategoryFilters button').forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.category || '') === state.activityCategoryFilter);
+    });
+    renderActivities();
+}
+
 function onActivitySearch(value) {
     state.activitySearch = value;
     const clearBtn = document.getElementById('activitySearchClear');
@@ -2442,14 +2475,22 @@ function toggleGroupDetail(groupKey) {
 function renderActivities() {
     const box = document.getElementById('activitiesBox');
     const keyword = (state.activitySearch || '').trim().toLowerCase();
-    const list = keyword ? state.activities.filter(item => {
-        const name = (item.name || '').toLowerCase();
-        const envKey = (item.envKey || '').toLowerCase();
-        const id = String(item.id || '');
-        return name.indexOf(keyword) !== -1 || envKey.indexOf(keyword) !== -1 || id.indexOf(keyword) !== -1;
-    }) : state.activities;
+    const category = state.activityCategoryFilter || '';
+    let list = state.activities || [];
+    if (category) {
+        list = list.filter(item => normalizeActivityCategory(item.category) === category);
+    }
+    if (keyword) {
+        list = list.filter(item => {
+            const name = (item.name || '').toLowerCase();
+            const envKey = (item.envKey || '').toLowerCase();
+            const id = String(item.id || '');
+            return name.indexOf(keyword) !== -1 || envKey.indexOf(keyword) !== -1 || id.indexOf(keyword) !== -1;
+        });
+    }
     if (!list.length) {
-        box.innerHTML = `<div class="empty">${keyword ? '没有匹配的项目，请尝试其他关键词。' : '暂无活动配置。'}</div>`;
+        const emptyMsg = keyword || category ? '没有匹配的项目，请调整分类或搜索关键词。' : '暂无活动配置。';
+        box.innerHTML = `<div class="empty">${emptyMsg}</div>`;
         return;
     }
     box.innerHTML = list.map(item => `
@@ -2458,6 +2499,7 @@ function renderActivities() {
             <div class="activity-desc">环境变量：${escapeHtml(item.envKey)} · 青龙容器：${escapeHtml(item.qingLongConfig || '默认容器')}</div>
             ${item.guide ? `<div class="activity-guide">玩法摘要：${escapeHtml(item.guide)}</div>` : ''}
             <div class="activity-tags">
+                <span class="tag" style="background:var(--orange-dim,#fff7ed);color:#c2410c;border-color:rgba(234,88,12,0.18);">${escapeHtml(normalizeActivityCategory(item.category))}</span>
                 <span class="tag" style="background:var(--cyan-dim);color:var(--cyan);border-color:rgba(8,145,178,0.22);">编号 ${item.id}</span>
                 <span class="tag ${item.isMonthlyDeduct ? 'expiring' : item.isDailyDeduct ? 'warning' : 'active'}">${item.isMonthlyDeduct ? '按月授权' : item.isDailyDeduct ? '按天计费' : '一次性上车'}</span>
                 <span class="tag" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(124,58,237,0.22);">${item.isDailyDeduct ? `每天 ${item.dailyCoin} 积分` : item.isMonthlyDeduct ? `每月 ${item.monthlyCoin} 积分` : `扣除 ${item.needCoin} 积分`}</span>

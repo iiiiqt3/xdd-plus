@@ -79,6 +79,25 @@ type ActivityConfig struct {
 	// 👇 核心字段：控制菜单显示顺序，数值越小越靠前
 	DisplayOrder int
 	Enabled      bool
+	Category     string // 活动类型：现金类、积分换实物、抽奖类、其他类
+}
+
+const (
+	ActivityCategoryCash     = "现金类"
+	ActivityCategoryExchange = "积分换实物"
+	ActivityCategoryLottery  = "抽奖类"
+	ActivityCategoryOther    = "其他类"
+)
+
+// NormalizeActivityCategory 规范化活动类型，未知值归为其他类
+func NormalizeActivityCategory(category string) string {
+	category = strings.TrimSpace(category)
+	switch category {
+	case ActivityCategoryCash, ActivityCategoryExchange, ActivityCategoryLottery, ActivityCategoryOther:
+		return category
+	default:
+		return ActivityCategoryOther
+	}
 }
 
 // ===================== 全局变量变更 =====================

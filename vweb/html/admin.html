@@ -898,6 +898,7 @@
                             <th style="min-width:36px;width:36px;"><input type="checkbox" id="actCheckAll" onchange="toggleAllActCheck(this.checked)"></th>
                             <th style="min-width:42px" data-col="act-id">#</th>
                             <th class="sticky-col-name" style="min-width:110px" data-col="act-name">活动名称</th>
+                            <th style="min-width:72px" data-col="act-category">类型</th>
                             <th style="min-width:48px" data-col="act-order">排序</th>
                             <th style="min-width:100px" data-col="act-envkey">环境变量名</th>
                             <th style="min-width:60px" data-col="act-coin">所需积分</th>
@@ -1459,6 +1460,15 @@
             <div class="form-item"><label>活动名称 *</label><input type="text" id="actFormName" placeholder="如：顺丰速运"></div>
             <div class="form-item"><label>环境变量名 *</label><input type="text" id="actFormEnvKey" placeholder="如：sfsyUrl"></div>
             <div class="form-item">
+                <label>活动类型</label>
+                <select id="actFormCategory">
+                    <option value="现金类">现金类</option>
+                    <option value="积分换实物">积分换实物</option>
+                    <option value="抽奖类">抽奖类</option>
+                    <option value="其他类">其他类</option>
+                </select>
+            </div>
+            <div class="form-item">
                 <label>青龙配置 *</label>
                 <select id="actFormQlConfig"><option value="">请选择青龙配置</option></select>
             </div>
@@ -1840,6 +1850,11 @@ const api = {
 let currentPage = 'dashboard';
 let ckPage = 1, userPage = 1, envPage = 1, qlEnvPage = 1;
 let activitiesCache = null;
+const ACTIVITY_CATEGORY_OPTIONS = ['现金类', '积分换实物', '抽奖类', '其他类'];
+function normalizeActivityCategory(cat) {
+    const value = (cat || '').trim();
+    return ACTIVITY_CATEGORY_OPTIONS.includes(value) ? value : '其他类';
+}
 let activitiesRawCache = '';
 let qlEnvAllData = [];
 let qlEnvCurrentConfig = '';
@@ -4406,7 +4421,7 @@ function renderActivityCards(acts) {
             return match;
         });
     }
-    if (!filteredActs || filteredActs.length === 0) { tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#999;padding:40px;">暂无活动配置</td></tr>'; renderPagination('actPagination', 1, 0, getPageSize('act'), function(p) { _actPage = p; renderActivityCards(activitiesCache); }, 'act'); return; }
+    if (!filteredActs || filteredActs.length === 0) { tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;color:#999;padding:40px;">暂无活动配置</td></tr>'; renderPagination('actPagination', 1, 0, getPageSize('act'), function(p) { _actPage = p; renderActivityCards(activitiesCache); }, 'act'); return; }
     filteredActs = sortActivityConfigList(filteredActs);
     _openDetailIdx = -1;
     var limit = getPageSize('act');
@@ -4437,6 +4452,7 @@ function renderActivityCards(acts) {
                 ${monthly ? '<span class="tag tag-warning" style="font-size:10px;margin-left:4px;">月</span>' : ''}
 
             </td>
+            <td><span class="tag tag-info">${escapeHtml(normalizeActivityCategory(a['活动类型']))}</span></td>
             <td style="text-align:center;font-size:12px;">${orderDisplay}</td>
             <td style="font-family:monospace;font-size:12px;">${formatVal(a['环境变量名'])}</td>
             <td><span class="tag tag-primary">${coinDisplay}</span></td>
@@ -4451,7 +4467,7 @@ function renderActivityCards(acts) {
                 <button class="btn btn-danger btn-xs" onclick="deleteActivity(${realIdx})" title="删除"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
-        html += `<tr class="detail-row" id="detailRow${realIdx}"><td colspan="13"><div class="detail-inner" id="detailInner${realIdx}"></div></td></tr>`;
+        html += `<tr class="detail-row" id="detailRow${realIdx}"><td colspan="14"><div class="detail-inner" id="detailInner${realIdx}"></div></td></tr>`;
         return html;
     }).join('');
     renderPagination('actPagination', _actPage, total, limit, function(p) { _actPage = p; renderActivityCards(activitiesCache); }, 'act');
@@ -4589,6 +4605,7 @@ function generateActivitiesYaml(acts) {
         const guideBlock = `  玩法和说明: |-\n` + guideLines.map(l => `    ${l}`).join('\n') + '\n';
         yaml += `- 名称: "${escapeYamlString(a['名称'])}"
   环境变量名: "${escapeYamlString(a['环境变量名'])}"
+  活动类型: "${escapeYamlString(normalizeActivityCategory(a['活动类型']))}"
   所需积分: ${a['所需积分'] || 0}
   青龙配置名: "${escapeYamlString(a['青龙配置名'])}"
   是否按月扣费: ${a['是否按月扣费'] === true}
@@ -4655,6 +4672,7 @@ function showActivityEditor(idx) {
     const act = isNew ? {} : (activitiesCache[idx] || {});
     document.getElementById('actFormName').value = act['名称'] || '';
     document.getElementById('actFormEnvKey').value = act['环境变量名'] || '';
+    document.getElementById('actFormCategory').value = normalizeActivityCategory(act['活动类型']);
     document.getElementById('actFormCoin').value = (act['所需积分'] != null) ? act['所需积分'] : 500;
     document.getElementById('actFormOrder').value = act['排序编号'] || 10;
     document.getElementById('actFormQlConfig').value = '';
@@ -5056,6 +5074,7 @@ async function saveActivity() {
 
     const act = {
         '名称': name, '环境变量名': envKey,
+        '活动类型': normalizeActivityCategory(document.getElementById('actFormCategory').value),
         '所需积分': parseInt(document.getElementById('actFormCoin').value) || 0,
         '排序编号': enabled ? sortOrder : 0,
         '青龙配置名': qlConfig,
