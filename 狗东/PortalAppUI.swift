@@ -1208,13 +1208,16 @@ final class HomeDashboardViewController: BaseNativeViewController {
 
 
 final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDelegate {
-    private let segmented = UISegmentedControl(items: ["活动中心", "我的项目", "微信协议"])
+    private let segmented = UISegmentedControl(items: ["活动中心", "我的项目", "项目抢兑", "微信协议"])
     private let container = UIView()
     private let searchBar = UISearchBar()
     private let categoryFilterScroll = UIScrollView()
     private let categoryFilterStack = UIStackView()
     private let activitiesVC = ActivitiesListViewController()
     private let myProjectsVC = MyProjectsListViewController()
+    private lazy var projectRushNav: UINavigationController = {
+        AppNavigationController(rootViewController: ProjectRushListViewController())
+    }()
     private let wechatVC = WechatProtocolViewController()
     private var currentVC: UIViewController?
     private var containerTopToSearchBar: NSLayoutConstraint!
@@ -1258,7 +1261,7 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         headerTitle.text = "项目"
         headerTitle.font = .systemFont(ofSize: 20, weight: .bold)
         let headerSubtitle = UILabel()
-        headerSubtitle.text = "活动中心 · 微信协议"
+        headerSubtitle.text = "活动中心 · 项目抢兑 · 微信协议"
         headerSubtitle.font = .systemFont(ofSize: 12)
         headerSubtitle.textColor = .secondaryLabel
         headerRow.addSubview(headerIcon)
@@ -1371,6 +1374,9 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
     }
 
     private func switchTo(index: Int) {
+        if let nav = currentVC as? UINavigationController, nav.viewControllers.first is ProjectRushListViewController {
+            nav.popToRootViewController(animated: false)
+        }
         currentVC?.willMove(toParent: nil)
         currentVC?.view.removeFromSuperview()
         currentVC?.removeFromParent()
@@ -1378,7 +1384,8 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         switch index {
         case 0: vc = activitiesVC
         case 1: vc = myProjectsVC
-        case 2: vc = wechatVC
+        case 2: vc = projectRushNav
+        case 3: vc = wechatVC
         default: vc = activitiesVC
         }
         searchBar.text = nil
@@ -1387,7 +1394,8 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         activitiesVC.applySearch("")
         myProjectsVC.applySearch("")
         updateCategoryFilterVisibility(for: index)
-        if index == 2 {
+        let hideSearch = index == 2 || index == 3
+        if hideSearch {
             searchBar.isHidden = true
             containerTopToSearchBar.isActive = false
             containerTopToSegmented.isActive = true

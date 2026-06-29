@@ -506,7 +506,7 @@ final class AboutVersionViewController: UITableViewController {
         let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
         cell.selectionStyle = .none
         if indexPath.section == 0 {
-            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "4.4"
+            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "4.5"
             cell.textLabel?.text = "狗东 v\(version)"
             cell.textLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
             cell.detailTextLabel?.text = "设备：\(UIDevice.current.model) · iOS \(UIDevice.current.systemVersion)"

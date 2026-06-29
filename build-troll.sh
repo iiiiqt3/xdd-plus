@@ -9,7 +9,8 @@ SCHEME="狗东"
 CONFIG="Release"
 DERIVED="$ROOT/build/DerivedData"
 APP_PATH="$DERIVED/Build/Products/Release-iphoneos/狗东.app"
-IPA_PATH="$ROOT/狗东-4.4.ipa"
+VERSION=$(grep 'MARKETING_VERSION' 狗东.xcodeproj/project.pbxproj | head -1 | sed 's/.*= //;s/;//')
+IPA_PATH="$ROOT/狗东-${VERSION}.ipa"
 
 echo "==> 编译 $SCHEME ($CONFIG, 无签名)..."
 xcodebuild \

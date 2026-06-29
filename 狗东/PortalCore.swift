@@ -215,6 +215,36 @@ struct PortalJdTaskExecuteResult: Decodable {
     let taskId: String?
 }
 
+struct KuwoCredentials: Decodable {
+    let phone: String?
+    let password: String?
+}
+
+struct KuwoScheduleResult: Decodable {
+    let taskId: String?
+    let targetHour: Int?
+    let executeAt: String?
+    let status: String?
+    let reused: Bool?
+}
+
+struct KuwoTaskLog: Decodable {
+    let time: String?
+    let level: String?
+    let message: String?
+}
+
+struct KuwoWithdrawTask: Decodable {
+    let id: String?
+    let phone: String?
+    let quotaID: String?
+    let targetHour: Int?
+    let executeAt: String?
+    let status: String?
+    let immediate: Bool?
+    let logs: [KuwoTaskLog]?
+}
+
 
 struct PortalProfile: Decodable {
     let user: PortalUser?
@@ -556,8 +586,6 @@ final class APIClient {
                     completion(.success(data))
                 } else {
                     let message = envelope.msg ?? "请求失败"
-                    // HTTP 层认证错误已在 requestEnvelope 中处理，此处只处理业务错误
-                    // 不再根据消息文本判断 isUnauthorized，避免误判
                     let unauthorized = (envelope.code == 401 || envelope.code == 403)
                     completion(.failure(APIError(message: message, isUnauthorized: unauthorized)))
                 }
@@ -1111,6 +1139,91 @@ final class PortalService {
         let streamer = JdTaskLogStreamer(taskId: taskId, onLine: onLine, onDone: onDone, onError: onError)
         streamer.start()
         return streamer
+    }
+
+    func checkKuwoAuth(completion: @escaping (Result<(Bool, String), APIError>) -> Void) {
+        struct KuwoAuthResponse: Decodable {
+            let code: Int
+            let authorized: Bool?
+            let msg: String?
+        }
+        guard let url = URL(string: "/api/portal/kuwo/check-auth", relativeTo: AppEnvironment.baseURL) else {
+            completion(.failure(APIError(message: "请求地址无效", isUnauthorized: false)))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 30
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async { completion(.failure(APIError(message: error.localizedDescription, isUnauthorized: false))) }
+                return
+            }
+            guard let data = data else {
+                DispatchQueue.main.async { completion(.failure(APIError(message: "服务器无响应", isUnauthorized: false))) }
+                return
+            }
+            do {
+                let resp = try JSONDecoder().decode(KuwoAuthResponse.self, from: data)
+                DispatchQueue.main.async {
+                    if resp.code != 0 {
+                        completion(.failure(APIError(message: resp.msg ?? "检查授权失败", isUnauthorized: false)))
+                    } else {
+                        completion(.success((resp.authorized ?? false, resp.msg ?? "")))
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(APIError(message: String(data: data, encoding: .utf8) ?? "解析失败", isUnauthorized: false)))
+                }
+            }
+        }.resume()
+    }
+
+    func fetchKuwoCredentials(completion: @escaping (Result<KuwoCredentials, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/kuwo/credentials", completion: completion)
+    }
+
+    func sendKuwoSms(phone: String, password: String, completion: @escaping (Result<String, APIError>) -> Void) {
+        requestMessageJSON(path: "/api/portal/kuwo/send-sms", payload: ["phone": phone, "password": password], completion: completion)
+    }
+
+    func scheduleKuwoWithdraw(phone: String, password: String, quotaId: String, smsCode: String, targetHour: Int?, immediate: Bool, completion: @escaping (Result<KuwoScheduleResult, APIError>) -> Void) {
+        var payload: [String: Any] = [
+            "sessions": [["phone": phone, "password": password]],
+            "quotaId": quotaId,
+            "smsCode": smsCode,
+            "immediate": immediate,
+        ]
+        if !immediate, let targetHour = targetHour {
+            payload["targetHour"] = targetHour
+        }
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: "/api/portal/kuwo/schedule-withdraw", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func fetchKuwoWithdrawStatus(taskId: String? = nil, phone: String? = nil, completion: @escaping (Result<KuwoWithdrawTask?, APIError>) -> Void) {
+        var path = "/api/portal/kuwo/withdraw-status"
+        if let taskId = taskId, !taskId.isEmpty {
+            path += "?taskId=\(taskId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? taskId)"
+        } else if let phone = phone, !phone.isEmpty {
+            path += "?phone=\(phone.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? phone)"
+        }
+        APIClient.shared.requestEnvelope(path: path) { (result: Result<APIEnvelope<KuwoWithdrawTask>, APIError>) in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let envelope):
+                if envelope.code != 0 {
+                    completion(.failure(APIError(message: envelope.msg ?? "查询任务失败", isUnauthorized: false)))
+                    return
+                }
+                completion(.success(envelope.data))
+            }
+        }
     }
 }
 

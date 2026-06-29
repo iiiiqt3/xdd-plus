@@ -20,6 +20,8 @@
 		20F000000000000000000003 /* PortalMoreViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000103 /* PortalMoreViews.swift */; };
 		20F000000000000000000004 /* JdTabRootViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000104 /* JdTabRootViewController.swift */; };
 		20F000000000000000000005 /* JdPortalViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000105 /* JdPortalViewController.swift */; };
+		20F000000000000000000006 /* ProjectRushViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000106 /* ProjectRushViewController.swift */; };
+		20F000000000000000000007 /* ProjectRushListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F000000000000000000107 /* ProjectRushListViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +40,8 @@
 		20F000000000000000000103 /* PortalMoreViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalMoreViews.swift; sourceTree = "<group>"; };
 		20F000000000000000000104 /* JdTabRootViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JdTabRootViewController.swift; sourceTree = "<group>"; };
 		20F000000000000000000105 /* JdPortalViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JdPortalViewController.swift; sourceTree = "<group>"; };
+		20F000000000000000000106 /* ProjectRushViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectRushViewController.swift; sourceTree = "<group>"; };
+		20F000000000000000000107 /* ProjectRushListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectRushListViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +88,8 @@
 				20F000000000000000000101 /* PortalCore.swift */,
 				20F000000000000000000104 /* JdTabRootViewController.swift */,
 				20F000000000000000000105 /* JdPortalViewController.swift */,
+				20F000000000000000000106 /* ProjectRushViewController.swift */,
+				20F000000000000000000107 /* ProjectRushListViewController.swift */,
 			);
 			path = "狗东";
 			sourceTree = "<group>";
@@ -177,6 +183,8 @@
 				20F000000000000000000001 /* PortalCore.swift in Sources */,
 				20F000000000000000000004 /* JdTabRootViewController.swift in Sources */,
 				20F000000000000000000005 /* JdPortalViewController.swift in Sources */,
+				20F000000000000000000006 /* ProjectRushViewController.swift in Sources */,
+				20F000000000000000000007 /* ProjectRushListViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -308,7 +316,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_ASSET_PATHS = "\"狗东/Preview Content\"";
 				DEVELOPMENT_TEAM = TS89RH735A;
 				ENABLE_PREVIEWS = YES;
@@ -325,7 +333,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 4.4;
+				MARKETING_VERSION = 4.5;
 				PRODUCT_BUNDLE_IDENTIFIER = "goudong.--";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -340,7 +348,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_ASSET_PATHS = "\"狗东/Preview Content\"";
 				DEVELOPMENT_TEAM = TS89RH735A;
 				ENABLE_PREVIEWS = YES;
@@ -357,7 +365,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 4.4;
+				MARKETING_VERSION = 4.5;
 				PRODUCT_BUNDLE_IDENTIFIER = "goudong.--";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
