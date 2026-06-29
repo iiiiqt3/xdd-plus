@@ -1337,12 +1337,14 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     override val innerTabCount: Int
-        get() = tabs.tabCount
+        get() = if (::tabs.isInitialized) tabs.tabCount else 0
 
     override val innerTabIndex: Int
-        get() = currentTab
+        get() = if (::tabs.isInitialized) tabs.selectedTabPosition else currentTab
 
     override fun selectInnerTab(index: Int) {
+        if (!::tabs.isInitialized || index !in 0 until tabs.tabCount) return
+        if (tabs.selectedTabPosition == index) return
         tabs.getTabAt(index)?.select()
     }
 

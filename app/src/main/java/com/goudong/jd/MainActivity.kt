@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mainSwipeHandler: MainSwipeHandler
     private var pendingTabId: Int? = null
     private var isSyncing = false
+    private var lastSwipeHandledAt = 0L
 
     private val tabOrder = intArrayOf(TAB_HOME, TAB_PROJECTS, TAB_TASKS, TAB_JD, TAB_MORE)
 
@@ -321,17 +322,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleNestedTabSwipe(pager: ViewPager2, direction: Int): Boolean {
+        val now = System.currentTimeMillis()
+        if (now - lastSwipeHandledAt < 500L) return true
+
         val host = findInnerTabSwipeHost(pager)
-        if (host != null) {
-            if (host.onInnerSwipeBoundary(direction)) return true
+        if (host != null && host.innerTabCount > 1) {
+            if (host.onInnerSwipeBoundary(direction)) {
+                lastSwipeHandledAt = now
+                return true
+            }
             val index = host.innerTabIndex
             val count = host.innerTabCount
             if (direction > 0 && index < count - 1) {
                 host.selectInnerTab(index + 1)
+                lastSwipeHandledAt = now
                 return true
             }
             if (direction < 0 && index > 0) {
                 host.selectInnerTab(index - 1)
+                lastSwipeHandledAt = now
                 return true
             }
         }
@@ -341,15 +350,37 @@ class MainActivity : AppCompatActivity() {
         if (requiresAuth(tabId) && !AppServices.sessionManager.isAuthenticated()) {
             pendingTabId = tabId
             authLauncher.launch(Intent(this, AuthActivity::class.java))
+            lastSwipeHandledAt = now
             return true
         }
         isSyncing = true
-        pager.setCurrentItem(next, true)
+        pager.setCurrentItem(next, false)
         bottomNav.selectedItemId = tabId
         isSyncing = false
         resetMainTabFragment(next)
         onTabChanged(tabId)
+        lastSwipeHandledAt = now
         return true
+    }
+
+    private fun findInnerTabSwipeHost(pager: ViewPager2): InnerTabSwipeHost? {
+        val main = currentMainFragment(pager) ?: return null
+        if (main is InnerTabSwipeHost) return main
+        return findInnerTabSwipeHostRecursive(main)
+    }
+
+    private fun currentMainFragment(pager: ViewPager2): Fragment? {
+        val tag = "android:switcher:${pager.id}:${pager.currentItem}"
+        return supportFragmentManager.findFragmentByTag(tag)
+            ?: supportFragmentManager.fragments.firstOrNull { it.isAdded && it.view != null }
+    }
+
+    private fun findInnerTabSwipeHostRecursive(fragment: Fragment): InnerTabSwipeHost? {
+        for (child in fragment.childFragmentManager.fragments) {
+            if (child is InnerTabSwipeHost) return child
+            findInnerTabSwipeHostRecursive(child)?.let { return it }
+        }
+        return null
     }
 
     private fun resetMainTabFragment(position: Int) {
@@ -368,16 +399,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun findInnerTabSwipeHost(pager: ViewPager2): InnerTabSwipeHost? {
-        val tag = "android:switcher:${pager.id}:${pager.currentItem}"
-        val main = supportFragmentManager.findFragmentByTag(tag) ?: return null
-        if (main is InnerTabSwipeHost) return main
-        for (child in main.childFragmentManager.fragments) {
-            if (child is InnerTabSwipeHost) return child
-        }
-        return null
     }
 
     private inner class MainPagerAdapter(activity: AppCompatActivity) : FragmentStateAdapter(activity) {

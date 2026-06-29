@@ -712,12 +712,14 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     override val innerTabCount: Int
-        get() = mainTabs.tabCount
+        get() = if (::mainTabs.isInitialized) mainTabs.tabCount else 0
 
     override val innerTabIndex: Int
-        get() = mainTabIndex
+        get() = if (::mainTabs.isInitialized) mainTabs.selectedTabPosition else mainTabIndex
 
     override fun selectInnerTab(index: Int) {
+        if (!::mainTabs.isInitialized || index !in 0 until mainTabs.tabCount) return
+        if (mainTabs.selectedTabPosition == index) return
         mainTabs.getTabAt(index)?.select()
     }
 

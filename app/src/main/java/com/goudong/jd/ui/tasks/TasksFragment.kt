@@ -401,9 +401,11 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
         get() = if (::tabs.isInitialized) tabs.tabCount else 0
 
     override val innerTabIndex: Int
-        get() = currentTab
+        get() = if (::tabs.isInitialized) tabs.selectedTabPosition else currentTab
 
     override fun selectInnerTab(index: Int) {
+        if (!::tabs.isInitialized || index !in 0 until tabs.tabCount) return
+        if (tabs.selectedTabPosition == index) return
         tabs.getTabAt(index)?.select()
     }
 }
