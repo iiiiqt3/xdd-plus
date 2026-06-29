@@ -57,8 +57,9 @@ func (c *AdminApiController) SaveActivities() {
 		return
 	}
 
-	// 触发热加载
-	msg := models.ReloadActivities()
+	// 跳过热加载监控的重复加载，并直接用内存内容热加载
+	models.GetActivityLoader().MarkSkipWatcher(3 * time.Second)
+	msg := models.ReloadActivitiesFromData([]byte(req.Activities))
 	logs.Info("活动配置已更新: %s", msg)
 
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
@@ -882,7 +883,16 @@ func (c *AdminApiController) DeleteActivityAuthAccount() {
 		return
 	}
 	msg := fmt.Sprintf("已删除 %d 个账号并退还 %d 积分", deletedCount, refundCoin)
-	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg, "data": map[string]interface{}{"deletedCount": deletedCount, "refundCoin": refundCoin}}
+	respData := map[string]interface{}{
+		"deletedCount": deletedCount,
+		"refundCoin":   refundCoin,
+		"activityId":   req.ActivityID,
+		"envIds":       envIDs,
+	}
+	if item, ok := models.GetActivityAuthItemByID(req.ActivityID); ok {
+		respData["stats"] = item
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg, "data": respData}
 	c.ServeJSON()
 }
 

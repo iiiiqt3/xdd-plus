@@ -90,10 +90,11 @@ type YAMLQingLongConfig struct {
 
 // ActivityLoader 活动配置热加载管理器
 type ActivityLoader struct {
-	configPath string
-	watcher    *fsnotify.Watcher
-	mu         sync.RWMutex
-	stopChan   chan bool
+	configPath       string
+	watcher          *fsnotify.Watcher
+	mu               sync.RWMutex
+	stopChan         chan bool
+	skipWatcherUntil time.Time
 }
 
 var (
@@ -112,6 +113,19 @@ func GetActivityLoader() *ActivityLoader {
 		}
 	})
 	return activityLoader
+}
+
+// MarkSkipWatcher 标记短时间内跳过热加载监控，避免后台保存后重复加载
+func (al *ActivityLoader) MarkSkipWatcher(d time.Duration) {
+	al.mu.Lock()
+	defer al.mu.Unlock()
+	al.skipWatcherUntil = time.Now().Add(d)
+}
+
+func (al *ActivityLoader) shouldSkipWatcher() bool {
+	al.mu.RLock()
+	defer al.mu.RUnlock()
+	return time.Now().Before(al.skipWatcherUntil)
 }
 
 // StartHotReload 启动热加载监控
@@ -169,12 +183,19 @@ func (al *ActivityLoader) watchLoop() {
 					reloadTimer.Stop()
 				}
 				reloadTimer = time.AfterFunc(debounceDuration, func() {
+					if al.shouldSkipWatcher() {
+						log.Printf("[热加载] 跳过重复加载（后台刚保存）")
+						return
+					}
 					if err := al.LoadConfig(); err != nil {
 						log.Printf("[热加载] 配置加载失败: %v", err)
 						al.notifyAdmin(fmt.Sprintf("⚠️ 活动配置热加载失败\n错误: %v\n时间: %s", err, time.Now().Format("2006-01-02 15:04:05")))
 					} else {
 						log.Printf("[热加载] 配置加载成功")
-						al.notifyAdmin(fmt.Sprintf("✅ 活动配置热加载成功\n时间: %s", time.Now().Format("2006-01-02 15:04:05")))
+						activityConfigsMu.RLock()
+						count := len(ActivityConfigs)
+						activityConfigsMu.RUnlock()
+						go al.notifyHotReloadSuccess(count)
 					}
 				})
 			}
@@ -193,13 +214,28 @@ func (al *ActivityLoader) watchLoop() {
 
 // LoadConfig 加载配置文件
 func (al *ActivityLoader) LoadConfig() error {
-	// 读取文件
 	data, err := ioutil.ReadFile(al.configPath)
 	if err != nil {
 		return fmt.Errorf("读取配置文件失败: %v", err)
 	}
+	return al.loadConfigFromData(data)
+}
 
-	// 解析 YAML
+// LoadConfigFromData 从 YAML 内容加载配置（后台保存时避免重复读盘）
+func (al *ActivityLoader) LoadConfigFromData(data []byte) error {
+	return al.loadConfigFromData(data)
+}
+
+func (al *ActivityLoader) loadConfigFromData(data []byte) error {
+	oldNameMap := make(map[string]string)
+	activityConfigsMu.RLock()
+	for _, cfg := range ActivityConfigs {
+		if cfg != nil {
+			oldNameMap[cfg.ID] = cfg.Name
+		}
+	}
+	activityConfigsMu.RUnlock()
+
 	var yamlConfig YAMLActivitiesConfig
 	if err := yaml.Unmarshal(data, &yamlConfig); err != nil {
 		return fmt.Errorf("解析 YAML 失败: %v", err)
@@ -278,7 +314,18 @@ func (al *ActivityLoader) LoadConfig() error {
 	ActivityConfigs = newConfigs
 	activityConfigsMu.Unlock()
 
-	SyncActivityProjectNames(newConfigs)
+	changedConfigs := make([]*ActivityConfig, 0)
+	for _, cfg := range newConfigs {
+		if cfg == nil {
+			continue
+		}
+		if oldNameMap[cfg.ID] != cfg.Name {
+			changedConfigs = append(changedConfigs, cfg)
+		}
+	}
+	if len(changedConfigs) > 0 {
+		go SyncActivityProjectNames(changedConfigs)
+	}
 
 	log.Printf("[热加载] 成功加载 %d 个活动", len(newConfigs))
 	return nil
@@ -550,6 +597,11 @@ func (al *ActivityLoader) getRemarksBuilder(template string) func(qq int, userRe
 	}
 }
 
+// notifyHotReloadSuccess 热加载成功后通知管理员（异步，不阻塞保存）
+func (al *ActivityLoader) notifyHotReloadSuccess(count int) {
+	al.notifyAdmin(fmt.Sprintf("✅ 活动配置热加载成功\n活动数量: %d\n时间: %s", count, time.Now().Format("2006-01-02 15:04:05")))
+}
+
 // notifyAdmin 通知管理员
 func (al *ActivityLoader) notifyAdmin(msg string) {
 	// 使用项目原有的推送方式
@@ -570,7 +622,24 @@ func ReloadActivities() string {
 	if err := loader.LoadConfig(); err != nil {
 		return fmt.Sprintf("重新加载失败: %v", err)
 	}
-	return fmt.Sprintf("重新加载成功，当前共 %d 个活动", len(ActivityConfigs))
+	activityConfigsMu.RLock()
+	count := len(ActivityConfigs)
+	activityConfigsMu.RUnlock()
+	go loader.notifyHotReloadSuccess(count)
+	return fmt.Sprintf("重新加载成功，当前共 %d 个活动", count)
+}
+
+// ReloadActivitiesFromData 从 YAML 内容热加载（后台保存用，更快）
+func ReloadActivitiesFromData(data []byte) string {
+	loader := GetActivityLoader()
+	if err := loader.LoadConfigFromData(data); err != nil {
+		return fmt.Sprintf("重新加载失败: %v", err)
+	}
+	activityConfigsMu.RLock()
+	count := len(ActivityConfigs)
+	activityConfigsMu.RUnlock()
+	go loader.notifyHotReloadSuccess(count)
+	return fmt.Sprintf("保存成功，当前共 %d 个活动", count)
 }
 
 // GetActivityCount 获取当前活动数量（用于调试）

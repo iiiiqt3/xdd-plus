@@ -2812,6 +2812,32 @@ let actAuthDeleteSelectedEnvIds = [];
 let actAuthAdjustSelectedEnvIds = [];
 let _aaPage = 1;
 
+function applyActAuthStatsUpdate(activityId, stats) {
+    if (!activityId || !stats) return;
+    for (var i = 0; i < actAuthData.length; i++) {
+        if (actAuthData[i].activityId === activityId) {
+            actAuthData[i] = Object.assign({}, actAuthData[i], stats);
+            break;
+        }
+    }
+    if (actAuthCurrentAct && actAuthCurrentAct.activityId === activityId) {
+        actAuthCurrentAct = Object.assign({}, actAuthCurrentAct, stats);
+    }
+    renderActAuthTable(getFilteredActAuthData());
+}
+
+function removeDeletedActAuthAccounts(envIds) {
+    if (!envIds || !envIds.length) return;
+    var idSet = {};
+    envIds.forEach(function(id) { idSet[id] = true; });
+    actAuthDeleteAccountData = (actAuthDeleteAccountData || []).filter(function(item) {
+        return !idSet[item.envId];
+    });
+    actAuthDeleteSelectedEnvIds = (actAuthDeleteSelectedEnvIds || []).filter(function(id) {
+        return !idSet[id];
+    });
+}
+
 async function loadActAuthList(force) {
     const el = document.getElementById('actAuthTableBody');
     if (!actAuthData.length) {
@@ -3374,24 +3400,29 @@ async function submitActAuthDelete() {
     } else {
         confirmMsg += '\n一次性活动，不退还积分';
     }
-    confirmMsg += '\n删除后将在后台异步执行。';
+    confirmMsg += '\n删除后将立即生效，通知消息后台发送。';
     if (!confirm(confirmMsg)) return;
+    var deletedEnvIds = items.map(function(item) { return item.envId; });
     document.getElementById('aaDeleteSubmitBtn').disabled = true;
     closeActAuthDeleteModal();
-    toast('已提交后台异步删除任务，请稍后刷新查看结果', 'info');
-    loadActAuthList(true);
     try {
         var res = await api.post('/api/admin/activity-auth-delete-account', {
             activityId: activityId,
-            envIds: items.map(function(item) { return item.envId; }),
+            envIds: deletedEnvIds,
             reason: reason,
             channels: getCheckedNotifyChannels('aaDeleteNotifyChannel'),
             manualRefundCoins: manualRefundCoins
         });
         toast(res.msg || '删除成功', 'success');
-        loadActAuthList(true);
+        if (res.data) {
+            applyActAuthStatsUpdate(res.data.activityId, res.data.stats);
+            removeDeletedActAuthAccounts(res.data.envIds || deletedEnvIds);
+        }
     } catch(e) {
         toast('删除失败: ' + e.message, 'error');
+        loadActAuthList(true);
+    } finally {
+        document.getElementById('aaDeleteSubmitBtn').disabled = false;
     }
 }
 
@@ -4999,6 +5030,7 @@ function removeFormField(idx) {
 }
 
 async function saveActivity() {
+    const saveBtn = document.querySelector('#activityModal .btn-primary[onclick="saveActivity()"]');
     const name = document.getElementById('actFormName').value.trim();
     const envKey = document.getElementById('actFormEnvKey').value.trim();
     if (!name || !envKey) { toast('名称和环境变量名不能为空', 'error'); return; }
@@ -5048,7 +5080,30 @@ async function saveActivity() {
     if (editIdx >= 0) activitiesCache[editIdx] = act; else activitiesCache.push(act);
     activitiesCache = sortActivityConfigList(activitiesCache);
     const yaml = generateActivitiesYaml(activitiesCache);
-    try { const res = await api.post('/api/admin/activities/save', { activities: yaml }); toast(res.msg || '保存成功', res.code === 0 ? 'success' : 'error'); if (res.code === 0) { closeActivityModal(); loadActivities(); if (isNew) { const notifyWebApp = document.getElementById('actNotifyWebApp').checked; const notifyQQWx = document.getElementById('actNotifyQQWx').checked; const guide = document.getElementById('actFormGuide').value; const needCoin = parseInt(document.getElementById('actFormCoin').value) || 0; const billingMode = document.getElementById('actFormMonthly').value; const monthlyCoin = parseInt(document.getElementById('actFormMonthlyCoin').value) || 0; const dailyCoin = parseInt(document.getElementById('actFormDailyCoin').value) || 0; if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, billingMode, monthlyCoin, dailyCoin); } if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, billingMode, monthlyCoin, dailyCoin, true, true); } } } } catch (e) { toast('保存失败', 'error'); }
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...'; }
+    try {
+        const res = await api.post('/api/admin/activities/save', { activities: yaml });
+        toast(res.msg || '保存成功', res.code === 0 ? 'success' : 'error');
+        if (res.code === 0) {
+            closeActivityModal();
+            loadActivities();
+            if (isNew) {
+                const notifyWebApp = document.getElementById('actNotifyWebApp').checked;
+                const notifyQQWx = document.getElementById('actNotifyQQWx').checked;
+                const guide = document.getElementById('actFormGuide').value;
+                const needCoin = parseInt(document.getElementById('actFormCoin').value) || 0;
+                const billingMode = document.getElementById('actFormMonthly').value;
+                const monthlyCoin = parseInt(document.getElementById('actFormMonthlyCoin').value) || 0;
+                const dailyCoin = parseInt(document.getElementById('actFormDailyCoin').value) || 0;
+                if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, billingMode, monthlyCoin, dailyCoin); }
+                if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, billingMode, monthlyCoin, dailyCoin, true, true); }
+            }
+        }
+    } catch (e) {
+        toast('保存失败', 'error');
+    } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> 保存活动'; }
+    }
 }
 function editActivity(idx) { showActivityEditor(idx); }
 async function sendActivityNotify(activityName, activityGuide, silent, needCoin, billingMode, monthlyCoin, dailyCoin) {

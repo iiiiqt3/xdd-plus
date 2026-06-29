@@ -2412,6 +2412,15 @@ func GetActivityAuthList() []ActivityAuthItem {
 	return list
 }
 
+// GetActivityAuthItemByID 获取单个活动的授权统计（删除后局部刷新用）
+func GetActivityAuthItemByID(activityID string) (ActivityAuthItem, bool) {
+	cfg := getActivityByID(activityID)
+	if cfg == nil {
+		return ActivityAuthItem{}, false
+	}
+	return buildActivityAuthItem(*cfg), true
+}
+
 func buildActivityAuthList() []ActivityAuthItem {
 	activityConfigsMu.RLock()
 	configs := make([]ActivityConfig, 0, len(ActivityConfigs))
@@ -2640,6 +2649,11 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 	}
 	deletedCount := 0
 	totalRefundCoin := 0
+	notifyPayloads := make([]struct {
+		userNumber int
+		title      string
+		msg        string
+	}, 0, len(selectedItems))
 
 	if isMonthly && len(manualRefundCoins) > 0 {
 		for i := range selectedItems {
@@ -2675,14 +2689,28 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 				title = "授权账号删除通知"
 				msg = fmt.Sprintf("📢【授权账号删除通知】\n活动：%s\n账号备注：%s\n说明：该活动为一次性扣费，删除不退还积分\n删除原因：%s\n\n如有疑问请联系管理员。", cfg.Name, item.AccountAlias, reason)
 			}
-			if channels.Robot {
-				PushByQQ(strconv.Itoa(item.UserNumber), msg)
-			}
-			CreateSystemWebNotification(title, msg, NotifyCategoryAuth, NotifySourceAuth, item.UserNumber, channels)
+			notifyPayloads = append(notifyPayloads, struct {
+				userNumber int
+				title      string
+				msg        string
+			}{userNumber: item.UserNumber, title: title, msg: msg})
 		}
 	}
 	adminMsg := fmt.Sprintf("📢【活动授权账号删除完成】\n活动：%s\n删除账号：%d 个\n退还积分：%d\n原因：%s", cfg.Name, deletedCount, totalRefundCoin, reason)
-	CreateAdminOnlyWebNotification("活动授权账号删除完成", adminMsg, NotifyCategoryAuth, NotifySourceAuth, channels)
+	adminTitle := "活动授权账号删除完成"
+	go func(payloads []struct {
+		userNumber int
+		title      string
+		msg        string
+	}, adminTitle, adminMsg string, channels NotifyChannels) {
+		for _, p := range payloads {
+			if channels.Robot {
+				PushByQQ(strconv.Itoa(p.userNumber), p.msg)
+			}
+			CreateSystemWebNotification(p.title, p.msg, NotifyCategoryAuth, NotifySourceAuth, p.userNumber, channels)
+		}
+		CreateAdminOnlyWebNotification(adminTitle, adminMsg, NotifyCategoryAuth, NotifySourceAuth, channels)
+	}(notifyPayloads, adminTitle, adminMsg, channels)
 	InvalidateActivityAdminStatsCache()
 	return deletedCount, totalRefundCoin, nil
 }
