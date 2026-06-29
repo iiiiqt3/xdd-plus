@@ -30,9 +30,23 @@ android {
             keyAlias = "goudong"
             keyPassword = "goudong123"
         }
+        create("sharedDebug") {
+            val debugFile = rootProject.file("debug.keystore")
+            if (debugFile.exists()) {
+                storeFile = debugFile
+            } else {
+                storeFile = file("../debug.keystore")
+            }
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("sharedDebug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
