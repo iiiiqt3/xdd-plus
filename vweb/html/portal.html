@@ -4032,13 +4032,14 @@ function kuwoRestoreState() {
         if (!saved) return;
         const state = JSON.parse(saved);
         if (!state || !state.targetHour || !state.phone) return;
-        // 计算目标时间是否还在未来
+        // 计算目标时间是否还在未来（仅精确到小时，因为 targetHour 只有小时）
         const now = new Date();
         const bjNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
         const targetMs = state.targetHour * 3600 * 1000;
         const currentMs = bjNow.getHours() * 3600 * 1000 + bjNow.getMinutes() * 60 * 1000 + bjNow.getSeconds() * 1000;
-        if (targetMs <= currentMs) {
-            // 目标时间已过，清除状态
+        const remaining = targetMs - currentMs;
+        if (remaining <= 0 || remaining > 4 * 60 * 1000) {
+            // 目标时间已过或不在4分钟窗口内，清除状态
             localStorage.removeItem(KUWO_STATE_KEY);
             return;
         }
@@ -4143,7 +4144,7 @@ function kuwoGetNextWithdrawInfo() {
         const diffMin = targetMin - currentMin;
 
         // 在前4分钟窗口内 → 可以等待倒计时
-        if (diffMin > 0 && diffMin <= 4 * 60) {
+        if (diffMin > 0 && diffMin <= 4) {
             return { hour: h, inWindow: true, diffMin, diffMs: diffMin * 60 * 1000 };
         }
         // 到点了（0-3秒内）→ 立即执行
@@ -4260,7 +4261,7 @@ function kuwoStartWithdraw() {
     const info = kuwoGetNextWithdrawInfo();
 
     // 在4分钟窗口内且还没到点 → 进入自动抢兑模式
-    if (info.inWindow && info.diffMin > 0) {
+    if (info.inWindow === true && info.diffMin > 0 && info.diffMin <= 4) {
         kuwoLog('🎯 进入自动抢兑模式，' + String(info.hour).padStart(2,'0') + ':00 准时执行');
         kuwoLog('⏳ 倒计时期间无需操作，程序将自动执行');
         // 隐藏按钮，显示倒计时，禁用输入
