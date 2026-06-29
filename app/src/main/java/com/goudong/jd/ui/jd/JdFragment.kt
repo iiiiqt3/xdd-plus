@@ -13,6 +13,7 @@ import androidx.fragment.app.commit
 import com.goudong.jd.AppServices
 import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.common.findFirstScrollView
+import com.goudong.jd.ui.common.wrapMainTabSwipe
 
 class JdFragment : Fragment(), MainTabResettable {
     private var containerId = View.NO_ID
@@ -23,13 +24,15 @@ class JdFragment : Fragment(), MainTabResettable {
         if (containerId == View.NO_ID) {
             containerId = View.generateViewId()
         }
-        return FragmentContainerView(requireContext()).apply {
-            id = containerId
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            )
-        }
+        return wrapMainTabSwipe(
+            FragmentContainerView(requireContext()).apply {
+                id = containerId
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+            },
+        )
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

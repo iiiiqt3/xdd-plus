@@ -33,6 +33,7 @@ import com.goudong.jd.ui.common.applyCompactTabs
 import com.goudong.jd.ui.common.InnerTabSwipeHost
 import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.common.makeScrollContainer
+import com.goudong.jd.ui.common.wrapMainTabSwipe
 import com.goudong.jd.ui.common.primaryButton
 import com.goudong.jd.ui.common.sectionTitle
 import com.goudong.jd.ui.common.softCard
@@ -151,7 +152,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             renderContent()
             mainTabs.getTabAt(mainTabIndex)?.select()
         }
-        return wrapper
+        return wrapMainTabSwipe(wrapper)
     }
 
     override fun onResume() {

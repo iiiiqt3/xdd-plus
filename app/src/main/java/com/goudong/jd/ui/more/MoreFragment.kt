@@ -18,6 +18,7 @@ import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.heroCard
 import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.common.findFirstScrollView
+import com.goudong.jd.ui.common.wrapMainTabSwipe
 import com.goudong.jd.ui.common.makeScrollContainer
 import kotlinx.coroutines.launch
 
@@ -64,8 +65,8 @@ class MoreFragment : Fragment(), MainTabResettable {
         })
 
         loadUnreadCount()
-        
-        return scroll
+
+        return wrapMainTabSwipe(scroll)
     }
     
     override fun onResume() {

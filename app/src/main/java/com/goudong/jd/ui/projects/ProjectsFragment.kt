@@ -43,6 +43,7 @@ import com.goudong.jd.ui.common.applyCompactTabs
 import com.goudong.jd.ui.common.InnerTabSwipeHost
 import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.common.findFirstScrollView
+import com.goudong.jd.ui.common.wrapMainTabSwipe
 import com.goudong.jd.ui.common.makeScrollContainer
 import com.goudong.jd.ui.common.primaryButton
 import com.google.android.material.tabs.TabLayout
@@ -164,7 +165,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             layoutParams = contentLp
         }
         wrapper.addView(rushHost)
-        return wrapper
+        return wrapMainTabSwipe(wrapper)
     }
 
     override fun onResume() {
@@ -1371,19 +1372,22 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     override fun resetToInitialState() {
         if (!::tabs.isInitialized) return
-        currentTab = 0
-        tabs.getTabAt(0)?.select()
+        if (rushFragment.isAdded) rushFragment.popToList()
         searchQuery = ""
         searchBox?.setText("")
         selectedCategory = ""
         renderCategoryChips()
         expandedKeys.clear()
-        if (rushFragment.isAdded) rushFragment.popToList()
+        currentTab = 0
+        if (tabs.selectedTabPosition != 0) {
+            tabs.getTabAt(0)?.select()
+        } else {
+            renderCurrentTab(forceRefresh = false)
+        }
         contentScroll?.scrollTo(0, 0)
         view?.findFirstScrollView()?.scrollTo(0, 0)
         if (::swipeRefreshLayout.isInitialized) {
             swipeRefreshLayout.isRefreshing = false
         }
-        renderCurrentTab(forceRefresh = false)
     }
 }

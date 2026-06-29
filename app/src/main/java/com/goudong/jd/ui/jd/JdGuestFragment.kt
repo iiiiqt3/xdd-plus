@@ -28,6 +28,7 @@ import com.goudong.jd.ui.common.cardView
 import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.common.heroCard
+import com.goudong.jd.ui.common.wrapMainTabSwipe
 import com.goudong.jd.ui.common.inputField
 import com.goudong.jd.ui.common.makeScrollContainer
 import com.goudong.jd.ui.common.openExternalUrl
@@ -121,7 +122,7 @@ class JdGuestFragment : Fragment() {
                 Triple("加入交流群", "打开 QQ 群链接") { openExternalUrl(AppEnvironment.GROUP_URL) }
             ), ContextCompat.getColor(requireContext(), R.color.brand_primary)))
         })
-        return scroll
+        return wrapMainTabSwipe(scroll)
     }
 
     override fun onResume() {

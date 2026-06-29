@@ -21,10 +21,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
-import android.view.MotionEvent
 import androidx.activity.OnBackPressedCallback
 import com.goudong.jd.ui.common.InnerTabSwipeHost
-import com.goudong.jd.ui.common.MainSwipeHandler
 import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.auth.AuthActivity
 import com.goudong.jd.ui.common.alert
@@ -46,10 +44,10 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var viewPager: ViewPager2
-    private lateinit var mainSwipeHandler: MainSwipeHandler
     private var pendingTabId: Int? = null
     private var isSyncing = false
     private var lastSwipeHandledAt = 0L
+    private var lastVisiblePage = -1
 
     private val tabOrder = intArrayOf(TAB_HOME, TAB_PROJECTS, TAB_TASKS, TAB_JD, TAB_MORE)
 
@@ -90,21 +88,25 @@ class MainActivity : AppCompatActivity() {
             offscreenPageLimit = 4
             registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                 override fun onPageSelected(position: Int) {
-                    if (isSyncing) return
                     val tabId = tabOrder[position]
-                    if (requiresAuth(tabId) && !AppServices.sessionManager.isAuthenticated()) {
-                        pendingTabId = tabId
+                    if (!isSyncing) {
+                        if (requiresAuth(tabId) && !AppServices.sessionManager.isAuthenticated()) {
+                            pendingTabId = tabId
+                            isSyncing = true
+                            viewPager.setCurrentItem(tabOrder.indexOf(TAB_JD), false)
+                            isSyncing = false
+                            authLauncher.launch(Intent(this@MainActivity, AuthActivity::class.java))
+                            return
+                        }
                         isSyncing = true
-                        viewPager.setCurrentItem(tabOrder.indexOf(TAB_JD), false)
+                        bottomNav.selectedItemId = tabId
                         isSyncing = false
-                        authLauncher.launch(Intent(this@MainActivity, AuthActivity::class.java))
-                        return
+                        onTabChanged(tabId)
                     }
-                    isSyncing = true
-                    bottomNav.selectedItemId = tabId
-                    isSyncing = false
-                    resetMainTabFragment(position)
-                    onTabChanged(tabId)
+                    if (lastVisiblePage != position) {
+                        lastVisiblePage = position
+                        viewPager.post { resetMainTabFragment(position) }
+                    }
                 }
             })
         }
@@ -163,24 +165,20 @@ class MainActivity : AppCompatActivity() {
                         return@setOnItemSelectedListener false
                     }
                     isSyncing = true
-                    viewPager.setCurrentItem(position, true)
+                    viewPager.setCurrentItem(position, false)
                     isSyncing = false
-                    resetMainTabFragment(position)
                     onTabChanged(item.itemId)
                 }
                 true
             }
             setOnItemReselectedListener { item ->
                 val position = tabOrder.indexOf(item.itemId)
-                if (position >= 0) resetMainTabFragment(position)
+                if (position >= 0) viewPager.post { resetMainTabFragment(position) }
             }
         }
 
         root.addView(viewPager)
         root.addView(bottomNav)
-        mainSwipeHandler = MainSwipeHandler(this) { direction ->
-            handleNestedTabSwipe(viewPager, direction)
-        }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (consumeNestedBack()) return
@@ -193,7 +191,10 @@ class MainActivity : AppCompatActivity() {
 
         if (savedInstanceState == null) {
             val defaultTab = if (AppServices.sessionManager.isAuthenticated()) TAB_HOME else TAB_JD
+            val defaultPos = tabOrder.indexOf(defaultTab)
+            lastVisiblePage = defaultPos
             bottomNav.selectedItemId = defaultTab
+            viewPager.setCurrentItem(defaultPos, false)
             onTabChanged(defaultTab)
         }
 
@@ -305,9 +306,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        mainSwipeHandler.onTouchEvent(ev)
-        return super.dispatchTouchEvent(ev)
+    fun handleHorizontalSwipe(source: Fragment, direction: Int): Boolean {
+        return handleNestedTabSwipe(viewPager, direction, source)
     }
 
     private fun requiresAuth(tabId: Int): Boolean {
@@ -315,17 +315,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun consumeNestedBack(): Boolean {
-        val tag = "android:switcher:${viewPager.id}:${viewPager.currentItem}"
-        val main = supportFragmentManager.findFragmentByTag(tag) ?: return false
-        if (main is ProjectsFragment && main.consumeBackPress()) return true
+        val fragment = mainFragmentAt(viewPager.currentItem) ?: return false
+        if (fragment is ProjectsFragment && fragment.consumeBackPress()) return true
         return false
     }
 
-    private fun handleNestedTabSwipe(pager: ViewPager2, direction: Int): Boolean {
+    private fun handleNestedTabSwipe(pager: ViewPager2, direction: Int, source: Fragment? = null): Boolean {
         val now = System.currentTimeMillis()
-        if (now - lastSwipeHandledAt < 500L) return true
+        if (now - lastSwipeHandledAt < 400L) return false
 
-        val host = findInnerTabSwipeHost(pager)
+        val host = when {
+            source is InnerTabSwipeHost -> source
+            source != null -> findInnerTabSwipeHostRecursive(source)
+            else -> findInnerTabSwipeHost(pager)
+        }
         if (host != null && host.innerTabCount > 1) {
             if (host.onInnerSwipeBoundary(direction)) {
                 lastSwipeHandledAt = now
@@ -357,7 +360,6 @@ class MainActivity : AppCompatActivity() {
         pager.setCurrentItem(next, false)
         bottomNav.selectedItemId = tabId
         isSyncing = false
-        resetMainTabFragment(next)
         onTabChanged(tabId)
         lastSwipeHandledAt = now
         return true
@@ -383,18 +385,34 @@ class MainActivity : AppCompatActivity() {
         return null
     }
 
+    private fun mainFragmentAt(position: Int): Fragment? {
+        val tag = "android:switcher:${viewPager.id}:$position"
+        supportFragmentManager.findFragmentByTag(tag)?.let { return it }
+        return supportFragmentManager.fragments.firstOrNull { fragment ->
+            fragment.isAdded && when (position) {
+                0 -> fragment is HomeFragment
+                1 -> fragment is ProjectsFragment
+                2 -> fragment is TasksFragment
+                3 -> fragment is JdFragment
+                4 -> fragment is MoreFragment
+                else -> false
+            }
+        }
+    }
+
     private fun resetMainTabFragment(position: Int) {
         if (position !in tabOrder.indices) return
-        val tag = "android:switcher:${viewPager.id}:$position"
-        val fragment = supportFragmentManager.findFragmentByTag(tag) ?: return
-        if (!fragment.isAdded || fragment.view == null) return
-        when (fragment) {
-            is MainTabResettable -> fragment.resetToInitialState()
-            else -> {
-                for (child in fragment.childFragmentManager.fragments) {
-                    if (child is MainTabResettable) {
-                        child.resetToInitialState()
-                        return
+        viewPager.post {
+            val fragment = mainFragmentAt(position) ?: return@post
+            if (!fragment.isAdded) return@post
+            when (fragment) {
+                is MainTabResettable -> fragment.resetToInitialState()
+                else -> {
+                    for (child in fragment.childFragmentManager.fragments) {
+                        if (child is MainTabResettable) {
+                            child.resetToInitialState()
+                            return@post
+                        }
                     }
                 }
             }

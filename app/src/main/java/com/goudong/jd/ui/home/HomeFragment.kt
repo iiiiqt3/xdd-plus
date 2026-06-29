@@ -34,6 +34,7 @@ import com.goudong.jd.ui.common.heroCard
 import com.goudong.jd.ui.common.makeScrollContainer
 import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.common.findFirstScrollView
+import com.goudong.jd.ui.common.wrapMainTabSwipe
 import com.goudong.jd.push.NotificationHelper
 import com.goudong.jd.push.PushCheckWorker
 import com.goudong.jd.ui.more.NotificationListActivity
@@ -153,7 +154,7 @@ class HomeFragment : Fragment(), MainTabResettable {
         }
         root.addView(statsSection)
 
-        return swipeRefresh
+        return wrapMainTabSwipe(swipeRefresh)
     }
 
     override fun onResume() {

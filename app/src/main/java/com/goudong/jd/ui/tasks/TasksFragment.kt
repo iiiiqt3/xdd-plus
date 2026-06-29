@@ -26,6 +26,7 @@ import com.goudong.jd.ui.common.inputField
 import com.goudong.jd.ui.common.InnerTabSwipeHost
 import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.common.findFirstScrollView
+import com.goudong.jd.ui.common.wrapMainTabSwipe
 import com.goudong.jd.ui.common.makeScrollContainer
 import com.goudong.jd.ui.common.toast
 import com.goudong.jd.ui.common.WebBrowserActivity
@@ -72,7 +73,7 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
         wrapper.addView(scroll)
 
         renderCurrentTab()
-        return wrapper
+        return wrapMainTabSwipe(wrapper)
     }
 
     override fun onResume() {
