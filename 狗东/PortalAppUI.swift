@@ -3141,26 +3141,50 @@ final class WechatQRCodeViewController: BaseNativeViewController {
         hintLabel.font = UIFont.systemFont(ofSize: 12)
         hintLabel.textColor = .systemGray
 
-        view.addSubview(titleLabel)
-        view.addSubview(subtitleLabel)
-        view.addSubview(imageView)
-        view.addSubview(stateLabel)
-        view.addSubview(hintLabel)
+        // iPad适配：使用ScrollView包裹内容，防止遮挡
+        let scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.alwaysBounceVertical = true
+        view.addSubview(scrollView)
+
+        let contentStack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel, imageView, stateLabel, hintLabel])
+        contentStack.axis = .vertical
+        contentStack.alignment = .center
+        contentStack.spacing = 0
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(contentStack)
+
+        // 二维码尺寸自适应：取屏幕宽度的50%，最大260
+        let qrSize: CGFloat = min(UIScreen.main.bounds.width * 0.5, 260)
+
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            contentStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 20),
+            contentStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 20),
+            contentStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -20),
+            contentStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -20),
+            contentStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -40),
+
+            titleLabel.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+
+            subtitleLabel.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            subtitleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+
             imageView.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 24),
-            imageView.widthAnchor.constraint(equalToConstant: 260),
-            imageView.heightAnchor.constraint(equalToConstant: 260),
+            imageView.widthAnchor.constraint(equalToConstant: qrSize),
+            imageView.heightAnchor.constraint(equalToConstant: qrSize),
+
+            stateLabel.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            stateLabel.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
             stateLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 16),
-            stateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            stateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+
+            hintLabel.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 8),
+            hintLabel.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -8),
             hintLabel.topAnchor.constraint(equalTo: stateLabel.bottomAnchor, constant: 10),
-            hintLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28),
-            hintLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -28)
         ])
     }
 
