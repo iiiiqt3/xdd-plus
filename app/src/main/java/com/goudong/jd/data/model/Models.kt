@@ -246,6 +246,36 @@ data class PortalJdTaskExecuteResult(
     val taskId: String? = null,
 )
 
+data class KuwoCredentials(
+    val phone: String? = null,
+    val password: String? = null,
+)
+
+data class KuwoScheduleResult(
+    val taskId: String? = null,
+    val targetHour: Int? = null,
+    val executeAt: String? = null,
+    val status: String? = null,
+    val reused: Boolean = false,
+)
+
+data class KuwoTaskLog(
+    val time: String? = null,
+    val level: String? = null,
+    val message: String? = null,
+)
+
+data class KuwoWithdrawTask(
+    val id: String? = null,
+    val phone: String? = null,
+    val quotaID: String? = null,
+    val targetHour: Int? = null,
+    val executeAt: String? = null,
+    val status: String? = null,
+    val immediate: Boolean = false,
+    val logs: List<KuwoTaskLog>? = null,
+)
+
 data class UserInfoEnvelope(
     val code: Int = -1,
     val data: JsonElement? = null,

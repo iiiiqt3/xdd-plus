@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -59,6 +60,8 @@ class ProjectsFragment : Fragment() {
     private var selectedCategory: String = ""
     private var categoryContainer: HorizontalScrollView? = null
     private var categoryChipRow: LinearLayout? = null
+    private var rushHost: FrameLayout? = null
+    private val rushFragment = ProjectRushFragment()
     private val categories = listOf("全部", "现金类", "积分换实物", "抽奖类", "其他类")
 
     // 缓存
@@ -87,6 +90,7 @@ class ProjectsFragment : Fragment() {
             setPadding(requireContext().dp(14), 0, requireContext().dp(14), requireContext().dp(8))
             addTab(newTab().setText("活动中心"))
             addTab(newTab().setText("我的项目"))
+            addTab(newTab().setText("项目抢兑"))
             addTab(newTab().setText("微信协议"))
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
@@ -121,7 +125,9 @@ class ProjectsFragment : Fragment() {
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
                 override fun afterTextChanged(s: android.text.Editable?) {
                     searchQuery = s?.toString()?.trim() ?: ""
-                    renderCurrentTab(forceRefresh = false)
+                    if (currentTab == 0 || currentTab == 1) {
+                        renderCurrentTab(forceRefresh = false)
+                    }
                 }
             })
         }
@@ -141,7 +147,16 @@ class ProjectsFragment : Fragment() {
         renderCategoryChips()
         wrapper.addView(categoryContainer)
 
+        val contentLp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
+        swipeRefreshLayout.layoutParams = contentLp
         wrapper.addView(swipeRefreshLayout)
+
+        rushHost = FrameLayout(requireContext()).apply {
+            id = View.generateViewId()
+            visibility = View.GONE
+            layoutParams = contentLp
+        }
+        wrapper.addView(rushHost)
         return wrapper
     }
 
@@ -154,21 +169,45 @@ class ProjectsFragment : Fragment() {
     }
 
     fun refreshCurrentTab() {
-        if (currentTab == 0) cachedActivities = null else cachedProjects = null
+        when (currentTab) {
+            0 -> cachedActivities = null
+            1 -> cachedProjects = null
+            else -> Unit
+        }
         renderCurrentTab(forceRefresh = true)
     }
 
     private fun renderCurrentTab(forceRefresh: Boolean) {
-        contentRoot.removeAllViews()
-        if (!swipeRefreshLayout.isRefreshing && forceRefresh) {
-            swipeRefreshLayout.isRefreshing = true
+        val isRushTab = currentTab == 2
+        val hideSearchTab = currentTab == 2 || currentTab == 3
+        searchBox?.visibility = if (hideSearchTab) View.GONE else View.VISIBLE
+        swipeRefreshLayout.visibility = if (isRushTab) View.GONE else View.VISIBLE
+        rushHost?.visibility = if (isRushTab) View.VISIBLE else View.GONE
+
+        if (!isRushTab) {
+            if (rushFragment.isAdded) rushFragment.popToList()
+            contentRoot.removeAllViews()
+            if (!swipeRefreshLayout.isRefreshing && forceRefresh) {
+                swipeRefreshLayout.isRefreshing = true
+            }
+        } else {
+            swipeRefreshLayout.isRefreshing = false
         }
-        // 活动中心tab显示分类筛选栏，其他tab隐藏
         categoryContainer?.visibility = if (currentTab == 0) View.VISIBLE else View.GONE
         when (currentTab) {
             0 -> loadActivities(forceRefresh)
             1 -> loadProjects(forceRefresh)
-            2 -> renderWxProtocol()
+            2 -> renderProjectRush()
+            3 -> renderWxProtocol()
+        }
+    }
+
+    private fun renderProjectRush() {
+        val host = rushHost ?: return
+        if (!rushFragment.isAdded) {
+            childFragmentManager.beginTransaction()
+                .replace(host.id, rushFragment, "project_rush")
+                .commitNowAllowingStateLoss()
         }
     }
 

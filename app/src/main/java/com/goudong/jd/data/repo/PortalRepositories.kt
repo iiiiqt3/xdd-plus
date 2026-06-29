@@ -2,6 +2,9 @@ package com.goudong.jd.data.repo
 
 import com.goudong.jd.data.model.ApiEnvelope
 import com.goudong.jd.data.model.ApiError
+import com.goudong.jd.data.model.KuwoCredentials
+import com.goudong.jd.data.model.KuwoScheduleResult
+import com.goudong.jd.data.model.KuwoWithdrawTask
 import com.goudong.jd.data.model.PortalDashboard
 import com.goudong.jd.data.model.PortalHomeSnapshot
 import com.goudong.jd.data.model.PortalNotificationPage
@@ -370,5 +373,64 @@ class PortalRepository(
         onError: (Throwable) -> Unit,
     ) {
         apiClient.streamSse("/api/portal/jd/task/logs?taskId=${apiClient.urlEncode(taskId)}", onLine, onDone, onError)
+    }
+
+    suspend fun checkKuwoAuth(): Pair<Boolean, String> {
+        val text = apiClient.requestText(path = "/api/portal/kuwo/check-auth")
+        val json = apiClient.gson.fromJson(text, com.google.gson.JsonObject::class.java)
+        val code = json?.get("code")?.asInt ?: 1
+        if (code != 0) throw ApiError(json?.get("msg")?.asString ?: "检查授权失败")
+        return (json.get("authorized")?.asBoolean ?: false) to (json.get("msg")?.asString ?: "")
+    }
+
+    suspend fun fetchKuwoCredentials(): KuwoCredentials {
+        return apiClient.requestData(path = "/api/portal/kuwo/credentials")
+    }
+
+    suspend fun sendKuwoSms(phone: String, password: String) {
+        apiClient.requestMessage(
+            path = "/api/portal/kuwo/send-sms",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("phone" to phone, "password" to password)),
+        )
+    }
+
+    suspend fun scheduleKuwoWithdraw(
+        phone: String,
+        password: String,
+        quotaId: String,
+        smsCode: String,
+        targetHour: Int?,
+        immediate: Boolean,
+    ): KuwoScheduleResult {
+        val payload = mutableMapOf<String, Any>(
+            "sessions" to listOf(mapOf("phone" to phone, "password" to password)),
+            "quotaId" to quotaId,
+            "smsCode" to smsCode,
+            "immediate" to immediate,
+        )
+        if (!immediate && targetHour != null) {
+            payload["targetHour"] = targetHour
+        }
+        return apiClient.requestData(
+            path = "/api/portal/kuwo/schedule-withdraw",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(payload),
+        )
+    }
+
+    suspend fun fetchKuwoWithdrawStatus(taskId: String? = null, phone: String? = null): KuwoWithdrawTask? {
+        val path = when {
+            !taskId.isNullOrBlank() -> "/api/portal/kuwo/withdraw-status?taskId=${apiClient.urlEncode(taskId)}"
+            !phone.isNullOrBlank() -> "/api/portal/kuwo/withdraw-status?phone=${apiClient.urlEncode(phone)}"
+            else -> "/api/portal/kuwo/withdraw-status"
+        }
+        val envelope = apiClient.requestEnvelope<com.google.gson.JsonElement>(path = path)
+        if (envelope.code != 0) throw ApiError(envelope.msg ?: "查询任务失败")
+        val data = envelope.data ?: return null
+        if (data.isJsonNull) return null
+        return apiClient.gson.fromJson(data, KuwoWithdrawTask::class.java)
     }
 }
