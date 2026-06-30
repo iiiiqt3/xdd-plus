@@ -627,6 +627,9 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int, 
 		project.IsDailyDeduct = true
 		project.DailyCoin = cfg.DailyCoin
 	}
+	if cfg.IsMonthlyDeduct {
+		project.MonthlyCoin = cfg.MonthlyCoin
+	}
 	project.SyncStatus = "pending_update"
 	project.SyncError = ""
 	if err := UpdateActivityProject(project); err != nil {
