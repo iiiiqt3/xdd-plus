@@ -689,23 +689,43 @@ func KuwoFormatQuotaDisplay() string {
 }
 
 // GetKuwoCredentials 从用户的KWYY活动项目中读取酷我账号密码
+// KuwoAccountInfo 酷我账号信息（支持多账号）
+type KuwoAccountInfo struct {
+	Phone    string `json:"phone"`
+	Password string `json:"password"`
+}
+
+// GetKuwoCredentials 获取用户所有酷我账号（支持多活动上车）
 func GetKuwoCredentials(userNumber int) (phone, password string, err error) {
-	projects, err := GetActivityProjectsByUserAndEnv(userNumber, "KWYY", "KWYY")
+	accounts, err := GetAllKuwoCredentials(userNumber)
 	if err != nil {
 		return "", "", err
 	}
-	if len(projects) == 0 {
+	if len(accounts) == 0 {
 		return "", "", fmt.Errorf("未找到酷我音乐活动配置")
 	}
-	envValue := projects[0].EnvValue
-	if envValue == "" {
-		return "", "", fmt.Errorf("酷我音乐活动账号数据为空")
+	return accounts[0].Phone, accounts[0].Password, nil
+}
+
+// GetAllKuwoCredentials 获取用户所有酷我账号列表
+func GetAllKuwoCredentials(userNumber int) ([]KuwoAccountInfo, error) {
+	projects, err := GetActivityProjectsByUserAndEnv(userNumber, "KWYY", "KWYY")
+	if err != nil {
+		return nil, err
 	}
-	parts := strings.SplitN(envValue, "#", 2)
-	if len(parts) == 2 {
-		return parts[0], parts[1], nil
+	var accounts []KuwoAccountInfo
+	for _, p := range projects {
+		if p.EnvValue == "" {
+			continue
+		}
+		parts := strings.SplitN(p.EnvValue, "#", 2)
+		if len(parts) == 2 {
+			accounts = append(accounts, KuwoAccountInfo{Phone: parts[0], Password: parts[1]})
+		} else {
+			accounts = append(accounts, KuwoAccountInfo{Phone: p.EnvValue})
+		}
 	}
-	return envValue, "", nil
+	return accounts, nil
 }
 
 // CheckKuwoAuth 检查当前用户是否有酷我音乐(KWYY)活动授权
