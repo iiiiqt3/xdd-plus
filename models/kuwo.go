@@ -13,6 +13,8 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -790,13 +792,30 @@ func (t *KuwoScheduledTask) AddLog(level, format string, args ...interface{}) {
 	if len(args) > 0 {
 		msg = fmt.Sprintf(format, args...)
 	}
+	logTime := time.Now().In(kuwoBeijingLocation()).Format("15:04:05.000")
 	t.logMu.Lock()
 	defer t.logMu.Unlock()
 	t.Logs = append(t.Logs, KuwoTaskLog{
-		Time:    time.Now().In(kuwoBeijingLocation()).Format("15:04:05.000"),
+		Time:    logTime,
 		Level:   level,
 		Message: msg,
 	})
+	// 写入日志文件
+	go t.writeLogToFile(logTime, level, msg)
+}
+
+// writeLogToFile 将日志追加写入文件
+func (t *KuwoScheduledTask) writeLogToFile(logTime, level, msg string) {
+	logDir := filepath.Join(ExecPath, "logs")
+	os.MkdirAll(logDir, 0755)
+	logFile := filepath.Join(logDir, fmt.Sprintf("kuwo_%s.log", time.Now().In(kuwoBeijingLocation()).Format("2006-01-02")))
+	line := fmt.Sprintf("[%s] [%s] %s\n", logTime, level, msg)
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	f.WriteString(line)
 }
 
 func kuwoMaskPhone(phone string) string {

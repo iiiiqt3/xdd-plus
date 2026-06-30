@@ -4171,6 +4171,7 @@ function kuwoApplyTaskMonitorResult(task, immediate, countdownEl) {
         }
         kuwoLog('--- 任务结束 ---');
         kuwoRestoreWithdrawUI();
+        try { localStorage.removeItem(KUWO_STATE_KEY); } catch (e) {}
         return true;
     }
     if (task.status === 'failed') {
@@ -4181,6 +4182,7 @@ function kuwoApplyTaskMonitorResult(task, immediate, countdownEl) {
         }
         kuwoLog('--- 任务失败 ---');
         kuwoRestoreWithdrawUI();
+        try { localStorage.removeItem(KUWO_STATE_KEY); } catch (e) {}
         return true;
     }
     return false;
@@ -4189,21 +4191,37 @@ function kuwoApplyTaskMonitorResult(task, immediate, countdownEl) {
 function kuwoMonitorTask(taskId, immediate) {
     kuwoStopTaskMonitor();
     const pollMs = immediate ? 250 : 800;
-    const maxPoll = immediate ? 120 : 150;
+    const maxPoll = immediate ? 120 : 600; // 定时任务最多轮询600次(约8分钟)
     let pollCount = 0;
+    let errorCount = 0;
     const countdownEl = document.getElementById('kuwoCountdown');
 
     async function pollOnce() {
         pollCount++;
-        if (pollCount > maxPoll) {
-            kuwoStopTaskMonitor();
-            if (countdownEl) countdownEl.textContent = '⏰ 查询超时，请刷新页面查看结果';
-            return;
-        }
         try {
             const task = await kuwoFetchTaskStatus(taskId);
+            errorCount = 0; // 成功响应则重置错误计数
+            if (!task) return;
+            // pending/running 状态不计入超时（任务还没执行完）
+            if (task.status === 'pending' || task.status === 'running') {
+                if (pollCount > maxPoll) {
+                    // 超过最大次数但任务还在跑，继续轮询但降低频率
+                    return;
+                }
+                kuwoApplyTaskMonitorResult(task, immediate, countdownEl);
+                return;
+            }
+            // completed/failed → 停止轮询
             kuwoApplyTaskMonitorResult(task, immediate, countdownEl);
-        } catch (e) { /* 忽略网络抖动 */ }
+        } catch (e) {
+            errorCount++;
+            // 连续错误超过20次才停止（避免网络抖动误停）
+            if (errorCount > 20) {
+                kuwoStopTaskMonitor();
+                if (countdownEl) countdownEl.textContent = '⏰ 网络异常，请刷新页面查看结果';
+                return;
+            }
+        }
     }
 
     pollOnce();
@@ -4630,12 +4648,14 @@ function kuwoRunCountdown(info, taskId) {
             return;
         }
 
-        // 到点了 → 轮询后端结果
+        // 到点了 → 重启轮询获取后端执行日志
         clearInterval(warmupInterval);
         countdownEl.textContent = '🚀 后端正在执行 ' + targetLabel + ' 抢兑...';
         kuwoLog('⏰ 到达抢兑时间 ' + targetLabel + '，等待后端日志同步...');
         if (kuwoTimerInterval) { clearInterval(kuwoTimerInterval); kuwoTimerInterval = null; }
-        try { localStorage.removeItem(KUWO_STATE_KEY); } catch (e) {}
+        // 重启轮询（用新的 taskId 获取执行日志，maxPoll=600 覆盖完整执行过程）
+        if (taskId) { kuwoMonitorTask(taskId, false); }
+        // 不清除 localStorage，等任务 completed/failed 后由 monitor 清除
     }, 100);
 }
 
