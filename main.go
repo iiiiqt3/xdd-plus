@@ -448,10 +448,10 @@ func main() {
 	}))
 
 	// HTTP 请求日志（统一写入 logger，admin 可实时查看）
-	web.InsertFilter("/api/*", web.BeforeRouter, controllers.LogRequestFilter, false)
-	web.InsertFilter("/api/*", web.AfterExec, controllers.LogResponseFilter, false)
-	web.InsertFilter("/wx/*", web.BeforeRouter, controllers.LogRequestFilter, false)
-	web.InsertFilter("/wx/*", web.AfterExec, controllers.LogResponseFilter, false)
+	web.InsertFilter("/api/*", web.BeforeRouter, controllers.LogRequestFilter, web.WithReturnOnOutput(false))
+	web.InsertFilter("/api/*", web.AfterExec, controllers.LogResponseFilter, web.WithReturnOnOutput(false))
+	web.InsertFilter("/wx/*", web.BeforeRouter, controllers.LogRequestFilter, web.WithReturnOnOutput(false))
+	web.InsertFilter("/wx/*", web.AfterExec, controllers.LogResponseFilter, web.WithReturnOnOutput(false))
 
 	// 启动后延迟发送启动通知
 	go func() {
