@@ -3,7 +3,6 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/cdle/xdd/models"
 	"net/url"
 	"strconv"
@@ -23,7 +22,7 @@ func (c *UserController) GetUserInfo() {
 	cookie, err := models.GetJdCookie(pin)
 	ok := models.CookieOK(cookie)
 	if err != nil {
-		logs.Error(err)
+		models.Error(err)
 		result := Result{
 			Data:    "null",
 			Code:    1,

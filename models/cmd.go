@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 )
 
 func cmd(str string, sender *Sender) string {
@@ -14,13 +13,13 @@ func cmd(str string, sender *Sender) string {
 	stdout, err := cmd.StdoutPipe()
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		logs.Warn("cmd.StdoutPipe: ", err)
+		Warn("cmd.StdoutPipe: ", err)
 		return err.Error()
 	}
 	cmd.Dir = ExecPath + "/scripts/"
 	err = cmd.Start()
 	if err != nil {
-		logs.Warn("%v", err)
+		Warn("%v", err)
 		return err.Error()
 	}
 	go func() {
@@ -72,14 +71,14 @@ func cmd_all(str string, sender *Sender) string {
     stdout, err := cmd.StdoutPipe()
     stderr, err := cmd.StderrPipe()
     if err != nil {
-        logs.Warn("cmd.StdoutPipe: ", err)
+        Warn("cmd.StdoutPipe: ", err)
         return err.Error()
     }
 
     // 启动命令
     err = cmd.Start()
     if err != nil {
-        logs.Warn("%v", err)
+        Warn("%v", err)
         return err.Error()
     }
 

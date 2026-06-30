@@ -11,7 +11,6 @@ import (
 	"log"
 
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 )
 
@@ -53,11 +52,11 @@ func initContainer() {
 			if len(vv) == 2 {
 				Config.Containers[i].Address = vv[1]
 			} else {
-				logs.Warn("%s地址错误", Config.Containers[i].Type)
+				Warn("%s地址错误", Config.Containers[i].Type)
 			}
 			err := Config.Containers[i].getToken()
 			if err == nil {
-				logs.Info("青龙" + version + "通道登录成功")
+				Info("青龙" + version + "通道登录成功")
 				ql++
 				Config.Containers[i].Type = "ql"
 				Config.Containers[i].Version = "openapi"
@@ -209,8 +208,8 @@ func (c *Container) request(ss ...string) ([]byte, error) {
 			if code == 200 {
 				return data, nil
 			} else {
-				logs.Warn(string(data))
-				logs.Info(c.Address + "错误")
+				Warn(string(data))
+				Info(c.Address + "错误")
 				if i >= 5 {
 					return nil, errors.New("异常")
 				}

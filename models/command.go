@@ -15,7 +15,6 @@ import (
 	"encoding/json"
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	//	"sync"
 	"compress/gzip"
 	"github.com/google/uuid"
@@ -170,7 +169,7 @@ func (sender *Sender) SendImg2(msg string) {
 	}
 
 	if !isImage {
-		logs.Info("传递信息非纯地址URL")
+		Info("传递信息非纯地址URL")
 		return
 	}
 	switch sender.Type {
@@ -377,7 +376,7 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			if !strings.Contains(Config.WXGroupID, sender.WxGroupId) {
-				logs.Info(sender.WxGroupId)
+				Info(sender.WxGroupId)
 				env := GetEnv("WxGroupID")
 				if strings.Contains(env, sender.WxGroupId) {
 					return "已在监听列表"
@@ -455,7 +454,7 @@ var codeSignals = []CodeSignal{
 		// 定义提前提醒的天数，例如：3天
 		thresholdDays := 3
 		
-		logs.Info("管理员【%d】手动触发检查即将过期的授权...", sender.UserID)
+		Info("管理员【%d】手动触发检查即将过期的授权...", sender.UserID)
 		
 		// 调用之前编写的 CheckExpiringCKs 函数
 		// 参数1: 提前多少天提醒 (int)
@@ -1710,7 +1709,7 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			sender.Reply("更新所有账号")
-			logs.Info("更新所有账号")
+			Info("更新所有账号")
 			updateCookie()
 			return nil
 		},
@@ -1721,7 +1720,7 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			sender.Reply("更新所有账号")
-			logs.Info("更新所有账号")
+			Info("更新所有账号")
 			UpdateRwskey()
 			return nil
 		},
@@ -1777,10 +1776,10 @@ var codeSignals = []CodeSignal{
 				msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
 			}
 			sender.Reply("导出所有账号")
-			logs.Info("导出所有账号")
+			Info("导出所有账号")
 			f, err := os.OpenFile(ExecPath+"/scripts/jdCookie.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 			if err != nil {
-				logs.Warn("创建jdCookie.txt失败，", err)
+				Warn("创建jdCookie.txt失败，", err)
 			}
 			join := strings.Join(msgs, "\n")
 			f.WriteString(join)
@@ -2228,9 +2227,9 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			qq := Int(sender.Contents[0])
-			logs.Info(qq)
+			Info(qq)
 			if len(sender.Contents) > 1 {
-				logs.Info(sender.Contents[1:])
+				Info(sender.Contents[1:])
 				AdddCoin(qq, Int(sender.Contents[1]))
 				RecordCoinLog(qq, Int(sender.Contents[1]), "管理员操作", fmt.Sprintf("管理员%d手动加积分", sender.UserID))
 				sender.Reply(fmt.Sprintf("%d已增加%d枚积分。", qq, Int(sender.Contents[1])))
@@ -2245,7 +2244,7 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			// 获取发送者的QQ号
 			qq := sender.UserID
-			logs.Info(qq)
+			Info(qq)
 
 			// 引导用户输入对方QQ号
 			sender.Reply("请输入对方的userid，让对方通过机器人发送【用户信息】获取（输入 'q' 退出流程）：")
@@ -4367,10 +4366,10 @@ func InviteGroup(uid string, gid string) {
 	random := browser.Random()
 	req.Header("User-Agent", random)
 	marshal, _ := json.Marshal(reply)
-	logs.Info(string(marshal))
+	Info(string(marshal))
 	req.Body(string(marshal))
 	s, _ := req.String()
-	logs.Info(s)
+	Info(s)
 }
 
 func GetPinList(qq string) []string {
@@ -4510,21 +4509,21 @@ func WxImg_ts() {
 	random := browser.Random()
 	req.Header("User-Agent", random)
 	marshal, _ := json.Marshal(reply)
-	logs.Info(string(marshal))
+	Info(string(marshal))
 	req.Body(string(marshal))
 	s, _ := req.String()
-	logs.Info(s)
+	Info(s)
 }
 
 //##千寻拉群函数
 
 func QxInviteGroup(uid string, gid string) {
 	// 记录开始执行
-	logs.Info("开始执行QxInviteGroup，uid: ", uid, " gid: ", gid)
+	Info("开始执行QxInviteGroup，uid: ", uid, " gid: ", gid)
 
 	// 组装请求 URL
 	url := Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + Config.Wx.Robotid
-	logs.Info("请求的URL: ", url)
+	Info("请求的URL: ", url)
 
 	// 组装请求体
 	requestBody := map[string]interface{}{
@@ -4538,43 +4537,43 @@ func QxInviteGroup(uid string, gid string) {
 	// 序列化请求体
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		logs.Error("请求体序列化失败:", err)
+		Error("请求体序列化失败:", err)
 		return
 	}
-	logs.Info("请求体序列化成功，内容: ", string(jsonData))
+	Info("请求体序列化成功，内容: ", string(jsonData))
 
 	// 创建 HTTP 请求
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		logs.Error("创建 HTTP 请求失败:", err)
+		Error("创建 HTTP 请求失败:", err)
 		return
 	}
-	logs.Info("HTTP 请求创建成功")
+	Info("HTTP 请求创建成功")
 
 	// 设置请求头
 	req.Header.Set("Content-Type", "application/json")
-	logs.Info("设置请求头: Content-Type=application/json")
+	Info("设置请求头: Content-Type=application/json")
 
 	// 发送 HTTP 请求
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		logs.Error("发送 HTTP 请求失败:", err)
+		Error("发送 HTTP 请求失败:", err)
 		return
 	}
 	defer resp.Body.Close()
-	logs.Info("HTTP 请求发送成功，状态码: ", resp.StatusCode)
+	Info("HTTP 请求发送成功，状态码: ", resp.StatusCode)
 
 	// 读取响应
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logs.Error("读取响应失败:", err)
+		Error("读取响应失败:", err)
 		return
 	}
-	logs.Info("响应内容读取成功")
+	Info("响应内容读取成功")
 
 	// 记录响应结果
-	logs.Info("邀请请求响应:", string(respBody))
+	Info("邀请请求响应:", string(respBody))
 }
 
 

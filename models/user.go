@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/beego/beego/v2/core/logs"
 	"math/rand"
 	"time"
 
@@ -178,7 +177,7 @@ func RecordCoinLog(userNumber int, amount int, typ string, detail string) {
 		CreatedAt:    time.Now(),
 	}
 	if err := db.Create(&log).Error; err != nil {
-		logs.Warn("[积分日志] 记录失败 user=%d amount=%d type=%s: %v", userNumber, amount, typ, err)
+		Warn("[积分日志] 记录失败 user=%d amount=%d type=%s: %v", userNumber, amount, typ, err)
 	}
 }
 
@@ -196,7 +195,7 @@ func GetWxid(wxid string) int {
 		}
 
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			logs.Error("Database query timed out. Retrying...")
+			Error("Database query timed out. Retrying...")
 			continue
 		}
 	}
@@ -240,7 +239,7 @@ func fillWxNickname(wxid string) {
 	}
 	result := db.Model(&User{}).Where("wxid = ? AND (nickname = '' OR nickname IS NULL)", wxid).Update("nickname", nickname)
 	if result.RowsAffected > 0 {
-		logs.Info("微信昵称补全成功:", wxid, "->", nickname)
+		Info("微信昵称补全成功:", wxid, "->", nickname)
 	}
 }
 
@@ -250,7 +249,7 @@ func UpdateUserNicknameIfEmpty(number int, nickname string) {
 	}
 	result := db.Model(&User{}).Where("number = ? AND (nickname = '' OR nickname IS NULL)", number).Update("nickname", nickname)
 	if result.RowsAffected > 0 {
-		logs.Info("QQ昵称补全成功:", number, "->", nickname)
+		Info("QQ昵称补全成功:", number, "->", nickname)
 	}
 }
 
@@ -263,7 +262,7 @@ func getUserId(typ string, uid string) string {
 	case "tg":
 
 	default:
-		logs.Info("错误的渠道来源")
+		Info("错误的渠道来源")
 	}
 
 	return ""

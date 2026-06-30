@@ -3,7 +3,6 @@ package models
 import (
 	"strings"
 
-	"github.com/beego/beego/v2/adapter/logs"
 	"github.com/beego/beego/v2/client/httplib"
 )
 
@@ -20,14 +19,14 @@ func initUserAgent() {
 		ua = u.Content
 	} else {
 		if Config.UserAgent != "" {
-			logs.Info("使用自定义User-Agent")
+			Info("使用自定义User-Agent")
 			ua = Config.UserAgent
 		} else {
-			logs.Info("更新User-Agent")
+			Info("更新User-Agent")
 			var err error
 			ua, err = httplib.Get(GhProxy + "https://raw.githubusercontent.com/764763903a/xdd-plus/main/ua.txt").String()
 			if err != nil {
-				logs.Info("更新User-Agent失败")
+				Info("更新User-Agent失败")
 			}
 		}
 	}

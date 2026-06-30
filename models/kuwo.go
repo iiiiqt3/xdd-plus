@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 )
 
 const (
@@ -241,14 +242,14 @@ func kuwoEnsureSessions(accounts []*KuwoAccountInput) []*KuwoSession {
 		if acc.Password != "" {
 			sess, err := kuwoLoginWithRetry(acc.Phone, acc.Password)
 			if err != nil {
-				fmt.Printf("[kuwo] 刷新登录失败 phone=%s: %v\n", acc.Phone, err)
+				Kuwo().Infof("[kuwo] 刷新登录失败 phone=%s: %v\n", acc.Phone, err)
 				continue
 			}
 			KuwoCacheSession(acc.Phone, sess)
 			sessions = append(sessions, sess)
 			continue
 		}
-		fmt.Printf("[kuwo] 无法获取有效session phone=%s\n", acc.Phone)
+		Kuwo().Infof("[kuwo] 无法获取有效session phone=%s\n", acc.Phone)
 	}
 	return sessions
 }
@@ -382,7 +383,7 @@ func KuwoLogin(phone, password string) (*KuwoSession, error) {
 		if err != nil {
 			return nil, fmt.Errorf("get captcha failed: %w", err)
 		}
-		fmt.Printf("[kuwo] captcha attempt %d: code=%s token=%s\n", attempt+1, captchaCode, captchaToken)
+		Kuwo().Infof("[kuwo] captcha attempt %d: code=%s token=%s\n", attempt+1, captchaCode, captchaToken)
 
 		loginBody, _ := json.Marshal(map[string]string{
 			"userIp":          "www.kuwo.cn",
@@ -422,7 +423,7 @@ func KuwoLogin(phone, password string) (*KuwoSession, error) {
 			return nil, fmt.Errorf("parse login response: %w", err)
 		}
 
-		fmt.Printf("[kuwo] login response: code=%d msg=%s\n", resp.Code, resp.Msg)
+		Kuwo().Infof("[kuwo] login response: code=%d msg=%s\n", resp.Code, resp.Msg)
 
 		uid := fmt.Sprintf("%.0f", resp.Data.Cookies.Userid)
 		sid := fmt.Sprintf("%v", resp.Data.Cookies.Websid)
@@ -434,7 +435,7 @@ func KuwoLogin(phone, password string) (*KuwoSession, error) {
 				EncryptedPhone: encPhone,
 			}, nil
 		}
-		fmt.Printf("[kuwo] login attempt %d failed: %s\n", attempt+1, resp.Msg)
+		Kuwo().Infof("[kuwo] login attempt %d failed: %s\n", attempt+1, resp.Msg)
 	}
 
 	return nil, fmt.Errorf("login failed after 5 attempts")
@@ -600,7 +601,7 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 						Success: true,
 						Message: r.msg,
 					}
-					fmt.Printf("[kuwo] withdraw uid=%s success (round %d attempt %d/%d): %s\n", s.LoginUid, round+1, r.index+1, retryCount, r.msg)
+					Kuwo().Infof("[kuwo] withdraw uid=%s success (round %d attempt %d/%d): %s\n", s.LoginUid, round+1, r.index+1, retryCount, r.msg)
 					successFound = true
 				}
 				lastResult = r
@@ -614,7 +615,7 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 					Message: lastResult.msg,
 					Error:   lastResult.err,
 				}
-				fmt.Printf("[kuwo] withdraw uid=%s failed (round %d) after %d attempts: %v\n", s.LoginUid, round+1, retryCount, lastResult.err)
+				Kuwo().Infof("[kuwo] withdraw uid=%s failed (round %d) after %d attempts: %v\n", s.LoginUid, round+1, retryCount, lastResult.err)
 			}
 		}(i, sess)
 	}
@@ -731,7 +732,7 @@ func CheckKuwoAuth(userNumber int) (bool, string) {
 }
 
 func init() {
-	fmt.Printf("[kuwo] module loaded, available quotas: %s\n", KuwoFormatQuotaDisplay())
+	Kuwo().Infof("[kuwo] module loaded, available quotas: %s\n", KuwoFormatQuotaDisplay())
 }
 
 // ===================== 抢兑任务（定时 / 立即） =====================
@@ -820,7 +821,7 @@ func KuwoScheduleWithdraw(accounts []*KuwoAccountInput, quotaID, smsCode string,
 	}
 	if phone != "" {
 		if existing := kuwoFindActiveTaskByPhone(phone); existing != nil {
-			fmt.Printf("[kuwo] 复用已有任务: id=%s phone=%s status=%s\n", existing.ID, kuwoMaskPhone(phone), existing.Status)
+			Kuwo().Infof("[kuwo] 复用已有任务: id=%s phone=%s status=%s\n", existing.ID, kuwoMaskPhone(phone), existing.Status)
 			return existing, true
 		}
 	}
@@ -858,14 +859,14 @@ func KuwoScheduleWithdraw(accounts []*KuwoAccountInput, quotaID, smsCode string,
 	kuwoScheduledTasks.Unlock()
 
 	if immediate {
-		fmt.Printf("[kuwo] 立即抢兑任务: id=%s\n", taskID)
+		Kuwo().Infof("[kuwo] 立即抢兑任务: id=%s\n", taskID)
 		go kuwoRunImmediateTask(taskID)
 	} else {
 		task.AddLog("info", "定时抢兑任务已创建")
 		task.AddLog("info", "账号：%s | 档位：%s | 目标时间：%s",
 			kuwoMaskPhone(phone), kuwoQuotaLabel(quotaID), executeAt.Format("15:04:05"))
 		task.AddLog("info", "任务ID：%s", taskID)
-		fmt.Printf("[kuwo] 定时任务已创建: id=%s target=%s\n", taskID, executeAt.Format("2006-01-02 15:04:05"))
+		Kuwo().Infof("[kuwo] 定时任务已创建: id=%s target=%s\n", taskID, executeAt.Format("2006-01-02 15:04:05"))
 		go kuwoRunScheduledTask(taskID)
 	}
 
@@ -997,7 +998,7 @@ func kuwoExecuteScheduledTask(taskID string) {
 
 	task.Status = "running"
 	task.AddLog("info", "═══ 到达抢兑时刻，开始执行 ═══")
-	fmt.Printf("[kuwo] 定时任务开始执行: id=%s at %s\n", taskID, time.Now().Format("15:04:05.000"))
+	Kuwo().Infof("[kuwo] 定时任务开始执行: id=%s at %s\n", taskID, time.Now().Format("15:04:05.000"))
 
 	if len(task.Sessions) == 0 {
 		task.Sessions = kuwoEnsureSessions(task.Accounts)
@@ -1028,7 +1029,7 @@ func kuwoLogTaskDone(task *KuwoScheduledTask, results []KuwoWithdrawResult) {
 			successCount++
 		}
 	}
-	fmt.Printf("[kuwo] 任务执行完成: id=%s 成功%d/%d\n", task.ID, successCount, len(results))
+	Kuwo().Infof("[kuwo] 任务执行完成: id=%s 成功%d/%d\n", task.ID, successCount, len(results))
 	if successCount > 0 {
 		task.AddLog("success", "════ 抢兑完成：成功 %d/%d 个账号 ════", successCount, len(results))
 		for _, r := range results {

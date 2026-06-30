@@ -21,7 +21,6 @@ import (
 	"sync"
 
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"gorm.io/gorm"
 )
@@ -102,7 +101,7 @@ func parseSocks5List() []map[string]string {
 		}
 		parts := strings.Split(proxy, "|")
 		if len(parts) != 4 {
-			logs.Warn("无效的Socks5配置格式：%s，正确格式：ip|port|account|password", proxy)
+			Warn("无效的Socks5配置格式：%s，正确格式：ip|port|account|password", proxy)
 			continue
 		}
 		proxyList = append(proxyList, map[string]string{
@@ -123,7 +122,7 @@ func countSocks5Usage() map[string]int {
 	var cks []JdCookie
 	err := db.Where("Socks5_Ip != '' AND Socks5_Port != '' AND Available = ?", True).Find(&cks).Error
 	if err != nil {
-		logs.Warn("统计Socks5使用次数失败：%v", err)
+		Warn("统计Socks5使用次数失败：%v", err)
 		return usageMap
 	}
 	
@@ -145,7 +144,7 @@ func smartSelectSocks5() (map[string]string, error) {
 	
 	// 2. 统计数据库中各IP的使用次数
 	usageMap := countSocks5Usage()
-	logs.Info("Socks5 IP使用统计：%v", usageMap)
+	Info("Socks5 IP使用统计：%v", usageMap)
 	
 	// 3. 对代理列表按使用次数排序（最少使用的在前）
 	sort.Slice(proxyList, func(i, j int) bool {
@@ -174,7 +173,7 @@ func smartSelectSocks5() (map[string]string, error) {
 	rand.Seed(time.Now().UnixNano())
 	selected := candidateProxies[rand.Intn(len(candidateProxies))]
 	
-	logs.Info("智能选择Socks5代理 - IP：%s，当前使用次数：%d，候选列表长度：%d",
+	Info("智能选择Socks5代理 - IP：%s，当前使用次数：%d，候选列表长度：%d",
 		selected["ip"], minCount, len(candidateProxies))
 	
 	return selected, nil
@@ -288,7 +287,7 @@ func Autojdck(sender *Sender, Auto *UserSession) {
 						// 新增：智能选择Socks5代理（优先选择数据库中使用最少的IP）
 						socks5, err := smartSelectSocks5()
 						if err != nil {
-							logs.Warn("选择Socks5代理失败：%v", err)
+							Warn("选择Socks5代理失败：%v", err)
 							sender.Reply("未配置Socks5代理，将使用默认网络环境登录")
 						} else {
 							// 保存选中的Socks5配置到Auto对象
@@ -296,7 +295,7 @@ func Autojdck(sender *Sender, Auto *UserSession) {
 							Auto.Socks5_Port = socks5["port"]
 							Auto.Socks5_Account = socks5["account"]
 							Auto.Socks5_Password = socks5["password"]
-							logs.Info("为新增账号智能选择Socks5代理：%s:%s（当前该IP已使用%d次）", 
+							Info("为新增账号智能选择Socks5代理：%s:%s（当前该IP已使用%d次）", 
 								Auto.Socks5_Ip, Auto.Socks5_Port, countSocks5Usage()[Auto.Socks5_Ip])
 						}
 						
@@ -317,17 +316,17 @@ func Autojdck(sender *Sender, Auto *UserSession) {
 
 					// ========== 新增：检查Socks5配置，为空则自动随机选择 ==========
 					if Auto.Socks5_Ip == "" || Auto.Socks5_Port == "" {
-						logs.Info("选中的账号[%s（%s）]未配置Socks5，开始自动随机选择", selectedCk.Nickname, selectedCk.Account)
+						Info("选中的账号[%s（%s）]未配置Socks5，开始自动随机选择", selectedCk.Nickname, selectedCk.Account)
 						socks5, err := smartSelectSocks5()
 						if err != nil {
-							logs.Warn("为账号[%s]自动选择Socks5失败：%v，将使用默认网络环境", selectedCk.Nickname, err)
+							Warn("为账号[%s]自动选择Socks5失败：%v，将使用默认网络环境", selectedCk.Nickname, err)
 						} else {
 							// 赋值随机选中的Socks5配置
 							Auto.Socks5_Ip = socks5["ip"]
 							Auto.Socks5_Port = socks5["port"]
 							Auto.Socks5_Account = socks5["account"]
 							Auto.Socks5_Password = socks5["password"]
-							logs.Info("为账号[%s]自动选择Socks5代理：%s:%s（当前该IP已使用%d次）", 
+							Info("为账号[%s]自动选择Socks5代理：%s:%s（当前该IP已使用%d次）", 
 								selectedCk.Nickname, Auto.Socks5_Ip, Auto.Socks5_Port, countSocks5Usage()[Auto.Socks5_Ip])
 							
 							// 可选：将选中的Socks5更新到数据库，下次登录直接复用（推荐开启）
@@ -338,9 +337,9 @@ func Autojdck(sender *Sender, Auto *UserSession) {
 								"Socks5_Password":  socks5["password"],
 							}).Error
 							if err != nil {
-								logs.Warn("更新账号[%s]的Socks5配置到数据库失败：%v", selectedCk.Nickname, err)
+								Warn("更新账号[%s]的Socks5配置到数据库失败：%v", selectedCk.Nickname, err)
 							} else {
-								logs.Info("账号[%s]的Socks5配置已更新到数据库，下次登录可直接复用", selectedCk.Nickname)
+								Info("账号[%s]的Socks5配置已更新到数据库，下次登录可直接复用", selectedCk.Nickname)
 							}
 						}
 					}
@@ -377,7 +376,7 @@ func Autojdck(sender *Sender, Auto *UserSession) {
 	// 新增：智能选择Socks5代理（优先选择数据库中使用最少的IP）
 	socks5, err := smartSelectSocks5()
 	if err != nil {
-		logs.Warn("选择Socks5代理失败：%v", err)
+		Warn("选择Socks5代理失败：%v", err)
 		sender.Reply("未配置Socks5代理，将使用默认网络环境登录")
 	} else {
 		// 保存选中的Socks5配置到Auto对象
@@ -385,7 +384,7 @@ func Autojdck(sender *Sender, Auto *UserSession) {
 		Auto.Socks5_Port = socks5["port"]
 		Auto.Socks5_Account = socks5["account"]
 		Auto.Socks5_Password = socks5["password"]
-		logs.Info("为新增账号智能选择Socks5代理：%s:%s（当前该IP已使用%d次）", 
+		Info("为新增账号智能选择Socks5代理：%s:%s（当前该IP已使用%d次）", 
 			Auto.Socks5_Ip, Auto.Socks5_Port, countSocks5Usage()[Auto.Socks5_Ip])
 	}
 
@@ -425,7 +424,7 @@ func accountInput(sender *Sender, msg chan string, Auto *UserSession) {
 
 			// 判断输入是手机号还是用户名
 			if phoneReg.MatchString(n) {
-				logs.Info("输入账号阶段 - 手机号")
+				Info("输入账号阶段 - 手机号")
 				Auto.account = n
 				deal = true
 				// 获取与该账号相关的cookies
@@ -473,7 +472,7 @@ func accountInput(sender *Sender, msg chan string, Auto *UserSession) {
 					return
 				}
 			} else if usernameReg.MatchString(n) {
-				logs.Info("输入账号阶段 - 用户名")
+				Info("输入账号阶段 - 用户名")
 				Auto.account = n
 				deal = true
 				// 获取与该账号相关的cookies
@@ -540,7 +539,7 @@ func passwordInput(sender *Sender, msg chan string, Auto *UserSession) {
 		}
 
 		if n != "" && n != "q" {
-			logs.Info("输入密码阶段")
+			Info("输入密码阶段")
 			Auto.password = n
 			sender.Reply("登录中，请稍等，请勿重复操作...")
 			flag := loginAPI(sender, Auto)
@@ -580,7 +579,7 @@ func loginAPI(sender *Sender, Auto *UserSession) bool {
 	}
 
 ProLogin:
-	logs.Info("pro登录阶段")
+	Info("pro登录阶段")
 	requesturl := GetEnv("apiBackend2_fzjh")
 
 	// 构建请求参数
@@ -594,14 +593,14 @@ ProLogin:
 	// 将参数转换为 JSON 字节切片
 	jsonData, err := json.Marshal(params)
 	if err != nil {
-		log.Printf("JSON 编码出错: %v\n", err)
+		System().Infof("JSON 编码出错: %v\n", err)
 		return false
 	}
 
 	// 创建 HTTP 请求
 	req, err := http.NewRequest("POST", requesturl, bytes.NewBuffer(jsonData))
 	if err != nil {
-		log.Printf("创建请求出错: %v\n", err)
+		System().Infof("创建请求出错: %v\n", err)
 		return false
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -610,7 +609,7 @@ ProLogin:
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("发送请求出错: %v\n", err)
+		System().Infof("发送请求出错: %v\n", err)
 		return false
 	}
 	defer resp.Body.Close()
@@ -618,7 +617,7 @@ ProLogin:
 	// 读取响应体
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("读取响应体出错: %v\n", err)
+		System().Infof("读取响应体出错: %v\n", err)
 		return false
 	}
 
@@ -626,7 +625,7 @@ ProLogin:
 	var loginResp LoginResponse
 	err = json.Unmarshal(body, &loginResp)
 	if err != nil {
-		log.Printf("解析响应 JSON 出错: %v\n", err)
+		System().Infof("解析响应 JSON 出错: %v\n", err)
 		return false
 	}
 
@@ -636,12 +635,12 @@ ProLogin:
 
 		// 否则按照原有流程处理
 		jumpURL := loginResp.Data.JmpUrl
-		log.Printf("Status: %d\n", loginResp.Data.Status)
-		log.Printf("认证提示: %s\n", message)
-		log.Printf("跳转链接: %s\n", jumpURL)
-		logs.Info("Satatus: %d\n", loginResp.Data.Status)
-		logs.Info("认证提示: %s\n", message)
-		logs.Info("跳转链接: %s\n", jumpURL)
+		System().Infof("Status: %d\n", loginResp.Data.Status)
+		System().Infof("认证提示: %s\n", message)
+		System().Infof("跳转链接: %s\n", jumpURL)
+		Info("Satatus: %d\n", loginResp.Data.Status)
+		Info("认证提示: %s\n", message)
+		Info("跳转链接: %s\n", jumpURL)
 
 		sender.Reply(jumpURL)
 		time.Sleep(1 * time.Second)
@@ -689,7 +688,7 @@ ProLogin:
 	// 继续按照原有逻辑处理其他情况
 	if loginResp.Data.Status == 0 && !loginResp.Success {
 		message := loginResp.Message
-		log.Printf("认证提示: %s\n", message)
+		System().Infof("认证提示: %s\n", message)
 		if message == "您的账号存在风险，为了您的账号安全请到京东商城App登录" || message == "登录失败: 您的账号存在风险，为了您的账号安全，打开京东商城APP重新登录，风险解除后即可正常使用" {
 			// 特定风险提示处理
 			sender.Reply("请到京东官方app登录一下，过下人脸识别，然后再次使用机器人登陆即可")
@@ -717,7 +716,7 @@ ProLogin:
 	} else if loginResp.Data.Status == 0 && loginResp.Success {
 		// 如果 Status 是 0 且 Success 是 true
 		ck := loginResp.Data.Ck
-		log.Printf("提取到的 ck 值为: %s\n", ck)
+		System().Infof("提取到的 ck 值为: %s\n", ck)
 		Auto.appck = ck
 		// 修正：添加对 Autockup 的调用
 		Autockup(Auto.appck, sender, Auto)
@@ -740,9 +739,9 @@ ProLogin:
 
 // BBK登录API实现
 func BBK_loginAPI(sender *Sender, Auto *UserSession) bool {
-	logs.Info("=== BBK登录开始 ===\n当前登录账号：%s\n当前登录密码：%s\nSocks5配置 - IP：%s，端口：%s，账号：%s，密码：%s",
+	Info("=== BBK登录开始 ===\n当前登录账号：%s\n当前登录密码：%s\nSocks5配置 - IP：%s，端口：%s，账号：%s，密码：%s",
 		Auto.account, Auto.password, Auto.Socks5_Ip, Auto.Socks5_Port, Auto.Socks5_Account, Auto.Socks5_Password)
-	logs.Info("BBK登录接口地址：%s", "http://111.229.133.91:10066/wangjing/dsLogin")
+	Info("BBK登录接口地址：%s", "http://111.229.133.91:10066/wangjing/dsLogin")
 
 	retryCount := 0
 	maxRetry := 3
@@ -758,7 +757,7 @@ retryLogin:
 	if retryCount > maxRetry {
 		sender.Reply("多次尝试切换代理仍登录失败，请稍后再试（可能当前接口整体不稳定）")
 		// 修复：字符串换行+函数参数括号缺失问题，单引号包裹字符串，参数正确传入
-		logs.Info("=== BBK登录结束（重试次数耗尽，最多重试%d次）===", maxRetry)
+		Info("=== BBK登录结束（重试次数耗尽，最多重试%d次）===", maxRetry)
 		return true
 	}
 
@@ -769,9 +768,9 @@ retryLogin:
 			Auto.Socks5_Port,
 			Auto.Socks5_Account,
 			Auto.Socks5_Password)
-		logs.Info("Socks5拼接后字符串：%s", socks5Str)
+		Info("Socks5拼接后字符串：%s", socks5Str)
 	} else {
-		logs.Info("未配置Socks5代理，socks5参数为空字符串")
+		Info("未配置Socks5代理，socks5参数为空字符串")
 		socks5Str = ""
 	}
 
@@ -784,52 +783,52 @@ retryLogin:
 		Password: Auto.password,
 		Socks5:   socks5Str,
 	}
-	logs.Info("BBK登录请求参数：%+v", params)
+	Info("BBK登录请求参数：%+v", params)
 
 	jsonData, err := json.Marshal(params)
 	if err != nil {
-		log.Printf("【步骤1：JSON编码失败】BBK登录JSON编码出错: %v", err)
+		System().Infof("【步骤1：JSON编码失败】BBK登录JSON编码出错: %v", err)
 		sender.Reply("登录请求处理失败（参数格式错误）")
-		logs.Info("=== BBK登录结束（JSON编码失败）===")
+		Info("=== BBK登录结束（JSON编码失败）===")
 		return true
 	}
-	logs.Info("BBK登录请求JSON数据：%s", string(jsonData))
+	Info("BBK登录请求JSON数据：%s", string(jsonData))
 
 	req, err := http.NewRequest("POST", "http://111.229.133.91:10066/wangjing/dsLogin", bytes.NewBuffer(jsonData))
 	if err != nil {
-		log.Printf("【步骤2：创建请求失败】BBK登录创建请求出错: %v", err)
+		System().Infof("【步骤2：创建请求失败】BBK登录创建请求出错: %v", err)
 		sender.Reply("登录请求发送失败")
-		logs.Info("=== BBK登录结束（创建请求失败）===")
+		Info("=== BBK登录结束（创建请求失败）===")
 		return true
 	}
 
 	req.Header.Set("Content-Type", "application/json;charset=utf-8")
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-	logs.Info("BBK登录请求头：Content-Type=%s，User-Agent=%s",
+	Info("BBK登录请求头：Content-Type=%s，User-Agent=%s",
 		req.Header.Get("Content-Type"), req.Header.Get("User-Agent"))
 
-	logs.Info("开始发送BBK登录请求（第%d次尝试），超时时间：60秒", retryCount)
+	Info("开始发送BBK登录请求（第%d次尝试），超时时间：60秒", retryCount)
 	client := &http.Client{
 		Timeout: 60 * time.Second,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("【步骤3：发送请求失败】BBK登录接口调用失败: %v", err)
+		System().Infof("【步骤3：发送请求失败】BBK登录接口调用失败: %v", err)
 		sender.Reply(fmt.Sprintf("登录连接超时（第%d次尝试失败）", retryCount))
-		logs.Info("=== BBK登录结束（发送请求失败）===")
+		Info("=== BBK登录结束（发送请求失败）===")
 		return true
 	}
 	defer resp.Body.Close()
 
-	logs.Info("【步骤4：接收响应】BBK登录接口响应状态码：%d，状态：%s", resp.StatusCode, resp.Status)
+	Info("【步骤4：接收响应】BBK登录接口响应状态码：%d，状态：%s", resp.StatusCode, resp.Status)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("【步骤5：读取响应失败】BBK登录读取响应出错: %v", err)
+		System().Infof("【步骤5：读取响应失败】BBK登录读取响应出错: %v", err)
 		sender.Reply("登录响应处理失败")
-		logs.Info("=== BBK登录结束（读取响应失败）===")
+		Info("=== BBK登录结束（读取响应失败）===")
 		return true
 	}
-	logs.Info("BBK登录接口响应原始内容：%s（长度：%d字节）", string(body), len(body))
+	Info("BBK登录接口响应原始内容：%s（长度：%d字节）", string(body), len(body))
 
 	var BBKResp struct {
 		Code  int    `json:"code"`
@@ -840,40 +839,40 @@ retryLogin:
 	}
 	err = json.Unmarshal(body, &BBKResp)
 	if err != nil {
-		log.Printf("【步骤6：JSON解析失败】BBK登录响应解析失败: %v，原始响应：%s", err, string(body))
+		System().Infof("【步骤6：JSON解析失败】BBK登录响应解析失败: %v，原始响应：%s", err, string(body))
 		sender.Reply(fmt.Sprintf("登录失败：%s", string(body)))
-		logs.Info("=== BBK登录结束（JSON解析失败）===")
+		Info("=== BBK登录结束（JSON解析失败）===")
 		return true
 	}
 
-	logs.Info("【步骤7：处理响应】BBK登录响应 - Code：%d，Msg：%s，Data：%s，CK：%s，Wskey：%s",
+	Info("【步骤7：处理响应】BBK登录响应 - Code：%d，Msg：%s，Data：%s，CK：%s，Wskey：%s",
 		BBKResp.Code, BBKResp.Msg, BBKResp.Data, BBKResp.Ck, BBKResp.Wskey)
 	switch {
 	case BBKResp.Code == 0 && BBKResp.Wskey != "":
-		log.Printf("【步骤8：登录成功，获取到Wskey】Wskey: %s", BBKResp.Wskey)
+		System().Infof("【步骤8：登录成功，获取到Wskey】Wskey: %s", BBKResp.Wskey)
 
 		// --- 核心：保存Wskey到数据库字段 ---
 		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB { return sb.Where("Account = ?", Auto.account) })
 		if len(cks) > 0 {
 			// 更新数据库中该账号的Wskey字段（直接赋值原始wskey，无需编码）
 			cks[0].Update("Wskey", BBKResp.Wskey)
-			logs.Info("【步骤8-0：Wskey数据库保存成功】账号：%s，Wskey：%s", Auto.account, BBKResp.Wskey)
+			Info("【步骤8-0：Wskey数据库保存成功】账号：%s，Wskey：%s", Auto.account, BBKResp.Wskey)
 		} else {
-			logs.Warn("【步骤8-0：Wskey数据库保存失败】未找到账号%s对应的数据库记录", Auto.account)
+			Warn("【步骤8-0：Wskey数据库保存失败】未找到账号%s对应的数据库记录", Auto.account)
 		}
 
 		// --- Wskey 转换为 CK 逻辑 ---
 		// 1. 对 wskey 进行 URL 编码
 		encodedWskey := url.QueryEscape(BBKResp.Wskey)
 		convertURL := fmt.Sprintf("http://m.jing521.cn:10066/wangjing/newWskey?key=%s", encodedWskey)
-		logs.Info("【步骤8-1：调用转换接口】转换接口地址：%s", convertURL)
+		Info("【步骤8-1：调用转换接口】转换接口地址：%s", convertURL)
 
 		// 2. 调用转换接口
 		convertResp, err := client.Get(convertURL)
 		if err != nil {
-			log.Printf("【步骤8-2：转换接口调用失败】%v", err)
+			System().Infof("【步骤8-2：转换接口调用失败】%v", err)
 			sender.Reply("登录成功，但Wskey转换失败（已保存Wskey到数据库）")
-			logs.Info("=== BBK登录结束（Wskey转换失败，Wskey已保存）===")
+			Info("=== BBK登录结束（Wskey转换失败，Wskey已保存）===")
 			return true
 		}
 		defer convertResp.Body.Close()
@@ -881,19 +880,19 @@ retryLogin:
 		// 3. 读取转换接口响应
 		convertBody, err := ioutil.ReadAll(convertResp.Body)
 		if err != nil {
-			log.Printf("【步骤8-3：读取转换响应失败】%v", err)
+			System().Infof("【步骤8-3：读取转换响应失败】%v", err)
 			sender.Reply("登录成功，但转换结果读取失败（已保存Wskey到数据库）")
-			logs.Info("=== BBK登录结束（转换结果读取失败，Wskey已保存）===")
+			Info("=== BBK登录结束（转换结果读取失败，Wskey已保存）===")
 			return true
 		}
-		logs.Info("【步骤8-4：转换接口返回内容】%s", string(convertBody))
+		Info("【步骤8-4：转换接口返回内容】%s", string(convertBody))
 
 		// 4. 解析转换后的CK（响应是 `pt_pin=xxx; pt_key=xxx;` 格式）
 		convertedCk := string(convertBody)
 		if convertedCk == "" {
-			log.Printf("【步骤8-5：转换结果为空】")
+			System().Infof("【步骤8-5：转换结果为空】")
 			sender.Reply("登录成功，但未获取到有效的CK（已保存Wskey到数据库）")
-			logs.Info("=== BBK登录结束（转换结果为空，Wskey已保存）===")
+			Info("=== BBK登录结束（转换结果为空，Wskey已保存）===")
 			return true
 		}
 
@@ -907,17 +906,17 @@ retryLogin:
 			accountName = Auto.account
 		}
 		sender.Reply(fmt.Sprintf("登录成功！账号：%s", accountName))
-		logs.Info("=== BBK登录结束（登录成功、Wskey保存成功、CK转换完成）===")
+		Info("=== BBK登录结束（登录成功、Wskey保存成功、CK转换完成）===")
 		return true
 
 	case BBKResp.Code == 0 && BBKResp.Wskey == "":
-		log.Printf("【步骤8：登录成功但无Wskey】BBK登录成功但未返回Wskey")
+		System().Infof("【步骤8：登录成功但无Wskey】BBK登录成功但未返回Wskey")
 		sender.Reply("登录成功但未获取到Wskey（无数据可保存）")
-		logs.Info("=== BBK登录结束（登录成功无Wskey）===")
+		Info("=== BBK登录结束（登录成功无Wskey）===")
 		return true
 
 	case BBKResp.Code == 128:
-		log.Printf("【步骤8：需要验证】BBK登录需要验证，原始链接：%s", BBKResp.Data)
+		System().Infof("【步骤8：需要验证】BBK登录需要验证，原始链接：%s", BBKResp.Data)
 		// 原始验证链接使用：无需编码、无需拼接前缀，直接返回
 		jumpURL := BBKResp.Data
 		// 【备用代码】需要编码+拼接前缀时启用（注释掉上方，解开下方）
@@ -966,14 +965,14 @@ retryLogin:
 
 	// 500错误码-账号存在风险场景 (原有逻辑)
 	case BBKResp.Code == 500 && strings.Contains(BBKResp.Msg, "您的账号存在风险，为了您的账号安全，打开京东商城APP重新登录"):
-		log.Printf("【步骤8：登录失败-账号存在风险】%s", BBKResp.Msg)
+		System().Infof("【步骤8：登录失败-账号存在风险】%s", BBKResp.Msg)
 		sender.Reply("请使用京东官方APP登录解除人脸后再次重试，如果仍然不行，应该是狗东搞事，可回复【app下载】使用app提交")
-		logs.Info("=== BBK登录结束（账号存在风险）===")
+		Info("=== BBK登录结束（账号存在风险）===")
 		return true
 
 	// 【新增】500错误码-强风控账号场景
 	case BBKResp.Code == 500 && strings.Contains(BBKResp.Msg, "强风控账号"):
-		log.Printf("【步骤8：登录失败-强风控账号】检测到强风控账号：%s, 消息：%s", Auto.account, BBKResp.Msg)
+		System().Infof("【步骤8：登录失败-强风控账号】检测到强风控账号：%s, 消息：%s", Auto.account, BBKResp.Msg)
 		
 		// 1. 查询数据库记录
 		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB { return sb.Where("Account = ?", Auto.account) })
@@ -990,30 +989,30 @@ retryLogin:
 			}).Error
 			
 			if err != nil {
-				logs.Error("【严重】清空强风控账号[%s]的数据库信息失败：%v", Auto.account, err)
+				Error("【严重】清空强风控账号[%s]的数据库信息失败：%v", Auto.account, err)
 				// 即使更新失败，也继续执行下面的回复逻辑，避免程序卡死
 			} else {
-				logs.Info("【成功】已清空强风控账号[%s]的后台登录信息及代理配置", Auto.account)
+				Info("【成功】已清空强风控账号[%s]的后台登录信息及代理配置", Auto.account)
 			}
 		} else {
-			logs.Warn("未找到账号[%s]的数据库记录，无法执行清空操作", Auto.account)
+			Warn("未找到账号[%s]的数据库记录，无法执行清空操作", Auto.account)
 		}
 
 		// 3. 告知用户
 		sender.Reply("⚠️ 检测到当前账号为【强风控账号】，登录失败。\n系统已自动清空后台代理(Socks5)信息。\n请先使用【短信登录】。")
 		
-		logs.Info("=== BBK登录结束（强风控账号，已清空数据）===")
+		Info("=== BBK登录结束（强风控账号，已清空数据）===")
 		return true
 
 	case BBKResp.Code == 500 && BBKResp.Msg == "登录失败:undefined":
-		logs.Info("【步骤8：触发重试条件】BBK登录返回：code=500 + msg=登录失败:undefined（第%d次重试）", retryCount)
+		Info("【步骤8：触发重试条件】BBK登录返回：code=500 + msg=登录失败:undefined（第%d次重试）", retryCount)
 		sender.Reply(fmt.Sprintf("登录临时受限，正在切换代理（第%d次重试）...", retryCount))
 
 		newSocks5, err := smartSelectSocks5()
 		if err != nil {
-			logs.Warn("重新选择Socks5代理失败：%v", err)
+			Warn("重新选择Socks5代理失败：%v", err)
 			sender.Reply("切换代理失败，无法继续重试")
-			logs.Info("=== BBK登录结束（代理重选失败）===")
+			Info("=== BBK登录结束（代理重选失败）===")
 			return true
 		}
 
@@ -1021,7 +1020,7 @@ retryLogin:
 		Auto.Socks5_Port = newSocks5["port"]
 		Auto.Socks5_Account = newSocks5["account"]
 		Auto.Socks5_Password = newSocks5["password"]
-		logs.Info("重新选择Socks5代理成功：%s:%s（当前该IP已使用%d次）",
+		Info("重新选择Socks5代理成功：%s:%s（当前该IP已使用%d次）",
 			Auto.Socks5_Ip, Auto.Socks5_Port, countSocks5Usage()[Auto.Socks5_Ip])
 
 		goto retryLogin
@@ -1030,21 +1029,21 @@ retryLogin:
 	case BBKResp.Code == 500 && BBKResp.Msg == "":
 		proxyExpiredRetryCount++
 		if proxyExpiredRetryCount > maxProxyExpiredRetry {
-			logs.Info("【步骤8：代理过期重试耗尽】BBK登录返回code=500且msg为空（代理过期），已重试%d次，终止重试", maxProxyExpiredRetry)
+			Info("【步骤8：代理过期重试耗尽】BBK登录返回code=500且msg为空（代理过期），已重试%d次，终止重试", maxProxyExpiredRetry)
 			sender.Reply(fmt.Sprintf("当前使用的Socks5代理已过期，更换%d次代理后仍登录失败，请联系管理员更新代理列表", maxProxyExpiredRetry))
-			logs.Info("=== BBK登录结束（代理过期重试耗尽）===")
+			Info("=== BBK登录结束（代理过期重试耗尽）===")
 			return true
 		}
 
-		logs.Info("【步骤8：代理过期重试】BBK登录返回code=500且msg为空（判定为代理过期），第%d次重试（最多%d次）", proxyExpiredRetryCount, maxProxyExpiredRetry)
+		Info("【步骤8：代理过期重试】BBK登录返回code=500且msg为空（判定为代理过期），第%d次重试（最多%d次）", proxyExpiredRetryCount, maxProxyExpiredRetry)
 		sender.Reply(fmt.Sprintf("检测到当前Socks5代理已过期，正在自动更换代理（第%d次重试）...", proxyExpiredRetryCount))
 
 		// 1. 重新选择新的Socks5代理
 		newSocks5, err := smartSelectSocks5()
 		if err != nil {
-			logs.Warn("重新选择Socks5代理失败：%v", err)
+			Warn("重新选择Socks5代理失败：%v", err)
 			sender.Reply("更换代理失败，无法继续重试")
-			logs.Info("=== BBK登录结束（代理重选失败）===")
+			Info("=== BBK登录结束（代理重选失败）===")
 			return true
 		}
 
@@ -1054,7 +1053,7 @@ retryLogin:
 		Auto.Socks5_Port = newSocks5["port"]
 		Auto.Socks5_Account = newSocks5["account"]
 		Auto.Socks5_Password = newSocks5["password"]
-		logs.Info("更换过期代理成功：原IP=%s，新IP=%s:%s（当前该IP已使用%d次）",
+		Info("更换过期代理成功：原IP=%s，新IP=%s:%s（当前该IP已使用%d次）",
 			oldProxyIP, Auto.Socks5_Ip, Auto.Socks5_Port, countSocks5Usage()[Auto.Socks5_Ip])
 
 		// 3. 更新数据库中该账号的代理信息
@@ -1067,13 +1066,13 @@ retryLogin:
 				"Socks5_Password":  newSocks5["password"],
 			}).Error
 			if err != nil {
-				logs.Warn("更新账号[%s]的过期代理信息失败：%v", Auto.account, err)
+				Warn("更新账号[%s]的过期代理信息失败：%v", Auto.account, err)
 			} else {
-				logs.Info("已更新账号[%s]的过期代理信息：%s:%s -> %s:%s",
+				Info("已更新账号[%s]的过期代理信息：%s:%s -> %s:%s",
 					Auto.account, oldProxyIP, cks[0].Socks5_Port, newSocks5["ip"], newSocks5["port"])
 			}
 		} else {
-			logs.Warn("未找到账号[%s]对应的数据库记录，无法更新代理信息", Auto.account)
+			Warn("未找到账号[%s]对应的数据库记录，无法更新代理信息", Auto.account)
 		}
 
 		// 4. 等待2秒后重试登录
@@ -1084,19 +1083,19 @@ retryLogin:
 	case BBKResp.Code == -1 && strings.Contains(BBKResp.Msg, "速度过快"):
 		fastRetryCount++
 		if fastRetryCount > maxFastRetry {
-			logs.Info("【步骤8：速度过快重试耗尽】BBK登录返回包含“速度过快”的提示，已重试%d次，终止重试", maxFastRetry)
+			Info("【步骤8：速度过快重试耗尽】BBK登录返回包含“速度过快”的提示，已重试%d次，终止重试", maxFastRetry)
 			sender.Reply(fmt.Sprintf("操作速度过快，已重试%d次仍失败，请稍后重新发起登录", maxFastRetry))
-			logs.Info("=== BBK登录结束（速度过快重试耗尽）===")
+			Info("=== BBK登录结束（速度过快重试耗尽）===")
 			return true
 		}
 
-		logs.Info("【步骤8：速度过快重试】BBK登录返回：code=-1，msg=%s，第%d次重试（最多%d次）", BBKResp.Msg, fastRetryCount, maxFastRetry)
+		Info("【步骤8：速度过快重试】BBK登录返回：code=-1，msg=%s，第%d次重试（最多%d次）", BBKResp.Msg, fastRetryCount, maxFastRetry)
 		sender.Reply(fmt.Sprintf("%s，等待2秒后进行第%d次自动重试（最多%d次）...", BBKResp.Msg, fastRetryCount, maxFastRetry))
 		time.Sleep(2 * time.Second)
 		goto retryLogin
 
 	default:
-		log.Printf("【步骤8：登录失败】BBK登录失败，错误码: %d, 错误信息: %s", BBKResp.Code, BBKResp.Msg)
+		System().Infof("【步骤8：登录失败】BBK登录失败，错误码: %d, 错误信息: %s", BBKResp.Code, BBKResp.Msg)
 		sender.Reply(fmt.Sprintf("登录失败: %s（错误码：%d）", BBKResp.Msg, BBKResp.Code))
 
 		if strings.Contains(BBKResp.Msg, "账号或密码不正确") {
@@ -1105,10 +1104,10 @@ retryLogin:
 				cks[0].Update("Password", "")
 				cks[0].Update("Account", "")
 				cks[0].Update("Wskey", "") // 清空数据库中的Wskey字段
-				logs.Info("账号密码错误，已清空数据库中存储的账号、密码及Wskey")
+				Info("账号密码错误，已清空数据库中存储的账号、密码及Wskey")
 			}
 		}
-		logs.Info("=== BBK登录结束（登录失败）===")
+		Info("=== BBK登录结束（登录失败）===")
 		return true
 	}
 }
@@ -1152,7 +1151,7 @@ retryLogin:
 //##以下为兔子账号登录
 
 func RabbitInit(account string) bool {
-	logs.Info("账密初始化")
+	Info("账密初始化")
 	req := httplib.Post(fmt.Sprintf("%s/bot/pwd/init?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	req.Header("content-type", "application/json; charset=utf-8")
 	data, _ := req.Body(`{"account":"` + account + `"}`).Bytes()
@@ -1223,7 +1222,7 @@ func getRandomBytes(n int) []byte {
 }
 
 func riskSend(account string) bool {
-	logs.Info("发送风控验证码...")
+	Info("发送风控验证码...")
 
 	// 第一次请求 risk/risk_send
 	var req *httplib.BeegoHTTPRequest
@@ -1232,12 +1231,12 @@ func riskSend(account string) bool {
 	data, err := req.Body(`{"account":"` + account + `"}`).Bytes()
 
 	if err != nil {
-		logs.Error("请求 risk/risk_send 出错: %v", err)
+		Error("请求 risk/risk_send 出错: %v", err)
 		return false
 	}
 
 	// 打印响应体
-	logs.Info("接品请求 risk/risk_send 响应数据: %s", string(data))
+	Info("接品请求 risk/risk_send 响应数据: %s", string(data))
 
 	// 解析响应数据
 	success, _ := jsonparser.GetBoolean(data, "success")
@@ -1260,12 +1259,12 @@ func riskSend(account string) bool {
 		data, err := req.Body(`{"account":"` + account + `"}`).Bytes()
 
 		if err != nil {
-			logs.Error("请求 risk/risk_auto_captcha 出错: %v", err)
+			Error("请求 risk/risk_auto_captcha 出错: %v", err)
 			return false
 		}
 
 		// 打印响应体
-		logs.Info("接品请求 risk/risk_auto_captcha 响应数据: %s", string(data))
+		Info("接品请求 risk/risk_auto_captcha 响应数据: %s", string(data))
 
 		// 解析响应数据
 		success, _ := jsonparser.GetBoolean(data, "success")
@@ -1288,11 +1287,11 @@ func riskSend(account string) bool {
 
 // 风控验证码验证
 func riskVerifyCode(sender *Sender, Auto *UserSession, code string) bool {
-	logs.Info("验证风控验证码")
+	Info("验证风控验证码")
 
 	// 构造请求体
 	requestBody := fmt.Sprintf(`{"account":"%s","code":"%s"}`, Auto.account, code)
-	logs.Info("请求体: %s", requestBody)
+	Info("请求体: %s", requestBody)
 
 	// 构造 HTTP 请求
 	var req *httplib.BeegoHTTPRequest
@@ -1302,12 +1301,12 @@ func riskVerifyCode(sender *Sender, Auto *UserSession, code string) bool {
 	// 发送请求并获取响应
 	data, err := req.Body(requestBody).Bytes()
 	if err != nil {
-		logs.Error("请求 risk_verify_code 出错: %v", err)
+		Error("请求 risk_verify_code 出错: %v", err)
 		return false
 	}
 
 	// 打印响应体
-	logs.Info("响应体: %s", string(data))
+	Info("响应体: %s", string(data))
 
 	// 解析响应数据
 	success, _ := jsonparser.GetBoolean(data, "success")
@@ -1332,7 +1331,7 @@ func riskVerifyCode(sender *Sender, Auto *UserSession, code string) bool {
 
 // 调用兔子api登录，返回是否需要切换到pro登录
 func Rabbit_loginAPI(sender *Sender, Auto *UserSession) bool {
-	logs.Info("调用兔子账密登录阶段")
+	Info("调用兔子账密登录阶段")
 	init := RabbitInit(Auto.account)
 	if !init {
 		sender.Reply("初始化失败，请稍后重试")
@@ -1486,7 +1485,7 @@ func Rabbit_loginAPI(sender *Sender, Auto *UserSession) bool {
 
 // 调用大师api登录
 func Ds_loginAPI(sender *Sender, Auto *UserSession) bool {
-	logs.Info("登录阶段")
+	Info("登录阶段")
 	requesturl := GetEnv("apiBackend1") + "/api/encrypt"
 
 	// 构建请求参数
@@ -1525,7 +1524,7 @@ func Ds_loginAPI(sender *Sender, Auto *UserSession) bool {
 		fmt.Printf("解析响应失败: %s\n", err)
 		return true
 	}
-	logs.Info(fmt.Sprintf("响应: %v\n", result))
+	Info(fmt.Sprintf("响应: %v\n", result))
 
 	errCode, ok := result["err_code"].(float64)
 	if !ok {
@@ -1582,13 +1581,13 @@ func Ds_loginAPI(sender *Sender, Auto *UserSession) bool {
 	}
 
 	pin, _ := result["pt_pin"].(string)
-	logs.Info(pin)
+	Info(pin)
 
 	if ptKey, ok := result["pt_key"].(string); ok && ptKey != "" {
 		escapedPin := url.QueryEscape(pin)
-		logs.Info(escapedPin)
+		Info(escapedPin)
 		cookie := fmt.Sprintf("pt_key=%s;pin=%s;", ptKey, escapedPin)
-		logs.Info(cookie)
+		Info(cookie)
 		Auto.appck = cookie
 	}
 
@@ -1598,7 +1597,7 @@ func Ds_loginAPI(sender *Sender, Auto *UserSession) bool {
 }
 // 上传ck
 func Autockup(cookie string, sender *Sender, Auto *UserSession) {
-	logs.Info("上传CK阶段")
+	Info("上传CK阶段")
 	pin := FetchJdCookieValue("pin", Auto.appck)
 	ptkey := FetchJdCookieValue("pt_key", Auto.appck)
 	ck := JdCookie{
@@ -1690,16 +1689,16 @@ func Autockup(cookie string, sender *Sender, Auto *UserSession) {
 }
 
 func UpAutoCookie() {
-	logs.Info("开始密码自动登录检测（8IP多线程模式）")
+	Info("开始密码自动登录检测（8IP多线程模式）")
 
 	// 步骤1：筛选待自动登录的账号（不变）
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where("Account IS NOT NULL AND Account != '' AND Password IS NOT NULL AND Password != '' AND Smsverify = ? AND Socks5_Ip IS NOT NULL AND Socks5_Ip != ''", False).
 			Order("Priority DESC")
 	})
-	logs.Info(fmt.Sprintf("需要自动登录账号总数：%d个", len(cks)))
+	Info(fmt.Sprintf("需要自动登录账号总数：%d个", len(cks)))
 	if len(cks) == 0 {
-		logs.Info("无符合条件的自动登录账号，检测结束")
+		Info("无符合条件的自动登录账号，检测结束")
 		return
 	}
 
@@ -1708,9 +1707,9 @@ func UpAutoCookie() {
 	for _, ck := range cks {
 		ipGroups[ck.Socks5_Ip] = append(ipGroups[ck.Socks5_Ip], ck)
 	}
-	logs.Info(fmt.Sprintf("实际有效IP组数：%d个（目标8个）", len(ipGroups)))
+	Info(fmt.Sprintf("实际有效IP组数：%d个（目标8个）", len(ipGroups)))
 	for ip, group := range ipGroups {
-		logs.Info(fmt.Sprintf("IP:%s 分配账号数：%d个", ip, len(group)))
+		Info(fmt.Sprintf("IP:%s 分配账号数：%d个", ip, len(group)))
 	}
 
 	// 步骤3：启动并发线程（核心优化：循环内延迟逻辑）
@@ -1719,10 +1718,10 @@ func UpAutoCookie() {
 		wg.Add(1)
 		go func(ip string, accountGroup []JdCookie) {
 			defer wg.Done()
-			logs.Info(fmt.Sprintf("IP:%s 线程启动，开始处理%d个账号", ip, len(accountGroup)))
+			Info(fmt.Sprintf("IP:%s 线程启动，开始处理%d个账号", ip, len(accountGroup)))
 
 			for i, ck := range accountGroup {
-				logs.Info(fmt.Sprintf("IP:%s 正在处理第%d个账号（账号：%s）", ip, i+1, ck.Account))
+				Info(fmt.Sprintf("IP:%s 正在处理第%d个账号（账号：%s）", ip, i+1, ck.Account))
 
 				// 跨线程限流：等待3秒信号量（不变）
 				<-rateLimitSemaphore
@@ -1747,36 +1746,36 @@ func UpAutoCookie() {
 					Auto.Socks5_Port = ck.Socks5_Port
 					Auto.Socks5_Account = ck.Socks5_Account
 					Auto.Socks5_Password = ck.Socks5_Password
-					logs.Info("IP:%s 自动登录账号 %s 使用Socks5代理：%s:%s", ip, ck.Account, Auto.Socks5_Ip, Auto.Socks5_Port)
+					Info("IP:%s 自动登录账号 %s 使用Socks5代理：%s:%s", ip, ck.Account, Auto.Socks5_Ip, Auto.Socks5_Port)
 					loginAPI(sender2, Auto)
 				} else {
-					logs.Info(fmt.Sprintf("IP:%s 账号 %s Cookie仍有效，跳过登录", ip, ck.Account))
+					Info(fmt.Sprintf("IP:%s 账号 %s Cookie仍有效，跳过登录", ip, ck.Account))
 				}
 
 				// 核心优化：组内延迟仅在「执行了登录」且「不是最后一个账号」时触发
 				if i < len(accountGroup)-1 { // 不是最后一个账号
 					if didLogin {
 						// 无效账号登录后：延迟150秒
-						logs.Info(fmt.Sprintf("IP:%s 账号%s登录成功，组内延迟%d秒（Config.Later配置）", ip, ck.Account, Config.Later))
+						Info(fmt.Sprintf("IP:%s 账号%s登录成功，组内延迟%d秒（Config.Later配置）", ip, ck.Account, Config.Later))
 						time.Sleep(time.Second * time.Duration(Config.Later))
 					} else {
 						// 有效账号跳过登录：无延迟（或可选1秒短延迟防高频查询）
-						logs.Info(fmt.Sprintf("IP:%s 账号%sCookie有效，跳过组内延迟", ip, ck.Account))
+						Info(fmt.Sprintf("IP:%s 账号%sCookie有效，跳过组内延迟", ip, ck.Account))
 						// 可选：添加1秒短延迟（避免连续查询Cookie有效性）
 					}
 				} else {
 					// 最后一个账号：无论是否登录，都无延迟
-					logs.Info(fmt.Sprintf("IP:%s 账号%s是当前组最后一个账号，无后续延迟", ip, ck.Account))
+					Info(fmt.Sprintf("IP:%s 账号%s是当前组最后一个账号，无后续延迟", ip, ck.Account))
 				}
 			}
 
-			logs.Info(fmt.Sprintf("IP:%s 线程处理完成，共处理%d个账号", ip, len(accountGroup)))
+			Info(fmt.Sprintf("IP:%s 线程处理完成，共处理%d个账号", ip, len(accountGroup)))
 		}(ip, group)
 	}
 
 	// 等待所有线程执行完成（不变）
 	wg.Wait()
-	logs.Info("所有IP线程自动登录检测完成")
+	Info("所有IP线程自动登录检测完成")
 
 	// 保存数据库变更（不变）
 	go func() {
@@ -1788,16 +1787,16 @@ func UpAutoCookie() {
 
 
 func all_UpAutoCookie() {
-	logs.Info("开始密码自动登录检测（8IP多线程模式）")
+	Info("开始密码自动登录检测（8IP多线程模式）")
 
 	// 步骤1：筛选待自动登录的账号（不变）
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where("Account IS NOT NULL AND Account != '' AND Password IS NOT NULL AND Password != ''  AND Socks5_Ip IS NOT NULL AND Socks5_Ip != ''").
 			Order("Priority DESC")
 	})
-	logs.Info(fmt.Sprintf("需要自动登录账号总数：%d个", len(cks)))
+	Info(fmt.Sprintf("需要自动登录账号总数：%d个", len(cks)))
 	if len(cks) == 0 {
-		logs.Info("无符合条件的自动登录账号，检测结束")
+		Info("无符合条件的自动登录账号，检测结束")
 		return
 	}
 
@@ -1806,9 +1805,9 @@ func all_UpAutoCookie() {
 	for _, ck := range cks {
 		ipGroups[ck.Socks5_Ip] = append(ipGroups[ck.Socks5_Ip], ck)
 	}
-	logs.Info(fmt.Sprintf("实际有效IP组数：%d个（目标8个）", len(ipGroups)))
+	Info(fmt.Sprintf("实际有效IP组数：%d个（目标8个）", len(ipGroups)))
 	for ip, group := range ipGroups {
-		logs.Info(fmt.Sprintf("IP:%s 分配账号数：%d个", ip, len(group)))
+		Info(fmt.Sprintf("IP:%s 分配账号数：%d个", ip, len(group)))
 	}
 
 	// 步骤3：启动并发线程（核心优化：循环内延迟逻辑）
@@ -1817,10 +1816,10 @@ func all_UpAutoCookie() {
 		wg.Add(1)
 		go func(ip string, accountGroup []JdCookie) {
 			defer wg.Done()
-			logs.Info(fmt.Sprintf("IP:%s 线程启动，开始处理%d个账号", ip, len(accountGroup)))
+			Info(fmt.Sprintf("IP:%s 线程启动，开始处理%d个账号", ip, len(accountGroup)))
 
 			for i, ck := range accountGroup {
-				logs.Info(fmt.Sprintf("IP:%s 正在处理第%d个账号（账号：%s）", ip, i+1, ck.Account))
+				Info(fmt.Sprintf("IP:%s 正在处理第%d个账号（账号：%s）", ip, i+1, ck.Account))
 
 				// 跨线程限流：等待3秒信号量（不变）
 				<-rateLimitSemaphore
@@ -1845,36 +1844,36 @@ func all_UpAutoCookie() {
 					Auto.Socks5_Port = ck.Socks5_Port
 					Auto.Socks5_Account = ck.Socks5_Account
 					Auto.Socks5_Password = ck.Socks5_Password
-					logs.Info("IP:%s 自动登录账号 %s 使用Socks5代理：%s:%s", ip, ck.Account, Auto.Socks5_Ip, Auto.Socks5_Port)
+					Info("IP:%s 自动登录账号 %s 使用Socks5代理：%s:%s", ip, ck.Account, Auto.Socks5_Ip, Auto.Socks5_Port)
 					loginAPI(sender2, Auto)
 				} else {
-					logs.Info(fmt.Sprintf("IP:%s 账号 %s Cookie仍有效，跳过登录", ip, ck.Account))
+					Info(fmt.Sprintf("IP:%s 账号 %s Cookie仍有效，跳过登录", ip, ck.Account))
 				}
 
 				// 核心优化：组内延迟仅在「执行了登录」且「不是最后一个账号」时触发
 				if i < len(accountGroup)-1 { // 不是最后一个账号
 					if didLogin {
 						// 无效账号登录后：延迟150秒
-						logs.Info(fmt.Sprintf("IP:%s 账号%s登录成功，组内延迟%d秒（Config.Later配置）", ip, ck.Account, Config.Later))
+						Info(fmt.Sprintf("IP:%s 账号%s登录成功，组内延迟%d秒（Config.Later配置）", ip, ck.Account, Config.Later))
 						time.Sleep(time.Second * time.Duration(Config.Later))
 					} else {
 						// 有效账号跳过登录：无延迟（或可选1秒短延迟防高频查询）
-						logs.Info(fmt.Sprintf("IP:%s 账号%sCookie有效，跳过组内延迟", ip, ck.Account))
+						Info(fmt.Sprintf("IP:%s 账号%sCookie有效，跳过组内延迟", ip, ck.Account))
 						// 可选：添加1秒短延迟（避免连续查询Cookie有效性）
 					}
 				} else {
 					// 最后一个账号：无论是否登录，都无延迟
-					logs.Info(fmt.Sprintf("IP:%s 账号%s是当前组最后一个账号，无后续延迟", ip, ck.Account))
+					Info(fmt.Sprintf("IP:%s 账号%s是当前组最后一个账号，无后续延迟", ip, ck.Account))
 				}
 			}
 
-			logs.Info(fmt.Sprintf("IP:%s 线程处理完成，共处理%d个账号", ip, len(accountGroup)))
+			Info(fmt.Sprintf("IP:%s 线程处理完成，共处理%d个账号", ip, len(accountGroup)))
 		}(ip, group)
 	}
 
 	// 等待所有线程执行完成（不变）
 	wg.Wait()
-	logs.Info("所有IP线程自动登录检测完成")
+	Info("所有IP线程自动登录检测完成")
 
 	// 保存数据库变更（不变）
 	go func() {

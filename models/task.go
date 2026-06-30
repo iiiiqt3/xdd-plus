@@ -13,7 +13,6 @@ import (
 	"sync/atomic" 
 
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 )
 
 type Task struct {
@@ -68,10 +67,10 @@ func createTask(task *Task) {
 		runTask(task, &Sender{})
 	})
 	if err != nil {
-		logs.Warn(task.Word, "任务创建失败")
+		Warn(task.Word, "任务创建失败")
 	} else {
 		task.ID = int(id)
-		logs.Info(task.Word, "任务创建成功")
+		Info(task.Word, "任务创建成功")
 	}
 }
 
@@ -84,7 +83,7 @@ func runTask(task *Task, sender *Sender) string {
 		slice := strings.Split(task.Path, "/")
 		len := len(slice)
 		if len == 0 {
-			logs.Warn("取法识别的文件名")
+			Warn("取法识别的文件名")
 			return ""
 		}
 		task.Name = slice[len-1]
@@ -92,7 +91,7 @@ func runTask(task *Task, sender *Sender) string {
 		if strings.Contains(task.Path, "http") {
 			f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 			if err != nil {
-				logs.Warn("打开%s失败，", path, err)
+				Warn("打开%s失败，", path, err)
 				return ""
 			}
 			url := task.Path
@@ -101,7 +100,7 @@ func runTask(task *Task, sender *Sender) string {
 			}
 			r, err := httplib.Get(url).Response()
 			if err != nil {
-				logs.Warn("下载%s失败，", task.Path, err)
+				Warn("下载%s失败，", task.Path, err)
 			}
 			io.Copy(f, r.Body)
 			f.Close()
@@ -109,13 +108,13 @@ func runTask(task *Task, sender *Sender) string {
 			if path != task.Path && task.Name != task.Path {
 				f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 				if err != nil {
-					logs.Warn("打开%s失败，", path, err)
+					Warn("打开%s失败，", path, err)
 					return ""
 				}
 				f2, err := os.Open(task.Path)
 				if err != nil {
 					f.Close()
-					logs.Warn("打开%s失败，", path, err)
+					Warn("打开%s失败，", path, err)
 					return ""
 				}
 				io.Copy(f, f2)
@@ -145,7 +144,7 @@ func runTask(task *Task, sender *Sender) string {
 	stdout, err := cmd.StdoutPipe()
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		logs.Warn("cmd.StdoutPipe: ", err)
+		Warn("cmd.StdoutPipe: ", err)
 		return ""
 	}
 	if task.Git != "" {
@@ -155,7 +154,7 @@ func runTask(task *Task, sender *Sender) string {
 	}
 	err = cmd.Start()
 	if err != nil {
-		logs.Warn("%v", err)
+		Warn("%v", err)
 		return ""
 	}
 	go func() {
@@ -195,7 +194,7 @@ func runTask(task *Task, sender *Sender) string {
 		}
 	}
 	if msg != "" {
-		logs.Info("消息测试")
+		Info("消息测试")
 		if task.Name == "jd_qmckd_branchHelp.js" && strings.Contains(msg, "本次共运行") {
 			rsp := DeleteCk(msg, "ck")
 			sender.Reply(rsp)

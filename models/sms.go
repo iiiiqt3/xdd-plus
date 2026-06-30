@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/beego/beego/v2/core/logs"
 	"regexp"
    "time"
 	"gorm.io/gorm"
@@ -17,13 +16,13 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 	switch smsSelect {
 	case "Nolan":
 		if sysConfig.NolanUrl == "" || sysConfig.NolanToken == "" {
-			logs.Error("NolanUrl or NolanToken is empty")
+			Error("NolanUrl or NolanToken is empty")
 			sender.Reply("配置错误：Nolan 接口信息不完整。")
 			return
 		}
 	case "Rabbit":
 		if sysConfig.RabbitUrl == "" {
-			logs.Error("RabbitUrl is empty")
+			Error("RabbitUrl is empty")
 			sender.Reply("配置错误：Rabbit 接口信息不完整。")
 			return
 		}
@@ -56,7 +55,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
          smsSelect = "Rabbit"
      }
 	if smsSelect == "Nolan" {
-		logs.Info("Nolan 短信发送中")
+		Info("Nolan 短信发送中")
 		sent := NolanSendSMS(phone, sender)  // 同步等待返回
           if !sent {
               // 发送失败时立即退出，不再等待验证码
@@ -84,7 +83,7 @@ func SmsSelect(sender *Sender, msg chan string, smsSelect string) {
 			loginAPI(sender, Auto)
 			return
 		}
-		logs.Info("Rabbit 短信发送中")
+		Info("Rabbit 短信发送中")
 		sent := RabbitSendSMS("mck", phone, sender)
 		if !sent {
 			smsList[sender.UserID] = nil

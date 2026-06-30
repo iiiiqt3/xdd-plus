@@ -3,7 +3,6 @@ package models
 
 import (
 	
-	"github.com/beego/beego/v2/adapter/logs"
 	"github.com/robfig/cron/v3"
 	"math/rand"
 	"strconv"
@@ -39,14 +38,14 @@ func initCron() {
 		//UpdateRwskey()
 	//})
 	c.AddFunc("58 23,8 * * *", func() {          // 导出指定账号（每天23、8点58分）
-		logs.Info("开始导出 jd_fcwb_help 账号")
+		Info("开始导出 jd_fcwb_help 账号")
 		Exportck("jd_fcwb_help")
 		Exportck("jd_joyzbj_help")
 		Exportck("jd_zzhb_new_help")
 		Exportck("jd_farmnew_code_help")
 	})
 	c.AddFunc("59 23 * * *", func() {            // 导出农场共享账号（每天23点59分）
-		logs.Info("开始导出 jd_farmshare.js 账号")
+		Info("开始导出 jd_farmshare.js 账号")
 		Exportck("jd_farmshare")
 		Exportck_huanjing("jd_zlyhl")
 	})
@@ -59,13 +58,13 @@ func initCron() {
 
 	// 启动所有定时任务
 	c.Start()
-	logs.Info("所有定时任务已启动，包含过期CK禁用任务")
+	Info("所有定时任务已启动，包含过期CK禁用任务")
 }
 
 // StopCron 停止定时任务（备用）
 func StopCron() {
 	if c != nil {
 		c.Stop()
-		logs.Info("定时任务已停止")
+		Info("定时任务已停止")
 	}
 }

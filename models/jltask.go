@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 	"math"
 	"unicode/utf8"
 //	"encoding/base64" 
-	"github.com/beego/beego/v2/adapter/logs"
 )
 
 // ===================== 配置结构体定义 =====================
@@ -142,7 +140,7 @@ func initQingLongConfigsFromYAML(yamlConfigs []YAMLQingLongConfig) {
 				Timeout:      timeout,
 			}
 		}
-		log.Printf("青龙配置已从 YAML 加载 %d 个容器", len(qlManager.Configs))
+		User().Infof("青龙配置已从 YAML 加载 %d 个容器", len(qlManager.Configs))
 	}
 
 	// 如果 YAML 没有提供任何配置，使用内置默认值作为兜底
@@ -219,11 +217,11 @@ func getQingLongConfigForActivity(activityID string) *QingLongConfig {
 	if config == nil || config.QingLongConfigName == "" {
 		qlConfig := qlManager.Configs[qlManager.Default]
 		if qlConfig == nil {
-			log.Printf("错误：默认青龙配置 %s 不存在", qlManager.Default)
+			User().Infof("错误：默认青龙配置 %s 不存在", qlManager.Default)
 			for _, cfg := range qlManager.Configs {
 				return cfg
 			}
-			log.Printf("致命错误：没有可用的青龙配置")
+			User().Infof("致命错误：没有可用的青龙配置")
 			return nil
 		}
 		return qlConfig
@@ -231,10 +229,10 @@ func getQingLongConfigForActivity(activityID string) *QingLongConfig {
 
 	qlConfig, exists := qlManager.Configs[config.QingLongConfigName]
 	if !exists {
-		log.Printf("警告：青龙配置 %s 不存在，使用默认配置 %s", config.QingLongConfigName, qlManager.Default)
+		User().Infof("警告：青龙配置 %s 不存在，使用默认配置 %s", config.QingLongConfigName, qlManager.Default)
 		qlConfig = qlManager.Configs[qlManager.Default]
 		if qlConfig == nil {
-			log.Printf("致命错误：默认青龙配置不存在")
+			User().Infof("致命错误：默认青龙配置不存在")
 			return nil
 		}
 		return qlConfig
@@ -431,18 +429,18 @@ func queryQinglongRemarksByScript(qq int, config *ActivityConfig) (bool, string,
 			errMsg = err.Error()
 		}
 		sanitizedErr := SanitizeError(fmt.Errorf("%s", errMsg))
-		log.Printf("[用户%d][查询青龙] 脚本执行失败：%v", qq, sanitizedErr)
+		User().Infof("[用户%d][查询青龙] 脚本执行失败：%v", qq, sanitizedErr)
 		return false, fmt.Sprintf("查询服务异常：%v", sanitizedErr), nil
 	}
 
 	output := strings.TrimSpace(stdout.String())
-	log.Printf("[用户%d][查询青龙] 脚本原始返回：%s", qq, output)
+	User().Infof("[用户%d][查询青龙] 脚本原始返回：%s", qq, output)
 
 	if output == "not_found" {
 		return false, "青龙中未找到该用户ID对应的CK，请发送【记录账号】上车", nil
 	} else if strings.HasPrefix(output, "查询异常") || strings.HasPrefix(output, "参数错误") {
 		sanitizedOutput := SanitizeError(fmt.Errorf("%s", output))
-		log.Printf("[用户%d][查询青龙] 脚本返回异常：%v", qq, sanitizedOutput)
+		User().Infof("[用户%d][查询青龙] 脚本返回异常：%v", qq, sanitizedOutput)
 		return false, fmt.Sprintf("查询服务异常：%v", sanitizedOutput), nil
 	}
 
@@ -452,7 +450,7 @@ func queryQinglongRemarksByScript(qq int, config *ActivityConfig) (bool, string,
 func queryQinglongRemarksByGo(qq int, config *ActivityConfig) (bool, string, []string) {
 	qlConfig := getQingLongConfigForActivity(config.ID)
 	if qlConfig == nil {
-		log.Printf("[用户%d][查询CK] 错误：无法获取青龙配置，活动ID：%s", qq, config.ID)
+		User().Infof("[用户%d][查询CK] 错误：无法获取青龙配置，活动ID：%s", qq, config.ID)
 		return false, "获取青龙配置失败，请联系管理员", nil
 	}
 
@@ -472,22 +470,22 @@ func queryQinglongRemarksByGo(qq int, config *ActivityConfig) (bool, string, []s
 		} else {
 			errMsg = fmt.Sprintf("查询青龙账号失败：%v", sanitizedErr)
 		}
-		log.Printf("[用户%d][查询CK] 错误：%v，活动ID：%s", qq, sanitizedErr, config.ID)
+		User().Infof("[用户%d][查询CK] 错误：%v，活动ID：%s", qq, sanitizedErr, config.ID)
 		return false, errMsg, nil
 	}
 
 	if len(envs) == 0 {
-		log.Printf("[用户%d][查询CK] 未找到匹配的CK，活动ID：%s", qq, config.ID)
+		User().Infof("[用户%d][查询CK] 未找到匹配的CK，活动ID：%s", qq, config.ID)
 		return false, "青龙中未找到该用户ID对应的CK，请发送【记录账号】上车", nil
 	}
 
 	jsonData, err := json.Marshal(envs)
 	if err != nil {
-		log.Printf("[用户%d][查询CK] JSON序列化失败：%v，原始数据：%+v", qq, err, envs)
+		User().Infof("[用户%d][查询CK] JSON序列化失败：%v，原始数据：%+v", qq, err, envs)
 		return false, "青龙数据处理失败，请联系管理员", nil
 	}
 
-	log.Printf("[用户%d][查询CK] 成功找到%d个账号，活动ID：%s", qq, len(envs), config.ID)
+	User().Infof("[用户%d][查询CK] 成功找到%d个账号，活动ID：%s", qq, len(envs), config.ID)
 	return true, fmt.Sprintf("共找到%d个%s账号", len(envs), config.EnvKey), []string{string(jsonData)}
 }
 
@@ -515,7 +513,7 @@ func executeScript(sender *Sender, cmdPath string, args ...string) (string, erro
 	if err != nil {
 		stderrStr := strings.TrimSpace(stderr.String())
 		stdoutStr := strings.TrimSpace(stdout.String())
-		logs.Warn("脚本执行失败 | 命令: %s %v | 错误: %v | stderr: %s | stdout: %s", cmdPath, args, err, stderrStr, stdoutStr)
+		Warn("脚本执行失败 | 命令: %s %v | 错误: %v | stderr: %s | stdout: %s", cmdPath, args, err, stderrStr, stdoutStr)
 		userMsg := stderrStr
 		if userMsg == "" {
 			userMsg = stdoutStr
@@ -758,7 +756,7 @@ func HandleRecordCK(sender *Sender) interface{} {
 func handleUpdateCKByGo(qq int, ckValue, remarks, envKey string, config *ActivityConfig) (string, error) {
 	project, err := GetActivityProjectByRemarks(config.ID, remarks, envKey)
 	if err != nil {
-		log.Printf("[用户%d][更新CK] 查询账号失败，备注：%s，错误：%v", qq, remarks, err)
+		User().Infof("[用户%d][更新CK] 查询账号失败，备注：%s，错误：%v", qq, remarks, err)
 		if strings.Contains(err.Error(), "record not found") {
 			return "", fmt.Errorf("未找到该账号信息，无法更新")
 		}
@@ -766,17 +764,17 @@ func handleUpdateCKByGo(qq int, ckValue, remarks, envKey string, config *Activit
 	}
 
 	if project.Status != 0 {
-		log.Printf("[用户%d][更新CK] 账号处于禁用状态（Status=%d），拒绝更新，备注：%s，ID=%d",
+		User().Infof("[用户%d][更新CK] 账号处于禁用状态（Status=%d），拒绝更新，备注：%s，ID=%d",
 			qq, project.Status, remarks, project.ID)
 		return "", fmt.Errorf("该账号已禁用（状态码：%d），不允许更新！请先发送【记录授权】", project.Status)
 	}
 
 	if ckValue == "" {
-		log.Printf("[用户%d][更新CK] 提交的CK值为空，备注：%s", qq, remarks)
+		User().Infof("[用户%d][更新CK] 提交的CK值为空，备注：%s", qq, remarks)
 		return "", fmt.Errorf("提交的CK值不能为空")
 	}
 	if ckValue == project.EnvValue {
-		log.Printf("[用户%d][更新CK] CK值未变化，备注：%s", qq, remarks)
+		User().Infof("[用户%d][更新CK] CK值未变化，备注：%s", qq, remarks)
 		return "更新失败：提交的CK与原有CK相同", nil
 	}
 
@@ -784,13 +782,13 @@ func handleUpdateCKByGo(qq int, ckValue, remarks, envKey string, config *Activit
 	project.SyncStatus = "pending_update"
 	project.SyncError = ""
 	if err := UpdateActivityProject(project); err != nil {
-		log.Printf("[用户%d][更新CK] 更新数据库失败，备注：%s，错误：%v", qq, remarks, err)
+		User().Infof("[用户%d][更新CK] 更新数据库失败，备注：%s，错误：%v", qq, remarks, err)
 		return "", fmt.Errorf("更新CK失败：%v", err)
 	}
 
 	go TriggerSync(project.ID)
 
-	log.Printf("[用户%d][更新CK] 更新成功，备注：%s", qq, remarks)
+	User().Infof("[用户%d][更新CK] 更新成功，备注：%s", qq, remarks)
 	return "环境变量值更新成功", nil
 }
 
@@ -820,7 +818,7 @@ func HandleUpdateCK(sender *Sender) interface{} {
 			ErrorMsg:   "活动代号输入错误，请重新输入！",
 		})
 		if exit {
-			log.Printf("[用户%d][更新CK] 选择活动阶段主动退出", qq)
+			User().Infof("[用户%d][更新CK] 选择活动阶段主动退出", qq)
 			return
 		}
 
@@ -835,7 +833,7 @@ func HandleUpdateCK(sender *Sender) interface{} {
 		projects, dbErr := GetActivityProjectsByUserAndEnv(qq, config.ID, config.EnvKey)
 		if dbErr != nil {
 			sender.Reply("数据库查询失败，请联系管理员")
-			log.Printf("[用户%d][更新CK] 数据库查询失败：%v", qq, dbErr)
+			User().Infof("[用户%d][更新CK] 数据库查询失败：%v", qq, dbErr)
 			return
 		}
 
@@ -845,11 +843,11 @@ func HandleUpdateCK(sender *Sender) interface{} {
 
 		if len(projects) == 0 {
 			sender.Reply("未找到可更新的账号")
-			log.Printf("[用户%d][更新CK] CK数据为空", qq)
+			User().Infof("[用户%d][更新CK] CK数据为空", qq)
 			return
 		}
 
-		log.Printf("[用户%d][更新CK] 从数据库找到%d条记录", qq, len(projects))
+		User().Infof("[用户%d][更新CK] 从数据库找到%d条记录", qq, len(projects))
 		for _, project := range projects {
 			if project.Remarks == "" {
 				continue
@@ -864,14 +862,14 @@ func HandleUpdateCK(sender *Sender) interface{} {
 			displayName := GetFirstRemarkParam(project.Remarks)
 			if statusInt == 1 {
 				displayName += " 【禁用】"
-				log.Printf("[用户%d][更新CK] 发现禁用账号：%s（DB ID=%d，Status=%d）", qq, displayName, project.ID, project.Status)
+				User().Infof("[用户%d][更新CK] 发现禁用账号：%s（DB ID=%d，Status=%d）", qq, displayName, project.ID, project.Status)
 			}
 			displayList = append(displayList, displayName)
 		}
 
 		if len(remarksList) == 0 {
 			sender.Reply("未找到可更新的账号")
-			log.Printf("[用户%d][更新CK] 过滤后无可用账号", qq)
+			User().Infof("[用户%d][更新CK] 过滤后无可用账号", qq)
 			return
 		}
 
@@ -905,7 +903,7 @@ func HandleUpdateCK(sender *Sender) interface{} {
 				ErrorMsg:   "序号输入错误，请重新输入！",
 			})
 			if exit {
-				log.Printf("[用户%d][更新CK] 选择账号阶段主动退出", qq)
+				User().Infof("[用户%d][更新CK] 选择账号阶段主动退出", qq)
 				return
 			}
 
@@ -917,7 +915,7 @@ func HandleUpdateCK(sender *Sender) interface{} {
 			status := ckStatusMap[selectedRemarks]
 			if status == 1 {
 				sender.Reply(fmt.Sprintf("该账号【%s】已禁用，不允许更新！请先发送【记录授权】重新启用", displayList[0]))
-				log.Printf("[用户%d][更新CK] 唯一账号处于禁用状态，禁止更新，备注：%s", qq, selectedRemarks)
+				User().Infof("[用户%d][更新CK] 唯一账号处于禁用状态，禁止更新，备注：%s", qq, selectedRemarks)
 				return
 			}
 			sender.Reply(fmt.Sprintf("共找到1个%s账号，自动选中：%s", config.EnvKey, displayList[0]))
@@ -925,7 +923,7 @@ func HandleUpdateCK(sender *Sender) interface{} {
 
 		inputs, exit := collectInputs(sender, msgChannel, config)
 		if exit {
-			log.Printf("[用户%d][更新CK] 收集CK参数阶段主动退出", qq)
+			User().Infof("[用户%d][更新CK] 收集CK参数阶段主动退出", qq)
 			return
 		}
 
@@ -934,7 +932,7 @@ func HandleUpdateCK(sender *Sender) interface{} {
 		finalStatus := ckStatusMap[selectedRemarks]
 		if finalStatus == 1 {
 			sender.Reply(fmt.Sprintf("更新失败：该账号【%s】已禁用，不允许更新！", GetFirstRemarkParam(selectedRemarks)))
-			log.Printf("[用户%d][更新CK] 最终校验发现禁用账号，拒绝更新，备注：%s", qq, selectedRemarks)
+			User().Infof("[用户%d][更新CK] 最终校验发现禁用账号，拒绝更新，备注：%s", qq, selectedRemarks)
 			return
 		}
 
@@ -951,7 +949,7 @@ func HandleUpdateCK(sender *Sender) interface{} {
 
 		if err2 != nil {
 			sender.Reply(err2.Error())
-			log.Printf("[用户%d][更新CK] 最终失败：%v，备注：%s", qq, err2, selectedRemarks)
+			User().Infof("[用户%d][更新CK] 最终失败：%v，备注：%s", qq, err2, selectedRemarks)
 			return
 		}
 
@@ -972,12 +970,12 @@ func handleDeleteCKByGo(qq int, remarks, envKey string, config *ActivityConfig) 
 		if strings.Contains(err.Error(), "record not found") {
 			return "", fmt.Errorf("未找到该备注对应的CK记录")
 		}
-		log.Printf("[用户%d][删除CK] 查询账号失败，备注：%s，错误：%v", qq, remarks, err)
+		User().Infof("[用户%d][删除CK] 查询账号失败，备注：%s，错误：%v", qq, remarks, err)
 		return "", fmt.Errorf("查询账号信息失败：%v", err)
 	}
 
 	if err := SoftDeleteActivityProject(project.ID); err != nil {
-		log.Printf("[用户%d][删除CK] 删除失败，备注：%s，错误：%v", qq, remarks, err)
+		User().Infof("[用户%d][删除CK] 删除失败，备注：%s，错误：%v", qq, remarks, err)
 		return "", fmt.Errorf("删除账号失败：%v", err)
 	}
 
@@ -1032,7 +1030,7 @@ func HandleDeleteCK(sender *Sender) interface{} {
 		projects, dbErr := GetActivityProjectsByUserAndEnv(qq, config.ID, config.EnvKey)
 		if dbErr != nil {
 			sender.Reply("数据库查询失败，请联系管理员")
-			log.Printf("[用户%d][删除CK] 数据库查询失败：%v", qq, dbErr)
+			User().Infof("[用户%d][删除CK] 数据库查询失败：%v", qq, dbErr)
 			return
 		}
 
@@ -1201,13 +1199,13 @@ func HandleQueryRecord(sender *Sender) interface{} {
 				input = strings.TrimSpace(input)
 				if input == "q" {
 					sender.Reply("你已选择退出，操作终止")
-					log.Printf("%s用户主动退出查询", logPrefix)
+					User().Infof("%s用户主动退出查询", logPrefix)
 					return ""
 				}
 				return input
 			case <-time.After(30 * time.Second):
 				sender.Reply("输入超时，操作终止")
-				log.Printf("%s用户输入超时，终止操作", logPrefix)
+				User().Infof("%s用户输入超时，终止操作", logPrefix)
 				return ""
 			}
 		}
@@ -1221,7 +1219,7 @@ func HandleQueryRecord(sender *Sender) interface{} {
 		config := getActivityByID(optSelect)
 		if config == nil {
 			sender.Reply("选择错误！请输入菜单中的有效数字")
-			log.Printf("%s用户选择错误：输入了非有效数字", logPrefix)
+			User().Infof("%s用户选择错误：输入了非有效数字", logPrefix)
 			return
 		}
 
@@ -1230,7 +1228,7 @@ func HandleQueryRecord(sender *Sender) interface{} {
 		projects, err := GetActivityProjectsByUserAndEnv(qq, config.ID, config.EnvKey)
 		if err != nil {
 			sender.Reply(fmt.Sprintf("【%s】查询失败：数据库错误，请联系管理员", config.Name))
-			log.Printf("%s数据库查询失败：%v", logPrefix, err)
+			User().Infof("%s数据库查询失败：%v", logPrefix, err)
 			return
 		}
 
@@ -1278,7 +1276,7 @@ for index, project := range projects {
 
     if project.Status != 0 {
         sender.Reply(fmt.Sprintf("⚠️ 第%d个账号【%s】已被禁用（可能授权已过期），无法查询，请重新发送【记录授权】续费！", accountNo, mainRemark))
-        log.Printf("%s第%d个账号【%s】状态为禁用（Status=%d），跳过查询", logPrefix, accountNo, mainRemark, project.Status)
+        User().Infof("%s第%d个账号【%s】状态为禁用（Status=%d），跳过查询", logPrefix, accountNo, mainRemark, project.Status)
         continue
     }
 
@@ -1288,7 +1286,7 @@ for index, project := range projects {
             expireThreshold := time.Date(expireTimeObj.Year(), expireTimeObj.Month(), expireTimeObj.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
             if time.Now().After(expireThreshold) || time.Now().Equal(expireThreshold) {
                 sender.Reply(fmt.Sprintf("⚠️ 第%d个账号【%s】授权已过期（过期时间：%s），无法查询，请发送【记录授权】续费！", accountNo, mainRemark, expireTime))
-                log.Printf("%s第%d个账号【%s】已过期（ExpireDate=%s），跳过查询", logPrefix, accountNo, mainRemark, expireTime)
+                User().Infof("%s第%d个账号【%s】已过期（ExpireDate=%s），跳过查询", logPrefix, accountNo, mainRemark, expireTime)
                 continue
             }
         }
@@ -1297,17 +1295,17 @@ for index, project := range projects {
     ckValue := project.EnvValue
     if ckValue == "" {
         sender.Reply(fmt.Sprintf("第%d个账号查询失败\n错误：CK数据为空（可能同步异常），请联系管理员", accountNo))
-        log.Printf("%s第%d个账号CK值为空（DB ID=%d）", logPrefix, accountNo, project.ID)
+        User().Infof("%s第%d个账号CK值为空（DB ID=%d）", logPrefix, accountNo, project.ID)
         continue
     }
 
-    log.Printf("%s执行第%d个账号脚本：%s %s", logPrefix, accountNo, execCmd, scriptPath)
+    User().Infof("%s执行第%d个账号脚本：%s %s", logPrefix, accountNo, execCmd, scriptPath)
 
     output, err := executeScript(sender, execCmd, scriptPath, ckValue)
 
     if err != nil {
         sender.Reply(fmt.Sprintf("第%d个账号查询失败：%v", accountNo, err))
-        log.Printf("%s第%d个账号查询失败 - 错误：%v", logPrefix, accountNo, err)
+        User().Infof("%s第%d个账号查询失败 - 错误：%v", logPrefix, accountNo, err)
     } else if output == "" {
         noResultMsg := fmt.Sprintf("第%d个账号备注：【%s】\n查询完成，暂无查询结果", accountNo, mainRemark)
         if expireTime != "" {
@@ -1329,7 +1327,7 @@ for index, project := range projects {
 }
 
 		sender.Reply(fmt.Sprintf("✅ 【%s】共%d个账号查询全部完成！", config.Name, accountCount))
-		log.Printf("%s%s共%d个账号查询完成", logPrefix, config.Name, accountCount)
+		User().Infof("%s%s共%d个账号查询完成", logPrefix, config.Name, accountCount)
 	}()
 
 	return nil
@@ -1398,7 +1396,7 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		projects, dbErr := GetActivityProjectsByUserAndEnv(qq, config.ID, config.EnvKey)
 		if dbErr != nil {
 			sender.Reply("数据库查询失败，请联系管理员")
-			log.Printf("[用户%d][续费授权] 数据库查询失败：%v", qq, dbErr)
+			User().Infof("[用户%d][续费授权] 数据库查询失败：%v", qq, dbErr)
 			return
 		}
 
@@ -1533,23 +1531,23 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 				expireThreshold := time.Date(baseTime.Year(), baseTime.Month(), baseTime.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
 				if now.Before(expireThreshold) {
 					newExpireDate = baseTime.AddDate(0, 0, months).Format(DateLayout)
-					logs.Info("按天续费（未过期）：基准日期[%s] + [%d]天 = [%s]", baseTime.Format(DateLayout), months, newExpireDate)
+					Info("按天续费（未过期）：基准日期[%s] + [%d]天 = [%s]", baseTime.Format(DateLayout), months, newExpireDate)
 				} else {
 					newExpireDate = GenerateExpireDateFromDays(months)
-					logs.Info("按天续费（已过期，从今天起算）：当前时间 + [%d]天 = [%s]", months, newExpireDate)
+					Info("按天续费（已过期，从今天起算）：当前时间 + [%d]天 = [%s]", months, newExpireDate)
 				}
 			} else {
 				newExpireDate = GenerateExpireDateFromDays(months)
-				logs.Info("按天新开通：当前时间 + [%d]天 = [%s]", months, newExpireDate)
+				Info("按天新开通：当前时间 + [%d]天 = [%s]", months, newExpireDate)
 			}
 		} else {
 			if hasOldDate {
 				newExpireDate = GenerateExpireDateFromBase(baseTime, months)
-				logs.Info("按月续费：基准日期[%s] + [%d]个月 = [%s]", 
+				Info("按月续费：基准日期[%s] + [%d]个月 = [%s]", 
 					baseTime.Format(DateLayout), months, newExpireDate)
 			} else {
 				newExpireDate = GenerateExpireDate(months)
-				logs.Info("按月新开通：当前时间 + [%d]个月 = [%s]", 
+				Info("按月新开通：当前时间 + [%d]个月 = [%s]", 
 					months, newExpireDate)
 			}
 		}
@@ -1561,7 +1559,7 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		project, err := GetActivityProjectByRemarks(config.ID, selectedRemarks, config.EnvKey)
 		if err != nil {
 			sender.Reply(fmt.Sprintf("查询账号信息失败：%v", err))
-			log.Printf("查询账号信息失败：%v", err)
+			User().Infof("查询账号信息失败：%v", err)
 			return
 		}
 
@@ -1577,7 +1575,7 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		project.SyncError = ""
 		if err := UpdateActivityProject(project); err != nil {
 			sender.Reply(fmt.Sprintf("更新数据库失败：%v", err))
-			log.Printf("更新数据库失败：%v", err)
+			User().Infof("更新数据库失败：%v", err)
 			return
 		}
 
@@ -1595,7 +1593,7 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 				totalCoin, months, config.MonthlyCoin, userCoin-totalCoin, newExpireDate))
 		}
 		
-		logs.Info("用户[%d] 授权活动[%s] 成功，新有效期[%s], 扣除积分[%d]", 
+		Info("用户[%d] 授权活动[%s] 成功，新有效期[%s], 扣除积分[%d]", 
 			sender.UserID, config.Name, newExpireDate, totalCoin)
 	}()
 

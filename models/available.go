@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"gorm.io/gorm"
 )
@@ -468,10 +467,10 @@ func av2(ck *JdCookie) bool {
 	req.Header("Cookie", cookie)
 	data, err := req.Bytes()
 	if err != nil {
-		logs.Info("接口报错")
+		Info("接口报错")
 		return true
 	}
-	logs.Info(string(data))
+	Info(string(data))
 	val, _ := jsonparser.GetString(data, "islogin")
 	if val == "1" {
 		return true

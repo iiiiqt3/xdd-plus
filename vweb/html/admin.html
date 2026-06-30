@@ -469,6 +469,28 @@
         .md-preview th { background: #f5f7fa; font-weight: 600; }
         .md-upload-input { display: none; }
         .md-tip { font-size: 11px; color: #999; margin-top: 4px; line-height: 1.7; }
+        /* 日志管理 */
+        .log-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+        .log-stat-card { background: #fff; border: 1px solid #ebeef5; border-radius: 8px; padding: 14px 16px; }
+        .log-stat-card .label { font-size: 12px; color: #909399; margin-bottom: 6px; }
+        .log-stat-card .val { font-size: 22px; font-weight: 700; color: #303133; }
+        .log-filter-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; padding: 12px 14px; background: #f5f7fa; border-radius: 8px; border: 1px solid #ebeef5; }
+        .log-filter-bar select, .log-filter-bar input { padding: 6px 10px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 13px; }
+        .log-cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        .log-cat-chip { padding: 4px 12px; border-radius: 999px; font-size: 12px; cursor: pointer; border: 1px solid #dcdfe6; background: #fff; color: #606266; transition: all .15s; }
+        .log-cat-chip:hover { border-color: #409eff; color: #409eff; }
+        .log-cat-chip.active { background: #409eff; color: #fff; border-color: #409eff; }
+        .log-viewer { background: #1e1e1e; color: #d4d4d4; font-family: 'Consolas','Monaco','Menlo',monospace; font-size: 12px; line-height: 1.65; padding: 12px 14px; border-radius: 8px; height: calc(100vh - 380px); min-height: 320px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+        .log-line { margin-bottom: 1px; }
+        .log-line .lv-ERROR { color: #f56c6c; }
+        .log-line .lv-WARN { color: #e6a23c; }
+        .log-line .lv-DEBUG { color: #909399; }
+        .log-line .lv-INFO { color: #67c23a; }
+        .log-line .cat { color: #79bbff; margin: 0 6px; }
+        .log-tabs { display: flex; gap: 0; margin-bottom: 12px; border-bottom: 2px solid #ebeef5; }
+        .log-tab { padding: 8px 18px; cursor: pointer; font-size: 13px; font-weight: 600; color: #909399; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .log-tab.active { color: #409eff; border-bottom-color: #409eff; }
+        @media (max-width: 768px) { .log-stats-row { grid-template-columns: repeat(2, 1fr); } .log-viewer { height: 50vh; } }
     </style>
 </head>
 <body>
@@ -497,6 +519,7 @@
         <div class="nav-item" data-page="envvars" onclick="switchPage('envvars')"><i class="fas fa-database"></i><span>xdd环境变量</span></div>
         <div class="nav-item" data-page="wxdevices" onclick="switchPage('wxdevices')"><i class="fab fa-weixin"></i><span>微信协议管理</span></div>
         <div class="nav-item" data-page="gameconfig" onclick="switchPage('gameconfig')"><i class="fas fa-gamepad"></i><span>娱乐功能</span></div>
+        <div class="nav-item" data-page="logmgmt" onclick="switchPage('logmgmt')"><i class="fas fa-file-alt"></i><span>日志管理</span></div>
         <div class="nav-item" data-page="sysconfig" onclick="switchPage('sysconfig')"><i class="fas fa-cog"></i><span>系统配置</span></div>
     </div>
 </div>
@@ -1373,6 +1396,52 @@
             </div>
         </div>
 
+        <!-- ========= 日志管理 ========= -->
+        <div id="page-logmgmt" class="page-section">
+            <div class="log-stats-row" id="logStatsRow">
+                <div class="log-stat-card"><div class="label">内存缓冲</div><div class="val" id="logStatRing">-</div></div>
+                <div class="log-stat-card"><div class="label">日志文件</div><div class="val" id="logStatFiles">-</div></div>
+                <div class="log-stat-card"><div class="label">磁盘占用</div><div class="val" id="logStatSize">-</div></div>
+                <div class="log-stat-card"><div class="label">保留天数</div><div class="val" id="logStatDays">-</div></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-file-alt"></i> 日志管理</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn btn-info btn-sm" onclick="loadLogStats()"><i class="fas fa-sync-alt"></i> 刷新统计</button>
+                        <button class="btn btn-warning btn-sm" onclick="cleanupLogs()"><i class="fas fa-broom"></i> 清理过期</button>
+                        <button class="btn btn-secondary btn-sm" onclick="clearLogViewer()"><i class="fas fa-eraser"></i> 清空视图</button>
+                    </div>
+                </div>
+                <div class="log-tabs">
+                    <div class="log-tab active" id="logTabLive" onclick="switchLogTab('live')"><i class="fas fa-bolt"></i> 实时日志</div>
+                    <div class="log-tab" id="logTabHistory" onclick="switchLogTab('history')"><i class="fas fa-search"></i> 历史查询</div>
+                    <div class="log-tab" id="logTabFiles" onclick="switchLogTab('files')"><i class="fas fa-folder-open"></i> 日志文件</div>
+                </div>
+                <div class="log-cat-chips" id="logCatChips"></div>
+                <div class="log-filter-bar">
+                    <select id="logFilterLevel" onchange="applyLogFilter()">
+                        <option value="">全部级别</option>
+                        <option value="DEBUG">DEBUG</option>
+                        <option value="INFO">INFO</option>
+                        <option value="WARN">WARN</option>
+                        <option value="ERROR">ERROR</option>
+                    </select>
+                    <input type="text" id="logFilterKeyword" placeholder="关键词搜索..." style="min-width:160px;" onkeydown="if(event.key==='Enter')applyLogFilter()" />
+                    <input type="date" id="logFilterDateFrom" title="开始日期" />
+                    <input type="date" id="logFilterDateTo" title="结束日期" />
+                    <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="logAutoScroll" checked /> 自动滚动</label>
+                    <button class="btn btn-primary btn-sm" onclick="applyLogFilter()"><i class="fas fa-filter"></i> 筛选</button>
+                </div>
+                <div class="log-viewer" id="logViewer"><div style="color:#666;text-align:center;padding:40px;">选择「实时日志」开始监控，或切换到「历史查询」检索文件日志</div></div>
+                <div id="logFilePanel" style="display:none;margin-top:12px;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;">日志文件列表</div>
+                    <div id="logFileList" style="max-height:120px;overflow-y:auto;font-size:12px;"></div>
+                </div>
+                <div id="logPagination" style="display:flex;justify-content:center;gap:8px;margin-top:10px;"></div>
+            </div>
+        </div>
+
         <!-- ========= 系统配置（修复值显示 + 新增第三方服务配置） ========= -->
         <div id="page-sysconfig" class="page-section">
             <div class="card">
@@ -2138,6 +2207,7 @@ function switchPage(page) {
         qlenvs: ['青龙活动变量', '容器管理 / 青龙活动变量'], jdcontainers: ['京东容器', '容器管理 / 京东容器'],
         jdcrontasks: ['京东任务列表', '京东容器 / 京东任务列表'],
         qlcrontasks: ['青龙活动任务', '青龙活动 / 青龙活动任务'],
+        logmgmt: ['日志管理', '系统设置 / 日志管理'],
         sysconfig: ['系统配置', '系统设置 / 系统配置'],
         gameconfig: ['娱乐功能', '系统设置 / 娱乐功能'],
     };
@@ -2152,7 +2222,7 @@ function switchPage(page) {
         containers: loadContainers,
         qlcontainers: loadQLContainers,
         qlenvs: loadQLEnvConfigs, jdcontainers: loadJdContainers, jdcrontasks: initJdCronTaskPage,
-        qlcrontasks: initQlCronTaskPage, sysconfig: function() { loadSysConfig(); }, gameconfig: loadGameConfig,
+        qlcrontasks: initQlCronTaskPage, logmgmt: initLogMgmtPage, sysconfig: function() { loadSysConfig(); }, gameconfig: loadGameConfig,
     };
     if (loaders[page]) loaders[page]();
 }
@@ -5960,6 +6030,9 @@ function initResizableColumns() {
 
     const origSwitchPage = window.switchPage;
     window.switchPage = function(page) {
+        if (typeof currentPage !== 'undefined' && currentPage === 'logmgmt' && page !== 'logmgmt' && typeof stopLogSSE === 'function') {
+            stopLogSSE();
+        }
         origSwitchPage.call(this, page);
         setTimeout(() => {
             document.querySelectorAll('.data-table:not([data-resized])').forEach(table => {
@@ -6928,6 +7001,230 @@ function getActSelectedIds() {
     var ids = [];
     document.querySelectorAll('.act-check:checked').forEach(function(cb) { ids.push(parseInt(cb.value)); });
     return ids;
+}
+
+// ============ 日志管理 ============
+var _logTab = 'live';
+var _logSSE = null;
+var _logCategories = [];
+var _logSelectedCat = '';
+var _logLastId = 0;
+var _logHistoryPage = 1;
+
+function initLogMgmtPage() {
+    loadLogCategories();
+    loadLogStats();
+    switchLogTab('live');
+}
+
+async function loadLogCategories() {
+    try {
+        var res = await api.get('/api/admin/logs/categories');
+        if (res.code !== 0) return;
+        _logCategories = res.data || [];
+        var html = '<div class="log-cat-chip' + (_logSelectedCat === '' ? ' active' : '') + '" onclick="selectLogCat(\'\')">全部</div>';
+        _logCategories.forEach(function(c) {
+            html += '<div class="log-cat-chip' + (_logSelectedCat === c.key ? ' active' : '') + '" onclick="selectLogCat(\'' + escapeAttr(c.key) + '\')" title="' + escapeAttr(c.desc || '') + '">' + escapeHtml(c.label) + '</div>';
+        });
+        document.getElementById('logCatChips').innerHTML = html;
+    } catch(e) {}
+}
+
+function selectLogCat(cat) {
+    _logSelectedCat = cat;
+    loadLogCategories();
+    applyLogFilter();
+}
+
+function switchLogTab(tab) {
+    _logTab = tab;
+    ['live', 'history', 'files'].forEach(function(t) {
+        var el = document.getElementById('logTab' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (el) el.classList.toggle('active', t === tab);
+    });
+    document.getElementById('logFilePanel').style.display = tab === 'files' ? 'block' : 'none';
+    if (tab === 'live') {
+        startLogSSE();
+    } else {
+        stopLogSSE();
+        if (tab === 'history') {
+            _logHistoryPage = 1;
+            queryLogHistory();
+        } else if (tab === 'files') {
+            loadLogFileList();
+        }
+    }
+}
+
+function stopLogSSE() {
+    if (_logSSE) { _logSSE.close(); _logSSE = null; }
+}
+
+function startLogSSE() {
+    stopLogSSE();
+    _logLastId = 0;
+    clearLogViewer();
+    var params = buildLogQueryParams();
+    _logSSE = new EventSource('/api/admin/logs/stream?' + params);
+    _logSSE.onmessage = function(ev) {
+        try {
+            var entry = JSON.parse(ev.data);
+            appendLogEntry(entry);
+            if (entry.id) _logLastId = Math.max(_logLastId, entry.id);
+        } catch(e) {}
+    };
+    _logSSE.onerror = function() {
+        appendLogLine({ level: 'WARN', category: 'system', message: '实时日志连接断开，3秒后重连...', time: new Date().toISOString().slice(0, 23).replace('T', ' ') });
+        stopLogSSE();
+        setTimeout(function() { if (_logTab === 'live') startLogSSE(); }, 3000);
+    };
+}
+
+function buildLogQueryParams() {
+    var p = [];
+    if (_logSelectedCat) p.push('category=' + encodeURIComponent(_logSelectedCat));
+    var lv = document.getElementById('logFilterLevel').value;
+    if (lv) p.push('level=' + encodeURIComponent(lv));
+    var kw = document.getElementById('logFilterKeyword').value.trim();
+    if (kw) p.push('keyword=' + encodeURIComponent(kw));
+    return p.join('&');
+}
+
+function applyLogFilter() {
+    if (_logTab === 'live') {
+        startLogSSE();
+    } else if (_logTab === 'history') {
+        _logHistoryPage = 1;
+        queryLogHistory();
+    }
+}
+
+async function queryLogHistory() {
+    var params = buildLogQueryParams();
+    params += '&source=file&page=' + _logHistoryPage + '&limit=200';
+    var df = document.getElementById('logFilterDateFrom').value;
+    var dt = document.getElementById('logFilterDateTo').value;
+    if (df) params += '&dateFrom=' + df;
+    if (dt) params += '&dateTo=' + dt;
+    clearLogViewer();
+    appendLogLine({ level: 'INFO', category: 'system', message: '正在查询历史日志...', time: '' });
+    try {
+        var res = await api.get('/api/admin/logs/query?' + params);
+        clearLogViewer();
+        if (res.code !== 0) {
+            appendLogLine({ level: 'ERROR', category: 'system', message: '查询失败: ' + res.msg, time: '' });
+            return;
+        }
+        var list = (res.data && res.data.list) || [];
+        if (list.length === 0) {
+            appendLogLine({ level: 'INFO', category: 'system', message: '未找到匹配的日志记录', time: '' });
+        } else {
+            list.forEach(appendLogEntry);
+        }
+        renderLogPagination(res.data.page, res.data.limit, res.data.total);
+    } catch(e) {
+        clearLogViewer();
+        appendLogLine({ level: 'ERROR', category: 'system', message: '查询异常: ' + e.message, time: '' });
+    }
+}
+
+function renderLogPagination(page, limit, total) {
+    var el = document.getElementById('logPagination');
+    if (_logTab !== 'history' || total <= limit) { el.innerHTML = ''; return; }
+    var pages = Math.ceil(total / limit);
+    var html = '';
+    if (page > 1) html += '<button class="btn btn-info btn-xs" onclick="_logHistoryPage=' + (page-1) + ';queryLogHistory()">上一页</button>';
+    html += '<span style="font-size:12px;color:#999;padding:0 8px;">' + page + ' / ' + pages + ' (共' + total + '条)</span>';
+    if (page < pages) html += '<button class="btn btn-info btn-xs" onclick="_logHistoryPage=' + (page+1) + ';queryLogHistory()">下一页</button>';
+    el.innerHTML = html;
+}
+
+async function loadLogStats() {
+    try {
+        var res = await api.get('/api/admin/logs/stats');
+        if (res.code !== 0) return;
+        var d = res.data;
+        document.getElementById('logStatRing').textContent = (d.ringCount || 0) + ' / ' + (d.ringCap || 0);
+        document.getElementById('logStatFiles').textContent = d.fileCount || 0;
+        document.getElementById('logStatSize').textContent = formatBytes(d.totalSize || 0);
+        document.getElementById('logStatDays').textContent = (d.maxDays || 30) + ' 天';
+    } catch(e) {}
+}
+
+function formatBytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+}
+
+async function loadLogFileList() {
+    try {
+        var res = await api.get('/api/admin/logs/files');
+        if (res.code !== 0) return;
+        var files = res.data || [];
+        var html = '';
+        files.slice().reverse().forEach(function(f) {
+            html += '<div style="display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid #eee;cursor:pointer;" onclick="viewLogFile(\'' + escapeAttr(f.name) + '\')">';
+            html += '<span>' + escapeHtml(f.name) + '</span>';
+            html += '<span style="color:#999;">' + formatBytes(f.size) + '</span></div>';
+        });
+        document.getElementById('logFileList').innerHTML = html || '<div style="color:#999;padding:8px;">暂无日志文件</div>';
+    } catch(e) {}
+}
+
+async function viewLogFile(name) {
+    clearLogViewer();
+    try {
+        var res = await api.get('/api/admin/logs/file?file=' + encodeURIComponent(name) + '&tail=1000');
+        if (res.code !== 0) { toast(res.msg || '读取失败', 'error'); return; }
+        var lines = (res.data || '').split('\n');
+        lines.forEach(function(line) {
+            if (!line.trim()) return;
+            appendLogRawLine(line);
+        });
+    } catch(e) { toast('读取失败: ' + e.message, 'error'); }
+}
+
+function appendLogEntry(entry) {
+    appendLogLine({ time: entry.time, level: entry.level, category: entry.category, message: entry.message });
+}
+
+function appendLogRawLine(line) {
+    var parts = line.split('\t');
+    if (parts.length >= 4) {
+        appendLogLine({ time: parts[0].replace('T', ' ').slice(0, 23), level: parts[1], category: parts[2], message: parts.slice(3).join('\t') });
+    } else {
+        appendLogLine({ level: 'INFO', category: '', message: line, time: '' });
+    }
+}
+
+function appendLogLine(entry) {
+    var viewer = document.getElementById('logViewer');
+    if (viewer.querySelector('div[style*="text-align:center"]')) viewer.innerHTML = '';
+    var lv = (entry.level || 'INFO').toUpperCase();
+    var div = document.createElement('div');
+    div.className = 'log-line';
+    var ts = entry.time ? '<span style="color:#6a737d;">' + escapeHtml(entry.time) + '</span> ' : '';
+    div.innerHTML = ts + '<span class="lv-' + lv + '">[' + lv + ']</span><span class="cat">[' + escapeHtml(entry.category || '-') + ']</span> ' + escapeHtml(entry.message || '');
+    viewer.appendChild(div);
+    if (document.getElementById('logAutoScroll').checked) {
+        viewer.scrollTop = viewer.scrollHeight;
+    }
+}
+
+function clearLogViewer() {
+    document.getElementById('logViewer').innerHTML = '';
+    document.getElementById('logPagination').innerHTML = '';
+}
+
+async function cleanupLogs() {
+    if (!confirm('确认清理超过保留期限的日志文件？')) return;
+    try {
+        var res = await api.post('/api/admin/logs/cleanup', {});
+        toast(res.msg || '清理完成', res.code === 0 ? 'success' : 'error');
+        loadLogStats();
+        if (_logTab === 'files') loadLogFileList();
+    } catch(e) { toast('清理失败: ' + e.message, 'error'); }
 }
 
 </script>

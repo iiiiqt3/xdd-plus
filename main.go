@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
 	"github.com/beego/beego/v2/server/web/filter/cors"
@@ -41,8 +40,7 @@ type AuthResult struct {
 // main 程序入口函数，初始化日志、路由、定时任务并启动Web服务
 func main() {
 
-	// 设置日志输出到文件
-	logs.SetLogger(logs.AdapterFile, "{\"filename\":\"logs/xdd.log\", \"level\":6}")
+	models.System().Infof("XDD 服务启动")
 
 	// 启动定时保存任务
 	go func() {
@@ -85,7 +83,7 @@ func main() {
 	// 手机号权限验证接口
 	web.Get("/permisson", func(ctx *context.Context) {
 		tel := ctx.Input.Query("phone")
-		logs.Info(tel)
+		models.Info(tel)
 		auth := models.GetAuth(tel)
 		if auth {
 			result := AuthResult{
@@ -164,14 +162,14 @@ func main() {
 				ctx.WriteString(query)
 				return
 			}
-			logs.Info("下载最新网页查询版本")
+			models.Info("下载最新网页查询版本")
 			s, _ := httplib.Get("https://git.smxy.xyz/jia_yuan/xdd-html/raw/branch/xdd/version/index.html").String()
 			if s != "" {
 				query = s
 				ctx.WriteString(s)
 				return
 			}
-			logs.Warn("主题下载失败，请注意查看网络环境")
+			models.Warn("主题下载失败，请注意查看网络环境")
 		})
 	}
 
@@ -298,6 +296,14 @@ func main() {
 	web.Router("/api/admin/sysconfig", &controllers.AdminApiController{}, "get:GetSystemConfig")
 	web.Router("/api/admin/sysconfig/save", &controllers.AdminApiController{}, "post:SaveSystemConfig")
 	web.Router("/api/admin/sysconfig/image-token", &controllers.AdminApiController{}, "post:GetImageToken")
+	// 日志管理
+	web.Router("/api/admin/logs/categories", &controllers.AdminApiController{}, "get:GetLogCategories")
+	web.Router("/api/admin/logs/stats", &controllers.AdminApiController{}, "get:GetLogStats")
+	web.Router("/api/admin/logs/query", &controllers.AdminApiController{}, "get:QueryLogs")
+	web.Router("/api/admin/logs/stream", &controllers.AdminApiController{}, "get:StreamLogs")
+	web.Router("/api/admin/logs/files", &controllers.AdminApiController{}, "get:GetLogFiles")
+	web.Router("/api/admin/logs/file", &controllers.AdminApiController{}, "get:GetLogFileContent")
+	web.Router("/api/admin/logs/cleanup", &controllers.AdminApiController{}, "post:CleanupLogs")
 	web.Router("/api/admin/jdcookies", &controllers.AdminApiController{}, "get:GetJdCookies")
 	web.Router("/api/admin/jdcookies/delete", &controllers.AdminApiController{}, "post:DeleteJdCookie")
 	web.Router("/api/admin/jdcookies/update", &controllers.AdminApiController{}, "post:UpdateJdCookie")
@@ -440,6 +446,12 @@ func main() {
 		//如果设置，则允许共享身份验证凭据，例如cookie
 		AllowCredentials: true,
 	}))
+
+	// HTTP 请求日志（统一写入 logger，admin 可实时查看）
+	web.InsertFilter("/api/*", web.BeforeRouter, controllers.LogRequestFilter, false)
+	web.InsertFilter("/api/*", web.AfterExec, controllers.LogResponseFilter, false)
+	web.InsertFilter("/wx/*", web.BeforeRouter, controllers.LogRequestFilter, false)
+	web.InsertFilter("/wx/*", web.AfterExec, controllers.LogResponseFilter, false)
 
 	// 启动后延迟发送启动通知
 	go func() {

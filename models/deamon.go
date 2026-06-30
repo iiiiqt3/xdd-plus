@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/beego/beego/v2/adapter/logs"
 )
 
 
@@ -18,12 +17,12 @@ func Daemon() {
     if _, err := os.Stat(file); err == nil {
         err := os.Remove(file)
         if err != nil {
-            logs.Error("删除文件 %s 失败: %v", file, err)
+            Error("删除文件 %s 失败: %v", file, err)
         } else {
-            logs.Info("成功删除文件 %s", file)
+            Info("成功删除文件 %s", file)
         }
     } else if !os.IsNotExist(err) {
-        logs.Error("检查文件 %s 时出错: %v", file, err)
+        Error("检查文件 %s 时出错: %v", file, err)
     }
 
     // 重新启动程序
@@ -41,7 +40,7 @@ func Daemon() {
     if err != nil {
         panic(err)
     }
-    logs.Info("小滴滴运行于后台模式")
+    Info("小滴滴运行于后台模式")
     os.Exit(0)
 }
 

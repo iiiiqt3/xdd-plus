@@ -10,7 +10,6 @@ import (
 	
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 )
 
 var (
@@ -166,7 +165,7 @@ func TryHandleSshMessage(sender *Sender) bool {
 			dirMutex.Unlock()
 
 			sender.Reply("⚠️ 检测到高危操作命令，已自动退出 Shell 模式！\n🔒 为安全起见，禁止执行此类命令。")
-			logs.Warn("[SSH] 高危命令拦截: %s", msg)
+			Warn("[SSH] 高危命令拦截: %s", msg)
 			return true
 		}
 	}

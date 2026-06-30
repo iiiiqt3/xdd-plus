@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 )
 
 var markdownImageRe = regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
@@ -134,7 +133,7 @@ func buildQQImageCQFromLocal(rawPath string) string {
 func SendQQGroupImage(gid int, imageURL string, rawPath string) {
 	cq := BuildQQImageCQ(imageURL, rawPath)
 	if cq == "" {
-		logs.Warn("QQ群图片发送跳过，无法构建 CQ 码: gid=%d url=%s", gid, imageURL)
+		Warn("QQ群图片发送跳过，无法构建 CQ 码: gid=%d url=%s", gid, imageURL)
 		return
 	}
 	SendQQGroup(gid, 0, cq)

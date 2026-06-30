@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
+	"github.com/beego/beego/v2/server/web/context"
 	"github.com/cdle/xdd/models"
 )
 
@@ -60,7 +60,7 @@ func (c *AdminApiController) SaveActivities() {
 	// 跳过热加载监控的重复加载，并直接用内存内容热加载
 	models.GetActivityLoader().MarkSkipWatcher(3 * time.Second)
 	msg := models.ReloadActivitiesFromData([]byte(req.Activities))
-	logs.Info("活动配置已更新: %s", msg)
+	models.Admin().Infof("活动配置已更新: %s", msg)
 
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
 	c.ServeJSON()
@@ -233,11 +233,11 @@ func (c *AdminApiController) SendNotification() {
 	title, content, category, displayType, isTop := req.Title, req.Content, req.Category, req.DisplayType, req.IsTop
 	go func() {
 		if _, err := models.CreateAdminWebNotification(title, content, category, displayType, isTop); err != nil {
-			logs.Error("后台发送管理员通知失败: %v", err)
+			models.Error("后台发送管理员通知失败: %v", err)
 		}
 		if req.PushToQQ || req.PushToWX {
 			pushResult := models.SendActivityToGroupsWithOptions(title, content, req.PushToQQ, req.PushToWX)
-			logs.Info("管理员通知群推送结果: %s", pushResult)
+			models.Info("管理员通知群推送结果: %s", pushResult)
 		}
 	}()
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "发送请求已提交，通知正在后台写入"}
@@ -2267,7 +2267,7 @@ func (c *AdminApiController) UploadGuideImage() {
 
 	// 返回可访问的URL
 	url := fmt.Sprintf("/uploads/guide/%s/%s", activity, filename)
-	logs.Info("玩法简介图片已上传: %s", url)
+	models.Info("玩法简介图片已上传: %s", url)
 
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
@@ -2278,4 +2278,229 @@ func (c *AdminApiController) UploadGuideImage() {
 		},
 	}
 	c.ServeJSON()
+}
+
+// ===================== 日志管理 =====================
+
+func (c *AdminApiController) GetLogCategories() {
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": models.AllCategories()}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) GetLogStats() {
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": models.GetStats()}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) QueryLogs() {
+	source := c.GetString("source", "recent")
+	category := models.Category(c.GetString("category"))
+	level := models.Level(c.GetString("level"))
+	keyword := c.GetString("keyword")
+	page, _ := c.GetInt("page", 1)
+	limit, _ := c.GetInt("limit", 100)
+	afterID, _ := c.GetInt64("afterId", 0)
+	dateFrom := c.GetString("dateFrom")
+	dateTo := c.GetString("dateTo")
+
+	var entries []models.Entry
+	var total int
+	var err error
+
+	switch source {
+	case "file":
+		entries, total, err = models.QueryFiles(dateFrom, dateTo, category, level, keyword, page, limit)
+	default:
+		entries = models.Recent(limit, afterID, category, level, keyword)
+		total = len(entries)
+	}
+
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{"list": entries, "total": total, "page": page, "limit": limit},
+	}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) StreamLogs() {
+	c.Ctx.Output.Header("Content-Type", "text/event-stream")
+	c.Ctx.Output.Header("Cache-Control", "no-cache")
+	c.Ctx.Output.Header("Connection", "keep-alive")
+	c.Ctx.Output.Header("X-Accel-Buffering", "no")
+
+	w := c.Ctx.ResponseWriter.ResponseWriter
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		fmt.Fprintf(w, "event: error\ndata: 服务器不支持SSE\n\n")
+		return
+	}
+
+	category := models.Category(c.GetString("category"))
+	level := models.Level(c.GetString("level"))
+	keyword := c.GetString("keyword")
+
+	for _, e := range models.Recent(100, 0, category, level, keyword) {
+		sendLogSSE(w, flusher, e)
+	}
+
+	ch := models.Subscribe()
+	defer models.Unsubscribe(ch)
+
+	timeout := time.NewTimer(30 * time.Minute)
+	defer timeout.Stop()
+
+	for {
+		select {
+		case e, ok := <-ch:
+			if !ok {
+				return
+			}
+			if category != "" && e.Category != category {
+				continue
+			}
+			if level != "" && e.Level != level {
+				continue
+			}
+			if keyword != "" && !logEntryMatchKeyword(e, keyword) {
+				continue
+			}
+			sendLogSSE(w, flusher, e)
+			timeout.Reset(30 * time.Minute)
+		case <-timeout.C:
+			fmt.Fprintf(w, "event: timeout\ndata: 连接超时\n\n")
+			flusher.Flush()
+			return
+		}
+	}
+}
+
+func sendLogSSE(w http.ResponseWriter, flusher http.Flusher, e models.Entry) {
+	b, _ := json.Marshal(e)
+	fmt.Fprintf(w, "data: %s\n\n", string(b))
+	flusher.Flush()
+}
+
+func logEntryMatchKeyword(e models.Entry, kw string) bool {
+	return len(kw) == 0 || logStrContainsFold(e.Message, kw) || logStrContainsFold(string(e.Category), kw)
+}
+
+func logStrContainsFold(s, sub string) bool {
+	if len(sub) == 0 {
+		return true
+	}
+	for i := 0; i+len(sub) <= len(s); i++ {
+		match := true
+		for j := 0; j < len(sub); j++ {
+			a, b := s[i+j], sub[j]
+			if a >= 'A' && a <= 'Z' {
+				a += 32
+			}
+			if b >= 'A' && b <= 'Z' {
+				b += 32
+			}
+			if a != b {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *AdminApiController) GetLogFiles() {
+	files, err := models.ListFiles()
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": files}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) GetLogFileContent() {
+	filename := c.GetString("file")
+	tail, _ := c.GetInt("tail", 500)
+	content, err := models.ReadFileContent(filename, tail)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": content}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) CleanupLogs() {
+	n, err := models.Cleanup()
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	models.Admin().Infof("管理员手动清理过期日志 %d 个文件", n)
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": fmt.Sprintf("已清理 %d 个过期日志文件", n), "data": n}
+	c.ServeJSON()
+}
+
+// LogRequestFilter HTTP 请求日志中间件
+func LogRequestFilter(ctx *context.Context) {
+	path := ctx.Request.URL.Path
+	if shouldSkipLogPath(path) {
+		return
+	}
+	start := time.Now()
+	cat := models.CategoryFromPath(path)
+	method := ctx.Input.Method()
+	models.Logf(cat, models.LevelInfo, "→ %s %s", method, path)
+	ctx.Input.SetData("log_start", start)
+}
+
+// LogResponseFilter 记录响应耗时
+func LogResponseFilter(ctx *context.Context) {
+	path := ctx.Request.URL.Path
+	if shouldSkipLogPath(path) {
+		return
+	}
+	cat := models.CategoryFromPath(path)
+	method := ctx.Input.Method()
+	status := ctx.ResponseWriter.Status
+	elapsed := time.Since(time.Now())
+	if v := ctx.Input.GetData("log_start"); v != nil {
+		if t, ok := v.(time.Time); ok {
+			elapsed = time.Since(t)
+		}
+	}
+	if status >= 500 {
+		models.Logf(cat, models.LevelError, "← %s %s %d %v", method, path, status, elapsed)
+	} else if status >= 400 {
+		models.Logf(cat, models.LevelWarn, "← %s %s %d %v", method, path, status, elapsed)
+	} else {
+		models.Logf(cat, models.LevelInfo, "← %s %s %d %v", method, path, status, elapsed)
+	}
+}
+
+func shouldSkipLogPath(path string) bool {
+	switch {
+	case path == "/api/admin/logs/stream":
+		return true
+	case len(path) >= 5 && path[:5] == "/css/":
+		return true
+	case len(path) >= 4 && path[:4] == "/js/":
+		return true
+	case len(path) >= 5 && path[:5] == "/img/":
+		return true
+	case path == "/favicon.ico":
+		return true
+	}
+	return false
 }

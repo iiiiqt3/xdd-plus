@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/robfig/cron/v3"
 )
 
@@ -116,11 +115,11 @@ func (rp *Repo) addTask() {
 	for i := range rp.Task {
 		task := &rp.Task[i]
 		eid, err := c.AddFunc(task.Cron, func() {
-			logs.Info("执行任务 %s %s ", task.Title, task.Cron)
+			Info("执行任务 %s %s ", task.Title, task.Cron)
 			runTask(task, &Sender{})
 		})
 		if err == nil {
-			logs.Info("添加任务 %s %s ", rp.Task[i].Title, rp.Task[i].Cron)
+			Info("添加任务 %s %s ", rp.Task[i].Title, rp.Task[i].Cron)
 			rp.Task[i].ID = int(eid)
 		}
 	}

@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/beego/beego/v2/core/logs"
 	"time"
 )
 
@@ -27,7 +26,7 @@ func SaveCache(key string, value string) (flag bool) {
 	u := &Cache{}
 	err := db.Where("ckey = ?", key).First(&u).Error
 	if err == nil {
-		logs.Info("为空不报错")
+		Info("为空不报错")
 		if u.Cvalue != "" {
 			db.Where("ckey = ?", u.Ckey).Updates(&Cache{
 				Cvalue:   value,

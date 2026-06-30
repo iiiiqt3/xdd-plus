@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -26,8 +25,8 @@ func initTgBot() {
 			Poller: &tb.LongPoller{Timeout: 10 * time.Second},
 		})
 		if err != nil {
-			logs.Warn("监听tgbot失败")
-			logs.Info(err)
+			Warn("监听tgbot失败")
+			Info(err)
 			return
 		}
 		handle := func(m *tb.Message) {
@@ -70,7 +69,7 @@ func initTgBot() {
 			handle(m)
 		})
 		b.Handle(tb.OnText, handle)
-		logs.Info("监听tgbot")
+		Info("监听tgbot")
 		b.Start()
 	}()
 }
@@ -89,13 +88,13 @@ func SendTgImg(uid int, file []byte) {
 
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
-		logs.Warn("zqdyj.txt失败，", err)
+		Warn("zqdyj.txt失败，", err)
 	}
 	f.Write(file)
 	f.Close()
 
 	img := uploadImg(filename)
-	logs.Info(img)
+	Info(img)
 
 	os.Remove(filename)
 
@@ -128,13 +127,13 @@ func SendTggImg(gid int, uid int, file []byte, mid int, unm string) {
 
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
-		logs.Warn("zqdyj.txt失败，", err)
+		Warn("zqdyj.txt失败，", err)
 	}
 	f.Write(file)
 	f.Close()
 
 	img := uploadImg(filename)
-	logs.Info(img)
+	Info(img)
 
 	os.Remove(filename)
 
@@ -163,7 +162,7 @@ func SendTgImg2(uid int, msg string) {
 	if b == nil || uid == 0 {
 		return
 	}
-    logs.Info(msg)
+    Info(msg)
     b.Send(&tb.User{ID: uid}, &tb.Photo{
 		File: tb.File{
 			FileURL: msg,

@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"io/ioutil"
 	"strings"
@@ -13,7 +12,7 @@ import (
 
 func BBKGetWxQrImg(sender *Sender) {
 	if sysConfig.BBKWxUrl == "" {
-		logs.Error("BBKWxUrl is empty")
+		Error("BBKWxUrl is empty")
 		return
 	}
 	get := httplib.Get(fmt.Sprintf("%s/d/getQR?t=%d", sysConfig.BBKWxUrl, time.Now().Unix()))
@@ -34,9 +33,9 @@ func BBKGetWxQrStatus(cookie string, sender *Sender) {
 		time.Sleep(time.Second * time.Duration(2))
 		get := httplib.Get(fmt.Sprintf("%s/d/status?t=%d", sysConfig.BBKWxUrl, time.Now().Unix()))
 		get.Header("Cookie", cookie)
-		logs.Info(cookie)
+		Info(cookie)
 		bytes, _ := get.Bytes()
-		logs.Info(string(bytes))
+		Info(string(bytes))
 		code, _ := jsonparser.GetInt(bytes, "code")
 		errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
 		data, _ := jsonparser.GetString(bytes, "data", "wskey")
@@ -90,7 +89,7 @@ func BBKGetWxQrStatus(cookie string, sender *Sender) {
 
 func BBKGetJdQrImg(sender *Sender) {
 	if sysConfig.BBKJdUrl == "" {
-		logs.Error("BBKJdUrl is empty")
+		Error("BBKJdUrl is empty")
 		return
 	}
 	get := httplib.Get(fmt.Sprintf("%s/d/getQR?t=%d", sysConfig.BBKJdUrl, time.Now().Unix()))
@@ -115,9 +114,9 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 		time.Sleep(time.Second * time.Duration(2))
 		get := httplib.Get(fmt.Sprintf("%s/d/status?t=%d", sysConfig.BBKJdUrl, time.Now().Unix()))
 		get.Header("Cookie", cookie)
-		logs.Info(cookie)
+		Info(cookie)
 		bytes, _ := get.Bytes()
-		logs.Info(string(bytes))
+		Info(string(bytes))
 		code, _ := jsonparser.GetInt(bytes, "code")
 		errorMsg, _ := jsonparser.GetString(bytes, "errorMsg")
 		data, _ := jsonparser.GetString(bytes, "data", "wskey")
@@ -165,7 +164,7 @@ func BBKGetJdQrStatus(cookie string, sender *Sender) {
 
 func BBKGetCookie(cookie string) (bool, string, string) {
 	if sysConfig.BBKToken == "" || sysConfig.BBKJdUrl == "" {
-		logs.Error("BBKToken or BBKJdUrl is empty")
+		Error("BBKToken or BBKJdUrl is empty")
 		return false, "", ""
 	}
 	//http://你的IP:3081/d/convert?pin=xxx&wskey=xxx&token=机器人token
@@ -173,7 +172,7 @@ func BBKGetCookie(cookie string) (bool, string, string) {
 	rwskey := FetchJdCookieValue("wskey", cookie)
 	get := httplib.Get(fmt.Sprintf("%s/d/convert?pin=%s&wskey=%s&token=%s", sysConfig.BBKJdUrl, pin, rwskey, sysConfig.BBKToken))
 	bytes, _ := get.Bytes()
-	logs.Info(string(bytes))
+	Info(string(bytes))
 	data, _ := jsonparser.GetString(bytes, "data")
 	code, _ := jsonparser.GetInt(bytes, "code")
 	msg, _ := jsonparser.GetString(bytes, "msg")
@@ -181,7 +180,7 @@ func BBKGetCookie(cookie string) (bool, string, string) {
 	if code == 200 {
 		return true, msg, data
 	} else {
-		logs.Info(string(bytes))
+		Info(string(bytes))
 		time.Sleep(time.Second * 3)
 		return false, errorMsg, data
 	}

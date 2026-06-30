@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
@@ -16,12 +15,12 @@ import (
 
 func RabbitGetJdQrImg(sender *Sender) {
 	if sysConfig.RabbitUrl == "" || sysConfig.RabbitApiToken == "" || sysConfig.RabbitToken == "" {
-		logs.Error("RabbitUrl or RabbitToken is empty")
+		Error("RabbitUrl or RabbitToken is empty")
 		return
 	}
 	get := httplib.Post(fmt.Sprintf("%s/bot/GenQrCode?BotApiToken=%s", sysConfig.RabbitUrl, sysConfig.RabbitApiToken))
 	bytes, _ := get.Bytes()
-	logs.Info(string(bytes))
+	Info(string(bytes))
 	code, _ := jsonparser.GetInt(bytes, "code")
 	if code == 0 {
 
@@ -36,7 +35,7 @@ func RabbitGetJdQrImg(sender *Sender) {
 		sender.Reply("请使用京东APP扫描，150秒失效")
 		go RabbitGetJDQrStatus(key, sender)
 	} else {
-		logs.Info(string(bytes))
+		Info(string(bytes))
 		sender.Reply("获取扫码失败")
 	}
 }
@@ -57,7 +56,7 @@ func RabbitGetJDQrStatus(cookie string, sender *Sender) {
 		bytes, _ := get.Bytes()
 		code, _ := jsonparser.GetInt(bytes, "code")
 		msg, _ := jsonparser.GetString(bytes, "msg")
-		logs.Info(string(bytes))
+		Info(string(bytes))
 		if code == 502 || code == 503 || code == 403 || code == 54 {
 			sender.Reply(msg)
 			return
@@ -119,7 +118,7 @@ func RabbitGetCookie(cookie string) (bool, string, string) {
 		appck, _ := jsonparser.GetString(bytes, "data", "appck")
 		return val, msg, appck
 	} else {
-		logs.Info(string(bytes))
+		Info(string(bytes))
 		time.Sleep(time.Second * 3)
 		return val, "", ""
 	}
@@ -150,7 +149,7 @@ func UpdateRwskey() {
 				rsp, _, appck = NolanGetCookie(pinky)
 				retry++
 				if retry == 5 {
-					logs.Info("退出尝试")
+					Info("退出尝试")
 					break
 				}
 			}
@@ -188,7 +187,7 @@ func UpdateRwskey() {
 					xx++
 					nck.Updates(JdCookie{PtKey: ptKey, Available: True})
 					msg := fmt.Sprintf("定时更新账号，%s", ck.PtPin)
-					logs.Info(msg)
+					Info(msg)
 				} else {
 					yy++
 					ck1.Update(Available, False)
@@ -196,7 +195,7 @@ func UpdateRwskey() {
 				}
 			} else {
 				yy++
-				logs.Info(appck)
+				Info(appck)
 				(&JdCookie{}).Push(fmt.Sprintf("转换失败，请求超时，账号:%s", ck.PtPin))
 			}
 
@@ -215,7 +214,7 @@ func UpdateRwskey() {
 
 func RabbitSendSMS(ty string, phone string, sender *Sender) bool {
     sender.Reply("正在验证...")
-    logs.Info("Rabbit URL:", sysConfig.RabbitUrl)
+    Info("Rabbit URL:", sysConfig.RabbitUrl)
 
     var req *httplib.BeegoHTTPRequest
     if ty == "mck" {
@@ -231,11 +230,11 @@ func RabbitSendSMS(ty string, phone string, sender *Sender) bool {
     body := fmt.Sprintf(`{"Phone":"%s"}`, phone)
     data, err := req.Body(body).Bytes()
     if err != nil {
-        logs.Error("RabbitSendSMS 请求失败:", err)
+        Error("RabbitSendSMS 请求失败:", err)
         sender.Reply("验证码请求失败，请稍后重试。")
         return false
     }
-    logs.Info("RabbitSendSMS 返回:", string(data))
+    Info("RabbitSendSMS 返回:", string(data))
 
     message, _ := jsonparser.GetString(data, "message")
     success, _ := jsonparser.GetBoolean(data, "success")
@@ -266,7 +265,7 @@ func RabbitSendSMS(ty string, phone string, sender *Sender) bool {
         autoReq.Header("Content-Type", "application/json; charset=utf-8")
         data, err = autoReq.Body(body).Bytes()
         if err != nil {
-            logs.Error("Rabbit AutoCaptcha 请求失败:", err)
+            Error("Rabbit AutoCaptcha 请求失败:", err)
             continue
         }
         message, _ = jsonparser.GetString(data, "message")
@@ -303,7 +302,7 @@ func RabbitSendCode(ty string, phone string, code string, sender *Sender) {
 	req.Header("Content-Type", "application/json; charset=utf-8")
 	data, _ := req.Body(fmt.Sprintf("{\n    \"Phone\": %s,\n    \"Code\": \"%s\" \n}", phone, code)).Bytes()
 
-	logs.Info(string(data))
+	Info(string(data))
 	message, _ := jsonparser.GetString(data, "message")
 	pin, _ := jsonparser.GetString(data, "pin")
 	state, _ := jsonparser.GetInt(data, "code")

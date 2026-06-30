@@ -1,13 +1,8 @@
 package models
 
 import (
-	//"fmt"
-	//"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"os"
 	"path/filepath"
-	//"strconv"
-//	"strings"
 )
 
 var test2 = func(string) {
@@ -15,6 +10,8 @@ var test2 = func(string) {
 }
 
 func init() {
+	InitLogger()
+	RedirectStdLog()
 	killp()
 	for _, arg := range os.Args {
 		if arg == "-d" {
@@ -22,7 +19,8 @@ func init() {
 		}
 	}
 	ExecPath, _ = filepath.Abs(filepath.Dir(os.Args[0]))
-	logs.Info("当前%s", ExecPath)
+	SetLogDir(filepath.Join(ExecPath, "logs"))
+	System().Infof("当前工作目录 %s", ExecPath)
 	InitChan()
 	initConfig()
 	initDB()
@@ -39,9 +37,9 @@ func init() {
 	// InitActivityListWithHotReload() 会自动加载 YAML 配置并启动热加载监控
 	// 如果 YAML 加载失败，会回退到空配置，但不影响其他功能
 	if err := InitActivityListWithHotReload(); err != nil {
-		logs.Error("活动配置热加载初始化失败: %v", err)
+		Error("活动配置热加载初始化失败: %v", err)
 	} else {
-		logs.Info("活动配置热加载已启动")
+		Info("活动配置热加载已启动")
 	}
 
 	// 启动数据库→青龙同步服务
@@ -56,7 +54,7 @@ func init() {
 
 func initNolan() {
     Config.VIP = true
-    logs.Info("VIP验证成功") // 或者可以直接记录“跳过验证”信息
+    Info("VIP验证成功")
 }
 
 

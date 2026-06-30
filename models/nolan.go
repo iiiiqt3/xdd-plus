@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/skip2/go-qrcode"
 )
 
 func NolanGetJdQrImg(sender *Sender) {
 	if sysConfig.NolanUrl == "" || sysConfig.NolanToken == "" {
-		logs.Error("NolanUrl or NolanToken is empty")
+		Error("NolanUrl or NolanToken is empty")
 		return
 	}
 
@@ -22,7 +21,7 @@ func NolanGetJdQrImg(sender *Sender) {
 	get.Header("Content-Type", "application/json")
 	get.Body(fmt.Sprintf("{\n  \"botApitoken\": \"%s\"\n}", sysConfig.NolanToken))
 	bytes, _ := get.Bytes()
-	logs.Info(string(bytes))
+	Info(string(bytes))
 
 	code, _ := jsonparser.GetBoolean(bytes, "success")
 	if code {
@@ -40,10 +39,10 @@ func NolanGetJdQrImg(sender *Sender) {
 			sender.Reply("请使用京东APP扫描或复制链接用浏览器打开，150秒失效")
 		}
 
-		logs.Info(key)
+		Info(key)
 		go NolanGetJDQrStatus(key, sender)
 	} else {
-		logs.Info(string(bytes))
+		Info(string(bytes))
 		sender.Reply("获取扫码失败")
 	}
 }
@@ -73,11 +72,11 @@ func NolanGetJDQrStatus(cookie string, sender *Sender) {
 		get.Body(fmt.Sprintf("{\n  \"qrkey\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", cookie, sysConfig.NolanToken))
 		bytes, _ := get.Bytes()
 		code, _ := jsonparser.GetBoolean(bytes, "success")
-		logs.Info(string(bytes))
+		Info(string(bytes))
 		if code {
 			nolan := &NolanRWskey{}
 			json.Unmarshal(bytes, nolan)
-			logs.Info(nolan.Data.Rwskey)
+			Info(nolan.Data.Rwskey)
 			var pinky = nolan.Data.Rwskey
 			_, _, appck := NolanGetCookie(pinky)
 			pin := FetchJdCookieValue("pin", appck)
@@ -177,7 +176,7 @@ func NolanSendSMS(phone string, sender *Sender) bool {
 
 	data, err := req.Body(payload).Bytes()
 	if err != nil {
-		logs.Error("NolanSendSMS 请求失败: %v", err)
+		Error("NolanSendSMS 请求失败: %v", err)
 		sender.Reply("验证码请求失败，请稍后重试。")
 		return false
 	}
@@ -203,7 +202,7 @@ func NolanSendCode(phone string, code string, sender *Sender) {
 	req.Header("Content-Type", "application/json; charset=utf-8")
 	sprintf := fmt.Sprintf("{\n  \"phone\": \"%s\",\n  \"code\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", phone, code, sysConfig.NolanToken)
 	data, _ := req.Body(sprintf).Bytes()
-	logs.Info(string(data))
+	Info(string(data))
 
 	message, _ := jsonparser.GetString(data, "message")
 	success, _ := jsonparser.GetBoolean(data, "success")
@@ -291,7 +290,7 @@ func NolanAuthCode(phone string, code string, sender *Sender) {
 	req.Header("Content-Type", "application/json; charset=utf-8")
 	sprintf := fmt.Sprintf("{\n  \"phone\": \"%s\",\n  \"code\": \"%s\",\n  \"botApitoken\": \"%s\"\n}", phone, code, sysConfig.NolanToken)
 	data, _ := req.Body(sprintf).Bytes()
-	logs.Info(string(data))
+	Info(string(data))
 
 	message, _ := jsonparser.GetString(data, "message")
 	success, _ := jsonparser.GetBoolean(data, "success")

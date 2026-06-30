@@ -3,7 +3,6 @@ package models
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -13,7 +12,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-//	"github.com/beego/beego/v2/adapter/logs"
 	"github.com/fsnotify/fsnotify"
 	"gopkg.in/yaml.v2"
 )
@@ -151,7 +149,7 @@ func (al *ActivityLoader) StartHotReload() error {
 	// 启动监控协程
 	go al.watchLoop()
 
-	log.Printf("[热加载] 已启动对 %s 的监控", al.configPath)
+	System().Infof("[热加载] 已启动对 %s 的监控", al.configPath)
 	return nil
 }
 
@@ -177,7 +175,7 @@ func (al *ActivityLoader) watchLoop() {
 			}
 			// 只关注写入和创建事件
 			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
-				log.Printf("[热加载] 检测到文件变化: %s", event.Name)
+				System().Infof("[热加载] 检测到文件变化: %s", event.Name)
 				
 				// 防抖处理
 				if reloadTimer != nil {
@@ -185,14 +183,14 @@ func (al *ActivityLoader) watchLoop() {
 				}
 				reloadTimer = time.AfterFunc(debounceDuration, func() {
 					if al.shouldSkipWatcher() {
-						log.Printf("[热加载] 跳过重复加载（后台刚保存）")
+						System().Infof("[热加载] 跳过重复加载（后台刚保存）")
 						return
 					}
 					if err := al.LoadConfig(); err != nil {
-						log.Printf("[热加载] 配置加载失败: %v", err)
+						System().Infof("[热加载] 配置加载失败: %v", err)
 						al.notifyAdmin(fmt.Sprintf("⚠️ 活动配置热加载失败\n错误: %v\n时间: %s", err, time.Now().Format("2006-01-02 15:04:05")))
 					} else {
-						log.Printf("[热加载] 配置加载成功")
+						System().Infof("[热加载] 配置加载成功")
 						activityConfigsMu.RLock()
 						count := len(ActivityConfigs)
 						activityConfigsMu.RUnlock()
@@ -205,7 +203,7 @@ func (al *ActivityLoader) watchLoop() {
 			if !ok {
 				return
 			}
-			log.Printf("[热加载] 监控错误: %v", err)
+			System().Infof("[热加载] 监控错误: %v", err)
 
 		case <-al.stopChan:
 			return
@@ -286,7 +284,7 @@ func (al *ActivityLoader) loadConfigFromData(data []byte) error {
 	// 如果有错误，记录但不阻止加载（部分成功）
 	if len(errors) > 0 {
 		errorMsg := strings.Join(errors, "\n")
-		log.Printf("[热加载] 配置校验警告:\n%s", errorMsg)
+		System().Infof("[热加载] 配置校验警告:\n%s", errorMsg)
 		al.notifyAdmin(fmt.Sprintf("⚠️ 活动配置加载警告\n%s", errorMsg))
 	}
 
@@ -328,7 +326,7 @@ func (al *ActivityLoader) loadConfigFromData(data []byte) error {
 		go SyncActivityProjectNames(changedConfigs)
 	}
 
-	log.Printf("[热加载] 成功加载 %d 个活动", len(newConfigs))
+	System().Infof("[热加载] 成功加载 %d 个活动", len(newConfigs))
 	return nil
 }
 
@@ -553,7 +551,7 @@ func (al *ActivityLoader) executeValidator(v YAMLValidator, input string) (bool,
 
 	default:
 		// 未知的验证类型，记录警告但允许通过
-		log.Printf("[热加载] 未知的验证类型: %s", v.Type)
+		System().Infof("[热加载] 未知的验证类型: %s", v.Type)
 		return true, ""
 	}
 }

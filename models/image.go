@@ -5,10 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"github.com/golang/freetype"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/image/font"
 	"image"
 	"image/draw"
@@ -29,16 +27,16 @@ var (
 )
 
 func strtoimg(str string) []byte {
-	log.Info("开始转换图片")
+	Info("开始转换图片")
 	text := strings.Split(str, "\n")
 	fontBytes, err := ioutil.ReadFile(*fontfile)
 	if err != nil {
-		log.Println(err)
+		Error("%v", err)
 		return nil
 	}
 	f, err := freetype.ParseFont(fontBytes)
 	if err != nil {
-		log.Println(err)
+		Error("%v", err)
 		return nil
 	}
 
@@ -68,7 +66,7 @@ func strtoimg(str string) []byte {
 	for _, s := range text {
 		_, err = c.DrawString(s, pt)
 		if err != nil {
-			log.Println(err)
+			Error("%v", err)
 			return nil
 		}
 		pt.Y += c.PointToFixed(*size * *spacing)
@@ -78,19 +76,19 @@ func strtoimg(str string) []byte {
 	fileName := fmt.Sprintf("%daaa.png", time.Now().Unix())
 	outFile, err := os.Create(fileName)
 	if err != nil {
-		log.Println(err)
+		Error("%v", err)
 		os.Exit(1)
 	}
 	defer outFile.Close()
 	b := bufio.NewWriter(outFile)
 	err = png.Encode(b, rgba)
 	if err != nil {
-		log.Println(err)
+		Error("%v", err)
 		os.Exit(1)
 	}
 	err = b.Flush()
 	if err != nil {
-		log.Println(err)
+		Error("%v", err)
 		os.Exit(1)
 	}
 	file, _ := os.ReadFile(fileName)
@@ -100,9 +98,9 @@ func strtoimg(str string) []byte {
 
 func uploadImg(filename string) string {
 	if sysConfig.ImageToken == "" {
-		logs.Info("图床Token为空")
+		Info("图床Token为空")
 		if sysConfig.ImageUserName == "" || sysConfig.ImagePassword == "" {
-			logs.Info("图床账号密码为空")
+			Info("图床账号密码为空")
 			return "图床账号密码为空"
 		} else {
 			GetImageToken()
@@ -115,9 +113,9 @@ func uploadImg(filename string) string {
 	get.Param("strategy_id", "1")
 	get.PostFile("file", filename)
 	bytes, _ := get.Bytes()
-	logs.Info(string(bytes))
+	Info(string(bytes))
 	s, _ := jsonparser.GetString(bytes, "data", "links", "url")
-	logs.Info(s)
+	Info(s)
 	return s
 
 }
@@ -128,15 +126,15 @@ func GetImageToken() {
 	get.Param("email", sysConfig.ImageUserName)
 	get.Param("password", sysConfig.ImagePassword)
 	bytes, _ := get.Bytes()
-	logs.Info(string(bytes))
+	Info(string(bytes))
 	val, _ := jsonparser.GetBoolean(bytes, "status")
 	if val {
 		token, _ := jsonparser.GetString(bytes, "data", "token")
 		sysConfig.ImageToken = token
 		SaveSysConfig(sysConfig)
-		logs.Info("图床登录成功，已记录Token")
+		Info("图床登录成功，已记录Token")
 	} else {
-		logs.Warn("图床登录失败，请检查用户名密码")
+		Warn("图床登录失败，请检查用户名密码")
 	}
 
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"gorm.io/gorm"
 	"math/rand"
 	"os"
@@ -310,7 +309,7 @@ if TryHandleSshMessage(sender) {
 
 		{
 			if strings.Contains(msg, "wskey=") {
-				logs.Info(msg + "开始WSKEY登录")
+				Info(msg + "开始WSKEY登录")
 				wsKey := FetchJdCookieValue("wskey", msg)
 				ptPin := FetchJdCookieValue("pin", msg)
 				if len(ptPin) == 0 {
@@ -320,7 +319,7 @@ if TryHandleSshMessage(sender) {
 					wkey := "pin=" + ptPin + ";wskey=" + wsKey + ";"
 					rsp := getKey(wkey)
 					if strings.Contains(rsp, "fake_") {
-						logs.Error("wskey错误")
+						Error("wskey错误")
 						sender.Reply(fmt.Sprintf("wskey错误 除京东APP皆不可用"))
 					} else {
 						ptKey := FetchJdCookieValue("pt_key", rsp)
@@ -347,13 +346,13 @@ if TryHandleSshMessage(sender) {
 									msg := fmt.Sprintf("写入WsKey，并更新账号%s", ck.PtPin)
 									sender.Reply(fmt.Sprintf(msg))
 									(&JdCookie{}).Push(msg)
-									logs.Info(msg)
+									Info(msg)
 								} else {
 									if nck.WsKey == ck.WsKey {
 										msg := fmt.Sprintf("重复写入")
 										sender.Reply(fmt.Sprintf(msg))
 										(&JdCookie{}).Push(msg)
-										logs.Info(msg)
+										Info(msg)
 									} else {
 										nck.Updates(JdCookie{
 											WsKey: ck.WsKey,
@@ -361,7 +360,7 @@ if TryHandleSshMessage(sender) {
 										msg := fmt.Sprintf("更新WsKey，并更新账号%s", ck.PtPin)
 										sender.Reply(fmt.Sprintf(msg))
 										(&JdCookie{}).Push(msg)
-										logs.Info(msg)
+										Info(msg)
 									}
 								}
 
@@ -801,10 +800,10 @@ if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是�
 										msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
 									}
 									sender.Reply("导出所有账号")
-									logs.Info("导出所有账号")
+									Info("导出所有账号")
 									f, err := os.OpenFile(ExecPath+"/scripts/ck.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 									if err != nil {
-										logs.Warn("创建jdCookie.txt失败，", err)
+										Warn("创建jdCookie.txt失败，", err)
 									}
 									join := strings.Join(msgs, "\n")
 									f.WriteString(join)
@@ -817,7 +816,7 @@ if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是�
 
 {
 	if strings.Contains(msg, "pt_key") && strings.Contains(msg, "pt_pin") { // 双关键字前置判断，减少无效校验
-		logs.Info(msg + "开始CK登录")
+		Info(msg + "开始CK登录")
 
 		chineseSymbolRegex := regexp.MustCompile(`[；，。：“”‘’（）【】、＝￥～]`)
 		if chineseSymbolRegex.MatchString(msg) {
@@ -870,7 +869,7 @@ if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是�
 					}
 					sender.Reply(fmt.Sprintf(msg))
 					(&JdCookie{}).Push(msg)
-					logs.Info(msg)
+					Info(msg)
 				} else {
 					NewJdCookie(&ck)
 					msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
@@ -881,7 +880,7 @@ if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是�
 					sender.Reply(fmt.Sprintf(msg))
 					sender.Reply(ck.Query())
 					(&JdCookie{}).Push(msg)
-					logs.Info(msg)
+					Info(msg)
 				}
 			}
 		} else {
@@ -905,7 +904,7 @@ if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是�
 					
 					if len(matches) > 1 {
 						imgUrl := matches[1]
-						logs.Info("【微信图片适配】拦截 CQ 码，直接发送图片:", imgUrl)
+						Info("【微信图片适配】拦截 CQ 码，直接发送图片:", imgUrl)
 						
 						targetId := ""
 						if sender.Type == "wxg" {
@@ -917,7 +916,7 @@ if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是�
 						if targetId != "" {
 							SendWxImg2(targetId, imgUrl)
 						} else {
-							logs.Error("发送失败：未获取到有效的微信接收者ID (Type:", sender.Type, ")")
+							Error("发送失败：未获取到有效的微信接收者ID (Type:", sender.Type, ")")
 						}
 						
 						return nil
@@ -961,7 +960,7 @@ func AutoCollectionAndAddCoin(autocollect map[string]string) {
 	if id != 0 {
 		money, _ := strconv.ParseFloat(autocollect["money"], 64)
 		rechargePoints = int(100.0 * money) // 更新 rechargePoints 的值
-		logs.Info(money)
+		Info(money)
 		AdddCoin(id, rechargePoints)
 		RecordCoinLog(id, rechargePoints, "充值", fmt.Sprintf("微信自动充值 %.2f元", money))
 	}
@@ -995,10 +994,10 @@ func AutoCollection(autocollect map[string]string) {
 	random := browser.Random()
 	req.Header("User-Agent", random)
 	marshal, _ := json.Marshal(reply)
-	logs.Info(string(marshal))
+	Info(string(marshal))
 	req.Body(string(marshal))
 	s, _ := req.String()
-	logs.Info(s)
+	Info(s)
 }
 
 func setupOrderResetTask() {

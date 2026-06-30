@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 )
 
 const (
@@ -322,7 +321,7 @@ func wxJdRefreshCK(wxid string) (string, string, error) {
 	}
 	eidToken := wxJdGetEidToken(wxid)
 	if eidToken == "" {
-		logs.Info("eid_token为空，尝试finger_tk")
+		Info("eid_token为空，尝试finger_tk")
 		tk, err := wxJdGetFingerTk()
 		if err == nil {
 			eidToken = tk

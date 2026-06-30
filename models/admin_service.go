@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"gorm.io/gorm"
 )
 
@@ -518,7 +517,7 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 
 	// 热更新配置（无需重启）
 	if err := ReloadConfig(); err != nil {
-		logs.Warn("配置热更新失败: %v", err)
+		Warn("配置热更新失败: %v", err)
 		return "保存成功，但热更新失败（重启后生效）"
 	}
 
@@ -638,7 +637,7 @@ func SaveGameConfigForAdmin(req map[string]interface{}) string {
 	}
 
 	if err := ReloadConfig(); err != nil {
-		logs.Warn("游戏配置热更新失败: %v", err)
+		Warn("游戏配置热更新失败: %v", err)
 		return "保存成功，但热更新失败（重启后生效）"
 	}
 
@@ -1233,7 +1232,7 @@ func GetCronTaskLogContentAdmin(configName string, taskID int, logFile ...string
 		}
 
 		// 用户明确选择了历史日志，不再静默 fallback 到最新日志
-		log.Printf("获取历史日志失败(file=%s)，不再fallback到最新日志", fileName)
+		System().Infof("获取历史日志失败(file=%s)，不再fallback到最新日志", fileName)
 		return "", fmt.Errorf("未找到指定历史日志: %s，可能已被清理或当前青龙版本不支持按文件读取", fileName)
 	}
 	return client.GetCronTaskLogContent(taskID)
@@ -1547,7 +1546,7 @@ func GetJdCronTaskLogContentAdmin(containerIdx, taskID int, logFile ...string) (
 				}
 			}
 		}
-		log.Printf("JD容器获取历史日志失败(file=%s)，不再fallback到最新日志", fileName)
+		System().Infof("JD容器获取历史日志失败(file=%s)，不再fallback到最新日志", fileName)
 		return "", fmt.Errorf("未找到指定历史日志: %s，可能已被清理或当前青龙版本不支持按文件读取", fileName)
 	}
 	return client.GetCronTaskLogContent(taskID)
@@ -2807,7 +2806,7 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 		}
 		project.SyncError = ""
 		if err := UpdateActivityProject(&project); err != nil {
-			log.Printf("[批量改备注] 更新数据库失败，ID=%d，错误：%v", project.ID, err)
+			System().Infof("[批量改备注] 更新数据库失败，ID=%d，错误：%v", project.ID, err)
 			failed++
 			continue
 		}
@@ -2921,7 +2920,7 @@ func ConvertActivityToMonthly(activityID string, monthlyCoin int, syncUsers bool
 		project.SyncStatus = "pending_update"
 		project.SyncError = ""
 		if err := UpdateActivityProject(&project); err != nil {
-			log.Printf("[转月费] 更新用户项目失败 ID=%d: %v", project.ID, err)
+			System().Infof("[转月费] 更新用户项目失败 ID=%d: %v", project.ID, err)
 			continue
 		}
 		go TriggerSync(project.ID)
@@ -3150,7 +3149,7 @@ func SaveWxProtocolConfigForAdmin(req map[string]interface{}) string {
 	}
 
 	if err := ReloadConfig(); err != nil {
-		logs.Warn("配置热更新失败: %v", err)
+		Warn("配置热更新失败: %v", err)
 		return "保存成功，但热更新失败（重启后生效）"
 	}
 

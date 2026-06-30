@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"strconv"
 	//	"bytes"
-	"github.com/beego/beego/v2/core/logs"
 	"gorm.io/gorm"
 	"os/exec"
 )
@@ -108,10 +107,10 @@ func handleAccountChoice(sender *Sender, msg chan string, cks []JdCookie, select
 
 			if num == 0 { // 用户选择“所有账号”
 				// 日志：记录用户选择了所有账号，并输出所有ck的关键信息（包含pt_key）
-				log.Printf("[用户:%d] 选择了所有账号执行任务[%s]，共%d个账号，ck信息如下：",
+				JD().Infof("[用户:%d] 选择了所有账号执行任务[%s]，共%d个账号，ck信息如下：",
 					sender.UserID, selectedTask, len(cks))
 				for i, ck := range cks {
-					log.Printf("  账号%d: Nickname=%s, PtPin=%s, PtKey=%s", i+1, ck.Nickname, ck.PtPin, ck.PtKey)
+					JD().Infof("  账号%d: Nickname=%s, PtPin=%s, PtKey=%s", i+1, ck.Nickname, ck.PtPin, ck.PtKey)
 				}
 
 				// 循环执行所有账号
@@ -201,7 +200,7 @@ func handleAccountChoice(sender *Sender, msg chan string, cks []JdCookie, select
 				ck := cks[num-1] // 根据用户输入的序号获取账号，减去1以获得正确索引
 
 				// 日志：记录用户选择的单个账号及对应的ck关键信息（包含pt_key）
-				log.Printf("[用户:%d] 选择了第%d个账号执行任务[%s]，ck信息：Nickname=%s, PtPin=%s, PtKey=%s",
+				JD().Infof("[用户:%d] 选择了第%d个账号执行任务[%s]，ck信息：Nickname=%s, PtPin=%s, PtKey=%s",
 					sender.UserID, num, selectedTask, ck.Nickname, ck.PtPin, ck.PtKey)
 
 				envs := map[string]string{
@@ -318,11 +317,11 @@ func JdTaskHandler(sender *Sender, taskName string, envVar string, scriptPath st
 
 // 通用任务执行函数
 func ExecuteTask(sender *Sender, taskName string, scriptPath string, envs map[string]string, outputParser func(string, *Sender) string) {
-	logs.Info("开始运行%s", taskName)
+	JD().Infof("开始运行%s", taskName)
 	ApplyJdTaskProxyEnvs(envs)
 
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		logs.Error("JavaScript 文件不存在: %v", err)
+		Error("JavaScript 文件不存在: %v", err)
 		sender.Reply(fmt.Sprintf("%s任务失败：脚本不存在", taskName))
 		return
 	}
@@ -335,20 +334,20 @@ func ExecuteTask(sender *Sender, taskName string, scriptPath string, envs map[st
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logs.Error("cmd.StdoutPipe: ", err)
+		JD().Errorf("cmd.StdoutPipe: %v", err)
 		sender.Reply(fmt.Sprintf("%s任务失败：获取输出管道失败", taskName))
 		return
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		logs.Error("cmd.StderrPipe: ", err)
+		JD().Errorf("cmd.StderrPipe: %v", err)
 		sender.Reply(fmt.Sprintf("%s任务失败：获取错误管道失败", taskName))
 		return
 	}
 
 	err = cmd.Start()
 	if err != nil {
-		logs.Error("cmd.Start: ", err)
+		JD().Errorf("cmd.Start: %v", err)
 		sender.Reply(fmt.Sprintf("%s任务失败：启动失败", taskName))
 		return
 	}
@@ -361,7 +360,7 @@ func ExecuteTask(sender *Sender, taskName string, scriptPath string, envs map[st
 			if err2 != nil || io.EOF == err2 {
 				break
 			}
-			logs.Info("[%s] stderr: %s", taskName, strings.TrimSpace(line))
+			JD().Infof("[%s] stderr: %s", taskName, strings.TrimSpace(line))
 		}
 	}()
 
@@ -374,12 +373,12 @@ func ExecuteTask(sender *Sender, taskName string, scriptPath string, envs map[st
 			break
 		}
 		fullOutput.WriteString(line)
-		logs.Info("[%s] %s", taskName, strings.TrimSpace(line)) // 实时记录到后台日志
+		JD().Infof("[%s] %s", taskName, strings.TrimSpace(line)) // 实时记录到后台日志
 	}
 
 	err = cmd.Wait()
 	if err != nil && strings.TrimSpace(fullOutput.String()) == "" {
-		logs.Error("执行 JavaScript 脚本失败: %v", err)
+		JD().Errorf("执行 JavaScript 脚本失败: %v", err)
 		sender.Reply(fmt.Sprintf("%s任务失败：执行脚本错误", taskName))
 		return
 	}
@@ -1081,12 +1080,12 @@ func replexQuan_fcwb_auto(info string, sender *Sender) string {
 }
 
 func run_fcwb_help_Task(sender *Sender, envVars map[string]string, FileName string) string {
-	logs.Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
 	ApplyJdTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/6dylan6_jdpro_help/" + FileName + ".js"
 
 	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {
-		logs.Error("JavaScript 文件不存在: %v", err)
+		Error("JavaScript 文件不存在: %v", err)
 		return fmt.Sprintf("执行%s任务失败：JavaScript 文件不存在", FileName) // 使用 FileName
 	}
 
@@ -1098,10 +1097,10 @@ func run_fcwb_help_Task(sender *Sender, envVars map[string]string, FileName stri
 	}
 
 	output, err := cmd.CombinedOutput()
-	logs.Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
+	Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
 
 	if err != nil && strings.TrimSpace(string(output)) == "" {
-		logs.Error("执行 JavaScript 脚本失败: %v", err)
+		JD().Errorf("执行 JavaScript 脚本失败: %v", err)
 		return fmt.Sprintf("执行%s任务失败：脚本执行错误", FileName) // 修正斜杠错误
 	}
 
@@ -1112,12 +1111,12 @@ func run_fcwb_help_Task(sender *Sender, envVars map[string]string, FileName stri
 //##赚赚专属
 
 func run_fcwb_help_Task_zz(sender *Sender, envVars map[string]string, FileName string) string {
-	logs.Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
 	ApplyJdTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/6dylan6_jdpro_help/" + FileName + ".js"
 
 	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {
-		logs.Error("JavaScript 文件不存在: %v", err)
+		Error("JavaScript 文件不存在: %v", err)
 		return fmt.Sprintf("执行%s任务失败：JavaScript 文件不存在", FileName) // 使用 FileName
 	}
 
@@ -1129,10 +1128,10 @@ func run_fcwb_help_Task_zz(sender *Sender, envVars map[string]string, FileName s
 	}
 
 	output, err := cmd.CombinedOutput()
-	logs.Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
+	Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
 
 	if err != nil && strings.TrimSpace(string(output)) == "" {
-		logs.Error("执行 JavaScript 脚本失败: %v", err)
+		JD().Errorf("执行 JavaScript 脚本失败: %v", err)
 		return fmt.Sprintf("执行%s任务失败：脚本执行错误", FileName) // 修正斜杠错误
 	}
 
@@ -1143,12 +1142,12 @@ func run_fcwb_help_Task_zz(sender *Sender, envVars map[string]string, FileName s
 //##环境的
 
 func run_fcwb_help_Task1(sender *Sender, envVars map[string]string, FileName string) string {
-	logs.Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
 	ApplyJdProTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/huanjing/" + FileName + ".js"
 
 	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {
-		logs.Error("JavaScript 文件不存在: %v", err)
+		Error("JavaScript 文件不存在: %v", err)
 		return fmt.Sprintf("执行%s任务失败：JavaScript 文件不存在", FileName) // 使用 FileName
 	}
 
@@ -1160,10 +1159,10 @@ func run_fcwb_help_Task1(sender *Sender, envVars map[string]string, FileName str
 	}
 
 	output, err := cmd.CombinedOutput()
-	logs.Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
+	Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
 
 	if err != nil && strings.TrimSpace(string(output)) == "" {
-		logs.Error("执行 JavaScript 脚本失败: %v", err)
+		JD().Errorf("执行 JavaScript 脚本失败: %v", err)
 		return fmt.Sprintf("执行%s任务失败：脚本执行错误", FileName) // 修正斜杠错误
 	}
 
@@ -1367,12 +1366,12 @@ func replexQuan_fcwb_help1(info string, sender *Sender, FileName string) string 
 }
 
 func run_ncxcx_help_Task(sender *Sender, envVars map[string]string, FileName string) string {
-	logs.Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
 	ApplyJdTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/6dylan6_jdpro_help/" + FileName + ".js"
 
 	if _, err := os.Stat(jsFilePath); os.IsNotExist(err) {
-		logs.Error("JavaScript 文件不存在: %v", err)
+		Error("JavaScript 文件不存在: %v", err)
 		return fmt.Sprintf("执行%s任务失败：JavaScript 文件不存在", FileName) // 使用 FileName
 	}
 
@@ -1384,10 +1383,10 @@ func run_ncxcx_help_Task(sender *Sender, envVars map[string]string, FileName str
 	}
 
 	output, err := cmd.CombinedOutput()
-	logs.Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
+	Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
 
 	if err != nil && strings.TrimSpace(string(output)) == "" {
-		logs.Error("执行 JavaScript 脚本失败: %v", err)
+		JD().Errorf("执行 JavaScript 脚本失败: %v", err)
 		return fmt.Sprintf("执行%s任务失败：脚本执行错误", FileName) // 修正斜杠错误
 	}
 
@@ -1473,12 +1472,12 @@ func Exportck(FileName string) {
 	for _, ck := range cks {
 		msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
 	}
-	logs.Info("导出所有账号")
+	Info("导出所有账号")
 
 	// 使用传入的 FileName 参数创建文件
 	f, err := os.OpenFile(ExecPath+"/scripts/6dylan6_jdpro_help/"+FileName+".txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
-		logs.Warn(fmt.Sprintf("创建%s.txt失败，", FileName), err)
+		Warn(fmt.Sprintf("创建%s.txt失败，", FileName), err)
 		return
 	}
 
@@ -1495,12 +1494,12 @@ func Exportck_huanjing(FileName string) {
 	for _, ck := range cks {
 		msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
 	}
-	logs.Info("导出所有账号")
+	Info("导出所有账号")
 
 	// 使用传入的 FileName 参数创建文件
 	f, err := os.OpenFile(ExecPath+"/scripts/huanjing/"+FileName+".txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
-		logs.Warn(fmt.Sprintf("创建%s.txt失败，", FileName), err)
+		Warn(fmt.Sprintf("创建%s.txt失败，", FileName), err)
 		return
 	}
 

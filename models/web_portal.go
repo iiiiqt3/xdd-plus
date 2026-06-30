@@ -2,12 +2,12 @@ package models
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -317,7 +317,7 @@ func GetPortalActivities() []PortalActivityItem {
 			}
 			item.InputFields = append(item.InputFields, pfield)
 		}
-		log.Printf("[门户API] 活动[%s] ID=%s, 字段数=%d, 字段详情=%v", cfg.Name, cfg.ID, len(item.InputFields), item.InputFields)
+		Portal().Infof("[门户API] 活动[%s] ID=%s, 字段数=%d, 字段详情=%v", cfg.Name, cfg.ID, len(item.InputFields), item.InputFields)
 		result = append(result, item)
 	}
 	return result

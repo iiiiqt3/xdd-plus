@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/gorilla/websocket"
 	"time"
 )
@@ -24,11 +23,11 @@ func WriteMsg(msg chan []byte) {
 		if ws != nil {
 			err := ws.WriteMessage(mt, n)
 			if err != nil {
-				logs.Info("write:", err)
+				Info("write:", err)
 			}
 		} else {
 			time.Sleep(time.Second * time.Duration(6))
-			logs.Info("等待ws连接")
+			Info("等待ws连接")
 		}
 	}
 }

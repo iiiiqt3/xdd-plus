@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"io"
 	"io/ioutil"
@@ -26,16 +25,16 @@ func LJtoKL1(url string) string {
 	rsp.Param("model", "json")
 	data, err := rsp.Response()
 	if err != nil {
-		logs.Error("请求失败:", err)
+		Error("请求失败:", err)
 		return "口令转换失败"
 	}
 	body, _ := ioutil.ReadAll(data.Body)
-	logs.Info("响应内容:", string(body))
+	Info("响应内容:", string(body))
 
 	var response map[string]interface{}
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		logs.Error("解析 JSON 失败:", err)
+		Error("解析 JSON 失败:", err)
 		return "解析失败"
 	}
 	if code, exists := response["code"].(string); exists {
@@ -75,7 +74,7 @@ func LJtoLJ(url string) []byte {
 		return []byte("口令转换失败")
 	}
 	body, _ := ioutil.ReadAll(data.Body)
-	logs.Info(string(body))
+	Info(string(body))
 	if strings.Contains(string(body), "口令转换失败") {
 		return []byte("口令转换失败")
 	} else {
@@ -93,16 +92,16 @@ func ZKLtoLJ(kl string) string {
 	rsp.Param("model", "json")
 	data, err := rsp.Response()
 	if err != nil {
-		logs.Error("请求失败:", err)
+		Error("请求失败:", err)
 		return "口令转换失败"
 	}
 	body, _ := ioutil.ReadAll(data.Body)
-	logs.Info("响应内容:", string(body))
+	Info("响应内容:", string(body))
 
 	var response map[string]interface{}
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		logs.Error("解析 JSON 失败:", err)
+		Error("解析 JSON 失败:", err)
 		return "解析失败"
 	}
 
@@ -165,16 +164,16 @@ func NolanKlToLj(kl string) string {
 
 	resp, err := http.Post("https://api.nolanstore.cc/JComExchange", "application/json", strings.NewReader(fmt.Sprintf("{\n  \"code\": \"%s\"\n}", kl)))
 	if err != nil {
-		logs.Info("post请求失败 error: %+v", err)
+		Info("post请求失败 error: %+v", err)
 
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logs.Info("读取Body失败 error: %+v", err)
+		Info("读取Body失败 error: %+v", err)
 
 	}
-	logs.Info(string(body))
+	Info(string(body))
 	val, _ := jsonparser.GetString(body, "data", "jumpUrl")
 	return val
 
@@ -228,23 +227,23 @@ func NolanLJToKL(lj string, title string) string {
 
 	resp, err := http.Post("http://nolan.smxy.xyz/JCommand", "application/json", strings.NewReader(fmt.Sprintf("{\n  \"url\": \"%s\",\n  \"title\": \"%s\",\n  \"img\": \"\"\n}", lj, title)))
 	if err != nil {
-		logs.Info("post请求失败 error: %+v", err)
+		Info("post请求失败 error: %+v", err)
 		JdCookie{}.Push("口令转换失败，请查看是否存在CF墙")
 		return "口令转换失败，请重新获取"
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			logs.Info("获取失败")
+			Info("获取失败")
 		}
 	}(resp.Body)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logs.Info("读取Body失败 error: %+v", err)
+		Info("读取Body失败 error: %+v", err)
 
 	}
-	logs.Info(string(body))
+	Info(string(body))
 	val, _ := jsonparser.GetString(body, "data")
 	if val != "" {
 		return val

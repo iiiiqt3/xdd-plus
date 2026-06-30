@@ -2,7 +2,6 @@ package models
 
 import (
 	"github.com/beego/beego/v2/client/httplib"
-	// "github.com/beego/beego/v2/core/logs"
 	"github.com/buger/jsonparser"
 	"net/http"
 	"net/url"

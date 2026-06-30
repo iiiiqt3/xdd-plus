@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"github.com/beego/beego/v2/core/logs"
 	beego "github.com/beego/beego/v2/server/web"
 	"github.com/cdle/xdd/models"
 	"github.com/go-playground/locales/zh"
@@ -101,7 +100,7 @@ func (c *BaseController) Logined() *BaseController {
 		c.Ctx.Redirect(302, "/")
 		c.StopRun()
 	} else {
-		logs.Warn("登录成功")
+		models.Warn("登录成功")
 		c.PtPin = v.(string)
 		c.Master = true
 	}

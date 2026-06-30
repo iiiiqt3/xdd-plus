@@ -2,7 +2,6 @@ package models
 
 import (
 	"errors"
-	"github.com/beego/beego/v2/core/logs"
 	"os"
 	"os/exec"
 	"regexp"
@@ -109,15 +108,15 @@ func ensureGitRepo() error {
 	if isGitRepo() {
 		return nil
 	}
-	logs.Info("目录不是git仓库，执行git init")
+	Info("目录不是git仓库，执行git init")
 	cmd := exec.Command("git", "init")
 	cmd.Dir = ExecPath
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		logs.Warn("git init失败: %s, %v", string(output), err)
+		Warn("git init失败: %s, %v", string(output), err)
 		return errors.New("git init失败: " + string(output))
 	}
-	logs.Info("git init成功")
+	Info("git init成功")
 	return nil
 }
 
@@ -154,20 +153,20 @@ func checkGitUpdate() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	logs.Info("远程版本: %s, 本地版本: %s", remoteHash[:8], localHash[:8])
+	Info("远程版本: %s, 本地版本: %s", remoteHash[:8], localHash[:8])
 	return remoteHash != localHash, nil
 }
 
 func initVersion() {
 	Config.Version = version
-	logs.Info("检查更新 " + version)
+	Info("检查更新 " + version)
 	hasUpdate, err := checkGitUpdate()
 	if err != nil {
-		logs.Info("版本检查失败: %v", err)
+		Info("版本检查失败: %v", err)
 		return
 	}
 	if hasUpdate {
-		logs.Info("小滴滴检测到新版本")
+		Info("小滴滴检测到新版本")
 		(&JdCookie{}).Push("小滴滴检测到新版本")
 	}
 }
@@ -175,27 +174,27 @@ func initVersion() {
 func GetNewVersion() {
 	if notify {
 		Config.Version = version
-		logs.Info("检查更新 " + version)
+		Info("检查更新 " + version)
 		hasUpdate, err := checkGitUpdate()
 		if err != nil {
-			logs.Info("版本检查失败: %v", err)
+			Info("版本检查失败: %v", err)
 			return
 		}
 		if hasUpdate {
 			notify = false
-			logs.Info("小滴滴检测到新版本")
+			Info("小滴滴检测到新版本")
 			(&JdCookie{}).Push("小滴滴检测到新版本")
 		}
 	}
 }
 
 func Update(sender *Sender) error {
-	logs.Info("开始git更新检查")
+	Info("开始git更新检查")
 	sender.Reply("小滴滴开始检查更新")
 
 	hasUpdate, checkErr := checkGitUpdate()
 	if checkErr != nil {
-		logs.Warn("版本检查失败，跳过比对直接更新: %v", checkErr)
+		Warn("版本检查失败，跳过比对直接更新: %v", checkErr)
 		sender.Reply("版本检查失败，直接尝试拉取更新...")
 	} else if !hasUpdate {
 		return errors.New("小滴滴已是最新版啦")
@@ -206,24 +205,24 @@ func Update(sender *Sender) error {
 	}
 
 	sender.Reply("正在拉取最新源码...")
-	logs.Info("git fetch %s %s", getGitRepo(), getGitBranch())
+	Info("git fetch %s %s", getGitRepo(), getGitBranch())
 	cmd := exec.Command("git", "fetch", getAuthGitRepo(), getGitBranch())
 	cmd.Dir = ExecPath
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		logs.Warn("git fetch失败: %s, %v", string(output), err)
+		Warn("git fetch失败: %s, %v", string(output), err)
 		return errors.New("拉取源码失败: " + sanitizeGitOutput(string(output)))
 	}
-	logs.Info("git fetch成功")
+	Info("git fetch成功")
 
 	cmd = exec.Command("git", "reset", "--hard", "FETCH_HEAD")
 	cmd.Dir = ExecPath
 	output, err = cmd.CombinedOutput()
 	if err != nil {
-		logs.Warn("git reset失败: %s, %v", string(output), err)
+		Warn("git reset失败: %s, %v", string(output), err)
 		return errors.New("重置代码失败: " + sanitizeGitOutput(string(output)))
 	}
-	logs.Info("git reset成功: %s", string(output))
+	Info("git reset成功: %s", string(output))
 
 	sender.Reply("正在编译最新源码...")
 	newBinary := ExecPath + "/" + AppName + "_new"
@@ -231,20 +230,20 @@ func Update(sender *Sender) error {
 	cmd.Dir = ExecPath
 	output, err = cmd.CombinedOutput()
 	if err != nil {
-		logs.Warn("编译失败: %s, %v", string(output), err)
+		Warn("编译失败: %s, %v", string(output), err)
 		return errors.New("编译失败: " + string(output))
 	}
-	logs.Info("编译成功")
+	Info("编译成功")
 
 	oldBinary := ExecPath + "/" + AppName
 	if err = os.Remove(oldBinary); err != nil {
-		logs.Warn("删除旧程序失败: %v", err)
+		Warn("删除旧程序失败: %v", err)
 	}
 	if err = os.Rename(newBinary, oldBinary); err != nil {
 		return errors.New("替换程序失败: " + err.Error())
 	}
 
 	sender.Reply("更新完成，马上重启")
-	logs.Info("更新成功")
+	Info("更新成功")
 	return nil
 }

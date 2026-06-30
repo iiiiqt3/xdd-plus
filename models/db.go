@@ -1,7 +1,6 @@
 package models
 
 import (
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -10,7 +9,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 var db *gorm.DB
@@ -21,7 +20,7 @@ var pins map[string]bool
 func initDB() {
 	var err error
 	var c = &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: gormlogger.Default.LogMode(gormlogger.Info),
 	}
 
 	if strings.Contains(Config.Database, "@tcp(") {
@@ -57,7 +56,7 @@ func initDB() {
 		&CoinLog{},
 		//&LoginSelectType{},
 	); err != nil {
-		log.Printf("[数据库迁移] AutoMigrate 失败: %v", err)
+		DB().Infof("[数据库迁移] AutoMigrate 失败: %v", err)
 	}
 
 	createActivityProjectTable()
@@ -286,21 +285,21 @@ func IsUser(qq int64) bool {
 func createActivityProjectTable() {
 	var count int64
 	if err := db.Raw("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'activity_project'").Scan(&count).Error; err != nil {
-		log.Printf("[数据库迁移] 检查表失败: %v", err)
+		DB().Infof("[数据库迁移] 检查表失败: %v", err)
 		return
 	}
 	if count > 0 {
-		log.Println("[数据库迁移] activity_project 表已存在，检查字段类型...")
+		DB().Infof("[数据库迁移] activity_project 表已存在，检查字段类型...")
 		var colType string
 		db.Raw("SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'activity_project' AND column_name = 'user_number'").Scan(&colType)
 		if colType == "int" {
 			if err := db.Exec("ALTER TABLE activity_project MODIFY COLUMN user_number BIGINT NOT NULL DEFAULT 0").Error; err != nil {
-				log.Printf("[数据库迁移] 修改 user_number 字段为 BIGINT 失败: %v", err)
+				DB().Infof("[数据库迁移] 修改 user_number 字段为 BIGINT 失败: %v", err)
 			} else {
-				log.Println("[数据库迁移] user_number 字段已改为 BIGINT")
+				DB().Infof("[数据库迁移] user_number 字段已改为 BIGINT")
 			}
 		} else {
-			log.Printf("[数据库迁移] user_number 字段已是 %s，无需修改", colType)
+			DB().Infof("[数据库迁移] user_number 字段已是 %s，无需修改", colType)
 		}
 
 		// 检查并添加按天计费相关字段
@@ -319,9 +318,9 @@ func createActivityProjectTable() {
 			if exists == 0 {
 				sql := "ALTER TABLE activity_project ADD COLUMN " + col.name + " " + col.define
 				if err := db.Exec(sql).Error; err != nil {
-					log.Printf("[数据库迁移] 添加 %s 字段失败: %v", col.name, err)
+					DB().Infof("[数据库迁移] 添加 %s 字段失败: %v", col.name, err)
 				} else {
-					log.Printf("[数据库迁移] 已添加 %s 字段", col.name)
+					DB().Infof("[数据库迁移] 已添加 %s 字段", col.name)
 				}
 			}
 		}
@@ -341,19 +340,19 @@ func createActivityProjectTable() {
 				migrated := 0
 				for _, p := range needMigrate {
 					if err := tx.Model(&ActivityProject{}).Where("id = ?", p.ID).Update("activity_id", p.EnvKey).Error; err != nil {
-						log.Printf("[数据库迁移] 更新记录 ID=%d 失败: %v", p.ID, err)
+						DB().Infof("[数据库迁移] 更新记录 ID=%d 失败: %v", p.ID, err)
 						continue
 					}
 					migrated++
 				}
 				if err := tx.Commit().Error; err != nil {
 					tx.Rollback()
-					log.Printf("[数据库迁移] activity_id 迁移事务提交失败: %v", err)
+					DB().Infof("[数据库迁移] activity_id 迁移事务提交失败: %v", err)
 				} else {
-					log.Printf("[数据库迁移] activity_id 已从旧编号迁移为 EnvKey，共更新 %d 条记录", migrated)
+					DB().Infof("[数据库迁移] activity_id 已从旧编号迁移为 EnvKey，共更新 %d 条记录", migrated)
 				}
 			} else {
-				log.Println("[数据库迁移] activity_id 无需迁移（已是 EnvKey 或无数据）")
+				DB().Infof("[数据库迁移] activity_id 无需迁移（已是 EnvKey 或无数据）")
 			}
 		}
 		return
@@ -390,10 +389,10 @@ CREATE TABLE activity_project (
 	INDEX idx_deleted_at (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
 	if err := db.Exec(sql).Error; err != nil {
-		log.Printf("[数据库迁移] 创建 activity_project 表失败: %v", err)
+		DB().Infof("[数据库迁移] 创建 activity_project 表失败: %v", err)
 		return
 	}
-	log.Println("[数据库迁移] activity_project 表创建成功")
+	DB().Infof("[数据库迁移] activity_project 表创建成功")
 }
 
 // isNumeric 判断字符串是否为纯数字（用于识别旧版连续编号格式的 activity_id）

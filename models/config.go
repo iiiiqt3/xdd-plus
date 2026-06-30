@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"gopkg.in/yaml.v2"
 )
 
@@ -151,11 +150,11 @@ func initConfig() {
 	for _, name := range []string{"app.conf", "config.yaml", "reply.php", "title.conf"} {
 		f, err := os.OpenFile(ExecPath+"/conf/"+name, os.O_RDWR|os.O_CREATE, 0777)
 		if err != nil {
-			logs.Warn(err)
+			Warn(err)
 		}
 		s, _ := ioutil.ReadAll(f)
 		if len(s) == 0 {
-			logs.Info("下载配置%s", name)
+			Info("下载配置%s", name)
 			r, err := httplib.Get(GhProxy + "https://raw.githubusercontent.com/764763903a/xdd-plus/main/conf/demo_" + name).Response()
 			if err == nil {
 				io.Copy(f, r.Body)
@@ -167,11 +166,11 @@ func initConfig() {
 
 	content, err := ioutil.ReadFile(ExecPath + "/conf/config.yaml")
 	if err != nil {
-		logs.Warn("解析config.yaml读取错误: %v", err)
+		Warn("解析config.yaml读取错误: %v", err)
 	}
 	err = yaml.Unmarshal(content, &Config)
 	if err != nil {
-		logs.Warn("解析config.yaml出错: %v", err)
+		Warn("解析config.yaml出错: %v", err)
 	}
 	if ExecPath == "/Users/cdle/Desktop/xdd" || Config.NoAdmin {
 		Cdle = true
@@ -318,6 +317,6 @@ func ReloadConfig() error {
 		Config.WXGroupID = envWxgid
 	}
 
-	logs.Info("配置已热更新成功")
+	Info("配置已热更新成功")
 	return nil
 }

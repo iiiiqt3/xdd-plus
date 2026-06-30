@@ -168,13 +168,13 @@ func SyncActivityProjectNames(configs []*ActivityConfig) int {
 				"updated_at":    now,
 			})
 		if result.Error != nil {
-			log.Printf("[活动名称同步] activity_id=%s 失败: %v", cfg.ID, result.Error)
+			System().Infof("[活动名称同步] activity_id=%s 失败: %v", cfg.ID, result.Error)
 			continue
 		}
 		updated += int(result.RowsAffected)
 	}
 	if updated > 0 {
-		log.Printf("[活动名称同步] 已更新 %d 条上车记录", updated)
+		System().Infof("[活动名称同步] 已更新 %d 条上车记录", updated)
 	}
 	return updated
 }

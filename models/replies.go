@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
-	"github.com/beego/beego/v2/core/logs"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,7 +23,7 @@ func GetReplyContent(msg string) (interface{}, bool) {
 
 	rules := make(map[string]string)
 	if err := yaml.Unmarshal(data, &rules); err != nil {
-		logs.Error("解析 replies.yaml 失败:", err)
+		Error("解析 replies.yaml 失败:", err)
 		return "", false
 	}
 
@@ -59,10 +58,10 @@ func GetReplyContent(msg string) (interface{}, bool) {
 			if urlRegex.MatchString(reply) {
 				realUrl := fetchRealImageUrl(reply)
 				if realUrl != "" {
-					logs.Info("API 返回真实图片地址:", realUrl)
+					Info("API 返回真实图片地址:", realUrl)
 					return fmt.Sprintf("[CQ:image,file=%s]", realUrl), true
 				} else {
-					logs.Warn("API 未返回有效图片地址，尝试作为文本处理")
+					Warn("API 未返回有效图片地址，尝试作为文本处理")
 					return fetchUrlContent(reply)
 				}
 			}
@@ -109,7 +108,7 @@ func fetchRealImageUrl(apiUrl string) string {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		logs.Debug("请求图片 API 失败:", err)
+		Debug("请求图片 API 失败:", err)
 		return ""
 	}
 	defer resp.Body.Close()
@@ -119,7 +118,7 @@ func fetchRealImageUrl(apiUrl string) string {
 
 	// 情况 1: 直接返回图片二进制
 	if strings.HasPrefix(contentType, "image/") {
-		logs.Debug("[API] 直接返回图片流:", finalUrl)
+		Debug("[API] 直接返回图片流:", finalUrl)
 		return finalUrl
 	}
 
@@ -135,7 +134,7 @@ func fetchRealImageUrl(apiUrl string) string {
 		re := regexp.MustCompile(`"(?:imgurl|url|pic|image|data|img)"\s*:\s*"([^"]+)"`)
 		matches := re.FindStringSubmatch(content)
 		if len(matches) > 1 {
-			logs.Debug("[API] JSON 模式，提取到 URL:", matches[1])
+			Debug("[API] JSON 模式，提取到 URL:", matches[1])
 			return matches[1]
 		}
 	}
@@ -154,7 +153,7 @@ func fetchRealImageUrl(apiUrl string) string {
 						strings.Contains(imgSrc, "inews.gtimg.com") ||
 						strings.Contains(imgSrc, "/newsapp_")) {
 
-					logs.Debug("[API] HTML 模式，从 <img> 标签提取到 URL:", imgSrc)
+					Debug("[API] HTML 模式，从 <img> 标签提取到 URL:", imgSrc)
 					return imgSrc
 				}
 			}
@@ -165,26 +164,26 @@ func fetchRealImageUrl(apiUrl string) string {
 			if len(match) > 1 {
 				imgSrc := match[1]
 				if strings.HasPrefix(imgSrc, "http") && !strings.Contains(imgSrc, "icon") && !strings.Contains(imgSrc, "logo") {
-					logs.Debug("[API] HTML 模式 (宽松)，提取到 URL:", imgSrc)
+					Debug("[API] HTML 模式 (宽松)，提取到 URL:", imgSrc)
 					return imgSrc
 				}
 			}
 		}
 
-		logs.Warn("[API] HTML 模式，但未找到合适的 <img> 标签")
+		Warn("[API] HTML 模式，但未找到合适的 <img> 标签")
 	}
 
 	// 情况 4: 返回的是纯文本 (URL)
 	if strings.HasPrefix(content, "http://") || strings.HasPrefix(content, "https://") {
 		if !strings.Contains(content, "<") && !strings.Contains(content, ">") {
-			logs.Debug("[API] 纯文本模式，返回 URL:", content)
+			Debug("[API] 纯文本模式，返回 URL:", content)
 			return content
 		}
 	}
 
 	// 情况 5: 重定向且最终 URL 像图片
 	if finalUrl != apiUrl && hasImageExtension(finalUrl) {
-		logs.Debug("[API] 重定向模式，使用最终 URL:", finalUrl)
+		Debug("[API] 重定向模式，使用最终 URL:", finalUrl)
 		return finalUrl
 	}
 
@@ -207,7 +206,7 @@ func hasImageExtension(urlStr string) bool {
 func fetchUrlContent(urlStr string) (string, bool) {
 	rsp, err := httplib.Get(urlStr).Response()
 	if err != nil {
-		logs.Error("请求回复 URL 失败:", urlStr, err)
+		Error("请求回复 URL 失败:", urlStr, err)
 		return "", false
 	}
 	defer rsp.Body.Close()

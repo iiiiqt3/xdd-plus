@@ -3,7 +3,6 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -62,7 +61,7 @@ func tempToken() {
 	u := uuid.New()
 	s := u.String()
 	SaveCache("AdminToken", s)
-	logs.Info("您的临时Token为:" + s)
+	Info("您的临时Token为:" + s)
 }
 
 func ListConfig() SystemConfig {
@@ -77,7 +76,7 @@ func ListConfig() SystemConfig {
 		}
 
 	} else {
-		logs.Info("缺少系统配置")
+		Info("缺少系统配置")
 	}
 
 	return config
@@ -103,7 +102,7 @@ func SaveSysConfig(config SystemConfig) string {
 func updateUsers() {
 	env := GetEnv("14.6")
 	if env == "" {
-		logs.Info("开始更新")
+		Info("开始更新")
 
 		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 			return sb.Where(fmt.Sprintf("%s >= ? and %s = ? and %s != ?", Priority, Available, "WeiXin"), 0, True, "")
@@ -114,7 +113,7 @@ func updateUsers() {
 				var user User
 				tx := db.Where("number = ?", ck.QQ).First(&user)
 				if tx.Error != nil {
-					logs.Info("未找到用户")
+					Info("未找到用户")
 					continue
 				}
 				ck.Update("WxId", user.Wxid)

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -14,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	
 )
 
 // ===================== 青龙配置结构 =====================
@@ -158,7 +156,7 @@ func (q *QingLongClient) GetToken() (string, error) {
 	req.URL.RawQuery = qsp.Encode()
 	req.Header.Set("Content-Type", "application/json")
 
-	log.Printf("获取青龙Token请求URL: %s", req.URL.String())
+	Qinglong().Infof("获取青龙Token请求URL: %s", req.URL.String())
 
 	resp, err := q.client.Do(req)
 	if err != nil {
@@ -171,7 +169,7 @@ func (q *QingLongClient) GetToken() (string, error) {
 		return "", fmt.Errorf("读取响应失败: %v", err)
 	}
 
-	log.Printf("青龙Token响应: %s", string(body))
+	Qinglong().Infof("青龙Token响应: %s", string(body))
 
 	var tokenResp QLTokenResponse
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
@@ -190,7 +188,7 @@ func (q *QingLongClient) GetToken() (string, error) {
 		q.tokenExpire = tokenResp.Data.Expiration
 	}
 
-	log.Printf("Token获取成功，过期时间: %d (当前时间: %d)", q.tokenExpire, now)
+	Qinglong().Infof("Token获取成功，过期时间: %d (当前时间: %d)", q.tokenExpire, now)
 	return q.token, nil
 }
 
@@ -233,7 +231,7 @@ func (q *QingLongClient) QueryEnvs(searchValue string) ([]QLEnvItem, error) {
 	}
 
 	// 新增：打印青龙返回的原始环境变量数据
-	log.Printf("青龙QueryEnvs原始响应: %s", bodyStr)
+	Qinglong().Infof("青龙QueryEnvs原始响应: %s", bodyStr)
 
 	var envsResp QLEnvsResponse
 	if err := json.Unmarshal(body, &envsResp); err != nil {
@@ -246,7 +244,7 @@ func (q *QingLongClient) QueryEnvs(searchValue string) ([]QLEnvItem, error) {
 
 	// 新增：打印解析后的QLEnvItem列表（包含Status）
 	for i, env := range envsResp.Data {
-		log.Printf("解析后的EnvItem[%d]: ID=%d, Name=%s, Remarks=%s, Status=%d",
+		Qinglong().Infof("解析后的EnvItem[%d]: ID=%d, Name=%s, Remarks=%s, Status=%d",
 			i, env.ID, env.Name, env.Remarks, env.Status)
 	}
 
@@ -301,7 +299,7 @@ func (q *QingLongClient) SubmitEnv(envName, value, remarks string) error {
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
 
-	log.Printf("提交环境变量请求体: %s", string(jsonData))
+	Qinglong().Infof("提交环境变量请求体: %s", string(jsonData))
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -322,7 +320,7 @@ func (q *QingLongClient) SubmitEnv(envName, value, remarks string) error {
 		return fmt.Errorf("读取响应失败: %v", err)
 	}
 
-	log.Printf("提交环境变量响应: %s", string(body))
+	Qinglong().Infof("提交环境变量响应: %s", string(body))
 
 	// 修复：正确解析响应（兼容code和statusCode字段）
 	var submitResp QLCommonResponse
@@ -377,7 +375,7 @@ func (q *QingLongClient) UpdateEnvWithStatus(envID int, envName, value, remarks 
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
 
-	log.Printf("更新环境变量请求体: %s", string(jsonData))
+	Qinglong().Infof("更新环境变量请求体: %s", string(jsonData))
 
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -398,7 +396,7 @@ func (q *QingLongClient) UpdateEnvWithStatus(envID int, envName, value, remarks 
 		return fmt.Errorf("读取响应失败: %v", err)
 	}
 
-	log.Printf("更新环境变量响应: %s", string(body))
+	Qinglong().Infof("更新环境变量响应: %s", string(body))
 
 	// 修复：正确解析响应
 	var updateResp QLCommonResponse
@@ -422,11 +420,11 @@ func (q *QingLongClient) UpdateEnvWithStatus(envID int, envName, value, remarks 
 	// 单独处理状态设置
 	if status == 1 {
 		if err := q.EnableEnv(envID); err != nil {
-			log.Printf("启用环境变量ID%d失败: %v", envID, err)
+			Qinglong().Infof("启用环境变量ID%d失败: %v", envID, err)
 		}
 	} else {
 		if err := q.DisableEnvs([]int{envID}); err != nil {
-			log.Printf("禁用环境变量ID%d失败: %v", envID, err)
+			Qinglong().Infof("禁用环境变量ID%d失败: %v", envID, err)
 		}
 	}
 
@@ -448,7 +446,7 @@ func (q *QingLongClient) DeleteEnv(envID int) error {
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
 
-	log.Printf("删除环境变量请求体: %s", string(jsonData))
+	Qinglong().Infof("删除环境变量请求体: %s", string(jsonData))
 
 	req, err := http.NewRequest("DELETE", url, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -469,7 +467,7 @@ func (q *QingLongClient) DeleteEnv(envID int) error {
 		return fmt.Errorf("读取响应失败: %v", err)
 	}
 
-	log.Printf("删除环境变量响应: %s", string(body))
+	Qinglong().Infof("删除环境变量响应: %s", string(body))
 
 	var deleteResp QLCommonResponse
 	if err := json.Unmarshal(body, &deleteResp); err != nil {
@@ -505,7 +503,7 @@ func (q *QingLongClient) DisableEnvs(envIDs []int) error {
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
 
-	log.Printf("禁用环境变量请求体: %s", string(jsonData))
+	Qinglong().Infof("禁用环境变量请求体: %s", string(jsonData))
 
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -526,7 +524,7 @@ func (q *QingLongClient) DisableEnvs(envIDs []int) error {
 		return fmt.Errorf("读取响应失败: %v", err)
 	}
 
-	log.Printf("禁用环境变量响应: %s", string(body))
+	Qinglong().Infof("禁用环境变量响应: %s", string(body))
 
 	var disableResp QLCommonResponse
 	if err := json.Unmarshal(body, &disableResp); err != nil {
@@ -564,7 +562,7 @@ func (q *QingLongClient) EnableEnv(envID int) error {
 		return fmt.Errorf("序列化请求数据失败: %v", err)
 	}
 
-	log.Printf("启用环境变量请求体: %s", string(jsonData))
+	Qinglong().Infof("启用环境变量请求体: %s", string(jsonData))
 
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -585,7 +583,7 @@ func (q *QingLongClient) EnableEnv(envID int) error {
 		return fmt.Errorf("读取响应失败: %v", err)
 	}
 
-	log.Printf("启用环境变量响应: %s", string(body))
+	Qinglong().Infof("启用环境变量响应: %s", string(body))
 
 	var enableResp QLCommonResponse
 	if err := json.Unmarshal(body, &enableResp); err != nil {
@@ -1095,10 +1093,10 @@ func (q *QingLongClient) GetScriptFileContent(path, filename string) (string, er
 		}
 		if strings.TrimSpace(content) == "" {
 			emptyHit = true
-			log.Printf("GetScriptFileContent 命中空内容: file=%s desc=%s url=%s", filename, desc, url)
+			Qinglong().Infof("GetScriptFileContent 命中空内容: file=%s desc=%s url=%s", filename, desc, url)
 			return "", false
 		}
-		log.Printf("GetScriptFileContent 成功: file=%s desc=%s url=%s", filename, desc, url)
+		Qinglong().Infof("GetScriptFileContent 成功: file=%s desc=%s url=%s", filename, desc, url)
 		return content, true
 	}
 
@@ -1152,7 +1150,7 @@ func (q *QingLongClient) GetScriptFileContent(path, filename string) (string, er
 			return "", fmt.Errorf("脚本文件接口返回空内容，未命中真实脚本路径: file=%s path=%s", filename, path)
 		}
 		if lastErr != nil {
-			log.Printf("GetScriptFileContent 失败: file=%s path=%s err=%v", filename, path, lastErr)
+			Qinglong().Infof("GetScriptFileContent 失败: file=%s path=%s err=%v", filename, path, lastErr)
 			return "", fmt.Errorf("获取脚本文件失败: file=%s path=%s err=%v", filename, path, lastErr)
 		}
 		return "", fmt.Errorf("获取脚本文件失败: file=%s path=%s", filename, path)
@@ -1182,7 +1180,7 @@ func (q *QingLongClient) GetScriptFileContent(path, filename string) (string, er
 		return "", fmt.Errorf("脚本文件接口返回空内容，未命中真实脚本路径: file=%s path=%s", filename, path)
 	}
 	if lastErr != nil {
-		log.Printf("GetScriptFileContent 失败: file=%s path=%s err=%v", filename, path, lastErr)
+		Qinglong().Infof("GetScriptFileContent 失败: file=%s path=%s err=%v", filename, path, lastErr)
 		return "", fmt.Errorf("获取脚本文件失败: file=%s path=%s err=%v", filename, path, lastErr)
 	}
 	return "", fmt.Errorf("获取脚本文件失败: file=%s path=%s", filename, path)

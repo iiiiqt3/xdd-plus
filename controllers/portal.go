@@ -115,10 +115,12 @@ func (c *PortalController) CreateProject() {
 	}
 	msg, err := models.PortalCreateProject(c.PortalUserID, req.ActivityID, req.Inputs, req.Remarks, req.Months, c.requestSource())
 	if err != nil {
+		c.logPortalWarn("上车失败 activity=%s: %v", req.ActivityID, err)
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
+	c.logPortalInfo("上车成功 activity=%s remarks=%s", req.ActivityID, req.Remarks)
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
 	c.ServeJSON()
 }
@@ -238,10 +240,12 @@ func (c *PortalController) CheckIn() {
 
 	msg, err := models.PortalCheckIn(c.PortalUserID, c.requestSource())
 	if err != nil {
+		c.logPortalWarn("签到失败: %v", err)
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
+	c.logPortalInfo("签到成功: %s", msg)
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg}
 	c.ServeJSON()
 }
@@ -621,10 +625,12 @@ func (c *PortalController) JdQuery() {
 	}
 	result, err := models.PortalJdQuery(c.PortalUserID, req.Index)
 	if err != nil {
+		c.logPortalWarn("京东查询失败 index=%d: %v", req.Index, err)
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
+	c.logPortalInfo("京东查询成功 index=%d", req.Index)
 	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
 	c.ServeJSON()
 }
@@ -745,6 +751,7 @@ func (c *PortalController) JdTaskExecute() {
 
 	// 生成任务ID
 	taskLogId := fmt.Sprintf("%s_%d_%d", req.TaskId, c.PortalUserID, time.Now().UnixNano())
+	c.logPortalInfo("启动京东任务 task=%s name=%s accounts=%v", req.TaskId, req.TaskName, req.AccountIndexes)
 
 	// 创建日志通道
 	models.CreateTaskLogChannel(taskLogId)
@@ -1176,4 +1183,38 @@ func kuwoTaskStatusPayload(task *models.KuwoScheduledTask) map[string]interface{
 		"resultsDetail": task.ResultsJSON,
 		"logs":          task.LogsSnapshot(),
 	}
+}
+
+func (c *PortalController) portalCategory() models.Category {
+	if c.requestSource() == "App端" {
+		return models.CatApp
+	}
+	return models.CatPortal
+}
+
+func (c *PortalController) logPortalInfo(format string, args ...interface{}) {
+	uid := c.PortalUserID
+	msg := fmt.Sprintf(format, args...)
+	if uid > 0 {
+		msg = fmt.Sprintf("[用户%d] %s", uid, msg)
+	}
+	models.Logf(c.portalCategory(), models.LevelInfo, "%s", msg)
+}
+
+func (c *PortalController) logPortalWarn(format string, args ...interface{}) {
+	uid := c.PortalUserID
+	msg := fmt.Sprintf(format, args...)
+	if uid > 0 {
+		msg = fmt.Sprintf("[用户%d] %s", uid, msg)
+	}
+	models.Logf(c.portalCategory(), models.LevelWarn, "%s", msg)
+}
+
+func (c *PortalController) logPortalError(format string, args ...interface{}) {
+	uid := c.PortalUserID
+	msg := fmt.Sprintf(format, args...)
+	if uid > 0 {
+		msg = fmt.Sprintf("[用户%d] %s", uid, msg)
+	}
+	models.Logf(c.portalCategory(), models.LevelError, "%s", msg)
 }
