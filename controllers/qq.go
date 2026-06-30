@@ -107,7 +107,7 @@ func (c *QQController) Echo() {
 	}
 	defer wsConn.Close()
 
-	models.User().Infof("QQ WebSocket 接入成功")
+	models.UserLog().Infof("QQ WebSocket 接入成功")
 	models.WsInit(wsConn, 1)
 
 	// 2. 消息接收循环

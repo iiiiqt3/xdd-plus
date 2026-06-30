@@ -703,7 +703,7 @@ func System() *Module   { return For(CatSystem) }
 func Admin() *Module    { return For(CatAdmin) }
 func Portal() *Module   { return For(CatPortal) }
 func App() *Module      { return For(CatApp) }
-func User() *Module     { return For(CatUser) }
+func UserLog() *Module  { return For(CatUser) }
 func JD() *Module       { return For(CatJD) }
 func Kuwo() *Module     { return For(CatKuwo) }
 func Qinglong() *Module { return For(CatQinglong) }
@@ -712,7 +712,7 @@ func Wx() *Module       { return For(CatWx) }
 func Bot() *Module      { return For(CatBot) }
 func API() *Module      { return For(CatAPI) }
 func DB() *Module       { return For(CatDB) }
-func Task() *Module     { return For(CatTask) }
+func TaskLog() *Module  { return For(CatTask) }
 
 // ========== beego logs 兼容层（默认 system 分类）==========
 
