@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/server/web/context"
 	"github.com/cdle/xdd/models"
 )
 
@@ -2457,57 +2456,4 @@ func (c *AdminApiController) CleanupLogs() {
 	models.Admin().Infof("管理员手动清理过期日志 %d 个文件", n)
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": fmt.Sprintf("已清理 %d 个过期日志文件", n), "data": n}
 	c.ServeJSON()
-}
-
-// LogRequestFilter HTTP 请求日志中间件
-func LogRequestFilter(ctx *context.Context) {
-	path := ctx.Request.URL.Path
-	if shouldSkipLogPath(path) {
-		return
-	}
-	start := time.Now()
-	cat := models.CategoryFromPath(path)
-	method := ctx.Input.Method()
-	models.Logf(cat, models.LevelInfo, "→ %s %s", method, path)
-	ctx.Input.SetData("log_start", start)
-}
-
-// LogResponseFilter 记录响应耗时
-func LogResponseFilter(ctx *context.Context) {
-	path := ctx.Request.URL.Path
-	if shouldSkipLogPath(path) {
-		return
-	}
-	cat := models.CategoryFromPath(path)
-	method := ctx.Input.Method()
-	status := ctx.ResponseWriter.Status
-	elapsed := time.Since(time.Now())
-	if v := ctx.Input.GetData("log_start"); v != nil {
-		if t, ok := v.(time.Time); ok {
-			elapsed = time.Since(t)
-		}
-	}
-	if status >= 500 {
-		models.Logf(cat, models.LevelError, "← %s %s %d %v", method, path, status, elapsed)
-	} else if status >= 400 {
-		models.Logf(cat, models.LevelWarn, "← %s %s %d %v", method, path, status, elapsed)
-	} else {
-		models.Logf(cat, models.LevelInfo, "← %s %s %d %v", method, path, status, elapsed)
-	}
-}
-
-func shouldSkipLogPath(path string) bool {
-	switch {
-	case len(path) >= 16 && path[:16] == "/api/admin/logs/":
-		return true
-	case len(path) >= 5 && path[:5] == "/css/":
-		return true
-	case len(path) >= 4 && path[:4] == "/js/":
-		return true
-	case len(path) >= 5 && path[:5] == "/img/":
-		return true
-	case path == "/favicon.ico":
-		return true
-	}
-	return false
 }

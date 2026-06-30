@@ -447,12 +447,6 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	// HTTP 请求日志（统一写入 logger，admin 可实时查看）
-	web.InsertFilter("/api/*", web.BeforeRouter, controllers.LogRequestFilter, web.WithReturnOnOutput(false))
-	web.InsertFilter("/api/*", web.AfterExec, controllers.LogResponseFilter, web.WithReturnOnOutput(false))
-	web.InsertFilter("/wx/*", web.BeforeRouter, controllers.LogRequestFilter, web.WithReturnOnOutput(false))
-	web.InsertFilter("/wx/*", web.AfterExec, controllers.LogResponseFilter, web.WithReturnOnOutput(false))
-
 	// 启动后延迟发送启动通知
 	go func() {
 		time.Sleep(time.Second * 4)
