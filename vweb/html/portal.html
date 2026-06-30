@@ -4246,12 +4246,8 @@ async function kuwoRestoreState() {
         if (!state.targetHour && !activeTask) return;
 
         // 计算目标时间是否还在未来
-        const now = new Date();
-        const bjNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
         const targetHour = state.targetHour != null ? state.targetHour : (activeTask ? activeTask.targetHour : null);
-        const targetMs = targetHour * 3600 * 1000;
-        const currentMs = bjNow.getHours() * 3600 * 1000 + bjNow.getMinutes() * 60 * 1000 + bjNow.getSeconds() * 1000;
-        const remaining = targetMs - currentMs;
+        const remaining = targetHour != null ? kuwoRemainingMsUntilHour(targetHour) : NaN;
         const taskId = state.taskId || (activeTask ? activeTask.id : null);
         const isImmediate = !!(state.immediate || (activeTask && activeTask.immediate));
 
@@ -4385,34 +4381,44 @@ function kuwoGetBeijingTime() {
     return { hour: bjHour, min: bjMin, sec: bjSec, totalMs: (bjHour * 3600 + bjMin * 60 + bjSec) * 1000 };
 }
 
+// 计算到目标整点（小时）的分钟差，支持跨午夜（如 23:57 → 00:00）
+function kuwoMinutesUntilHour(targetHour, hour, min) {
+    let diffMin = targetHour * 60 - (hour * 60 + min);
+    if (diffMin < 0) diffMin += 24 * 60;
+    return diffMin;
+}
+
+// 计算到目标整点的剩余毫秒数（含秒级精度）
+function kuwoRemainingMsUntilHour(targetHour) {
+    const bj = kuwoGetBeijingTime();
+    let targetMs = targetHour * 3600 * 1000;
+    let remaining = targetMs - bj.totalMs;
+    if (remaining <= 0) remaining += 24 * 3600 * 1000;
+    return remaining - new Date().getMilliseconds();
+}
+
 // 计算下次抢兑时间（自动判断，无需用户选择）
 function kuwoGetNextWithdrawInfo() {
-    const { hour, min, totalMs } = kuwoGetBeijingTime();
-    const currentMin = hour * 60 + min;
+    const { hour, min } = kuwoGetBeijingTime();
 
+    let bestNext = null;
     for (const h of KUWO_WITHDRAW_HOURS) {
-        const targetMin = h * 60;
-        const diffMin = targetMin - currentMin;
+        const diffMin = kuwoMinutesUntilHour(h, hour, min);
 
         // 在前4分钟窗口内 → 可以等待倒计时
         if (diffMin > 0 && diffMin <= 4) {
             return { hour: h, inWindow: true, diffMin, diffMs: diffMin * 60 * 1000 };
         }
-        // 到点了（0-3秒内）→ 立即执行
+        // 到点了（整点分钟内）→ 立即执行
         if (diffMin === 0) {
             return { hour: h, inWindow: true, diffMin: 0, diffMs: 0 };
         }
-    }
 
-    // 找下一个时段
-    for (const h of KUWO_WITHDRAW_HOURS) {
-        if (h * 60 > currentMin) {
-            return { hour: h, inWindow: false, diffMin: h * 60 - currentMin, diffMs: (h * 60 - currentMin) * 60 * 1000 };
+        if (!bestNext || diffMin < bestNext.diffMin) {
+            bestNext = { hour: h, inWindow: false, diffMin, diffMs: diffMin * 60 * 1000 };
         }
     }
-    // 明天第一个
-    const nextDayMin = (24 * 60 - currentMin) + KUWO_WITHDRAW_HOURS[0] * 60;
-    return { hour: KUWO_WITHDRAW_HOURS[0], inWindow: false, diffMin: nextDayMin, diffMs: nextDayMin * 60 * 1000 };
+    return bestNext;
 }
 
 // 更新时间显示
@@ -4636,12 +4642,9 @@ function kuwoRunCountdown(info, taskId) {
     const warmupInterval = setInterval(warmupConnection, 30000);
 
     kuwoTimerInterval = setInterval(() => {
-        const bj = kuwoGetBeijingTime();
-        const currentMs = bj.totalMs + new Date().getMilliseconds();
-        const targetMs = targetHour * 3600 * 1000;
+        const remaining = kuwoRemainingMsUntilHour(targetHour);
 
-        if (targetMs > currentMs) {
-            const remaining = targetMs - currentMs;
+        if (remaining > 0) {
             const rMin = Math.floor(remaining / 60000);
             const rSec = Math.floor((remaining % 60000) / 1000);
             countdownEl.textContent = '⏳ ' + targetLabel + ' 自动抢兑 — 剩余 ' + rMin + '分' + rSec + '秒';
