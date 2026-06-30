@@ -100,7 +100,6 @@ func (c *BaseController) Logined() *BaseController {
 		c.Ctx.Redirect(302, "/")
 		c.StopRun()
 	} else {
-		models.Warn("登录成功")
 		c.PtPin = v.(string)
 		c.Master = true
 	}
