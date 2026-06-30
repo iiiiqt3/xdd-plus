@@ -860,13 +860,26 @@ func (c *PortalController) KuwoGetCredentials() {
 		c.ServeJSON()
 		return
 	}
-	phone, password, err := models.GetKuwoCredentials(profile.User.Number)
+	accounts, err := models.GetAllKuwoCredentials(profile.User.Number)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
-	c.Data["json"] = map[string]interface{}{"code": 0, "data": map[string]interface{}{"phone": phone, "password": password}}
+	if len(accounts) == 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "未找到酷我音乐活动配置"}
+		c.ServeJSON()
+		return
+	}
+	// 默认返回第一个账号（兼容旧逻辑）
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"phone":    accounts[0].Phone,
+			"password": accounts[0].Password,
+			"accounts": accounts, // 全部账号列表，供前端下拉选择
+		},
+	}
 	c.ServeJSON()
 }
 

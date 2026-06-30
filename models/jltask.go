@@ -1571,6 +1571,9 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 			project.IsDailyDeduct = true
 			project.DailyCoin = config.DailyCoin
 		}
+		if config.IsMonthlyDeduct {
+			project.MonthlyCoin = config.MonthlyCoin
+		}
 		project.SyncStatus = "pending_update"
 		project.SyncError = ""
 		if err := UpdateActivityProject(project); err != nil {

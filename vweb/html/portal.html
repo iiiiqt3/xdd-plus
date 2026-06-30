@@ -1362,6 +1362,12 @@
                     <div style="padding:8px 12px;border-radius:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.12);font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.6;">
                         账号密码自动读取自您上车的<b>「酷我音乐」</b>活动中填写的信息，如需修改请前往「项目中心」更新。
                     </div>
+                    <!-- 多账号下拉选择 -->
+                    <div id="kuwoAccountSelectWrap" style="display:none;margin-bottom:12px;">
+                        <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">选择抢兑账号</label>
+                        <select id="kuwoAccountSelect" onchange="kuwoSwitchAccount()" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;cursor:pointer;">
+                        </select>
+                    </div>
                     <div class="form-grid">
                         <div>
                             <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">手机号</label>
@@ -1396,10 +1402,10 @@
                         <label class="muted" style="font-size:12px;margin-bottom:8px;display:block;">抢兑档位</label>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;" id="kuwoQuotaGroup">
                             <label class="kuwo-quota-opt" style="display:flex;align-items:center;gap:6px;padding:10px 18px;border:2px solid var(--glass-border);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text);background:var(--glass-bg);transition:all .15s;">
-                                <input type="radio" name="kuwoQuota" value="60004" checked style="accent-color:#6366f1;" /> 1元
+                                <input type="radio" name="kuwoQuota" value="60004" style="accent-color:#6366f1;" /> 1元
                             </label>
                             <label class="kuwo-quota-opt" style="display:flex;align-items:center;gap:6px;padding:10px 18px;border:2px solid var(--glass-border);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text);background:var(--glass-bg);transition:all .15s;">
-                                <input type="radio" name="kuwoQuota" value="30002" style="accent-color:#6366f1;" /> 2元
+                                <input type="radio" name="kuwoQuota" value="30002" checked style="accent-color:#6366f1;" /> 2元
                             </label>
                             <label class="kuwo-quota-opt" style="display:flex;align-items:center;gap:6px;padding:10px 18px;border:2px solid var(--glass-border);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text);background:var(--glass-bg);transition:all .15s;">
                                 <input type="radio" name="kuwoQuota" value="60001" style="accent-color:#6366f1;" /> 10元
@@ -4165,6 +4171,7 @@ function kuwoApplyTaskMonitorResult(task, immediate, countdownEl) {
         }
         kuwoLog('--- 任务结束 ---');
         kuwoRestoreWithdrawUI();
+        try { localStorage.removeItem(KUWO_STATE_KEY); } catch (e) {}
         return true;
     }
     if (task.status === 'failed') {
@@ -4175,6 +4182,7 @@ function kuwoApplyTaskMonitorResult(task, immediate, countdownEl) {
         }
         kuwoLog('--- 任务失败 ---');
         kuwoRestoreWithdrawUI();
+        try { localStorage.removeItem(KUWO_STATE_KEY); } catch (e) {}
         return true;
     }
     return false;
@@ -4183,21 +4191,37 @@ function kuwoApplyTaskMonitorResult(task, immediate, countdownEl) {
 function kuwoMonitorTask(taskId, immediate) {
     kuwoStopTaskMonitor();
     const pollMs = immediate ? 250 : 800;
-    const maxPoll = immediate ? 120 : 150;
+    const maxPoll = immediate ? 120 : 600; // 定时任务最多轮询600次(约8分钟)
     let pollCount = 0;
+    let errorCount = 0;
     const countdownEl = document.getElementById('kuwoCountdown');
 
     async function pollOnce() {
         pollCount++;
-        if (pollCount > maxPoll) {
-            kuwoStopTaskMonitor();
-            if (countdownEl) countdownEl.textContent = '⏰ 查询超时，请刷新页面查看结果';
-            return;
-        }
         try {
             const task = await kuwoFetchTaskStatus(taskId);
+            errorCount = 0; // 成功响应则重置错误计数
+            if (!task) return;
+            // pending/running 状态不计入超时（任务还没执行完）
+            if (task.status === 'pending' || task.status === 'running') {
+                if (pollCount > maxPoll) {
+                    // 超过最大次数但任务还在跑，继续轮询但降低频率
+                    return;
+                }
+                kuwoApplyTaskMonitorResult(task, immediate, countdownEl);
+                return;
+            }
+            // completed/failed → 停止轮询
             kuwoApplyTaskMonitorResult(task, immediate, countdownEl);
-        } catch (e) { /* 忽略网络抖动 */ }
+        } catch (e) {
+            errorCount++;
+            // 连续错误超过20次才停止（避免网络抖动误停）
+            if (errorCount > 20) {
+                kuwoStopTaskMonitor();
+                if (countdownEl) countdownEl.textContent = '⏰ 网络异常，请刷新页面查看结果';
+                return;
+            }
+        }
     }
 
     pollOnce();
@@ -4302,7 +4326,7 @@ async function checkKuwoAuth() {
             if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; sendBtn.style.cursor = 'pointer'; }
             if (withdrawBtn) { withdrawBtn.disabled = false; withdrawBtn.style.opacity = '1'; withdrawBtn.style.cursor = 'pointer'; }
             if (hint) hint.style.display = 'none';
-            // 自动填充活动提交的账号密码
+            // 自动填充活动提交的账号密码（支持多账号下拉）
             try {
                 const cred = await request('/api/portal/kuwo/credentials');
                 if (cred.data) {
@@ -4310,6 +4334,21 @@ async function checkKuwoAuth() {
                     const pwdInput = document.getElementById('kuwoPassword');
                     if (phoneInput && cred.data.phone && !phoneInput.value) phoneInput.value = cred.data.phone;
                     if (pwdInput && cred.data.password && !pwdInput.value) pwdInput.value = cred.data.password;
+                    // 多账号下拉
+                    const accounts = cred.data.accounts || [];
+                    const wrap = document.getElementById('kuwoAccountSelectWrap');
+                    const select = document.getElementById('kuwoAccountSelect');
+                    if (wrap && select && accounts.length > 1) {
+                        window._kuwoAccounts = accounts;
+                        select.innerHTML = '';
+                        accounts.forEach((a, i) => {
+                            const opt = document.createElement('option');
+                            opt.value = i;
+                            opt.textContent = a.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+                            select.appendChild(opt);
+                        });
+                        wrap.style.display = 'block';
+                    }
                 }
             } catch (e) { console.log('自动填充酷我账号失败:', e); }
         } else {
@@ -4421,6 +4460,20 @@ setTimeout(() => {
     const checked = document.querySelector('input[name="kuwoQuota"]:checked');
     if (checked) checked.dispatchEvent(new Event('change'));
 }, 100);
+
+// 多账号切换
+function kuwoSwitchAccount() {
+    const select = document.getElementById('kuwoAccountSelect');
+    const accounts = window._kuwoAccounts || [];
+    if (!select || accounts.length === 0) return;
+    const idx = parseInt(select.value) || 0;
+    const acc = accounts[idx];
+    if (!acc) return;
+    const phoneInput = document.getElementById('kuwoPhone');
+    const pwdInput = document.getElementById('kuwoPassword');
+    if (phoneInput) phoneInput.value = acc.phone;
+    if (pwdInput) pwdInput.value = acc.password;
+}
 
 async function kuwoSendSms() {
     if (!kuwoAuthorized) { toast('酷我活动授权已到期，请前往项目中心续费后再使用', 'error'); return; }
@@ -4595,12 +4648,14 @@ function kuwoRunCountdown(info, taskId) {
             return;
         }
 
-        // 到点了 → 轮询后端结果
+        // 到点了 → 重启轮询获取后端执行日志
         clearInterval(warmupInterval);
         countdownEl.textContent = '🚀 后端正在执行 ' + targetLabel + ' 抢兑...';
         kuwoLog('⏰ 到达抢兑时间 ' + targetLabel + '，等待后端日志同步...');
         if (kuwoTimerInterval) { clearInterval(kuwoTimerInterval); kuwoTimerInterval = null; }
-        try { localStorage.removeItem(KUWO_STATE_KEY); } catch (e) {}
+        // 重启轮询（用新的 taskId 获取执行日志，maxPoll=600 覆盖完整执行过程）
+        if (taskId) { kuwoMonitorTask(taskId, false); }
+        // 不清除 localStorage，等任务 completed/failed 后由 monitor 清除
     }, 100);
 }
 
