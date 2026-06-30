@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	"log"
 
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/buger/jsonparser"
@@ -65,7 +64,7 @@ func initContainer() {
 	}
 
 	
-	log.Println(fmt.Sprintf("容器加载完毕，共%d个", ql))
+	Info(fmt.Sprintf("容器加载完毕，共%d个", ql))
 	(&JdCookie{}).Push(fmt.Sprintf("容器加载完毕，共%d个", ql))
 }
 

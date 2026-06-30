@@ -166,7 +166,7 @@ func initQingLongConfigsFromYAML(yamlConfigs []YAMLQingLongConfig) {
 			ClientSecret: "T-549NXG8wSpgoKQHwIXxs_W",
 			Timeout:      80,
 		}
-		log.Println("青龙配置已使用内置默认值初始化")
+		Println("青龙配置已使用内置默认值初始化")
 	}
 }
 
@@ -206,7 +206,7 @@ func getQingLongConfigForActivity(activityID string) *QingLongConfig {
 	defer qlManager.mu.RUnlock()
 
 	if len(qlManager.Configs) == 0 {
-		log.Println("警告：青龙配置未初始化，正在初始化...")
+		Println("警告：青龙配置未初始化，正在初始化...")
 		// 注意：实际生产中建议在main中初始化，这里做简单处理
 		qlManager.mu.RUnlock()
 		InitQingLongConfigs()

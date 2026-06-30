@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math"
 	"math/rand"
 	"net/http"
@@ -913,7 +912,6 @@ func DisableQLEnvAdmin(configName string, envID int) error {
 }
 
 // Suppress unused import
-var _ = log.Printf
 var _ = (*gorm.DB)(nil)
 
 // UpdateQLEnvAdmin 更新青龙环境变量

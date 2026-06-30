@@ -278,12 +278,16 @@ func shouldLog(l Level) bool {
 	return levelRank(l) >= levelRank(minLevel)
 }
 
-// write 核心写入
+// write 核心写入（format + args）
 func write(cat Category, level Level, format string, args ...interface{}) {
+	writeMessage(cat, level, fmt.Sprintf(format, args...))
+}
+
+// writeMessage 写入已格式化的消息
+func writeMessage(cat Category, level Level, msg string) {
 	if !shouldLog(level) {
 		return
 	}
-	msg := fmt.Sprintf(format, args...)
 	msg = sanitize(msg)
 
 	mu.Lock()
@@ -303,6 +307,17 @@ func write(cat Category, level Level, format string, args ...interface{}) {
 		fmt.Println(e.DisplayLine())
 	}
 	broadcast(e)
+}
+
+// formatArgs 兼容 beego logs：支持 Info(err)、Info("a", b) 与 Info("fmt %s", v)
+func formatArgs(v ...interface{}) string {
+	if len(v) == 0 {
+		return ""
+	}
+	if format, ok := v[0].(string); ok && len(v) > 1 && strings.Contains(format, "%") {
+		return fmt.Sprintf(format, v[1:]...)
+	}
+	return fmt.Sprint(v...)
 }
 
 func pushRingLocked(e Entry) {
@@ -716,23 +731,23 @@ func TaskLog() *Module  { return For(CatTask) }
 
 // ========== beego logs 兼容层（默认 system 分类）==========
 
-func Info(format string, v ...interface{})    { write(CatSystem, LevelInfo, format, v...) }
-func Error(format string, v ...interface{})   { write(CatSystem, LevelError, format, v...) }
-func Warn(format string, v ...interface{})    { write(CatSystem, LevelWarn, format, v...) }
-func Debug(format string, v ...interface{})   { write(CatSystem, LevelDebug, format, v...) }
-func Critical(format string, v ...interface{}) { write(CatSystem, LevelError, format, v...) }
-func Notice(format string, v ...interface{})  { write(CatSystem, LevelInfo, format, v...) }
-func Alert(format string, v ...interface{})   { write(CatSystem, LevelWarn, format, v...) }
-func Emergency(format string, v ...interface{}) { write(CatSystem, LevelError, format, v...) }
+func Info(v ...interface{})                 { writeMessage(CatSystem, LevelInfo, formatArgs(v...)) }
+func Error(v ...interface{})                { writeMessage(CatSystem, LevelError, formatArgs(v...)) }
+func Warn(v ...interface{})                 { writeMessage(CatSystem, LevelWarn, formatArgs(v...)) }
+func Debug(v ...interface{})                { writeMessage(CatSystem, LevelDebug, formatArgs(v...)) }
+func Critical(v ...interface{})             { writeMessage(CatSystem, LevelError, formatArgs(v...)) }
+func Notice(v ...interface{})              { writeMessage(CatSystem, LevelInfo, formatArgs(v...)) }
+func Alert(v ...interface{})               { writeMessage(CatSystem, LevelWarn, formatArgs(v...)) }
+func Emergency(v ...interface{})            { writeMessage(CatSystem, LevelError, formatArgs(v...)) }
 
 // Trace 兼容 beego（映射为 Debug）
-func Trace(format string, v ...interface{}) { write(CatSystem, LevelDebug, format, v...) }
+func Trace(v ...interface{}) { writeMessage(CatSystem, LevelDebug, formatArgs(v...)) }
 
-// Infof 等别名
-func Infof(format string, v ...interface{})  { Info(format, v...) }
-func Errorf(format string, v ...interface{}) { Error(format, v...) }
-func Warnf(format string, v ...interface{})  { Warn(format, v...) }
-func Debugf(format string, v ...interface{}) { Debug(format, v...) }
+// Infof 等格式化别名
+func Infof(format string, v ...interface{})  { write(CatSystem, LevelInfo, format, v...) }
+func Errorf(format string, v ...interface{}) { write(CatSystem, LevelError, format, v...) }
+func Warnf(format string, v ...interface{})  { write(CatSystem, LevelWarn, format, v...) }
+func Debugf(format string, v ...interface{}) { write(CatSystem, LevelDebug, format, v...) }
 
 // Log 显式分类写入
 func Log(cat Category, level Level, format string, args ...interface{}) {
@@ -798,7 +813,7 @@ func Printf(format string, args ...interface{}) {
 
 // Println 兼容 fmt.Println 用于日志的场景
 func Println(args ...interface{}) {
-	write(CatSystem, LevelInfo, "%s", fmt.Sprint(args...))
+	writeMessage(CatSystem, LevelInfo, fmt.Sprint(args...))
 }
 
 // PrintfCat 带分类的 Printf 替代
