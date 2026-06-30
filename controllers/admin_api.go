@@ -2305,11 +2305,12 @@ func (c *AdminApiController) QueryLogs() {
 
 	var entries []models.Entry
 	var total int
+	var truncated bool
 	var err error
 
 	switch source {
 	case "file":
-		entries, total, err = models.QueryFiles(dateFrom, dateTo, category, level, keyword, page, limit)
+		entries, total, truncated, err = models.QueryFiles(dateFrom, dateTo, category, level, keyword, page, limit)
 	default:
 		entries = models.Recent(limit, afterID, category, level, keyword)
 		total = len(entries)
@@ -2323,7 +2324,13 @@ func (c *AdminApiController) QueryLogs() {
 
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
-		"data": map[string]interface{}{"list": entries, "total": total, "page": page, "limit": limit},
+		"data": map[string]interface{}{
+			"list":      entries,
+			"total":     total,
+			"page":      page,
+			"limit":     limit,
+			"truncated": truncated,
+		},
 	}
 	c.ServeJSON()
 }
@@ -2491,7 +2498,7 @@ func LogResponseFilter(ctx *context.Context) {
 
 func shouldSkipLogPath(path string) bool {
 	switch {
-	case path == "/api/admin/logs/stream":
+	case len(path) >= 16 && path[:16] == "/api/admin/logs/":
 		return true
 	case len(path) >= 5 && path[:5] == "/css/":
 		return true

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -159,9 +160,10 @@ func (e Entry) MarshalJSON() ([]byte, error) {
 }
 
 const (
-	defaultRingSize  = 20000
-	defaultMaxDays    = 30
-	defaultMaxSizeMB  = 200 // 单文件超过则切分
+	defaultRingSize     = 20000
+	defaultMaxDays      = 7
+	maxQueryScanTotal   = 10000 // 历史查询最多扫描匹配条数，防止 OOM
+	defaultMaxSizeMB    = 200   // 单文件超过则切分
 )
 
 var (
@@ -280,7 +282,7 @@ func shouldLog(l Level) bool {
 
 // write 核心写入（format + args）
 func write(cat Category, level Level, format string, args ...interface{}) {
-	writeMessage(cat, level, fmt.Sprintf(format, args...))
+	writeMessage(cat, level, safeFormat(format, args...))
 }
 
 // writeMessage 写入已格式化的消息
@@ -309,13 +311,34 @@ func writeMessage(cat Category, level Level, msg string) {
 	broadcast(e)
 }
 
+// safeFormat 安全格式化，非法 % 占位符时回退为 Sprint
+func safeFormat(format string, args ...interface{}) string {
+	if len(args) == 0 {
+		return format
+	}
+	var result string
+	ok := func() (ok bool) {
+		defer func() {
+			if recover() != nil {
+				ok = false
+			}
+		}()
+		result = fmt.Sprintf(format, args...)
+		return true
+	}()
+	if ok {
+		return result
+	}
+	return fmt.Sprint(append([]interface{}{format}, args...)...)
+}
+
 // formatArgs 兼容 beego logs：支持 Info(err)、Info("a", b) 与 Info("fmt %s", v)
 func formatArgs(v ...interface{}) string {
 	if len(v) == 0 {
 		return ""
 	}
 	if format, ok := v[0].(string); ok && len(v) > 1 && strings.Contains(format, "%") {
-		return fmt.Sprintf(format, v[1:]...)
+		return safeFormat(format, v[1:]...)
 	}
 	return fmt.Sprint(v...)
 }
@@ -428,22 +451,31 @@ func Recent(limit int, afterID int64, category Category, level Level, keyword st
 	return out
 }
 
-// QueryFiles 查询历史日志文件中的记录
-func QueryFiles(dateFrom, dateTo string, category Category, level Level, keyword string, page, limit int) ([]Entry, int, error) {
+// QueryFiles 查询历史日志文件中的记录（流式扫描，限制最大条数）
+func QueryFiles(dateFrom, dateTo string, category Category, level Level, keyword string, page, limit int) ([]Entry, int, bool, error) {
 	if page < 1 {
 		page = 1
 	}
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
+	// 未指定日期时默认只查保留期内
+	if dateFrom == "" && dateTo == "" {
+		dateFrom = time.Now().AddDate(0, 0, -maxDays).Format("2006-01-02")
+	}
 	files, err := listLogFiles()
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, false, err
 	}
 	var all []Entry
+	truncated := false
 	kw := strings.ToLower(strings.TrimSpace(keyword))
 
 	for i := len(files) - 1; i >= 0; i-- {
+		if len(all) >= maxQueryScanTotal {
+			truncated = true
+			break
+		}
 		f := files[i]
 		base := filepath.Base(f)
 		date := strings.TrimPrefix(strings.TrimSuffix(base, ".log"), "xdd-")
@@ -453,48 +485,44 @@ func QueryFiles(dateFrom, dateTo string, category Category, level Level, keyword
 		if dateTo != "" && date > dateTo {
 			continue
 		}
-		entries, err := readFileEntries(f)
-		if err != nil {
-			continue
-		}
-		for j := len(entries) - 1; j >= 0; j-- {
-			e := entries[j]
-			if category != "" && e.Category != category {
-				continue
+		remain := maxQueryScanTotal - len(all)
+		chunk := scanFileMatches(f, category, level, kw, remain)
+		for j := len(chunk) - 1; j >= 0; j-- {
+			all = append(all, chunk[j])
+			if len(all) >= maxQueryScanTotal {
+				truncated = true
+				break
 			}
-			if level != "" && e.Level != level {
-				continue
-			}
-			if kw != "" && !strings.Contains(strings.ToLower(e.Message), kw) {
-				continue
-			}
-			all = append(all, e)
 		}
 	}
 	total := len(all)
 	start := (page - 1) * limit
 	if start >= total {
-		return []Entry{}, total, nil
+		return []Entry{}, total, truncated, nil
 	}
 	end := start + limit
 	if end > total {
 		end = total
 	}
-	// all 是倒序（新在前），分页后反转为正序展示
 	slice := all[start:end]
 	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
 		slice[i], slice[j] = slice[j], slice[i]
 	}
-	return slice, total, nil
+	return slice, total, truncated, nil
 }
 
-func readFileEntries(path string) ([]Entry, error) {
+// scanFileMatches 按行扫描文件，保留最后 max 条匹配（内存友好）
+func scanFileMatches(path string, category Category, level Level, kw string, max int) []Entry {
+	if max <= 0 {
+		return nil
+	}
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	defer f.Close()
-	var entries []Entry
+
+	matched := make([]Entry, 0, 64)
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for sc.Scan() {
@@ -502,9 +530,23 @@ func readFileEntries(path string) ([]Entry, error) {
 		if err != nil {
 			continue
 		}
-		entries = append(entries, e)
+		if category != "" && e.Category != category {
+			continue
+		}
+		if level != "" && e.Level != level {
+			continue
+		}
+		if kw != "" && !strings.Contains(strings.ToLower(e.Message), kw) {
+			continue
+		}
+		if len(matched) >= max {
+			copy(matched, matched[1:])
+			matched[len(matched)-1] = e
+		} else {
+			matched = append(matched, e)
+		}
 	}
-	return entries, sc.Err()
+	return matched
 }
 
 // LogFileInfo 日志文件信息
@@ -555,6 +597,7 @@ func listLogFiles() ([]string, error) {
 			files = append(files, filepath.Join(logDir, name))
 		}
 	}
+	sort.Strings(files)
 	return files, nil
 }
 
@@ -675,12 +718,15 @@ func LogDir() string {
 }
 
 var (
-	rePtKey  = regexp.MustCompile(`(?i)(pt_key=)[^;,\s"&]+`)
-	rePtPin   = regexp.MustCompile(`(?i)(pt_pin=)[^;,\s"&]+`)
-	reWskey   = regexp.MustCompile(`(?i)(wskey=)[^\s"',;]+`)
-	reBearer  = regexp.MustCompile(`(?i)(Bearer\s+)[A-Za-z0-9._\-]+`)
-	rePhone   = regexp.MustCompile(`(\d{3})\d{4}(\d{4})`)
-	rePwd     = regexp.MustCompile(`(?i)(password["']?\s*[:=]\s*["']?)[^"',\s}]+`)
+	rePtKey    = regexp.MustCompile(`(?i)(pt_key=)[^;,\s"&]+`)
+	rePtPin    = regexp.MustCompile(`(?i)(pt_pin=)[^;,\s"&]+`)
+	reWskey    = regexp.MustCompile(`(?i)(wskey=)[^\s"',;]+`)
+	reBearer   = regexp.MustCompile(`(?i)(Bearer\s+)[A-Za-z0-9._\-]+`)
+	rePhone    = regexp.MustCompile(`(\d{3})\d{4}(\d{4})`)
+	rePwd      = regexp.MustCompile(`(?i)(password["']?\s*[:=]\s*["']?)[^"',\s}]+`)
+	rePwdPlain = regexp.MustCompile(`(?i)((?:密码|口令|pwd)[：:\s]+)[^\s\\n,]+`)
+	reSocksPwd = regexp.MustCompile(`(?i)(Socks5[^\\n]*密码[：:\s]+)[^\s\\n,]+`)
+	reLoginPwd = regexp.MustCompile(`(?i)(当前登录密码[：:\s]+)[^\s\\n,]+`)
 )
 
 func sanitize(msg string) string {
@@ -692,6 +738,9 @@ func sanitize(msg string) string {
 	msg = reWskey.ReplaceAllString(msg, "${1}***")
 	msg = reBearer.ReplaceAllString(msg, "${1}***")
 	msg = rePwd.ReplaceAllString(msg, "${1}***")
+	msg = rePwdPlain.ReplaceAllString(msg, "${1}***")
+	msg = reSocksPwd.ReplaceAllString(msg, "${1}***")
+	msg = reLoginPwd.ReplaceAllString(msg, "${1}***")
 	msg = rePhone.ReplaceAllString(msg, "${1}****${2}")
 	if len(msg) > 8000 {
 		msg = msg[:8000] + "...(truncated)"

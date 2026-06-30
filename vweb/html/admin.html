@@ -7120,6 +7120,9 @@ async function queryLogHistory() {
             appendLogLine({ level: 'INFO', category: 'system', message: '未找到匹配的日志记录', time: '' });
         } else {
             list.forEach(appendLogEntry);
+            if (res.data && res.data.truncated) {
+                appendLogLine({ level: 'WARN', category: 'system', message: '结果已截断（最多显示最近 ' + (res.data.total || 0) + ' 条匹配），请缩小日期范围或添加关键词筛选', time: '' });
+            }
         }
         renderLogPagination(res.data.page, res.data.limit, res.data.total);
     } catch(e) {
@@ -7147,7 +7150,7 @@ async function loadLogStats() {
         document.getElementById('logStatRing').textContent = (d.ringCount || 0) + ' / ' + (d.ringCap || 0);
         document.getElementById('logStatFiles').textContent = d.fileCount || 0;
         document.getElementById('logStatSize').textContent = formatBytes(d.totalSize || 0);
-        document.getElementById('logStatDays').textContent = (d.maxDays || 30) + ' 天';
+        document.getElementById('logStatDays').textContent = (d.maxDays || 7) + ' 天';
     } catch(e) {}
 }
 
