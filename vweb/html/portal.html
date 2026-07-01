@@ -4102,6 +4102,13 @@ let kuwoTaskMonitor = null;
 let kuwoTaskLogIndex = 0;
 let kuwoWithdrawSubmitting = false;
 
+function kuwoStopCountdown() {
+    if (kuwoTimerInterval) {
+        clearInterval(kuwoTimerInterval);
+        kuwoTimerInterval = null;
+    }
+}
+
 function kuwoClearLogs() {
     const el = document.getElementById('kuwoLogContent');
     if (el) el.textContent = '';
@@ -4169,6 +4176,7 @@ function kuwoApplyTaskMonitorResult(task, immediate, countdownEl) {
     }
     if (task.status === 'completed') {
         kuwoStopTaskMonitor();
+        kuwoStopCountdown();
         if (countdownEl) {
             countdownEl.style.display = '';
             countdownEl.textContent = '✅ 抢兑已完成';
@@ -4180,6 +4188,7 @@ function kuwoApplyTaskMonitorResult(task, immediate, countdownEl) {
     }
     if (task.status === 'failed') {
         kuwoStopTaskMonitor();
+        kuwoStopCountdown();
         if (countdownEl) {
             countdownEl.style.display = '';
             countdownEl.textContent = '❌ 抢兑失败';
@@ -4271,16 +4280,33 @@ async function kuwoRestoreState() {
         }
 
         if (taskId) {
+            // 先查任务状态，已完成/失败则直接收尾，避免倒计时复活
+            const task = await kuwoFetchTaskStatus(taskId);
+            if (task && (task.status === 'completed' || task.status === 'failed')) {
+                kuwoFlushTaskLogs(task.logs);
+                kuwoApplyTaskMonitorResult(task, !!isImmediate, document.getElementById('kuwoCountdown'));
+                return;
+            }
+
             kuwoLog('🔄 检测到进行中的抢兑任务，已恢复监控');
-            kuwoResetTaskLogCursor();
-            kuwoMonitorTask(taskId, !!isImmediate);
+            if (task && Array.isArray(task.logs)) {
+                kuwoTaskLogIndex = task.logs.length;
+            } else {
+                kuwoResetTaskLogCursor();
+            }
+            const remaining = targetHour != null ? kuwoRemainingMsUntilHour(targetHour) : NaN;
             if (!isImmediate && remaining > 0 && targetHour != null) {
                 const info = kuwoGetNextWithdrawInfo();
                 if (info) info.hour = targetHour;
                 kuwoRunCountdown(info || { hour: targetHour }, taskId);
-            } else if (remaining <= 0 && !isImmediate) {
+            } else if (!isImmediate) {
+                const countdownEl = document.getElementById('kuwoCountdown');
+                if (countdownEl) {
+                    countdownEl.textContent = '🚀 后端正在执行 ' + String(targetHour).padStart(2, '0') + ':00 抢兑...';
+                }
                 kuwoLog('🔄 倒计时已结束，等待后端执行结果…');
             }
+            kuwoMonitorTask(taskId, !!isImmediate);
             return;
         }
 
@@ -4393,12 +4419,20 @@ function kuwoMinutesUntilHour(targetHour, hour, min) {
 }
 
 // 计算到目标整点的剩余毫秒数（含秒级精度）
-function kuwoRemainingMsUntilHour(targetHour) {
+// 整点后 graceAfterMin 分钟内返回 0，避免刚过点又倒计时到明天同一时段
+function kuwoRemainingMsUntilHour(targetHour, graceAfterMin) {
+    if (graceAfterMin == null) graceAfterMin = 30;
     const bj = kuwoGetBeijingTime();
-    let targetMs = targetHour * 3600 * 1000;
+    const targetMs = targetHour * 3600 * 1000;
     let remaining = targetMs - bj.totalMs;
-    if (remaining <= 0) remaining += 24 * 3600 * 1000;
-    return remaining - new Date().getMilliseconds();
+    if (remaining <= 0) {
+        const pastMs = -remaining;
+        if (pastMs <= graceAfterMin * 60 * 1000) {
+            return 0;
+        }
+        remaining += 24 * 3600 * 1000;
+    }
+    return Math.max(0, remaining - new Date().getMilliseconds());
 }
 
 // 计算下次抢兑时间（自动判断，无需用户选择）
@@ -4617,6 +4651,7 @@ async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targ
 // 恢复抢兑UI
 function kuwoRestoreWithdrawUI() {
     kuwoWithdrawSubmitting = false;
+    kuwoStopCountdown();
     document.getElementById('kuwoWithdrawBtn').style.display = '';
     document.getElementById('kuwoCountdown').style.display = 'none';
     document.getElementById('kuwoCountdown').textContent = '';
@@ -4627,10 +4662,11 @@ function kuwoRestoreWithdrawUI() {
 
 function kuwoRunCountdown(info, taskId) {
     const countdownEl = document.getElementById('kuwoCountdown');
-    if (kuwoTimerInterval) clearInterval(kuwoTimerInterval);
+    kuwoStopCountdown();
 
     const targetHour = info.hour;
     const targetLabel = String(targetHour).padStart(2,'0') + ':00';
+    let fired = false;
 
     // 预热连接
     let warmupDone = false;
@@ -4648,6 +4684,18 @@ function kuwoRunCountdown(info, taskId) {
     kuwoTimerInterval = setInterval(() => {
         const remaining = kuwoRemainingMsUntilHour(targetHour);
 
+        // 已过今日时段且跳到明天同一整点（>20小时）→ 停止，防止 13:02 显示 1437 分钟
+        if (remaining > 20 * 3600 * 1000) {
+            clearInterval(warmupInterval);
+            kuwoStopCountdown();
+            if (!fired && taskId) {
+                fired = true;
+                countdownEl.textContent = '🚀 后端正在执行 ' + targetLabel + ' 抢兑...';
+                kuwoMonitorTask(taskId, false);
+            }
+            return;
+        }
+
         if (remaining > 0) {
             const rMin = Math.floor(remaining / 60000);
             const rSec = Math.floor((remaining % 60000) / 1000);
@@ -4655,14 +4703,15 @@ function kuwoRunCountdown(info, taskId) {
             return;
         }
 
+        if (fired) return;
+        fired = true;
+
         // 到点了 → 重启轮询获取后端执行日志
         clearInterval(warmupInterval);
         countdownEl.textContent = '🚀 后端正在执行 ' + targetLabel + ' 抢兑...';
         kuwoLog('⏰ 到达抢兑时间 ' + targetLabel + '，等待后端日志同步...');
-        if (kuwoTimerInterval) { clearInterval(kuwoTimerInterval); kuwoTimerInterval = null; }
-        // 重启轮询（用新的 taskId 获取执行日志，maxPoll=600 覆盖完整执行过程）
+        kuwoStopCountdown();
         if (taskId) { kuwoMonitorTask(taskId, false); }
-        // 不清除 localStorage，等任务 completed/failed 后由 monitor 清除
     }, 100);
 }
 

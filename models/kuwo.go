@@ -645,15 +645,12 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 					}
 					select {
 					case <-stopCh:
+						ch <- attemptResult{err: fmt.Errorf("cancelled"), index: attempt}
 						return
 					default:
 					}
 					msg, err := KuwoExecuteWithdraw(s, quotaId, smsCode, proxy)
-					select {
-					case <-stopCh:
-						return
-					case ch <- attemptResult{msg: msg, err: err, index: attempt}:
-					}
+					ch <- attemptResult{msg: msg, err: err, index: attempt}
 					if task != nil {
 						attemptNo := attempt + 1
 						if err == nil {
@@ -676,6 +673,9 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 			successFound := false
 			for t := 0; t < retryCount; t++ {
 				r := <-ch
+				if r.err != nil && r.err.Error() == "cancelled" {
+					continue
+				}
 				logMu.Lock()
 				if r.err == nil && !successFound {
 					results[idx] = KuwoWithdrawResult{
@@ -689,6 +689,9 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 				}
 				lastResult = r
 				logMu.Unlock()
+				if successFound {
+					break
+				}
 			}
 			if !successFound {
 				results[idx] = KuwoWithdrawResult{
@@ -1205,6 +1208,23 @@ func kuwoRunScheduledTask(taskID string) {
 	proxyPrepAt := fireAt.Add(-time.Duration(kuwoProxyPrepareBeforeSec) * time.Second)
 
 	task.AddLog("info", "后台调度已启动，等待抢兑时刻…")
+
+	// 代理准备与预热/登录并行，避免卡点提交时取 IP 占用到点后的抢兑时间
+	var proxyWg sync.WaitGroup
+	if IsJdTaskProxyEnabled() {
+		proxyWg.Add(1)
+		go func() {
+			defer proxyWg.Done()
+			if d := time.Until(proxyPrepAt); d > 0 {
+				task.AddLog("info", "距抢兑代理准备还有 %s", d.Round(time.Millisecond))
+				kuwoSleepUntil(proxyPrepAt)
+			}
+			task.prepareWithdrawProxy()
+		}()
+	} else {
+		task.AddLog("info", "抢兑代理：未启用（直连）")
+	}
+
 	if wait := time.Until(warmupAt); wait > 0 {
 		task.AddLog("info", "距预热还有 %s", wait.Round(time.Second))
 	}
@@ -1240,13 +1260,7 @@ func kuwoRunScheduledTask(taskID string) {
 	task.AddLog("success", "登录会话就绪（%d 个账号）", len(sessions))
 
 	if IsJdTaskProxyEnabled() {
-		if d := time.Until(proxyPrepAt); d > 0 {
-			task.AddLog("info", "距抢兑代理准备还有 %s", d.Round(time.Millisecond))
-			kuwoSleepUntil(proxyPrepAt)
-		}
-		task.prepareWithdrawProxy()
-	} else {
-		task.AddLog("info", "抢兑代理：未启用（直连）")
+		proxyWg.Wait()
 	}
 
 	if d := time.Until(fireAt); d > 0 {
