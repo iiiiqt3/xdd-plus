@@ -4116,7 +4116,11 @@ function kuwoResetTaskLogCursor() {
 function kuwoRenderTaskLog(entry) {
     const icons = { info: 'ℹ️', success: '✅', warn: '⚠️', error: '❌' };
     const icon = icons[entry.level] || '•';
-    kuwoLog('[' + entry.time + '] ' + icon + ' ' + entry.message);
+    let line = '[' + entry.time + '] ' + icon + ' ' + entry.message;
+    if (entry.proxyHost) {
+        line += ' [代理:' + entry.proxyHost + ']';
+    }
+    kuwoLog(line);
 }
 
 function kuwoFlushTaskLogs(logs) {
@@ -4692,6 +4696,9 @@ async function kuwoExecuteWithdraw(phone, password, smsCode, quotaId) {
                 body: JSON.stringify({ sessions: [kuwoSessionData], quotaId, smsCode, retryCount: 0 })
             });
             if (data.code === 0 && data.data) {
+                if (data.proxyHost) {
+                    kuwoLog('#' + (index + 1) + ' [代理:' + data.proxyHost + ']');
+                }
                 for (const r of data.data) {
                     kuwoLog('#' + (index + 1) + ' ' + (r.success ? '✅ ' : '❌ ') + r.phone + ' ' + (r.message || r.error || ''));
                 }

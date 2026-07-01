@@ -924,10 +924,10 @@ func (c *PortalController) KuwoLogin() {
 		"code": 0,
 		"msg":  "登录成功",
 		"data": map[string]string{
-			"phone":         session.Phone,
+			"phone":          session.Phone,
 			"encryptedPhone": session.EncryptedPhone,
-			"loginUid":      session.LoginUid,
-			"loginSid":      session.LoginSid,
+			"loginUid":       session.LoginUid,
+			"loginSid":       session.LoginSid,
 		},
 	}
 	c.ServeJSON()
@@ -968,10 +968,10 @@ func (c *PortalController) KuwoSendSms() {
 		"code": 0,
 		"msg":  "验证码已发送",
 		"data": map[string]string{
-			"phone":         session.Phone,
+			"phone":          session.Phone,
 			"encryptedPhone": session.EncryptedPhone,
-			"loginUid":      session.LoginUid,
-			"loginSid":      session.LoginSid,
+			"loginUid":       session.LoginUid,
+			"loginSid":       session.LoginSid,
 		},
 	}
 	c.ServeJSON()
@@ -1026,7 +1026,7 @@ func (c *PortalController) KuwoWithdraw() {
 		return
 	}
 
-	results := models.KuwoSingleWithdraw(sessions, quotaId, smsCode)
+	results, proxyHost := models.KuwoManualWithdraw(sessions, quotaId, smsCode)
 
 	type withdrawResult struct {
 		Phone   string `json:"phone"`
@@ -1047,7 +1047,11 @@ func (c *PortalController) KuwoWithdraw() {
 			Error:   errMsg,
 		})
 	}
-	c.Data["json"] = map[string]interface{}{"code": 0, "data": resultList}
+	resp := map[string]interface{}{"code": 0, "data": resultList}
+	if proxyHost != "" {
+		resp["proxyHost"] = proxyHost
+	}
+	c.Data["json"] = resp
 	c.ServeJSON()
 }
 

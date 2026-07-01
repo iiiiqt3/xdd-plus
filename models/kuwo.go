@@ -3,6 +3,7 @@ package models
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -41,6 +42,10 @@ const (
 	kuwoSessionRefreshBefore  = 35 * time.Second
 	kuwoLoginMaxRetry         = 3
 	kuwoTaskRetainDuration    = 2 * time.Hour
+	kuwoProxyPrepareBeforeSec = 8  // 抢兑前提前准备代理（秒）
+	kuwoProxyTestTimeout      = 3 * time.Second
+	kuwoProxyPrepareMaxRetry  = 5
+	kuwoProxyMaxAge           = 25 * time.Second // 动态 IP 约 30s 有效，超龄换 IP
 )
 
 var kuwoHTTPClient = &http.Client{
@@ -51,6 +56,65 @@ var kuwoHTTPClient = &http.Client{
 		IdleConnTimeout:     90 * time.Second,
 		ForceAttemptHTTP2:   true,
 	},
+}
+
+// kuwoWithdrawProxy 仅抢兑提现请求使用（与京东共用动态代理 API）
+type kuwoWithdrawProxy struct {
+	client    *http.Client
+	proxyHost string
+	fetchedAt time.Time
+}
+
+func (p *kuwoWithdrawProxy) host() string {
+	if p == nil {
+		return ""
+	}
+	return p.proxyHost
+}
+
+func kuwoFetchWithdrawProxy(caller string) *kuwoWithdrawProxy {
+	if !IsJdTaskProxyEnabled() {
+		return nil
+	}
+	proxyURL, err := fetchDynamicProxyURL(caller)
+	if err != nil || proxyURL == nil {
+		return nil
+	}
+	base := &http.Transport{
+		MaxIdleConns:          32,
+		MaxIdleConnsPerHost:   16,
+		MaxConnsPerHost:       16,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   8 * time.Second,
+		ResponseHeaderTimeout: 8 * time.Second,
+		Proxy:                 http.ProxyURL(proxyURL),
+		ForceAttemptHTTP2:     true,
+	}
+	return &kuwoWithdrawProxy{
+		client:    &http.Client{Timeout: 8 * time.Second, Transport: base},
+		proxyHost: proxyURL.Host,
+		fetchedAt: time.Now(),
+	}
+}
+
+func kuwoTestWithdrawProxy(proxy *kuwoWithdrawProxy) bool {
+	if proxy == nil || proxy.client == nil || proxy.proxyHost == "" {
+		return false
+	}
+	req, err := http.NewRequest(http.MethodGet, kuwoWithdrawURL+"?proxy_test=1", nil)
+	if err != nil {
+		return false
+	}
+	req.Header.Set("User-Agent", kuwoUserAgent)
+	ctx, cancel := context.WithTimeout(context.Background(), kuwoProxyTestTimeout)
+	defer cancel()
+	resp, err := proxy.client.Do(req.WithContext(ctx))
+	if err != nil {
+		return false
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	return resp.StatusCode > 0
 }
 
 var kuwoBJLocation *time.Location
@@ -163,8 +227,25 @@ func kuwoDoRequest(req *http.Request) ([]byte, int, error) {
 		return nil, 0, err
 	}
 	defer resp.Body.Close()
+	return kuwoReadResponseBody(resp)
+}
 
+func kuwoDoWithdrawRequest(proxy *kuwoWithdrawProxy, req *http.Request) ([]byte, int, error) {
+	client := kuwoHTTPClient
+	if proxy != nil && proxy.client != nil && proxy.proxyHost != "" {
+		client = proxy.client
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	return kuwoReadResponseBody(resp)
+}
+
+func kuwoReadResponseBody(resp *http.Response) ([]byte, int, error) {
 	var body []byte
+	var err error
 	contentEncoding := resp.Header.Get("Content-Encoding")
 	if strings.Contains(contentEncoding, "gzip") {
 		reader, gzErr := gzip.NewReader(resp.Body)
@@ -376,7 +457,7 @@ func kuwoGetCaptcha() (imgBase64 string, token string, err error) {
 	return strings.TrimSpace(ocrResp.Result), capResp.Data.Token, nil
 }
 
-// KuwoLogin performs the full login flow: captcha -> OCR -> login.
+// KuwoLogin performs the full login flow: captcha -> OCR -> login（直连）
 func KuwoLogin(phone, password string) (*KuwoSession, error) {
 	encPhone := KuwoEncryptPhone(phone)
 
@@ -443,7 +524,7 @@ func KuwoLogin(phone, password string) (*KuwoSession, error) {
 	return nil, fmt.Errorf("login failed after 5 attempts")
 }
 
-// KuwoSendSms sends an SMS verification code for the logged-in session.
+// KuwoSendSms sends an SMS verification code for the logged-in session（直连）
 func KuwoSendSms(session *KuwoSession) error {
 	params := url.Values{}
 	params.Set("loginUid", session.LoginUid)
@@ -479,7 +560,7 @@ func KuwoSendSms(session *KuwoSession) error {
 }
 
 // KuwoExecuteWithdraw executes a single withdrawal request.
-func KuwoExecuteWithdraw(session *KuwoSession, quotaId, smsCode string) (string, error) {
+func KuwoExecuteWithdraw(session *KuwoSession, quotaId, smsCode string, proxy *kuwoWithdrawProxy) (string, error) {
 	if session == nil || session.LoginUid == "" || session.LoginSid == "" {
 		return "", fmt.Errorf("withdraw failed: session无效")
 	}
@@ -507,7 +588,7 @@ func KuwoExecuteWithdraw(session *KuwoSession, quotaId, smsCode string) (string,
 	req.Header.Set("Referer", "https://h5app.kuwo.cn/apps/earning-sign/cash_out.html")
 	req.Header.Set("Connection", "keep-alive")
 
-	body, _, err := kuwoDoRequest(req)
+	body, _, err := kuwoDoWithdrawRequest(proxy, req)
 	if err != nil {
 		return "", err
 	}
@@ -535,7 +616,7 @@ func KuwoExecuteWithdraw(session *KuwoSession, quotaId, smsCode string) (string,
 }
 
 // KuwoConcurrentWithdrawRetry 单账号多路错峰抢兑，取首个成功
-func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode string, retryCount int, task *KuwoScheduledTask, round int) []KuwoWithdrawResult {
+func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode string, retryCount int, task *KuwoScheduledTask, round int, proxy *kuwoWithdrawProxy) []KuwoWithdrawResult {
 	if retryCount < 1 {
 		retryCount = 1
 	}
@@ -567,7 +648,7 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 						return
 					default:
 					}
-					msg, err := KuwoExecuteWithdraw(s, quotaId, smsCode)
+					msg, err := KuwoExecuteWithdraw(s, quotaId, smsCode, proxy)
 					select {
 					case <-stopCh:
 						return
@@ -640,7 +721,14 @@ func KuwoBurstWithdraw(sessions []*KuwoSession, quotaID, smsCode string, task *K
 		if task != nil {
 			task.AddLog("info", "──── 第 %d/%d 轮 ────", round+1, kuwoWithdrawRounds)
 		}
-		roundResults := KuwoConcurrentWithdrawRetry(sessions, quotaID, smsCode, kuwoWithdrawRetryPerRound, task, round)
+		if task != nil && round > 0 && IsJdTaskProxyEnabled() {
+			task.ensureWithdrawProxyFresh()
+		}
+		var withdrawProxy *kuwoWithdrawProxy
+		if task != nil {
+			withdrawProxy = task.withdrawProxy
+		}
+		roundResults := KuwoConcurrentWithdrawRetry(sessions, quotaID, smsCode, kuwoWithdrawRetryPerRound, task, round, withdrawProxy)
 		allResults = append(allResults, roundResults...)
 		if kuwoAnySuccess(roundResults) {
 			if task != nil {
@@ -660,11 +748,11 @@ func KuwoBurstWithdraw(sessions []*KuwoSession, quotaID, smsCode string, task *K
 	return kuwoBestResultsPerPhone(allResults)
 }
 
-// KuwoSingleWithdraw 单次提现（非倒计时立即执行用）
-func KuwoSingleWithdraw(sessions []*KuwoSession, quotaID, smsCode string) []KuwoWithdrawResult {
+// KuwoSingleWithdraw 单次提现（立即/手动抢兑，可传代理）
+func KuwoSingleWithdraw(sessions []*KuwoSession, quotaID, smsCode string, proxy *kuwoWithdrawProxy) []KuwoWithdrawResult {
 	results := make([]KuwoWithdrawResult, len(sessions))
 	for i, s := range sessions {
-		msg, err := KuwoExecuteWithdraw(s, quotaID, smsCode)
+		msg, err := KuwoExecuteWithdraw(s, quotaID, smsCode, proxy)
 		results[i] = KuwoWithdrawResult{
 			UID:     s.LoginUid,
 			Phone:   s.Phone,
@@ -674,6 +762,51 @@ func KuwoSingleWithdraw(sessions []*KuwoSession, quotaID, smsCode string) []Kuwo
 		}
 	}
 	return results
+}
+
+// KuwoManualWithdraw 人工触发提现（按需取代理，不提前准备）
+func KuwoManualWithdraw(sessions []*KuwoSession, quotaID, smsCode string) ([]KuwoWithdrawResult, string) {
+	proxy := kuwoWithdrawProxyOnDemand("kuwo_withdraw")
+	proxyHost := ""
+	if proxy != nil {
+		proxyHost = proxy.host()
+	}
+	return KuwoSingleWithdraw(sessions, quotaID, smsCode, proxy), proxyHost
+}
+
+// kuwoWithdrawProxyOnDemand 人工抢兑时按需取代理（单次获取+测试，不做提前准备）
+func kuwoWithdrawProxyOnDemand(caller string) *kuwoWithdrawProxy {
+	if !IsJdTaskProxyEnabled() {
+		return nil
+	}
+	for i := 0; i < 2; i++ {
+		proxy := kuwoFetchWithdrawProxy(caller)
+		if proxy != nil && proxy.host() != "" && kuwoTestWithdrawProxy(proxy) {
+			return proxy
+		}
+	}
+	return nil
+}
+
+// kuwoPrepareWithdrawProxy 定时抢兑专用：提前获取并测试代理（含重试）
+func kuwoPrepareWithdrawProxy(caller string) *kuwoWithdrawProxy {
+	if !IsJdTaskProxyEnabled() {
+		return nil
+	}
+	deadline := time.Now().Add(6 * time.Second)
+	for attempt := 1; attempt <= kuwoProxyPrepareMaxRetry; attempt++ {
+		if time.Now().After(deadline) {
+			break
+		}
+		proxy := kuwoFetchWithdrawProxy(caller)
+		if proxy == nil || proxy.host() == "" {
+			continue
+		}
+		if kuwoTestWithdrawProxy(proxy) {
+			return proxy
+		}
+	}
+	return nil
 }
 
 // KuwoGetQuotaID returns the quota ID for the given amount string.
@@ -761,9 +894,10 @@ func init() {
 
 // KuwoTaskLog 抢兑任务执行日志（供前端展示）
 type KuwoTaskLog struct {
-	Time    string `json:"time"`
-	Level   string `json:"level"` // info / success / warn / error
-	Message string `json:"message"`
+	Time      string `json:"time"`
+	Level     string `json:"level"` // info / success / warn / error
+	Message   string `json:"message"`
+	ProxyHost string `json:"proxyHost,omitempty"`
 }
 
 // KuwoScheduledTask 抢兑任务
@@ -774,15 +908,80 @@ type KuwoScheduledTask struct {
 	SmsCode     string               `json:"smsCode"`
 	TargetHour  int                  `json:"targetHour"`
 	Immediate   bool                 `json:"immediate"`
-	Accounts    []*KuwoAccountInput  `json:"-"`
-	Sessions    []*KuwoSession       `json:"-"`
-	CreatedAt   time.Time            `json:"createdAt"`
+	ProxyHost     string               `json:"proxyHost,omitempty"`
+	Accounts      []*KuwoAccountInput  `json:"-"`
+	Sessions      []*KuwoSession       `json:"-"`
+	withdrawProxy *kuwoWithdrawProxy   `json:"-"`
+	CreatedAt     time.Time            `json:"createdAt"`
 	ExecuteAt   time.Time            `json:"executeAt"`
 	Status      string               `json:"status"` // pending / running / completed / failed
 	Results     []KuwoWithdrawResult `json:"results,omitempty"`
 	ResultsJSON []WithdrawResultJSON `json:"resultsDetail,omitempty"`
 	Logs        []KuwoTaskLog        `json:"logs,omitempty"`
 	logMu       sync.Mutex           `json:"-"`
+}
+
+func (t *KuwoScheduledTask) currentProxyHost() string {
+	if t == nil {
+		return ""
+	}
+	if t.withdrawProxy != nil && t.withdrawProxy.host() != "" {
+		return t.withdrawProxy.host()
+	}
+	return t.ProxyHost
+}
+
+// prepareWithdrawProxy 定时倒计时抢兑专用：提前预取并测试代理
+func (t *KuwoScheduledTask) prepareWithdrawProxy() {
+	if t == nil {
+		return
+	}
+	if !IsJdTaskProxyEnabled() {
+		t.AddLog("info", "抢兑代理：未启用（直连）")
+		return
+	}
+	deadline := time.Now().Add(6 * time.Second)
+	for attempt := 1; attempt <= kuwoProxyPrepareMaxRetry; attempt++ {
+		if time.Now().After(deadline) {
+			t.AddLog("warn", "抢兑代理：准备超时，停止重试")
+			break
+		}
+		t.AddLog("info", "抢兑代理：第%d次获取 IP…", attempt)
+		proxy := kuwoFetchWithdrawProxy("kuwo_withdraw")
+		if proxy == nil || proxy.host() == "" {
+			t.AddLog("warn", "抢兑代理：获取 IP 失败")
+			continue
+		}
+		t.AddLog("info", "抢兑代理：测试 %s …", proxy.host())
+		if kuwoTestWithdrawProxy(proxy) {
+			t.withdrawProxy = proxy
+			t.ProxyHost = proxy.host()
+			t.AddLog("success", "抢兑代理：%s 已就绪", proxy.host())
+			return
+		}
+		t.AddLog("warn", "抢兑代理：%s 不可用，重新获取", proxy.host())
+	}
+	t.AddLog("error", "抢兑代理：准备失败，抢兑时将尝试直连")
+}
+
+// ensureWithdrawProxyFresh 多轮抢兑间检查代理是否过期或失效
+func (t *KuwoScheduledTask) ensureWithdrawProxyFresh() {
+	if t == nil || !IsJdTaskProxyEnabled() {
+		return
+	}
+	needRefresh := t.withdrawProxy == nil || t.withdrawProxy.host() == ""
+	if !needRefresh && t.withdrawProxy != nil {
+		if time.Since(t.withdrawProxy.fetchedAt) > kuwoProxyMaxAge {
+			needRefresh = true
+			t.AddLog("info", "抢兑代理：IP 已超 %ds，换新 IP", int(kuwoProxyMaxAge.Seconds()))
+		} else if !kuwoTestWithdrawProxy(t.withdrawProxy) {
+			needRefresh = true
+			t.AddLog("warn", "抢兑代理：%s 失效，换新 IP", t.withdrawProxy.host())
+		}
+	}
+	if needRefresh {
+		t.prepareWithdrawProxy()
+	}
 }
 
 func (t *KuwoScheduledTask) AddLog(level, format string, args ...interface{}) {
@@ -794,23 +993,29 @@ func (t *KuwoScheduledTask) AddLog(level, format string, args ...interface{}) {
 		msg = fmt.Sprintf(format, args...)
 	}
 	logTime := time.Now().In(kuwoBeijingLocation()).Format("15:04:05.000")
+	proxyHost := t.currentProxyHost()
 	t.logMu.Lock()
 	defer t.logMu.Unlock()
 	t.Logs = append(t.Logs, KuwoTaskLog{
-		Time:    logTime,
-		Level:   level,
-		Message: msg,
+		Time:      logTime,
+		Level:     level,
+		Message:   msg,
+		ProxyHost: proxyHost,
 	})
 	// 写入日志文件
-	go t.writeLogToFile(logTime, level, msg)
+	go t.writeLogToFile(logTime, level, msg, proxyHost)
 }
 
 // writeLogToFile 将日志追加写入文件
-func (t *KuwoScheduledTask) writeLogToFile(logTime, level, msg string) {
+func (t *KuwoScheduledTask) writeLogToFile(logTime, level, msg, proxyHost string) {
 	logDir := filepath.Join(ExecPath, "logs")
 	os.MkdirAll(logDir, 0755)
 	logFile := filepath.Join(logDir, fmt.Sprintf("kuwo_%s.log", time.Now().In(kuwoBeijingLocation()).Format("2006-01-02")))
-	line := fmt.Sprintf("[%s] [%s] %s\n", logTime, level, msg)
+	line := fmt.Sprintf("[%s] [%s] %s", logTime, level, msg)
+	if proxyHost != "" {
+		line += fmt.Sprintf(" [代理:%s]", proxyHost)
+	}
+	line += "\n"
 	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return
@@ -954,18 +1159,32 @@ func kuwoRunImmediateTask(taskID string) {
 	}
 
 	task.Status = "running"
+	task.AddLog("info", "立即抢兑开始")
 
 	sessions := kuwoEnsureSessions(task.Accounts)
 	task.Sessions = sessions
 	if len(sessions) == 0 {
 		task.Status = "failed"
+		task.AddLog("error", "登录失败，无法获取有效会话")
 		task.ResultsJSON = []WithdrawResultJSON{{
 			Phone: task.Phone, Success: false, Message: "登录失败，无法获取有效会话", Error: "session无效",
 		}}
 		return
 	}
 
-	results := KuwoSingleWithdraw(sessions, task.QuotaID, task.SmsCode)
+	var proxy *kuwoWithdrawProxy
+	if IsJdTaskProxyEnabled() {
+		proxy = kuwoWithdrawProxyOnDemand("kuwo_immediate")
+		if proxy != nil {
+			task.withdrawProxy = proxy
+			task.ProxyHost = proxy.host()
+			task.AddLog("info", "抢兑代理：%s", proxy.host())
+		} else {
+			task.AddLog("warn", "抢兑代理：获取失败，直连提现")
+		}
+	}
+
+	results := KuwoSingleWithdraw(sessions, task.QuotaID, task.SmsCode, proxy)
 	task.Results = results
 	task.ResultsJSON = kuwoResultsToJSON(results)
 	task.Status = "completed"
@@ -983,6 +1202,7 @@ func kuwoRunScheduledTask(taskID string) {
 	fireAt := task.ExecuteAt.Add(-time.Duration(kuwoScheduledLeadMs) * time.Millisecond)
 	warmupAt := fireAt.Add(-time.Duration(kuwoWarmupBeforeSec) * time.Second)
 	refreshAt := fireAt.Add(-kuwoSessionRefreshBefore)
+	proxyPrepAt := fireAt.Add(-time.Duration(kuwoProxyPrepareBeforeSec) * time.Second)
 
 	task.AddLog("info", "后台调度已启动，等待抢兑时刻…")
 	if wait := time.Until(warmupAt); wait > 0 {
@@ -1019,6 +1239,16 @@ func kuwoRunScheduledTask(taskID string) {
 	}
 	task.AddLog("success", "登录会话就绪（%d 个账号）", len(sessions))
 
+	if IsJdTaskProxyEnabled() {
+		if d := time.Until(proxyPrepAt); d > 0 {
+			task.AddLog("info", "距抢兑代理准备还有 %s", d.Round(time.Millisecond))
+			kuwoSleepUntil(proxyPrepAt)
+		}
+		task.prepareWithdrawProxy()
+	} else {
+		task.AddLog("info", "抢兑代理：未启用（直连）")
+	}
+
 	if d := time.Until(fireAt); d > 0 {
 		task.AddLog("info", "精确等待抢兑触发点 %s（提前 %dms）", fireAt.Format("15:04:05.000"), kuwoScheduledLeadMs)
 		kuwoSleepUntil(fireAt)
@@ -1037,7 +1267,7 @@ func kuwoExecuteScheduledTask(taskID string) {
 
 	task.Status = "running"
 	task.AddLog("info", "═══ 到达抢兑时刻，开始执行 ═══")
-	Kuwo().Infof("[kuwo] 定时任务开始执行: id=%s at %s\n", taskID, time.Now().Format("15:04:05.000"))
+	Kuwo().Infof("[kuwo] 定时任务开始执行: id=%s at %s proxy=%s\n", taskID, time.Now().Format("15:04:05.000"), task.currentProxyHost())
 
 	if len(task.Sessions) == 0 {
 		task.Sessions = kuwoEnsureSessions(task.Accounts)
@@ -1122,7 +1352,7 @@ func KuwoListScheduledTasks() []*KuwoScheduledTask {
 	return tasks
 }
 
-// KuwoBuildSessionsFromRequest 从请求构建 session（优先缓存，否则用已有凭证）
+// KuwoBuildSessionsFromRequest 从请求构建 session（优先缓存，否则直连登录）
 func KuwoBuildSessionsFromRequest(accounts []*KuwoAccountInput) []*KuwoSession {
 	return kuwoEnsureSessions(accounts)
 }

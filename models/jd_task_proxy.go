@@ -142,8 +142,50 @@ func (t *jdProxyLogTransport) ProxyHost() string {
 	return t.proxyHost
 }
 
+// NewDynamicProxyHTTPClient 从京东动态代理 API 取 IP 并绑定到 Client（caller 用于日志区分场景）
+func NewDynamicProxyHTTPClient(caller string, timeout time.Duration) (*http.Client, string) {
+	base := &http.Transport{
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   30,
+		MaxConnsPerHost:       30,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
+		ForceAttemptHTTP2:     true,
+	}
+	logTr := &jdProxyLogTransport{base: base}
+	if timeout <= 0 {
+		timeout = 20 * time.Second
+	}
+	if !IsJdTaskProxyEnabled() {
+		return &http.Client{Timeout: timeout, Transport: logTr}, ""
+	}
+	logs.Info("[京东代理] [%s] 请求 API 取新 IP", caller)
+	proxyHost := ""
+	if proxyURL := refreshJDProxyURL(caller); proxyURL != nil {
+		base.Proxy = http.ProxyURL(proxyURL)
+		logTr.proxyHost = proxyURL.Host
+		proxyHost = proxyURL.Host
+		logs.Info("[京东代理] [%s] 已绑定代理: %s", caller, proxyHost)
+	} else {
+		logs.Warn("[京东代理] [%s] 取 IP 失败，将直连", caller)
+	}
+	return &http.Client{Timeout: timeout, Transport: logTr}, proxyHost
+}
+
 // NewJDProxyHTTPClient 每次 Go 资产查询强制取新 IP（IP 仅 30 秒有效，整次查询共用）
 func NewJDProxyHTTPClient() (*http.Client, *jdProxyLogTransport) {
+	if !IsJdTaskProxyEnabled() {
+		if strings.TrimSpace(sysConfig.JdTaskProxyUrl) == "" {
+			logs.Info("[京东代理] Go查询直连: 未配置动态 IP API")
+		} else {
+			logs.Info("[京东代理] Go查询直连: 代理开关未启用")
+		}
+	}
+	client, _ := NewDynamicProxyHTTPClient("jd_query", 20*time.Second)
+	if tr, ok := client.Transport.(*jdProxyLogTransport); ok {
+		return client, tr
+	}
 	base := &http.Transport{
 		MaxIdleConns:          100,
 		MaxIdleConnsPerHost:   30,
@@ -153,26 +195,7 @@ func NewJDProxyHTTPClient() (*http.Client, *jdProxyLogTransport) {
 		ResponseHeaderTimeout: 15 * time.Second,
 	}
 	logTr := &jdProxyLogTransport{base: base}
-	if !IsJdTaskProxyEnabled() {
-		if strings.TrimSpace(sysConfig.JdTaskProxyUrl) == "" {
-			Info("[京东代理] Go查询直连: 未配置动态 IP API")
-		} else {
-			Info("[京东代理] Go查询直连: 代理开关未启用")
-		}
-		return &http.Client{Timeout: 20 * time.Second, Transport: logTr}, logTr
-	}
-	Info("[京东代理] 京豆/农场查询，请求 API 取新 IP")
-	if proxyURL := refreshJDProxyURL("jd_query"); proxyURL != nil {
-		base.Proxy = http.ProxyURL(proxyURL)
-		logTr.proxyHost = proxyURL.Host
-		Info("[京东代理] 京豆/农场已绑定代理: %s", proxyURL.Host)
-	} else {
-		Warn("[京东代理] 京豆/农场取 IP 失败，将直连")
-	}
-	return &http.Client{
-		Timeout:   20 * time.Second,
-		Transport: logTr,
-	}, logTr
+	return &http.Client{Timeout: 20 * time.Second, Transport: logTr}, logTr
 }
 
 func refreshJDProxyURL(caller string) *url.URL {
