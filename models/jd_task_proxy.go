@@ -160,15 +160,15 @@ func NewDynamicProxyHTTPClient(caller string, timeout time.Duration) (*http.Clie
 	if !IsJdTaskProxyEnabled() {
 		return &http.Client{Timeout: timeout, Transport: logTr}, ""
 	}
-	logs.Info("[京东代理] [%s] 请求 API 取新 IP", caller)
+	Info("[京东代理] [%s] 请求 API 取新 IP", caller)
 	proxyHost := ""
 	if proxyURL := refreshJDProxyURL(caller); proxyURL != nil {
 		base.Proxy = http.ProxyURL(proxyURL)
 		logTr.proxyHost = proxyURL.Host
 		proxyHost = proxyURL.Host
-		logs.Info("[京东代理] [%s] 已绑定代理: %s", caller, proxyHost)
+		Info("[京东代理] [%s] 已绑定代理: %s", caller, proxyHost)
 	} else {
-		logs.Warn("[京东代理] [%s] 取 IP 失败，将直连", caller)
+		Warn("[京东代理] [%s] 取 IP 失败，将直连", caller)
 	}
 	return &http.Client{Timeout: timeout, Transport: logTr}, proxyHost
 }
@@ -177,9 +177,9 @@ func NewDynamicProxyHTTPClient(caller string, timeout time.Duration) (*http.Clie
 func NewJDProxyHTTPClient() (*http.Client, *jdProxyLogTransport) {
 	if !IsJdTaskProxyEnabled() {
 		if strings.TrimSpace(sysConfig.JdTaskProxyUrl) == "" {
-			logs.Info("[京东代理] Go查询直连: 未配置动态 IP API")
+			Info("[京东代理] Go查询直连: 未配置动态 IP API")
 		} else {
-			logs.Info("[京东代理] Go查询直连: 代理开关未启用")
+			Info("[京东代理] Go查询直连: 代理开关未启用")
 		}
 	}
 	client, _ := NewDynamicProxyHTTPClient("jd_query", 20*time.Second)
