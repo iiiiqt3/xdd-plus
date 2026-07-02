@@ -1,5 +1,6 @@
 package com.goudong.jd.data.network
 
+import com.goudong.jd.BuildConfig
 import com.goudong.jd.data.model.ApiEnvelope
 import com.goudong.jd.data.model.ApiError
 import com.goudong.jd.data.model.AppEnvironment
@@ -26,6 +27,25 @@ class ApiClient(
     val gson: Gson,
     private val appContext: android.content.Context? = null,
 ) {
+    companion object {
+        /** 与后端 X-Request-Source / X-Client-Platform 规范一致 */
+        const val REQUEST_SOURCE = "app"
+        const val CLIENT_PLATFORM = "android"
+    }
+
+    private fun withClientHeaders(headers: Map<String, String>): Map<String, String> {
+        val merged = LinkedHashMap(headers)
+        if (!merged.containsKey("X-Request-Source")) {
+            merged["X-Request-Source"] = REQUEST_SOURCE
+        }
+        if (!merged.containsKey("X-Client-Platform")) {
+            merged["X-Client-Platform"] = CLIENT_PLATFORM
+        }
+        if (!merged.containsKey("X-App-Version")) {
+            merged["X-App-Version"] = BuildConfig.VERSION_NAME
+        }
+        return merged
+    }
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .cookieJar(cookieJar)
@@ -53,7 +73,7 @@ class ApiClient(
         }
 
         val allHeaders = mutableMapOf<String, String>()
-        allHeaders.putAll(headers)
+        allHeaders.putAll(withClientHeaders(headers))
 
         if (!skipSignature && appContext != null && needsSignature(path)) {
             val signHeaders = SignatureHelper.getHeaders(appContext, path)
@@ -190,6 +210,9 @@ class ApiClient(
                 val request = Request.Builder()
                     .url(AppEnvironment.BASE_URL + path.removePrefix("/"))
                     .get()
+                    .apply {
+                        withClientHeaders(emptyMap()).forEach { (key, value) -> addHeader(key, value) }
+                    }
                     .build()
                 try {
                     client.newCall(request).execute().use { response ->
