@@ -2283,7 +2283,8 @@ final class ProjectIncomeViewController: BaseNativeViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = titleText
+        navigationItem.largeTitleDisplayMode = .never
+        applyCompactNavigationTitle(titleText)
         view.backgroundColor = .systemBackground
         let textView = UITextView()
         textView.translatesAutoresizingMaskIntoConstraints = false
@@ -2299,6 +2300,21 @@ final class ProjectIncomeViewController: BaseNativeViewController {
             textView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             textView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -16)
         ])
+    }
+
+    private func applyCompactNavigationTitle(_ text: String) {
+        let label = UILabel()
+        label.text = text
+        label.font = .systemFont(ofSize: 16, weight: .semibold)
+        label.textColor = .label
+        label.textAlignment = .center
+        label.numberOfLines = 1
+        label.lineBreakMode = .byTruncatingTail
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.85
+        let maxWidth = view.bounds.width > 0 ? view.bounds.width - 96 : UIScreen.main.bounds.width - 96
+        label.frame = CGRect(x: 0, y: 0, width: maxWidth, height: 22)
+        navigationItem.titleView = label
     }
 }
 
