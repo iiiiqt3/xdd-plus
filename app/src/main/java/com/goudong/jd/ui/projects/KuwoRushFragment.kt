@@ -55,7 +55,7 @@ class KuwoRushFragment : Fragment() {
     private var quotaGroup: RadioGroup? = null
 
     private var kuwoAuthorized = false
-    private var selectedQuotaId = "60004"
+    private var selectedQuotaId = "30002"
     private var withdrawSubmitting = false
     private var taskLogIndex = 0
     private var monitorJob: Job? = null
@@ -69,8 +69,8 @@ class KuwoRushFragment : Fragment() {
     }
 
     private val quotaOptions = listOf(
-        "60004" to "1元",
         "30002" to "2元",
+        "60004" to "1元",
         "60001" to "10元",
     )
 
@@ -223,7 +223,7 @@ class KuwoRushFragment : Fragment() {
                 }
                 setOnCheckedChangeListener { group, checkedId ->
                     val rb = group.findViewById<RadioButton>(checkedId)
-                    selectedQuotaId = rb?.tag as? String ?: "60004"
+                    selectedQuotaId = rb?.tag as? String ?: "30002"
                 }
             }
             addView(quotaGroup)
@@ -717,7 +717,7 @@ class KuwoRushFragment : Fragment() {
                 val savedPhone = json.optString("phone")
                 if (savedPhone.isNotEmpty() && savedPhone != phone) return@runCatching
                 smsInput?.setText(json.optString("smsCode"))
-                val quotaId = json.optString("quotaId", "60004")
+                val quotaId = json.optString("quotaId", "30002")
                 selectedQuotaId = quotaId
                 quotaGroup?.let { group ->
                     for (i in 0 until group.childCount) {
