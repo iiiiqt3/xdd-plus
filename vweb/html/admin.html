@@ -473,6 +473,24 @@
         #page-logmgmt .log-stats-row { margin-bottom: 10px; }
         #page-logmgmt .log-stat-card { padding: 10px 14px; }
         #page-logmgmt .log-stat-card .val { font-size: 20px; }
+        #page-jdtaskqueue .log-stats-row {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        #page-jdtaskqueue .log-stat-card {
+            padding: 10px 12px;
+            min-width: 0;
+        }
+        #page-jdtaskqueue .log-stat-card .label {
+            font-size: 11px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+        }
+        #page-jdtaskqueue .log-stat-card .val {
+            font-size: 20px;
+            line-height: 1.2;
+        }
         #page-logmgmt .log-cat-chips { margin-bottom: 8px; max-height: 56px; overflow-y: auto; }
         #page-logmgmt .log-filter-bar { margin-bottom: 8px; padding: 10px 12px; }
         #page-logmgmt .log-tabs { margin-bottom: 8px; }
@@ -497,7 +515,14 @@
         .log-tabs { display: flex; gap: 0; margin-bottom: 12px; border-bottom: 2px solid #ebeef5; }
         .log-tab { padding: 8px 18px; cursor: pointer; font-size: 13px; font-weight: 600; color: #909399; border-bottom: 2px solid transparent; margin-bottom: -2px; }
         .log-tab.active { color: #409eff; border-bottom-color: #409eff; }
-        @media (max-width: 768px) { .log-stats-row { grid-template-columns: repeat(2, 1fr); } .log-viewer { height: calc(100vh - 280px); min-height: 420px; } }
+        @media (max-width: 768px) {
+            .log-stats-row { grid-template-columns: repeat(2, 1fr); }
+            #page-jdtaskqueue .log-stats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .log-viewer { height: calc(100vh - 280px); min-height: 420px; }
+        }
+        @media (max-width: 520px) {
+            #page-jdtaskqueue .log-stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
     </style>
 </head>
 <body>
