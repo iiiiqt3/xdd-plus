@@ -232,6 +232,7 @@ struct KuwoTaskLog: Decodable {
     let time: String?
     let level: String?
     let message: String?
+    let proxyHost: String?
 }
 
 struct KuwoWithdrawTask: Decodable {

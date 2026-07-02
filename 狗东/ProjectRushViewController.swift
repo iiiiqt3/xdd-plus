@@ -27,11 +27,31 @@ enum KuwoTimeHelper {
         return BeijingTime(hour: h, min: m, sec: s, totalMs: ms)
     }
 
+    static func minutesUntilHour(_ targetHour: Int, hour: Int, min: Int) -> Int {
+        var diffMin = targetHour * 60 - (hour * 60 + min)
+        if diffMin < 0 { diffMin += 24 * 60 }
+        return diffMin
+    }
+
+    /// 到目标整点剩余毫秒；整点后 graceAfterMin 分钟内返回 0（执行窗口）
+    static func remainingMsUntilHour(_ targetHour: Int, graceAfterMin: Int = 30) -> Int64 {
+        let bj = getBeijingTime()
+        let targetMs = Int64(targetHour) * 3600 * 1000
+        var remaining = targetMs - bj.totalMs
+        if remaining <= 0 {
+            let pastMs = -remaining
+            if pastMs <= Int64(graceAfterMin) * 60 * 1000 {
+                return 0
+            }
+            remaining += 24 * 3600 * 1000
+        }
+        return max(remaining, 0)
+    }
+
     static func getNextWithdrawInfo() -> NextWithdrawInfo {
         let bj = getBeijingTime()
-        let currentMin = bj.hour * 60 + bj.min
         for h in withdrawHours {
-            let diffMin = h * 60 - currentMin
+            let diffMin = minutesUntilHour(h, hour: bj.hour, min: bj.min)
             if diffMin > 0 && diffMin <= 4 {
                 return NextWithdrawInfo(hour: h, inWindow: true, diffMin: diffMin)
             }
@@ -39,10 +59,13 @@ enum KuwoTimeHelper {
                 return NextWithdrawInfo(hour: h, inWindow: true, diffMin: 0)
             }
         }
-        for h in withdrawHours where h * 60 > currentMin {
-            return NextWithdrawInfo(hour: h, inWindow: false, diffMin: h * 60 - currentMin)
+        for h in withdrawHours {
+            let diffMin = minutesUntilHour(h, hour: bj.hour, min: bj.min)
+            if diffMin > 4 {
+                return NextWithdrawInfo(hour: h, inWindow: false, diffMin: diffMin)
+            }
         }
-        let nextDayMin = (24 * 60 - currentMin) + withdrawHours[0] * 60
+        let nextDayMin = minutesUntilHour(withdrawHours[0], hour: bj.hour, min: bj.min)
         return NextWithdrawInfo(hour: withdrawHours[0], inWindow: false, diffMin: nextDayMin)
     }
 
@@ -393,7 +416,11 @@ final class KuwoRushViewController: BaseNativeViewController {
     private func renderTaskLog(_ entry: KuwoTaskLog) {
         let icons = ["info": "ℹ️", "success": "✅", "warn": "⚠️", "error": "❌"]
         let icon = icons[entry.level ?? ""] ?? "•"
-        appendLog("[\(entry.time ?? "--")] \(icon) \(entry.message ?? "")")
+        var line = "[\(entry.time ?? "--")] \(icon) \(entry.message ?? "")"
+        if let proxy = entry.proxyHost, !proxy.isEmpty {
+            line += " [代理:\(proxy)]"
+        }
+        appendLog(line)
     }
 
     private func flushTaskLogs(_ logs: [KuwoTaskLog]?) {
@@ -530,7 +557,7 @@ final class KuwoRushViewController: BaseNativeViewController {
                 self.updateSavedTaskId(taskId: taskId, immediate: immediate, targetHour: targetHour)
                 self.monitorTask(taskId: taskId, immediate: immediate)
                 if !immediate, let info = info {
-                    self.runCountdown(info: info)
+                    self.runCountdown(info: info, taskId: taskId)
                 }
             }
         }
@@ -546,6 +573,7 @@ final class KuwoRushViewController: BaseNativeViewController {
 
     private func restoreWithdrawUi() {
         withdrawSubmitting = false
+        countdownTimer?.invalidate()
         setWithdrawUiLocked(false)
         countdownLabel.text = ""
     }
@@ -553,19 +581,34 @@ final class KuwoRushViewController: BaseNativeViewController {
     private func monitorTask(taskId: String, immediate: Bool) {
         monitorTimer?.invalidate()
         var pollCount = 0
-        let maxPoll = immediate ? 120 : 150
+        var errorCount = 0
+        let maxPoll = immediate ? 120 : 600
         let interval = immediate ? 0.25 : 0.8
         monitorTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] timer in
             guard let self = self else { timer.invalidate(); return }
             pollCount += 1
-            if pollCount > maxPoll {
-                timer.invalidate()
-                self.countdownLabel.text = "⏰ 查询超时，请返回页面刷新查看结果"
-                return
-            }
             PortalService.shared.fetchKuwoWithdrawStatus(taskId: taskId) { result in
-                guard case .success(let task) = result, let task = task else { return }
-                _ = self.applyTaskResult(task: task, immediate: immediate)
+                switch result {
+                case .failure:
+                    errorCount += 1
+                    if errorCount > 20 {
+                        timer.invalidate()
+                        self.countdownLabel.text = "⏰ 网络异常，请返回页面查看结果"
+                    }
+                case .success(let task):
+                    guard let task = task else { return }
+                    errorCount = 0
+                    if task.status == "pending" || task.status == "running" {
+                        _ = self.applyTaskResult(task: task, immediate: immediate)
+                        return
+                    }
+                    if self.applyTaskResult(task: task, immediate: immediate) {
+                        timer.invalidate()
+                    }
+                }
+            }
+            if pollCount > maxPoll {
+                self.countdownLabel.text = "⏰ 仍在等待后端，继续同步…"
             }
         }
     }
@@ -579,6 +622,7 @@ final class KuwoRushViewController: BaseNativeViewController {
             return false
         case "completed":
             monitorTimer?.invalidate()
+            countdownTimer?.invalidate()
             countdownLabel.text = "✅ 抢兑已完成"
             appendLog("--- 任务结束 ---")
             restoreWithdrawUi()
@@ -586,6 +630,7 @@ final class KuwoRushViewController: BaseNativeViewController {
             return true
         case "failed":
             monitorTimer?.invalidate()
+            countdownTimer?.invalidate()
             countdownLabel.text = "❌ 抢兑失败"
             appendLog("--- 任务失败 ---")
             restoreWithdrawUi()
@@ -596,24 +641,33 @@ final class KuwoRushViewController: BaseNativeViewController {
         }
     }
 
-    private func runCountdown(info: KuwoTimeHelper.NextWithdrawInfo) {
+    private func runCountdown(info: KuwoTimeHelper.NextWithdrawInfo, taskId: String) {
         countdownTimer?.invalidate()
         let targetHour = info.hour
         let targetLabel = KuwoTimeHelper.formatHour(targetHour)
+        var fired = false
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
             guard let self = self else { timer.invalidate(); return }
-            let bj = KuwoTimeHelper.getBeijingTime()
-            let targetMs = Int64(targetHour) * 3600 * 1000
-            if targetMs > bj.totalMs {
-                let remaining = targetMs - bj.totalMs
+            let remaining = KuwoTimeHelper.remainingMsUntilHour(targetHour)
+            if remaining > 20 * 3600 * 1000 {
+                if !fired {
+                    fired = true
+                    self.countdownLabel.text = "🚀 后端正在执行 \(targetLabel) 抢兑..."
+                    self.monitorTask(taskId: taskId, immediate: false)
+                }
+                timer.invalidate()
+                return
+            }
+            if remaining > 0 {
                 let rMin = remaining / 60000
                 let rSec = (remaining % 60000) / 1000
                 self.countdownLabel.text = "⏳ \(targetLabel) 自动抢兑 — 剩余 \(rMin)分\(rSec)秒"
-            } else {
-                timer.invalidate()
+            } else if !fired {
+                fired = true
                 self.countdownLabel.text = "🚀 后端正在执行 \(targetLabel) 抢兑..."
                 self.appendLog("⏰ 到达抢兑时间 \(targetLabel)，等待后端日志同步...")
-                self.clearSavedState()
+                self.monitorTask(taskId: taskId, immediate: false)
+                timer.invalidate()
             }
         }
     }
@@ -649,22 +703,70 @@ final class KuwoRushViewController: BaseNativeViewController {
             refreshQuotaButtons()
         }
         let savedPhone = dict["phone"] as? String ?? phone
-        PortalService.shared.fetchKuwoWithdrawStatus(phone: savedPhone) { [weak self] result in
-            guard let self = self else { return }
-            var taskId = dict["taskId"] as? String
-            if case .success(let active) = result, let active = active,
-               active.status == "pending" || active.status == "running" {
-                taskId = active.id
+        let taskIdFromState = dict["taskId"] as? String
+
+        func finishRestore(taskId: String, active: KuwoWithdrawTask?, taskById: KuwoWithdrawTask? = nil) {
+            if let active = active, active.status == "completed" || active.status == "failed" {
+                self.taskLogIndex = active.logs?.count ?? 0
+                _ = self.applyTaskResult(task: active, immediate: (dict["immediate"] as? Bool) ?? false)
+                return
             }
-            guard let taskId = taskId, !taskId.isEmpty else { return }
+            guard !taskId.isEmpty else { return }
             self.appendLog("🔄 检测到进行中的抢兑任务，已恢复监控")
-            self.taskLogIndex = 0
+            let logs = active?.logs ?? taskById?.logs
+            self.taskLogIndex = logs?.count ?? 0
             self.setWithdrawUiLocked(true)
-            let immediate = (dict["immediate"] as? Bool) ?? false
+            let immediate = (dict["immediate"] as? Bool) ?? active?.immediate ?? false
+            let hour = dict["targetHour"] as? Int ?? active?.targetHour ?? taskById?.targetHour ?? 0
             self.monitorTask(taskId: taskId, immediate: immediate)
             if !immediate {
-                let hour = dict["targetHour"] as? Int ?? 0
-                self.runCountdown(info: KuwoTimeHelper.NextWithdrawInfo(hour: hour, inWindow: true, diffMin: 1))
+                let remaining = KuwoTimeHelper.remainingMsUntilHour(hour)
+                if remaining > 0 {
+                    self.runCountdown(info: KuwoTimeHelper.NextWithdrawInfo(hour: hour, inWindow: true, diffMin: 1), taskId: taskId)
+                } else {
+                    self.countdownLabel.text = "🚀 后端正在执行 \(KuwoTimeHelper.formatHour(hour)) 抢兑..."
+                    self.appendLog("🔄 倒计时已结束，等待后端执行结果…")
+                }
+            }
+        }
+
+        if let taskId = taskIdFromState, !taskId.isEmpty {
+            PortalService.shared.fetchKuwoWithdrawStatus(taskId: taskId) { [weak self] result in
+                guard let self = self else { return }
+                let taskById: KuwoWithdrawTask?
+                switch result {
+                case .success(let task): taskById = task
+                case .failure: taskById = nil
+                }
+                if let taskById = taskById, taskById.status == "completed" || taskById.status == "failed" {
+                    finishRestore(taskId: taskId, active: taskById)
+                    return
+                }
+                PortalService.shared.fetchKuwoWithdrawStatus(phone: savedPhone) { result2 in
+                    var resolvedTaskId = taskId
+                    var active: KuwoWithdrawTask?
+                    switch result2 {
+                    case .success(let task): active = task
+                    case .failure: active = nil
+                    }
+                    if let active = active, active.status == "pending" || active.status == "running" {
+                        resolvedTaskId = active.id ?? taskId
+                    } else if active == nil {
+                        active = taskById
+                    }
+                    finishRestore(taskId: resolvedTaskId, active: active, taskById: taskById)
+                }
+            }
+        } else {
+            PortalService.shared.fetchKuwoWithdrawStatus(phone: savedPhone) { [weak self] result in
+                guard let self = self else { return }
+                let active: KuwoWithdrawTask?
+                switch result {
+                case .success(let task): active = task
+                case .failure: active = nil
+                }
+                let taskId = active?.id ?? ""
+                finishRestore(taskId: taskId, active: active)
             }
         }
     }
