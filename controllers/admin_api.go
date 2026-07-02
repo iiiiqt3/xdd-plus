@@ -2457,3 +2457,71 @@ func (c *AdminApiController) CleanupLogs() {
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": fmt.Sprintf("已清理 %d 个过期日志文件", n), "data": n}
 	c.ServeJSON()
 }
+
+// ===================== 京东用户任务队列 =====================
+
+func (c *AdminApiController) GetJdTaskQueue() {
+	stats, tasks := models.GetJdTaskScheduler().AdminGetSnapshot()
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"stats": stats,
+			"tasks": tasks,
+		},
+	}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) KillJdTaskQueue() {
+	var req struct {
+		JobID     string `json:"jobId"`
+		TaskLogID string `json:"taskLogId"`
+		UserID    int    `json:"userId"`
+		Cleanup   bool   `json:"cleanup"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+
+	scheduler := models.GetJdTaskScheduler()
+
+	if req.Cleanup {
+		n := models.AdminCleanupOrphanNodes()
+		c.Data["json"] = map[string]interface{}{"code": 0, "msg": fmt.Sprintf("已清理 %d 个孤儿 Node 进程", n), "data": n}
+		c.ServeJSON()
+		return
+	}
+
+	if req.TaskLogID != "" {
+		scheduler.StopTaskLog(req.TaskLogID)
+		models.Admin().Infof("管理员停止 portal 任务批次 %s", req.TaskLogID)
+		c.Data["json"] = map[string]interface{}{"code": 0, "msg": "已停止该批次全部任务"}
+		c.ServeJSON()
+		return
+	}
+
+	if req.UserID > 0 {
+		n := scheduler.AdminKillUserJobs(req.UserID)
+		models.Admin().Infof("管理员停止用户 %d 的 %d 个 JD 任务", req.UserID, n)
+		c.Data["json"] = map[string]interface{}{"code": 0, "msg": fmt.Sprintf("已停止该用户 %d 个任务", n), "data": n}
+		c.ServeJSON()
+		return
+	}
+
+	if req.JobID == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请指定 jobId、taskLogId 或 userId"}
+		c.ServeJSON()
+		return
+	}
+
+	if err := scheduler.AdminKillJob(req.JobID); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	models.Admin().Infof("管理员停止 JD 任务 %s", req.JobID)
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "任务已停止"}
+	c.ServeJSON()
+}

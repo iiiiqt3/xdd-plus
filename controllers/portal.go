@@ -753,17 +753,14 @@ func (c *PortalController) JdTaskExecute() {
 	taskLogId := fmt.Sprintf("%s_%d_%d", req.TaskId, c.PortalUserID, time.Now().UnixNano())
 	c.logPortalInfo("启动京东任务 task=%s name=%s accounts=%v", req.TaskId, req.TaskName, req.AccountIndexes)
 
-	// 创建日志通道
+	// 创建日志通道并入队
 	models.CreateTaskLogChannel(taskLogId)
-
-	// 注册运行中的任务
-	models.RegisterRunningTask(c.PortalUserID, req.TaskId, req.AccountIndexes, taskLogId)
-
-	// 启动任务（异步执行）
-	go func() {
-		defer models.UnregisterRunningTask(c.PortalUserID, req.TaskId, taskLogId)
-		models.ExecutePortalJdTask(c.PortalUserID, req.TaskId, req.TaskName, req.AccountIndexes, taskLogId)
-	}()
+	if err := models.SubmitPortalJdTask(c.PortalUserID, req.TaskId, req.TaskName, req.AccountIndexes, taskLogId); err != nil {
+		models.RemoveTaskLogChannel(taskLogId)
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
 
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "任务已启动", "data": map[string]string{"taskId": taskLogId}}
 	c.ServeJSON()

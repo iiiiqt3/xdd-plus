@@ -511,6 +511,7 @@
         <div class="nav-divider"></div>
         <div class="nav-item" data-page="jdcookies" onclick="switchPage('jdcookies')"><i class="fas fa-cookie"></i><span>京东账号</span></div>
         <div class="nav-item" data-page="jdcrontasks" onclick="switchPage('jdcrontasks')"><i class="fas fa-list-check"></i><span>京东任务列表</span></div>
+        <div class="nav-item" data-page="jdtaskqueue" onclick="switchPage('jdtaskqueue')"><i class="fas fa-layer-group"></i><span>用户任务队列</span></div>
         <div class="nav-item" data-page="users" onclick="switchPage('users')"><i class="fas fa-users"></i><span>用户管理</span></div>
         <div class="nav-item" data-page="coinlogs" onclick="switchPage('coinlogs')"><i class="fas fa-history"></i><span>积分变动</span></div>
         <div class="nav-divider"></div>
@@ -1296,6 +1297,56 @@
                     </table>
                 </div>
                 <div class="pagination" id="jdCronPagination"></div>
+            </div>
+        </div>
+
+        <!-- ========= 用户 JD 任务队列 ========= -->
+        <div id="page-jdtaskqueue" class="page-section">
+            <div class="log-stats-row" id="jdTaskQueueStatsRow">
+                <div class="log-stat-card"><div class="label">运行中</div><div class="val" id="jdqStatRunning">0</div></div>
+                <div class="log-stat-card"><div class="label">排队中</div><div class="val" id="jdqStatQueued">0</div></div>
+                <div class="log-stat-card"><div class="label">活跃任务</div><div class="val" id="jdqStatTotal">0</div></div>
+                <div class="log-stat-card"><div class="label">活跃用户</div><div class="val" id="jdqStatUsers">0</div></div>
+                <div class="log-stat-card"><div class="label">Worker 上限</div><div class="val" id="jdqStatWorkers">200</div></div>
+            </div>
+            <div class="card">
+                <div class="toolbar">
+                    <div style="font-size:13px;color:#666;">
+                        Portal / App / 机器人 共用队列 · 单用户最多 <span id="jdqStatUserLimit">10</span> 个 · 超时 <span id="jdqStatTimeout">60</span> 分钟
+                    </div>
+                    <div class="toolbar-actions">
+                        <label style="font-size:12px;display:flex;align-items:center;gap:4px;margin-right:8px;">
+                            <input type="checkbox" id="jdqAutoRefresh" checked /> 自动刷新(5s)
+                        </label>
+                        <div class="search-box has-input-btn" style="max-width:240px;">
+                            <input type="text" id="jdqSearch" placeholder="搜索用户/PIN/任务..." onkeyup="if(event.key==='Enter')renderJdTaskQueue()">
+                            <button class="btn-search" onclick="renderJdTaskQueue()" title="搜索"><i class="fas fa-search"></i></button>
+                        </div>
+                        <button class="btn btn-warning btn-sm" onclick="cleanupJdOrphanNodes()"><i class="fas fa-broom"></i> 清理孤儿Node</button>
+                        <button class="btn btn-info btn-sm" onclick="loadJdTaskQueue(true)"><i class="fas fa-sync-alt"></i> 刷新</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead><tr>
+                            <th style="min-width:50px;">序号</th>
+                            <th style="min-width:70px;">用户ID</th>
+                            <th style="min-width:90px;">来源</th>
+                            <th style="min-width:100px;">状态</th>
+                            <th style="min-width:120px;">任务</th>
+                            <th style="min-width:120px;">账号PIN</th>
+                            <th style="min-width:100px;">脚本</th>
+                            <th style="min-width:60px;">PID</th>
+                            <th style="min-width:70px;">排队位</th>
+                            <th style="min-width:140px;">入队时间</th>
+                            <th style="min-width:140px;">开始时间</th>
+                            <th style="min-width:90px;">已跑/等待</th>
+                            <th style="min-width:160px;text-align:center;" class="col-action-sticky">操作</th>
+                        </tr></thead>
+                        <tbody id="jdTaskQueueTableBody"></tbody>
+                    </table>
+                </div>
+                <div style="padding:12px 0 4px;font-size:12px;color:#999;" id="jdTaskQueueHint">加载中...</div>
             </div>
         </div>
 
@@ -2213,6 +2264,7 @@ function switchPage(page) {
         qlcontainers: ['青龙活动容器', '容器管理 / 青龙活动容器'],
         qlenvs: ['青龙活动变量', '容器管理 / 青龙活动变量'], jdcontainers: ['京东容器', '容器管理 / 京东容器'],
         jdcrontasks: ['京东任务列表', '京东容器 / 京东任务列表'],
+        jdtaskqueue: ['用户任务队列', '京东容器 / 用户任务队列'],
         qlcrontasks: ['青龙活动任务', '青龙活动 / 青龙活动任务'],
         logmgmt: ['日志管理', '系统设置 / 日志管理'],
         sysconfig: ['系统配置', '系统设置 / 系统配置'],
@@ -2229,6 +2281,7 @@ function switchPage(page) {
         containers: loadContainers,
         qlcontainers: loadQLContainers,
         qlenvs: loadQLEnvConfigs, jdcontainers: loadJdContainers, jdcrontasks: initJdCronTaskPage,
+        jdtaskqueue: initJdTaskQueuePage,
         qlcrontasks: initQlCronTaskPage, logmgmt: initLogMgmtPage, sysconfig: function() { loadSysConfig(); }, gameconfig: loadGameConfig,
     };
     if (loaders[page]) loaders[page]();
@@ -7235,6 +7288,143 @@ async function cleanupLogs() {
         loadLogStats();
         if (_logTab === 'files') loadLogFileList();
     } catch(e) { toast('清理失败: ' + e.message, 'error'); }
+}
+
+// ============ 用户 JD 任务队列 ============
+var _jdTaskQueueData = { stats: {}, tasks: [] };
+var _jdTaskQueueTimer = null;
+
+function initJdTaskQueuePage() {
+    loadJdTaskQueue(true);
+    if (_jdTaskQueueTimer) clearInterval(_jdTaskQueueTimer);
+    _jdTaskQueueTimer = setInterval(function() {
+        if (currentPage !== 'jdtaskqueue') return;
+        var auto = document.getElementById('jdqAutoRefresh');
+        if (auto && auto.checked) loadJdTaskQueue(false);
+    }, 5000);
+}
+
+async function loadJdTaskQueue(showToast) {
+    try {
+        var res = await api.get('/api/admin/jdtasks');
+        if (res.code !== 0) throw new Error(res.msg || '加载失败');
+        _jdTaskQueueData = res.data || { stats: {}, tasks: [] };
+        updateJdTaskQueueStats(_jdTaskQueueData.stats || {});
+        renderJdTaskQueue();
+        var hint = document.getElementById('jdTaskQueueHint');
+        if (hint) hint.textContent = '最后更新: ' + new Date().toLocaleTimeString() + ' · 共 ' + ((_jdTaskQueueData.tasks || []).length) + ' 条活跃任务';
+        if (showToast) toast('已刷新', 'success');
+    } catch (e) {
+        toast('加载任务队列失败: ' + e.message, 'error');
+    }
+}
+
+function updateJdTaskQueueStats(stats) {
+    var map = {
+        jdqStatRunning: stats.running || 0,
+        jdqStatQueued: stats.queued || 0,
+        jdqStatTotal: stats.totalActive || 0,
+        jdqStatUsers: stats.activeUsers || 0,
+        jdqStatWorkers: stats.maxWorkers || 200,
+        jdqStatUserLimit: stats.maxUserJobs || 10,
+        jdqStatTimeout: stats.jobTimeoutMinutes || 60,
+    };
+    Object.keys(map).forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = map[id];
+    });
+}
+
+function renderJdTaskQueue() {
+    var tbody = document.getElementById('jdTaskQueueTableBody');
+    if (!tbody) return;
+    var keyword = ((document.getElementById('jdqSearch') || {}).value || '').trim().toLowerCase();
+    var tasks = (_jdTaskQueueData.tasks || []).slice();
+    if (keyword) {
+        tasks = tasks.filter(function(t) {
+            var hay = [t.userId, t.ptPin, t.taskType, t.taskName, t.script, t.jobId, t.taskLogId, t.source, t.state].join(' ').toLowerCase();
+            return hay.indexOf(keyword) >= 0;
+        });
+    }
+    tasks.sort(function(a, b) {
+        if (a.state !== b.state) return a.state === 'running' ? -1 : 1;
+        return (a.queuePos || 0) - (b.queuePos || 0);
+    });
+    if (!tasks.length) {
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#999;padding:28px;">暂无排队或运行中的任务</td></tr>';
+        return;
+    }
+    tbody.innerHTML = tasks.map(function(t, i) {
+        var stateTag = t.state === 'running'
+            ? '<span class="tag tag-success">运行中</span>'
+            : '<span class="tag tag-warning">排队中</span>';
+        var sourceTag = t.source === 'portal'
+            ? '<span class="tag tag-info">Portal</span>'
+            : '<span class="tag">Bot</span>';
+        var dur = t.state === 'running' ? (t.runningFor || '-') : (t.waitFor || '-');
+        var batchBtn = t.taskLogId
+            ? '<button class="btn btn-warning btn-xs" onclick="killJdTaskBatch(\'' + escHtml(t.taskLogId) + '\')">停批次</button> '
+            : '';
+        return '<tr>' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td>' + t.userId + '</td>' +
+            '<td>' + sourceTag + '</td>' +
+            '<td>' + stateTag + '</td>' +
+            '<td title="' + escHtml(t.taskType) + '">' + escHtml(t.taskName || t.taskType) + '</td>' +
+            '<td style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;" title="' + escHtml(t.ptPin) + '">' + escHtml(t.ptPin) + '</td>' +
+            '<td style="font-size:12px;">' + escHtml(t.script || '-') + '</td>' +
+            '<td>' + (t.pid || '-') + '</td>' +
+            '<td>' + (t.state === 'queued' ? t.queuePos : '-') + '</td>' +
+            '<td style="font-size:12px;">' + escHtml(t.enqueuedAt || '-') + '</td>' +
+            '<td style="font-size:12px;">' + escHtml(t.startedAt || '-') + '</td>' +
+            '<td>' + escHtml(dur) + '</td>' +
+            '<td class="col-action-sticky" style="white-space:nowrap;">' +
+                batchBtn +
+                '<button class="btn btn-danger btn-xs" onclick="killJdTaskJob(\'' + escHtml(t.jobId) + '\')">停止</button> ' +
+                '<button class="btn btn-secondary btn-xs" onclick="killJdTaskUser(' + t.userId + ')">停用户</button>' +
+            '</td>' +
+        '</tr>';
+    }).join('');
+}
+
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function killJdTaskJob(jobId) {
+    if (!confirm('确认停止任务 ' + jobId + ' ?')) return;
+    try {
+        var res = await api.post('/api/admin/jdtasks/kill', { jobId: jobId });
+        toast(res.msg || '已停止', res.code === 0 ? 'success' : 'error');
+        if (res.code === 0) loadJdTaskQueue(false);
+    } catch (e) { toast('操作失败: ' + e.message, 'error'); }
+}
+
+async function killJdTaskBatch(taskLogId) {
+    if (!confirm('确认停止该批次全部任务？\n' + taskLogId)) return;
+    try {
+        var res = await api.post('/api/admin/jdtasks/kill', { taskLogId: taskLogId });
+        toast(res.msg || '已停止', res.code === 0 ? 'success' : 'error');
+        if (res.code === 0) loadJdTaskQueue(false);
+    } catch (e) { toast('操作失败: ' + e.message, 'error'); }
+}
+
+async function killJdTaskUser(userId) {
+    if (!confirm('确认停止用户 ' + userId + ' 的全部 JD 任务？')) return;
+    try {
+        var res = await api.post('/api/admin/jdtasks/kill', { userId: userId });
+        toast(res.msg || '已停止', res.code === 0 ? 'success' : 'error');
+        if (res.code === 0) loadJdTaskQueue(false);
+    } catch (e) { toast('操作失败: ' + e.message, 'error'); }
+}
+
+async function cleanupJdOrphanNodes() {
+    if (!confirm('确认清理所有 6dylan6_jdpro 相关的孤儿 Node 进程？')) return;
+    try {
+        var res = await api.post('/api/admin/jdtasks/kill', { cleanup: true });
+        toast(res.msg || '清理完成', res.code === 0 ? 'success' : 'error');
+        if (res.code === 0) loadJdTaskQueue(false);
+    } catch (e) { toast('清理失败: ' + e.message, 'error'); }
 }
 
 </script>

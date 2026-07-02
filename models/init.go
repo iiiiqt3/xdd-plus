@@ -31,6 +31,7 @@ func init() {
 	initCron()
 	go initTgBot()
 	initTask()
+	InitJdTaskScheduler()
 	initNolan()
 	initWX()
 	tempToken()
