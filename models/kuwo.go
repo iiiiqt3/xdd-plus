@@ -34,9 +34,9 @@ const (
 	kuwoWithdrawURL = "https://integralapi.kuwo.cn/api/v1/online/sign/v1/getWithdraw"
 
 	kuwoSessionCacheTTL     = 4 * time.Minute // 与倒计时窗口一致，短信码有效期5分钟
-	kuwoWithdrawRounds        = 3
-	kuwoWithdrawRetryPerRound = 10
-	kuwoWithdrawStaggerMs   = 30
+	kuwoWithdrawRounds        = 1
+	kuwoWithdrawRetryPerRound = 30
+	kuwoWithdrawStaggerMs   = 200
 	kuwoScheduledLeadMs       = 30 // 整点前提前触发（毫秒）
 	kuwoWarmupBeforeSec       = 5
 	kuwoSessionRefreshBefore  = 35 * time.Second
