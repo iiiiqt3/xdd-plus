@@ -1079,7 +1079,7 @@ func replexQuan_fcwb_auto(info string, sender *Sender) string {
 }
 
 func run_fcwb_help_Task(sender *Sender, envVars map[string]string, FileName string) string {
-	Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	JD().Infof(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
 	ApplyJdTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/6dylan6_jdpro_help/" + FileName + ".js"
 
@@ -1096,7 +1096,7 @@ func run_fcwb_help_Task(sender *Sender, envVars map[string]string, FileName stri
 	}
 
 	output, err := cmd.CombinedOutput()
-	Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
+	JD().Infof(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
 
 	if err != nil && strings.TrimSpace(string(output)) == "" {
 		JD().Errorf("执行 JavaScript 脚本失败: %v", err)
@@ -1110,7 +1110,7 @@ func run_fcwb_help_Task(sender *Sender, envVars map[string]string, FileName stri
 //##赚赚专属
 
 func run_fcwb_help_Task_zz(sender *Sender, envVars map[string]string, FileName string) string {
-	Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	JD().Infof(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
 	ApplyJdTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/6dylan6_jdpro_help/" + FileName + ".js"
 
@@ -1127,7 +1127,7 @@ func run_fcwb_help_Task_zz(sender *Sender, envVars map[string]string, FileName s
 	}
 
 	output, err := cmd.CombinedOutput()
-	Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
+	JD().Infof(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
 
 	if err != nil && strings.TrimSpace(string(output)) == "" {
 		JD().Errorf("执行 JavaScript 脚本失败: %v", err)
@@ -1141,7 +1141,7 @@ func run_fcwb_help_Task_zz(sender *Sender, envVars map[string]string, FileName s
 //##环境的
 
 func run_fcwb_help_Task1(sender *Sender, envVars map[string]string, FileName string) string {
-	Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	JD().Infof(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
 	ApplyJdProTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/huanjing/" + FileName + ".js"
 
@@ -1158,7 +1158,7 @@ func run_fcwb_help_Task1(sender *Sender, envVars map[string]string, FileName str
 	}
 
 	output, err := cmd.CombinedOutput()
-	Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
+	JD().Infof(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
 
 	if err != nil && strings.TrimSpace(string(output)) == "" {
 		JD().Errorf("执行 JavaScript 脚本失败: %v", err)
@@ -1365,7 +1365,7 @@ func replexQuan_fcwb_help1(info string, sender *Sender, FileName string) string 
 }
 
 func run_ncxcx_help_Task(sender *Sender, envVars map[string]string, FileName string) string {
-	Info(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
+	JD().Infof(fmt.Sprintf("开始运行%s任务", FileName)) // 使用 FileName 动态生成任务名称
 	ApplyJdTaskProxyEnvs(envVars)
 	jsFilePath := ExecPath + "/scripts/6dylan6_jdpro_help/" + FileName + ".js"
 
@@ -1382,7 +1382,7 @@ func run_ncxcx_help_Task(sender *Sender, envVars map[string]string, FileName str
 	}
 
 	output, err := cmd.CombinedOutput()
-	Info(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
+	JD().Infof(fmt.Sprintf("%s任务脚本输出: %s", FileName, string(output)))
 
 	if err != nil && strings.TrimSpace(string(output)) == "" {
 		JD().Errorf("执行 JavaScript 脚本失败: %v", err)
@@ -1471,12 +1471,12 @@ func Exportck(FileName string) {
 	for _, ck := range cks {
 		msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
 	}
-	Info("导出所有账号")
+	JD().Infof("导出所有账号")
 
 	// 使用传入的 FileName 参数创建文件
 	f, err := os.OpenFile(ExecPath+"/scripts/6dylan6_jdpro_help/"+FileName+".txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
-		Warn(fmt.Sprintf("创建%s.txt失败，", FileName), err)
+		JD().Warnf(fmt.Sprintf("创建%s.txt失败，", FileName), err)
 		return
 	}
 
@@ -1493,12 +1493,12 @@ func Exportck_huanjing(FileName string) {
 	for _, ck := range cks {
 		msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
 	}
-	Info("导出所有账号")
+	JD().Infof("导出所有账号")
 
 	// 使用传入的 FileName 参数创建文件
 	f, err := os.OpenFile(ExecPath+"/scripts/huanjing/"+FileName+".txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
-		Warn(fmt.Sprintf("创建%s.txt失败，", FileName), err)
+		JD().Warnf(fmt.Sprintf("创建%s.txt失败，", FileName), err)
 		return
 	}
 

@@ -140,7 +140,7 @@ type Cookie struct {
 func (c *LoginController) GetQrcode1() {
 	rsp, err := httplib.Post("https://api.kukuqaq.com/jd/qrcode").Response()
 	if err != nil {
-		models.Info(err)
+		models.App().Infof("%v", err)
 	}
 	body, err1 := ioutil.ReadAll(rsp.Body)
 	if err1 == nil {
@@ -394,12 +394,12 @@ func CheckLogin(token, cookie, okl_token string) (string, *models.JdCookie) {
 			models.UpdateCookie(&ck)
 			msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
 			(&models.JdCookie{}).Push(msg)
-			models.Info(msg)
+			models.App().Infof("%s", msg)
 		} else {
 			models.NewJdCookie(&ck)
 			msg := fmt.Sprintf("添加账号，%s", ck.PtPin)
 			(&models.JdCookie{}).Push(msg)
-			models.Info(msg)
+			models.App().Infof("%s", msg)
 		}
 		go func() {
 			models.Save <- &ck
@@ -626,7 +626,7 @@ func (c *LoginController) IsAdmin() {
 			c.SetSession("portal_account_id", webAccount.ID)
 			c.SetSession("portal_user_number", user.Number)
 			models.UpdateUserActiveAt(user.Number)
-			models.Info("用户[%s]网页登录成功，绑定编号[%d]", webAccount.Username, user.Number)
+			models.Portal().Infof("用户[%s]网页登录成功，绑定编号[%d]", webAccount.Username, user.Number)
 			c.Ctx.WriteString("登录")
 			return
 		}
@@ -644,7 +644,7 @@ func (c *LoginController) IsAdmin() {
 		if account == models.Config.Account && pin == models.Config.Master {
 			resetLoginFails(ip)
 			c.SetSession("token", pin)
-			models.Info("管理员[%s]登录成功", account)
+			models.Admin().Infof("管理员[%s]登录成功", account)
 			c.Ctx.WriteString("登录")
 			return
 		}
@@ -653,7 +653,7 @@ func (c *LoginController) IsAdmin() {
 	if value != "" && pin == value {
 		resetLoginFails(ip)
 		c.SetSession("token", value)
-		models.Info("随机Token登录成功")
+		models.Admin().Infof("随机Token登录成功")
 		c.Ctx.WriteString("登录")
 		return
 	}
@@ -747,7 +747,7 @@ func (c *LoginController) SMSLogin() {
 	cookie := c.GetString("ck")
 	qq := c.GetString("qq")
 	token := c.GetString("token")
-	models.Info(cookie)
+	models.App().Infof("%s", cookie)
 
 	if token == models.Config.ApiToken || models.Config.ApiToken == "" {
 		ptKey := FetchJdCookieValue("pt_key", cookie)
@@ -976,7 +976,7 @@ func truncateStr(s string, maxLen int) string {
 func (c *LoginController) WskeyLogin() {
 	cookie := string(c.Ctx.Input.RequestBody)
 	cookie, _ = url.QueryUnescape(cookie)
-	models.Info(cookie)
+	models.App().Infof("%s", cookie)
 	Wskey := FetchJdCookieValue("wskey", cookie)
 	ptPin := FetchJdCookieValue("pin", cookie)
 	ptPin = url.QueryEscape(ptPin)

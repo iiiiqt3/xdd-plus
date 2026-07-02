@@ -25,8 +25,8 @@ func initTgBot() {
 			Poller: &tb.LongPoller{Timeout: 10 * time.Second},
 		})
 		if err != nil {
-			Warn("监听tgbot失败")
-			Info(err)
+			Bot().Warnf("监听tgbot失败")
+			Bot().Infof("%v", err)
 			return
 		}
 		handle := func(m *tb.Message) {
@@ -69,7 +69,7 @@ func initTgBot() {
 			handle(m)
 		})
 		b.Handle(tb.OnText, handle)
-		Info("监听tgbot")
+		Bot().Infof("监听tgbot")
 		b.Start()
 	}()
 }
@@ -88,13 +88,13 @@ func SendTgImg(uid int, file []byte) {
 
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
-		Warn("zqdyj.txt失败，", err)
+		Bot().Warnf("zqdyj.txt失败，%v", err)
 	}
 	f.Write(file)
 	f.Close()
 
 	img := uploadImg(filename)
-	Info(img)
+	Bot().Infof("%s", img)
 
 	os.Remove(filename)
 
@@ -127,13 +127,13 @@ func SendTggImg(gid int, uid int, file []byte, mid int, unm string) {
 
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
-		Warn("zqdyj.txt失败，", err)
+		Bot().Warnf("zqdyj.txt失败，%v", err)
 	}
 	f.Write(file)
 	f.Close()
 
 	img := uploadImg(filename)
-	Info(img)
+	Bot().Infof("%s", img)
 
 	os.Remove(filename)
 
@@ -162,7 +162,7 @@ func SendTgImg2(uid int, msg string) {
 	if b == nil || uid == 0 {
 		return
 	}
-    Info(msg)
+    Bot().Infof("%s", msg)
     b.Send(&tb.User{ID: uid}, &tb.Photo{
 		File: tb.File{
 			FileURL: msg,

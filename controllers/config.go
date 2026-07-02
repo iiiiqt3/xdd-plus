@@ -19,7 +19,7 @@ func (c *ConfigController) NextPrepare() {
 func (c *ConfigController) ListConfig() {
 
 	var config = models.ListConfig()
-	models.Info(config)
+	models.Admin().Infof("%v", config)
 
 	c.Data["json"] = map[string]interface{}{
 		"code": 200,
@@ -40,7 +40,7 @@ func (c *ConfigController) CreateOrUpdateConfig() {
 	}
 
 	msg := models.SaveSysConfig(sys)
-	models.Info(msg)
+	models.Admin().Infof("%s", msg)
 
 	c.Ctx.Output.SetStatus(200)
 	c.Ctx.Output.Body([]byte("User data saved"))

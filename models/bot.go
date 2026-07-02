@@ -227,6 +227,7 @@ if TryHandleSshMessage(sender) {
 					if codeSignals[i].Admin && !sender.IsAdmin {
 						return nil
 					}
+					UserLog().Infof("[%s][用户%d] 指令: %s", sender.Type, sender.UserID, head)
 					return codeSignals[i].Handle(sender)
 				}()
 			}
@@ -309,7 +310,7 @@ if TryHandleSshMessage(sender) {
 
 		{
 			if strings.Contains(msg, "wskey=") {
-				Info(msg + "开始WSKEY登录")
+				UserLog().Infof("%s开始WSKEY登录", msg)
 				wsKey := FetchJdCookieValue("wskey", msg)
 				ptPin := FetchJdCookieValue("pin", msg)
 				if len(ptPin) == 0 {
@@ -994,10 +995,10 @@ func AutoCollection(autocollect map[string]string) {
 	random := browser.Random()
 	req.Header("User-Agent", random)
 	marshal, _ := json.Marshal(reply)
-	Info(string(marshal))
+	Bot().Infof("%s", string(marshal))
 	req.Body(string(marshal))
 	s, _ := req.String()
-	Info(s)
+	Bot().Infof("%s", s)
 }
 
 func setupOrderResetTask() {

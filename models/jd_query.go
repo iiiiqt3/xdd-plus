@@ -126,7 +126,7 @@ func (q *JDLocalQuery) prepareBeanFarmProxy() {
 	}
 	q.proxyReady = true
 	if !IsJdTaskProxyEnabled() {
-		Info("[京东代理] 京豆/农场: 代理未启用或 API 为空，将直连")
+		JD().Infof("[京东代理] 京豆/农场: 代理未启用或 API 为空，将直连")
 		return
 	}
 	Info("[京东代理] 查询开始，为京豆/农场请求 API 取 IP")
@@ -135,10 +135,10 @@ func (q *JDLocalQuery) prepareBeanFarmProxy() {
 	if logTr != nil && logTr.ProxyHost() != "" {
 		q.proxyClient = client
 		q.proxyH5st = &JDH5ST{UA: q.UA, Pin: q.Pin, httpClient: client}
-		Info("[京东代理] 京豆/农场将经代理 %s", logTr.ProxyHost())
+		JD().Infof("[京东代理] 京豆/农场将经代理 %s", logTr.ProxyHost())
 		return
 	}
-	Warn("[京东代理] 京豆/农场: 取 IP 失败，将直连")
+	JD().Warnf("[京东代理] 京豆/农场: 取 IP 失败，将直连")
 }
 
 func (q *JDLocalQuery) queryClient(useProxy bool) *http.Client {
@@ -182,9 +182,9 @@ func (q *JDLocalQuery) Query() JDLocalQueryResult {
 	defer func() {
 		elapsed := time.Since(queryStart)
 		if q.proxyLog != nil && q.proxyLog.ProxyHost() != "" {
-			Info("[京东代理] [jd_query] 查询结束 pin=%s, 京豆/农场 %d 次经代理 %s, 耗时 %v", q.Pin, q.proxyLog.RequestCount(), q.proxyLog.ProxyHost(), elapsed)
+			JD().Infof("[京东代理] [jd_query] 查询结束 pin=%s, 京豆/农场 %d 次经代理 %s, 耗时 %v", q.Pin, q.proxyLog.RequestCount(), q.proxyLog.ProxyHost(), elapsed)
 		} else {
-			Info("[京东代理] [jd_query] 查询结束 pin=%s, 京豆/农场直连, 耗时 %v", q.Pin, elapsed)
+			JD().Infof("[京东代理] [jd_query] 查询结束 pin=%s, 京豆/农场直连, 耗时 %v", q.Pin, elapsed)
 		}
 	}()
 

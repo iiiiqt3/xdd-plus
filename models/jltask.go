@@ -140,7 +140,7 @@ func initQingLongConfigsFromYAML(yamlConfigs []YAMLQingLongConfig) {
 				Timeout:      timeout,
 			}
 		}
-		UserLog().Infof("青龙配置已从 YAML 加载 %d 个容器", len(qlManager.Configs))
+		Qinglong().Infof("青龙配置已从 YAML 加载 %d 个容器", len(qlManager.Configs))
 	}
 
 	// 如果 YAML 没有提供任何配置，使用内置默认值作为兜底
@@ -217,11 +217,11 @@ func getQingLongConfigForActivity(activityID string) *QingLongConfig {
 	if config == nil || config.QingLongConfigName == "" {
 		qlConfig := qlManager.Configs[qlManager.Default]
 		if qlConfig == nil {
-			UserLog().Infof("错误：默认青龙配置 %s 不存在", qlManager.Default)
+			Qinglong().Infof("错误：默认青龙配置 %s 不存在", qlManager.Default)
 			for _, cfg := range qlManager.Configs {
 				return cfg
 			}
-			UserLog().Infof("致命错误：没有可用的青龙配置")
+			Qinglong().Infof("致命错误：没有可用的青龙配置")
 			return nil
 		}
 		return qlConfig
@@ -229,10 +229,10 @@ func getQingLongConfigForActivity(activityID string) *QingLongConfig {
 
 	qlConfig, exists := qlManager.Configs[config.QingLongConfigName]
 	if !exists {
-		UserLog().Infof("警告：青龙配置 %s 不存在，使用默认配置 %s", config.QingLongConfigName, qlManager.Default)
+		Qinglong().Infof("警告：青龙配置 %s 不存在，使用默认配置 %s", config.QingLongConfigName, qlManager.Default)
 		qlConfig = qlManager.Configs[qlManager.Default]
 		if qlConfig == nil {
-			UserLog().Infof("致命错误：默认青龙配置不存在")
+			Qinglong().Infof("致命错误：默认青龙配置不存在")
 			return nil
 		}
 		return qlConfig
@@ -513,7 +513,7 @@ func executeScript(sender *Sender, cmdPath string, args ...string) (string, erro
 	if err != nil {
 		stderrStr := strings.TrimSpace(stderr.String())
 		stdoutStr := strings.TrimSpace(stdout.String())
-		Warn("脚本执行失败 | 命令: %s %v | 错误: %v | stderr: %s | stdout: %s", cmdPath, args, err, stderrStr, stdoutStr)
+		UserLog().Warnf("脚本执行失败 | 命令: %s %v | 错误: %v | stderr: %s | stdout: %s", cmdPath, args, err, stderrStr, stdoutStr)
 		userMsg := stderrStr
 		if userMsg == "" {
 			userMsg = stdoutStr
@@ -1531,23 +1531,23 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 				expireThreshold := time.Date(baseTime.Year(), baseTime.Month(), baseTime.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
 				if now.Before(expireThreshold) {
 					newExpireDate = baseTime.AddDate(0, 0, months).Format(DateLayout)
-					Info("按天续费（未过期）：基准日期[%s] + [%d]天 = [%s]", baseTime.Format(DateLayout), months, newExpireDate)
+					UserLog().Infof("按天续费（未过期）：基准日期[%s] + [%d]天 = [%s]", baseTime.Format(DateLayout), months, newExpireDate)
 				} else {
 					newExpireDate = GenerateExpireDateFromDays(months)
-					Info("按天续费（已过期，从今天起算）：当前时间 + [%d]天 = [%s]", months, newExpireDate)
+					UserLog().Infof("按天续费（已过期，从今天起算）：当前时间 + [%d]天 = [%s]", months, newExpireDate)
 				}
 			} else {
 				newExpireDate = GenerateExpireDateFromDays(months)
-				Info("按天新开通：当前时间 + [%d]天 = [%s]", months, newExpireDate)
+				UserLog().Infof("按天新开通：当前时间 + [%d]天 = [%s]", months, newExpireDate)
 			}
 		} else {
 			if hasOldDate {
 				newExpireDate = GenerateExpireDateFromBase(baseTime, months)
-				Info("按月续费：基准日期[%s] + [%d]个月 = [%s]", 
+				UserLog().Infof("按月续费：基准日期[%s] + [%d]个月 = [%s]", 
 					baseTime.Format(DateLayout), months, newExpireDate)
 			} else {
 				newExpireDate = GenerateExpireDate(months)
-				Info("按月新开通：当前时间 + [%d]个月 = [%s]", 
+				UserLog().Infof("按月新开通：当前时间 + [%d]个月 = [%s]", 
 					months, newExpireDate)
 			}
 		}
@@ -1596,7 +1596,7 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 				totalCoin, months, config.MonthlyCoin, userCoin-totalCoin, newExpireDate))
 		}
 		
-		Info("用户[%d] 授权活动[%s] 成功，新有效期[%s], 扣除积分[%d]", 
+		UserLog().Infof("用户[%d] 授权活动[%s] 成功，新有效期[%s], 扣除积分[%d]", 
 			sender.UserID, config.Name, newExpireDate, totalCoin)
 	}()
 

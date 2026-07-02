@@ -26,7 +26,7 @@ func initHandle() {
 				return sb.Where(fmt.Sprintf("%s >= ? and %s = ?", Priority, Available), 0, True)
 			})
 
-			Info(fmt.Sprintf("总共%d个号", len(cks)))
+			JD().Infof(fmt.Sprintf("总共%d个号", len(cks)))
 			var tmp []JdCookie
 			for _, ck := range cks {
 				if ck.Priority >= 0 {
@@ -45,15 +45,15 @@ func initHandle() {
 			cookies += "}"
 			f, err := os.OpenFile(ExecPath+"/scripts/jdCookie.js", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 			if err != nil {
-				Warn("创建jdCookie.js失败，", err)
+				JD().Warnf("创建jdCookie.js失败，", err)
 			}
 			f1, err := os.OpenFile(ExecPath+"/scripts/6dylan6_jdpro/jdCookie.js", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 			if err != nil {
-				Warn("创建jdCookie.js失败，", err)
+				JD().Warnf("创建jdCookie.js失败，", err)
 			}
               f2, err := os.OpenFile(ExecPath+"/scripts/feverrun_my_scripts/jdCookie.js", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 			if err != nil {
-				Warn("创建jdCookie.js失败，", err)
+				JD().Warnf("创建jdCookie.js失败，", err)
 			}
 			
 			f2.WriteString(fmt.Sprintf(`
@@ -136,7 +136,7 @@ module.exports = cookies`, cookies))
 					residentCkpin := make(map[string]bool) //存储车头ck pin
 					cl := 0
 					sl := 0 // 新增：统计 Special 模式可用容器的数量
-					Info("进入VIP模式")
+					JD().Infof("进入VIP模式")
 					// 遍历容器，读取容器配置并清空每个容器的 cookies
 					for i := range Config.Containers {
 						(&Config.Containers[i]).read()
@@ -173,7 +173,7 @@ module.exports = cookies`, cookies))
 								if ck.Appoint == True {
 									// 如果没有可用的 Special 容器，打印日志信息
 									if sl == 0 {
-										Warn("没有可用的 Special 容器来分配该 cookie")
+										JD().Warnf("没有可用的 Special 容器来分配该 cookie")
 										continue
 									}
 									assigned := false
@@ -186,7 +186,7 @@ module.exports = cookies`, cookies))
 										}
 									}
 									if !assigned {
-										Warn("没有找到适合的 Special 容器来分配该 cookie")
+										JD().Warnf("没有找到适合的 Special 容器来分配该 cookie")
 									}
 								}
 								// 如果 Hack 为 true，无论 Appoint 是否为 true，都跳过该 cookie，不进行负载均衡

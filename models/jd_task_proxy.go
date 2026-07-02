@@ -67,12 +67,12 @@ func JDProxyFunc() func(*http.Request) (*url.URL, error) {
 		return nil
 	}
 	if u := GetJDProxyURL(); u != nil {
-		Info("[京东代理] asset 请求走代理: %s", u.Host)
+		JD().Infof("[京东代理] asset 请求走代理: %s", u.Host)
 		return func(*http.Request) (*url.URL, error) {
 			return u, nil
 		}
 	}
-	Warn("[京东代理] asset 请求未获取到代理，将直连")
+	JD().Warnf("[京东代理] asset 请求未获取到代理，将直连")
 	return nil
 }
 
@@ -86,11 +86,11 @@ func GetJDProxyURL() *url.URL {
 		u := jdProxyCache
 		age := time.Since(jdProxyCacheTime)
 		jdProxyCacheMu.Unlock()
-		Info("[京东代理] 使用缓存 IP: %s (已缓存 %.0fs / %ds)", u.Host, age.Seconds(), int(jdProxyCacheTTL.Seconds()))
+		JD().Infof("[京东代理] 使用缓存 IP: %s (已缓存 %.0fs / %ds)", u.Host, age.Seconds(), int(jdProxyCacheTTL.Seconds()))
 		return u
 	}
 	jdProxyCacheMu.Unlock()
-	Info("[京东代理] 缓存过期或为空，准备请求 API 取 IP")
+	JD().Infof("[京东代理] 缓存过期或为空，准备请求 API 取 IP")
 	return refreshJDProxyURL("asset")
 }
 
@@ -115,14 +115,14 @@ func (t *jdProxyLogTransport) RoundTrip(req *http.Request) (*http.Response, erro
 		target := req.URL.Host + req.URL.Path
 		if err != nil {
 			if t.proxyHost != "" {
-				Warn("[京东代理] [jd_query] → %s %s 经代理 %s 失败(%v): %v", req.Method, target, t.proxyHost, elapsed, err)
+				JD().Warnf("[京东代理] [jd_query] → %s %s 经代理 %s 失败(%v): %v", req.Method, target, t.proxyHost, elapsed, err)
 			} else {
-				Warn("[京东代理] [jd_query] → %s %s 直连失败(%v): %v", req.Method, target, elapsed, err)
+				JD().Warnf("[京东代理] [jd_query] → %s %s 直连失败(%v): %v", req.Method, target, elapsed, err)
 			}
 		} else if t.proxyHost != "" {
-			Info("[京东代理] [jd_query] → %s %s 经代理 %s | HTTP %d | %v", req.Method, target, t.proxyHost, status, elapsed)
+			JD().Infof("[京东代理] [jd_query] → %s %s 经代理 %s | HTTP %d | %v", req.Method, target, t.proxyHost, status, elapsed)
 		} else {
-			Info("[京东代理] [jd_query] → %s %s 直连 | HTTP %d | %v", req.Method, target, status, elapsed)
+			JD().Infof("[京东代理] [jd_query] → %s %s 直连 | HTTP %d | %v", req.Method, target, status, elapsed)
 		}
 	}
 	return resp, err
@@ -160,15 +160,15 @@ func NewDynamicProxyHTTPClient(caller string, timeout time.Duration) (*http.Clie
 	if !IsJdTaskProxyEnabled() {
 		return &http.Client{Timeout: timeout, Transport: logTr}, ""
 	}
-	Info("[京东代理] [%s] 请求 API 取新 IP", caller)
+	JD().Infof("[京东代理] [%s] 请求 API 取新 IP", caller)
 	proxyHost := ""
 	if proxyURL := refreshJDProxyURL(caller); proxyURL != nil {
 		base.Proxy = http.ProxyURL(proxyURL)
 		logTr.proxyHost = proxyURL.Host
 		proxyHost = proxyURL.Host
-		Info("[京东代理] [%s] 已绑定代理: %s", caller, proxyHost)
+		JD().Infof("[京东代理] [%s] 已绑定代理: %s", caller, proxyHost)
 	} else {
-		Warn("[京东代理] [%s] 取 IP 失败，将直连", caller)
+		JD().Warnf("[京东代理] [%s] 取 IP 失败，将直连", caller)
 	}
 	return &http.Client{Timeout: timeout, Transport: logTr}, proxyHost
 }
@@ -177,9 +177,9 @@ func NewDynamicProxyHTTPClient(caller string, timeout time.Duration) (*http.Clie
 func NewJDProxyHTTPClient() (*http.Client, *jdProxyLogTransport) {
 	if !IsJdTaskProxyEnabled() {
 		if strings.TrimSpace(sysConfig.JdTaskProxyUrl) == "" {
-			Info("[京东代理] Go查询直连: 未配置动态 IP API")
+			JD().Infof("[京东代理] Go查询直连: 未配置动态 IP API")
 		} else {
-			Info("[京东代理] Go查询直连: 代理开关未启用")
+			JD().Infof("[京东代理] Go查询直连: 代理开关未启用")
 		}
 	}
 	client, _ := NewDynamicProxyHTTPClient("jd_query", 20*time.Second)
@@ -206,15 +206,15 @@ func refreshJDProxyURL(caller string) *url.URL {
 	jdProxyCacheMu.Lock()
 	defer jdProxyCacheMu.Unlock()
 	if err != nil {
-		Warn("[京东代理] [%s] 获取动态 IP 失败: %v", caller, err)
+		JD().Warnf("[京东代理] [%s] 获取动态 IP 失败: %v", caller, err)
 		if jdProxyCache != nil {
-			Warn("[京东代理] [%s] 回退使用缓存 IP: %s", caller, jdProxyCache.Host)
+			JD().Warnf("[京东代理] [%s] 回退使用缓存 IP: %s", caller, jdProxyCache.Host)
 		}
 		return jdProxyCache
 	}
 	jdProxyCache = u
 	jdProxyCacheTime = time.Now()
-	Info("[京东代理] [%s] API 取 IP 成功: %s", caller, u.String())
+	JD().Infof("[京东代理] [%s] API 取 IP 成功: %s", caller, u.String())
 	return u
 }
 
@@ -235,45 +235,45 @@ func fetchDynamicProxyURL(caller string) (*url.URL, error) {
 			redelay = n
 		}
 	}
-	Info("[京东代理] [%s] 调用 API: %s (最多重试%d次)", caller, maskProxyAPIURL(apiURL), renum)
+	JD().Infof("[京东代理] [%s] 调用 API: %s (最多重试%d次)", caller, maskProxyAPIURL(apiURL), renum)
 	client := &http.Client{Timeout: 15 * time.Second}
 	var lastErr error
 	for i := 0; i < renum; i++ {
 		if i > 0 {
-			Info("[京东代理] [%s] 第%d次重试，等待%ds...", caller, i+1, redelay)
+			JD().Infof("[京东代理] [%s] 第%d次重试，等待%ds...", caller, i+1, redelay)
 			time.Sleep(time.Duration(redelay) * time.Second)
 		}
 		req, err := http.NewRequest(http.MethodGet, apiURL, nil)
 		if err != nil {
 			lastErr = err
-			Warn("[京东代理] [%s] 第%d次请求构建失败: %v", caller, i+1, err)
+			JD().Warnf("[京东代理] [%s] 第%d次请求构建失败: %v", caller, i+1, err)
 			continue
 		}
 		start := time.Now()
 		resp, err := client.Do(req)
 		if err != nil {
 			lastErr = err
-			Warn("[京东代理] [%s] 第%d次请求失败(%v): %v", caller, i+1, time.Since(start), err)
+			JD().Warnf("[京东代理] [%s] 第%d次请求失败(%v): %v", caller, i+1, time.Since(start), err)
 			continue
 		}
 		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			lastErr = err
-			Warn("[京东代理] [%s] 第%d次读取响应失败: %v", caller, i+1, err)
+			JD().Warnf("[京东代理] [%s] 第%d次读取响应失败: %v", caller, i+1, err)
 			continue
 		}
 		bodyText := strings.TrimSpace(string(body))
 		if resp.StatusCode != http.StatusOK {
 			lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, bodyText)
-			Warn("[京东代理] [%s] 第%d次 HTTP %d，响应: %s", caller, i+1, resp.StatusCode, truncateLog(bodyText, 200))
+			JD().Warnf("[京东代理] [%s] 第%d次 HTTP %d，响应: %s", caller, i+1, resp.StatusCode, truncateLog(bodyText, 200))
 			continue
 		}
-		Info("[京东代理] [%s] 第%d次 API 响应(%v): %s", caller, i+1, time.Since(start), truncateLog(bodyText, 200))
+		JD().Infof("[京东代理] [%s] 第%d次 API 响应(%v): %s", caller, i+1, time.Since(start), truncateLog(bodyText, 200))
 		proxyURL, err := parseDynamicProxyResponse(body)
 		if err != nil {
 			lastErr = err
-			Warn("[京东代理] [%s] 第%d次解析 IP 失败: %v", caller, i+1, err)
+			JD().Warnf("[京东代理] [%s] 第%d次解析 IP 失败: %v", caller, i+1, err)
 			continue
 		}
 		return proxyURL, nil

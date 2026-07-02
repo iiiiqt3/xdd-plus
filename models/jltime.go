@@ -26,7 +26,7 @@ func ParseRemarksDate(remarks string) (time.Time, bool) {
 	dateStr := strings.TrimSpace(parts[len(parts)-1])
 	date, err := time.ParseInLocation(DateLayout, dateStr, time.Local)
 	if err != nil {
-		Warn("解析备注日期失败：%s，备注：%s", err.Error(), remarks)
+	TaskLog().Warnf("解析备注日期失败：%s，备注：%s", err.Error(), remarks)
 		return time.Time{}, false
 	}
 	return date, true
@@ -132,9 +132,9 @@ func NotifyDeleteExpiredCKs(sender *Sender) {
 
 func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels, activityIDs []string) {
 	if sender != nil {
-		Info("===== 用户【%d】触发过期CK通知/删除检查 =====", sender.UserID)
+		UserLog().Infof("===== 用户【%d】触发过期CK通知/删除检查 =====", sender.UserID)
 	} else {
-		Info("===== 开始过期CK通知/删除检查（定时任务） =====")
+		TaskLog().Infof("===== 开始过期CK通知/删除检查（定时任务） =====")
 	}
 
 	now := time.Now()
@@ -197,7 +197,7 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 					"如需保留，请尽快发送【记录授权】续费，删除后无法恢复！",
 				project.ActivityName, accountAlias,
 				expireDate.Format(DateLayout), expiredDays)
-			Info(">>> 过期删除通知 -> 用户:[%s] 账号:[%s] 活动:[%s] 过期[%d天]",
+			TaskLog().Infof(">>> 过期删除通知 -> 用户:[%s] 账号:[%s] 活动:[%s] 过期[%d天]",
 				userID, accountAlias, project.ActivityName, expiredDays)
 			if userID != "" {
 				if channels.Robot {
@@ -216,7 +216,7 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 		}
 
 		if expiredDays >= 31 {
-			Info(">>> 过期CK超过30天，准备删除 -> 账号:[%s] 活动:[%s] DB ID:[%d] 过期[%d天]",
+			TaskLog().Infof(">>> 过期CK超过30天，准备删除 -> 账号:[%s] 活动:[%s] DB ID:[%d] 过期[%d天]",
 				accountAlias, project.ActivityName, project.ID, expiredDays)
 
 			if err := SoftDeleteActivityProject(project.ID); err != nil {
@@ -253,9 +253,9 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 	resultMsg := fmt.Sprintf("过期CK检查完成：通知 %d 个，删除 %d 个", totalNotified, totalDeleted)
 	if sender != nil {
 		sender.Reply(resultMsg)
-		Info("===== 用户【%d】过期CK通知/删除检查完成 =====", sender.UserID)
+		UserLog().Infof("===== 用户【%d】过期CK通知/删除检查完成 =====", sender.UserID)
 	} else {
-		Info("===== 过期CK检查完成（定时任务）: %s =====", resultMsg)
+		TaskLog().Infof("===== 过期CK检查完成（定时任务）: %s =====", resultMsg)
 	}
 }
 
@@ -296,9 +296,9 @@ func DisableExpiredCKsCronWrapper() {
 
 func DisableExpiredCKs(sender *Sender) {
 	if sender != nil {
-		Info("===== 用户【%d】触发禁用授权过期CK指令 =====", sender.UserID)
+		UserLog().Infof("===== 用户【%d】触发禁用授权过期CK指令 =====", sender.UserID)
 	} else {
-		Info("===== 开始检查并禁用过期CK（定时任务） =====")
+		TaskLog().Infof("===== 开始检查并禁用过期CK（定时任务） =====")
 	}
 
 	expiredProjects, err := GetExpiredProjects()
@@ -311,7 +311,7 @@ func DisableExpiredCKs(sender *Sender) {
 	}
 
 	if len(expiredProjects) == 0 {
-		Info("无过期CK需要禁用")
+		TaskLog().Infof("无过期CK需要禁用")
 		if sender != nil {
 			sender.Reply("无授权过期CK需要禁用")
 		}
@@ -324,7 +324,7 @@ func DisableExpiredCKs(sender *Sender) {
 			continue
 		}
 
-		Info("CK将被禁用：备注【%s】，到期日【%s】，DB ID【%d】，当前状态【%d】",
+		TaskLog().Infof("CK将被禁用：备注【%s】，到期日【%s】，DB ID【%d】，当前状态【%d】",
 			project.Remarks, project.ExpireDate, project.ID, project.Status)
 
 		project.Status = 1
@@ -337,19 +337,19 @@ func DisableExpiredCKs(sender *Sender) {
 
 		go TriggerSync(project.ID)
 
-		Info("成功禁用过期CK ID=%d，备注=%s", project.ID, project.Remarks)
+		TaskLog().Infof("成功禁用过期CK ID=%d，备注=%s", project.ID, project.Remarks)
 	}
 
-	Info("成功禁用 %d 个过期CK", len(expiredProjects))
+	TaskLog().Infof("成功禁用 %d 个过期CK", len(expiredProjects))
 	if sender != nil {
 		sender.Reply(fmt.Sprintf("成功禁用 %d 个授权过期CK", len(expiredProjects)))
 	}
 
 	if sender != nil {
-		Info("===== 用户【%d】触发的禁用授权过期CK指令执行完成 =====", sender.UserID)
+		UserLog().Infof("===== 用户【%d】触发的禁用授权过期CK指令执行完成 =====", sender.UserID)
 		sender.Reply("授权过期CK检查禁用完成！")
 	} else {
-		Info("===== 授权过期CK检查禁用完成（定时任务） =====")
+		TaskLog().Infof("===== 授权过期CK检查禁用完成（定时任务） =====")
 	}
 }
 
@@ -359,9 +359,9 @@ func GenerateExpireDateFromDays(days int) string {
 
 func CheckExpiringCKs(expireThresholdDays int, sender *Sender) {
 	if sender != nil {
-		Info("===== [手动触发] 用户【%d】开始检查即将过期CK (阈值: %d天) =====", sender.UserID, expireThresholdDays)
+		UserLog().Infof("===== [手动触发] 用户【%d】开始检查即将过期CK (阈值: %d天) =====", sender.UserID, expireThresholdDays)
 	} else {
-		Info("===== [定时任务] 开始检查即将过期CK (阈值: %d天) =====", expireThresholdDays)
+		TaskLog().Infof("===== [定时任务] 开始检查即将过期CK (阈值: %d天) =====", expireThresholdDays)
 	}
 
 	now := time.Now()
@@ -413,7 +413,7 @@ func CheckExpiringCKs(expireThresholdDays int, sender *Sender) {
 			expireDate.Format(DateLayout),
 			daysLeft)
 
-		Info(">>> 触发推送 -> 用户ID:[%s] | 账号:[%s] | 活动:[%s] | 到期:[%s] | 剩余:[%d天]",
+		TaskLog().Infof(">>> 触发推送 -> 用户ID:[%s] | 账号:[%s] | 活动:[%s] | 到期:[%s] | 剩余:[%d天]",
 			userID, accountAlias, project.ActivityName, expireDate.Format(DateLayout), daysLeft)
 
 		PushByQQ(userID, msg)
@@ -426,10 +426,10 @@ func CheckExpiringCKs(expireThresholdDays int, sender *Sender) {
 	resultMsg := fmt.Sprintf("检查完成！扫描有效授权 %d 个，发现 %d 个即将过期并已推送。", totalScanned, totalReminded)
 
 	if sender != nil {
-		Info("===== [手动触发] 用户【%d】检查结束: %s =====", sender.UserID, resultMsg)
+		UserLog().Infof("===== [手动触发] 用户【%d】检查结束: %s =====", sender.UserID, resultMsg)
 		(&JdCookie{}).Push(resultMsg)
 	} else {
-		Info("===== [定时任务] 检查结束: %s =====", resultMsg)
+		TaskLog().Infof("===== [定时任务] 检查结束: %s =====", resultMsg)
 	}
 }
 

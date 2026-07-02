@@ -177,7 +177,7 @@ type QxAgreeFriend struct {
 // HandleWxMessage 处理微信消息入口，根据消息事件类型分发到不同的处理逻辑
 func (c *WxController) HandleWxMessage() {
 	data := c.Ctx.Input.RequestBody
-	models.Info(string(data))
+	models.Bot().Infof("微信Hook原始消息: %s", string(data))
 
 	if models.Config.Wx.Model == "qx" {
 		event, _ := jsonparser.GetInt(data, "event")
@@ -188,25 +188,25 @@ func (c *WxController) HandleWxMessage() {
 			case 10009:
 				ag := &QXMessage{}
 				err := json.Unmarshal(data, ag)
-				models.Info(err)
+				models.Bot().Infof("%v", err)
 				msgType := ag.Data.Data.MsgType
 				if msgType == 49 {
 					decodedMsg, decodeErr := base64.StdEncoding.DecodeString(ag.Data.Data.MsgBase64)
 					if decodeErr != nil {
-						models.Error("解密失败:", decodeErr)
+						models.Bot().Errorf("解密失败: %v", decodeErr)
 						return
 					}
 					decodedStr := string(decodedMsg)
 					if matches := regexp.MustCompile(`<url>(.*?)</url>`).FindStringSubmatch(decodedStr); len(matches) > 1 {
 						ag.Data.Data.Msg = strings.ReplaceAll(matches[1], "&amp;", "&")
 					}
-					models.Info("接收到信息" + ag.Data.Data.Msg)
+					models.UserLog().Infof("[微信] %s", ag.Data.Data.Msg)
 					if ag.Wxid == models.Config.Wx.Robotid {
 						models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
 					}
 
 				} else {
-					models.Info("接收到信息" + ag.Data.Data.Msg)
+					models.UserLog().Infof("[微信] %s", ag.Data.Data.Msg)
 					if ag.Wxid == models.Config.Wx.Robotid {
 						models.ListenWXTempPrivateMessage(ag.Data.Data.FromWxid, ag.Data.Data.Msg)
 					}
@@ -215,25 +215,25 @@ func (c *WxController) HandleWxMessage() {
 			case 10008:
 				ag := &QXMessage{}
 				err := json.Unmarshal(data, ag)
-				models.Info(err)
+				models.Bot().Infof("%v", err)
 				msgType := ag.Data.Data.MsgType
 				if msgType == 49 {
 					decodedMsg, decodeErr := base64.StdEncoding.DecodeString(ag.Data.Data.MsgBase64)
 					if decodeErr != nil {
-						models.Error("解密失败:", decodeErr)
+						models.Bot().Errorf("解密失败: %v", decodeErr)
 						return
 					}
 					decodedStr := string(decodedMsg)
 					if matches := regexp.MustCompile(`<url>(.*?)</url>`).FindStringSubmatch(decodedStr); len(matches) > 1 {
 						ag.Data.Data.Msg = strings.ReplaceAll(matches[1], "&amp;", "&")
 					}
-					models.Info("接收到信息" + ag.Data.Data.Msg)
+					models.UserLog().Infof("[微信] %s", ag.Data.Data.Msg)
 					if ag.Wxid == models.Config.Wx.Robotid {
 						models.ListenWXGroupMessage(ag.Data.Data.FinalFromWxid, ag.Data.Data.FromWxid, ag.Data.Data.Msg)
 					}
 
 				} else {
-					models.Info("接收到信息" + ag.Data.Data.Msg)
+					models.UserLog().Infof("[微信] %s", ag.Data.Data.Msg)
 					if ag.Wxid == models.Config.Wx.Robotid {
 						models.ListenWXGroupMessage(ag.Data.Data.FinalFromWxid, ag.Data.Data.FromWxid, ag.Data.Data.Msg)
 					}
@@ -242,16 +242,16 @@ func (c *WxController) HandleWxMessage() {
 				case 10006:
 				ag := &QXMoneyMessage{}
 				err := json.Unmarshal(data, ag)
-				models.Info(err)
+				models.Bot().Infof("%v", err)
 				args := make(map[string]string)
 				args["model"] = "qx"
 				args["money"] = ag.Data.Data.Money
 				args["transferid"] = ag.Data.Data.Transferid
 				args["to_wxid"] = ag.Data.Data.FromWxid
 
-				models.Info("Money:", args["money"])
-				models.Info("Transfer ID:", args["transferid"])
-				models.Info("To WXID:", args["to_wxid"])
+				models.Bot().Infof("Money: %s", args["money"])
+				models.Bot().Infof("Transfer ID: %s", args["transferid"])
+				models.Bot().Infof("To WXID: %s", args["to_wxid"])
 				if args["to_wxid"] == models.Config.Wx.Robotid {
 					return
 				}
@@ -259,12 +259,12 @@ func (c *WxController) HandleWxMessage() {
 				// 执行转账请求
 				err = models.TransferRequest(args["to_wxid"], args["transferid"], args["money"])
 				if err != nil {
-					models.Info("调用 TransferRequest 失败:", err)
+					models.Bot().Infof("调用 TransferRequest 失败: %v", err)
 				} else {
 					// 转账成功后执行充值逻辑
 					money, err := strconv.ParseFloat(args["money"], 64)
 					if err != nil {
-						models.Info("Money 转换失败:", err)
+						models.Bot().Infof("Money 转换失败: %v", err)
 						return
 					}
 					rechargePoints := int(100.0 * money) // 计算充值积分
@@ -281,7 +281,7 @@ func (c *WxController) HandleWxMessage() {
 			case 10011:
 				ag := &QxFriendVerifyMsg{}
 				err := json.Unmarshal(data, ag)
-				models.Info(err)
+				models.Bot().Infof("%v", err)
 				auto := models.IsAutoAgreeFriendVerify()
 				if auto {
 					if models.UseAgreeMsg() {
@@ -307,7 +307,7 @@ func (c *WxController) HandleWxMessage() {
 		case "EventFrieneVerify":
 			ag := &MyFriendVerifyMsg{}
 			err := json.Unmarshal(data, ag)
-			models.Info(err)
+			models.Bot().Infof("%v", err)
 			auto := models.IsAutoAgreeFriendVerify()
 			if auto {
 				if models.UseAgreeMsg() {
@@ -332,12 +332,12 @@ func (c *WxController) HandleWxMessage() {
 			switch ag.Content.Type {
 			case 1:
 				if ag.Content.RobotWxid == models.Config.Wx.Robotid {
-					models.Info("接收到信息" + ag.Content.Msg)
+					models.UserLog().Infof("[微信] %s", ag.Content.Msg)
 					models.ListenWXTempPrivateMessage(ag.Content.FromWxid, ag.Content.Msg)
 				}
 			case 2000:
 			if ag.Content.RobotWxid == models.Config.Wx.Robotid {
-				models.Info("接收到转账" + ag.Content.Msg)
+				models.UserLog().Infof("[微信转账] %s", ag.Content.Msg)
 				if models.IsAutoAgreeAutocollection() {
 					autocollect := &AutocollectMessageBody{}
 					err := json.Unmarshal([]byte(ag.Content.Msg), autocollect)
@@ -353,7 +353,7 @@ func (c *WxController) HandleWxMessage() {
 					if matches := regexp.MustCompile(`<url>(.*?)</url>`).FindStringSubmatch(ag.Content.Msg); len(matches) > 1 {
 						ag.Content.Msg = strings.ReplaceAll(matches[1], "&amp;", "&")
 					}
-					models.Info("接收到信息" + ag.Content.Msg)
+					models.UserLog().Infof("[微信] %s", ag.Content.Msg)
 					models.ListenWXTempPrivateMessage(ag.Content.FromWxid, ag.Content.Msg)
 
 				}
@@ -363,7 +363,7 @@ func (c *WxController) HandleWxMessage() {
 			ag := &WxMessage{}
 			json.Unmarshal(data, ag)
 			if ag.Content.RobotWxid == models.Config.Wx.Robotid {
-				models.Info("接收到微信群信息" + ag.Content.Msg)
+				models.UserLog().Infof("[微信群] %s", ag.Content.Msg)
 				models.ListenWXGroupMessage(ag.Content.FromWxid, ag.Content.FromGroup, ag.Content.Msg)
 
 			}
@@ -377,7 +377,7 @@ func (c *WxController) HandleWxMessage() {
 func receiveMoney(autocollect *AutocollectMessageBody, ag *WxMessage, typ int) {
 	// 检查是否是机器人给用户转账（机器人发起的转账不应该给用户充值积分）
 	if ag.Content.FromWxid == models.Config.Wx.Robotid {
-		models.Info("检测到机器人给用户转账，跳过充值逻辑")
+		models.Bot().Infof("检测到机器人给用户转账，跳过充值逻辑")
 		return
 	}
 	

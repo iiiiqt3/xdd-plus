@@ -23,11 +23,11 @@ func WriteMsg(msg chan []byte) {
 		if ws != nil {
 			err := ws.WriteMessage(mt, n)
 			if err != nil {
-				Info("write:", err)
+				Bot().Infof("write: %v", err)
 			}
 		} else {
 			time.Sleep(time.Second * time.Duration(6))
-			Info("等待ws连接")
+			Bot().Infof("等待ws连接")
 		}
 	}
 }

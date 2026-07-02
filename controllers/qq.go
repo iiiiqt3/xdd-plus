@@ -102,19 +102,19 @@ func (c *QQController) Echo() {
 	// 1. 升级连接 (wsConn 为局部变量，避免多连接冲突)
 	wsConn, err := upgrader.Upgrade(c.Ctx.ResponseWriter, c.Ctx.Request, nil)
 	if err != nil {
-		models.Error("WebSocket upgrade failed:", err)
+		models.Bot().Errorf("WebSocket upgrade failed: %v", err)
 		return
 	}
 	defer wsConn.Close()
 
-	models.UserLog().Infof("QQ WebSocket 接入成功")
+	models.Bot().Infof("QQ WebSocket 接入成功")
 	models.WsInit(wsConn, 1)
 
 	// 2. 消息接收循环
 	for {
 		_, messageBytes, err := wsConn.ReadMessage()
 		if err != nil {
-			models.Info("ws连接已断开:", err)
+			models.Bot().Infof("ws连接已断开: %v", err)
 			return
 		}
 
@@ -122,7 +122,7 @@ func (c *QQController) Echo() {
 		go func(msgData []byte) {
 			defer func() {
 				if r := recover(); r != nil {
-					models.Error("处理消息时发生 Panic:", r)
+					models.Bot().Errorf("处理消息时发生 Panic: %v", r)
 				}
 			}()
 
@@ -142,11 +142,11 @@ func (c *QQController) Echo() {
 func handleGroupMemberList(data []byte) {
 	var groupUserList GroupUserList
 	if err := json.Unmarshal(data, &groupUserList); err != nil {
-		models.Warn("解析群成员列表失败:", string(data), err)
+		models.Bot().Warnf("解析群成员列表失败: %s %v", string(data), err)
 		return
 	}
 
-	models.Info("收到群成员列表，数量:", len(groupUserList.Data))
+	models.Bot().Infof("收到群成员列表，数量: %d", len(groupUserList.Data))
 
 	for _, user := range groupUserList.Data {
 		// 逻辑：如果是用户且角色是普通成员，则踢出
@@ -158,7 +158,7 @@ func handleGroupMemberList(data []byte) {
 				delay := time.Duration(5+rand.Intn(10)) * time.Second
 				time.Sleep(delay)
 
-				models.Info("执行踢人操作:", gid, uid)
+				models.Bot().Infof("执行踢人操作: gid=%d uid=%d", gid, uid)
 				
 				// 【关键修复】根据报错信息调整参数类型
 				// 报错说 cannot use int(uid) as int64，说明 models.RemoveGroupMember 第二个参数需要 int64
@@ -174,7 +174,7 @@ func handleGroupMemberList(data []byte) {
 func handleStandardMessage(data []byte) {
 	var msg LLMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
-		models.Warn("解析标准消息失败:", string(data), err)
+		models.Bot().Warnf("解析标准消息失败: %s %v", string(data), err)
 		return
 	}
 	HandleQQMessage(msg)
@@ -182,7 +182,7 @@ func handleStandardMessage(data []byte) {
 
 func HandleQQMessage(msg LLMessage) {
 	if msg.PostType == "message" {
-		models.Info("接收到信息:" + msg.RawMessage)
+		models.UserLog().Infof("[QQ][用户%d] %s", msg.UserId, msg.RawMessage)
 
 		if msg.Sender.Nickname != "" {
 			go models.UpdateUserNicknameIfEmpty(msg.UserId, msg.Sender.Nickname)
@@ -195,13 +195,13 @@ func HandleQQMessage(msg LLMessage) {
 
 			// 手机号检测与撤回
 			if phoneRegex.MatchString(msg.RawMessage) {
-				models.Info("识别为手机号，进行撤回 MessageID:", msg.MessageId)
+				models.Bot().Infof("识别为手机号，进行撤回 MessageID: %d", msg.MessageId)
 				go models.DeleteQQMsg(msg.MessageId)
 			}
 		}
 	} else if msg.PostType == "request" {
 		if msg.RequestType == "friend" {
-			models.Info("收到好友请求 Flag:", msg.Flag)
+			models.Bot().Infof("收到好友请求 Flag: %s", msg.Flag)
 			time.Sleep(time.Duration(rand.Intn(5000)) * time.Millisecond)
 			models.AutoAgreeFriedns(msg.Flag)
 		}

@@ -232,11 +232,11 @@ func (c *AdminApiController) SendNotification() {
 	title, content, category, displayType, isTop := req.Title, req.Content, req.Category, req.DisplayType, req.IsTop
 	go func() {
 		if _, err := models.CreateAdminWebNotification(title, content, category, displayType, isTop); err != nil {
-			models.Error("后台发送管理员通知失败: %v", err)
+			models.Admin().Errorf("后台发送管理员通知失败: %v", err)
 		}
 		if req.PushToQQ || req.PushToWX {
 			pushResult := models.SendActivityToGroupsWithOptions(title, content, req.PushToQQ, req.PushToWX)
-			models.Info("管理员通知群推送结果: %s", pushResult)
+			models.Bot().Infof("管理员通知群推送结果: %s", pushResult)
 		}
 	}()
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "发送请求已提交，通知正在后台写入"}
@@ -2266,7 +2266,7 @@ func (c *AdminApiController) UploadGuideImage() {
 
 	// 返回可访问的URL
 	url := fmt.Sprintf("/uploads/guide/%s/%s", activity, filename)
-	models.Info("玩法简介图片已上传: %s", url)
+	models.Admin().Infof("玩法简介图片已上传: %s", url)
 
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,

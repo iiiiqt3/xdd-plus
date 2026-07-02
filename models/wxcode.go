@@ -136,7 +136,7 @@ func wxLoginRequestToURL(baseURL, path string, reqBody interface{}) ([]byte, err
 		return nil, fmt.Errorf("读取响应失败：%s", err.Error())
 	}
 
-	Info("wxLoginRequest [POST %s] 响应: %s", path, string(body))
+	Wx().Infof("wxLoginRequest [POST %s] 响应: %s", path, string(body))
 	return body, nil
 }
 
@@ -216,7 +216,7 @@ func WXID_USER_STATUS(sender *Sender) {
 		return
 	}
 
-	Info("wxLoginGetRequest [GET /api/v1/wx/user/status] 响应: %s", string(body))
+	Wx().Infof("wxLoginGetRequest [GET /api/v1/wx/user/status] 响应: %s", string(body))
 
 	var result struct {
 		Status bool `json:"status"`
@@ -567,7 +567,7 @@ func MarkWxMigrated(userNumber int, wxid string) {
 			Wxid:       wxid,
 			MigratedAt: time.Now(),
 		})
-		Info("用户 %d (wxid: %s) 已标记为协议迁移完成", userNumber, wxid)
+		Wx().Infof("用户 %d (wxid: %s) 已标记为协议迁移完成", userNumber, wxid)
 	}
 }
 
@@ -1081,7 +1081,7 @@ func autoBindWxDevice(userNumber int, wxid string) {
 		if err := db.Model(&user).Update("wxid", wxid).Error; err != nil {
 			Warn("自动绑定微信设备失败：设置主wxid失败 %v", err)
 		} else {
-			Info("自动绑定微信设备：已将 %s 设为用户 %d 的主设备", wxid, userNumber)
+			Wx().Infof("自动绑定微信设备：已将 %s 设为用户 %d 的主设备", wxid, userNumber)
 		}
 		return
 	}
@@ -1105,7 +1105,7 @@ func autoBindWxDevice(userNumber int, wxid string) {
 	if err := db.Create(&PortalWxDevice{UserNumber: userNumber, Wxid: wxid}).Error; err != nil {
 		Warn("自动绑定微信设备失败：创建记录失败 %v", err)
 	} else {
-		Info("自动绑定微信设备：已将 %s 添加为用户 %d 的监控设备", wxid, userNumber)
+		Wx().Infof("自动绑定微信设备：已将 %s 添加为用户 %d 的监控设备", wxid, userNumber)
 	}
 }
 
@@ -1258,7 +1258,7 @@ func CheckWxOfflineAndNotify() {
 }
 
 func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string, force bool) {
-	Info("开始执行微信掉线检测推送...")
+	Wx().Infof("开始执行微信掉线检测推送...")
 
 	// 同时查询新旧两个地址，合并结果（在线优先）
 	data := fetchWxDevicesFromURL(getWxLoginBaseURL())
@@ -1273,7 +1273,7 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 	}
 
 	if len(data) == 0 {
-		Info("微信掉线检测：当前没有微信设备，跳过推送")
+		Wx().Infof("微信掉线检测：当前没有微信设备，跳过推送")
 		return
 	}
 
@@ -1297,7 +1297,7 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 		if info.Survival == 1 {
 			// 设备在线，清除之前的掉线通知记录，下次掉线时可以重新通知
 			if _, loaded := offlineNotifiedWxIDs.LoadAndDelete(wxid); loaded {
-				Info("微信掉线检测：用户 %s (%s) 已恢复上线，清除通知记录", info.Nickname, wxid)
+				Wx().Infof("微信掉线检测：用户 %s (%s) 已恢复上线，清除通知记录", info.Nickname, wxid)
 			}
 			continue
 		}
@@ -1307,14 +1307,14 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 		// 检查是否已经发送过掉线通知，如果已通知则跳过（管理员手动触发时忽略去重）
 		if !force {
 			if _, loaded := offlineNotifiedWxIDs.LoadOrStore(wxid, true); loaded {
-				Info("微信掉线检测：用户 %s (%s) 已通知过掉线，跳过", info.Nickname, wxid)
+				Wx().Infof("微信掉线检测：用户 %s (%s) 已通知过掉线，跳过", info.Nickname, wxid)
 				continue
 			}
 		} else {
 			offlineNotifiedWxIDs.Store(wxid, true)
 		}
 
-		Info("微信掉线检测：用户 %s (%s) 已掉线，%s推送通知", info.Nickname, wxid, map[bool]string{true: "管理员手动", false: "首次"}[!force])
+		Wx().Infof("微信掉线检测：用户 %s (%s) 已掉线，%s推送通知", info.Nickname, wxid, map[bool]string{true: "管理员手动", false: "首次"}[!force])
 
 		loginTime := time.Unix(info.LoginDate, 0).Format("01-02 15:04")
 		refreshTime := time.Unix(info.RefreshDate, 0).Format("01-02 15:04")
@@ -1344,7 +1344,7 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 		}
 	}
 
-	Info("微信掉线检测推送完成，共 %d 个设备，%d 个掉线，%d 个已通知", len(data), offlineCount, notifiedCount)
+	Wx().Infof("微信掉线检测推送完成，共 %d 个设备，%d 个掉线，%d 个已通知", len(data), offlineCount, notifiedCount)
 }
 
 // checkLoginStatus 检查扫码状态
