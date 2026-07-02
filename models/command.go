@@ -376,7 +376,7 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			if !strings.Contains(Config.WXGroupID, sender.WxGroupId) {
-				UserLog().Infof(sender.WxGroupId)
+				UserLog().Infof("%s", sender.WxGroupId)
 				env := GetEnv("WxGroupID")
 				if strings.Contains(env, sender.WxGroupId) {
 					return "已在监听列表"
@@ -2227,9 +2227,9 @@ var codeSignals = []CodeSignal{
 		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			qq := Int(sender.Contents[0])
-			UserLog().Infof(qq)
+			UserLog().Infof("%d", qq)
 			if len(sender.Contents) > 1 {
-				UserLog().Infof(sender.Contents[1:])
+				UserLog().Infof("%v", sender.Contents[1:])
 				AdddCoin(qq, Int(sender.Contents[1]))
 				RecordCoinLog(qq, Int(sender.Contents[1]), "管理员操作", fmt.Sprintf("管理员%d手动加积分", sender.UserID))
 				sender.Reply(fmt.Sprintf("%d已增加%d枚积分。", qq, Int(sender.Contents[1])))
@@ -2244,7 +2244,7 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			// 获取发送者的QQ号
 			qq := sender.UserID
-			UserLog().Infof(qq)
+			UserLog().Infof("%d", qq)
 
 			// 引导用户输入对方QQ号
 			sender.Reply("请输入对方的userid，让对方通过机器人发送【用户信息】获取（输入 'q' 退出流程）：")
@@ -4366,10 +4366,10 @@ func InviteGroup(uid string, gid string) {
 	random := browser.Random()
 	req.Header("User-Agent", random)
 	marshal, _ := json.Marshal(reply)
-	UserLog().Infof(string(marshal))
+	UserLog().Infof("%s", string(marshal))
 	req.Body(string(marshal))
 	s, _ := req.String()
-	UserLog().Infof(s)
+	UserLog().Infof("%s", s)
 }
 
 func GetPinList(qq string) []string {
@@ -4509,10 +4509,10 @@ func WxImg_ts() {
 	random := browser.Random()
 	req.Header("User-Agent", random)
 	marshal, _ := json.Marshal(reply)
-	UserLog().Infof(string(marshal))
+	UserLog().Infof("%s", string(marshal))
 	req.Body(string(marshal))
 	s, _ := req.String()
-	UserLog().Infof(s)
+	UserLog().Infof("%s", s)
 }
 
 //##千寻拉群函数
