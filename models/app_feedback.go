@@ -8,20 +8,42 @@ import (
 )
 
 type AppFeedback struct {
-	ID          int        `gorm:"primaryKey" json:"id"`
-	UserID      int        `gorm:"index" json:"userId"`
-	Type        string     `gorm:"size:32;index" json:"type"`
-	Title       string     `gorm:"size:160;index" json:"title"`
-	Content     string     `gorm:"type:text" json:"content"`
-	Contact     string     `gorm:"size:120" json:"contact"`
-	Source      string     `gorm:"size:32;index" json:"source"`
-	Status      string     `gorm:"size:24;index;default:new" json:"status"`
-	Reply       string     `gorm:"type:text" json:"reply"`
-	RewardCoin  int        `json:"rewardCoin"`
-	Handler     string     `gorm:"size:80" json:"handler"`
-	ProcessedAt *time.Time `json:"processedAt"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
+	ID             int        `gorm:"primaryKey" json:"id"`
+	UserID         int        `gorm:"index" json:"userId"`
+	Type           string     `gorm:"size:32;index" json:"type"`
+	Title          string     `gorm:"size:160;index" json:"title"`
+	Content        string     `gorm:"type:text" json:"content"`
+	Contact        string     `gorm:"size:120" json:"contact"`
+	Source         string     `gorm:"size:32;index" json:"source"`
+	ClientPlatform string     `gorm:"size:16" json:"clientPlatform"`
+	Status         string     `gorm:"size:24;index;default:new" json:"status"`
+	Reply          string     `gorm:"type:text" json:"reply"`
+	RewardCoin     int        `json:"rewardCoin"`
+	Handler        string     `gorm:"size:80" json:"handler"`
+	ProcessedAt    *time.Time `json:"processedAt"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
+}
+
+// AppFeedbackView API 输出（含来源展示标签）
+type AppFeedbackView struct {
+	AppFeedback
+	SourceLabel  string `json:"sourceLabel"`
+	SourceTagCls string `json:"sourceTagCls"`
+}
+
+func ToAppFeedbackView(item AppFeedback) AppFeedbackView {
+	ctx := ClientContext{Source: item.Source, Platform: item.ClientPlatform}
+	if strings.TrimSpace(item.Source) == "" {
+		ctx = ClientContext{Source: ClientSourceApp}
+	} else if strings.TrimSpace(item.ClientPlatform) == "" {
+		ctx = NormalizeStoredSource(item.Source)
+	}
+	return AppFeedbackView{
+		AppFeedback:  item,
+		SourceLabel:  ctx.AdminLabel(),
+		SourceTagCls: ctx.AdminTagClass(),
+	}
 }
 
 func normalizeFeedbackType(value string) string {
@@ -40,32 +62,32 @@ func normalizeFeedbackType(value string) string {
 	}
 }
 
-func CreateAppFeedback(userID int, feedbackType string, title string, content string, contact string, source string) error {
+func CreateAppFeedback(userID int, feedbackType string, title string, content string, contact string, ctx ClientContext) error {
 	title = strings.TrimSpace(title)
 	content = strings.TrimSpace(content)
 	contact = strings.TrimSpace(contact)
-	source = strings.TrimSpace(source)
-	if source == "" {
-		source = "app"
-	}
+	ctx = ctx.WithDefault()
 	if title == "" {
 		title = "未填写主题"
 	}
-	return db.Create(&AppFeedback{
-		UserID:  userID,
-		Type:    normalizeFeedbackType(feedbackType),
-		Title:   title,
-		Content: content,
-		Contact: contact,
-		Source:  source,
-		Status:  "new",
-	}).Error
+	item := AppFeedback{
+		UserID:         userID,
+		Type:           normalizeFeedbackType(feedbackType),
+		Title:          title,
+		Content:        content,
+		Contact:        contact,
+		Source:         ctx.FilterKey(),
+		ClientPlatform: ctx.Platform,
+		Status:         "new",
+	}
+	if err := db.Create(&item).Error; err != nil {
+		return err
+	}
+	RecordClientSourceEvent(userID, SourceEventFeedback, ctx)
+	return nil
 }
 
-
-
-
-func GetAdminAppFeedbacks(search string, page int, limit int, sortField string, sortOrder string) ([]AppFeedback, int64) {
+func GetAdminAppFeedbacks(search string, page int, limit int, sortField string, sortOrder string) ([]AppFeedbackView, int64) {
 	if page <= 0 {
 		page = 1
 	}
@@ -103,10 +125,14 @@ func GetAdminAppFeedbacks(search string, page int, limit int, sortField string, 
 
 	var list []AppFeedback
 	query.Order(orderClause).Offset((page - 1) * limit).Limit(limit).Find(&list)
-	return list, total
+	views := make([]AppFeedbackView, 0, len(list))
+	for _, item := range list {
+		views = append(views, ToAppFeedbackView(item))
+	}
+	return views, total
 }
 
-func GetAdminAppFeedbackDetail(id int) (*AppFeedback, error) {
+func GetAdminAppFeedbackDetail(id int) (*AppFeedbackView, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("反馈ID不能为空")
 	}
@@ -114,7 +140,8 @@ func GetAdminAppFeedbackDetail(id int) (*AppFeedback, error) {
 	if err := db.Where("id = ?", id).First(&item).Error; err != nil {
 		return nil, err
 	}
-	return &item, nil
+	view := ToAppFeedbackView(item)
+	return &view, nil
 }
 
 func UpdateAppFeedbackStatus(id int, status string) error {
@@ -151,7 +178,7 @@ func ProcessAppFeedback(id int, status string, reply string, rewardCoin int, han
 	}
 	if rewardCoin > 0 && item.UserID > 0 {
 		AdddCoin(item.UserID, rewardCoin)
-		RecordCoinLog(item.UserID, rewardCoin, "反馈奖励", fmt.Sprintf("反馈#%d奖励积分", item.ID))
+		RecordCoinLog(item.UserID, rewardCoin, "反馈奖励", fmt.Sprintf("反馈#%d奖励积分", item.ID), AdminContext())
 	}
 	if isFirstReply && item.UserID > 0 && (reply != "" || rewardCoin > 0) {
 		content := reply
@@ -292,7 +319,7 @@ func BatchRewardAppFeedbacks(ids []int, rewardCoin int, handler string) (int, er
 		}
 		if item.UserID > 0 && rewardCoin > 0 {
 			AdddCoin(item.UserID, rewardCoin)
-			RecordCoinLog(item.UserID, rewardCoin, "反馈奖励", fmt.Sprintf("反馈#%d奖励积分", item.ID))
+			RecordCoinLog(item.UserID, rewardCoin, "反馈奖励", fmt.Sprintf("反馈#%d奖励积分", item.ID), AdminContext())
 			if item.Status == "new" {
 				content := fmt.Sprintf("你的反馈已处理\n奖励积分：%d", rewardCoin)
 				_ = CreateSystemWebNotification("反馈处理结果", content, NotifyCategoryFeedback, NotifySourceFeedback, item.UserID, NotifyChannels{Web: true, App: true})

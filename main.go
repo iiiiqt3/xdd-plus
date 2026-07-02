@@ -293,6 +293,7 @@ func main() {
 	web.Router("/api/admin/users", &controllers.AdminApiController{}, "get:GetUsers")
 	web.Router("/api/admin/users/coin", &controllers.AdminApiController{}, "post:UpdateUserCoin")
 	web.Router("/api/admin/users/coin-logs", &controllers.AdminApiController{}, "get:GetCoinLogs")
+	web.Router("/api/admin/client-source/stats", &controllers.AdminApiController{}, "get:GetClientSourceStats")
 	web.Router("/api/admin/sysconfig", &controllers.AdminApiController{}, "get:GetSystemConfig")
 	web.Router("/api/admin/sysconfig/save", &controllers.AdminApiController{}, "post:SaveSystemConfig")
 	web.Router("/api/admin/sysconfig/image-token", &controllers.AdminApiController{}, "post:GetImageToken")
@@ -442,7 +443,7 @@ func main() {
 		//其中Options跨域复杂请求预检
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		//指的是允许的Header的种类
-		AllowHeaders: []string{"Origin", "Content-Type", "Authorization", "X-Request-Source"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Authorization", "X-Request-Source", "X-Client-Platform", "X-Sign-Timestamp", "X-Sign-Nonce", "X-Sign-DeviceID", "X-Sign-Value", "X-Sign-Version", "X-App-Version"},
 		//公开的HTTP标头列表
 		ExposeHeaders: []string{"Content-Length"},
 		//如果设置，则允许共享身份验证凭据，例如cookie

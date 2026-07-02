@@ -1629,10 +1629,11 @@
                 </div>
                 <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
                     <button class="btn small coin-log-tab active" data-source="" onclick="switchCoinLogSource(this,'')">全部</button>
-                    <button class="btn small coin-log-tab" data-source="Web端" onclick="switchCoinLogSource(this,'Web端')">🌐 Web端</button>
-                    <button class="btn small coin-log-tab" data-source="App端" onclick="switchCoinLogSource(this,'App端')">📱 App端</button>
-                    <button class="btn small coin-log-tab" data-source="微信" onclick="switchCoinLogSource(this,'微信')">💬 微信</button>
-                    <button class="btn small coin-log-tab" data-source="后台及其他" onclick="switchCoinLogSource(this,'后台及其他')">🔧 后台及其他</button>
+                    <button class="btn small coin-log-tab" data-source="web" onclick="switchCoinLogSource(this,'web')">🌐 网页</button>
+                    <button class="btn small coin-log-tab" data-source="app" onclick="switchCoinLogSource(this,'app')">📱 App</button>
+                    <button class="btn small coin-log-tab" data-source="wx" onclick="switchCoinLogSource(this,'wx')">💬 微信</button>
+                    <button class="btn small coin-log-tab" data-source="bot" onclick="switchCoinLogSource(this,'bot')">🤖 机器人</button>
+                    <button class="btn small coin-log-tab" data-source="admin" onclick="switchCoinLogSource(this,'admin')">🔧 后台及其他</button>
                 </div>
                 <div id="coinLogsBody" style="max-height:60vh;overflow-y:auto;"></div>
             </div>
@@ -1926,7 +1927,7 @@ function toast(message, type = 'info', duration = 2600) {
 }
 
 async function request(url, options = {}) {
-    options.headers = { 'X-Request-Source': 'web', ...(options.headers || {}) };
+    options.headers = { 'X-Request-Source': 'web', 'X-Client-Platform': 'web', ...(options.headers || {}) };
     const resp = await fetch(url, options);
     const data = await resp.json();
     if (data.code !== 0) throw new Error(data.msg || '请求失败');
@@ -3475,7 +3476,7 @@ async function loadCoinLogs(source) {
             body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:13px;">暂无积分变动记录</div>';
             return;
         }
-        const sourceClass = { 'Web端': 'src-web', 'App端': 'src-app', '微信': 'src-wx', '后台及其他': 'src-admin' };
+        const sourceClass = { web: 'src-web', app: 'src-app', wx: 'src-wx', bot: 'src-wx', admin: 'src-admin' };
         const typeIcon = { '签到': '📅', '祈福': '🙏', '游戏': '🎮', '转账': '💸', '充值': '💰', '卡密兑换': '🎟️', '上车扣费': '🚀', '续费扣费': '🔄', '退还': '↩️', '推一推': '🤝', '助力扣费': '🫳', '任务扣费': '📋', '授权扣费': '🔑', '许愿': '⭐', '微信登录': '📱', '反馈奖励': '🎁', '管理员操作': '🔧' };
         let html = '';
         for (let i = 0; i < logs.length; i++) {
@@ -3485,13 +3486,14 @@ async function loadCoinLogs(source) {
             const color = isPos ? 'var(--green)' : 'var(--red)';
             const bg = isPos ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
             const icon = typeIcon[l.type] || (isPos ? '📈' : '📉');
+            const srcLabel = l.sourceLabel || l.source || '-';
             const srcCls = sourceClass[l.source] || 'src-other';
             html += '<div class="coin-log-item">';
             html += '  <div class="coin-log-icon" style="background:' + bg + ';">' + icon + '</div>';
             html += '  <div class="coin-log-info">';
             html += '    <div class="coin-log-meta">';
             html += '      <span class="coin-log-type">' + escapeHtml(l.type) + '</span>';
-            html += '      <span class="coin-log-source ' + srcCls + '">' + escapeHtml(l.source) + '</span>';
+            html += '      <span class="coin-log-source ' + srcCls + '">' + escapeHtml(srcLabel) + '</span>';
             html += '      <span class="coin-log-time">' + escapeHtml(l.createdAt) + '</span>';
             html += '    </div>';
             html += '    <div class="coin-log-detail" title="' + escapeAttr(l.detail) + '">' + escapeHtml(l.detail) + '</div>';

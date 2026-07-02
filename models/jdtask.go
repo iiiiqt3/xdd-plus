@@ -306,7 +306,7 @@ func JdTaskHandler(sender *Sender, taskName string, envVar string, scriptPath st
 			return
 		}
 		RemCoin(sender.UserID, jbcoin)
-		RecordCoinLog(sender.UserID, -jbcoin, "任务扣费", fmt.Sprintf("执行任务: %s", taskName))
+		RecordCoinForSender(sender, sender.UserID, -jbcoin, "任务扣费", fmt.Sprintf("执行任务: %s", taskName))
 	}
 
 	// 扣费后提交任务；入队失败则退费
@@ -318,7 +318,7 @@ func JdTaskHandler(sender *Sender, taskName string, envVar string, scriptPath st
 				var u User
 				if db.Where("number = ?", sender.UserID).First(&u).Error == nil {
 					db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin+%d", jbcoin)))
-					RecordCoinLog(sender.UserID, jbcoin, "任务退费", fmt.Sprintf("入队失败: %s", taskName))
+					RecordCoinForSender(sender, sender.UserID, jbcoin, "任务退费", fmt.Sprintf("入队失败: %s", taskName))
 				}
 			}
 		}
@@ -348,7 +348,7 @@ func ExecuteTask(sender *Sender, taskName string, scriptPath string, envs map[st
 		Parser:     outputParser,
 	}
 
-	return GetJdTaskScheduler().submitSpecs(sender.UserID, "", nil, sender, []jdJobSpec{spec}, nil)
+	return GetJdTaskScheduler().submitSpecs(sender.UserID, "", nil, sender, []jdJobSpec{spec}, nil, BotContext())
 }
 
 // 任务日志通道管理
@@ -415,7 +415,7 @@ func StopPortalJdTask(taskId string) {
 }
 
 // SubmitPortalJdTask 提交网页端京东任务到调度队列
-func SubmitPortalJdTask(userId int, taskId string, taskName string, accountIndexes []int, taskLogId string) error {
+func SubmitPortalJdTask(userId int, taskId string, taskName string, accountIndexes []int, taskLogId string, clientCtx ClientContext) error {
 	logChan := GetTaskLogChannel(taskLogId)
 	if logChan == nil {
 		return fmt.Errorf("日志通道不存在")
@@ -432,7 +432,7 @@ func SubmitPortalJdTask(userId int, taskId string, taskName string, accountIndex
 	}
 
 	safeLogSend(logChan, fmt.Sprintf("已选择 %d 个账号", len(specs)))
-	return GetJdTaskScheduler().submitPortalBatch(userId, taskId, taskLogId, logChan, specs)
+	return GetJdTaskScheduler().submitPortalBatch(userId, taskId, taskLogId, logChan, specs, clientCtx)
 }
 
 func buildPortalJdJobSpecs(userId int, taskId string, taskName string, accountIndexes []int, logChan chan string) ([]jdJobSpec, error) {
@@ -1032,7 +1032,7 @@ func replexQuan_fcwb_help_zz(info string, sender *Sender, FileName string) strin
 
 	if successfulHelps > 0 {
 		RemCoin(sender.UserID, coinToDeduct)                                                                               // 扣除积分
-		RecordCoinLog(sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
+		RecordCoinForSender(sender, sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
 		msgs = append(msgs, fmt.Sprintf("成功助力%d个账号，扣除%d积分，剩余%d积分", successfulHelps, coinToDeduct, GetCoin(sender.UserID))) // 构建反馈消息
 	} else {
 		msgs = append(msgs, "未找到成功助力的账号")
@@ -1090,7 +1090,7 @@ func replexQuan_fcwb_help(info string, sender *Sender, FileName string) string {
 
 	if successfulHelps > 0 {
 		RemCoin(sender.UserID, coinToDeduct)                                                                               // 扣除积分
-		RecordCoinLog(sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
+		RecordCoinForSender(sender, sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
 		msgs = append(msgs, fmt.Sprintf("成功助力%d个账号，扣除%d积分，剩余%d积分", successfulHelps, coinToDeduct, GetCoin(sender.UserID))) // 构建反馈消息
 
 		// 如果同时存在"连续火爆，跳过"，提示重新执行助力
@@ -1138,7 +1138,7 @@ func replexQuan_fcwb_help1(info string, sender *Sender, FileName string) string 
 	if reFailure.MatchString(info) {
 		// 如果助力失败，直接扣除60积分
 		RemCoin(sender.UserID, 60)
-		RecordCoinLog(sender.UserID, -60, "助力扣费", "助力失败扣费")
+		RecordCoinForSender(sender, sender.UserID, -60, "助力扣费", "助力失败扣费")
 		return fmt.Sprintf("助力以完成，或者重复发送任务，扣除60积分，剩余%d积分", GetCoin(sender.UserID))
 	}
 
@@ -1161,7 +1161,7 @@ func replexQuan_fcwb_help1(info string, sender *Sender, FileName string) string 
 
 	if successfulHelps > 0 {
 		RemCoin(sender.UserID, coinToDeduct)                                                                               // 扣除积分
-		RecordCoinLog(sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
+		RecordCoinForSender(sender, sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
 		msgs = append(msgs, fmt.Sprintf("成功助力%d个账号，扣除%d积分，剩余%d积分", successfulHelps, coinToDeduct, GetCoin(sender.UserID))) // 构建反馈消息
 	} else {
 		msgs = append(msgs, "未找到成功助力的账号")
@@ -1246,7 +1246,7 @@ func replexQuan_ncxcx_help(info string, sender *Sender, FileName string) string 
 
 	if successfulHelps > 0 {
 		RemCoin(sender.UserID, coinToDeduct)                                                                               // 扣除积分
-		RecordCoinLog(sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
+		RecordCoinForSender(sender, sender.UserID, -coinToDeduct, "助力扣费", fmt.Sprintf("成功助力%d个账号", successfulHelps))
 		msgs = append(msgs, fmt.Sprintf("成功助力%d个账号，扣除%d积分，剩余%d积分", successfulHelps, coinToDeduct, GetCoin(sender.UserID))) // 构建反馈消息
 	} else {
 		msgs = append(msgs, "未找到成功助力的账号")

@@ -16,26 +16,23 @@ type PortalController struct {
 	BaseController
 }
 
+func (c *PortalController) clientContext() models.ClientContext {
+	return models.ResolveClientContext(
+		c.Ctx.Input.Header("X-Request-Source"),
+		c.Ctx.Input.Header("User-Agent"),
+		c.Ctx.Input.Header("X-Sign-DeviceID"),
+		c.Ctx.Input.Header("X-Client-Platform"),
+	)
+}
+
 func (c *PortalController) requestSource() string {
-	// 优先检查前端显式声明的来源
-	if src := c.Ctx.Input.Header("X-Request-Source"); src != "" {
-		if src == "web" {
-			return "Web端"
-		}
-		if src == "app" {
-			return "App端"
-		}
-	}
-	ua := strings.ToLower(c.Ctx.Input.Header("User-Agent"))
-	if strings.Contains(ua, "okhttp") || c.Ctx.Input.Header("X-Sign-DeviceID") != "" {
-		return "App端"
-	}
-	return "Web端"
+	return c.clientContext().LegacyLabel()
 }
 
 // NextPrepare 前置处理，验证门户用户登录状态
 func (c *PortalController) NextPrepare() {
 	c.PortalLogined()
+	c.ClientCtx = c.clientContext()
 }
 
 // Index 返回门户首页HTML页面
@@ -113,7 +110,7 @@ func (c *PortalController) CreateProject() {
 		c.ServeJSON()
 		return
 	}
-	msg, err := models.PortalCreateProject(c.PortalUserID, req.ActivityID, req.Inputs, req.Remarks, req.Months, c.requestSource())
+	msg, err := models.PortalCreateProject(c.PortalUserID, req.ActivityID, req.Inputs, req.Remarks, req.Months, c.ClientCtx)
 	if err != nil {
 		c.logPortalWarn("上车失败 activity=%s: %v", req.ActivityID, err)
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
@@ -137,7 +134,7 @@ func (c *PortalController) RenewProject() {
 		c.ServeJSON()
 		return
 	}
-	msg, err := models.PortalRenewProject(c.PortalUserID, req.ActivityID, req.Remarks, req.Months, c.requestSource())
+	msg, err := models.PortalRenewProject(c.PortalUserID, req.ActivityID, req.Remarks, req.Months, c.ClientCtx)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -158,7 +155,7 @@ func (c *PortalController) DeleteProject() {
 		c.ServeJSON()
 		return
 	}
-	msg, err := models.PortalDeleteProject(c.PortalUserID, req.ActivityID, req.Remarks, c.requestSource())
+	msg, err := models.PortalDeleteProject(c.PortalUserID, req.ActivityID, req.Remarks, c.ClientCtx)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -221,7 +218,7 @@ func (c *PortalController) RedeemKey() {
 		c.ServeJSON()
 		return
 	}
-	msg, balance, err := models.PortalRedeemKey(c.PortalUserID, req.Token, c.requestSource())
+	msg, balance, err := models.PortalRedeemKey(c.PortalUserID, req.Token, c.ClientCtx)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": msg, "balance": balance}
 		c.ServeJSON()
@@ -238,7 +235,7 @@ func (c *PortalController) CheckIn() {
 		return
 	}
 
-	msg, err := models.PortalCheckIn(c.PortalUserID, c.requestSource())
+	msg, err := models.PortalCheckIn(c.PortalUserID, c.ClientCtx)
 	if err != nil {
 		c.logPortalWarn("签到失败: %v", err)
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
@@ -283,7 +280,7 @@ func (c *PortalController) Pray() {
 		return
 	}
 
-	msg, err := models.PortalPray(c.PortalUserID, c.requestSource())
+	msg, err := models.PortalPray(c.PortalUserID, c.ClientCtx)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -473,7 +470,7 @@ func (c *PortalController) SubmitFeedback() {
 		c.ServeJSON()
 		return
 	}
-	if err := models.CreateAppFeedback(c.PortalUserID, req.Type, title, content, contact, "app"); err != nil {
+	if err := models.CreateAppFeedback(c.PortalUserID, req.Type, title, content, contact, c.ClientCtx); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
@@ -513,7 +510,7 @@ func (c *PortalController) WxPollLogin() {
 		c.ServeJSON()
 		return
 	}
-	data, err := models.PortalWxPollLogin(c.PortalUserID, req.UUID, req.DeductCoin)
+	data, err := models.PortalWxPollLogin(c.PortalUserID, req.UUID, req.DeductCoin, c.ClientCtx)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -564,43 +561,15 @@ func (c *PortalController) NotificationDetail() {
 // CoinLogs 获取用户积分变动记录
 func (c *PortalController) CoinLogs() {
 	logs := models.GetCoinLogs(c.PortalUserID, 50)
-	sourceFilter := c.GetString("source", "")
+	sourceFilter := models.NormalizeSourceFilter(c.GetString("source", ""))
 
-	type coinLogItem struct {
-		ID           int    `json:"id"`
-		Amount       int    `json:"amount"`
-		BalanceAfter int    `json:"balanceAfter"`
-		Type         string `json:"type"`
-		Detail       string `json:"detail"`
-		Source       string `json:"source"`
-		CreatedAt    string `json:"createdAt"`
-	}
-
-	result := make([]coinLogItem, 0)
+	result := make([]models.CoinLogView, 0, len(logs))
 	for _, l := range logs {
-		src := "后台及其他"
-		d := l.Detail
-		if len(d) >= 6 && d[:6] == "Web端" {
-			src = "Web端"
-			d = d[6:]
-		} else if len(d) >= 6 && d[:6] == "App端" {
-			src = "App端"
-			d = d[6:]
-		} else if strings.HasPrefix(d, "微信") {
-			src = "微信"
-		}
-		if sourceFilter != "" && src != sourceFilter {
+		view := models.ToCoinLogView(l)
+		if sourceFilter != "" && view.Source != sourceFilter {
 			continue
 		}
-		result = append(result, coinLogItem{
-			ID:           l.ID,
-			Amount:       l.Amount,
-			BalanceAfter: l.BalanceAfter,
-			Type:         l.Type,
-			Detail:       d,
-			Source:       src,
-			CreatedAt:    l.CreatedAt.Format("2006-01-02 15:04"),
-		})
+		result = append(result, view)
 	}
 	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
 	c.ServeJSON()
@@ -751,11 +720,11 @@ func (c *PortalController) JdTaskExecute() {
 
 	// 生成任务ID
 	taskLogId := fmt.Sprintf("%s_%d_%d", req.TaskId, c.PortalUserID, time.Now().UnixNano())
-	c.logPortalInfo("启动京东任务 task=%s name=%s accounts=%v", req.TaskId, req.TaskName, req.AccountIndexes)
+	c.logPortalInfo("启动京东任务 task=%s name=%s accounts=%v source=%s platform=%s", req.TaskId, req.TaskName, req.AccountIndexes, c.ClientCtx.Source, c.ClientCtx.Platform)
 
 	// 创建日志通道并入队
 	models.CreateTaskLogChannel(taskLogId)
-	if err := models.SubmitPortalJdTask(c.PortalUserID, req.TaskId, req.TaskName, req.AccountIndexes, taskLogId); err != nil {
+	if err := models.SubmitPortalJdTask(c.PortalUserID, req.TaskId, req.TaskName, req.AccountIndexes, taskLogId, c.ClientCtx); err != nil {
 		models.RemoveTaskLogChannel(taskLogId)
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -917,6 +886,7 @@ func (c *PortalController) KuwoLogin() {
 		c.ServeJSON()
 		return
 	}
+	c.RecordPortalEvent(models.SourceEventKuwoLogin)
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"msg":  "登录成功",
@@ -961,6 +931,7 @@ func (c *PortalController) KuwoSendSms() {
 		c.ServeJSON()
 		return
 	}
+	c.RecordPortalEvent(models.SourceEventKuwoSms)
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"msg":  "验证码已发送",
@@ -1024,6 +995,7 @@ func (c *PortalController) KuwoWithdraw() {
 	}
 
 	results, proxyHost := models.KuwoManualWithdraw(sessions, quotaId, smsCode)
+	c.RecordPortalEvent(models.SourceEventKuwoWithdraw)
 
 	type withdrawResult struct {
 		Phone   string `json:"phone"`
@@ -1104,6 +1076,7 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 	}
 
 	task, reused := models.KuwoScheduleWithdraw(accounts, quotaId, smsCode, req.TargetHour, req.Immediate)
+	c.RecordPortalEvent(models.SourceEventKuwoSchedule)
 	msg := "任务已创建"
 	if reused {
 		msg = "已有进行中的抢兑任务，已返回现有任务"
@@ -1200,10 +1173,7 @@ func kuwoTaskStatusPayload(task *models.KuwoScheduledTask) map[string]interface{
 }
 
 func (c *PortalController) portalCategory() models.Category {
-	if c.requestSource() == "App端" {
-		return models.CatApp
-	}
-	return models.CatPortal
+	return c.ClientCtx.LogCategory()
 }
 
 func (c *PortalController) logPortalInfo(format string, args ...interface{}) {

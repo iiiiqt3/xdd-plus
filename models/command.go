@@ -232,6 +232,17 @@ func (sender *Sender) IsTG() bool {
 	return strings.Contains(sender.Type, "tg")
 }
 
+// ClientContext 机器人消息来源（QQ/TG→bot，微信→wx）
+func (sender *Sender) ClientContext() ClientContext {
+	if sender == nil {
+		return BotContext()
+	}
+	if sender.isWX() {
+		return WxBotContext()
+	}
+	return BotContext()
+}
+
 func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 	cks := GetJdCookies()
 	a := sender.JoinContens()
@@ -1421,7 +1432,7 @@ var codeSignals = []CodeSignal{
 
 									// 扣除积分
 									RemCoin(sender.UserID, int(userCoin))
-									RecordCoinLog(sender.UserID, -int(userCoin), "管理员操作", "调整账号优先级")
+									RecordCoinForSender(sender, sender.UserID, -int(userCoin), "管理员操作", "调整账号优先级")
 									time.Sleep(time.Second * 2)
 
 									tcoin := GetCoin(sender.UserID)
@@ -1643,7 +1654,7 @@ var codeSignals = []CodeSignal{
 					sender.Reply(fmt.Sprintf("积分不足，添加授权需要%d个积分,请登录京东账号获取奖励（或群主积分卡）", jbcoin))
 				} else {
 					RemCoin(sender.UserID, jbcoin)
-					RecordCoinLog(sender.UserID, -jbcoin, "授权扣费", "添加授权")
+					RecordCoinForSender(sender, sender.UserID, -jbcoin, "授权扣费", "添加授权")
 					sender.Reply(fmt.Sprintf("添加授权，已扣除%d个积分，剩余积分%d", jbcoin, GetCoin(sender.UserID)))
 					ctt := sender.JoinContens()
 					auth := AddAuth(ctt)
@@ -2231,7 +2242,7 @@ var codeSignals = []CodeSignal{
 			if len(sender.Contents) > 1 {
 				UserLog().Infof("%v", sender.Contents[1:])
 				AdddCoin(qq, Int(sender.Contents[1]))
-				RecordCoinLog(qq, Int(sender.Contents[1]), "管理员操作", fmt.Sprintf("管理员%d手动加积分", sender.UserID))
+				RecordCoinForSender(sender, qq, Int(sender.Contents[1]), "管理员操作", fmt.Sprintf("管理员%d手动加积分", sender.UserID))
 				sender.Reply(fmt.Sprintf("%d已增加%d枚积分。", qq, Int(sender.Contents[1])))
 			}
 			return nil
@@ -2309,10 +2320,10 @@ var codeSignals = []CodeSignal{
 
 				// 执行转账操作
 				RemCoin(qq, coin)
-				RecordCoinLog(qq, -coin, "转账", fmt.Sprintf("转账给%d", toQQ))
+				RecordCoinForSender(sender, qq, -coin, "转账", fmt.Sprintf("转账给%d", toQQ))
 				receivedCoins := int(float64(coin) * 1) // 计算接收者实际得到的积分
 				AdddCoin(toQQ, receivedCoins)
-				RecordCoinLog(toQQ, receivedCoins, "转账", fmt.Sprintf("收到%d的转账", qq))
+				RecordCoinForSender(sender, toQQ, receivedCoins, "转账", fmt.Sprintf("收到%d的转账", qq))
 
 				senderCoinsAfter := GetCoin(qq)
 				updatedReceivedCoins := GetCoin(toQQ)
@@ -2412,9 +2423,9 @@ var codeSignals = []CodeSignal{
 			// 更新数据库积分
 			db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", pointChange)))
 			if pointChange > 0 {
-				RecordCoinLog(sender.UserID, pointChange, "游戏", "猜拳获胜")
+				RecordCoinForSender(sender, sender.UserID, pointChange, "游戏", "猜拳获胜")
 			} else if pointChange < 0 {
-				RecordCoinLog(sender.UserID, pointChange, "游戏", "猜拳失败")
+				RecordCoinForSender(sender, sender.UserID, pointChange, "游戏", "猜拳失败")
 			}
 			
 			// 查询最新积分
@@ -2510,9 +2521,9 @@ var codeSignals = []CodeSignal{
 			// **关键：先更新数据库**
 			db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", newCost)))
 			if newCost > 0 {
-				RecordCoinLog(sender.UserID, newCost, "游戏", "踩雷获胜")
+				RecordCoinForSender(sender, sender.UserID, newCost, "游戏", "踩雷获胜")
 			} else if newCost < 0 {
-				RecordCoinLog(sender.UserID, newCost, "游戏", "踩雷失败")
+				RecordCoinForSender(sender, sender.UserID, newCost, "游戏", "踩雷失败")
 			}
 			
 
@@ -2595,7 +2606,7 @@ var codeSignals = []CodeSignal{
 				return "扣款失败"
 			}
 			tx.Commit()
-			RecordCoinLog(sender.UserID, -cost, "许愿", fmt.Sprintf("许愿: %s", ct))
+			RecordCoinForSender(sender, sender.UserID, -cost, "许愿", fmt.Sprintf("许愿: %s", ct))
 			(&JdCookie{}).Push(fmt.Sprintf("有人许愿%s，愿望id为%d。", w.Content, w.ID))
 			return fmt.Sprintf("收到愿望，已扣除%d个积分。", cost)
 		},
@@ -3051,7 +3062,7 @@ var codeSignals = []CodeSignal{
 				db.Model(User{}).Where("number = ?", sender.UserID).Updates(map[string]interface{}{
 					"coin": gorm.Expr(fmt.Sprintf("coin - %d", cost)),
 				})
-				RecordCoinLog(sender.UserID, -cost, "转账", "转账手续费（自己转自己）")
+				RecordCoinForSender(sender, sender.UserID, -cost, "转账", "转账手续费（自己转自己）")
 				return fmt.Sprintf("转账成功，扣除手续费%d枚积分。", cost)
 			}
 			if amount > 10000 {
@@ -3095,8 +3106,8 @@ var codeSignals = []CodeSignal{
 				return "转账失败"
 			}
 			tx.Commit()
-			RecordCoinLog(sender.UserID, -amount, "转账", fmt.Sprintf("转账给%d", sender.ReplySenderUserID))
-			RecordCoinLog(sender.ReplySenderUserID, real, "转账", fmt.Sprintf("收到%d的转账", sender.UserID))
+			RecordCoinForSender(sender, sender.UserID, -amount, "转账", fmt.Sprintf("转账给%d", sender.ReplySenderUserID))
+			RecordCoinForSender(sender, sender.ReplySenderUserID, real, "转账", fmt.Sprintf("收到%d的转账", sender.UserID))
 			return fmt.Sprintf("转账成功，你的余额%d，他的余额%d，手续费%d。", s.Coin-amount, r.Coin+real, cost)
 		},
 	},
@@ -3606,7 +3617,7 @@ var codeSignals = []CodeSignal{
 					// 扣除所有玩家积分
 					for playerID := range game.Players {
 						db.Model(&User{}).Where("number = ?", playerID).Update("coin", gorm.Expr("coin - 60"))
-						RecordCoinLog(playerID, -60, "游戏", "比大小参与费")
+						RecordCoinForSender(sender, playerID, -60, "游戏", "比大小参与费")
 					}
 
 					// 为每个玩家生成随机数字
@@ -3653,7 +3664,7 @@ var codeSignals = []CodeSignal{
 					for playerID, reward := range game.Scores {
 						db.Model(&User{}).Where("number = ?", playerID).Update("coin", gorm.Expr("coin + ?", reward))
 						if reward > 0 {
-							RecordCoinLog(playerID, reward, "游戏", "比大小奖励")
+							RecordCoinForSender(sender, playerID, reward, "游戏", "比大小奖励")
 						}
 					}
 
@@ -4289,7 +4300,7 @@ func Guess_Number(sender *Sender, msg chan string, maxGuessCount int) {
 		}
 		guessCount++
 		RemCoin(sender.UserID, jbcoin)
-		RecordCoinLog(sender.UserID, -jbcoin, "游戏", "猜数字参与")
+		RecordCoinForSender(sender, sender.UserID, -jbcoin, "游戏", "猜数字参与")
 
 		hitMine := false
 		for _, mine := range landmines {
@@ -4308,7 +4319,7 @@ func Guess_Number(sender *Sender, msg chan string, maxGuessCount int) {
 				return
 			}
 			RemCoin(sender.UserID, mineCost)
-			RecordCoinLog(sender.UserID, -mineCost, "游戏", "猜数字踩雷")
+			RecordCoinForSender(sender, sender.UserID, -mineCost, "游戏", "猜数字踩雷")
 			sender.Reply(fmt.Sprintf("很抱歉，你运气太差了，踩中了地雷！扣除了100个积分，游戏结束。剩余积分：%d，地雷数字是：%v", GetCoin(sender.UserID), landmines))
 			ckList[sender.UserID] = nil
 			close(msg)
@@ -4320,7 +4331,7 @@ func Guess_Number(sender *Sender, msg chan string, maxGuessCount int) {
 		} else {
 			coin2 := 300 //奖励积分数量
 			AdddCoin(sender.UserID, coin2)
-			RecordCoinLog(sender.UserID, coin2, "游戏", "猜数字中奖")
+			RecordCoinForSender(sender, sender.UserID, coin2, "游戏", "猜数字中奖")
 			sender.Reply(fmt.Sprintf("恭喜你猜中了！很幸运的避开了地雷数字，你一共猜了%d次，奖励%d个积分，剩余积分%d，其中地雷数字是：%v", guessCount, coin2, GetCoin(sender.UserID), landmines))
 			ckList[sender.UserID] = nil
 			close(msg)
@@ -4461,7 +4472,7 @@ func ReturnCoin(sender *Sender) {
 			sender.Reply("愿望未达成退还积分失败。")
 			return
 		}
-		RecordCoinLog(sender.UserID, w.Coin, "退还", fmt.Sprintf("愿望未达成退还"))
+		RecordCoinForSender(sender, sender.UserID, w.Coin, "退还", fmt.Sprintf("愿望未达成退还"))
 		sender.Reply(fmt.Sprintf("愿望未达成退还%d枚积分。", w.Coin))
 		if tx.Model(&w).Update(
 			"status", 1,

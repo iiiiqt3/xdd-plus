@@ -483,7 +483,7 @@ func PortalWxDelete(userNumber int, targetWxid ...string) (*PortalWxActionResult
     return &PortalWxActionResult{Message: fmt.Sprintf("设备数据已删除（%s），如需再次上线需重新扫码并扣积分", matchedWxid)}, nil
 }
 
-func PortalWxPollLogin(userNumber int, uuid string, deductCoin bool) (*PortalWxActionResult, error) {
+func PortalWxPollLogin(userNumber int, uuid string, deductCoin bool, clientCtx ClientContext) (*PortalWxActionResult, error) {
     if strings.TrimSpace(uuid) == "" {
         return nil, fmt.Errorf("缺少登录UUID")
     }
@@ -545,7 +545,8 @@ func PortalWxPollLogin(userNumber int, uuid string, deductCoin bool) (*PortalWxA
             if actualCoin > currentCoin {
                 return nil, fmt.Errorf("积分扣除异常，请联系管理员")
             }
-            RecordCoinLog(userNumber, -cost, "微信登录", "微信扫码登录扣费")
+            RecordCoinLog(userNumber, -cost, "微信登录", "微信扫码登录扣费", clientCtx.WithDefault())
+            RecordClientSourceEvent(userNumber, SourceEventWxScanLogin, clientCtx)
             msg = fmt.Sprintf("登录成功，已扣除 %d 积分，剩余 %d 积分，昵称：%s，微信ID：%s", cost, GetCoin(userNumber), nickname, wxid)
         } else if isNewProtocolEnabled() && !IsWxWxidMigrated(wxid) {
             // 迁移登录成功，标记为已迁移

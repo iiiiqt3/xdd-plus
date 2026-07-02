@@ -1208,8 +1208,8 @@ func RunDuelBattle(duelID string, duel *Duel, sender *Sender) {
 	}
 	db.Model(&User{}).Where("number = ?", duel.Initiator).Update("coin", gorm.Expr("coin - ?", bet))
 	db.Model(&User{}).Where("number = ?", duel.Challenger).Update("coin", gorm.Expr("coin - ?", bet))
-	RecordCoinLog(duel.Initiator, -bet, "游戏", "决斗下注")
-	RecordCoinLog(duel.Challenger, -bet, "游戏", "决斗下注")
+	RecordCoinLog(duel.Initiator, -bet, "游戏", "决斗下注", BotContext())
+	RecordCoinLog(duel.Challenger, -bet, "游戏", "决斗下注", BotContext())
 
 	// 决定先手（敏捷高者先攻，相等时随机）
 	aFirst := a.Agi > b.Agi || (a.Agi == b.Agi && rand.Intn(2) == 0)
@@ -1446,8 +1446,8 @@ func RunDuelBattle(duelID string, duel *Duel, sender *Sender) {
 		record.Challenger.FinalHP = b.HP
 		db.Model(&User{}).Where("number = ?", duel.Initiator).Update("coin", gorm.Expr("coin + ?", bet))
 		db.Model(&User{}).Where("number = ?", duel.Challenger).Update("coin", gorm.Expr("coin + ?", bet))
-		RecordCoinLog(duel.Initiator, bet, "游戏", "决斗平局退还")
-		RecordCoinLog(duel.Challenger, bet, "游戏", "决斗平局退还")
+		RecordCoinLog(duel.Initiator, bet, "游戏", "决斗平局退还", BotContext())
+		RecordCoinLog(duel.Challenger, bet, "游戏", "决斗平局退还", BotContext())
 		cleanupDuel(duelID)
 		sender.Reply(fmt.Sprintf("决斗ID: %s\n%s", duelID, sb.String()))
 		return
@@ -1456,7 +1456,7 @@ func RunDuelBattle(duelID string, duel *Duel, sender *Sender) {
 	// 发放奖励
 	reward := bet * 2
 	db.Model(&User{}).Where("number = ?", winnerID).Update("coin", gorm.Expr("coin + ?", reward))
-	RecordCoinLog(winnerID, reward, "游戏", "决斗获胜奖励")
+	RecordCoinLog(winnerID, reward, "游戏", "决斗获胜奖励", BotContext())
 	sb.WriteString(fmt.Sprintf("💰 胜者获得 %d 积分（净赚 %d）\n", reward, bet))
 
 	// 生成动画HTML

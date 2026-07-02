@@ -60,8 +60,10 @@ type JdJob struct {
 	cmdMu   sync.Mutex
 	cmd     *exec.Cmd
 
-	EnqueuedAt time.Time
-	StartedAt  time.Time
+	EnqueuedAt     time.Time
+	StartedAt      time.Time
+	ClientSource   string
+	ClientPlatform string
 }
 
 func (j *JdJob) isCancelled() bool {
@@ -282,7 +284,7 @@ func (s *JdTaskScheduler) releaseJob(job *JdJob) {
 	}
 }
 
-func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan string, sender *Sender, specs []jdJobSpec, onComplete func(fullOutput string, runErr error)) error {
+func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan string, sender *Sender, specs []jdJobSpec, onComplete func(fullOutput string, runErr error), clientCtx ClientContext) error {
 	if len(specs) == 0 {
 		return fmt.Errorf("没有可执行的任务")
 	}
@@ -329,6 +331,8 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 			state:      jdJobQueued,
 			slotKey:    jdSlotKey(userID, spec.TaskType, spec.PtPin),
 			EnqueuedAt: time.Now(),
+			ClientSource:   clientCtx.Source,
+			ClientPlatform: clientCtx.Platform,
 		}
 		s.jobsByID[job.ID] = job
 		s.slots[job.slotKey] = job.ID
@@ -360,8 +364,8 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 	return nil
 }
 
-func (s *JdTaskScheduler) submitPortalBatch(userID int, portalTaskID, taskLogID string, logChan chan string, specs []jdJobSpec) error {
-	return s.submitSpecs(userID, taskLogID, logChan, nil, specs, nil)
+func (s *JdTaskScheduler) submitPortalBatch(userID int, portalTaskID, taskLogID string, logChan chan string, specs []jdJobSpec, clientCtx ClientContext) error {
+	return s.submitSpecs(userID, taskLogID, logChan, nil, specs, nil, clientCtx)
 }
 
 func (s *JdTaskScheduler) executeJob(job *JdJob) {
@@ -597,21 +601,24 @@ func (s *JdTaskScheduler) StopTaskLog(taskLogID string) {
 
 // JdAdminTaskView admin 任务列表项
 type JdAdminTaskView struct {
-	JobID       string `json:"jobId"`
-	TaskLogID   string `json:"taskLogId"`
-	UserID      int    `json:"userId"`
-	TaskType    string `json:"taskType"`
-	TaskName    string `json:"taskName"`
-	PtPin       string `json:"ptPin"`
-	Script      string `json:"script"`
-	State       string `json:"state"`
-	Source      string `json:"source"`
-	PID         int    `json:"pid"`
-	QueuePos    int    `json:"queuePos"`
-	EnqueuedAt  string `json:"enqueuedAt"`
-	StartedAt   string `json:"startedAt"`
-	RunningFor  string `json:"runningFor"`
-	WaitFor     string `json:"waitFor"`
+	JobID        string `json:"jobId"`
+	TaskLogID    string `json:"taskLogId"`
+	UserID       int    `json:"userId"`
+	TaskType     string `json:"taskType"`
+	TaskName     string `json:"taskName"`
+	PtPin        string `json:"ptPin"`
+	Script       string `json:"script"`
+	State        string `json:"state"`
+	Source       string `json:"source"`
+	Platform     string `json:"platform"`
+	SourceLabel  string `json:"sourceLabel"`
+	SourceTagCls string `json:"sourceTagCls"`
+	PID          int    `json:"pid"`
+	QueuePos     int    `json:"queuePos"`
+	EnqueuedAt   string `json:"enqueuedAt"`
+	StartedAt    string `json:"startedAt"`
+	RunningFor   string `json:"runningFor"`
+	WaitFor      string `json:"waitFor"`
 }
 
 // JdSchedulerStats 调度器统计
@@ -680,9 +687,13 @@ func (s *JdTaskScheduler) AdminGetSnapshot() (JdSchedulerStats, []JdAdminTaskVie
 		}
 		activeUsers[job.UserID] = struct{}{}
 
-		source := "bot"
-		if job.TaskLogID != "" {
-			source = "portal"
+		clientCtx := ClientContext{Source: job.ClientSource, Platform: job.ClientPlatform}
+		if clientCtx.Source == "" {
+			if job.TaskLogID != "" {
+				clientCtx = ClientContext{Source: ClientSourceWeb, Platform: ClientPlatformWeb}
+			} else {
+				clientCtx = BotContext()
+			}
 		}
 
 		pid := 0
@@ -691,18 +702,21 @@ func (s *JdTaskScheduler) AdminGetSnapshot() (JdSchedulerStats, []JdAdminTaskVie
 		}
 
 		view := JdAdminTaskView{
-			JobID:      job.ID,
-			TaskLogID:  job.TaskLogID,
-			UserID:     job.UserID,
-			TaskType:   normalizeJdTaskType(job.TaskType),
-			TaskName:   job.TaskName,
-			PtPin:      job.PtPin,
-			Script:     filepath.Base(job.ScriptPath),
-			State:      jdJobStateLabel(job.state),
-			Source:     source,
-			PID:        pid,
-			QueuePos:   queuePos[job.ID],
-			EnqueuedAt: job.EnqueuedAt.Format("2006-01-02 15:04:05"),
+			JobID:        job.ID,
+			TaskLogID:    job.TaskLogID,
+			UserID:       job.UserID,
+			TaskType:     normalizeJdTaskType(job.TaskType),
+			TaskName:     job.TaskName,
+			PtPin:        job.PtPin,
+			Script:       filepath.Base(job.ScriptPath),
+			State:        jdJobStateLabel(job.state),
+			Source:       clientCtx.Source,
+			Platform:     clientCtx.Platform,
+			SourceLabel:  clientCtx.AdminLabel(),
+			SourceTagCls: clientCtx.AdminTagClass(),
+			PID:          pid,
+			QueuePos:     queuePos[job.ID],
+			EnqueuedAt:   job.EnqueuedAt.Format("2006-01-02 15:04:05"),
 		}
 		if !job.StartedAt.IsZero() {
 			view.StartedAt = job.StartedAt.Format("2006-01-02 15:04:05")

@@ -553,7 +553,7 @@ func (c *AdminApiController) UpdateUserCoin() {
 		c.ServeJSON()
 		return
 	}
-	models.RecordCoinLog(req.Number, req.Coin, "管理员操作", fmt.Sprintf("后台设置积分为%d", req.Coin))
+	models.RecordCoinLog(req.Number, req.Coin, "管理员操作", fmt.Sprintf("后台设置积分为%d", req.Coin), models.AdminContext())
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "修改成功"}
 	c.ServeJSON()
 }
@@ -580,14 +580,28 @@ func (c *AdminApiController) GetCoinLogs() {
 	if limit == 0 {
 		limit = 20
 	}
-	logs, total := models.GetCoinLogsFiltered(userNumber, days, page, limit)
+	logs, total := models.GetCoinLogsFilteredBySource(userNumber, days, page, limit, c.GetString("source"))
+	views := make([]models.CoinLogView, 0, len(logs))
+	for _, log := range logs {
+		views = append(views, models.ToCoinLogView(log))
+	}
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"data": map[string]interface{}{
-			"list":  logs,
+			"list":  views,
 			"total": total,
 		},
 	}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) GetClientSourceStats() {
+	days := c.GetQueryInt("days")
+	if days <= 0 {
+		days = 7
+	}
+	stats := models.GetClientSourceStats(days)
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": stats}
 	c.ServeJSON()
 }
 
@@ -1771,7 +1785,7 @@ func (c *AdminApiController) BatchUpdateUserCoins() {
 		return
 	}
 	for _, num := range req.Numbers {
-		models.RecordCoinLog(num, req.Coin, "管理员操作", fmt.Sprintf("后台批量设置积分为%d", req.Coin))
+		models.RecordCoinLog(num, req.Coin, "管理员操作", fmt.Sprintf("后台批量设置积分为%d", req.Coin), models.AdminContext())
 	}
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "修改成功"}
 	c.ServeJSON()

@@ -131,13 +131,15 @@ func GetCoin(uid int) int {
 }
 
 type CoinLog struct {
-	ID           int       `gorm:"primaryKey;autoIncrement"`
-	UserNumber   int       `gorm:"index;not null"`
-	Amount       int       `gorm:"not null"`
-	BalanceAfter int       `gorm:"not null"`
-	Type         string    `gorm:"size:32;not null"`
-	Detail       string    `gorm:"size:255"`
-	CreatedAt    time.Time `gorm:"index"`
+	ID             int       `gorm:"primaryKey;autoIncrement"`
+	UserNumber     int       `gorm:"index;not null"`
+	Amount         int       `gorm:"not null"`
+	BalanceAfter   int       `gorm:"not null"`
+	Type           string    `gorm:"size:32;not null"`
+	Detail         string    `gorm:"size:255"`
+	ClientSource   string    `gorm:"size:16;index"`
+	ClientPlatform string    `gorm:"size:16"`
+	CreatedAt      time.Time `gorm:"index"`
 }
 
 func (CoinLog) TableName() string {
@@ -151,6 +153,10 @@ func GetCoinLogs(userNumber int, limit int) []CoinLog {
 }
 
 func GetCoinLogsFiltered(userNumber int, days int, page int, limit int) ([]CoinLog, int64) {
+	return GetCoinLogsFilteredBySource(userNumber, days, page, limit, "")
+}
+
+func GetCoinLogsFilteredBySource(userNumber int, days int, page int, limit int, sourceFilter string) ([]CoinLog, int64) {
 	var logs []CoinLog
 	var total int64
 	query := db.Where("user_number = ?", userNumber)
@@ -158,27 +164,82 @@ func GetCoinLogsFiltered(userNumber int, days int, page int, limit int) ([]CoinL
 		since := time.Now().AddDate(0, 0, -days)
 		query = query.Where("created_at >= ?", since)
 	}
+	if src := NormalizeSourceFilter(sourceFilter); src != "" {
+		query = query.Where("client_source = ?", src)
+	}
 	query.Model(&CoinLog{}).Count(&total)
 	query.Order("id desc").Offset((page - 1) * limit).Limit(limit).Find(&logs)
 	return logs, total
 }
 
-func RecordCoinLog(userNumber int, amount int, typ string, detail string) {
+// CoinLogView API 输出结构
+type CoinLogView struct {
+	ID             int    `json:"id"`
+	Amount         int    `json:"amount"`
+	BalanceAfter   int    `json:"balanceAfter"`
+	Type           string `json:"type"`
+	Detail         string `json:"detail"`
+	Source         string `json:"source"`
+	SourceLabel    string `json:"sourceLabel"`
+	SourceTagCls   string `json:"sourceTagCls"`
+	ClientSource   string `json:"clientSource"`
+	ClientPlatform string `json:"clientPlatform"`
+	CreatedAt      string `json:"createdAt"`
+}
+
+func ToCoinLogView(log CoinLog) CoinLogView {
+	ctx, detail := ResolveCoinLogContext(log)
+	if ctx.IsZero() {
+		ctx = AdminContext()
+	}
+	return CoinLogView{
+		ID:             log.ID,
+		Amount:         log.Amount,
+		BalanceAfter:   log.BalanceAfter,
+		Type:           log.Type,
+		Detail:         detail,
+		Source:         ctx.FilterKey(),
+		SourceLabel:    ctx.AdminLabel(),
+		SourceTagCls:   ctx.AdminTagClass(),
+		ClientSource:   ctx.Source,
+		ClientPlatform: ctx.Platform,
+		CreatedAt:      log.CreatedAt.Format("2006-01-02 15:04"),
+	}
+}
+
+func RecordCoinLog(userNumber int, amount int, typ string, detail string, ctx ...ClientContext) {
+	RecordCoinLogEx(userNumber, amount, typ, detail, pickClientContext(ctx))
+}
+
+func RecordCoinLogEx(userNumber int, amount int, typ string, detail string, ctx ClientContext) {
 	if userNumber <= 0 {
 		return
 	}
+	ctx = ctx.normalized()
+	if ctx.IsZero() {
+		ctx = AdminContext()
+	}
 	balanceAfter := GetCoin(userNumber)
 	log := CoinLog{
-		UserNumber:   userNumber,
-		Amount:       amount,
-		BalanceAfter: balanceAfter,
-		Type:         typ,
-		Detail:       detail,
-		CreatedAt:    time.Now(),
+		UserNumber:     userNumber,
+		Amount:         amount,
+		BalanceAfter:   balanceAfter,
+		Type:           typ,
+		Detail:         detail,
+		ClientSource:   ctx.Source,
+		ClientPlatform: ctx.Platform,
+		CreatedAt:      time.Now(),
 	}
 	if err := db.Create(&log).Error; err != nil {
 		Warn("[积分日志] 记录失败 user=%d amount=%d type=%s: %v", userNumber, amount, typ, err)
 	}
+}
+
+func pickClientContext(ctx []ClientContext) ClientContext {
+	if len(ctx) > 0 {
+		return ctx[0]
+	}
+	return ClientContext{}
 }
 
 func GetWxid(wxid string) int {

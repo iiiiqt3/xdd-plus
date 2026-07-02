@@ -759,6 +759,17 @@
                     </div>
                 </div>
                 <div id="coinLogSummary" style="display:none;padding:10px 16px;background:#f0f9eb;border:1px solid #e1f3d8;border-radius:6px;margin-bottom:12px;font-size:13px;color:#67c23a;"></div>
+                <div id="clientSourceStatsPanel" style="display:none;margin-bottom:12px;padding:12px 14px;background:#f5f7fa;border:1px solid #ebeef5;border-radius:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                        <div style="font-size:13px;font-weight:600;color:#333;"><i class="fas fa-chart-pie"></i> 来源统计（近 <span id="cssDays">7</span> 天）</div>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-sm coinlog-stat-day-btn active" data-days="7" onclick="setClientSourceStatDays(7)">7天</button>
+                            <button class="btn btn-sm coinlog-stat-day-btn" data-days="15" onclick="setClientSourceStatDays(15)">15天</button>
+                            <button class="btn btn-sm coinlog-stat-day-btn" data-days="30" onclick="setClientSourceStatDays(30)">30天</button>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;" id="clientSourceStatsGrid"></div>
+                </div>
                 <div class="table-wrap">
                     <table class="data-table">
                         <thead><tr>
@@ -766,11 +777,12 @@
                             <th style="min-width:80px">变动数量</th>
                             <th style="min-width:80px">变动后余额</th>
                             <th style="min-width:80px">类型</th>
+                            <th style="min-width:90px">来源</th>
                             <th style="min-width:200px">详情</th>
                             <th style="min-width:160px">时间</th>
                         </tr></thead>
                         <tbody id="coinLogTableBody">
-                            <tr><td colspan="6" style="text-align:center;color:#999;padding:60px;">
+                            <tr><td colspan="7" style="text-align:center;color:#999;padding:60px;">
                                 <i class="fas fa-search" style="font-size:36px;color:#ddd;display:block;margin-bottom:12px;"></i>
                                 请输入用户编号后点击查询
                             </td></tr>
@@ -872,7 +884,7 @@
                 </div>
                 <div class="table-wrap">
                     <table class="data-table">
-                        <thead><tr><th style="min-width:36px;width:36px;"><input type="checkbox" id="feedbackCheckAll" onchange="toggleAllFeedbackCheck(this.checked)"></th><th style="min-width:50px;cursor:pointer" data-col="id" onclick="sortFeedbacks('id')">ID <span class="sort-arrow" id="sort-id"></span></th><th style="min-width:80px;cursor:pointer" data-col="userId" onclick="sortFeedbacks('userId')">用户编号 <span class="sort-arrow" id="sort-userId"></span></th><th style="min-width:90px;cursor:pointer" data-col="type" onclick="sortFeedbacks('type')">类型 <span class="sort-arrow" id="sort-type"></span></th><th style="min-width:180px;cursor:pointer" data-col="title" onclick="sortFeedbacks('title')">主题 <span class="sort-arrow" id="sort-title"></span></th><th style="min-width:260px;">内容摘要</th><th style="min-width:90px;cursor:pointer" data-col="status" onclick="sortFeedbacks('status')">状态 <span class="sort-arrow" id="sort-status"></span></th><th style="min-width:90px;cursor:pointer" data-col="rewardCoin" onclick="sortFeedbacks('rewardCoin')">奖励 <span class="sort-arrow" id="sort-rewardCoin"></span></th><th style="min-width:130px;cursor:pointer" data-col="processedAt" onclick="sortFeedbacks('processedAt')">回复时间 <span class="sort-arrow" id="sort-processedAt"></span></th><th style="min-width:150px;cursor:pointer" data-col="createdAt" onclick="sortFeedbacks('createdAt')">提交时间 <span class="sort-arrow" id="sort-createdAt"></span></th><th style="min-width:150px;">操作</th></tr></thead>
+                        <thead><tr><th style="min-width:36px;width:36px;"><input type="checkbox" id="feedbackCheckAll" onchange="toggleAllFeedbackCheck(this.checked)"></th><th style="min-width:50px;cursor:pointer" data-col="id" onclick="sortFeedbacks('id')">ID <span class="sort-arrow" id="sort-id"></span></th><th style="min-width:80px;cursor:pointer" data-col="userId" onclick="sortFeedbacks('userId')">用户编号 <span class="sort-arrow" id="sort-userId"></span></th><th style="min-width:90px;cursor:pointer" data-col="type" onclick="sortFeedbacks('type')">类型 <span class="sort-arrow" id="sort-type"></span></th><th style="min-width:180px;cursor:pointer" data-col="title" onclick="sortFeedbacks('title')">主题 <span class="sort-arrow" id="sort-title"></span></th><th style="min-width:260px;">内容摘要</th><th style="min-width:90px;">来源</th><th style="min-width:90px;cursor:pointer" data-col="status" onclick="sortFeedbacks('status')">状态 <span class="sort-arrow" id="sort-status"></span></th><th style="min-width:90px;cursor:pointer" data-col="rewardCoin" onclick="sortFeedbacks('rewardCoin')">奖励 <span class="sort-arrow" id="sort-rewardCoin"></span></th><th style="min-width:130px;cursor:pointer" data-col="processedAt" onclick="sortFeedbacks('processedAt')">回复时间 <span class="sort-arrow" id="sort-processedAt"></span></th><th style="min-width:150px;cursor:pointer" data-col="createdAt" onclick="sortFeedbacks('createdAt')">提交时间 <span class="sort-arrow" id="sort-createdAt"></span></th><th style="min-width:150px;">操作</th></tr></thead>
                         <tbody id="feedbackTableBody"></tbody>
                     </table>
                 </div>
@@ -2300,7 +2312,7 @@ function switchPage(page) {
     document.getElementById('breadcrumb').textContent = breadcrumb;
     const loaders = {
         dashboard: loadDashboard, jdcookies: () => loadJdCookies(1), users: () => loadUsers(1),
-        coinlogs: () => {},
+        coinlogs: function() { loadClientSourceStats(); },
         notifications: () => loadNotifications(1), feedbacks: () => loadFeedbacks(1), envvars: () => loadEnvVars(1), activities: loadActivities, actauth: loadActAuthList, actstats: loadActivityStats,
         wxdevices: loadWxDevices,
         containers: loadContainers,
@@ -2826,13 +2838,14 @@ async function loadFeedbacks(page) {
         animateCounter(document.getElementById('feedbackNew'), newCount);
         animateCounter(document.getElementById('feedbackRead'), readCount);
         if (!feedbackData.length) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;">暂无反馈</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:40px;">暂无反馈</td></tr>';
         } else {
             tbody.innerHTML = feedbackData.map(function(f) {
                 const isNew = (f.status || 'new') === 'new';
                 const statusText = isNew ? '未处理' : ((f.status || '') === 'ignored' ? '不采纳' : '已处理');
                 const preview = (f.content || '').length > 80 ? (f.content || '').slice(0, 80) + '...' : (f.content || '-');
                 const replyTime = f.processedAt ? formatTime(f.processedAt) : '-';
+                const srcTag = '<span class="tag ' + escapeHtml(f.sourceTagCls || 'tag-success') + '">' + escapeHtml(f.sourceLabel || f.source || '-') + '</span>';
                 return '<tr>' +
                     '<td><input type="checkbox" class="feedback-check" value="' + f.id + '" onclick="event.stopPropagation()"></td>' +
                     '<td style="cursor:pointer" onclick="openFeedbackDetail(' + f.id + ')">' + f.id + '</td>' +
@@ -2840,6 +2853,7 @@ async function loadFeedbacks(page) {
                     '<td style="cursor:pointer" onclick="openFeedbackDetail(' + f.id + ')"><span class="tag tag-primary">' + escapeHtml(f.type || '建议') + '</span></td>' +
                     '<td style="font-weight:600;cursor:pointer" onclick="openFeedbackDetail(' + f.id + ')">' + escapeHtml(f.title || '-') + '</td>' +
                     '<td style="white-space:pre-wrap;line-height:1.6;cursor:pointer" onclick="openFeedbackDetail(' + f.id + ')">' + escapeHtml(preview) + '</td>' +
+                    '<td style="cursor:pointer" onclick="openFeedbackDetail(' + f.id + ')">' + srcTag + '</td>' +
                     '<td style="cursor:pointer" onclick="openFeedbackDetail(' + f.id + ')"><span class="tag ' + (isNew ? 'tag-warning' : 'tag-success') + '">' + statusText + '</span></td>' +
                     '<td style="cursor:pointer" onclick="openFeedbackDetail(' + f.id + ')">' + (f.rewardCoin || 0) + '</td>' +
                     '<td style="cursor:pointer" onclick="openFeedbackDetail(' + f.id + ')">' + replyTime + '</td>' +
@@ -2850,7 +2864,7 @@ async function loadFeedbacks(page) {
         }
         renderPagination('feedbackPagination', feedbackPage, total, limit, function(p) { feedbackPage = p; loadFeedbacks(); }, 'feedback');
     } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:40px;">加载失败</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:40px;">加载失败</td></tr>';
         toast('加载反馈失败: ' + e.message, 'error');
     }
 }
@@ -2890,7 +2904,7 @@ async function openFeedbackDetail(id) {
             '类型：' + (f.type || '建议'),
             '主题：' + (f.title || '-'),
             '联系方式：' + (f.contact || '-'),
-            '来源：' + (f.source || 'app'),
+            '来源：' + (f.sourceLabel || f.source || '-'),
             '提交时间：' + formatTime(f.createdAt),
             '',
             '详细内容：',
@@ -4001,6 +4015,7 @@ function updateUserCheckAll() { updateCheckAll('user-check', 'userCheckAll'); }
 // ============ 积分变动 ============
 var coinLogPage = 1;
 var coinLogDays = 3;
+var clientSourceStatDays = 7;
 function setCoinLogDays(days) {
     coinLogDays = days;
     document.querySelectorAll('.coinlog-day-btn').forEach(function(btn) {
@@ -4013,24 +4028,27 @@ async function loadCoinLogs(page) {
     if (!number) { toast('请输入用户编号', 'error'); return; }
     var summaryEl = document.getElementById('coinLogSummary');
     summaryEl.style.display = 'none';
+    loadClientSourceStats();
     try {
         var res = await api.get('/api/admin/users/coin-logs?number=' + number + '&days=' + coinLogDays + '&page=' + coinLogPage + '&limit=20');
         var tbody = document.getElementById('coinLogTableBody');
         var list = (res.data || {}).list || [];
         var total = (res.data || {}).total || 0;
         if (list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-inbox" style="font-size:36px;color:#ddd;display:block;margin-bottom:12px;"></i>暂无积分变动记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:40px;"><i class="fas fa-inbox" style="font-size:36px;color:#ddd;display:block;margin-bottom:12px;"></i>暂无积分变动记录</td></tr>';
         } else {
             tbody.innerHTML = list.map(function(log) {
-                var amountClass = log.Amount >= 0 ? 'color:#f56c6c;font-weight:600;' : 'color:#409eff;font-weight:600;';
-                var amountText = log.Amount >= 0 ? '+' + log.Amount : '' + log.Amount;
-                var timeStr = log.CreatedAt ? new Date(log.CreatedAt).toLocaleString('zh-CN') : '-';
+                var amountClass = log.amount >= 0 ? 'color:#f56c6c;font-weight:600;' : 'color:#409eff;font-weight:600;';
+                var amountText = log.amount >= 0 ? '+' + log.amount : '' + log.amount;
+                var timeStr = log.createdAt || '-';
+                var srcTag = '<span class="tag ' + escapeHtml(log.sourceTagCls || '') + '">' + escapeHtml(log.sourceLabel || log.source || '-') + '</span>';
                 return '<tr>' +
-                    '<td>' + log.ID + '</td>' +
+                    '<td>' + log.id + '</td>' +
                     '<td><span style="' + amountClass + '">' + amountText + '</span></td>' +
-                    '<td><span class="tag tag-warning">' + log.BalanceAfter + '</span></td>' +
-                    '<td><span class="tag tag-info">' + escapeHtml(log.Type || '-') + '</span></td>' +
-                    '<td style="max-width:300px;" title="' + escapeHtml(log.Detail || '') + '">' + escapeHtml(log.Detail || '-') + '</td>' +
+                    '<td><span class="tag tag-warning">' + log.balanceAfter + '</span></td>' +
+                    '<td><span class="tag tag-info">' + escapeHtml(log.type || '-') + '</span></td>' +
+                    '<td>' + srcTag + '</td>' +
+                    '<td style="max-width:300px;" title="' + escapeHtml(log.detail || '') + '">' + escapeHtml(log.detail || '-') + '</td>' +
                     '<td style="font-size:12px;color:#999;">' + timeStr + '</td>' +
                     '</tr>';
             }).join('');
@@ -4039,6 +4057,46 @@ async function loadCoinLogs(page) {
         summaryEl.style.display = 'block';
         renderPagination('coinLogPagination', coinLogPage, total, 20, loadCoinLogs);
     } catch (e) { toast('查询失败: ' + e.message, 'error'); }
+}
+
+function setClientSourceStatDays(days) {
+    clientSourceStatDays = days;
+    document.querySelectorAll('.coinlog-stat-day-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
+    });
+    loadClientSourceStats();
+}
+
+async function loadClientSourceStats() {
+    var panel = document.getElementById('clientSourceStatsPanel');
+    var grid = document.getElementById('clientSourceStatsGrid');
+    if (!panel || !grid) return;
+    try {
+        var res = await api.get('/api/admin/client-source/stats?days=' + clientSourceStatDays);
+        if (res.code !== 0) return;
+        var data = res.data || {};
+        document.getElementById('cssDays').textContent = data.days || clientSourceStatDays;
+        var blocks = [
+            { title: '今日打卡', items: data.todayCheckIn || [] },
+            { title: '打卡(' + (data.days || clientSourceStatDays) + '天)', items: data.checkIn || [] },
+            { title: '祈福', items: data.pray || [] },
+            { title: '反馈', items: data.feedback || [] },
+            { title: '酷我', items: data.kuwo || [] },
+            { title: '积分操作', items: data.coinOperations || [] },
+        ];
+        grid.innerHTML = blocks.map(function(block) {
+            var body = (block.items || []).length
+                ? block.items.map(function(it) {
+                    return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;"><span>' + escapeHtml(it.label) + '</span><strong>' + it.count + '</strong></div>';
+                }).join('')
+                : '<div style="font-size:12px;color:#999;">暂无数据</div>';
+            return '<div style="background:#fff;border:1px solid #ebeef5;border-radius:6px;padding:10px 12px;min-width:0;">' +
+                '<div style="font-size:12px;font-weight:600;color:#666;margin-bottom:8px;">' + block.title + '</div>' + body + '</div>';
+        }).join('');
+        panel.style.display = 'block';
+    } catch (e) {
+        panel.style.display = 'none';
+    }
 }
 
 // ============ 环境变量 ============
@@ -7383,9 +7441,7 @@ function renderJdTaskQueue() {
         var stateTag = t.state === 'running'
             ? '<span class="tag tag-success">运行中</span>'
             : '<span class="tag tag-warning">排队中</span>';
-        var sourceTag = t.source === 'portal'
-            ? '<span class="tag tag-info">Portal</span>'
-            : '<span class="tag">Bot</span>';
+        var sourceTag = '<span class="tag ' + escHtml(t.sourceTagCls || 'tag-success') + '">' + escHtml(t.sourceLabel || t.source || '-') + '</span>';
         var dur = t.state === 'running' ? (t.runningFor || '-') : (t.waitFor || '-');
         var batchBtn = t.taskLogId
             ? '<button class="btn btn-warning btn-xs" onclick="killJdTaskBatch(\'' + escHtml(t.taskLogId) + '\')">停批次</button> '

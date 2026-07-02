@@ -5,6 +5,7 @@
 *.swo
 
 # 编译产物
+xdd
 *.exe
 *.dll
 *.so

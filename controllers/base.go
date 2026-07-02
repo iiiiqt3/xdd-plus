@@ -30,6 +30,7 @@ type BaseController struct {
 	Master        bool
 	PortalUserID  int
 	PortalAccount *models.WebUserAccount
+	ClientCtx     models.ClientContext
 }
 
 // NextPrepare 接口定义，子控制器实现此接口以执行自定义前置处理
@@ -160,6 +161,29 @@ func (c *BaseController) PortalLogined() *BaseController {
 	c.PortalUserID = account.UserNumber
 	c.PortalAccount = account
 	return c
+}
+
+// ResolveRequestClientContext 解析当前 HTTP 请求来源（Portal 通用；NextPrepare 已赋值时直接返回）
+func (c *BaseController) ResolveRequestClientContext() models.ClientContext {
+	if !c.ClientCtx.IsZero() {
+		return c.ClientCtx
+	}
+	return models.ResolveClientContext(
+		c.Ctx.Input.Header("X-Request-Source"),
+		c.Ctx.Input.Header("User-Agent"),
+		c.Ctx.Input.Header("X-Sign-DeviceID"),
+		c.Ctx.Input.Header("X-Client-Platform"),
+	)
+}
+
+// RecordPortalCoin Portal 积分变动（自动附带来源，新接口优先使用）
+func (c *BaseController) RecordPortalCoin(userNumber, amount int, typ, detail string) {
+	models.RecordCoinLogEx(userNumber, amount, typ, detail, c.ResolveRequestClientContext())
+}
+
+// RecordPortalEvent Portal 非积分操作来源记录（酷我、反馈等）
+func (c *BaseController) RecordPortalEvent(eventType string) {
+	models.RecordClientSourceEvent(c.PortalUserID, eventType, c.ResolveRequestClientContext())
 }
 
 // Validate 表单验证，将请求体JSON反序列化到指定结构体并进行校验

@@ -2673,7 +2673,7 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 			totalRefundCoin += refundCoin
 			if item.UserNumber > 0 && refundCoin > 0 {
 				AdddCoin(item.UserNumber, refundCoin)
-				RecordCoinLog(item.UserNumber, refundCoin, "退还", fmt.Sprintf("管理员批量删除%s退还", cfg.Name))
+				RecordCoinLog(item.UserNumber, refundCoin, "退还", fmt.Sprintf("管理员批量删除%s退还", cfg.Name), AdminContext())
 			}
 		}
 		if item.UserNumber > 0 {
