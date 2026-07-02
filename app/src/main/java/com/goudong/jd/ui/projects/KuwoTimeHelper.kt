@@ -18,11 +18,34 @@ object KuwoTimeHelper {
         return BeijingTime(h, m, s, (h * 3600L + m * 60L + s) * 1000L + ms)
     }
 
+    /** 到目标整点的分钟差（支持跨午夜，如 23:57 → 00:00） */
+    fun minutesUntilHour(targetHour: Int, hour: Int, min: Int): Int {
+        var diffMin = targetHour * 60 - (hour * 60 + min)
+        if (diffMin < 0) diffMin += 24 * 60
+        return diffMin
+    }
+
+    /**
+     * 到目标整点剩余毫秒；整点后 graceAfterMin 分钟内返回 0（执行窗口），避免误判为明天。
+     */
+    fun remainingMsUntilHour(targetHour: Int, graceAfterMin: Int = 30): Long {
+        val bj = getBeijingTime()
+        val targetMs = targetHour * 3600L * 1000L
+        var remaining = targetMs - bj.totalMs
+        if (remaining <= 0) {
+            val pastMs = -remaining
+            if (pastMs <= graceAfterMin * 60L * 1000L) {
+                return 0L
+            }
+            remaining += 24L * 3600L * 1000L
+        }
+        return remaining.coerceAtLeast(0L)
+    }
+
     fun getNextWithdrawInfo(): NextWithdrawInfo {
         val bj = getBeijingTime()
-        val currentMin = bj.hour * 60 + bj.min
         for (h in withdrawHours) {
-            val diffMin = h * 60 - currentMin
+            val diffMin = minutesUntilHour(h, bj.hour, bj.min)
             if (diffMin > 0 && diffMin <= 4) {
                 return NextWithdrawInfo(h, inWindow = true, diffMin = diffMin)
             }
@@ -31,11 +54,12 @@ object KuwoTimeHelper {
             }
         }
         for (h in withdrawHours) {
-            if (h * 60 > currentMin) {
-                return NextWithdrawInfo(h, inWindow = false, diffMin = h * 60 - currentMin)
+            val diffMin = minutesUntilHour(h, bj.hour, bj.min)
+            if (diffMin > 4) {
+                return NextWithdrawInfo(h, inWindow = false, diffMin = diffMin)
             }
         }
-        val nextDayMin = (24 * 60 - currentMin) + withdrawHours.first() * 60
+        val nextDayMin = minutesUntilHour(withdrawHours.first(), bj.hour, bj.min)
         return NextWithdrawInfo(withdrawHours.first(), inWindow = false, diffMin = nextDayMin)
     }
 

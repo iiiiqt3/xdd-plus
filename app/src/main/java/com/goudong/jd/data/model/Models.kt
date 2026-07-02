@@ -263,6 +263,7 @@ data class KuwoTaskLog(
     val time: String? = null,
     val level: String? = null,
     val message: String? = null,
+    val proxyHost: String? = null,
 )
 
 data class KuwoWithdrawTask(

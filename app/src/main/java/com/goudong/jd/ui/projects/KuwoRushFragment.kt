@@ -395,7 +395,11 @@ class KuwoRushFragment : Fragment() {
     private fun renderTaskLog(entry: KuwoTaskLog) {
         val icons = mapOf("info" to "ℹ️", "success" to "✅", "warn" to "⚠️", "error" to "❌")
         val icon = icons[entry.level] ?: "•"
-        appendLog("[${entry.time ?: "--"}] $icon ${entry.message ?: ""}")
+        var line = "[${entry.time ?: "--"}] $icon ${entry.message ?: ""}"
+        if (!entry.proxyHost.isNullOrBlank()) {
+            line += " [代理:${entry.proxyHost}]"
+        }
+        appendLog(line)
     }
 
     private fun flushTaskLogs(logs: List<KuwoTaskLog>?) {
@@ -543,7 +547,7 @@ class KuwoRushFragment : Fragment() {
                 updateSavedTaskId(taskId, immediate, targetHour)
                 monitorTask(taskId, immediate)
                 if (!immediate && info != null) {
-                    runCountdown(info)
+                    runCountdown(info, taskId)
                 }
             }.onFailure {
                 appendLog("❌ 提交失败: ${it.message}")
@@ -564,6 +568,8 @@ class KuwoRushFragment : Fragment() {
 
     private fun restoreWithdrawUi() {
         withdrawSubmitting = false
+        countdownJob?.cancel()
+        countdownJob = null
         setWithdrawUiLocked(false)
         countdownText?.text = ""
     }
@@ -571,20 +577,37 @@ class KuwoRushFragment : Fragment() {
     private fun monitorTask(taskId: String, immediate: Boolean) {
         monitorJob?.cancel()
         val pollMs = if (immediate) 250L else 800L
-        val maxPoll = if (immediate) 120 else 150
+        val maxPoll = if (immediate) 120 else 600
         monitorJob = lifecycleScope.launch {
             var pollCount = 0
-            while (isActive && pollCount < maxPoll) {
+            var errorCount = 0
+            while (isActive) {
                 pollCount++
+                var shouldStop = false
                 runCatching { AppServices.portalRepository.fetchKuwoWithdrawStatus(taskId = taskId) }
                     .onSuccess { task ->
-                        if (task != null && applyTaskResult(task, immediate)) {
-                            return@launch
+                        errorCount = 0
+                        if (task != null) {
+                            if (task.status == "pending" || task.status == "running") {
+                                applyTaskResult(task, immediate)
+                            } else if (applyTaskResult(task, immediate)) {
+                                shouldStop = true
+                            }
                         }
                     }
+                    .onFailure {
+                        errorCount++
+                        if (errorCount > 20) {
+                            countdownText?.text = "⏰ 网络异常，请返回页面查看结果"
+                            shouldStop = true
+                        }
+                    }
+                if (shouldStop) return@launch
+                if (pollCount > maxPoll) {
+                    countdownText?.text = "⏰ 仍在等待后端，继续同步…"
+                }
                 delay(pollMs)
             }
-            countdownText?.text = "⏰ 查询超时，请下拉刷新查看结果"
         }
     }
 
@@ -597,6 +620,7 @@ class KuwoRushFragment : Fragment() {
             }
             "completed" -> {
                 monitorJob?.cancel()
+                countdownJob?.cancel()
                 countdownText?.text = "✅ 抢兑已完成"
                 appendLog("--- 任务结束 ---")
                 restoreWithdrawUi()
@@ -605,6 +629,7 @@ class KuwoRushFragment : Fragment() {
             }
             "failed" -> {
                 monitorJob?.cancel()
+                countdownJob?.cancel()
                 countdownText?.text = "❌ 抢兑失败"
                 appendLog("--- 任务失败 ---")
                 restoreWithdrawUi()
@@ -615,24 +640,31 @@ class KuwoRushFragment : Fragment() {
         return false
     }
 
-    private fun runCountdown(info: KuwoTimeHelper.NextWithdrawInfo) {
+    private fun runCountdown(info: KuwoTimeHelper.NextWithdrawInfo, taskId: String) {
         countdownJob?.cancel()
         val targetHour = info.hour
         val targetLabel = KuwoTimeHelper.formatHour(targetHour)
+        var fired = false
         countdownJob = lifecycleScope.launch {
             while (isActive) {
-                val bj = KuwoTimeHelper.getBeijingTime()
-                val currentMs = bj.totalMs
-                val targetMs = targetHour * 3600L * 1000L
-                if (targetMs > currentMs) {
-                    val remaining = targetMs - currentMs
+                val remaining = KuwoTimeHelper.remainingMsUntilHour(targetHour)
+                if (remaining > 20L * 3600L * 1000L) {
+                    if (!fired) {
+                        fired = true
+                        countdownText?.text = "🚀 后端正在执行 $targetLabel 抢兑..."
+                        monitorTask(taskId, false)
+                    }
+                    break
+                }
+                if (remaining > 0) {
                     val rMin = remaining / 60000
                     val rSec = (remaining % 60000) / 1000
                     countdownText?.text = "⏳ $targetLabel 自动抢兑 — 剩余 ${rMin}分${rSec}秒"
-                } else {
+                } else if (!fired) {
+                    fired = true
                     countdownText?.text = "🚀 后端正在执行 $targetLabel 抢兑..."
                     appendLog("⏰ 到达抢兑时间 $targetLabel，等待后端日志同步...")
-                    clearSavedState()
+                    monitorTask(taskId, false)
                     break
                 }
                 delay(100)
@@ -696,7 +728,16 @@ class KuwoRushFragment : Fragment() {
                         }
                     }
                 }
-                var taskId = json.optString("taskId").takeIf { it.isNotBlank() }
+                val taskIdFromState = json.optString("taskId").takeIf { it.isNotBlank() }
+                val taskById = taskIdFromState?.let {
+                    runCatching { AppServices.portalRepository.fetchKuwoWithdrawStatus(taskId = it) }.getOrNull()
+                }
+                if (taskById != null && (taskById.status == "completed" || taskById.status == "failed")) {
+                    taskLogIndex = taskById.logs?.size ?: 0
+                    applyTaskResult(taskById, json.optBoolean("immediate"))
+                    return@runCatching
+                }
+                var taskId = taskIdFromState
                 val active = runCatching {
                     AppServices.portalRepository.fetchKuwoWithdrawStatus(phone = phone.ifBlank { savedPhone })
                 }.getOrNull()
@@ -705,14 +746,19 @@ class KuwoRushFragment : Fragment() {
                 }
                 if (!taskId.isNullOrBlank()) {
                     appendLog("🔄 检测到进行中的抢兑任务，已恢复监控")
-                    taskLogIndex = 0
+                    val logs = active?.logs ?: taskById?.logs
+                    taskLogIndex = logs?.size ?: 0
                     setWithdrawUiLocked(true)
                     val immediate = json.optBoolean("immediate") || active?.immediate == true
-                    monitorTask(taskId, immediate)
-                    if (!immediate) {
-                        val hour = if (json.has("targetHour")) json.optInt("targetHour") else active?.targetHour ?: 0
-                        runCountdown(KuwoTimeHelper.NextWithdrawInfo(hour, inWindow = true, diffMin = 1))
+                    val hour = if (json.has("targetHour")) json.optInt("targetHour") else active?.targetHour ?: 0
+                    val remaining = KuwoTimeHelper.remainingMsUntilHour(hour)
+                    if (!immediate && remaining > 0) {
+                        runCountdown(KuwoTimeHelper.NextWithdrawInfo(hour, inWindow = true, diffMin = 1), taskId)
+                    } else if (!immediate) {
+                        countdownText?.text = "🚀 后端正在执行 ${KuwoTimeHelper.formatHour(hour)} 抢兑..."
+                        appendLog("🔄 倒计时已结束，等待后端执行结果…")
                     }
+                    monitorTask(taskId, immediate)
                 }
             }
         }
