@@ -497,6 +497,30 @@ final class CredentialStore {
 }
 
 
+enum PortalRequestMeta {
+    static let source = "app"
+    static let platform = "ios"
+
+    static var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+    }
+
+    static var defaultHeaders: [String: String] {
+        [
+            "X-Request-Source": source,
+            "X-Client-Platform": platform,
+            "X-App-Version": appVersion,
+        ]
+    }
+
+    static func merged(with headers: [String: String]) -> [String: String] {
+        var out = defaultHeaders
+        headers.forEach { out[$0.key] = $0.value }
+        return out
+    }
+}
+
+
 final class APIClient {
     static let shared = APIClient()
 
@@ -525,7 +549,7 @@ final class APIClient {
         request.httpMethod = method
         request.httpBody = body
         request.timeoutInterval = 30
-        headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
+        PortalRequestMeta.merged(with: headers).forEach { request.setValue($1, forHTTPHeaderField: $0) }
 
         session.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -655,7 +679,7 @@ final class APIClient {
         request.httpMethod = method
         request.timeoutInterval = 30
         request.httpBody = body
-        headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
+        PortalRequestMeta.merged(with: headers).forEach { request.setValue($1, forHTTPHeaderField: $0) }
 
         session.dataTask(with: request) { data, _, error in
             if let error = error {
@@ -1155,6 +1179,7 @@ final class PortalService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.timeoutInterval = 30
+        PortalRequestMeta.defaultHeaders.forEach { request.setValue($1, forHTTPHeaderField: $0) }
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 DispatchQueue.main.async { completion(.failure(APIError(message: error.localizedDescription, isUnauthorized: false))) }
@@ -1263,6 +1288,7 @@ final class JdTaskLogStreamer: NSObject, URLSessionDataDelegate {
         }
         var request = URLRequest(url: url)
         request.timeoutInterval = 300
+        PortalRequestMeta.defaultHeaders.forEach { request.setValue($1, forHTTPHeaderField: $0) }
         dataTask = session.dataTask(with: request)
         dataTask?.resume()
     }
