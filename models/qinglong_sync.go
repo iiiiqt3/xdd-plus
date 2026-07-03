@@ -36,7 +36,7 @@ const (
 	syncInterval     = 10 * time.Minute
 	syncBatchSize    = 500 // 每批处理上限；青龙容器性能好可保持 500，若 API 变慢可改小
 	syncMaxRetries   = 3
-	fullSyncInterval = 1 * time.Hour
+	fullSyncInterval = 6 * time.Hour // 全量对账抽查间隔
 )
 
 func GetSyncQueue() *SyncQueue {
