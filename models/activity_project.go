@@ -151,6 +151,7 @@ func CalcPaidRemainingDays(project *ActivityProject) int {
 func CreateActivityProject(project *ActivityProject) error {
 	NormalizeProjectBilling(project)
 	duplicate, err := CheckDuplicateRemarksDB(project.Remarks, project.EnvKey)
+	if err != nil {
 		return fmt.Errorf("检查重复备注失败：%v", err)
 	}
 	if duplicate {
