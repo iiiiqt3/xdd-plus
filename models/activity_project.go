@@ -466,6 +466,21 @@ func GetPendingSyncProjects(limit int) ([]ActivityProject, error) {
 	return projects, nil
 }
 
+// CountPendingSyncProjects 统计当前待同步队列总量（不含本批上限）
+func CountPendingSyncProjects() int64 {
+	var n int64
+	_ = db.Model(&ActivityProject{}).Where(
+		"(sync_status IN ('pending', 'pending_update', 'pending_disable', 'pending_enable') AND deleted_at IS NULL) OR "+
+			"(sync_status = 'error' AND sync_retry_count < ? AND deleted_at IS NULL)",
+		syncMaxRetries,
+	).Count(&n).Error
+	var delN int64
+	_ = db.Unscoped().Model(&ActivityProject{}).
+		Where("sync_status = ? AND deleted_at IS NOT NULL", "pending_delete").
+		Count(&delN).Error
+	return n + delN
+}
+
 func GetProjectsBySyncStatus(status string) ([]ActivityProject, error) {
 	var projects []ActivityProject
 	err := db.Where("sync_status = ?", status).Find(&projects).Error

@@ -34,7 +34,7 @@ var (
 
 const (
 	syncInterval     = 10 * time.Minute
-	syncBatchSize    = 50
+	syncBatchSize    = 100
 	syncMaxRetries   = 3
 	fullSyncInterval = 1 * time.Hour
 )
@@ -148,7 +148,12 @@ func (sq *SyncQueue) processPendingSyncs() {
 		return
 	}
 
-	Sync().Infof("[同步服务] 发现 %d 个待同步项目", len(projects))
+	totalPending := CountPendingSyncProjects()
+	if totalPending > int64(len(projects)) {
+		Sync().Infof("[同步服务] 待同步队列共 %d 条，本批处理 %d 条", totalPending, len(projects))
+	} else {
+		Sync().Infof("[同步服务] 本批处理 %d 个待同步项目", len(projects))
+	}
 
 	for _, project := range projects {
 		if err := sq.syncProjectSafe(project.ID); err != nil {
@@ -426,79 +431,58 @@ func (sq *SyncQueue) performFullSyncCheck() {
 			continue
 		}
 
-		dbRemarksMap := make(map[string]*ActivityProject)
+		matchedQLEnvID := make(map[int]bool)
 		for i := range dbProjects {
-			dbRemarksMap[dbProjects[i].Remarks] = &dbProjects[i]
-		}
-
-		qlRemarksMap := make(map[string]QLEnvItem)
-		for _, env := range qlEnvs {
-			qlRemarksMap[env.Remarks] = env
-		}
-
-		for remarks, dbProj := range dbRemarksMap {
-			if _, exists := qlRemarksMap[remarks]; !exists {
-				if dbProj.SyncStatus == "synced" || dbProj.SyncStatus == "error" {
-					Sync().Infof("[全量同步] 数据库有但青龙缺失 Remarks=%s，触发创建同步", remarks)
-					db.Model(&ActivityProject{}).Where("id = ?", dbProj.ID).
-						Updates(map[string]interface{}{
-							"sync_status":      "pending",
-							"sync_error":       "",
-							"sync_retry_count": 0,
-							"updated_at":       time.Now(),
-						})
-				}
-			}
-		}
-
-		for remarks, qlEnv := range qlRemarksMap {
-			if _, exists := dbRemarksMap[remarks]; !exists {
-				Sync().Infof("[全量同步] 青龙有但数据库缺失 Remarks=%s QLEnvID=%d，跳过", remarks, qlEnv.ID)
-			}
-		}
-
-		for remarks, dbProj := range dbRemarksMap {
-			qlEnv, exists := qlRemarksMap[remarks]
-			if !exists {
+			dbProj := &dbProjects[i]
+			if dbProj.SyncStatus != "synced" && dbProj.SyncStatus != "error" {
 				continue
 			}
 
+			env, matchHow, findErr := client.FindEnvForProject(dbProj)
 			updates := map[string]interface{}{}
-			if dbProj.QingLongEnvID != qlEnv.ID {
-				Sync().Infof("[全量同步] 修正EnvID ID=%d DB=%d → QL=%d", dbProj.ID, dbProj.QingLongEnvID, qlEnv.ID)
-				updates["qinglong_env_id"] = qlEnv.ID
-			}
 
-			if dbProj.SyncStatus != "synced" {
-				if len(updates) > 0 {
-					updates["updated_at"] = time.Now()
-					db.Model(&ActivityProject{}).Where("id = ?", dbProj.ID).Updates(updates)
-				}
-				continue
-			}
-
-			dbEnabled := dbProj.Status == 0
-			qlEnabled := qlEnv.Status == 1
-			if dbEnabled != qlEnabled {
-				Sync().Infof("[全量同步] 状态不一致 Remarks=%s DB启用=%v QL启用=%v", remarks, dbEnabled, qlEnabled)
-				if !dbEnabled {
-					updates["sync_status"] = "pending_disable"
-				} else {
-					updates["sync_status"] = "pending_enable"
-				}
+			if findErr != nil {
+				Sync().Infof("[全量同步] 数据库有但青龙未匹配 ID=%d Remarks=%s", dbProj.ID, dbProj.Remarks)
+				updates["sync_status"] = "pending"
 				updates["sync_error"] = ""
 				updates["sync_retry_count"] = 0
-			} else if dbProj.EnvValue != qlEnv.Value {
-				Sync().Infof("[全量同步] 内容不一致 Remarks=%s，触发更新同步", remarks)
-				updates["sync_status"] = "pending_update"
-				updates["sync_error"] = ""
-				updates["sync_retry_count"] = 0
+			} else {
+				matchedQLEnvID[env.ID] = true
+				if dbProj.QingLongEnvID != env.ID {
+					Sync().Infof("[全量同步] 修正EnvID ID=%d DB=%d → QL=%d (%s)", dbProj.ID, dbProj.QingLongEnvID, env.ID, matchHow)
+					updates["qinglong_env_id"] = env.ID
+				}
+
+				dbEnabled := dbProj.Status == 0
+				qlEnabled := env.Status == 1
+				if dbEnabled != qlEnabled {
+					Sync().Infof("[全量同步] 状态不一致 ID=%d Remarks=%s DB启用=%v QL启用=%v", dbProj.ID, dbProj.Remarks, dbEnabled, qlEnabled)
+					if !dbEnabled {
+						updates["sync_status"] = "pending_disable"
+					} else {
+						updates["sync_status"] = "pending_enable"
+					}
+					updates["sync_error"] = ""
+					updates["sync_retry_count"] = 0
+				} else if dbProj.EnvValue != env.Value || strings.TrimSpace(dbProj.Remarks) != strings.TrimSpace(env.Remarks) {
+					Sync().Infof("[全量同步] 内容/备注不一致 ID=%d，触发更新同步", dbProj.ID)
+					updates["sync_status"] = "pending_update"
+					updates["sync_error"] = ""
+					updates["sync_retry_count"] = 0
+				}
 			}
 
 			if len(updates) > 0 {
 				updates["updated_at"] = time.Now()
 				db.Model(&ActivityProject{}).Where("id = ?", dbProj.ID).Updates(updates)
 			}
+		}
+
+		for _, env := range qlEnvs {
+			if env.Name != cfg.EnvKey || matchedQLEnvID[env.ID] {
+				continue
+			}
+			Sync().Infof("[全量同步] 青龙有但数据库未匹配 Remarks=%s QLEnvID=%d，跳过", env.Remarks, env.ID)
 		}
 	}
 
