@@ -243,6 +243,8 @@ struct KuwoWithdrawTask: Decodable {
     let executeAt: String?
     let status: String?
     let immediate: Bool?
+    let smsFatal: Bool?
+    let smsEditable: Bool?
     let logs: [KuwoTaskLog]?
 }
 
@@ -1229,6 +1231,10 @@ final class PortalService {
             return
         }
         APIClient.shared.requestData(path: "/api/portal/kuwo/schedule-withdraw", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func updateKuwoSmsCode(taskId: String, smsCode: String, completion: @escaping (Result<String, APIError>) -> Void) {
+        requestMessageJSON(path: "/api/portal/kuwo/update-sms-code", payload: ["taskId": taskId, "smsCode": smsCode], completion: completion)
     }
 
     func fetchKuwoWithdrawStatus(taskId: String? = nil, phone: String? = nil, completion: @escaping (Result<KuwoWithdrawTask?, APIError>) -> Void) {

@@ -91,12 +91,15 @@ final class KuwoRushViewController: BaseNativeViewController {
     private let nextTimeLabel = UILabel()
     private let timeHintLabel = UILabel()
     private let withdrawButton = UIButton(type: .system)
+    private let updateSmsButton = UIButton(type: .system)
+    private let smsEditHint = UILabel()
     private let countdownLabel = UILabel()
     private let logTextView = UITextView()
     private let quotaStack = UIStackView()
 
     private var kuwoAuthorized = false
-    private var selectedQuotaId = "60004"
+    private var selectedQuotaId = "30002"
+    private var activeTaskId: String?
     private var withdrawSubmitting = false
     private var taskLogIndex = 0
     private var monitorTimer: Timer?
@@ -104,8 +107,8 @@ final class KuwoRushViewController: BaseNativeViewController {
     private var countdownTimer: Timer?
 
     private let quotaOptions: [(id: String, title: String)] = [
-        ("60004", "1元"),
         ("30002", "2元"),
+        ("60004", "1元"),
         ("60001", "10元"),
     ]
 
@@ -291,6 +294,23 @@ final class KuwoRushViewController: BaseNativeViewController {
         withdrawButton.contentEdgeInsets = UIEdgeInsets(top: 12, left: 20, bottom: 12, right: 20)
         bindAction(withdrawButton) { [weak self] in self?.startWithdraw() }
 
+        updateSmsButton.setTitle("更新验证码", for: .normal)
+        updateSmsButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        updateSmsButton.backgroundColor = UIColor.secondarySystemGroupedBackground
+        updateSmsButton.setTitleColor(.label, for: .normal)
+        updateSmsButton.layer.cornerRadius = 10
+        updateSmsButton.layer.borderWidth = 1
+        updateSmsButton.layer.borderColor = UIColor.systemGray4.cgColor
+        updateSmsButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
+        updateSmsButton.isHidden = true
+        bindAction(updateSmsButton) { [weak self] in self?.updateSmsCode() }
+
+        smsEditHint.text = "倒计时中可修改上方验证码，改完后点击「更新验证码」同步到后端"
+        smsEditHint.font = .systemFont(ofSize: 11.5, weight: .semibold)
+        smsEditHint.textColor = .systemIndigo
+        smsEditHint.numberOfLines = 0
+        smsEditHint.isHidden = true
+
         countdownLabel.font = .systemFont(ofSize: 15, weight: .bold)
         countdownLabel.textColor = .white
         countdownLabel.textAlignment = .center
@@ -301,6 +321,8 @@ final class KuwoRushViewController: BaseNativeViewController {
         countdownLabel.numberOfLines = 0
 
         card.addArrangedSubview(withdrawButton)
+        card.addArrangedSubview(updateSmsButton)
+        card.addArrangedSubview(smsEditHint)
         card.addArrangedSubview(countdownLabel)
         return card
     }
@@ -488,11 +510,21 @@ final class KuwoRushViewController: BaseNativeViewController {
         }
     }
 
+    private func clearActiveState() {
+        monitorTimer?.invalidate()
+        countdownTimer?.invalidate()
+        activeTaskId = nil
+        prefs().removeObject(forKey: "kuwo_state")
+    }
+
     private func sendSms() {
         guard kuwoAuthorized else { showMessage("酷我活动授权已到期，请前往我的项目续费"); return }
         let phone = phoneField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let password = passwordField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !phone.isEmpty, !password.isEmpty else { showMessage("未读取到酷我账号，请先在项目中上车"); return }
+        clearActiveState()
+        restoreWithdrawUi()
+        smsField.text = ""
         smsStatus.text = "正在登录并发送验证码..."
         appendLog("正在登录酷我账号...")
         PortalService.shared.sendKuwoSms(phone: phone, password: password) { [weak self] result in
@@ -524,8 +556,8 @@ final class KuwoRushViewController: BaseNativeViewController {
 
         let info = KuwoTimeHelper.getNextWithdrawInfo()
         if info.inWindow && info.diffMin > 0 && info.diffMin <= 4 {
-            appendLog("🎯 提交定时抢兑任务，后端将在 \(KuwoTimeHelper.formatHour(info.hour)) 自动执行")
-            setWithdrawUiLocked(true)
+            appendLog("🎯 提交定时抢兑任务，后端将在 \(KuwoTimeHelper.formatHour(info.hour)) 自动执行（3轮错峰）")
+            setWithdrawUiLocked(true, allowSmsEdit: true)
             saveKuwoState(phone: phone, password: password, smsCode: smsCode, quotaId: selectedQuotaId, targetHour: info.hour, taskId: nil, immediate: false)
             scheduleOnBackend(phone: phone, password: password, smsCode: smsCode, quotaId: selectedQuotaId, targetHour: info.hour, info: info, immediate: false)
             return
@@ -554,7 +586,9 @@ final class KuwoRushViewController: BaseNativeViewController {
                 }
                 self.appendLog((data.reused == true ? "♻️ 复用已有任务" : "✅ 任务已提交") + "，ID: \(taskId)")
                 self.taskLogIndex = 0
+                self.activeTaskId = taskId
                 self.updateSavedTaskId(taskId: taskId, immediate: immediate, targetHour: targetHour)
+                if !immediate { self.setWithdrawUiLocked(true, allowSmsEdit: true) }
                 self.monitorTask(taskId: taskId, immediate: immediate)
                 if !immediate, let info = info {
                     self.runCountdown(info: info, taskId: taskId)
@@ -563,19 +597,43 @@ final class KuwoRushViewController: BaseNativeViewController {
         }
     }
 
-    private func setWithdrawUiLocked(_ locked: Bool) {
+    private func setWithdrawUiLocked(_ locked: Bool, allowSmsEdit: Bool = false) {
         withdrawButton.isHidden = locked
         countdownLabel.isHidden = !locked
+        updateSmsButton.isHidden = !(locked && allowSmsEdit)
+        smsEditHint.isHidden = !(locked && allowSmsEdit)
         phoneField.isEnabled = !locked
         passwordField.isEnabled = !locked
-        smsField.isEnabled = !locked
+        smsField.isEnabled = !locked || allowSmsEdit
     }
 
     private func restoreWithdrawUi() {
         withdrawSubmitting = false
         countdownTimer?.invalidate()
+        activeTaskId = nil
         setWithdrawUiLocked(false)
         countdownLabel.text = ""
+    }
+
+    private func updateSmsCode() {
+        guard let taskId = activeTaskId, !taskId.isEmpty else { showMessage("暂无进行中的任务"); return }
+        let smsCode = smsField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !smsCode.isEmpty else { showMessage("请输入验证码"); return }
+        PortalService.shared.updateKuwoSmsCode(taskId: taskId, smsCode: smsCode) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .failure(let error):
+                self.showMessage(error.message)
+                self.handle(error)
+            case .success:
+                self.appendLog("✅ 验证码已同步到后端")
+                self.showMessage("验证码已更新")
+                if var dict = self.prefs().dictionary(forKey: "kuwo_state") {
+                    dict["smsCode"] = smsCode
+                    self.prefs().set(dict, forKey: "kuwo_state")
+                }
+            }
+        }
     }
 
     private func monitorTask(taskId: String, immediate: Bool) {
@@ -617,6 +675,14 @@ final class KuwoRushViewController: BaseNativeViewController {
     private func applyTaskResult(task: KuwoWithdrawTask, immediate: Bool) -> Bool {
         flushTaskLogs(task.logs)
         switch task.status {
+        case "pending":
+            if !immediate {
+                setWithdrawUiLocked(true, allowSmsEdit: true)
+                if task.smsFatal == true {
+                    appendLog("⚠️ 后端反馈疑似验证码错误，请修改后点击「更新验证码」")
+                }
+            }
+            return false
         case "running":
             if immediate { countdownLabel.text = "🚀 后端正在执行..." }
             return false
@@ -696,77 +762,54 @@ final class KuwoRushViewController: BaseNativeViewController {
 
     private func restoreKuwoState(phone: String) {
         guard let dict = prefs().dictionary(forKey: "kuwo_state") else { return }
-        if let savedPhone = dict["phone"] as? String, !savedPhone.isEmpty, !phone.isEmpty, savedPhone != phone { return }
-        smsField.text = dict["smsCode"] as? String
-        if let quotaId = dict["quotaId"] as? String {
-            selectedQuotaId = quotaId
-            refreshQuotaButtons()
+        if let savedPhone = dict["phone"] as? String, !savedPhone.isEmpty, !phone.isEmpty, savedPhone != phone {
+            clearActiveState()
+            return
         }
-        let savedPhone = dict["phone"] as? String ?? phone
-        let taskIdFromState = dict["taskId"] as? String
-
-        func finishRestore(taskId: String, active: KuwoWithdrawTask?, taskById: KuwoWithdrawTask? = nil) {
-            if let active = active, active.status == "completed" || active.status == "failed" {
-                self.taskLogIndex = active.logs?.count ?? 0
-                _ = self.applyTaskResult(task: active, immediate: (dict["immediate"] as? Bool) ?? false)
+        guard let taskIdFromState = dict["taskId"] as? String, !taskIdFromState.isEmpty else {
+            clearActiveState()
+            return
+        }
+        PortalService.shared.fetchKuwoWithdrawStatus(taskId: taskIdFromState) { [weak self] result in
+            guard let self = self else { return }
+            let task: KuwoWithdrawTask?
+            switch result {
+            case .success(let t): task = t
+            case .failure: task = nil
+            }
+            if let task = task, task.status == "completed" || task.status == "failed" {
+                self.taskLogIndex = task.logs?.count ?? 0
+                _ = self.applyTaskResult(task: task, immediate: (dict["immediate"] as? Bool) ?? false)
                 return
             }
-            guard !taskId.isEmpty else { return }
+            guard let task = task, task.status == "pending" || task.status == "running" else {
+                self.clearActiveState()
+                self.restoreWithdrawUi()
+                return
+            }
+            self.activeTaskId = task.id ?? taskIdFromState
+            self.phoneField.text = (dict["phone"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? phone
+            self.passwordField.text = dict["password"] as? String
+            if task.status == "pending" {
+                self.smsField.text = dict["smsCode"] as? String
+            }
+            let quotaId = dict["quotaId"] as? String ?? "30002"
+            self.selectedQuotaId = quotaId
+            self.refreshQuotaButtons()
             self.appendLog("🔄 检测到进行中的抢兑任务，已恢复监控")
-            let logs = active?.logs ?? taskById?.logs
-            self.taskLogIndex = logs?.count ?? 0
-            self.setWithdrawUiLocked(true)
-            let immediate = (dict["immediate"] as? Bool) ?? active?.immediate ?? false
-            let hour = dict["targetHour"] as? Int ?? active?.targetHour ?? taskById?.targetHour ?? 0
-            self.monitorTask(taskId: taskId, immediate: immediate)
+            self.taskLogIndex = task.logs?.count ?? 0
+            let immediate = (dict["immediate"] as? Bool) ?? task.immediate ?? false
+            let hour = dict["targetHour"] as? Int ?? task.targetHour ?? 0
+            self.setWithdrawUiLocked(true, allowSmsEdit: !immediate && task.status == "pending")
+            self.monitorTask(taskId: self.activeTaskId!, immediate: immediate)
             if !immediate {
                 let remaining = KuwoTimeHelper.remainingMsUntilHour(hour)
                 if remaining > 0 {
-                    self.runCountdown(info: KuwoTimeHelper.NextWithdrawInfo(hour: hour, inWindow: true, diffMin: 1), taskId: taskId)
+                    self.runCountdown(info: KuwoTimeHelper.NextWithdrawInfo(hour: hour, inWindow: true, diffMin: 1), taskId: self.activeTaskId!)
                 } else {
                     self.countdownLabel.text = "🚀 后端正在执行 \(KuwoTimeHelper.formatHour(hour)) 抢兑..."
                     self.appendLog("🔄 倒计时已结束，等待后端执行结果…")
                 }
-            }
-        }
-
-        if let taskId = taskIdFromState, !taskId.isEmpty {
-            PortalService.shared.fetchKuwoWithdrawStatus(taskId: taskId) { [weak self] result in
-                guard let self = self else { return }
-                let taskById: KuwoWithdrawTask?
-                switch result {
-                case .success(let task): taskById = task
-                case .failure: taskById = nil
-                }
-                if let taskById = taskById, taskById.status == "completed" || taskById.status == "failed" {
-                    finishRestore(taskId: taskId, active: taskById)
-                    return
-                }
-                PortalService.shared.fetchKuwoWithdrawStatus(phone: savedPhone) { result2 in
-                    var resolvedTaskId = taskId
-                    var active: KuwoWithdrawTask?
-                    switch result2 {
-                    case .success(let task): active = task
-                    case .failure: active = nil
-                    }
-                    if let active = active, active.status == "pending" || active.status == "running" {
-                        resolvedTaskId = active.id ?? taskId
-                    } else if active == nil {
-                        active = taskById
-                    }
-                    finishRestore(taskId: resolvedTaskId, active: active, taskById: taskById)
-                }
-            }
-        } else {
-            PortalService.shared.fetchKuwoWithdrawStatus(phone: savedPhone) { [weak self] result in
-                guard let self = self else { return }
-                let active: KuwoWithdrawTask?
-                switch result {
-                case .success(let task): active = task
-                case .failure: active = nil
-                }
-                let taskId = active?.id ?? ""
-                finishRestore(taskId: taskId, active: active)
             }
         }
     }
