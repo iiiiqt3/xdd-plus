@@ -492,21 +492,21 @@
             padding: 12px 16px 16px;
             overflow: hidden;
         }
-        #page-logmgmt .log-stats-toolbar {
+        #page-logmgmt .log-stats-row { margin-bottom: 10px; }
+        #page-logmgmt .log-tabs-bar {
             display: flex;
-            align-items: stretch;
+            justify-content: space-between;
+            align-items: flex-end;
             gap: 12px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #ebeef5;
+            flex-wrap: wrap;
         }
-        #page-logmgmt .log-stats-toolbar .log-stats-row {
-            flex: 1;
-            margin-bottom: 0;
-        }
-        #page-logmgmt .log-stats-actions {
+        #page-logmgmt .log-tab-actions {
             display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 6px;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding-bottom: 6px;
             flex-shrink: 0;
         }
         #page-logmgmt .log-mgmt-panel {
@@ -536,7 +536,7 @@
         }
         #page-logmgmt .log-cat-chips { margin-bottom: 8px; max-height: 56px; overflow-y: auto; }
         #page-logmgmt .log-filter-bar { margin-bottom: 0; padding: 10px 12px; }
-        #page-logmgmt .log-tabs { margin-bottom: 8px; }
+        #page-logmgmt .log-tabs { margin-bottom: 0; border-bottom: none; }
         .log-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
         .log-stat-card { background: #fff; border: 1px solid #ebeef5; border-radius: 8px; padding: 14px 16px; }
         .log-stat-card .label { font-size: 12px; color: #909399; margin-bottom: 6px; }
@@ -576,8 +576,8 @@
             .log-stats-row { grid-template-columns: repeat(2, 1fr); }
             #page-jdtaskqueue .log-stats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
             #page-logmgmt.logmgmt-page.active { height: calc(100vh - 56px - 24px); }
-            #page-logmgmt .log-stats-toolbar { flex-direction: column; }
-            #page-logmgmt .log-stats-actions { flex-direction: row; flex-wrap: wrap; }
+            #page-logmgmt .log-tabs-bar { align-items: stretch; flex-direction: column; }
+            #page-logmgmt .log-tab-actions { padding-bottom: 0; }
             .log-viewer { height: calc(100vh - 280px); min-height: 420px; }
         }
         @media (max-width: 520px) {
@@ -1554,24 +1554,24 @@
         <!-- ========= 日志管理 ========= -->
         <div id="page-logmgmt" class="page-section logmgmt-page">
             <div class="log-mgmt-fixed">
-                <div class="log-stats-toolbar">
-                    <div class="log-stats-row" id="logStatsRow">
-                        <div class="log-stat-card"><div class="label">内存缓冲</div><div class="val" id="logStatRing">-</div></div>
-                        <div class="log-stat-card"><div class="label">日志文件</div><div class="val" id="logStatFiles">-</div></div>
-                        <div class="log-stat-card"><div class="label">磁盘占用</div><div class="val" id="logStatSize">-</div></div>
-                        <div class="log-stat-card"><div class="label">保留天数</div><div class="val" id="logStatDays">-</div></div>
-                    </div>
-                    <div class="log-stats-actions">
-                        <button class="btn btn-info btn-sm" onclick="loadLogStats()"><i class="fas fa-sync-alt"></i> 刷新统计</button>
-                        <button class="btn btn-warning btn-sm" onclick="cleanupLogs()"><i class="fas fa-broom"></i> 清理过期</button>
-                        <button class="btn btn-secondary btn-sm" onclick="clearLogViewer()"><i class="fas fa-eraser"></i> 清空视图</button>
-                    </div>
+                <div class="log-stats-row" id="logStatsRow">
+                    <div class="log-stat-card"><div class="label">内存缓冲</div><div class="val" id="logStatRing">-</div></div>
+                    <div class="log-stat-card"><div class="label">日志文件</div><div class="val" id="logStatFiles">-</div></div>
+                    <div class="log-stat-card"><div class="label">磁盘占用</div><div class="val" id="logStatSize">-</div></div>
+                    <div class="log-stat-card"><div class="label">保留天数</div><div class="val" id="logStatDays">-</div></div>
                 </div>
                 <div class="card log-mgmt-panel">
-                    <div class="log-tabs">
-                        <div class="log-tab active" id="logTabLive" onclick="switchLogTab('live')"><i class="fas fa-bolt"></i> 实时日志</div>
-                        <div class="log-tab" id="logTabHistory" onclick="switchLogTab('history')"><i class="fas fa-search"></i> 历史查询</div>
-                        <div class="log-tab" id="logTabFiles" onclick="switchLogTab('files')"><i class="fas fa-folder-open"></i> 日志文件</div>
+                    <div class="log-tabs-bar">
+                        <div class="log-tabs">
+                            <div class="log-tab active" id="logTabLive" onclick="switchLogTab('live')"><i class="fas fa-bolt"></i> 实时日志</div>
+                            <div class="log-tab" id="logTabHistory" onclick="switchLogTab('history')"><i class="fas fa-search"></i> 历史查询</div>
+                            <div class="log-tab" id="logTabFiles" onclick="switchLogTab('files')"><i class="fas fa-folder-open"></i> 日志文件</div>
+                        </div>
+                        <div class="log-tab-actions">
+                            <button class="btn btn-info btn-sm" onclick="loadLogStats()"><i class="fas fa-sync-alt"></i> 刷新统计</button>
+                            <button class="btn btn-warning btn-sm" onclick="cleanupLogs()"><i class="fas fa-broom"></i> 清理过期</button>
+                            <button class="btn btn-secondary btn-sm" onclick="clearLogViewer()"><i class="fas fa-eraser"></i> 清空视图</button>
+                        </div>
                     </div>
                     <div class="log-cat-chips" id="logCatChips"></div>
                     <div class="log-filter-bar">
