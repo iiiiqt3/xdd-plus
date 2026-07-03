@@ -2662,19 +2662,18 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 
 	for i, item := range selectedItems {
 		dbID := selectedDBIDs[i]
-		if err := SoftDeleteActivityProject(dbID); err != nil {
-			return deletedCount, totalRefundCoin, fmt.Errorf("删除数据库记录失败：%v", err)
-		}
-		go TriggerSync(dbID)
-		deletedCount++
 		refundCoin := 0
 		if isMonthly {
 			refundCoin = item.RefundCoin
+		}
+		if err := DeleteProjectWithQinglongSync(dbID); err != nil {
+			return deletedCount, totalRefundCoin, fmt.Errorf("删除账号失败（ID=%d）：%v", dbID, err)
+		}
+		deletedCount++
+		if isMonthly && item.UserNumber > 0 && refundCoin > 0 {
 			totalRefundCoin += refundCoin
-			if item.UserNumber > 0 && refundCoin > 0 {
-				AdddCoin(item.UserNumber, refundCoin)
-				RecordCoinLog(item.UserNumber, refundCoin, "退还", fmt.Sprintf("管理员批量删除%s退还", cfg.Name), AdminContext())
-			}
+			AdddCoin(item.UserNumber, refundCoin)
+			RecordCoinLog(item.UserNumber, refundCoin, "退还", fmt.Sprintf("管理员批量删除%s退还", cfg.Name), AdminContext())
 		}
 		if item.UserNumber > 0 {
 			var msg string

@@ -287,76 +287,9 @@ func IsUser(qq int64) bool {
 func createActivityProjectTable() {
 	var count int64
 	if err := db.Raw("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'activity_project'").Scan(&count).Error; err != nil {
-		DB().Infof("[数据库迁移] 检查表失败: %v", err)
 		return
 	}
 	if count > 0 {
-		DB().Infof("[数据库迁移] activity_project 表已存在，检查字段类型...")
-		var colType string
-		db.Raw("SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'activity_project' AND column_name = 'user_number'").Scan(&colType)
-		if colType == "int" {
-			if err := db.Exec("ALTER TABLE activity_project MODIFY COLUMN user_number BIGINT NOT NULL DEFAULT 0").Error; err != nil {
-				DB().Infof("[数据库迁移] 修改 user_number 字段为 BIGINT 失败: %v", err)
-			} else {
-				DB().Infof("[数据库迁移] user_number 字段已改为 BIGINT")
-			}
-		} else {
-			DB().Infof("[数据库迁移] user_number 字段已是 %s，无需修改", colType)
-		}
-
-		// 检查并添加按天计费相关字段
-		missingColumns := []struct {
-			name    string
-			define  string
-		}{
-			{"is_daily_deduct", "TINYINT(1) NOT NULL DEFAULT 0"},
-			{"daily_coin", "INT NOT NULL DEFAULT 0"},
-			{"min_days", "INT NULL DEFAULT NULL"},
-			{"grant_expire_date", "VARCHAR(10) NOT NULL DEFAULT ''"},
-		}
-		for _, col := range missingColumns {
-			var exists int
-			db.Raw("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'activity_project' AND column_name = ?", col.name).Scan(&exists)
-			if exists == 0 {
-				sql := "ALTER TABLE activity_project ADD COLUMN " + col.name + " " + col.define
-				if err := db.Exec(sql).Error; err != nil {
-					DB().Infof("[数据库迁移] 添加 %s 字段失败: %v", col.name, err)
-				} else {
-					DB().Infof("[数据库迁移] 已添加 %s 字段", col.name)
-				}
-			}
-		}
-
-		// 自动迁移：将 activity_id 从旧的连续编号（"1","2","3"...）更新为 EnvKey
-		// 仅当 activity_id 是纯数字且与 env_key 不同时才执行，确保幂等（多次启动不会重复执行）
-		var oldStyleProjects []ActivityProject
-		if err := db.Where("activity_id != env_key AND deleted_at IS NULL").Find(&oldStyleProjects).Error; err == nil {
-			var needMigrate []ActivityProject
-			for _, p := range oldStyleProjects {
-				if isNumeric(p.ActivityID) && p.ActivityID != p.EnvKey {
-					needMigrate = append(needMigrate, p)
-				}
-			}
-			if len(needMigrate) > 0 {
-				tx := db.Begin()
-				migrated := 0
-				for _, p := range needMigrate {
-					if err := tx.Model(&ActivityProject{}).Where("id = ?", p.ID).Update("activity_id", p.EnvKey).Error; err != nil {
-						DB().Infof("[数据库迁移] 更新记录 ID=%d 失败: %v", p.ID, err)
-						continue
-					}
-					migrated++
-				}
-				if err := tx.Commit().Error; err != nil {
-					tx.Rollback()
-					DB().Infof("[数据库迁移] activity_id 迁移事务提交失败: %v", err)
-				} else {
-					DB().Infof("[数据库迁移] activity_id 已从旧编号迁移为 EnvKey，共更新 %d 条记录", migrated)
-				}
-			} else {
-				DB().Infof("[数据库迁移] activity_id 无需迁移（已是 EnvKey 或无数据）")
-			}
-		}
 		return
 	}
 
@@ -383,6 +316,7 @@ CREATE TABLE activity_project (
 	deleted_at DATETIME,
 	sync_status VARCHAR(16) NOT NULL DEFAULT 'pending',
 	sync_error TEXT,
+	sync_retry_count INT NOT NULL DEFAULT 0,
 	sync_at DATETIME,
 	INDEX idx_activity_id (activity_id),
 	INDEX idx_env_key (env_key),

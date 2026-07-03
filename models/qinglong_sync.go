@@ -2,40 +2,41 @@ package models
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
-
 )
 
 type SyncAction string
 
 const (
-	SyncActionCreate    SyncAction = "create"
-	SyncActionUpdate    SyncAction = "update"
-	SyncActionDelete    SyncAction = "delete"
-	SyncActionDisable   SyncAction = "disable"
-	SyncActionEnable    SyncAction = "enable"
-	SyncActionFullSync  SyncAction = "full_sync"
+	SyncActionCreate   SyncAction = "create"
+	SyncActionUpdate   SyncAction = "update"
+	SyncActionDelete   SyncAction = "delete"
+	SyncActionDisable  SyncAction = "disable"
+	SyncActionEnable   SyncAction = "enable"
+	SyncActionFullSync SyncAction = "full_sync"
 )
 
 type SyncQueue struct {
-	mu        sync.Mutex
+	mu         sync.Mutex
 	processing bool
-	running   bool
-	stopChan  chan struct{}
-	ticker    *time.Ticker
+	running    bool
+	stopChan   chan struct{}
+	ticker     *time.Ticker
 }
 
 var (
-	syncQueue     *SyncQueue
-	syncQueueOnce sync.Once
+	syncQueue        *SyncQueue
+	syncQueueOnce    sync.Once
+	projectSyncLocks sync.Map
 )
 
 const (
-	syncInterval       = 10 * time.Minute
-	syncBatchSize      = 50
-	syncMaxRetries     = 3
-	fullSyncInterval   = 1 * time.Hour
+	syncInterval     = 10 * time.Minute
+	syncBatchSize    = 50
+	syncMaxRetries   = 3
+	fullSyncInterval = 1 * time.Hour
 )
 
 func GetSyncQueue() *SyncQueue {
@@ -102,6 +103,23 @@ func (sq *SyncQueue) fullSyncLoop() {
 	}
 }
 
+func getProjectSyncLock(projectID int) *sync.Mutex {
+	lock, _ := projectSyncLocks.LoadOrStore(projectID, &sync.Mutex{})
+	return lock.(*sync.Mutex)
+}
+
+func (sq *SyncQueue) syncProjectSafe(projectID int) error {
+	lock := getProjectSyncLock(projectID)
+	lock.Lock()
+	defer lock.Unlock()
+
+	var project ActivityProject
+	if err := db.Unscoped().Where("id = ?", projectID).First(&project).Error; err != nil {
+		return fmt.Errorf("获取项目失败: %v", err)
+	}
+	return sq.syncProject(&project)
+}
+
 func (sq *SyncQueue) processPendingSyncs() {
 	if sq.processing {
 		return
@@ -133,21 +151,9 @@ func (sq *SyncQueue) processPendingSyncs() {
 	Sync().Infof("[同步服务] 发现 %d 个待同步项目", len(projects))
 
 	for _, project := range projects {
-		if err := sq.syncProject(&project); err != nil {
+		if err := sq.syncProjectSafe(project.ID); err != nil {
 			Sync().Infof("[同步服务] 同步项目失败 ID=%d Remarks=%s: %v", project.ID, project.Remarks, err)
-			MarkProjectSyncError(project.ID, SanitizeError(err).Error())
-		}
-	}
-
-	// 处理已软删除但未同步到青龙的待删除记录
-	var deletedProjects []ActivityProject
-	db.Unscoped().Where("sync_status = ? AND deleted_at IS NOT NULL", "pending_delete").
-		Limit(syncBatchSize).
-		Find(&deletedProjects)
-	for _, project := range deletedProjects {
-		if err := sq.syncProject(&project); err != nil {
-			Sync().Infof("[同步服务] 同步已软删除项目失败 ID=%d Remarks=%s: %v", project.ID, project.Remarks, err)
-			MarkProjectSyncError(project.ID, SanitizeError(err).Error())
+			_ = MarkProjectSyncError(project.ID, SanitizeError(err).Error())
 		}
 	}
 }
@@ -171,156 +177,201 @@ func (sq *SyncQueue) syncProject(project *ActivityProject) error {
 		return sq.handleDisable(project, client)
 	case "pending_enable":
 		return sq.handleEnable(project, client)
+	case "error":
+		return sq.handleSyncErrorRecovery(project, client)
 	default:
 		return fmt.Errorf("未知的同步状态: %s", project.SyncStatus)
 	}
 }
 
-func (sq *SyncQueue) handleCreate(project *ActivityProject, client *QingLongClient) error {
-	duplicate, err := client.CheckDuplicateRemarks(project.Remarks, project.EnvKey)
-	if err != nil {
-		return fmt.Errorf("检查重复备注失败: %v", SanitizeError(err))
+func (sq *SyncQueue) handleSyncErrorRecovery(project *ActivityProject, client *QingLongClient) error {
+	if project.DeletedAt != nil {
+		project.SyncStatus = "pending_delete"
+		return sq.handleDelete(project, client)
 	}
-	if duplicate {
-		existingEnvs, err := client.QueryEnvByRemarks(fmt.Sprintf("%d", project.UserNumber), project.EnvKey)
-		if err == nil && len(existingEnvs) > 0 {
-			for _, env := range existingEnvs {
-				if env.Remarks == project.Remarks {
-					Sync().Infof("[同步服务] 青龙中已存在相同备注的变量，跳过创建并标记为已同步 ID=%d QLEnvID=%d", project.ID, env.ID)
-					MarkProjectSynced(project.ID, env.ID)
-					return nil
-				}
-			}
+	if project.Status != 0 {
+		project.SyncStatus = "pending_disable"
+		return sq.handleDisable(project, client)
+	}
+	project.SyncStatus = "pending_update"
+	return sq.handleUpdate(project, client)
+}
+
+func (sq *SyncQueue) applyDBStatusToQL(client *QingLongClient, project *ActivityProject, envID int) error {
+	if envID <= 0 {
+		return nil
+	}
+	if project.Status != 0 {
+		if err := client.DisableEnvs([]int{envID}); err != nil && !IsQLEnvNotFoundError(err) {
+			return err
 		}
+		return nil
+	}
+	if err := client.EnableEnv(envID); err != nil && !IsQLEnvNotFoundError(err) {
+		return err
+	}
+	return nil
+}
+
+func (sq *SyncQueue) bindExistingEnv(project *ActivityProject, client *QingLongClient, env *QLEnvItem) error {
+	if env.Value != project.EnvValue || env.Name != project.EnvKey || env.Remarks != project.Remarks {
+		if err := client.UpdateEnvContent(env.ID, project.EnvKey, project.EnvValue, project.Remarks); err != nil {
+			return fmt.Errorf("绑定已有环境变量并更新失败: %v", SanitizeError(err))
+		}
+	}
+	if err := sq.applyDBStatusToQL(client, project, env.ID); err != nil {
+		return fmt.Errorf("同步青龙状态失败: %v", SanitizeError(err))
+	}
+	if err := MarkProjectSynced(project.ID, env.ID); err != nil {
+		return err
+	}
+	Sync().Infof("[同步服务] 绑定已有青龙变量 ID=%d QLEnvID=%d", project.ID, env.ID)
+	return nil
+}
+
+func (sq *SyncQueue) handleCreate(project *ActivityProject, client *QingLongClient) error {
+	if env, err := client.FindEnvByRemarks(project.Remarks, project.EnvKey); err == nil {
+		return sq.bindExistingEnv(project, client, env)
 	}
 
 	if err := client.SubmitEnv(project.EnvKey, project.EnvValue, project.Remarks); err != nil {
+		if strings.Contains(err.Error(), "UniqueConstraint") || strings.Contains(err.Error(), "unique") {
+			if env, findErr := client.FindEnvByRemarks(project.Remarks, project.EnvKey); findErr == nil {
+				return sq.bindExistingEnv(project, client, env)
+			}
+		}
 		return fmt.Errorf("提交环境变量失败: %v", SanitizeError(err))
 	}
 
-	envs, err := client.QueryEnvByRemarks(fmt.Sprintf("%d", project.UserNumber), project.EnvKey)
-	if err == nil {
-		for _, env := range envs {
-			if env.Remarks == project.Remarks {
-				MarkProjectSynced(project.ID, env.ID)
-				Sync().Infof("[同步服务] 创建成功 ID=%d QLEnvID=%d", project.ID, env.ID)
-				return nil
-			}
-		}
+	env, err := client.FindEnvByRemarks(project.Remarks, project.EnvKey)
+	if err != nil {
+		return fmt.Errorf("创建后未找到环境变量: %v", SanitizeError(err))
 	}
 
-	MarkProjectSynced(project.ID, 0)
-	Sync().Infof("[同步服务] 创建成功 ID=%d (未找到对应QL EnvID)", project.ID)
+	if err := sq.applyDBStatusToQL(client, project, env.ID); err != nil {
+		return fmt.Errorf("创建后同步状态失败: %v", SanitizeError(err))
+	}
+	if err := MarkProjectSynced(project.ID, env.ID); err != nil {
+		return err
+	}
+	Sync().Infof("[同步服务] 创建成功 ID=%d QLEnvID=%d", project.ID, env.ID)
 	return nil
 }
 
 func (sq *SyncQueue) handleUpdate(project *ActivityProject, client *QingLongClient) error {
-	if project.QingLongEnvID > 0 {
-		if err := client.UpdateEnv(project.QingLongEnvID, project.EnvKey, project.EnvValue, project.Remarks); err != nil {
-			return fmt.Errorf("更新环境变量 %d 失败: %v", project.QingLongEnvID, SanitizeError(err))
-		}
-		MarkProjectSynced(project.ID, project.QingLongEnvID)
-		Sync().Infof("[同步服务] 更新成功 ID=%d QLEnvID=%d", project.ID, project.QingLongEnvID)
+	envItem, err := client.ResolveEnvByProject(project)
+	if err != nil {
+		_ = db.Model(&ActivityProject{}).Where("id = ?", project.ID).Updates(map[string]interface{}{
+			"qinglong_env_id":  0,
+			"sync_status":      "pending",
+			"sync_error":       "",
+			"sync_retry_count": 0,
+			"updated_at":       time.Now(),
+		}).Error
+		Sync().Infof("[同步服务] 青龙变量不存在，ID=%d 转为重新创建", project.ID)
+		go TriggerSync(project.ID)
 		return nil
 	}
 
-	envItem, err := client.FindEnvByRemarks(project.Remarks, project.EnvKey)
-	if err != nil {
-		return fmt.Errorf("查找环境变量失败: %v", SanitizeError(err))
-	}
-
-	if err := client.UpdateEnv(envItem.ID, project.EnvKey, project.EnvValue, project.Remarks); err != nil {
+	if err := client.UpdateEnvContent(envItem.ID, project.EnvKey, project.EnvValue, project.Remarks); err != nil {
+		if IsQLEnvNotFoundError(err) {
+			_ = db.Model(&ActivityProject{}).Where("id = ?", project.ID).Updates(map[string]interface{}{
+				"qinglong_env_id":  0,
+				"sync_status":      "pending",
+				"sync_error":       "",
+				"sync_retry_count": 0,
+				"updated_at":       time.Now(),
+			}).Error
+			Sync().Infof("[同步服务] 青龙变量已失效，ID=%d 转为重新创建", project.ID)
+			go TriggerSync(project.ID)
+			return nil
+		}
 		return fmt.Errorf("更新环境变量 %d 失败: %v", envItem.ID, SanitizeError(err))
 	}
 
-	MarkProjectSynced(project.ID, envItem.ID)
+	if err := sq.applyDBStatusToQL(client, project, envItem.ID); err != nil {
+		return fmt.Errorf("更新后同步状态失败: %v", SanitizeError(err))
+	}
+	if err := MarkProjectSynced(project.ID, envItem.ID); err != nil {
+		return err
+	}
 	Sync().Infof("[同步服务] 更新成功 ID=%d QLEnvID=%d", project.ID, envItem.ID)
 	return nil
 }
 
 func (sq *SyncQueue) handleDelete(project *ActivityProject, client *QingLongClient) error {
-	if project.QingLongEnvID > 0 {
-		if err := client.DeleteEnv(project.QingLongEnvID); err != nil {
-			sanitizedErr := SanitizeError(err)
-			if sanitizedErr.Error() == "" {
-				return fmt.Errorf("删除环境变量 %d 失败: %v", project.QingLongEnvID, err)
-			}
-		}
-		if _, err := client.FindEnvByRemarks(project.Remarks, project.EnvKey); err == nil {
-			return fmt.Errorf("删除环境变量 %d 后验证失败，青龙中仍存在", project.QingLongEnvID)
-		}
-		MarkProjectDeleted(project.ID)
-		Sync().Infof("[同步服务] 删除成功 ID=%d QLEnvID=%d", project.ID, project.QingLongEnvID)
-		return nil
-	}
-
-	envItem, err := client.FindEnvByRemarks(project.Remarks, project.EnvKey)
+	envItem, err := client.ResolveEnvByProject(project)
 	if err != nil {
 		Sync().Infof("[同步服务] 青龙中未找到对应变量，直接标记为已删除 ID=%d", project.ID)
-		MarkProjectDeleted(project.ID)
-		return nil
+		return MarkProjectDeleted(project.ID)
 	}
 
 	if err := client.DeleteEnv(envItem.ID); err != nil {
-		sanitizedErr := SanitizeError(err)
-		if sanitizedErr.Error() == "" {
-			return fmt.Errorf("删除环境变量 %d 失败: %v", envItem.ID, err)
+		if IsQLEnvNotFoundError(err) {
+			return MarkProjectDeleted(project.ID)
 		}
+		return fmt.Errorf("删除环境变量 %d 失败: %v", envItem.ID, SanitizeError(err))
 	}
 
-	if _, err := client.FindEnvByRemarks(project.Remarks, project.EnvKey); err == nil {
+	if _, verifyErr := client.FindEnvByRemarks(project.Remarks, project.EnvKey); verifyErr == nil {
 		return fmt.Errorf("删除环境变量 %d 后验证失败，青龙中仍存在", envItem.ID)
 	}
 
-	MarkProjectDeleted(project.ID)
+	if err := MarkProjectDeleted(project.ID); err != nil {
+		return err
+	}
 	Sync().Infof("[同步服务] 删除成功 ID=%d QLEnvID=%d", project.ID, envItem.ID)
 	return nil
 }
 
 func (sq *SyncQueue) handleDisable(project *ActivityProject, client *QingLongClient) error {
-	if project.QingLongEnvID > 0 {
-		if err := client.DisableEnvs([]int{project.QingLongEnvID}); err != nil {
-			return fmt.Errorf("禁用环境变量 %d 失败: %v", project.QingLongEnvID, SanitizeError(err))
+	envItem, err := client.ResolveEnvByProject(project)
+	if err != nil {
+		if err := MarkProjectSynced(project.ID, 0); err != nil {
+			return err
 		}
-		MarkProjectSynced(project.ID, project.QingLongEnvID)
-		Sync().Infof("[同步服务] 禁用成功 ID=%d QLEnvID=%d", project.ID, project.QingLongEnvID)
+		Sync().Infof("[同步服务] 青龙中无对应变量，禁用视为完成 ID=%d", project.ID)
 		return nil
 	}
 
-	envItem, err := client.FindEnvByRemarks(project.Remarks, project.EnvKey)
-	if err != nil {
-		return fmt.Errorf("查找环境变量失败: %v", SanitizeError(err))
-	}
-
 	if err := client.DisableEnvs([]int{envItem.ID}); err != nil {
+		if IsQLEnvNotFoundError(err) {
+			return MarkProjectSynced(project.ID, 0)
+		}
 		return fmt.Errorf("禁用环境变量 %d 失败: %v", envItem.ID, SanitizeError(err))
 	}
 
-	MarkProjectSynced(project.ID, envItem.ID)
+	if err := MarkProjectSynced(project.ID, envItem.ID); err != nil {
+		return err
+	}
 	Sync().Infof("[同步服务] 禁用成功 ID=%d QLEnvID=%d", project.ID, envItem.ID)
 	return nil
 }
 
 func (sq *SyncQueue) handleEnable(project *ActivityProject, client *QingLongClient) error {
-	if project.QingLongEnvID > 0 {
-		if err := client.EnableEnv(project.QingLongEnvID); err != nil {
-			return fmt.Errorf("启用环境变量 %d 失败: %v", project.QingLongEnvID, SanitizeError(err))
-		}
-		MarkProjectSynced(project.ID, project.QingLongEnvID)
-		Sync().Infof("[同步服务] 启用成功 ID=%d QLEnvID=%d", project.ID, project.QingLongEnvID)
-		return nil
+	envItem, err := client.ResolveEnvByProject(project)
+	if err != nil {
+		return fmt.Errorf("启用失败，青龙中未找到变量: %v", SanitizeError(err))
 	}
 
-	envItem, err := client.FindEnvByRemarks(project.Remarks, project.EnvKey)
-	if err != nil {
-		return fmt.Errorf("查找环境变量失败: %v", SanitizeError(err))
+	if envItem.Value != project.EnvValue || envItem.Remarks != project.Remarks {
+		if err := client.UpdateEnvContent(envItem.ID, project.EnvKey, project.EnvValue, project.Remarks); err != nil {
+			if !IsQLEnvNotFoundError(err) {
+				return fmt.Errorf("启用前更新内容失败: %v", SanitizeError(err))
+			}
+		}
 	}
 
 	if err := client.EnableEnv(envItem.ID); err != nil {
+		if IsQLEnvNotFoundError(err) {
+			return fmt.Errorf("启用失败，青龙变量 %d 不存在", envItem.ID)
+		}
 		return fmt.Errorf("启用环境变量 %d 失败: %v", envItem.ID, SanitizeError(err))
 	}
 
-	MarkProjectSynced(project.ID, envItem.ID)
+	if err := MarkProjectSynced(project.ID, envItem.ID); err != nil {
+		return err
+	}
 	Sync().Infof("[同步服务] 启用成功 ID=%d QLEnvID=%d", project.ID, envItem.ID)
 	return nil
 }
@@ -365,36 +416,66 @@ func (sq *SyncQueue) performFullSyncCheck() {
 			qlRemarksMap[env.Remarks] = env
 		}
 
-		// 数据库有但青龙没有 → 需要创建
 		for remarks, dbProj := range dbRemarksMap {
 			if _, exists := qlRemarksMap[remarks]; !exists {
-				Sync().Infof("[全量同步] 数据库有但青龙缺失 Remarks=%s，触发创建同步", remarks)
-				db.Model(&ActivityProject{}).Where("id = ?", dbProj.ID).
-					Updates(map[string]interface{}{"sync_status": "pending", "updated_at": time.Now()})
+				if dbProj.SyncStatus == "synced" || dbProj.SyncStatus == "error" {
+					Sync().Infof("[全量同步] 数据库有但青龙缺失 Remarks=%s，触发创建同步", remarks)
+					db.Model(&ActivityProject{}).Where("id = ?", dbProj.ID).
+						Updates(map[string]interface{}{
+							"sync_status":      "pending",
+							"sync_error":       "",
+							"sync_retry_count": 0,
+							"updated_at":       time.Now(),
+						})
+				}
 			}
 		}
 
-		// 青龙有但数据库没有（可能是旧数据或外部直接创建的）→ 不计入统计
 		for remarks, qlEnv := range qlRemarksMap {
 			if _, exists := dbRemarksMap[remarks]; !exists {
 				Sync().Infof("[全量同步] 青龙有但数据库缺失 Remarks=%s QLEnvID=%d，跳过", remarks, qlEnv.ID)
 			}
 		}
 
-		// 两边都有，确保 qinglong_env_id 正确
 		for remarks, dbProj := range dbRemarksMap {
-			if qlEnv, exists := qlRemarksMap[remarks]; exists {
-				if dbProj.QingLongEnvID != qlEnv.ID {
-					Sync().Infof("[全量同步] 修正EnvID ID=%d DB=%d → QL=%d", dbProj.ID, dbProj.QingLongEnvID, qlEnv.ID)
-					db.Model(&ActivityProject{}).Where("id = ?", dbProj.ID).
-						Updates(map[string]interface{}{
-							"qinglong_env_id": qlEnv.ID,
-							"updated_at":      time.Now(),
-						})
+			qlEnv, exists := qlRemarksMap[remarks]
+			if !exists {
+				continue
+			}
+
+			updates := map[string]interface{}{}
+			if dbProj.QingLongEnvID != qlEnv.ID {
+				Sync().Infof("[全量同步] 修正EnvID ID=%d DB=%d → QL=%d", dbProj.ID, dbProj.QingLongEnvID, qlEnv.ID)
+				updates["qinglong_env_id"] = qlEnv.ID
+			}
+
+			if dbProj.SyncStatus != "synced" {
+				if len(updates) > 0 {
+					updates["updated_at"] = time.Now()
+					db.Model(&ActivityProject{}).Where("id = ?", dbProj.ID).Updates(updates)
 				}
-				if dbProj.Status != qlEnv.Status {
-					Sync().Infof("[全量同步] 状态不一致 Remarks=%s DBStatus=%d QLStatus=%d", remarks, dbProj.Status, qlEnv.Status)
+				continue
+			}
+
+			if dbProj.Status != qlEnv.Status {
+				Sync().Infof("[全量同步] 状态不一致 Remarks=%s DBStatus=%d QLStatus=%d", remarks, dbProj.Status, qlEnv.Status)
+				if dbProj.Status != 0 {
+					updates["sync_status"] = "pending_disable"
+				} else {
+					updates["sync_status"] = "pending_enable"
 				}
+				updates["sync_error"] = ""
+				updates["sync_retry_count"] = 0
+			} else if dbProj.EnvValue != qlEnv.Value {
+				Sync().Infof("[全量同步] 内容不一致 Remarks=%s，触发更新同步", remarks)
+				updates["sync_status"] = "pending_update"
+				updates["sync_error"] = ""
+				updates["sync_retry_count"] = 0
+			}
+
+			if len(updates) > 0 {
+				updates["updated_at"] = time.Now()
+				db.Model(&ActivityProject{}).Where("id = ?", dbProj.ID).Updates(updates)
 			}
 		}
 	}
@@ -406,15 +487,16 @@ func TriggerSync(projectID int) {
 	sq := GetSyncQueue()
 	go func() {
 		time.Sleep(500 * time.Millisecond)
-		var project ActivityProject
-		if err := db.Unscoped().Where("id = ?", projectID).First(&project).Error; err != nil {
-			Sync().Infof("[同步触发] 获取项目失败 ID=%d: %v", projectID, err)
-			return
-		}
-		if err := sq.syncProject(&project); err != nil {
+		if err := sq.syncProjectSafe(projectID); err != nil {
 			Sync().Infof("[同步触发] 同步失败 ID=%d: %v", projectID, err)
+			_ = MarkProjectSyncError(projectID, SanitizeError(err).Error())
 		}
 	}()
+}
+
+// SyncProjectNow 同步执行青龙同步（删除/禁用等需即时生效的场景）
+func SyncProjectNow(projectID int) error {
+	return GetSyncQueue().syncProjectSafe(projectID)
 }
 
 func qlManagerGetConfig(name string) *QingLongConfig {
@@ -427,102 +509,7 @@ func qlManagerGetConfig(name string) *QingLongConfig {
 
 	cfg, exists := qlManager.Configs[name]
 	if !exists {
-		for _, c := range qlManager.Configs {
-			return c
-		}
 		return nil
 	}
 	return cfg
 }
-
-// SanitizeError 已定义在 jltask.go 中，这里仅引用
-
-func MigrateFromQingLongToDB() {
-	Sync().Infof("[数据迁移] 开始从青龙迁移数据到数据库...")
-
-	activityConfigsMu.RLock()
-	configs := make([]*ActivityConfig, 0, len(ActivityConfigs))
-	for _, cfg := range ActivityConfigs {
-		if cfg != nil {
-			configs = append(configs, cfg)
-		}
-	}
-	activityConfigsMu.RUnlock()
-
-	// 检查是否已有数据
-	// 检查表是否存在
-	if !db.Migrator().HasTable(&ActivityProject{}) {
-		Sync().Infof("[数据迁移] activity_project 表不存在，请先运行程序完成数据库迁移")
-		return
-	}
-
-	var count int64
-	if err := db.Model(&ActivityProject{}).Count(&count).Error; err != nil {
-		Sync().Infof("[数据迁移] 查询数据库失败: %v，请检查 activity_project 表是否存在", err)
-		return
-	}
-	if count > 0 {
-		Sync().Infof("[数据迁移] 数据库已有 %d 条记录，跳过迁移", count)
-		return
-	}
-
-	totalMigrated := 0
-	for _, cfg := range configs {
-		qlConfig := qlManagerGetConfig(cfg.QingLongConfigName)
-		if qlConfig == nil {
-			continue
-		}
-
-		client := NewQingLongClient(qlConfig)
-		envs, err := client.QueryEnvs(cfg.EnvKey)
-		if err != nil {
-			Sync().Infof("[数据迁移] 查询青龙环境变量失败 活动=%s: %v", cfg.Name, err)
-			continue
-		}
-
-		for _, env := range envs {
-			userID := ExtractUserIDFromRemarks(env.Remarks)
-			userNumber := 0
-			fmt.Sscanf(userID, "%d", &userNumber)
-
-			remarkAlias := GetFirstRemarkParam(env.Remarks)
-			expireDate := ""
-			if cfg.IsMonthlyDeduct {
-				if d, ok := ParseRemarksDate(env.Remarks); ok {
-					expireDate = d.Format(DateLayout)
-				}
-			}
-
-			project := &ActivityProject{
-				ActivityID:         cfg.ID,
-				ActivityName:       cfg.Name,
-				EnvKey:             cfg.EnvKey,
-				EnvValue:           env.Value,
-				Remarks:            env.Remarks,
-				RemarkAlias:        remarkAlias,
-				UserNumber:         userNumber,
-				QingLongConfigName: cfg.QingLongConfigName,
-				QingLongEnvID:      env.ID,
-				Status:             env.Status,
-				ExpireDate:         expireDate,
-				IsMonthlyDeduct:    cfg.IsMonthlyDeduct,
-				MonthlyCoin:        cfg.MonthlyCoin,
-				SyncStatus:         "synced",
-				CreatedAt:          time.Now(),
-				UpdatedAt:          time.Now(),
-			}
-			if !cfg.IsMonthlyDeduct {
-				project.NeedCoin = cfg.NeedCoin
-			}
-
-			if err := db.Create(project).Error; err != nil {
-				Sync().Infof("[数据迁移] 创建项目失败 Remarks=%s: %v", env.Remarks, err)
-				continue
-			}
-			totalMigrated++
-		}
-	}
-
-	Sync().Infof("[数据迁移] 迁移完成，共 %d 条记录", totalMigrated)
-}
-

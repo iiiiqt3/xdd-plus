@@ -219,10 +219,9 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 			TaskLog().Infof(">>> 过期CK超过30天，准备删除 -> 账号:[%s] 活动:[%s] DB ID:[%d] 过期[%d天]",
 				accountAlias, project.ActivityName, project.ID, expiredDays)
 
-			if err := SoftDeleteActivityProject(project.ID); err != nil {
+			if err := DeleteProjectWithQinglongSync(project.ID); err != nil {
 				Error("删除过期项目失败 ID=%d: %v", project.ID, err)
 			} else {
-				go TriggerSync(project.ID)
 				totalDeleted++
 			}
 
@@ -335,7 +334,10 @@ func DisableExpiredCKs(sender *Sender) {
 			continue
 		}
 
-		go TriggerSync(project.ID)
+		if err := SyncProjectNow(project.ID); err != nil {
+			Error("青龙禁用同步失败 ID=%d: %v", project.ID, err)
+			continue
+		}
 
 		TaskLog().Infof("成功禁用过期CK ID=%d，备注=%s", project.ID, project.Remarks)
 	}

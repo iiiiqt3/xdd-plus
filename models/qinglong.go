@@ -353,6 +353,89 @@ func (q *QingLongClient) UpdateEnv(envID int, envName, value, remarks string) er
 	return q.UpdateEnvWithStatus(envID, envName, value, remarks, 1)
 }
 
+// UpdateEnvContent 仅更新变量内容，不自动启用或禁用
+func (q *QingLongClient) UpdateEnvContent(envID int, envName, value, remarks string) error {
+	token, err := q.GetToken()
+	if err != nil {
+		return fmt.Errorf("获取Token失败: %v", err)
+	}
+
+	url := strings.TrimSuffix(q.config.Host, "/") + "/open/envs"
+	payload := map[string]interface{}{
+		"value":   value,
+		"name":    envName,
+		"remarks": remarks,
+		"id":      envID,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("序列化请求数据失败: %v", err)
+	}
+
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("创建请求失败: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := q.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("读取响应失败: %v", err)
+	}
+
+	var updateResp QLCommonResponse
+	if err := json.Unmarshal(body, &updateResp); err != nil {
+		return fmt.Errorf("解析响应失败: %v, 响应内容: %s", err, string(body))
+	}
+
+	actualCode := updateResp.Code
+	if actualCode == 0 {
+		actualCode = updateResp.StatusCode
+	}
+	if actualCode != 200 {
+		errorMsg := updateResp.Message
+		if errorMsg == "" {
+			errorMsg = updateResp.Error
+		}
+		return fmt.Errorf("更新失败: %s (code: %d)", errorMsg, actualCode)
+	}
+	return nil
+}
+
+// ResolveEnvByProject 按 EnvID 或备注解析青龙变量，自动修正过期 ID
+func (q *QingLongClient) ResolveEnvByProject(project *ActivityProject) (*QLEnvItem, error) {
+	if project.QingLongEnvID > 0 {
+		envs, err := q.QueryEnvs(project.EnvKey)
+		if err == nil {
+			for i := range envs {
+				if envs[i].ID == project.QingLongEnvID {
+					return &envs[i], nil
+				}
+			}
+		}
+	}
+	return q.FindEnvByRemarks(project.Remarks, project.EnvKey)
+}
+
+// IsQLEnvNotFoundError 判断青龙 API 是否返回变量不存在
+func IsQLEnvNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "not found") ||
+		strings.Contains(msg, "不存在") ||
+		strings.Contains(msg, "未找到")
+}
+
 // UpdateEnvWithStatus 带状态更新环境变量
 func (q *QingLongClient) UpdateEnvWithStatus(envID int, envName, value, remarks string, status int) error {
 	token, err := q.GetToken()

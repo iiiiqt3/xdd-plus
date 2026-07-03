@@ -3,10 +3,18 @@ package models
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+var (
+	projectSubmitMu       sync.Mutex
+	projectSubmitInFlight = make(map[string]time.Time)
+)
+
+const projectSubmitLockTTL = 90 * time.Second
 
 type ActivityProject struct {
 	ID                 int        `gorm:"primaryKey;autoIncrement"`
@@ -33,6 +41,7 @@ type ActivityProject struct {
 	DeletedAt          *time.Time `gorm:"column:deleted_at;index"`
 	SyncStatus         string     `gorm:"column:sync_status;size:16;default:'pending'"`
 	SyncError          string     `gorm:"column:sync_error;type:text"`
+	SyncRetryCount     int        `gorm:"column:sync_retry_count;default:0"`
 	SyncAt             *time.Time `gorm:"column:sync_at"`
 }
 
@@ -78,15 +87,79 @@ func CalcPaidRemainingDays(project *ActivityProject) int {
 }
 
 func CreateActivityProject(project *ActivityProject) error {
+	duplicate, err := CheckDuplicateRemarksDB(project.Remarks, project.EnvKey)
+	if err != nil {
+		return fmt.Errorf("检查重复备注失败：%v", err)
+	}
+	if duplicate {
+		return fmt.Errorf("该账号备注已存在，请勿重复提交")
+	}
+
 	now := time.Now()
 	project.CreatedAt = now
 	project.UpdatedAt = now
 	project.SyncStatus = "pending"
+	project.SyncRetryCount = 0
+	project.SyncError = ""
 
 	if project.RemarkAlias == "" {
 		project.RemarkAlias = GetFirstRemarkParam(project.Remarks)
 	}
 	return db.Create(project).Error
+}
+
+// projectSubmitLockKey 上车防重复提交锁键（用户+活动+备注别名）
+func projectSubmitLockKey(userNumber int, activityID, remarkAlias string) string {
+	return fmt.Sprintf("%d:%s:%s", userNumber, activityID, strings.TrimSpace(remarkAlias))
+}
+
+// TryAcquireProjectSubmitLock 获取上车提交锁，防止连点重复扣费
+func TryAcquireProjectSubmitLock(userNumber int, activityID, remarkAlias string) (release func(), acquired bool) {
+	return tryAcquireProjectLock(projectSubmitLockKey(userNumber, activityID, remarkAlias))
+}
+
+// TryAcquireProjectActionLock 获取续费/删除等操作锁，防止重复提交
+func TryAcquireProjectActionLock(userNumber int, activityID, action, remarks string) (release func(), acquired bool) {
+	key := fmt.Sprintf("%d:%s:%s:%s", userNumber, activityID, action, remarks)
+	return tryAcquireProjectLock(key)
+}
+
+func tryAcquireProjectLock(key string) (release func(), acquired bool) {
+	now := time.Now()
+
+	projectSubmitMu.Lock()
+	defer projectSubmitMu.Unlock()
+
+	for k, exp := range projectSubmitInFlight {
+		if now.After(exp) {
+			delete(projectSubmitInFlight, k)
+		}
+	}
+
+	if exp, exists := projectSubmitInFlight[key]; exists && now.Before(exp) {
+		return nil, false
+	}
+	projectSubmitInFlight[key] = now.Add(projectSubmitLockTTL)
+
+	return func() {
+		projectSubmitMu.Lock()
+		delete(projectSubmitInFlight, key)
+		projectSubmitMu.Unlock()
+	}, true
+}
+
+// HasActiveProjectByUserActivityAlias 检查用户在某活动下是否已有相同备注别名
+func HasActiveProjectByUserActivityAlias(userNumber int, activityID, remarkAlias string) (bool, error) {
+	remarkAlias = strings.TrimSpace(remarkAlias)
+	if remarkAlias == "" {
+		return false, nil
+	}
+	var count int64
+	err := db.Model(&ActivityProject{}).
+		Where("user_number = ? AND activity_id = ? AND remark_alias = ? AND deleted_at IS NULL",
+			userNumber, activityID, remarkAlias).
+		Count(&count).Error
+	return count > 0, err
 }
 
 func UpdateActivityProject(project *ActivityProject) error {
@@ -209,17 +282,79 @@ func SoftDeleteActivityProject(id int) error {
 	}).Error
 }
 
+// RevertSoftDeleteActivityProject 青龙删除失败时回滚软删除
+func RevertSoftDeleteActivityProject(id int, syncStatus string) error {
+	if syncStatus == "" {
+		syncStatus = "synced"
+	}
+	now := time.Now()
+	return db.Unscoped().Model(&ActivityProject{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"deleted_at":  nil,
+		"sync_status": syncStatus,
+		"sync_error":  "",
+		"updated_at":  now,
+	}).Error
+}
+
+// DeleteProjectWithQinglongSync 软删除并同步青龙，成功后才可退积分
+func DeleteProjectWithQinglongSync(projectID int) error {
+	var project ActivityProject
+	if err := db.Where("id = ? AND deleted_at IS NULL", projectID).First(&project).Error; err != nil {
+		return fmt.Errorf("未找到对应项目记录")
+	}
+	prevSyncStatus := project.SyncStatus
+	if err := SoftDeleteActivityProject(projectID); err != nil {
+		return fmt.Errorf("删除失败：%v", err)
+	}
+	if err := SyncProjectNow(projectID); err != nil {
+		_ = RevertSoftDeleteActivityProject(projectID, prevSyncStatus)
+		return fmt.Errorf("青龙删除失败：%v", SanitizeError(err))
+	}
+	return nil
+}
+
 func HardDeleteActivityProject(id int) error {
 	return db.Where("id = ?", id).Delete(&ActivityProject{}).Error
 }
 
 func GetPendingSyncProjects(limit int) ([]ActivityProject, error) {
 	var projects []ActivityProject
-	err := db.Where("sync_status IN ('pending', 'pending_update', 'pending_disable', 'pending_enable', 'pending_delete') AND deleted_at IS NULL").
+	err := db.Where(
+		"(sync_status IN ('pending', 'pending_update', 'pending_disable', 'pending_enable') AND deleted_at IS NULL) OR "+
+			"(sync_status = 'pending_delete' AND deleted_at IS NOT NULL) OR "+
+			"(sync_status = 'error' AND sync_retry_count < ? AND deleted_at IS NULL)",
+		syncMaxRetries,
+	).
 		Order("updated_at ASC").
 		Limit(limit).
 		Find(&projects).Error
-	return projects, err
+	if err != nil {
+		return nil, err
+	}
+
+	var deletedProjects []ActivityProject
+	if err := db.Unscoped().
+		Where("sync_status = ? AND deleted_at IS NOT NULL", "pending_delete").
+		Order("updated_at ASC").
+		Limit(limit).
+		Find(&deletedProjects).Error; err != nil {
+		return projects, err
+	}
+
+	seen := make(map[int]bool, len(projects))
+	for _, p := range projects {
+		seen[p.ID] = true
+	}
+	for _, p := range deletedProjects {
+		if !seen[p.ID] {
+			projects = append(projects, p)
+			seen[p.ID] = true
+		}
+	}
+	if len(projects) > limit {
+		projects = projects[:limit]
+	}
+	return projects, nil
 }
 
 func GetProjectsBySyncStatus(status string) ([]ActivityProject, error) {
@@ -231,21 +366,43 @@ func GetProjectsBySyncStatus(status string) ([]ActivityProject, error) {
 func MarkProjectSynced(id int, qinglongEnvID int) error {
 	now := time.Now()
 	return db.Model(&ActivityProject{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"sync_status":     "synced",
-		"qinglong_env_id": qinglongEnvID,
-		"sync_error":      "",
-		"sync_at":         now,
-		"updated_at":      now,
+		"sync_status":      "synced",
+		"qinglong_env_id":  qinglongEnvID,
+		"sync_error":       "",
+		"sync_retry_count": 0,
+		"sync_at":          now,
+		"updated_at":       now,
 	}).Error
 }
 
 func MarkProjectSyncError(id int, errMsg string) error {
 	now := time.Now()
+	var project ActivityProject
+	if err := db.Unscoped().Where("id = ?", id).First(&project).Error; err != nil {
+		return err
+	}
+
+	retry := project.SyncRetryCount + 1
+	updates := map[string]interface{}{
+		"sync_error":       errMsg,
+		"sync_retry_count": retry,
+		"sync_at":          now,
+		"updated_at":       now,
+	}
+	if retry >= syncMaxRetries {
+		updates["sync_status"] = "error"
+	}
+	return db.Model(&ActivityProject{}).Where("id = ?", id).Updates(updates).Error
+}
+
+// RequeueProjectSync 将 error 状态重新加入同步队列
+func RequeueProjectSync(id int, syncStatus string) error {
+	now := time.Now()
 	return db.Model(&ActivityProject{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"sync_status": "error",
-		"sync_error":  errMsg,
-		"sync_at":     now,
-		"updated_at":  now,
+		"sync_status":      syncStatus,
+		"sync_error":       "",
+		"sync_retry_count": 0,
+		"updated_at":       now,
 	}).Error
 }
 

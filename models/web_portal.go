@@ -520,6 +520,21 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 		finalRemarks = fmt.Sprintf("%s/%s", finalRemarks, expireDate)
 	}
 
+	remarkAlias := strings.TrimSpace(userRemarks)
+	release, acquired := TryAcquireProjectSubmitLock(userNumber, activityID, remarkAlias)
+	if !acquired {
+		return "", fmt.Errorf("请勿重复提交，上一笔请求正在处理中")
+	}
+	defer release()
+
+	exists, err := HasActiveProjectByUserActivityAlias(userNumber, activityID, remarkAlias)
+	if err != nil {
+		return "", fmt.Errorf("检查账号失败：%v", err)
+	}
+	if exists {
+		return "", fmt.Errorf("该备注名已存在，请更换备注名")
+	}
+
 	project := &ActivityProject{
 		ActivityID:         cfg.ID,
 		ActivityName:       cfg.Name,
@@ -544,11 +559,15 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 		project.NeedCoin = cfg.NeedCoin
 	}
 
+	if err := DeductCoinChecked(userNumber, totalCoin); err != nil {
+		return "", err
+	}
+
 	if err := CreateActivityProject(project); err != nil {
+		AdddCoin(userNumber, totalCoin)
 		return "", fmt.Errorf("保存到数据库失败：%v", err)
 	}
 
-	RemCoin(userNumber, totalCoin)
 	RecordCoinLogEx(userNumber, -totalCoin, "上车扣费", fmt.Sprintf("%s上车", cfg.Name), clientCtx)
 
 	go TriggerSync(project.ID)
@@ -601,6 +620,12 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int, 
 		return "", fmt.Errorf("无权操作此账号")
 	}
 
+	release, acquired := TryAcquireProjectActionLock(userNumber, activityID, "renew", remarks)
+	if !acquired {
+		return "", fmt.Errorf("请勿重复提交，上一笔续费请求正在处理中")
+	}
+	defer release()
+
 	baseTime, hasOldDate := ParseRemarksDate(remarks)
 	var newExpireDate string
 	if cfg.IsDailyDeduct {
@@ -623,6 +648,11 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int, 
 	}
 	newRemarks := BuildMonthDeductRemarks(remarks, newExpireDate)
 
+	if err := DeductCoinChecked(userNumber, totalCoin); err != nil {
+		return "", err
+	}
+
+	wasDisabled := project.Status != 0
 	project.Remarks = newRemarks
 	project.ExpireDate = newExpireDate
 	project.NeedCoin = 0
@@ -634,13 +664,17 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int, 
 	if cfg.IsMonthlyDeduct {
 		project.MonthlyCoin = cfg.MonthlyCoin
 	}
-	project.SyncStatus = "pending_update"
+	if wasDisabled {
+		project.SyncStatus = "pending_enable"
+	} else {
+		project.SyncStatus = "pending_update"
+	}
 	project.SyncError = ""
 	if err := UpdateActivityProject(project); err != nil {
+		AdddCoin(userNumber, totalCoin)
 		return "", fmt.Errorf("更新数据库失败：%v", err)
 	}
 
-	RemCoin(userNumber, totalCoin)
 	RecordCoinLogEx(userNumber, -totalCoin, "续费扣费", fmt.Sprintf("%s续费", cfg.Name), clientCtx)
 
 	go TriggerSync(project.ID)
@@ -664,6 +698,12 @@ func PortalDeleteProject(userNumber int, activityID, remarks string, clientCtx C
 		return "", fmt.Errorf("无权操作此账号")
 	}
 
+	release, acquired := TryAcquireProjectActionLock(userNumber, activityID, "delete", remarks)
+	if !acquired {
+		return "", fmt.Errorf("请勿重复提交，上一笔删除请求正在处理中")
+	}
+	defer release()
+
 	if (cfg.IsMonthlyDeduct || cfg.IsDailyDeduct) && project.NeedCoin == 0 {
 		paidDays := CalcPaidRemainingDays(project)
 		if cfg.IsDailyDeduct && project.DailyCoin > 0 {
@@ -673,11 +713,9 @@ func PortalDeleteProject(userNumber int, activityID, remarks string, clientCtx C
 		}
 	}
 
-	if err := SoftDeleteActivityProject(project.ID); err != nil {
-		return "", fmt.Errorf("删除失败：%v", err)
+	if err := DeleteProjectWithQinglongSync(project.ID); err != nil {
+		return "", err
 	}
-
-	go TriggerSync(project.ID)
 
 	if returnCoin > 0 {
 		AdddCoin(userNumber, returnCoin)

@@ -124,6 +124,30 @@ func RemCoin(uid int, num int) int {
 	return u.Coin
 }
 
+// DeductCoinChecked 原子扣减积分，不足时返回错误（防止并发白嫖）
+func DeductCoinChecked(uid int, num int) error {
+	if num <= 0 {
+		return nil
+	}
+	result := db.Model(&User{}).
+		Where("number = ? AND coin >= ?", uid, num).
+		Updates(map[string]interface{}{
+			"coin":      gorm.Expr(fmt.Sprintf("coin-%d", num)),
+			"active_at": time.Now(),
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		var u User
+		if err := db.Where("number = ?", uid).First(&u).Error; err != nil {
+			return fmt.Errorf("用户不存在")
+		}
+		return fmt.Errorf("积分不足，当前%d，需要%d", u.Coin, num)
+	}
+	return nil
+}
+
 func GetCoin(uid int) int {
 	var u User
 	db.Where("number = ?", uid).First(&u)

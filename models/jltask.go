@@ -529,12 +529,12 @@ func executeScript(sender *Sender, cmdPath string, args ...string) (string, erro
 
 // ===================== 记录CK =====================
 func handleRecordCKByGo(qq int, ckValue, finalRemarks, envKey string, config *ActivityConfig) (string, error) {
-	duplicate, err := CheckDuplicateRemarksDB(finalRemarks, envKey)
+	remarkAlias := GetFirstRemarkParam(finalRemarks)
+	exists, err := HasActiveProjectByUserActivityAlias(qq, config.ID, remarkAlias)
 	if err != nil {
 		return "", fmt.Errorf("检查重复备注失败：%v", err)
 	}
-
-	if duplicate {
+	if exists {
 		return "记录失败，已有相同备注，需换一个备注.", nil
 	}
 
@@ -702,6 +702,14 @@ func HandleRecordCK(sender *Sender) interface{} {
 			finalRemarks = fmt.Sprintf("%s/%s", finalRemarks, expireDate)
 		}
 
+		remarkAlias := GetFirstRemarkParam(finalRemarks)
+		release, acquired := TryAcquireProjectSubmitLock(qq, config.ID, remarkAlias)
+		if !acquired {
+			sender.Reply("请勿重复提交，上一笔请求正在处理中")
+			return
+		}
+		defer release()
+
 		totalCoin := 0
 		if config.IsDailyDeduct {
 			totalCoin = config.DailyCoin * months
@@ -720,6 +728,11 @@ func HandleRecordCK(sender *Sender) interface{} {
 		var output string
 		var err error
 
+		if err := DeductCoinChecked(sender.UserID, totalCoin); err != nil {
+			sender.Reply(fmt.Sprintf("扣费失败：%v", err))
+			return
+		}
+
 		if config.ScriptPaths.Record != "" {
 			output, err = executeScript(sender, "python3", config.ScriptPaths.Record, ckValue, finalRemarks, config.EnvKey)
 		} else {
@@ -727,12 +740,12 @@ func HandleRecordCK(sender *Sender) interface{} {
 		}
 
 		if err != nil {
+			AdddCoin(sender.UserID, totalCoin)
 			sender.Reply(fmt.Sprintf("操作失败：%v", err))
 			return
 		}
 
 		if strings.Contains(output, "记录成功") {
-			RemCoin(sender.UserID, totalCoin)
 			RecordCoinForSender(sender, sender.UserID, -totalCoin, "上车扣费", fmt.Sprintf("%s上车", config.Name))
 			if config.IsDailyDeduct {
 				sender.Reply(fmt.Sprintf("添加%s账号成功！已扣除%d积分（%d天×%d积分/天），剩余%d积分。授权有效期至：%s",
@@ -745,6 +758,7 @@ func HandleRecordCK(sender *Sender) interface{} {
 					config.Name, totalCoin, userCoin-totalCoin))
 			}
 		} else {
+			AdddCoin(sender.UserID, totalCoin)
 			sender.Reply(fmt.Sprintf("记录失败：%s", output))
 		}
 	}()
@@ -974,12 +988,10 @@ func handleDeleteCKByGo(qq int, remarks, envKey string, config *ActivityConfig) 
 		return "", fmt.Errorf("查询账号信息失败：%v", err)
 	}
 
-	if err := SoftDeleteActivityProject(project.ID); err != nil {
+	if err := DeleteProjectWithQinglongSync(project.ID); err != nil {
 		UserLog().Infof("[用户%d][删除CK] 删除失败，备注：%s，错误：%v", qq, remarks, err)
 		return "", fmt.Errorf("删除账号失败：%v", err)
 	}
-
-	go TriggerSync(project.ID)
 
 	return "环境变量删除成功", nil
 }
@@ -1563,6 +1575,19 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 			return
 		}
 
+		release, acquired := TryAcquireProjectActionLock(sender.UserID, config.ID, "renew", selectedRemarks)
+		if !acquired {
+			sender.Reply("请勿重复提交，上一笔续费请求正在处理中")
+			return
+		}
+		defer release()
+
+		if err := DeductCoinChecked(sender.UserID, totalCoin); err != nil {
+			sender.Reply(fmt.Sprintf("扣费失败：%v", err))
+			return
+		}
+
+		wasDisabled := project.Status != 0
 		project.Remarks = newRemarks
 		project.ExpireDate = newExpireDate
 		project.NeedCoin = 0
@@ -1574,9 +1599,14 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		if config.IsMonthlyDeduct {
 			project.MonthlyCoin = config.MonthlyCoin
 		}
-		project.SyncStatus = "pending_update"
+		if wasDisabled {
+			project.SyncStatus = "pending_enable"
+		} else {
+			project.SyncStatus = "pending_update"
+		}
 		project.SyncError = ""
 		if err := UpdateActivityProject(project); err != nil {
+			AdddCoin(sender.UserID, totalCoin)
 			sender.Reply(fmt.Sprintf("更新数据库失败：%v", err))
 			UserLog().Infof("更新数据库失败：%v", err)
 			return
@@ -1584,8 +1614,6 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 
 		go TriggerSync(project.ID)
 
-		// 9. 扣除积分
-		RemCoin(sender.UserID, totalCoin)
 		RecordCoinForSender(sender, sender.UserID, -totalCoin, "续费扣费", fmt.Sprintf("%s续费", config.Name))
 
 		if config.IsDailyDeduct {

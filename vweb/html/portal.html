@@ -363,6 +363,7 @@
         }
         .notify-pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 0 2px; color: var(--text-muted); font-size: 13px; }
         .notify-pager .btn[disabled] { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; pointer-events: none; }
         .notify-popup-modal { max-width: 640px; border-radius: var(--radius-lg); border: 1px solid #c7d2fe; box-shadow: 0 20px 60px rgba(79,70,229,0.12), 0 8px 24px rgba(0,0,0,0.08); }
         .notify-popup-modal .modal-title { font-size: 22px; color: var(--primary); }
         .notify-popup-modal .notify-detail-content { font-size: 15px; background: var(--primary-light); border-color: #c7d2fe; }
@@ -1076,7 +1077,7 @@
         <div class="form-grid" id="projectModalFields"></div>
         <div class="actions">
             <button class="btn secondary" onclick="closeProjectModal()">取消</button>
-            <button class="btn" onclick="confirmProjectSubmit()">确认上车</button>
+            <button class="btn" id="projectSubmitBtn" onclick="confirmProjectSubmit()">确认上车</button>
         </div>
     </div>
 </div>
@@ -1119,7 +1120,7 @@
         </div>
         <div class="actions">
             <button class="btn secondary" onclick="closeEditCkModal()">取消</button>
-            <button class="btn" onclick="saveProjectCk()">保存</button>
+            <button class="btn" id="editCkSaveBtn" onclick="saveProjectCk()">保存</button>
         </div>
     </div>
 </div>
@@ -1884,6 +1885,33 @@ var state = {
     jdAccounts: [],
     jdWxDevices: []
 };
+
+const portalActionInflight = new Set();
+
+async function runPortalActionGuard(key, fn, options) {
+    options = options || {};
+    if (portalActionInflight.has(key)) {
+        toast(options.duplicateMsg || '请勿重复提交，上一笔请求正在处理中', 'error');
+        return null;
+    }
+    portalActionInflight.add(key);
+    const btn = options.button;
+    const loadingText = options.loadingText || '处理中...';
+    const defaultText = btn ? btn.textContent : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = loadingText;
+    }
+    try {
+        return await fn();
+    } finally {
+        portalActionInflight.delete(key);
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = defaultText;
+        }
+    }
+}
 
 document.querySelectorAll('.menu button[data-panel]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2773,20 +2801,27 @@ async function confirmProjectSubmit() {
     const periodLabel = item.isDailyDeduct ? '授权天数' : '授权月数';
     const confirmText = `确认提交【${getActivityDisplayById(item.id)}】吗？${remarks ? `\n备注名：${remarks}` : ''}${months ? `\n${periodLabel}：${months}` : ''}`;
     if (!window.confirm(confirmText)) return;
-    try {
-        const resp = await request('/api/portal/project', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ activityId: item.id, inputs, remarks, months })
-        });
-        toast(resp.msg || '上车成功', 'success');
-        closeProjectModal();
-        await loadActivitiesData();
-        await loadProjectData();
-        if (state.currentPanel === 'dashboard') await loadDashboardData();
-    } catch (err) {
-        toast(err.message || '提交失败', 'error');
-    }
+    const lockKey = `create:${item.id}:${remarks}`;
+    await runPortalActionGuard(lockKey, async () => {
+        try {
+            const resp = await request('/api/portal/project', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activityId: item.id, inputs, remarks, months })
+            });
+            toast(resp.msg || '上车成功', 'success');
+            closeProjectModal();
+            await loadActivitiesData();
+            await loadProjectData();
+            if (state.currentPanel === 'dashboard') await loadDashboardData();
+        } catch (err) {
+            toast(err.message || '提交失败', 'error');
+        }
+    }, {
+        button: document.getElementById('projectSubmitBtn'),
+        loadingText: '提交中...',
+        duplicateMsg: '请勿重复提交，上一笔上车请求正在处理中'
+    });
 }
 
 async function renewProject(activityId, remarks) {
@@ -2803,18 +2838,21 @@ async function renewProject(activityId, remarks) {
     const total = unitPrice > 0 ? unitPrice * monthNum : 0;
     const priceHint = unitPrice > 0 ? `\n单价：${unitPrice}积分/${periodLabel}\n合计：${total}积分` : '';
     if (!window.confirm(`确认续费【${title || activityId}】${monthNum}${periodLabel}吗？${priceHint}`)) return;
-    try {
-        const resp = await request('/api/portal/project/renew', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ activityId, remarks, months: monthNum })
-        });
-        toast(resp.msg || '续费成功', 'success');
-        await loadProjectData();
-        if (state.currentPanel === 'dashboard') await loadDashboardData();
-    } catch (err) {
-        toast(err.message || '续费失败', 'error');
-    }
+    const lockKey = `renew:${activityId}:${remarks}`;
+    await runPortalActionGuard(lockKey, async () => {
+        try {
+            const resp = await request('/api/portal/project/renew', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activityId, remarks, months: monthNum })
+            });
+            toast(resp.msg || '续费成功', 'success');
+            await loadProjectData();
+            if (state.currentPanel === 'dashboard') await loadDashboardData();
+        } catch (err) {
+            toast(err.message || '续费失败', 'error');
+        }
+    }, { duplicateMsg: '请勿重复提交，上一笔续费请求正在处理中' });
 }
 
 async function deleteProject(activityId, remarks, activityName) {
@@ -2848,18 +2886,21 @@ async function deleteProject(activityId, remarks, activityName) {
         refundTip = '\n此活动为一次性扣费，删除不退还积分';
     }
     if (!window.confirm(`确认删除【${activityName}】这条项目记录吗？${refundTip}`)) return;
-    try {
-        const resp = await request('/api/portal/project/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ activityId, remarks })
-        });
-        toast(resp.msg || '删除成功', 'success');
-        await loadProjectData();
-        if (state.currentPanel === 'dashboard') await loadDashboardData();
-    } catch (err) {
-        toast(err.message || '删除失败', 'error');
-    }
+    const lockKey = `delete:${activityId}:${remarks}`;
+    await runPortalActionGuard(lockKey, async () => {
+        try {
+            const resp = await request('/api/portal/project/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activityId, remarks })
+            });
+            toast(resp.msg || '删除成功', 'success');
+            await loadProjectData();
+            if (state.currentPanel === 'dashboard') await loadDashboardData();
+        } catch (err) {
+            toast(err.message || '删除失败', 'error');
+        }
+    }, { duplicateMsg: '请勿重复提交，上一笔删除请求正在处理中' });
 }
 
 state.editCkInfo = null;
@@ -2997,18 +3038,24 @@ async function saveProjectCk() {
         emptyField.focus();
         return;
     }
-    try {
-        const resp = await request('/api/portal/project/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ activityId: info.activityId, remarks: info.remarks, ckValue })
-        });
-        toast(resp.msg || '更新成功', 'success');
-        closeEditCkModal();
-        await loadProjectData();
-    } catch (err) {
-        toast(err.message || '更新失败', 'error');
-    }
+    const lockKey = `update:${info.activityId}:${info.remarks}`;
+    await runPortalActionGuard(lockKey, async () => {
+        try {
+            const resp = await request('/api/portal/project/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activityId: info.activityId, remarks: info.remarks, ckValue })
+            });
+            toast(resp.msg || '更新成功', 'success');
+            closeEditCkModal();
+            await loadProjectData();
+        } catch (err) {
+            toast(err.message || '更新失败', 'error');
+        }
+    }, {
+        button: document.getElementById('editCkSaveBtn'),
+        loadingText: '保存中...'
+    });
 }
 
 async function queryIncome(activityId, remarks, activityName) {
