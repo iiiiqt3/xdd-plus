@@ -83,6 +83,8 @@ final class KuwoRushViewController: BaseNativeViewController {
     private let contentStack = UIStackView()
 
     private let authHint = UILabel()
+    private let accountSelectWrap = UIStackView()
+    private let accountSelectButton = UIButton(type: .system)
     private let phoneField = UITextField()
     private let passwordField = UITextField()
     private let smsField = UITextField()
@@ -98,6 +100,8 @@ final class KuwoRushViewController: BaseNativeViewController {
     private let quotaStack = UIStackView()
 
     private var kuwoAuthorized = false
+    private var kuwoAccounts: [(phone: String, password: String)] = []
+    private var selectedAccountIndex = 0
     private var selectedQuotaId = "30002"
     private var activeTaskId: String?
     private var withdrawSubmitting = false
@@ -199,6 +203,25 @@ final class KuwoRushViewController: BaseNativeViewController {
         tip.textColor = .secondaryLabel
         tip.numberOfLines = 0
         card.addArrangedSubview(tip)
+
+        accountSelectWrap.axis = .vertical
+        accountSelectWrap.spacing = 4
+        accountSelectWrap.isHidden = true
+        let accountLabel = UILabel()
+        accountLabel.text = "选择抢兑账号"
+        accountLabel.font = .systemFont(ofSize: 11.5)
+        accountLabel.textColor = .secondaryLabel
+        accountSelectButton.contentHorizontalAlignment = .left
+        accountSelectButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        accountSelectButton.backgroundColor = UIColor.secondarySystemGroupedBackground
+        accountSelectButton.layer.cornerRadius = 10
+        accountSelectButton.layer.borderWidth = 1
+        accountSelectButton.layer.borderColor = UIColor.systemGray4.cgColor
+        accountSelectButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
+        bindAction(accountSelectButton) { [weak self] in self?.showAccountPicker() }
+        accountSelectWrap.addArrangedSubview(accountLabel)
+        accountSelectWrap.addArrangedSubview(accountSelectButton)
+        card.addArrangedSubview(accountSelectWrap)
 
         card.addArrangedSubview(fieldBlock(label: "手机号", field: phoneField, secure: false, readonly: true))
         card.addArrangedSubview(fieldBlock(label: "密码", field: passwordField, secure: true, readonly: true))
@@ -467,14 +490,95 @@ final class KuwoRushViewController: BaseNativeViewController {
             guard let self = self else { return }
             switch result {
             case .failure:
+                self.kuwoAccounts = []
+                self.accountSelectWrap.isHidden = true
                 self.phoneField.text = ""
                 self.passwordField.text = ""
             case .success(let cred):
-                self.phoneField.text = cred.phone
-                self.passwordField.text = cred.password
-                self.restoreKuwoState(phone: cred.phone ?? "")
+                self.applyKuwoCredentials(cred)
             }
         }
+    }
+
+    private func maskPhone(_ phone: String) -> String {
+        guard phone.count >= 11 else { return phone }
+        return String(phone.prefix(3)) + "****" + String(phone.suffix(4))
+    }
+
+    private func resolveKuwoAccounts(_ cred: KuwoCredentials) -> [(phone: String, password: String)] {
+        let fromList = cred.accounts?.compactMap { acc -> (String, String)? in
+            let phone = acc.phone?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !phone.isEmpty else { return nil }
+            return (phone, acc.password ?? "")
+        } ?? []
+        if !fromList.isEmpty { return fromList }
+        let phone = cred.phone?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !phone.isEmpty else { return [] }
+        return [(phone, cred.password ?? "")]
+    }
+
+    private func applyKuwoCredentials(_ cred: KuwoCredentials) {
+        let previousPhone = phoneField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        kuwoAccounts = resolveKuwoAccounts(cred)
+        if !previousPhone.isEmpty, let matched = kuwoAccounts.firstIndex(where: { $0.phone == previousPhone }) {
+            selectedAccountIndex = matched
+        }
+        refreshAccountSelector()
+        guard !kuwoAccounts.isEmpty else {
+            phoneField.text = cred.phone
+            passwordField.text = cred.password
+            restoreKuwoState(phone: cred.phone ?? "")
+            return
+        }
+        let index = min(max(selectedAccountIndex, 0), kuwoAccounts.count - 1)
+        selectedAccountIndex = index
+        let acc = kuwoAccounts[index]
+        phoneField.text = acc.phone
+        passwordField.text = acc.password
+        restoreKuwoState(phone: acc.phone)
+    }
+
+    private func refreshAccountSelector() {
+        guard kuwoAccounts.count > 1 else {
+            accountSelectWrap.isHidden = true
+            selectedAccountIndex = 0
+            return
+        }
+        accountSelectWrap.isHidden = false
+        let index = min(max(selectedAccountIndex, 0), kuwoAccounts.count - 1)
+        selectedAccountIndex = index
+        accountSelectButton.setTitle("当前：\(maskPhone(kuwoAccounts[index].phone)) ▾", for: .normal)
+    }
+
+    private func showAccountPicker() {
+        guard kuwoAccounts.count > 1 else { return }
+        let alert = UIAlertController(title: "选择抢兑账号", message: nil, preferredStyle: .actionSheet)
+        for (idx, acc) in kuwoAccounts.enumerated() {
+            let title = maskPhone(acc.phone) + (idx == selectedAccountIndex ? " ✓" : "")
+            alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                self?.switchAccount(to: idx)
+            })
+        }
+        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = accountSelectButton
+            popover.sourceRect = accountSelectButton.bounds
+        }
+        present(alert, animated: true)
+    }
+
+    private func switchAccount(to index: Int) {
+        guard index >= 0, index < kuwoAccounts.count else { return }
+        selectedAccountIndex = index
+        clearActiveState()
+        restoreWithdrawUi()
+        let acc = kuwoAccounts[index]
+        phoneField.text = acc.phone
+        passwordField.text = acc.password
+        smsField.text = ""
+        smsStatus.text = ""
+        smsStatus.textColor = .secondaryLabel
+        refreshAccountSelector()
     }
 
     private func startClock() {

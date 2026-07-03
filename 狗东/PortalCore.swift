@@ -215,9 +215,15 @@ struct PortalJdTaskExecuteResult: Decodable {
     let taskId: String?
 }
 
+struct KuwoAccountInfo: Decodable {
+    let phone: String?
+    let password: String?
+}
+
 struct KuwoCredentials: Decodable {
     let phone: String?
     let password: String?
+    let accounts: [KuwoAccountInfo]?
 }
 
 struct KuwoScheduleResult: Decodable {
