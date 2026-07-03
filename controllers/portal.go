@@ -1095,6 +1095,26 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 	c.ServeJSON()
 }
 
+// KuwoUpdateSmsCode 倒计时 pending 阶段更新短信验证码
+func (c *PortalController) KuwoUpdateSmsCode() {
+	var req struct {
+		TaskID  string `json:"taskId"`
+		SmsCode string `json:"smsCode"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	if err := models.KuwoUpdateTaskSmsCode(req.TaskID, req.SmsCode); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "验证码已更新"}
+	c.ServeJSON()
+}
+
 // KuwoGetWithdrawStatus 查询定时抢兑任务状态
 func (c *PortalController) KuwoGetWithdrawStatus() {
 	taskID := c.Ctx.Input.Query("taskId")
@@ -1158,6 +1178,10 @@ func (c *PortalController) KuwoGetWithdrawStatus() {
 }
 
 func kuwoTaskStatusPayload(task *models.KuwoScheduledTask) map[string]interface{} {
+	smsFatal := false
+	if len(task.Results) > 0 {
+		smsFatal = models.KuwoAllResultsSmsFatalExported(task.Results)
+	}
 	return map[string]interface{}{
 		"id":            task.ID,
 		"phone":         task.Phone,
@@ -1166,6 +1190,8 @@ func kuwoTaskStatusPayload(task *models.KuwoScheduledTask) map[string]interface{
 		"executeAt":     task.ExecuteAt.Format("15:04:05"),
 		"status":        task.Status,
 		"immediate":     task.Immediate,
+		"smsEditable":   task.Status == "pending",
+		"smsFatal":      smsFatal,
 		"results":       task.ResultsJSON,
 		"resultsDetail": task.ResultsJSON,
 		"logs":          task.LogsSnapshot(),

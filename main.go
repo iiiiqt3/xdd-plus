@@ -250,6 +250,7 @@ func main() {
 	web.Router("/api/portal/kuwo/send-sms", &controllers.PortalController{}, "post:KuwoSendSms")
 	web.Router("/api/portal/kuwo/withdraw", &controllers.PortalController{}, "post:KuwoWithdraw")
 	web.Router("/api/portal/kuwo/schedule-withdraw", &controllers.PortalController{}, "post:KuwoScheduleWithdraw")
+	web.Router("/api/portal/kuwo/update-sms-code", &controllers.PortalController{}, "post:KuwoUpdateSmsCode")
 	web.Router("/api/portal/kuwo/withdraw-status", &controllers.PortalController{}, "get:KuwoGetWithdrawStatus")
 	// 管理员登录页面
 	web.Get("/admin/login", func(ctx *context.Context) {

@@ -1431,8 +1431,10 @@
 
                     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                         <button onclick="kuwoStartWithdraw()" id="kuwoWithdrawBtn" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:14px;font-weight:700;cursor:pointer;">开始抢兑</button>
+                        <button onclick="kuwoUpdateSmsCode()" id="kuwoUpdateSmsBtn" style="display:none;padding:10px 18px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">更新验证码</button>
                         <div id="kuwoCountdown" style="display:none;padding:10px 24px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:white;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;"></div>
                     </div>
+                    <div id="kuwoSmsEditHint" style="display:none;margin-top:8px;font-size:12px;color:var(--primary);font-weight:600;">倒计时中可修改上方验证码，改完后点击「更新验证码」同步到后端</div>
                 </div>
 
                 <!-- 日志区域 -->
@@ -4154,11 +4156,36 @@ let kuwoSessionData = null;
 let kuwoTimerInterval = null;
 let kuwoAuthorized = false;
 const KUWO_WITHDRAW_HOURS = [0, 9, 13, 17, 20];
+const KUWO_DEFAULT_QUOTA = '30002';
 const KUWO_STATE_KEY = 'kuwo_active_countdown';
 const KUWO_LOG_KEY = 'kuwo_log_content';
+const KUWO_SMS_SESSION_KEY = 'kuwo_sms_session';
 let kuwoTaskMonitor = null;
 let kuwoTaskLogIndex = 0;
 let kuwoWithdrawSubmitting = false;
+let kuwoActiveTaskId = null;
+
+function kuwoClearActiveState() {
+    kuwoStopTaskMonitor();
+    kuwoStopCountdown();
+    kuwoActiveTaskId = null;
+    kuwoSessionData = null;
+    try { localStorage.removeItem(KUWO_STATE_KEY); } catch (e) {}
+}
+
+function kuwoSetWithdrawLocked(locked, allowSmsEdit) {
+    const withdrawBtn = document.getElementById('kuwoWithdrawBtn');
+    const updateBtn = document.getElementById('kuwoUpdateSmsBtn');
+    const hint = document.getElementById('kuwoSmsEditHint');
+    const countdownEl = document.getElementById('kuwoCountdown');
+    if (withdrawBtn) withdrawBtn.style.display = locked ? 'none' : '';
+    if (countdownEl) countdownEl.style.display = locked ? '' : 'none';
+    if (updateBtn) updateBtn.style.display = (locked && allowSmsEdit) ? '' : 'none';
+    if (hint) hint.style.display = (locked && allowSmsEdit) ? 'block' : 'none';
+    document.querySelectorAll('#kuwoPhone, #kuwoPassword').forEach(el => { if (el) el.disabled = locked; });
+    const smsInput = document.getElementById('kuwoSmsCode');
+    if (smsInput) smsInput.disabled = locked && !allowSmsEdit;
+}
 
 function kuwoStopCountdown() {
     if (kuwoTimerInterval) {
@@ -4225,6 +4252,13 @@ async function kuwoFindActiveTaskByPhone(phone) {
 function kuwoApplyTaskMonitorResult(task, immediate, countdownEl) {
     if (!task) return false;
     kuwoFlushTaskLogs(task.logs);
+    if (task.status === 'pending' && !immediate) {
+        kuwoSetWithdrawLocked(true, true);
+        if (task.smsFatal) {
+            kuwoLog('⚠️ 后端反馈疑似验证码错误，请修改后点击「更新验证码」');
+        }
+        return false;
+    }
     if (task.status === 'running') {
         if (countdownEl && immediate) {
             countdownEl.style.display = '';
@@ -4308,6 +4342,13 @@ async function kuwoRestoreState() {
         const state = JSON.parse(saved);
         if (!state || !state.phone) return;
 
+        const phoneInputEl = document.getElementById('kuwoPhone');
+        const currentPhone = phoneInputEl?.value?.trim() || '';
+        if (currentPhone && state.phone && currentPhone !== state.phone) {
+            kuwoClearActiveState();
+            return;
+        }
+
         const activeTask = await kuwoFindActiveTaskByPhone(state.phone);
         if (activeTask && activeTask.id) {
             state.taskId = activeTask.id;
@@ -4322,69 +4363,61 @@ async function kuwoRestoreState() {
         const taskId = state.taskId || (activeTask ? activeTask.id : null);
         const isImmediate = !!(state.immediate || (activeTask && activeTask.immediate));
 
-        // 恢复UI
-        document.getElementById('kuwoWithdrawBtn').style.display = 'none';
-        document.getElementById('kuwoCountdown').style.display = '';
-        document.querySelectorAll('#kuwoPhone, #kuwoPassword, #kuwoSmsCode').forEach(el => el.disabled = true);
+        if (!taskId) {
+            kuwoClearActiveState();
+            return;
+        }
+
+        const task = await kuwoFetchTaskStatus(taskId);
+        if (task && (task.status === 'completed' || task.status === 'failed')) {
+            kuwoFlushTaskLogs(task.logs);
+            kuwoApplyTaskMonitorResult(task, !!isImmediate, document.getElementById('kuwoCountdown'));
+            return;
+        }
+        if (!task || (task.status !== 'pending' && task.status !== 'running')) {
+            kuwoClearActiveState();
+            kuwoRestoreWithdrawUI();
+            return;
+        }
+
+        kuwoActiveTaskId = taskId;
+        kuwoSetWithdrawLocked(true, !isImmediate && task.status === 'pending');
         const phoneInput = document.getElementById('kuwoPhone');
         const pwdInput = document.getElementById('kuwoPassword');
         const smsInput = document.getElementById('kuwoSmsCode');
         if (phoneInput && state.phone) phoneInput.value = state.phone;
         if (pwdInput && state.password) pwdInput.value = state.password;
-        if (smsInput && state.smsCode) smsInput.value = state.smsCode;
+        if (smsInput && state.smsCode && task.status === 'pending') smsInput.value = state.smsCode;
         if (state.quotaId) {
             const radio = document.querySelector('input[name="kuwoQuota"][value="' + state.quotaId + '"]');
             if (radio) radio.checked = true;
+        } else {
+            const def = document.querySelector('input[name="kuwoQuota"][value="' + KUWO_DEFAULT_QUOTA + '"]');
+            if (def) def.checked = true;
         }
 
-        if (taskId) {
-            // 先查任务状态，已完成/失败则直接收尾，避免倒计时复活
-            const task = await kuwoFetchTaskStatus(taskId);
-            if (task && (task.status === 'completed' || task.status === 'failed')) {
-                kuwoFlushTaskLogs(task.logs);
-                kuwoApplyTaskMonitorResult(task, !!isImmediate, document.getElementById('kuwoCountdown'));
-                return;
+        kuwoLog('🔄 检测到进行中的抢兑任务，已恢复监控');
+        if (task.logs && Array.isArray(task.logs)) {
+            kuwoTaskLogIndex = task.logs.length;
+        } else {
+            kuwoResetTaskLogCursor();
+        }
+        const remaining2 = targetHour != null ? kuwoRemainingMsUntilHour(targetHour) : NaN;
+        if (!isImmediate && remaining2 > 0 && targetHour != null) {
+            const info = kuwoGetNextWithdrawInfo();
+            if (info) info.hour = targetHour;
+            kuwoRunCountdown(info || { hour: targetHour }, taskId);
+        } else if (!isImmediate) {
+            const countdownEl = document.getElementById('kuwoCountdown');
+            if (countdownEl) {
+                countdownEl.textContent = '🚀 后端正在执行 ' + String(targetHour).padStart(2, '0') + ':00 抢兑...';
             }
-
-            kuwoLog('🔄 检测到进行中的抢兑任务，已恢复监控');
-            if (task && Array.isArray(task.logs)) {
-                kuwoTaskLogIndex = task.logs.length;
-            } else {
-                kuwoResetTaskLogCursor();
-            }
-            const remaining = targetHour != null ? kuwoRemainingMsUntilHour(targetHour) : NaN;
-            if (!isImmediate && remaining > 0 && targetHour != null) {
-                const info = kuwoGetNextWithdrawInfo();
-                if (info) info.hour = targetHour;
-                kuwoRunCountdown(info || { hour: targetHour }, taskId);
-            } else if (!isImmediate) {
-                const countdownEl = document.getElementById('kuwoCountdown');
-                if (countdownEl) {
-                    countdownEl.textContent = '🚀 后端正在执行 ' + String(targetHour).padStart(2, '0') + ':00 抢兑...';
-                }
-                kuwoLog('🔄 倒计时已结束，等待后端执行结果…');
-            }
-            kuwoMonitorTask(taskId, !!isImmediate);
-            return;
+            kuwoLog('🔄 倒计时已结束，等待后端执行结果…');
         }
-
-        if (targetHour == null || isNaN(remaining)) {
-            kuwoRestoreWithdrawUI();
-            return;
-        }
-
-        if (remaining <= 0) {
-            kuwoLog('ℹ️ 未发现进行中的任务，请手动重新提交');
-            kuwoRestoreWithdrawUI();
-            try { localStorage.removeItem(KUWO_STATE_KEY); } catch (e) {}
-            return;
-        }
-
-        kuwoLog('🔄 恢复抢兑任务，重新提交...');
-        scheduleWithdrawOnBackend(state.phone, state.password, state.smsCode, state.quotaId, state.targetHour, null, false);
+        kuwoMonitorTask(taskId, !!isImmediate);
     } catch (e) {
         console.error('恢复酷我状态失败:', e);
-        try { localStorage.removeItem(KUWO_STATE_KEY); } catch (e) {}
+        kuwoClearActiveState();
     }
 }
 
@@ -4416,8 +4449,8 @@ async function checkKuwoAuth() {
                 if (cred.data) {
                     const phoneInput = document.getElementById('kuwoPhone');
                     const pwdInput = document.getElementById('kuwoPassword');
-                    if (phoneInput && cred.data.phone && !phoneInput.value) phoneInput.value = cred.data.phone;
-                    if (pwdInput && cred.data.password && !pwdInput.value) pwdInput.value = cred.data.password;
+                    if (phoneInput) phoneInput.value = cred.data.phone || '';
+                    if (pwdInput) pwdInput.value = cred.data.password || '';
                     // 多账号下拉
                     const accounts = cred.data.accounts || [];
                     const wrap = document.getElementById('kuwoAccountSelectWrap');
@@ -4571,10 +4604,14 @@ function kuwoSwitchAccount() {
     const idx = parseInt(select.value) || 0;
     const acc = accounts[idx];
     if (!acc) return;
+    kuwoClearActiveState();
     const phoneInput = document.getElementById('kuwoPhone');
     const pwdInput = document.getElementById('kuwoPassword');
+    const smsInput = document.getElementById('kuwoSmsCode');
     if (phoneInput) phoneInput.value = acc.phone;
     if (pwdInput) pwdInput.value = acc.password;
+    if (smsInput) smsInput.value = '';
+    kuwoSetWithdrawLocked(false, false);
 }
 
 async function kuwoSendSms() {
@@ -4589,12 +4626,16 @@ async function kuwoSendSms() {
     status.textContent = '正在登录并发送验证码...';
     status.style.color = '';
     kuwoLog('正在登录酷我账号...');
+    kuwoClearActiveState();
+    const smsInput = document.getElementById('kuwoSmsCode');
+    if (smsInput) smsInput.value = '';
     try {
         const data = await request('/api/portal/kuwo/send-sms', {
             method: 'POST',
             body: JSON.stringify({ phone, password })
         });
         kuwoSessionData = data.data;
+        try { localStorage.setItem(KUWO_SMS_SESSION_KEY, String(Date.now())); } catch (e) {}
         status.textContent = '✅ 已发送至 ' + phone.substring(0, 3) + '****' + phone.substring(7);
         status.style.color = '#10b981';
         kuwoLog('验证码已发送，请输入验证码');
@@ -4612,7 +4653,36 @@ async function kuwoSendSms() {
 
 function kuwoGetSelectedQuota() {
     const checked = document.querySelector('input[name="kuwoQuota"]:checked');
-    return checked ? checked.value : '60004';
+    return checked ? checked.value : KUWO_DEFAULT_QUOTA;
+}
+
+async function kuwoUpdateSmsCode() {
+    const taskId = kuwoActiveTaskId;
+    const smsCode = (document.getElementById('kuwoSmsCode') || {}).value?.trim() || '';
+    if (!taskId) { toast('暂无进行中的任务', 'error'); return; }
+    if (!smsCode) { toast('请输入验证码', 'error'); return; }
+    try {
+        const data = await request('/api/portal/kuwo/update-sms-code', {
+            method: 'POST',
+            body: JSON.stringify({ taskId: taskId, smsCode: smsCode })
+        });
+        if (data.code === 0) {
+            kuwoLog('✅ 验证码已同步到后端');
+            toast('验证码已更新');
+            try {
+                const saved = localStorage.getItem(KUWO_STATE_KEY);
+                if (saved) {
+                    const state = JSON.parse(saved);
+                    state.smsCode = smsCode;
+                    localStorage.setItem(KUWO_STATE_KEY, JSON.stringify(state));
+                }
+            } catch (e) {}
+        } else {
+            toast(data.msg || '更新失败', 'error');
+        }
+    } catch (err) {
+        toast(err.message || '更新失败', 'error');
+    }
 }
 
 function kuwoStartWithdraw() {
@@ -4630,10 +4700,8 @@ function kuwoStartWithdraw() {
 
     // 在4分钟窗口内且还没到点 → 后端定时 + 前端倒计时
     if (info.inWindow === true && info.diffMin > 0 && info.diffMin <= 4) {
-        kuwoLog('🎯 提交定时抢兑任务，后端将在 ' + String(info.hour).padStart(2,'0') + ':00 自动执行');
-        document.getElementById('kuwoWithdrawBtn').style.display = 'none';
-        document.getElementById('kuwoCountdown').style.display = '';
-        document.querySelectorAll('#kuwoPhone, #kuwoPassword, #kuwoSmsCode').forEach(el => el.disabled = true);
+        kuwoLog('🎯 提交定时抢兑任务，后端将在 ' + String(info.hour).padStart(2,'0') + ':00 自动执行（3轮错峰）');
+        kuwoSetWithdrawLocked(true, true);
         // 持久化倒计时状态
         try {
             localStorage.setItem(KUWO_STATE_KEY, JSON.stringify({
@@ -4649,8 +4717,7 @@ function kuwoStartWithdraw() {
 
     // 非抢兑窗口 → 立即执行
     kuwoLog('⚡ 立即提交抢兑...');
-    document.getElementById('kuwoWithdrawBtn').style.display = 'none';
-    document.getElementById('kuwoCountdown').style.display = '';
+    kuwoSetWithdrawLocked(true, false);
     scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, null, null, true);
 }
 
@@ -4676,6 +4743,7 @@ async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targ
         if (data.code === 0 && data.data) {
             const taskId = data.data.taskId;
             const reused = !!data.data.reused;
+            kuwoActiveTaskId = taskId;
             kuwoLog((reused ? '♻️ 复用已有任务' : '✅ 任务已提交') + '，ID: ' + taskId);
             kuwoResetTaskLogCursor();
             kuwoMonitorTask(taskId, !!immediate);
@@ -4709,11 +4777,12 @@ async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targ
 // 恢复抢兑UI
 function kuwoRestoreWithdrawUI() {
     kuwoWithdrawSubmitting = false;
+    kuwoStopTaskMonitor();
     kuwoStopCountdown();
-    document.getElementById('kuwoWithdrawBtn').style.display = '';
-    document.getElementById('kuwoCountdown').style.display = 'none';
-    document.getElementById('kuwoCountdown').textContent = '';
-    document.querySelectorAll('#kuwoPhone, #kuwoPassword, #kuwoSmsCode').forEach(el => el.disabled = false);
+    kuwoActiveTaskId = null;
+    kuwoSetWithdrawLocked(false, false);
+    const countdownEl = document.getElementById('kuwoCountdown');
+    if (countdownEl) countdownEl.textContent = '';
     const withdrawBtn = document.getElementById('kuwoWithdrawBtn');
     if (withdrawBtn) withdrawBtn.disabled = false;
 }
