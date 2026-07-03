@@ -1628,6 +1628,7 @@ final class ProjectFormViewController: BaseNativeViewController {
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
     private var fieldViews: [String: UITextField] = [:]
+    private var isSubmitting = false
 
     init(activity: PortalActivity) {
         self.activity = activity
@@ -1804,7 +1805,13 @@ final class ProjectFormViewController: BaseNativeViewController {
         let alert = UIAlertController(title: "确认上车", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "取消", style: .cancel))
         alert.addAction(UIAlertAction(title: "确认上车", style: .default) { _ in
+            guard !self.isSubmitting else {
+                self.showMessage("请勿重复提交，上一笔上车请求正在处理中")
+                return
+            }
+            self.isSubmitting = true
             PortalService.shared.createProject(activityId: self.activity.id, inputs: inputs, remarks: remarks, months: months) { result in
+                self.isSubmitting = false
                 switch result {
                 case .failure(let error):
                     self.handle(error)
@@ -1837,6 +1844,7 @@ final class MyProjectsListViewController: UITableViewController {
     private var groups: [Group] = []
     private var expandedGroupKeys: Set<String> = []
     private var isFiltering = false
+    private var projectActionBusyKeys: Set<String> = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -2128,7 +2136,14 @@ final class MyProjectsListViewController: UITableViewController {
         alert.addAction(UIAlertAction(title: "取消", style: .cancel))
         alert.addAction(UIAlertAction(title: "确认", style: .default) { _ in
             let months = Int(alert.textFields?.first?.text ?? "1") ?? 1
+            let busyKey = "renew:\(item.activityId):\(item.remark ?? "")"
+            guard !self.projectActionBusyKeys.contains(busyKey) else {
+                (self.parent as? BaseNativeViewController)?.showMessage("请勿重复提交，上一笔续费请求正在处理中")
+                return
+            }
+            self.projectActionBusyKeys.insert(busyKey)
             PortalService.shared.renewProject(activityId: item.activityId, remarks: item.remark ?? "", months: months) { result in
+                self.projectActionBusyKeys.remove(busyKey)
                 switch result {
                 case .failure(let error):
                     (self.parent as? BaseNativeViewController)?.handle(error)
@@ -2186,7 +2201,14 @@ final class MyProjectsListViewController: UITableViewController {
         )
         alert.addAction(UIAlertAction(title: "取消", style: .cancel))
         alert.addAction(UIAlertAction(title: "删除", style: .destructive) { _ in
+            let busyKey = "delete:\(item.activityId):\(item.remark ?? "")"
+            guard !self.projectActionBusyKeys.contains(busyKey) else {
+                (self.parent as? BaseNativeViewController)?.showMessage("请勿重复提交，上一笔删除请求正在处理中")
+                return
+            }
+            self.projectActionBusyKeys.insert(busyKey)
             PortalService.shared.deleteProject(activityId: item.activityId, remarks: item.remark ?? "") { result in
+                self.projectActionBusyKeys.remove(busyKey)
                 switch result {
                 case .failure(let error):
                     (self.parent as? BaseNativeViewController)?.handle(error)
