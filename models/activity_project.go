@@ -231,6 +231,51 @@ func UpdateActivityProject(project *ActivityProject) error {
 	return db.Save(project).Error
 }
 
+// renewProjectSnapshot 续费前快照，青龙同步失败时用于回滚 DB
+type renewProjectSnapshot struct {
+	Remarks    string
+	ExpireDate string
+	Status     int
+	SyncStatus string
+	SyncError  string
+	NeedCoin   int
+}
+
+func SnapshotRenewProject(project *ActivityProject) renewProjectSnapshot {
+	if project == nil {
+		return renewProjectSnapshot{}
+	}
+	return renewProjectSnapshot{
+		Remarks:    project.Remarks,
+		ExpireDate: project.ExpireDate,
+		Status:     project.Status,
+		SyncStatus: project.SyncStatus,
+		SyncError:  project.SyncError,
+		NeedCoin:   project.NeedCoin,
+	}
+}
+
+// FinishRenewWithQLSync 续费入库后立刻同步青龙；失败则回滚数据库字段
+func FinishRenewWithQLSync(project *ActivityProject, snap renewProjectSnapshot) error {
+	if project == nil {
+		return fmt.Errorf("项目不存在")
+	}
+	if err := SyncProjectNow(project.ID); err != nil {
+		project.Remarks = snap.Remarks
+		project.ExpireDate = snap.ExpireDate
+		project.Status = snap.Status
+		project.SyncStatus = snap.SyncStatus
+		project.SyncError = snap.SyncError
+		project.NeedCoin = snap.NeedCoin
+		if uerr := UpdateActivityProject(project); uerr != nil {
+			Sync().Infof("[续费] 青龙同步失败且回滚 DB 失败 ID=%d syncErr=%v rollbackErr=%v", project.ID, err, uerr)
+			return fmt.Errorf("青龙同步失败，且数据库回滚也失败，请联系管理员处理（项目ID=%d）", project.ID)
+		}
+		return FormatQLSyncError("续费后同步青龙", err, project)
+	}
+	return nil
+}
+
 func GetActivityProjectByID(id int) (*ActivityProject, error) {
 	var project ActivityProject
 	err := db.Where("id = ? AND deleted_at IS NULL", id).First(&project).Error

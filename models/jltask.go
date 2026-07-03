@@ -1610,6 +1610,7 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		}
 
 		wasDisabled := project.Status != 0
+		snap := SnapshotRenewProject(project)
 		project.Remarks = newRemarks
 		project.ExpireDate = newExpireDate
 		project.NeedCoin = 0
@@ -1630,18 +1631,20 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 
 		RecordCoinForSender(sender, sender.UserID, -totalCoin, "续费扣费", fmt.Sprintf("%s续费", config.Name))
 
-		syncNote := ""
-		if err := SyncProjectNow(project.ID); err != nil {
-			Sync().Infof("[续费] 青龙同步失败 ID=%d: %v，将自动重试", project.ID, err)
-			syncNote = "（青龙同步中）"
+		if err := FinishRenewWithQLSync(project, snap); err != nil {
+			AdddCoin(sender.UserID, totalCoin)
+			RecordCoinForSender(sender, sender.UserID, totalCoin, "退还", fmt.Sprintf("%s续费青龙同步失败退还", config.Name))
+			sender.Reply(fmt.Sprintf("❌ 续费未完成，积分已退回：%v", err))
+			UserLog().Infof("用户[%d] 续费青龙同步失败: %v", sender.UserID, err)
+			return
 		}
 
 		if config.IsDailyDeduct {
-			sender.Reply(fmt.Sprintf("✅ 授权成功%s！\n已扣除%d积分（%d天×%d积分/天）\n剩余积分：%d\n授权有效期至：%s",
-				syncNote, totalCoin, months, config.DailyCoin, userCoin-totalCoin, newExpireDate))
+			sender.Reply(fmt.Sprintf("✅ 授权成功！\n已扣除%d积分（%d天×%d积分/天）\n剩余积分：%d\n授权有效期至：%s",
+				totalCoin, months, config.DailyCoin, userCoin-totalCoin, newExpireDate))
 		} else {
-			sender.Reply(fmt.Sprintf("✅ 授权成功%s！\n已扣除%d积分（%d个月×%d积分/月）\n剩余积分：%d\n授权有效期至：%s",
-				syncNote, totalCoin, months, config.MonthlyCoin, userCoin-totalCoin, newExpireDate))
+			sender.Reply(fmt.Sprintf("✅ 授权成功！\n已扣除%d积分（%d个月×%d积分/月）\n剩余积分：%d\n授权有效期至：%s",
+				totalCoin, months, config.MonthlyCoin, userCoin-totalCoin, newExpireDate))
 		}
 		
 		UserLog().Infof("用户[%d] 授权活动[%s] 成功，新有效期[%s], 扣除积分[%d]", 

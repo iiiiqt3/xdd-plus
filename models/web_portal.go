@@ -643,6 +643,7 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int, 
 	}
 
 	wasDisabled := project.Status != 0
+	snap := SnapshotRenewProject(project)
 	project.Remarks = newRemarks
 	project.ExpireDate = newExpireDate
 	project.NeedCoin = 0
@@ -661,9 +662,10 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int, 
 
 	RecordCoinLogEx(userNumber, -totalCoin, "续费扣费", fmt.Sprintf("%s续费", cfg.Name), clientCtx)
 
-	if err := SyncProjectNow(project.ID); err != nil {
-		Sync().Infof("[续费] 青龙同步失败 ID=%d: %v，将自动重试", project.ID, err)
-		return fmt.Sprintf("授权成功（青龙同步中），扣除%d积分，有效期至%s", totalCoin, newExpireDate), nil
+	if err := FinishRenewWithQLSync(project, snap); err != nil {
+		AdddCoin(userNumber, totalCoin)
+		RecordCoinLogEx(userNumber, totalCoin, "退还", fmt.Sprintf("%s续费青龙同步失败退还", cfg.Name), clientCtx)
+		return "", fmt.Errorf("续费未完成，积分已退回：%v", err)
 	}
 
 	return fmt.Sprintf("授权成功，扣除%d积分，有效期至%s", totalCoin, newExpireDate), nil
