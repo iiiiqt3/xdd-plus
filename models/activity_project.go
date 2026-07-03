@@ -49,6 +49,68 @@ func (ActivityProject) TableName() string {
 	return "activity_project"
 }
 
+// NormalizeProjectBilling 互斥计费字段：按月则日分为0，按天则月分为0
+func NormalizeProjectBilling(project *ActivityProject) {
+	if project == nil {
+		return
+	}
+	if project.IsDailyDeduct && !project.IsMonthlyDeduct {
+		project.MonthlyCoin = 0
+		project.IsMonthlyDeduct = false
+		project.NeedCoin = 0
+		return
+	}
+	if project.IsMonthlyDeduct && !project.IsDailyDeduct {
+		project.DailyCoin = 0
+		project.IsDailyDeduct = false
+		project.MinDays = nil
+		project.NeedCoin = 0
+		return
+	}
+	if !project.IsMonthlyDeduct && !project.IsDailyDeduct {
+		project.MonthlyCoin = 0
+		project.DailyCoin = 0
+		project.MinDays = nil
+	}
+}
+
+// ApplyConfigBillingToProject 从活动配置写入项目计费字段（已规范化）
+func ApplyConfigBillingToProject(project *ActivityProject, cfg *ActivityConfig) {
+	if project == nil || cfg == nil {
+		return
+	}
+	cfg.NormalizeBilling()
+	project.IsMonthlyDeduct = cfg.IsMonthlyDeduct
+	project.IsDailyDeduct = cfg.IsDailyDeduct
+	project.MonthlyCoin = cfg.MonthlyCoin
+	project.DailyCoin = cfg.DailyCoin
+	project.NeedCoin = 0
+	project.MinDays = nil
+	if cfg.IsDailyDeduct && cfg.MinDays > 0 {
+		minDays := cfg.MinDays
+		project.MinDays = &minDays
+	}
+	if !cfg.IsMonthlyDeduct && !cfg.IsDailyDeduct {
+		project.NeedCoin = cfg.NeedCoin
+	}
+}
+
+// RepairActivityProjectBillingRecords 修正历史数据中互斥计费字段
+func RepairActivityProjectBillingRecords() {
+	if db == nil {
+		return
+	}
+	db.Model(&ActivityProject{}).
+		Where("is_monthly_deduct = ? AND is_daily_deduct = ?", true, false).
+		Updates(map[string]interface{}{"daily_coin": 0})
+	db.Model(&ActivityProject{}).
+		Where("is_daily_deduct = ? AND is_monthly_deduct = ?", true, false).
+		Updates(map[string]interface{}{"monthly_coin": 0})
+	db.Model(&ActivityProject{}).
+		Where("is_monthly_deduct = ? AND is_daily_deduct = ?", false, false).
+		Updates(map[string]interface{}{"monthly_coin": 0, "daily_coin": 0})
+}
+
 func CalcPaidRemainingDays(project *ActivityProject) int {
 	if project.ExpireDate == "" {
 		return 0
@@ -87,8 +149,8 @@ func CalcPaidRemainingDays(project *ActivityProject) int {
 }
 
 func CreateActivityProject(project *ActivityProject) error {
+	NormalizeProjectBilling(project)
 	duplicate, err := CheckDuplicateRemarksDB(project.Remarks, project.EnvKey)
-	if err != nil {
 		return fmt.Errorf("检查重复备注失败：%v", err)
 	}
 	if duplicate {
@@ -163,6 +225,7 @@ func HasActiveProjectByUserActivityAlias(userNumber int, activityID, remarkAlias
 }
 
 func UpdateActivityProject(project *ActivityProject) error {
+	NormalizeProjectBilling(project)
 	project.UpdatedAt = time.Now()
 	return db.Save(project).Error
 }

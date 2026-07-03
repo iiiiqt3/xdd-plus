@@ -2909,6 +2909,9 @@ func ConvertActivityToMonthly(activityID string, monthlyCoin int, syncUsers bool
 
 		project.IsMonthlyDeduct = true
 		project.MonthlyCoin = monthlyCoin
+		project.IsDailyDeduct = false
+		project.DailyCoin = 0
+		project.MinDays = nil
 		project.ExpireDate = newExpireStr
 		project.GrantExpireDate = newExpireStr
 		project.Remarks = newRemarks

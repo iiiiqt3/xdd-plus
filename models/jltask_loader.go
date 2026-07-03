@@ -392,6 +392,7 @@ func (al *ActivityLoader) convertYAMLToActivity(yamlAct YAMLActivityConfig) *Act
 	act.CKBuilder = al.getCKBuilder(yamlAct.CKBuilderTemplate, yamlAct.InputFields)
 	act.RemarksBuilder = al.getRemarksBuilder(yamlAct.RemarksTemplate)
 
+	act.NormalizeBilling()
 	return act
 }
 
@@ -626,6 +627,7 @@ func ReloadActivities() string {
 	count := len(ActivityConfigs)
 	activityConfigsMu.RUnlock()
 	go loader.notifyHotReloadSuccess(count)
+	go RepairActivityProjectBillingRecords()
 	return fmt.Sprintf("重新加载成功，当前共 %d 个活动", count)
 }
 
@@ -639,6 +641,7 @@ func ReloadActivitiesFromData(data []byte) string {
 	count := len(ActivityConfigs)
 	activityConfigsMu.RUnlock()
 	go loader.notifyHotReloadSuccess(count)
+	go RepairActivityProjectBillingRecords()
 	return fmt.Sprintf("保存成功，当前共 %d 个活动", count)
 }
 

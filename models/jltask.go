@@ -98,6 +98,31 @@ func NormalizeActivityCategory(category string) string {
 	}
 }
 
+// NormalizeBilling 互斥计费字段：按月则日分为0，按天则月分为0，一次性则都为0
+func (c *ActivityConfig) NormalizeBilling() {
+	if c == nil {
+		return
+	}
+	if c.IsDailyDeduct && !c.IsMonthlyDeduct {
+		c.MonthlyCoin = 0
+		c.IsMonthlyDeduct = false
+		c.NeedCoin = 0
+		return
+	}
+	if c.IsMonthlyDeduct && !c.IsDailyDeduct {
+		c.DailyCoin = 0
+		c.IsDailyDeduct = false
+		c.MinDays = 0
+		c.NeedCoin = 0
+		return
+	}
+	if !c.IsMonthlyDeduct && !c.IsDailyDeduct {
+		c.MonthlyCoin = 0
+		c.DailyCoin = 0
+		c.MinDays = 0
+	}
+}
+
 // ===================== 全局变量变更 =====================
 
 // ActivityConfigs 活动配置切片（热加载时会更新）
@@ -556,19 +581,9 @@ func handleRecordCKByGo(qq int, ckValue, finalRemarks, envKey string, config *Ac
 		QingLongConfigName: config.QingLongConfigName,
 		Status:             0,
 		ExpireDate:         expireDate,
-		IsMonthlyDeduct:    config.IsMonthlyDeduct,
-		MonthlyCoin:        config.MonthlyCoin,
-		IsDailyDeduct:      config.IsDailyDeduct,
-		DailyCoin:          config.DailyCoin,
 		SyncStatus:         "pending",
 	}
-	if config.IsDailyDeduct && config.MinDays > 0 {
-		minDays := config.MinDays
-		project.MinDays = &minDays
-	}
-	if !config.IsMonthlyDeduct && !config.IsDailyDeduct {
-		project.NeedCoin = config.NeedCoin
-	}
+	ApplyConfigBillingToProject(project, config)
 
 	if err := CreateActivityProject(project); err != nil {
 		return "", fmt.Errorf("保存到数据库失败：%v", err)
@@ -1592,13 +1607,7 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 		project.ExpireDate = newExpireDate
 		project.NeedCoin = 0
 		project.Status = 0
-		if config.IsDailyDeduct {
-			project.IsDailyDeduct = true
-			project.DailyCoin = config.DailyCoin
-		}
-		if config.IsMonthlyDeduct {
-			project.MonthlyCoin = config.MonthlyCoin
-		}
+		ApplyConfigBillingToProject(project, config)
 		if wasDisabled {
 			project.SyncStatus = "pending_enable"
 		} else {

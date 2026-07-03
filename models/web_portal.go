@@ -545,19 +545,9 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 		QingLongConfigName: cfg.QingLongConfigName,
 		Status:             0,
 		ExpireDate:         expireDate,
-		IsMonthlyDeduct:    cfg.IsMonthlyDeduct,
-		MonthlyCoin:        cfg.MonthlyCoin,
-		IsDailyDeduct:      cfg.IsDailyDeduct,
-		DailyCoin:          cfg.DailyCoin,
 		SyncStatus:         "pending",
 	}
-	if cfg.IsDailyDeduct && cfg.MinDays > 0 {
-		minDays := cfg.MinDays
-		project.MinDays = &minDays
-	}
-	if !cfg.IsMonthlyDeduct && !cfg.IsDailyDeduct {
-		project.NeedCoin = cfg.NeedCoin
-	}
+	ApplyConfigBillingToProject(project, cfg)
 
 	if err := DeductCoinChecked(userNumber, totalCoin); err != nil {
 		return "", err
@@ -657,13 +647,7 @@ func PortalRenewProject(userNumber int, activityID, remarks string, months int, 
 	project.ExpireDate = newExpireDate
 	project.NeedCoin = 0
 	project.Status = 0
-	if cfg.IsDailyDeduct {
-		project.IsDailyDeduct = true
-		project.DailyCoin = cfg.DailyCoin
-	}
-	if cfg.IsMonthlyDeduct {
-		project.MonthlyCoin = cfg.MonthlyCoin
-	}
+	ApplyConfigBillingToProject(project, cfg)
 	if wasDisabled {
 		project.SyncStatus = "pending_enable"
 	} else {

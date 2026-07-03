@@ -46,6 +46,11 @@
         .top-bar h1 { font-size: 18px; font-weight: 600; color: #1a1a2e; }
         .top-bar .breadcrumb { font-size: 13px; color: #999; margin-top: 2px; }
         .content-area { padding: 20px; }
+        .content-area:has(#page-logmgmt.active) {
+            overflow: hidden;
+            height: calc(100vh - 56px);
+            box-sizing: border-box;
+        }
         .card { background: #fff; border-radius: 10px; padding: 16px 16px 0 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: visible; border: 1px solid rgba(0,0,0,0.04); }
         .card-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 12px 0; border-bottom: 1px solid #f0f0f0; position: sticky; top: 56px; z-index: 45; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         .card-title { font-size: 16px; font-weight: 600; color: #1a1a2e; display: flex; align-items: center; gap: 8px; }
@@ -470,8 +475,46 @@
         .md-upload-input { display: none; }
         .md-tip { font-size: 11px; color: #999; margin-top: 4px; line-height: 1.7; }
         /* 日志管理 */
-        #page-logmgmt .log-stats-row { margin-bottom: 10px; }
-        #page-logmgmt .log-stat-card { padding: 10px 14px; }
+        #page-logmgmt.logmgmt-page.active {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 56px - 40px);
+            min-height: 480px;
+            margin-bottom: 0;
+        }
+        #page-logmgmt .log-mgmt-fixed { flex-shrink: 0; }
+        #page-logmgmt .log-mgmt-body {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 0;
+            padding: 12px 16px 16px;
+            overflow: hidden;
+        }
+        #page-logmgmt .log-stats-toolbar {
+            display: flex;
+            align-items: stretch;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        #page-logmgmt .log-stats-toolbar .log-stats-row {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        #page-logmgmt .log-stats-actions {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        #page-logmgmt .log-mgmt-panel {
+            padding: 12px 16px 0;
+            margin-bottom: 10px;
+        }
+        #page-logmgmt #logFilePanel,
+        #page-logmgmt #logPagination { flex-shrink: 0; }
         #page-logmgmt .log-stat-card .val { font-size: 20px; }
         #page-jdtaskqueue .log-stats-row {
             grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -492,9 +535,8 @@
             line-height: 1.2;
         }
         #page-logmgmt .log-cat-chips { margin-bottom: 8px; max-height: 56px; overflow-y: auto; }
-        #page-logmgmt .log-filter-bar { margin-bottom: 8px; padding: 10px 12px; }
+        #page-logmgmt .log-filter-bar { margin-bottom: 0; padding: 10px 12px; }
         #page-logmgmt .log-tabs { margin-bottom: 8px; }
-        #page-logmgmt .card { padding-bottom: 12px; }
         .log-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
         .log-stat-card { background: #fff; border: 1px solid #ebeef5; border-radius: 8px; padding: 14px 16px; }
         .log-stat-card .label { font-size: 12px; color: #909399; margin-bottom: 6px; }
@@ -505,6 +547,21 @@
         .log-cat-chip { padding: 4px 12px; border-radius: 999px; font-size: 12px; cursor: pointer; border: 1px solid #dcdfe6; background: #fff; color: #606266; transition: all .15s; }
         .log-cat-chip:hover { border-color: #409eff; color: #409eff; }
         .log-cat-chip.active { background: #409eff; color: #fff; border-color: #409eff; }
+        #page-logmgmt .log-viewer {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas','Monaco','Menlo',monospace;
+            font-size: 12px;
+            line-height: 1.55;
+            padding: 12px 14px;
+            border-radius: 8px;
+            flex: 1;
+            min-height: 0;
+            height: auto;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
         .log-viewer { background: #1e1e1e; color: #d4d4d4; font-family: 'Consolas','Monaco','Menlo',monospace; font-size: 12px; line-height: 1.55; padding: 12px 14px; border-radius: 8px; height: calc(100vh - 230px); min-height: 560px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
         .log-line { margin-bottom: 1px; }
         .log-line .lv-ERROR { color: #f56c6c; }
@@ -518,6 +575,9 @@
         @media (max-width: 768px) {
             .log-stats-row { grid-template-columns: repeat(2, 1fr); }
             #page-jdtaskqueue .log-stats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            #page-logmgmt.logmgmt-page.active { height: calc(100vh - 56px - 24px); }
+            #page-logmgmt .log-stats-toolbar { flex-direction: column; }
+            #page-logmgmt .log-stats-actions { flex-direction: row; flex-wrap: wrap; }
             .log-viewer { height: calc(100vh - 280px); min-height: 420px; }
         }
         @media (max-width: 520px) {
@@ -1492,48 +1552,51 @@
         </div>
 
         <!-- ========= 日志管理 ========= -->
-        <div id="page-logmgmt" class="page-section">
-            <div class="log-stats-row" id="logStatsRow">
-                <div class="log-stat-card"><div class="label">内存缓冲</div><div class="val" id="logStatRing">-</div></div>
-                <div class="log-stat-card"><div class="label">日志文件</div><div class="val" id="logStatFiles">-</div></div>
-                <div class="log-stat-card"><div class="label">磁盘占用</div><div class="val" id="logStatSize">-</div></div>
-                <div class="log-stat-card"><div class="label">保留天数</div><div class="val" id="logStatDays">-</div></div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title"><i class="fas fa-file-alt"></i> 日志管理</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div id="page-logmgmt" class="page-section logmgmt-page">
+            <div class="log-mgmt-fixed">
+                <div class="log-stats-toolbar">
+                    <div class="log-stats-row" id="logStatsRow">
+                        <div class="log-stat-card"><div class="label">内存缓冲</div><div class="val" id="logStatRing">-</div></div>
+                        <div class="log-stat-card"><div class="label">日志文件</div><div class="val" id="logStatFiles">-</div></div>
+                        <div class="log-stat-card"><div class="label">磁盘占用</div><div class="val" id="logStatSize">-</div></div>
+                        <div class="log-stat-card"><div class="label">保留天数</div><div class="val" id="logStatDays">-</div></div>
+                    </div>
+                    <div class="log-stats-actions">
                         <button class="btn btn-info btn-sm" onclick="loadLogStats()"><i class="fas fa-sync-alt"></i> 刷新统计</button>
                         <button class="btn btn-warning btn-sm" onclick="cleanupLogs()"><i class="fas fa-broom"></i> 清理过期</button>
                         <button class="btn btn-secondary btn-sm" onclick="clearLogViewer()"><i class="fas fa-eraser"></i> 清空视图</button>
                     </div>
                 </div>
-                <div class="log-tabs">
-                    <div class="log-tab active" id="logTabLive" onclick="switchLogTab('live')"><i class="fas fa-bolt"></i> 实时日志</div>
-                    <div class="log-tab" id="logTabHistory" onclick="switchLogTab('history')"><i class="fas fa-search"></i> 历史查询</div>
-                    <div class="log-tab" id="logTabFiles" onclick="switchLogTab('files')"><i class="fas fa-folder-open"></i> 日志文件</div>
+                <div class="card log-mgmt-panel">
+                    <div class="log-tabs">
+                        <div class="log-tab active" id="logTabLive" onclick="switchLogTab('live')"><i class="fas fa-bolt"></i> 实时日志</div>
+                        <div class="log-tab" id="logTabHistory" onclick="switchLogTab('history')"><i class="fas fa-search"></i> 历史查询</div>
+                        <div class="log-tab" id="logTabFiles" onclick="switchLogTab('files')"><i class="fas fa-folder-open"></i> 日志文件</div>
+                    </div>
+                    <div class="log-cat-chips" id="logCatChips"></div>
+                    <div class="log-filter-bar">
+                        <select id="logFilterLevel" onchange="applyLogFilter()">
+                            <option value="">全部级别</option>
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARN">WARN</option>
+                            <option value="ERROR">ERROR</option>
+                        </select>
+                        <input type="text" id="logFilterKeyword" placeholder="关键词搜索..." style="min-width:160px;" onkeydown="if(event.key==='Enter')applyLogFilter()" />
+                        <input type="date" id="logFilterDateFrom" title="开始日期" />
+                        <input type="date" id="logFilterDateTo" title="结束日期" />
+                        <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="logAutoScroll" checked /> 自动滚动</label>
+                        <button class="btn btn-primary btn-sm" onclick="applyLogFilter()"><i class="fas fa-filter"></i> 筛选</button>
+                    </div>
                 </div>
-                <div class="log-cat-chips" id="logCatChips"></div>
-                <div class="log-filter-bar">
-                    <select id="logFilterLevel" onchange="applyLogFilter()">
-                        <option value="">全部级别</option>
-                        <option value="DEBUG">DEBUG</option>
-                        <option value="INFO">INFO</option>
-                        <option value="WARN">WARN</option>
-                        <option value="ERROR">ERROR</option>
-                    </select>
-                    <input type="text" id="logFilterKeyword" placeholder="关键词搜索..." style="min-width:160px;" onkeydown="if(event.key==='Enter')applyLogFilter()" />
-                    <input type="date" id="logFilterDateFrom" title="开始日期" />
-                    <input type="date" id="logFilterDateTo" title="结束日期" />
-                    <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="logAutoScroll" checked /> 自动滚动</label>
-                    <button class="btn btn-primary btn-sm" onclick="applyLogFilter()"><i class="fas fa-filter"></i> 筛选</button>
-                </div>
+            </div>
+            <div class="card log-mgmt-body">
                 <div class="log-viewer" id="logViewer"><div style="color:#666;text-align:center;padding:40px;">选择「实时日志」开始监控，或切换到「历史查询」检索文件日志</div></div>
-                <div id="logFilePanel" style="display:none;margin-top:12px;">
+                <div id="logFilePanel" style="display:none;padding:12px 16px 0;">
                     <div style="font-size:13px;font-weight:600;margin-bottom:8px;">日志文件列表</div>
                     <div id="logFileList" style="max-height:120px;overflow-y:auto;font-size:12px;"></div>
                 </div>
-                <div id="logPagination" style="display:flex;justify-content:center;gap:8px;margin-top:10px;"></div>
+                <div id="logPagination" style="display:flex;justify-content:center;gap:8px;padding:10px 16px 12px;"></div>
             </div>
         </div>
 
@@ -4958,11 +5021,13 @@ function toggleMonthlyCoin() {
         if (monthlyWrap) monthlyWrap.style.display = '';
         if (dailyWrap) dailyWrap.style.display = 'none';
         if (minDaysWrap) minDaysWrap.style.display = 'none';
+        dailyInput.value = '0';
     } else if (daily) {
         if (coinWrap) coinWrap.style.display = 'none';
         if (monthlyWrap) monthlyWrap.style.display = 'none';
         if (dailyWrap) dailyWrap.style.display = '';
         if (minDaysWrap) minDaysWrap.style.display = '';
+        monthlyInput.value = '0';
     } else {
         coinInput.disabled = false;
         coinInput.style.background = '#fff';
@@ -5269,6 +5334,22 @@ async function saveActivity() {
     if (!qlConfig) { toast('请选择青龙配置', 'error'); return; }
     const monthlyVal = document.getElementById('actFormMonthly').value;
     if (monthlyVal === '') { toast('请选择计费模式', 'error'); return; }
+    let needCoin = parseInt(document.getElementById('actFormCoin').value) || 0;
+    let monthlyCoin = parseInt(document.getElementById('actFormMonthlyCoin').value) || 0;
+    let dailyCoin = parseInt(document.getElementById('actFormDailyCoin').value) || 0;
+    let minDays = parseInt(document.getElementById('actFormMinDays').value) || 1;
+    if (monthlyVal === 'true') {
+        needCoin = 0;
+        dailyCoin = 0;
+        minDays = 0;
+    } else if (monthlyVal === 'daily') {
+        needCoin = 0;
+        monthlyCoin = 0;
+    } else {
+        monthlyCoin = 0;
+        dailyCoin = 0;
+        minDays = 0;
+    }
     const editIdx = parseInt(document.getElementById('activityModal').dataset.editIdx);
     const isNew = editIdx < 0;
     const enabled = document.getElementById('actFormEnabled').value === 'true';
@@ -5288,15 +5369,15 @@ async function saveActivity() {
     const act = {
         '名称': name, '环境变量名': envKey,
         '活动类型': normalizeActivityCategory(document.getElementById('actFormCategory').value),
-        '所需积分': parseInt(document.getElementById('actFormCoin').value) || 0,
+        '所需积分': needCoin,
         '排序编号': enabled ? sortOrder : 0,
         '青龙配置名': qlConfig,
         '启用状态': enabled,
         '是否按月扣费': monthlyVal === 'true',
-        '每月积分': parseInt(document.getElementById('actFormMonthlyCoin').value) || 0,
+        '每月积分': monthlyCoin,
         '是否按天扣费': monthlyVal === 'daily',
-        '每天积分': parseInt(document.getElementById('actFormDailyCoin').value) || 0,
-        '最小天数': parseInt(document.getElementById('actFormMinDays').value) || 1,
+        '每天积分': dailyCoin,
+        '最小天数': minDays,
         '玩法和说明': document.getElementById('actFormGuide').value,
         'CK构建模板': normalizeCkTemplate(document.getElementById('actFormCkTpl').value),
         '备注构建模板': document.getElementById('actFormRemarksTpl').value,
@@ -5323,12 +5404,8 @@ async function saveActivity() {
                 const notifyWebApp = document.getElementById('actNotifyWebApp').checked;
                 const notifyQQWx = document.getElementById('actNotifyQQWx').checked;
                 const guide = document.getElementById('actFormGuide').value;
-                const needCoin = parseInt(document.getElementById('actFormCoin').value) || 0;
-                const billingMode = document.getElementById('actFormMonthly').value;
-                const monthlyCoin = parseInt(document.getElementById('actFormMonthlyCoin').value) || 0;
-                const dailyCoin = parseInt(document.getElementById('actFormDailyCoin').value) || 0;
-                if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, billingMode, monthlyCoin, dailyCoin); }
-                if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, billingMode, monthlyCoin, dailyCoin, true, true); }
+                if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, monthlyVal, monthlyCoin, dailyCoin); }
+                if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, monthlyVal, monthlyCoin, dailyCoin, true, true); }
             }
         }
     } catch (e) {
