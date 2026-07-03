@@ -341,11 +341,14 @@ func (sq *SyncQueue) handleDelete(project *ActivityProject, client *QingLongClie
 func (sq *SyncQueue) handleDisable(project *ActivityProject, client *QingLongClient) error {
 	envItem, err := client.ResolveEnvByProject(project)
 	if err != nil {
-		if err := MarkProjectSynced(project.ID, 0); err != nil {
-			return err
+		if IsQLEnvNotFoundError(err) {
+			if err := MarkProjectSynced(project.ID, 0); err != nil {
+				return err
+			}
+			Sync().Infof("[同步服务] 青龙中无对应变量，禁用视为完成 ID=%d", project.ID)
+			return nil
 		}
-		Sync().Infof("[同步服务] 青龙中无对应变量，禁用视为完成 ID=%d", project.ID)
-		return nil
+		return fmt.Errorf("禁用失败，解析青龙变量失败: %v", SanitizeError(err))
 	}
 
 	if err := client.DisableEnvs([]int{envItem.ID}); err != nil {
@@ -471,9 +474,11 @@ func (sq *SyncQueue) performFullSyncCheck() {
 				continue
 			}
 
-			if dbProj.Status != qlEnv.Status {
-				Sync().Infof("[全量同步] 状态不一致 Remarks=%s DBStatus=%d QLStatus=%d", remarks, dbProj.Status, qlEnv.Status)
-				if dbProj.Status != 0 {
+			dbEnabled := dbProj.Status == 0
+			qlEnabled := qlEnv.Status == 1
+			if dbEnabled != qlEnabled {
+				Sync().Infof("[全量同步] 状态不一致 Remarks=%s DB启用=%v QL启用=%v", remarks, dbEnabled, qlEnabled)
+				if !dbEnabled {
 					updates["sync_status"] = "pending_disable"
 				} else {
 					updates["sync_status"] = "pending_enable"

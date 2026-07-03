@@ -124,7 +124,7 @@ func CheckRemarksExpired(remarks string) (bool, string) {
 // 示例：5月1号过期 → 5/2禁用 → 5/31通知即将删除 → 6/1执行删除
 //
 // 安全保护：
-// - 删除前二次验证CK仍为禁用状态，防止误删
+// - 删除前验证 DB 仍为禁用状态（Status!=0），防止误删已续费账号
 
 func NotifyDeleteExpiredCKs(sender *Sender) {
 	NotifyDeleteExpiredCKsWithChannels(sender, NotifyChannels{Web: false, App: false, Robot: true}, nil)
@@ -216,6 +216,20 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 		}
 
 		if expiredDays >= 31 {
+			fresh, freshErr := GetActivityProjectByID(project.ID)
+			if freshErr != nil || fresh == nil {
+				Error("删除前查询项目失败 ID=%d: %v", project.ID, freshErr)
+				continue
+			}
+			if fresh.Status == 0 {
+				TaskLog().Infof(">>> 跳过自动删除：账号已重新启用 -> 账号:[%s] 活动:[%s] DB ID:[%d]",
+					accountAlias, project.ActivityName, project.ID)
+				continue
+			}
+			if fresh.DeletedAt != nil {
+				continue
+			}
+
 			TaskLog().Infof(">>> 过期CK超过30天，准备删除 -> 账号:[%s] 活动:[%s] DB ID:[%d] 过期[%d天]",
 				accountAlias, project.ActivityName, project.ID, expiredDays)
 
@@ -335,7 +349,7 @@ func DisableExpiredCKs(sender *Sender) {
 		}
 
 		if err := SyncProjectNow(project.ID); err != nil {
-			Error("青龙禁用同步失败 ID=%d: %v", project.ID, err)
+			Error("青龙禁用同步失败 ID=%d（保持 pending_disable 待重试）: %v", project.ID, err)
 			continue
 		}
 

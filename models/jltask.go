@@ -1171,6 +1171,13 @@ func HandleDeleteCK(sender *Sender) interface{} {
 			return
 		}
 
+		release, acquired := TryAcquireProjectActionLock(qq, config.ID, "delete", selectedRemarks)
+		if !acquired {
+			sender.Reply("请勿重复提交，上一笔删除请求正在处理中")
+			return
+		}
+		defer release()
+
 		sender.Reply(fmt.Sprintf("正在删除【%s】的CK，请稍候...", GetFirstRemarkParam(selectedRemarks)))
 
 		var output string
@@ -1621,16 +1628,20 @@ func HandleAuthorizeCK(sender *Sender) interface{} {
 			return
 		}
 
-		go TriggerSync(project.ID)
-
 		RecordCoinForSender(sender, sender.UserID, -totalCoin, "续费扣费", fmt.Sprintf("%s续费", config.Name))
 
+		syncNote := ""
+		if err := SyncProjectNow(project.ID); err != nil {
+			Sync().Infof("[续费] 青龙同步失败 ID=%d: %v，将自动重试", project.ID, err)
+			syncNote = "（青龙同步中）"
+		}
+
 		if config.IsDailyDeduct {
-			sender.Reply(fmt.Sprintf("✅ 授权成功！\n已扣除%d积分（%d天×%d积分/天）\n剩余积分：%d\n授权有效期至：%s",
-				totalCoin, months, config.DailyCoin, userCoin-totalCoin, newExpireDate))
+			sender.Reply(fmt.Sprintf("✅ 授权成功%s！\n已扣除%d积分（%d天×%d积分/天）\n剩余积分：%d\n授权有效期至：%s",
+				syncNote, totalCoin, months, config.DailyCoin, userCoin-totalCoin, newExpireDate))
 		} else {
-			sender.Reply(fmt.Sprintf("✅ 授权成功！\n已扣除%d积分（%d个月×%d积分/月）\n剩余积分：%d\n授权有效期至：%s",
-				totalCoin, months, config.MonthlyCoin, userCoin-totalCoin, newExpireDate))
+			sender.Reply(fmt.Sprintf("✅ 授权成功%s！\n已扣除%d积分（%d个月×%d积分/月）\n剩余积分：%d\n授权有效期至：%s",
+				syncNote, totalCoin, months, config.MonthlyCoin, userCoin-totalCoin, newExpireDate))
 		}
 		
 		UserLog().Infof("用户[%d] 授权活动[%s] 成功，新有效期[%s], 扣除积分[%d]", 

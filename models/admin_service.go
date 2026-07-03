@@ -2807,7 +2807,13 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 			failed++
 			continue
 		}
-		go TriggerSync(project.ID)
+		if project.SyncStatus == "pending_disable" || project.SyncStatus == "pending_enable" {
+			if err := SyncProjectNow(project.ID); err != nil {
+				System().Infof("[批量改备注] 青龙同步失败 ID=%d（保持 %s 待重试）: %v", project.ID, project.SyncStatus, err)
+			}
+		} else {
+			go TriggerSync(project.ID)
+		}
 
 		updated++
 
