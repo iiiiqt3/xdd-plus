@@ -239,6 +239,7 @@ func (sq *SyncQueue) handleCreate(project *ActivityProject, client *QingLongClie
 			if env, findErr := client.FindEnvByRemarks(project.Remarks, project.EnvKey); findErr == nil {
 				return sq.bindExistingEnv(project, client, env)
 			}
+			Sync().Infof("[同步服务] 重复备注但未检索到青龙变量 Remarks=%s EnvKey=%s", project.Remarks, project.EnvKey)
 		}
 		return fmt.Errorf("提交环境变量失败: %v", SanitizeError(err))
 	}
@@ -285,6 +286,19 @@ func (sq *SyncQueue) handleUpdate(project *ActivityProject, client *QingLongClie
 			Sync().Infof("[同步服务] 青龙变量已失效，ID=%d 转为重新创建", project.ID)
 			go TriggerSync(project.ID)
 			return nil
+		}
+		// 过期 EnvID 或备注已变更时，按备注重新定位再更新
+		if strings.Contains(err.Error(), "Validation error") {
+			if fresh, findErr := client.FindEnvByRemarks(project.Remarks, project.EnvKey); findErr == nil && fresh.ID != envItem.ID {
+				Sync().Infof("[同步服务] 更新失败，改按备注绑定 ID=%d → QL=%d", project.ID, fresh.ID)
+				if err2 := client.UpdateEnvContent(fresh.ID, project.EnvKey, project.EnvValue, project.Remarks); err2 != nil {
+					return fmt.Errorf("更新环境变量 %d 失败: %v", fresh.ID, SanitizeError(err2))
+				}
+				if err := sq.applyDBStatusToQL(client, project, fresh.ID); err != nil {
+					return fmt.Errorf("更新后同步状态失败: %v", SanitizeError(err))
+				}
+				return MarkProjectSynced(project.ID, fresh.ID)
+			}
 		}
 		return fmt.Errorf("更新环境变量 %d 失败: %v", envItem.ID, SanitizeError(err))
 	}

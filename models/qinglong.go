@@ -355,6 +355,9 @@ func (q *QingLongClient) UpdateEnv(envID int, envName, value, remarks string) er
 
 // UpdateEnvContent 仅更新变量内容，不自动启用或禁用
 func (q *QingLongClient) UpdateEnvContent(envID int, envName, value, remarks string) error {
+	if strings.TrimSpace(value) == "" {
+		return fmt.Errorf("更新失败: CK值为空 (code: 400)")
+	}
 	token, err := q.GetToken()
 	if err != nil {
 		return fmt.Errorf("获取Token失败: %v", err)
@@ -410,19 +413,22 @@ func (q *QingLongClient) UpdateEnvContent(envID int, envName, value, remarks str
 	return nil
 }
 
-// ResolveEnvByProject 按 EnvID 或备注解析青龙变量，自动修正过期 ID
+// ResolveEnvByProject 按备注或 EnvID 解析青龙变量，优先备注（ID 可能过期）
 func (q *QingLongClient) ResolveEnvByProject(project *ActivityProject) (*QLEnvItem, error) {
+	if env, err := q.FindEnvByRemarks(project.Remarks, project.EnvKey); err == nil {
+		return env, nil
+	}
 	if project.QingLongEnvID > 0 {
-		envs, err := q.QueryEnvs(project.EnvKey)
+		envs, err := q.QueryEnvs(fmt.Sprintf("%d", project.QingLongEnvID))
 		if err == nil {
 			for i := range envs {
-				if envs[i].ID == project.QingLongEnvID {
+				if envs[i].ID == project.QingLongEnvID && envs[i].Name == project.EnvKey {
 					return &envs[i], nil
 				}
 			}
 		}
 	}
-	return q.FindEnvByRemarks(project.Remarks, project.EnvKey)
+	return nil, fmt.Errorf("未找到备注为 %s 的环境变量", project.Remarks)
 }
 
 // IsQLEnvNotFoundError 判断青龙 API 是否返回变量不存在
@@ -706,16 +712,36 @@ func (q *QingLongClient) GetRemarksByEnvName(envName string) ([]string, error) {
 	return remarks, nil
 }
 
-// FindEnvByRemarks 根据备注和环境变量名查找环境变量
+// FindEnvByRemarks 根据备注和环境变量名查找环境变量（按备注/用户号搜索，避免列表截断漏查）
 func (q *QingLongClient) FindEnvByRemarks(remark, envName string) (*QLEnvItem, error) {
-	envs, err := q.QueryEnvs(envName)
-	if err != nil {
-		return nil, fmt.Errorf("查询环境变量失败: %v", err)
+	remark = strings.TrimSpace(remark)
+	if remark == "" {
+		return nil, fmt.Errorf("备注为空")
 	}
 
-	for _, env := range envs {
-		if env.Remarks == remark && env.Name == envName {
-			return &env, nil
+	searchKeys := []string{remark}
+	if uid := ExtractUserIDFromRemarks(remark); uid != "" {
+		searchKeys = append(searchKeys, uid)
+	}
+	if alias := GetFirstRemarkParam(remark); alias != "" && alias != remark {
+		searchKeys = append(searchKeys, alias)
+	}
+
+	seenID := make(map[int]bool)
+	for _, key := range searchKeys {
+		envs, err := q.QueryEnvs(key)
+		if err != nil {
+			continue
+		}
+		for i := range envs {
+			env := &envs[i]
+			if seenID[env.ID] {
+				continue
+			}
+			seenID[env.ID] = true
+			if env.Name == envName && strings.TrimSpace(env.Remarks) == remark {
+				return env, nil
+			}
 		}
 	}
 
@@ -724,18 +750,14 @@ func (q *QingLongClient) FindEnvByRemarks(remark, envName string) (*QLEnvItem, e
 
 // CheckDuplicateRemarks 检查备注是否重复
 func (q *QingLongClient) CheckDuplicateRemarks(remark, envName string) (bool, error) {
-	remarks, err := q.GetRemarksByEnvName(envName)
-	if err != nil {
-		return false, fmt.Errorf("获取备注列表失败: %v", err)
+	_, err := q.FindEnvByRemarks(remark, envName)
+	if err == nil {
+		return true, nil
 	}
-
-	for _, r := range remarks {
-		if r == remark {
-			return true, nil
-		}
+	if strings.Contains(err.Error(), "未找到") {
+		return false, nil
 	}
-
-	return false, nil
+	return false, err
 }
 
 // ===================== 青龙 Cron 任务管理 API =====================
