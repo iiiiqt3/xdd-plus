@@ -413,22 +413,188 @@ func (q *QingLongClient) UpdateEnvContent(envID int, envName, value, remarks str
 	return nil
 }
 
-// ResolveEnvByProject 按备注或 EnvID 解析青龙变量，优先备注（ID 可能过期）
-func (q *QingLongClient) ResolveEnvByProject(project *ActivityProject) (*QLEnvItem, error) {
-	if env, err := q.FindEnvByRemarks(project.Remarks, project.EnvKey); err == nil {
-		return env, nil
+// remarksBelongsToProject 判断青龙备注是否属于该 DB 项目（完全匹配 / 用户ID / 别名前缀）
+func remarksBelongsToProject(qlRemarks string, project *ActivityProject) bool {
+	if project == nil {
+		return false
 	}
+	expected := strings.TrimSpace(project.Remarks)
+	qlRemarks = strings.TrimSpace(qlRemarks)
+	if qlRemarks == expected {
+		return true
+	}
+	dbUID := ExtractUserIDFromRemarks(expected)
+	qlUID := ExtractUserIDFromRemarks(qlRemarks)
+	if dbUID != "" && dbUID == qlUID {
+		return true
+	}
+	alias := strings.TrimSpace(project.RemarkAlias)
+	if alias == "" {
+		alias = GetFirstRemarkParam(expected)
+	}
+	if alias != "" && (strings.HasPrefix(qlRemarks, alias+"/") || qlRemarks == alias) {
+		return true
+	}
+	return false
+}
+
+func isQLUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "uniqueconstraint") ||
+		strings.Contains(msg, "unique constraint") ||
+		(strings.Contains(msg, "validation error") && strings.Contains(msg, "unique"))
+}
+
+// TranslateQLError 将青龙/ORM 英文错误转为可读中文
+func TranslateQLError(msg string) string {
+	lower := strings.ToLower(msg)
+	switch {
+	case strings.Contains(lower, "uniqueconstraint") || strings.Contains(lower, "unique constraint"):
+		return "青龙中已存在相同备注或相同变量值，不能重复创建"
+	case strings.Contains(msg, "未找到") || strings.Contains(lower, "not found"):
+		return "青龙中未找到对应环境变量"
+	case strings.Contains(msg, "CK值为空"):
+		return "CK值为空，无法更新"
+	case strings.Contains(lower, "token"):
+		return "青龙 Token 获取失败，请检查容器 ClientID/Secret"
+	case strings.Contains(lower, "timeout") || strings.Contains(msg, "超时"):
+		return "请求青龙超时"
+	case strings.Contains(lower, "connection refused") || strings.Contains(msg, "连接"):
+		return "无法连接青龙容器"
+	default:
+		// 去掉 Sequelize 等技术前缀，保留后半段
+		if idx := strings.Index(msg, "Validation error"); idx >= 0 {
+			return "青龙数据校验失败（备注或变量值可能与已有记录冲突）"
+		}
+		return msg
+	}
+}
+
+// FormatQLSyncError 生成带业务上下文的中文同步错误
+func FormatQLSyncError(action string, err error, project *ActivityProject) error {
+	if err == nil {
+		return nil
+	}
+	zh := TranslateQLError(SanitizeError(err).Error())
+	ctx := action
+	if project != nil {
+		alias := project.RemarkAlias
+		if alias == "" {
+			alias = GetFirstRemarkParam(project.Remarks)
+		}
+		ctx = fmt.Sprintf("%s（活动=%s 账号=%s 变量=%s）", action, project.ActivityName, alias, project.EnvKey)
+	}
+	return fmt.Errorf("%s: %s", ctx, zh)
+}
+
+// FindEnvForProject 多策略查找青龙变量（备注、EnvID、用户ID、CK值）
+func (q *QingLongClient) FindEnvForProject(project *ActivityProject) (*QLEnvItem, string, error) {
+	if project == nil {
+		return nil, "", fmt.Errorf("项目为空")
+	}
+
 	if project.QingLongEnvID > 0 {
-		envs, err := q.QueryEnvs(fmt.Sprintf("%d", project.QingLongEnvID))
-		if err == nil {
+		if env, err := q.findEnvByID(project.QingLongEnvID, project.EnvKey); err == nil {
+			return env, "EnvID", nil
+		}
+	}
+
+	if env, err := q.FindEnvByRemarks(project.Remarks, project.EnvKey); err == nil {
+		return env, "备注完全匹配", nil
+	}
+
+	uid := ExtractUserIDFromRemarks(project.Remarks)
+	if uid != "" {
+		if envs, err := q.QueryEnvByRemarks(uid, project.EnvKey); err == nil {
+			var matched []QLEnvItem
+			for _, e := range envs {
+				if remarksBelongsToProject(e.Remarks, project) {
+					matched = append(matched, e)
+				}
+			}
+			if len(matched) == 1 {
+				return &matched[0], "用户ID匹配", nil
+			}
+			if len(matched) > 1 {
+				return nil, "", fmt.Errorf("青龙中存在多个匹配变量（用户ID=%s）", uid)
+			}
+		}
+	}
+
+	searchKeys := []string{project.EnvKey}
+	if alias := GetFirstRemarkParam(project.Remarks); alias != "" {
+		searchKeys = append(searchKeys, alias)
+	}
+	if uid != "" {
+		searchKeys = append(searchKeys, uid)
+	}
+
+	seen := make(map[int]bool)
+	var candidates []*QLEnvItem
+	for _, key := range searchKeys {
+		envs, err := q.QueryEnvs(key)
+		if err != nil {
+			continue
+		}
+		for i := range envs {
+			env := &envs[i]
+			if env.Name != project.EnvKey || seen[env.ID] {
+				continue
+			}
+			seen[env.ID] = true
+			if remarksBelongsToProject(env.Remarks, project) {
+				candidates = append(candidates, env)
+			}
+		}
+	}
+
+	if len(candidates) == 1 {
+		return candidates[0], "备注规则匹配", nil
+	}
+	if len(candidates) > 1 {
+		return nil, "", fmt.Errorf("青龙中存在多个匹配变量，备注=%s", project.Remarks)
+	}
+
+	if strings.TrimSpace(project.EnvValue) != "" {
+		for _, key := range searchKeys {
+			envs, err := q.QueryEnvs(key)
+			if err != nil {
+				continue
+			}
 			for i := range envs {
-				if envs[i].ID == project.QingLongEnvID && envs[i].Name == project.EnvKey {
-					return &envs[i], nil
+				env := &envs[i]
+				if env.Name == project.EnvKey && env.Value == project.EnvValue {
+					return env, "CK值匹配", nil
 				}
 			}
 		}
 	}
-	return nil, fmt.Errorf("未找到备注为 %s 的环境变量", project.Remarks)
+
+	return nil, "", fmt.Errorf("未找到备注为 %s 的环境变量", project.Remarks)
+}
+
+func (q *QingLongClient) findEnvByID(envID int, envName string) (*QLEnvItem, error) {
+	envs, err := q.QueryEnvs(fmt.Sprintf("%d", envID))
+	if err != nil {
+		return nil, err
+	}
+	for i := range envs {
+		if envs[i].ID == envID {
+			if envName == "" || envs[i].Name == envName {
+				return &envs[i], nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("未找到环境变量 ID=%d", envID)
+}
+
+// ResolveEnvByProject 按备注、EnvID、用户ID、CK值解析青龙变量
+func (q *QingLongClient) ResolveEnvByProject(project *ActivityProject) (*QLEnvItem, error) {
+	env, _, err := q.FindEnvForProject(project)
+	return env, err
 }
 
 // IsQLEnvNotFoundError 判断青龙 API 是否返回变量不存在
@@ -739,8 +905,13 @@ func (q *QingLongClient) FindEnvByRemarks(remark, envName string) (*QLEnvItem, e
 				continue
 			}
 			seenID[env.ID] = true
-			if env.Name == envName && strings.TrimSpace(env.Remarks) == remark {
-				return env, nil
+			if env.Name == envName {
+				if strings.TrimSpace(env.Remarks) == remark || remarksBelongsToProject(env.Remarks, &ActivityProject{
+					Remarks:     remark,
+					RemarkAlias: GetFirstRemarkParam(remark),
+				}) {
+					return env, nil
+				}
 			}
 		}
 	}
