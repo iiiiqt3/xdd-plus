@@ -14,7 +14,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.RadioButton
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Spinner
 import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.activity.addCallback
@@ -42,6 +44,8 @@ class KuwoRushFragment : Fragment() {
     private lateinit var kuwoPanel: LinearLayout
 
     private var authHint: TextView? = null
+    private var accountSelectWrap: LinearLayout? = null
+    private var accountSpinner: Spinner? = null
     private var phoneInput: EditText? = null
     private var passwordInput: EditText? = null
     private var smsInput: EditText? = null
@@ -57,6 +61,9 @@ class KuwoRushFragment : Fragment() {
     private var quotaGroup: RadioGroup? = null
 
     private var kuwoAuthorized = false
+    private var kuwoAccounts: List<Pair<String, String>> = emptyList()
+    private var selectedAccountIndex = 0
+    private var suppressAccountSwitch = false
     private var selectedQuotaId = "30002"
     private var activeTaskId: String? = null
     private var withdrawSubmitting = false
@@ -162,6 +169,31 @@ class KuwoRushFragment : Fragment() {
                 setPadding(0, ctx.dp(6), 0, ctx.dp(10))
                 setLineSpacing(0f, 1.35f)
             })
+            accountSelectWrap = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                visibility = View.GONE
+                setPadding(0, 0, 0, ctx.dp(10))
+            }
+            accountSelectWrap?.addView(fieldLabel("选择抢兑账号"))
+            accountSpinner = Spinner(ctx).apply {
+                background = GradientDrawable().apply {
+                    setColor(Color.WHITE)
+                    cornerRadius = ctx.dp(10).toFloat()
+                    setStroke(ctx.dp(1), Color.parseColor("#E2E8F0"))
+                }
+                setPadding(ctx.dp(8), ctx.dp(4), ctx.dp(8), ctx.dp(4))
+                onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                        if (suppressAccountSwitch) return
+                        if (position != selectedAccountIndex) {
+                            switchAccount(position)
+                        }
+                    }
+                    override fun onNothingSelected(parent: AdapterView<*>?) {}
+                }
+            }
+            accountSelectWrap?.addView(accountSpinner)
+            addView(accountSelectWrap)
             addView(fieldLabel("手机号"))
             phoneInput = readonlyField("自动读取中...")
             addView(phoneInput)
@@ -454,16 +486,77 @@ class KuwoRushFragment : Fragment() {
                 .onFailure { handlePortalError(it) }
 
             runCatching { AppServices.portalRepository.fetchKuwoCredentials() }
-                .onSuccess {
-                    phoneInput?.setText(it.phone ?: "")
-                    passwordInput?.setText(it.password ?: "")
-                    restoreKuwoState(it.phone ?: "")
-                }
+                .onSuccess { applyKuwoCredentials(it) }
                 .onFailure {
+                    kuwoAccounts = emptyList()
+                    accountSelectWrap?.visibility = View.GONE
                     phoneInput?.setText("")
                     passwordInput?.setText("")
                 }
         }
+    }
+
+    private fun maskPhone(phone: String): String {
+        return if (phone.length >= 11) phone.substring(0, 3) + "****" + phone.substring(7) else phone
+    }
+
+    private fun resolveKuwoAccounts(cred: com.goudong.jd.data.model.KuwoCredentials): List<Pair<String, String>> {
+        val fromList = cred.accounts
+            ?.mapNotNull { acc ->
+                val phone = acc.phone?.trim().orEmpty()
+                if (phone.isEmpty()) null else phone to acc.password.orEmpty()
+            }
+            .orEmpty()
+        if (fromList.isNotEmpty()) return fromList
+        val phone = cred.phone?.trim().orEmpty()
+        return if (phone.isNotEmpty()) listOf(phone to cred.password.orEmpty()) else emptyList()
+    }
+
+    private fun applyKuwoCredentials(cred: com.goudong.jd.data.model.KuwoCredentials) {
+        val previousPhone = phoneInput?.text?.toString()?.trim().orEmpty()
+        kuwoAccounts = resolveKuwoAccounts(cred)
+        if (previousPhone.isNotEmpty()) {
+            val matched = kuwoAccounts.indexOfFirst { it.first == previousPhone }
+            if (matched >= 0) selectedAccountIndex = matched
+        }
+        if (kuwoAccounts.size > 1) {
+            accountSelectWrap?.visibility = View.VISIBLE
+            val labels = kuwoAccounts.map { (phone, _) -> maskPhone(phone) }
+            val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels).apply {
+                setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            }
+            suppressAccountSwitch = true
+            accountSpinner?.adapter = adapter
+            accountSpinner?.setSelection(selectedAccountIndex.coerceIn(0, kuwoAccounts.lastIndex))
+            suppressAccountSwitch = false
+        } else {
+            accountSelectWrap?.visibility = View.GONE
+            selectedAccountIndex = 0
+        }
+        val index = selectedAccountIndex.coerceIn(0, (kuwoAccounts.size - 1).coerceAtLeast(0))
+        if (kuwoAccounts.isNotEmpty()) {
+            val (phone, password) = kuwoAccounts[index]
+            phoneInput?.setText(phone)
+            passwordInput?.setText(password)
+            restoreKuwoState(phone)
+        } else {
+            phoneInput?.setText(cred.phone ?: "")
+            passwordInput?.setText(cred.password ?: "")
+            restoreKuwoState(cred.phone ?: "")
+        }
+    }
+
+    private fun switchAccount(index: Int) {
+        if (index < 0 || index >= kuwoAccounts.size) return
+        selectedAccountIndex = index
+        clearActiveState()
+        restoreWithdrawUi()
+        val (phone, password) = kuwoAccounts[index]
+        phoneInput?.setText(phone)
+        passwordInput?.setText(password)
+        smsInput?.setText("")
+        smsStatus?.text = ""
+        smsStatus?.setTextColor(Color.parseColor("#64748B"))
     }
 
     private fun updateTimeDisplay() {

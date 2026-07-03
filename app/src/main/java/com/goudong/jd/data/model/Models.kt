@@ -246,9 +246,15 @@ data class PortalJdTaskExecuteResult(
     val taskId: String? = null,
 )
 
+data class KuwoAccountInfo(
+    val phone: String? = null,
+    val password: String? = null,
+)
+
 data class KuwoCredentials(
     val phone: String? = null,
     val password: String? = null,
+    val accounts: List<KuwoAccountInfo>? = null,
 )
 
 data class KuwoScheduleResult(
