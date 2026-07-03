@@ -3712,6 +3712,15 @@ async function executeJdTask(taskId, taskName) {
         showToast('请至少选择一个账号', 'warning');
         return;
     }
+
+    var validAccounts = jdTaskAccounts.filter(function(acc) { return acc.valid; });
+    var selectedNames = selectedOptions.map(function(opt) {
+        if (opt.value === '0') return '所有有效账号';
+        var pos = parseInt(opt.value, 10);
+        var acc = validAccounts[pos - 1];
+        return (acc && acc.nickname) ? acc.nickname : opt.textContent;
+    });
+    addJdTaskLog(taskName, '执行账号: ' + selectedNames.join('、'));
     
     // 设置按钮为运行状态
     btn.classList.add('running');

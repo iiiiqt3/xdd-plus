@@ -57,8 +57,62 @@ var portalWxJdRisk = make(map[int]portalWxRiskInfo)
 
 func getPortalJdCookies(userNumber int) []JdCookie {
 	cks := []JdCookie{}
-	db.Where("QQ = ?", userNumber).Find(&cks)
+	db.Where("QQ = ?", userNumber).Order("priority desc, ID asc").Find(&cks)
 	return cks
+}
+
+// resolveJdTaskAccountsByIndex 与 Portal/App 任务选择一致：0=所有有效账号，N=有效账号列表中第 N 个（1-based）
+func resolveJdTaskAccountsByIndex(userNumber int, accountIndexes []int, logChan chan string) ([]JdCookie, error) {
+	allCks := getPortalJdCookies(userNumber)
+	validCks := make([]JdCookie, 0, len(allCks))
+	for i := range allCks {
+		if CookieOK(&allCks[i]) {
+			validCks = append(validCks, allCks[i])
+		}
+	}
+
+	if logChan != nil {
+		safeLogSend(logChan, fmt.Sprintf("查询到 %d 个有效账号 (userId=%d)", len(validCks), userNumber))
+	}
+	if len(validCks) == 0 {
+		if logChan != nil {
+			safeLogSend(logChan, "错误: 没有找到有效的京东账号")
+		}
+		return nil, fmt.Errorf("没有找到有效的京东账号")
+	}
+
+	var selectedCks []JdCookie
+	pickAll := false
+	seen := make(map[int]bool)
+	for _, idx := range accountIndexes {
+		if idx == 0 {
+			pickAll = true
+			break
+		}
+		if idx < 1 || idx > len(validCks) || seen[idx] {
+			continue
+		}
+		seen[idx] = true
+		selectedCks = append(selectedCks, validCks[idx-1])
+	}
+	if pickAll {
+		selectedCks = validCks
+	}
+
+	if logChan != nil {
+		safeLogSend(logChan, fmt.Sprintf("筛选后 %d 个账号 (传入索引: %v)", len(selectedCks), accountIndexes))
+		for i, ck := range selectedCks {
+			pin, _ := url.QueryUnescape(ck.PtPin)
+			safeLogSend(logChan, fmt.Sprintf("  [%d] %s (%s)", i+1, ck.Nickname, pin))
+		}
+	}
+	if len(selectedCks) == 0 {
+		if logChan != nil {
+			safeLogSend(logChan, "错误: 没有选择有效的账号")
+		}
+		return nil, fmt.Errorf("没有选择有效的账号")
+	}
+	return selectedCks, nil
 }
 
 func GetPortalJdAccounts(userNumber int) []PortalJdAccount {

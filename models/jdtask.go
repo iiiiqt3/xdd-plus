@@ -436,41 +436,9 @@ func SubmitPortalJdTask(userId int, taskId string, taskName string, accountIndex
 }
 
 func buildPortalJdJobSpecs(userId int, taskId string, taskName string, accountIndexes []int, logChan chan string) ([]jdJobSpec, error) {
-	var idType string
-	idType = QQ
-	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-		return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, "Available"), userId, "True")
-	})
-
-	if logChan != nil {
-		safeLogSend(logChan, fmt.Sprintf("查询到 %d 个有效账号 (userId=%d)", len(cks), userId))
-	}
-	if len(cks) == 0 {
-		if logChan != nil {
-			safeLogSend(logChan, "错误: 没有找到有效的京东账号")
-		}
-		return nil, fmt.Errorf("没有找到有效的京东账号")
-	}
-
-	var selectedCks []JdCookie
-	for _, idx := range accountIndexes {
-		if idx == 0 {
-			selectedCks = cks
-			break
-		}
-		if idx > 0 && idx <= len(cks) {
-			selectedCks = append(selectedCks, cks[idx-1])
-		}
-	}
-
-	if logChan != nil {
-		safeLogSend(logChan, fmt.Sprintf("筛选后 %d 个账号 (传入索引: %v)", len(selectedCks), accountIndexes))
-	}
-	if len(selectedCks) == 0 {
-		if logChan != nil {
-			safeLogSend(logChan, "错误: 没有选择有效的账号")
-		}
-		return nil, fmt.Errorf("没有选择有效的账号")
+	selectedCks, err := resolveJdTaskAccountsByIndex(userId, accountIndexes, logChan)
+	if err != nil {
+		return nil, err
 	}
 
 	specs := make([]jdJobSpec, 0, len(selectedCks))
