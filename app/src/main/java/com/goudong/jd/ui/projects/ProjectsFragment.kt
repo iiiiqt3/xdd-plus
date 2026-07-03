@@ -734,13 +734,22 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             .setMessage("项目：${item.displayName ?: item.remark ?: item.activityName ?: "项目"}\n到期：${item.expireDate ?: "长期 / 未记录"}\n$refundTip")
             .setNegativeButton("取消", null)
             .setPositiveButton("确认删除") { _, _ ->
+                val busyKey = "delete:${item.activityId}:${item.remark.orEmpty()}"
+                if (!projectActionBusyKeys.add(busyKey)) {
+                    toast("请勿重复提交，上一笔删除请求正在处理中")
+                    return@setPositiveButton
+                }
                 lifecycleScope.launch {
-                    runCatching { AppServices.portalRepository.deleteProject(item.activityId ?: "", item.remark.orEmpty()) }
-                        .onSuccess {
-                            cachedProjects = null
-                            alert(it) { renderCurrentTab(forceRefresh = true) }
-                        }
-                        .onFailure { handlePortalError(it) }
+                    try {
+                        runCatching { AppServices.portalRepository.deleteProject(item.activityId ?: "", item.remark.orEmpty()) }
+                            .onSuccess {
+                                cachedProjects = null
+                                alert(it) { renderCurrentTab(forceRefresh = true) }
+                            }
+                            .onFailure { handlePortalError(it) }
+                    } finally {
+                        projectActionBusyKeys.remove(busyKey)
+                    }
                 }
             }
             .show()
@@ -800,13 +809,22 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     alert("请输入正确的续费${unit}数")
                     return@setPositiveButton
                 }
+                val busyKey = "renew:${item.activityId}:${item.remark.orEmpty()}"
+                if (!projectActionBusyKeys.add(busyKey)) {
+                    toast("请勿重复提交，上一笔续费请求正在处理中")
+                    return@setPositiveButton
+                }
                 lifecycleScope.launch {
-                    runCatching { AppServices.portalRepository.renewProject(item.activityId ?: "", item.remark.orEmpty(), months) }
-                        .onSuccess {
-                            cachedProjects = null
-                            alert(it) { renderCurrentTab(forceRefresh = true) }
-                        }
-                        .onFailure { handlePortalError(it) }
+                    try {
+                        runCatching { AppServices.portalRepository.renewProject(item.activityId ?: "", item.remark.orEmpty(), months) }
+                            .onSuccess {
+                                cachedProjects = null
+                                alert(it) { renderCurrentTab(forceRefresh = true) }
+                            }
+                            .onFailure { handlePortalError(it) }
+                    } finally {
+                        projectActionBusyKeys.remove(busyKey)
+                    }
                 }
             }
             .show()
@@ -820,6 +838,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     private var wxPolling = false
     private var wxDevices: List<com.goudong.jd.data.model.PortalWxDevice> = emptyList()
+    private val projectActionBusyKeys = mutableSetOf<String>()
 
     private fun renderWxProtocol() {
         contentRoot.removeAllViews()

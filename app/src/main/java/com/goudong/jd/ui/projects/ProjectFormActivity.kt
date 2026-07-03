@@ -32,6 +32,8 @@ import com.goudong.jd.ui.common.sectionTitle
 import kotlinx.coroutines.launch
 
 class ProjectFormActivity : AppCompatActivity() {
+
+    private var isSubmitting = false
     private lateinit var activityItem: PortalActivity
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -242,10 +244,20 @@ class ProjectFormActivity : AppCompatActivity() {
                     .setMessage(confirmMessage)
                     .setNegativeButton("取消", null)
                     .setPositiveButton("确认上车") { _, _ ->
+                        if (isSubmitting) return@setPositiveButton
+                        isSubmitting = true
+                        submit.isEnabled = false
+                        submit.text = "提交中..."
                         lifecycleScope.launch {
-                            runCatching { AppServices.portalRepository.createProject(activityItem.id ?: "", map, remarks, months) }
-                                .onSuccess { alert(it) { finish() } }
-                                .onFailure { alert(com.goudong.jd.ui.common.sanitizeErrorMessage(it.message)) }
+                            try {
+                                runCatching { AppServices.portalRepository.createProject(activityItem.id ?: "", map, remarks, months) }
+                                    .onSuccess { alert(it) { finish() } }
+                                    .onFailure { alert(com.goudong.jd.ui.common.sanitizeErrorMessage(it.message)) }
+                            } finally {
+                                isSubmitting = false
+                                submit.isEnabled = true
+                                submit.text = "确认上车"
+                            }
                         }
                     }
                     .show()
