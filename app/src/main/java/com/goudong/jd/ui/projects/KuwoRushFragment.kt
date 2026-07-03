@@ -50,12 +50,15 @@ class KuwoRushFragment : Fragment() {
     private var nextTimeText: TextView? = null
     private var timeHintText: TextView? = null
     private var withdrawBtn: TextView? = null
+    private var updateSmsBtn: TextView? = null
+    private var smsEditHint: TextView? = null
     private var countdownText: TextView? = null
     private var logText: TextView? = null
     private var quotaGroup: RadioGroup? = null
 
     private var kuwoAuthorized = false
     private var selectedQuotaId = "30002"
+    private var activeTaskId: String? = null
     private var withdrawSubmitting = false
     private var taskLogIndex = 0
     private var monitorJob: Job? = null
@@ -284,6 +287,34 @@ class KuwoRushFragment : Fragment() {
                 setPadding(0, ctx.dp(12), 0, ctx.dp(12))
                 setOnClickListener { startWithdraw() }
             }
+            updateSmsBtn = TextView(ctx).apply {
+                visibility = View.GONE
+                text = "更新验证码"
+                gravity = Gravity.CENTER
+                setTextColor(Color.parseColor("#6366F1"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setTypeface(typeface, Typeface.BOLD)
+                background = GradientDrawable().apply {
+                    setColor(Color.WHITE)
+                    cornerRadius = ctx.dp(10).toFloat()
+                    setStroke(ctx.dp(1), Color.parseColor("#E2E8F0"))
+                }
+                setPadding(ctx.dp(16), ctx.dp(10), ctx.dp(16), ctx.dp(10))
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = ctx.dp(8)
+                }
+                setOnClickListener { updateSmsCode() }
+            }
+            smsEditHint = TextView(ctx).apply {
+                visibility = View.GONE
+                text = "倒计时中可修改上方验证码，改完后点击「更新验证码」同步到后端"
+                setTextColor(Color.parseColor("#6366F1"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
+                setTypeface(typeface, Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = ctx.dp(6)
+                }
+            }
             countdownText = TextView(ctx).apply {
                 visibility = View.GONE
                 gravity = Gravity.CENTER
@@ -297,6 +328,8 @@ class KuwoRushFragment : Fragment() {
                 setPadding(0, ctx.dp(12), 0, ctx.dp(12))
             }
             actionRow.addView(withdrawBtn)
+            actionRow.addView(updateSmsBtn)
+            actionRow.addView(smsEditHint)
             actionRow.addView(countdownText)
             addView(actionRow)
         })
@@ -457,6 +490,13 @@ class KuwoRushFragment : Fragment() {
         }
     }
 
+    private fun clearActiveState() {
+        monitorJob?.cancel()
+        countdownJob?.cancel()
+        activeTaskId = null
+        prefs().edit().remove("state").apply()
+    }
+
     private fun sendSms() {
         if (!kuwoAuthorized) {
             toast("酷我活动授权已到期，请前往我的项目续费")
@@ -468,6 +508,9 @@ class KuwoRushFragment : Fragment() {
             toast("未读取到酷我账号，请先在项目中上车")
             return
         }
+        clearActiveState()
+        restoreWithdrawUi()
+        smsInput?.setText("")
         smsStatus?.text = "正在登录并发送验证码..."
         appendLog("正在登录酷我账号...")
         lifecycleScope.launch {
@@ -510,8 +553,8 @@ class KuwoRushFragment : Fragment() {
         }
         val info = KuwoTimeHelper.getNextWithdrawInfo()
         if (info.inWindow && info.diffMin > 0 && info.diffMin <= 4) {
-            appendLog("🎯 提交定时抢兑任务，后端将在 ${KuwoTimeHelper.formatHour(info.hour)} 自动执行")
-            setWithdrawUiLocked(true)
+            appendLog("🎯 提交定时抢兑任务，后端将在 ${KuwoTimeHelper.formatHour(info.hour)} 自动执行（3轮错峰）")
+            setWithdrawUiLocked(true, allowSmsEdit = true)
             saveKuwoState(phone, password, smsCode, selectedQuotaId, info.hour, null, false)
             scheduleOnBackend(phone, password, smsCode, selectedQuotaId, info.hour, info, immediate = false)
             return
@@ -542,9 +585,11 @@ class KuwoRushFragment : Fragment() {
                     restoreWithdrawUi()
                     return@onSuccess
                 }
+                activeTaskId = taskId
                 appendLog((if (result.reused) "♻️ 复用已有任务" else "✅ 任务已提交") + "，ID: $taskId")
                 taskLogIndex = 0
                 updateSavedTaskId(taskId, immediate, targetHour)
+                if (!immediate) setWithdrawUiLocked(true, allowSmsEdit = true)
                 monitorTask(taskId, immediate)
                 if (!immediate && info != null) {
                     runCountdown(info, taskId)
@@ -558,20 +603,53 @@ class KuwoRushFragment : Fragment() {
         }
     }
 
-    private fun setWithdrawUiLocked(locked: Boolean) {
+    private fun setWithdrawUiLocked(locked: Boolean, allowSmsEdit: Boolean = false) {
         withdrawBtn?.visibility = if (locked) View.GONE else View.VISIBLE
         countdownText?.visibility = if (locked) View.VISIBLE else View.GONE
+        updateSmsBtn?.visibility = if (locked && allowSmsEdit) View.VISIBLE else View.GONE
+        smsEditHint?.visibility = if (locked && allowSmsEdit) View.VISIBLE else View.GONE
         phoneInput?.isEnabled = !locked
         passwordInput?.isEnabled = !locked
-        smsInput?.isEnabled = !locked
+        smsInput?.isEnabled = !locked || allowSmsEdit
     }
 
     private fun restoreWithdrawUi() {
         withdrawSubmitting = false
         countdownJob?.cancel()
         countdownJob = null
+        activeTaskId = null
         setWithdrawUiLocked(false)
         countdownText?.text = ""
+    }
+
+    private fun updateSmsCode() {
+        val taskId = activeTaskId
+        val smsCode = smsInput?.text?.toString()?.trim().orEmpty()
+        if (taskId.isNullOrBlank()) {
+            toast("暂无进行中的任务")
+            return
+        }
+        if (smsCode.isEmpty()) {
+            toast("请输入验证码")
+            return
+        }
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.updateKuwoSmsCode(taskId, smsCode) }
+                .onSuccess {
+                    appendLog("✅ 验证码已同步到后端")
+                    toast("验证码已更新")
+                    runCatching {
+                        val raw = prefs().getString("state", null) ?: return@runCatching
+                        val json = JSONObject(raw)
+                        json.put("smsCode", smsCode)
+                        prefs().edit().putString("state", json.toString()).apply()
+                    }
+                }
+                .onFailure {
+                    toast(it.message ?: "更新失败")
+                    handlePortalError(it)
+                }
+        }
     }
 
     private fun monitorTask(taskId: String, immediate: Boolean) {
@@ -614,6 +692,15 @@ class KuwoRushFragment : Fragment() {
     private fun applyTaskResult(task: com.goudong.jd.data.model.KuwoWithdrawTask, immediate: Boolean): Boolean {
         flushTaskLogs(task.logs)
         when (task.status) {
+            "pending" -> {
+                if (!immediate) {
+                    setWithdrawUiLocked(true, allowSmsEdit = true)
+                    if (task.smsFatal == true) {
+                        appendLog("⚠️ 后端反馈疑似验证码错误，请修改后点击「更新验证码」")
+                    }
+                }
+                return false
+            }
             "running" -> {
                 if (immediate) countdownText?.text = "🚀 后端正在执行..."
                 return false
@@ -715,8 +802,34 @@ class KuwoRushFragment : Fragment() {
             runCatching {
                 val json = JSONObject(raw)
                 val savedPhone = json.optString("phone")
-                if (savedPhone.isNotEmpty() && savedPhone != phone) return@runCatching
-                smsInput?.setText(json.optString("smsCode"))
+                if (savedPhone.isNotEmpty() && phone.isNotEmpty() && savedPhone != phone) {
+                    clearActiveState()
+                    return@runCatching
+                }
+                val taskIdFromState = json.optString("taskId").takeIf { it.isNotBlank() }
+                if (taskIdFromState.isNullOrBlank()) {
+                    clearActiveState()
+                    return@runCatching
+                }
+                val task = runCatching {
+                    AppServices.portalRepository.fetchKuwoWithdrawStatus(taskId = taskIdFromState)
+                }.getOrNull()
+                if (task != null && (task.status == "completed" || task.status == "failed")) {
+                    taskLogIndex = task.logs?.size ?: 0
+                    applyTaskResult(task, json.optBoolean("immediate"))
+                    return@runCatching
+                }
+                if (task == null || (task.status != "pending" && task.status != "running")) {
+                    clearActiveState()
+                    restoreWithdrawUi()
+                    return@runCatching
+                }
+                activeTaskId = task.id ?: taskIdFromState
+                phoneInput?.setText(json.optString("phone").ifBlank { phone })
+                passwordInput?.setText(json.optString("password"))
+                if (task.status == "pending") {
+                    smsInput?.setText(json.optString("smsCode"))
+                }
                 val quotaId = json.optString("quotaId", "30002")
                 selectedQuotaId = quotaId
                 quotaGroup?.let { group ->
@@ -728,38 +841,21 @@ class KuwoRushFragment : Fragment() {
                         }
                     }
                 }
-                val taskIdFromState = json.optString("taskId").takeIf { it.isNotBlank() }
-                val taskById = taskIdFromState?.let {
-                    runCatching { AppServices.portalRepository.fetchKuwoWithdrawStatus(taskId = it) }.getOrNull()
-                }
-                if (taskById != null && (taskById.status == "completed" || taskById.status == "failed")) {
-                    taskLogIndex = taskById.logs?.size ?: 0
-                    applyTaskResult(taskById, json.optBoolean("immediate"))
-                    return@runCatching
-                }
-                var taskId = taskIdFromState
-                val active = runCatching {
-                    AppServices.portalRepository.fetchKuwoWithdrawStatus(phone = phone.ifBlank { savedPhone })
-                }.getOrNull()
-                if (active != null && (active.status == "pending" || active.status == "running")) {
-                    taskId = active.id
-                }
-                if (!taskId.isNullOrBlank()) {
-                    appendLog("🔄 检测到进行中的抢兑任务，已恢复监控")
-                    val logs = active?.logs ?: taskById?.logs
-                    taskLogIndex = logs?.size ?: 0
-                    setWithdrawUiLocked(true)
-                    val immediate = json.optBoolean("immediate") || active?.immediate == true
-                    val hour = if (json.has("targetHour")) json.optInt("targetHour") else active?.targetHour ?: 0
+                appendLog("🔄 检测到进行中的抢兑任务，已恢复监控")
+                taskLogIndex = task.logs?.size ?: 0
+                val immediate = json.optBoolean("immediate") || task.immediate
+                val hour = if (json.has("targetHour")) json.optInt("targetHour") else task.targetHour ?: 0
+                setWithdrawUiLocked(true, allowSmsEdit = !immediate && task.status == "pending")
+                if (!immediate) {
                     val remaining = KuwoTimeHelper.remainingMsUntilHour(hour)
-                    if (!immediate && remaining > 0) {
-                        runCountdown(KuwoTimeHelper.NextWithdrawInfo(hour, inWindow = true, diffMin = 1), taskId)
-                    } else if (!immediate) {
+                    if (remaining > 0) {
+                        runCountdown(KuwoTimeHelper.NextWithdrawInfo(hour, inWindow = true, diffMin = 1), activeTaskId!!)
+                    } else {
                         countdownText?.text = "🚀 后端正在执行 ${KuwoTimeHelper.formatHour(hour)} 抢兑..."
                         appendLog("🔄 倒计时已结束，等待后端执行结果…")
                     }
-                    monitorTask(taskId, immediate)
                 }
+                monitorTask(activeTaskId!!, immediate)
             }
         }
     }

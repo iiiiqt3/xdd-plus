@@ -274,6 +274,8 @@ data class KuwoWithdrawTask(
     val executeAt: String? = null,
     val status: String? = null,
     val immediate: Boolean = false,
+    val smsFatal: Boolean? = null,
+    val smsEditable: Boolean? = null,
     val logs: List<KuwoTaskLog>? = null,
 )
 

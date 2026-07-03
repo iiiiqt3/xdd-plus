@@ -421,6 +421,15 @@ class PortalRepository(
         )
     }
 
+    suspend fun updateKuwoSmsCode(taskId: String, smsCode: String) {
+        apiClient.requestMessage(
+            path = "/api/portal/kuwo/update-sms-code",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("taskId" to taskId, "smsCode" to smsCode)),
+        )
+    }
+
     suspend fun fetchKuwoWithdrawStatus(taskId: String? = null, phone: String? = null): KuwoWithdrawTask? {
         val path = when {
             !taskId.isNullOrBlank() -> "/api/portal/kuwo/withdraw-status?taskId=${apiClient.urlEncode(taskId)}"
