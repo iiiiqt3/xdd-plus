@@ -253,11 +253,18 @@ function closeQr() {
     if (scanTimer) clearInterval(scanTimer);
 }
 
+function qrImgSrc(b64) {
+    if (!b64) return '';
+    if (String(b64).startsWith('data:')) return b64;
+    return 'data:image/png;base64,' + b64;
+}
+
 async function adminScan() {
     const data = await request('/qr', { method: 'POST' });
     scanId = data.sessionId;
-    document.getElementById('qrBox').innerHTML = data.imageBase64
-        ? `<img src="data:image/png;base64,${data.imageBase64}" style="width:180px;height:180px;">` : '无二维码';
+    const src = qrImgSrc(data.imageBase64);
+    document.getElementById('qrBox').innerHTML = src
+        ? `<img src="${src}" style="width:180px;height:180px;" alt="微信扫码二维码">` : '无二维码';
     document.getElementById('qrModal').classList.add('show');
     if (scanTimer) clearInterval(scanTimer);
     scanTimer = setInterval(async () => {

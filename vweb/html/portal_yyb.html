@@ -353,13 +353,20 @@ function closeQrModal() {
     if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
 }
 
+function qrImgSrc(b64) {
+    if (!b64) return '';
+    if (String(b64).startsWith('data:')) return b64;
+    return 'data:image/png;base64,' + b64;
+}
+
 async function startScan() {
     try {
         const data = await request('/qr', { method: 'POST' });
         scanSessionId = data.sessionId;
         const box = document.getElementById('qrBox');
-        if (data.imageBase64) {
-            box.innerHTML = `<img src="data:image/png;base64,${data.imageBase64}" alt="qr">`;
+        const src = qrImgSrc(data.imageBase64);
+        if (src) {
+            box.innerHTML = `<img src="${src}" alt="微信扫码二维码">`;
         } else {
             box.textContent = '二维码加载失败';
         }
