@@ -190,6 +190,9 @@
         <section class="panel">
             <div class="panel-head">
                 <h3>我的账号</h3>
+                <div class="toolbar" style="font-size:12px;color:var(--text-muted);font-weight:400;">
+                    绑定方式：① 扫码添加（扣积分） ② 粘贴 openid 认领（管理员已入库的账号）
+                </div>
                 <div class="toolbar">
                     <button class="btn btn-secondary btn-sm" id="refreshBtn" type="button">刷新存活</button>
                     <button class="btn btn-secondary btn-sm" id="resyncBtn" type="button">同步资料</button>
@@ -253,7 +256,7 @@
 
 <script>
 const API = '/api/portal/yyb';
-const state = { accounts: [], selectedOpenID: '', lastResult: '', scanSessionId: '', scanTimer: null };
+const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null };
 const $ = id => document.getElementById(id);
 
 function esc(s) {
@@ -279,9 +282,16 @@ function accountName(a) { return a.nickname || a.openid || '未命名'; }
 
 function statusTag(s) {
     if (s === 'alive' || s === 'online') return '<span class="tag ok">可用</span>';
-    if (s === 'dead' || s === 'offline') return '<span class="tag bad">需重扫</span>';
+    if (s === 'dead' || s === 'offline' || s === 'expired') return '<span class="tag bad">已失效</span>';
     return '<span class="tag">' + esc(s || '未知') + '</span>';
 }
+
+function accountKey(acc) {
+    if (acc.bindingId) return String(acc.bindingId);
+    return String(acc.openid || '').trim();
+}
+
+function accountRef(acc) { return accountKey(acc); }
 
 function setResult(val, err) {
     const text = typeof val === 'string' ? val : JSON.stringify(val, null, 2);
@@ -290,13 +300,13 @@ function setResult(val, err) {
     $('resultBox').classList.toggle('error', !!err);
 }
 
-function selectedAccount() { return state.accounts.find(a => a.openid === state.selectedOpenID); }
+function selectedAccount() { return state.accounts.find(a => accountKey(a) === state.selectedKey); }
 
 function syncSelected() {
     const a = selectedAccount();
-    $('selectedLabel').textContent = a ? ('当前：' + accountName(a)) : '未选择账号';
+    $('selectedLabel').textContent = a ? ('当前：' + accountName(a)) : '未选择账号（请先点击上方账号卡片）';
     document.querySelectorAll('.acc-item').forEach(el => {
-        el.classList.toggle('selected', el.dataset.openid === state.selectedOpenID);
+        el.classList.toggle('selected', el.dataset.key === state.selectedKey);
     });
 }
 
@@ -311,22 +321,22 @@ function renderAccounts() {
     $('accountCount').textContent = String(state.accounts.length);
     if (!state.accounts.length) {
         grid.innerHTML = '<div class="empty">暂无账号，可扫码添加或认领 openid</div>';
-        state.selectedOpenID = '';
+        state.selectedKey = '';
         syncSelected();
         return;
     }
-    if (!state.accounts.some(a => a.openid === state.selectedOpenID)) {
-        state.selectedOpenID = state.accounts[0].openid;
+    if (!state.accounts.some(a => accountKey(a) === state.selectedKey)) {
+        state.selectedKey = accountKey(state.accounts[0]);
     }
     grid.innerHTML = state.accounts.map(acc => `
-        <button type="button" class="acc-item" data-openid="${esc(acc.openid)}">
+        <button type="button" class="acc-item" data-key="${esc(accountKey(acc))}">
             <div class="acc-name">${esc(accountName(acc))}</div>
             <div class="acc-meta">${esc(acc.openid)}</div>
             ${statusTag(acc.status)}
         </button>
     `).join('');
     grid.querySelectorAll('.acc-item').forEach(btn => {
-        btn.onclick = () => { state.selectedOpenID = btn.dataset.openid; syncSelected(); };
+        btn.onclick = () => { state.selectedKey = btn.dataset.key; syncSelected(); };
     });
     syncSelected();
 }
@@ -359,7 +369,7 @@ async function callFeature() {
     const feature = $('featureSel').value;
     const appId = $('appidInput').value.trim();
     if (!appId) { setResult('请输入 AppID', true); return; }
-    const body = { ref: acc.openid, appId };
+    const body = { ref: accountRef(acc), appId };
     let path = '/wxapp/getCode';
     if (feature === 'getPhoneNumber') path = '/wxapp/getPhoneNumber';
     if (feature === 'operateWxData') {
@@ -394,7 +404,7 @@ async function refreshSelected() {
     const acc = selectedAccount();
     if (!acc) return;
     try {
-        const r = await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) });
+        const r = await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) });
         setResult(r, false);
         await loadStatus();
     } catch (e) { setResult(e.message, true); }
@@ -404,7 +414,7 @@ async function resyncSelected() {
     const acc = selectedAccount();
     if (!acc) return;
     try {
-        const r = await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) });
+        const r = await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) });
         setResult(r, false);
         await loadStatus();
     } catch (e) { setResult(e.message, true); }
@@ -414,7 +424,7 @@ async function deleteSelected() {
     const acc = selectedAccount();
     if (!acc || !confirm('确定删除该账号？')) return;
     try {
-        await request('/accounts/delete', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) });
+        await request('/accounts/delete', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) });
         await loadStatus();
     } catch (e) { setResult(e.message, true); }
 }

@@ -111,16 +111,27 @@ func resolveBinding(userNumber int, ref string) (*PortalYybBinding, error) {
 		return nil, fmt.Errorf("ref 不能为空")
 	}
 	var row PortalYybBinding
-	q := db().Where("user_number = ?", userNumber)
 	if id, err := strconv.ParseInt(ref, 10, 64); err == nil {
-		q = q.Where("id = ? OR yyb_account_id = ?", id, id)
-	} else {
-		q = q.Where("openid = ?", ref)
+		err = db().Where("user_number = ? AND (id = ? OR yyb_account_id = ?)", userNumber, id, id).First(&row).Error
+		if err == nil {
+			return &row, nil
+		}
 	}
-	if err := q.First(&row).Error; err != nil {
-		return nil, fmt.Errorf("未找到绑定账号")
+	if err := db().Where("user_number = ? AND openid = ?", userNumber, ref).First(&row).Error; err == nil {
+		return &row, nil
 	}
-	return &row, nil
+	if err := db().Where("user_number = ? AND LOWER(openid) = LOWER(?)", userNumber, ref).First(&row).Error; err == nil {
+		return &row, nil
+	}
+	if a, err := svc(); err == nil {
+		if acc, err := a.GetAccountPublic(context.Background(), ref); err == nil && acc != nil {
+			if err := db().Where("user_number = ? AND (openid = ? OR yyb_account_id = ?)",
+				userNumber, acc.OpenID, acc.ID).First(&row).Error; err == nil {
+				return &row, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("未找到绑定账号")
 }
 
 func isOpenIDBoundToOther(userNumber int, openid string) bool {
