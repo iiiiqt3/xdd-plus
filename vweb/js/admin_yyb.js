@@ -71,15 +71,16 @@
     function renderAccountCard(acc) {
         const st = accountStatus(acc);
         const oid = esc(acc.openid);
-        return `<button type="button" class="acc-opt ayyb-acc-opt" data-openid="${oid}">
-            <div class="name">${esc(accountName(acc))}</div>
-            <div class="yyb-openid-row" style="margin:6px 0;">
-                <span class="yyb-openid-label">OpenID</span>
-                <span class="yyb-openid-val" title="${oid}">${oid}</span>
+        return `<div class="yyb-acc-card ayyb-acc-opt" data-openid="${oid}" role="button" tabindex="0">
+            <div class="yyb-acc-head">
+                <div class="yyb-acc-name">${esc(accountName(acc))}</div>
+                ${statusBadge(st)}
+            </div>
+            <div class="yyb-acc-openid-line">
+                <code class="yyb-openid-text" title="${oid}">${oid}</code>
                 <button type="button" class="yyb-copy-btn" data-ayyb-copy="${oid}">复制</button>
             </div>
-            ${statusBadge(st)}
-        </button>`;
+        </div>`;
     }
 
     function renderAccounts() {
@@ -87,7 +88,7 @@
         if ($('ayyb-stProtocol')) $('ayyb-stProtocol').textContent = state.accounts.length;
         if (!box) return;
         if (!state.accounts.length) {
-            box.innerHTML = '<div class="empty-tip">暂无协议账号，可点击「测试扫码」添加</div>';
+            box.innerHTML = '<div class="yyb-empty">暂无协议账号，可点击「测试扫码」添加</div>';
             state.selectedOpenID = '';
             return;
         }
@@ -95,10 +96,10 @@
             state.selectedOpenID = state.accounts[0].openid;
         }
         box.innerHTML = state.accounts.map(renderAccountCard).join('');
-        box.querySelectorAll('.ayyb-acc-opt').forEach(btn => {
-            btn.onclick = (e) => {
-                if (e.target.closest('[data-ayyb-copy]')) return;
-                state.selectedOpenID = btn.dataset.openid;
+        box.querySelectorAll('.ayyb-acc-opt').forEach(card => {
+            card.onclick = (e) => {
+                if (e.target.closest('.yyb-copy-btn')) return;
+                state.selectedOpenID = card.dataset.openid;
                 syncSelected();
             };
         });
@@ -123,9 +124,9 @@
                 <td>${a.userNumber}</td>
                 <td>${esc(a.userNickname)}</td>
                 <td>${esc(a.nickname)}</td>
-                <td style="max-width:220px;">
-                    <div class="yyb-openid-row" style="margin:0;">
-                        <span class="yyb-openid-val" title="${oid}">${oid}</span>
+                <td style="max-width:320px;">
+                    <div class="yyb-table-openid">
+                        <code class="yyb-openid-text" title="${oid}">${oid}</code>
                         <button type="button" class="yyb-copy-btn" data-ayyb-copy="${oid}">复制</button>
                     </div>
                 </td>

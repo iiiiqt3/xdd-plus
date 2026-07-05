@@ -474,9 +474,6 @@ func main() {
 	if jsDir := vweb.AssetDir("js"); jsDir != "" {
 		web.BConfig.WebConfig.StaticDir["/vweb/js"] = jsDir
 	}
-	if cssDir := vweb.AssetDir("css"); cssDir != "" {
-		web.BConfig.WebConfig.StaticDir["/vweb/css"] = cssDir
-	}
 
 	// 配置Web服务参数
 	web.BConfig.AppName = models.AppName

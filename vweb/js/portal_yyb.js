@@ -86,15 +86,16 @@
 
     function renderAccountCard(acc) {
         const openid = esc(acc.openid || '');
-        return `<button type="button" class="yyb-acc-card" data-key="${esc(accountKey(acc))}">
-            <div class="yyb-acc-name">${esc(accountName(acc))}</div>
-            <div class="yyb-openid-row">
-                <span class="yyb-openid-label">OpenID</span>
-                <span class="yyb-openid-val" title="${openid}">${openid || '-'}</span>
+        return `<div class="yyb-acc-card" data-key="${esc(accountKey(acc))}" role="button" tabindex="0">
+            <div class="yyb-acc-head">
+                <div class="yyb-acc-name">${esc(accountName(acc))}</div>
+                ${statusTag(acc.status)}
+            </div>
+            <div class="yyb-acc-openid-line">
+                <code class="yyb-openid-text" title="${openid}">${openid || '-'}</code>
                 <button type="button" class="yyb-copy-btn" data-yyb-copy="${openid}">复制</button>
             </div>
-            ${statusTag(acc.status)}
-        </button>`;
+        </div>`;
     }
 
     function renderAccounts() {
@@ -112,10 +113,10 @@
             state.selectedKey = accountKey(state.accounts[0]);
         }
         grid.innerHTML = state.accounts.map(renderAccountCard).join('');
-        grid.querySelectorAll('.yyb-acc-card').forEach(btn => {
-            btn.onclick = (e) => {
-                if (e.target.closest('[data-yyb-copy]')) return;
-                state.selectedKey = btn.dataset.key;
+        grid.querySelectorAll('.yyb-acc-card').forEach(card => {
+            card.onclick = (e) => {
+                if (e.target.closest('.yyb-copy-btn')) return;
+                state.selectedKey = card.dataset.key;
                 syncSelected();
             };
         });

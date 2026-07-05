@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>用户中心</title>
-    <link rel="stylesheet" href="/vweb/css/yyb_embed.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -1060,6 +1059,61 @@
             .iframe-modal .modal-header { padding: 10px 14px; }
             .iframe-modal .modal-header h3 { font-size: 15px; }
         }
+
+        /* ===== 应用宝协议 ===== */
+        .hidden { display: none !important; }
+        .yyb-test-tag {
+            display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+            font-size: 11px; font-weight: 700; vertical-align: middle;
+            background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35);
+        }
+        .yyb-hint-box {
+            margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; font-size: 12px; line-height: 1.7;
+            background: rgba(79, 70, 229, 0.06); border: 1px solid rgba(79, 70, 229, 0.12); color: var(--text-muted);
+        }
+        .yyb-account-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+        .yyb-acc-card {
+            border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px 14px;
+            background: var(--glass-bg); cursor: pointer; text-align: left; width: 100%;
+            transition: border-color 0.15s, box-shadow 0.15s; box-sizing: border-box;
+        }
+        .yyb-acc-card:hover { border-color: #c7d2fe; box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08); }
+        .yyb-acc-card.selected { border-color: #6366f1; background: rgba(99, 102, 241, 0.06); box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25); }
+        .yyb-acc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; min-width: 0; }
+        .yyb-acc-name { font-size: 14px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+        .yyb-acc-openid-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .yyb-openid-text {
+            flex: 1; min-width: 0; margin: 0; padding: 7px 10px; border-radius: 8px;
+            background: #f1f5f9; border: 1px solid #e2e8f0; font-family: Consolas, monospace;
+            font-size: 11px; line-height: 1.4; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+        }
+        .yyb-copy-btn {
+            border: 1px solid #c7d2fe; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600;
+            cursor: pointer; background: #eef2ff; color: #4f46e5; flex-shrink: 0; line-height: 1;
+        }
+        .yyb-copy-btn:hover { background: #e0e7ff; }
+        .yyb-status-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+        .yyb-status-tag.ok { background: #ecfdf5; color: #059669; }
+        .yyb-status-tag.bad { background: #fef2f2; color: #dc2626; }
+        .yyb-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .yyb-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; font-size: 12px; background: rgba(128,128,128,0.06); border: 1px solid var(--glass-border); }
+        .yyb-chip.ok { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.2); color: #059669; }
+        .yyb-chip.bad { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.2); color: #dc2626; }
+        .yyb-result-panel { margin-top: 14px; }
+        .yyb-result-title { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
+        .yyb-result-box {
+            background: #1e293b; color: #e2e8f0; border-radius: 10px; padding: 14px 16px;
+            font-family: Consolas, monospace; font-size: 12px; line-height: 1.55;
+            min-height: 160px; max-height: 360px; overflow: auto; white-space: pre-wrap; word-break: break-word; border: 1px solid #334155;
+        }
+        .yyb-result-box.error { color: #fca5a5; border-color: #7f1d1d; }
+        .yyb-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .yyb-empty { text-align: center; color: var(--text-muted); padding: 24px 12px; font-size: 13px; grid-column: 1 / -1; }
+        .yyb-dash-list { display: grid; gap: 8px; }
+        .yyb-dash-item { padding: 8px 10px; border-radius: 10px; background: rgba(128,128,128,0.04); border: 1px solid var(--glass-border); }
+        .yyb-dash-item-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .yyb-dash-item-name { font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .yyb-dash-openid { font-family: Consolas, monospace; font-size: 10px; color: var(--text-muted); word-break: break-all; }
     </style>
 </head>
 <body>
@@ -1848,7 +1902,10 @@
                         <button class="btn secondary" id="yyb-clearBtn" type="button">清空结果</button>
                         <button class="btn secondary" id="yyb-copyBtn" type="button">复制结果</button>
                     </div>
-                    <pre class="yyb-result-box" id="yyb-resultBox">选择账号后执行调用，结果将显示在这里。</pre>
+                    <div class="yyb-result-panel">
+                        <div class="yyb-result-title">调用结果</div>
+                        <pre class="yyb-result-box" id="yyb-resultBox">选择账号后执行调用，结果将显示在这里。</pre>
+                    </div>
                 </div>
             </div>
         </section>
