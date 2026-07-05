@@ -123,6 +123,12 @@ func resolveBinding(userNumber int, ref string) (*PortalYybBinding, error) {
 	return &row, nil
 }
 
+func isOpenIDBoundToOther(userNumber int, openid string) bool {
+	var count int64
+	db().Model(&PortalYybBinding{}).Where("openid = ? AND user_number <> ?", openid, userNumber).Count(&count)
+	return count > 0
+}
+
 func toPortalView(ctx context.Context, b PortalYybBinding, s *yyb.Service) PortalAccountView {
 	view := PortalAccountView{
 		BindingID:    b.ID,

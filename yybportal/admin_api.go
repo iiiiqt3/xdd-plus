@@ -3,12 +3,38 @@ package yybportal
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/cdle/xdd/models"
+	"github.com/cdle/xdd/yyb"
 )
 
-// AdminListAccounts 全站账号
+// AdminListProtocolAccounts 协议库全部账号（用于管理端调试，不依赖门户绑定）
+func AdminListProtocolAccounts() ([]yyb.AccountPublic, error) {
+	if !Ready() {
+		return nil, fmt.Errorf("应用宝服务不可用")
+	}
+	a, err := svc()
+	if err != nil {
+		return nil, err
+	}
+	return a.ListAccounts(context.Background())
+}
+
+// AdminServeAvatar 管理端头像（不校验门户绑定）
+func AdminServeAvatar(w http.ResponseWriter, r *http.Request, ref string) error {
+	if !Ready() {
+		return fmt.Errorf("应用宝服务不可用")
+	}
+	a, err := svc()
+	if err != nil {
+		return err
+	}
+	return a.ServeAccountAvatar(w, r, ref)
+}
+
+// AdminListAccounts 全站门户绑定
 func AdminListAccounts() ([]AdminAccountView, error) {
 	if !Ready() {
 		return nil, fmt.Errorf("应用宝服务不可用")

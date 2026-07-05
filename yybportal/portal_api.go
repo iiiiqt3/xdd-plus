@@ -212,11 +212,39 @@ func PortalServeAvatar(w http.ResponseWriter, r *http.Request, userNumber int, r
 	return a.ServeAccountAvatar(w, r, ref)
 }
 
-// PortalWxappGetCode 获取小程序 code
+// PortalClaimAccount 认领已存在于应用宝库、但未绑定门户的账号
+func PortalClaimAccount(userNumber int, ref string) (PortalAccountView, error) {
+	if !Ready() {
+		return PortalAccountView{}, fmt.Errorf("应用宝服务不可用")
+	}
+	a, err := svc()
+	if err != nil {
+		return PortalAccountView{}, err
+	}
+	ctx := context.Background()
+	acc, err := a.GetAccountPublic(ctx, strings.TrimSpace(ref))
+	if err != nil || acc == nil {
+		return PortalAccountView{}, fmt.Errorf("应用宝中未找到该账号，请确认 openid 或账号 ID")
+	}
+	if isOpenIDBoundToOther(userNumber, acc.OpenID) {
+		return PortalAccountView{}, fmt.Errorf("该账号已被其他门户用户绑定")
+	}
+	var count int64
+	db().Model(&PortalYybBinding{}).Where("user_number = ?", userNumber).Count(&count)
+	if int(count) >= getMaxAccountsPerUser() {
+		return PortalAccountView{}, fmt.Errorf("已达账号上限（%d 个）", getMaxAccountsPerUser())
+	}
+	binding, err := bindAccount(userNumber, acc, "alive")
+	if err != nil {
+		return PortalAccountView{}, err
+	}
+	return toPortalView(ctx, *binding, a), nil
+}
+
 func PortalWxappGetCode(userNumber int, ref, appID string) (map[string]any, error) {
 	b, err := resolveBinding(userNumber, ref)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w，请从账号队列选择或先认领账号", err)
 	}
 	a, err := svc()
 	if err != nil {
@@ -229,7 +257,7 @@ func PortalWxappGetCode(userNumber int, ref, appID string) (map[string]any, erro
 func PortalWxappGetPhone(userNumber int, ref, appID string) (map[string]any, error) {
 	b, err := resolveBinding(userNumber, ref)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w，请从账号队列选择或先认领账号", err)
 	}
 	a, err := svc()
 	if err != nil {
@@ -242,7 +270,7 @@ func PortalWxappGetPhone(userNumber int, ref, appID string) (map[string]any, err
 func PortalWxappOperate(userNumber int, ref, appID string, payload map[string]any) (map[string]any, error) {
 	b, err := resolveBinding(userNumber, ref)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w，请从账号队列选择或先认领账号", err)
 	}
 	a, err := svc()
 	if err != nil {

@@ -149,6 +149,23 @@ func (c *PortalYybController) ResyncAccount() {
 	c.jsonOK(data, "同步完成")
 }
 
+// ClaimAccount 认领应用宝库中已有账号到当前门户用户
+func (c *PortalYybController) ClaimAccount() {
+	var req struct {
+		Ref string `json:"ref"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil || req.Ref == "" {
+		c.jsonErr(errEmptyRef)
+		return
+	}
+	data, err := yybportal.PortalClaimAccount(c.PortalUserID, req.Ref)
+	if err != nil {
+		c.jsonErr(err)
+		return
+	}
+	c.jsonOK(data, "认领成功")
+}
+
 // Avatar 头像
 func (c *PortalYybController) Avatar() {
 	ref := c.GetString("ref")

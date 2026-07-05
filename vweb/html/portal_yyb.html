@@ -1,472 +1,577 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>应用宝协议 · 用户中心</title>
-    <style>
-        :root {
-            --sidebar-bg: #0f172a;
-            --sidebar-hover: #1e293b;
-            --sidebar-active: #312e81;
-            --sidebar-text: #94a3b8;
-            --sidebar-text-active: #c7d2fe;
-            --sidebar-border: #334155;
-            --bg: #f1f5f9;
-            --card: #ffffff;
-            --text: #0f172a;
-            --muted: #64748b;
-            --line: #e2e8f0;
-            --primary: #4f46e5;
-            --primary-soft: rgba(79,70,229,0.1);
-            --success: #059669;
-            --danger: #dc2626;
-            --warn: #d97706;
-            --radius: 14px;
-            --shadow: 0 10px 30px rgba(15,23,42,0.06);
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-        }
-        .layout { display: flex; min-height: 100vh; }
-        .sidebar {
-            width: 240px; background: var(--sidebar-bg); color: #fff;
-            padding: 24px 16px; flex-shrink: 0; border-right: 1px solid var(--sidebar-border);
-        }
-        .brand { padding: 0 8px 20px; border-bottom: 1px solid var(--sidebar-border); margin-bottom: 16px; }
-        .brand h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.02em; }
-        .brand p { color: var(--sidebar-text); font-size: 12px; margin-top: 6px; line-height: 1.6; }
-        .nav-btn {
-            display: flex; align-items: center; gap: 10px; width: 100%;
-            padding: 11px 12px; border: none; border-radius: 10px; background: transparent;
-            color: var(--sidebar-text); font-size: 14px; cursor: pointer; text-align: left;
-            transition: all .15s ease; margin-bottom: 4px;
-        }
-        .nav-btn:hover { background: var(--sidebar-hover); color: #e2e8f0; }
-        .nav-btn.active { background: var(--sidebar-active); color: var(--sidebar-text-active); }
-        .main { flex: 1; min-width: 0; padding: 24px; }
-        .topbar {
-            display: flex; justify-content: space-between; align-items: flex-start;
-            gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
-        }
-        .topbar h2 { font-size: 22px; font-weight: 700; }
-        .topbar .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
-        .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-        .chip {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 6px 12px; border-radius: 999px; background: #fff;
-            border: 1px solid var(--line); font-size: 12px; color: var(--muted);
-        }
-        .chip strong { color: var(--text); }
-        .actions { display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn {
-            border: none; border-radius: 10px; padding: 10px 16px; font-size: 13px;
-            font-weight: 600; cursor: pointer; transition: all .15s ease;
-        }
-        .btn-primary { background: var(--primary); color: #fff; }
-        .btn-primary:hover { filter: brightness(1.05); }
-        .btn-secondary { background: #fff; color: var(--text); border: 1px solid var(--line); }
-        .btn-danger { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
-        .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
-        .card {
-            background: var(--card); border-radius: var(--radius); padding: 18px;
-            border: 1px solid rgba(15,23,42,0.04); box-shadow: var(--shadow);
-        }
-        .card h3 { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
-        .card .val { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
-        .card .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
-        .status-banner {
-            border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px;
-            display: flex; align-items: center; justify-content: space-between; gap: 12px;
-            border: 1px solid var(--line); background: #fff;
-        }
-        .status-banner.ok { border-color: #bbf7d0; background: #f0fdf4; }
-        .status-banner.warn { border-color: #fde68a; background: #fffbeb; }
-        .status-banner.err { border-color: #fecaca; background: #fef2f2; }
-        .section-title {
-            display: flex; align-items: center; justify-content: space-between;
-            margin: 8px 0 12px;
-        }
-        .section-title h3 { font-size: 16px; }
-        .account-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-        .account-card {
-            background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
-            padding: 16px; display: flex; flex-direction: column; gap: 12px;
-        }
-        .account-head { display: flex; gap: 12px; align-items: center; }
-        .avatar {
-            width: 48px; height: 48px; border-radius: 12px; object-fit: cover;
-            background: var(--primary-soft); border: 1px solid var(--line);
-        }
-        .account-name { font-weight: 700; font-size: 15px; }
-        .account-meta { font-size: 12px; color: var(--muted); margin-top: 2px; word-break: break-all; }
-        .badge {
-            display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
-        }
-        .badge.alive { background: #dcfce7; color: #166534; }
-        .badge.dead { background: #fee2e2; color: #991b1b; }
-        .badge.other { background: #e0e7ff; color: #3730a3; }
-        .account-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-        .panel { display: none; }
-        .panel.active { display: block; }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .form-item label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-        .form-item input, .form-item textarea {
-            width: 100%; padding: 10px 12px; border: 1px solid var(--line);
-            border-radius: 10px; font-size: 13px; outline: none;
-        }
-        .form-item input:focus, .form-item textarea:focus { border-color: var(--primary); }
-        .form-item.full { grid-column: 1 / -1; }
-        .result-box {
-            margin-top: 12px; padding: 12px; border-radius: 10px; background: #0f172a; color: #e2e8f0;
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
-            max-height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-all;
-        }
-        .empty {
-            text-align: center; padding: 40px 20px; color: var(--muted);
-            border: 1px dashed var(--line); border-radius: var(--radius); background: #fff;
-        }
-        .modal-mask {
-            position: fixed; inset: 0; background: rgba(15,23,42,0.55);
-            display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px;
-        }
-        .modal-mask.show { display: flex; }
-        .modal {
-            width: 100%; max-width: 420px; background: #fff; border-radius: 18px;
-            padding: 24px; box-shadow: var(--shadow);
-        }
-        .modal h3 { font-size: 18px; margin-bottom: 8px; }
-        .modal p { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
-        .qr-box {
-            display: flex; justify-content: center; align-items: center;
-            min-height: 220px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--line);
-            margin-bottom: 16px;
-        }
-        .qr-box img { width: 200px; height: 200px; object-fit: contain; }
-        .toast {
-            position: fixed; right: 20px; bottom: 20px; background: #0f172a; color: #fff;
-            padding: 12px 16px; border-radius: 10px; font-size: 13px; opacity: 0;
-            transform: translateY(8px); transition: all .2s ease; z-index: 200;
-        }
-        .toast.show { opacity: 1; transform: translateY(0); }
-        @media (max-width: 960px) {
-            .layout { flex-direction: column; }
-            .sidebar { width: 100%; }
-            .grid { grid-template-columns: 1fr; }
-            .form-grid { grid-template-columns: 1fr; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>应用宝协议 · XDD 门户</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: oklch(1 0 0);
+      --bg-soft: oklch(0.974 0.004 250);
+      --surface: oklch(0.986 0.004 250);
+      --surface-strong: oklch(0.948 0.009 250);
+      --ink: oklch(0.19 0.025 252);
+      --muted: oklch(0.43 0.025 252);
+      --faint: oklch(0.58 0.018 252);
+      --line: oklch(0.885 0.012 250);
+      --primary: oklch(0.54 0.205 3);
+      --primary-hover: oklch(0.48 0.195 3);
+      --accent: oklch(0.44 0.112 190);
+      --accent-soft: oklch(0.94 0.027 190);
+      --success: oklch(0.55 0.135 145);
+      --danger: oklch(0.55 0.18 25);
+      --danger-soft: oklch(0.955 0.032 25);
+      --code-bg: oklch(0.16 0.022 252);
+      --code-ink: oklch(0.96 0.006 250);
+      --radius: 8px;
+      --topbar-h: 68px;
+    }
+    * { box-sizing: border-box; }
+    html { height: 100%; }
+    body {
+      min-height: 100%; margin: 0; background: var(--bg-soft); color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      font-size: 14px; line-height: 1.45;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      min-height: var(--topbar-h); display: flex; align-items: center; justify-content: space-between;
+      gap: 18px; padding: 12px 28px; background: var(--bg); border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; z-index: 10; flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .mark {
+      width: 36px; height: 36px; border-radius: var(--radius); display: grid; place-items: center;
+      background: var(--ink); color: var(--bg); font-weight: 800;
+    }
+    .brand-title { margin: 0; font-size: 18px; font-weight: 760; line-height: 1.1; }
+    .brand-subtitle { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .top-actions, .panel-actions, .inline-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      min-height: 36px; border: 1px solid transparent; border-radius: var(--radius); padding: 8px 12px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      background: var(--bg); color: var(--ink); text-decoration: none;
+      transition: background 160ms ease, border-color 160ms ease;
+    }
+    .btn:hover { background: var(--surface-strong); }
+    .btn.primary { background: var(--primary); color: var(--bg); border-color: var(--primary); font-weight: 700; }
+    .btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn.secondary { border-color: var(--line); }
+    .btn.danger { color: var(--danger); border-color: var(--danger-soft); background: var(--danger-soft); }
+    .btn:disabled { cursor: not-allowed; opacity: 0.62; }
+    .status-pill {
+      min-height: 30px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px;
+      padding: 5px 10px; border: 1px solid var(--line); color: var(--muted); background: var(--surface);
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+    .status-pill.ok .status-dot, .account-status.alive .status-dot { background: var(--success); }
+    .status-pill.bad .status-dot { background: var(--danger); }
+    .shell { width: min(1440px, 100%); margin: 0 auto; padding: 22px 28px 32px; display: grid; gap: 18px; }
+    .overview { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: stretch; }
+    .summary {
+      background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 18px; display: grid; gap: 12px;
+    }
+    .summary h2 { margin: 0; font-size: 20px; font-weight: 760; }
+    .summary-copy { margin: 0; color: var(--muted); max-width: 72ch; }
+    .stat-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .stat-chip {
+      min-height: 32px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px;
+      border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+    }
+    .stat-chip strong { color: var(--ink); font-weight: 760; }
+    .quick-actions {
+      min-width: 260px; background: var(--ink); color: var(--bg); border-radius: var(--radius);
+      padding: 16px; display: grid; gap: 14px;
+    }
+    .quick-actions p { margin: 0; color: oklch(0.86 0.012 250); font-size: 13px; }
+    .quick-actions .btn { background: oklch(0.25 0.028 252); color: var(--bg); border-color: oklch(0.34 0.028 252); }
+    .quick-actions .btn:hover { background: oklch(0.31 0.032 252); }
+    .account-band, .panel {
+      background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+    }
+    .section-head {
+      min-height: 58px; display: flex; align-items: center; justify-content: space-between;
+      gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line);
+    }
+    .section-title { display: grid; gap: 2px; min-width: 0; }
+    .section-title h3 { margin: 0; font-size: 15px; font-weight: 760; }
+    .section-title p { margin: 0; color: var(--muted); font-size: 12px; }
+    .claim-row {
+      padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; flex-wrap: wrap;
+      background: var(--surface);
+    }
+    .claim-row .input { flex: 1; min-width: 200px; }
+    .account-strip {
+      padding: 12px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(238px, 280px);
+      gap: 10px; overflow-x: auto; min-height: 126px;
+    }
+    .account-card {
+      width: 100%; min-height: 100px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--surface); color: var(--ink); text-align: left;
+      display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 10px; align-items: start;
+    }
+    .account-card:hover { background: var(--bg); border-color: oklch(0.78 0.035 190); }
+    .account-card.selected { background: var(--accent-soft); border-color: var(--accent); }
+    .avatar {
+      width: 42px; height: 42px; border-radius: 50%; overflow: hidden;
+      background: var(--surface-strong); border: 1px solid var(--line);
+      display: grid; place-items: center; color: var(--muted); font-weight: 760;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .account-main { min-width: 0; display: grid; gap: 6px; }
+    .account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 760; }
+    .account-status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+    .account-meta { color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .empty-state {
+      min-height: 100px; display: grid; place-items: center; color: var(--muted);
+      border: 1px dashed var(--line); border-radius: var(--radius); background: var(--surface);
+      padding: 18px; text-align: center;
+    }
+    .work-grid {
+      display: grid; grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.15fr) minmax(260px, 0.65fr);
+      gap: 18px; align-items: start;
+    }
+    .panel-body { padding: 16px; display: grid; gap: 14px; }
+    .form-grid { display: grid; gap: 14px; }
+    .field { display: grid; gap: 7px; }
+    .field label { color: var(--muted); font-size: 12px; font-weight: 680; }
+    .input, .select, .textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--bg); color: var(--ink); padding: 10px 11px; outline: none;
+    }
+    .input:focus, .select:focus, .textarea:focus { border-color: var(--accent); background: var(--surface); }
+    .textarea {
+      min-height: 164px; resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55;
+    }
+    .selected-account {
+      min-height: 44px; border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--surface); padding: 10px 11px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted);
+    }
+    .selected-account strong { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .result-box {
+      min-height: 360px; max-height: 560px; margin: 0; overflow: auto; border-radius: var(--radius);
+      background: var(--code-bg); color: var(--code-ink); padding: 14px;
+      font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .result-box.error { color: oklch(0.86 0.075 25); }
+    .quick-list { display: grid; gap: 8px; }
+    .quick-link {
+      border: 1px solid var(--line); border-radius: var(--radius); padding: 11px;
+      background: var(--surface); color: var(--ink); text-decoration: none; display: grid; gap: 2px;
+    }
+    .quick-link:hover { background: var(--bg); border-color: oklch(0.78 0.035 190); }
+    .quick-link span { color: var(--muted); font-size: 12px; }
+    .log-line {
+      padding: 10px 11px; border-radius: var(--radius); background: var(--surface);
+      border: 1px solid var(--line); color: var(--muted); font-size: 12px;
+    }
+    .hidden { display: none !important; }
+    .modal-mask {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.5); display: none;
+      align-items: center; justify-content: center; z-index: 100; padding: 20px;
+    }
+    .modal-mask.show { display: flex; }
+    .modal {
+      width: min(420px, 100%); background: var(--bg); border-radius: 12px;
+      padding: 22px; border: 1px solid var(--line);
+    }
+    .modal h3 { margin: 0 0 8px; font-size: 18px; }
+    .modal p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+    .qr-box {
+      min-height: 220px; display: grid; place-items: center; background: var(--surface);
+      border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 14px;
+    }
+    .qr-box img { width: 200px; height: 200px; object-fit: contain; }
+    @media (max-width: 1120px) { .overview, .work-grid { grid-template-columns: 1fr; } .quick-actions { min-width: 0; } }
+    @media (max-width: 760px) {
+      .topbar { flex-direction: column; align-items: flex-start; padding: 14px 16px; }
+      .shell { padding: 16px; }
+      .account-strip { grid-auto-columns: minmax(222px, 86vw); }
+    }
+  </style>
 </head>
 <body>
-<div class="layout">
-    <aside class="sidebar">
-        <div class="brand">
-            <h1>应用宝协议</h1>
-            <p>WMPF 小程序通道 · 扫码绑定 · 云函数调试</p>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">Y</div>
+      <div>
+        <h1 class="brand-title">应用宝协议控制台</h1>
+        <div class="brand-subtitle">WMPF 小程序通道 · XDD 用户门户</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="status-pill" id="healthPill"><span class="status-dot"></span><span>检测中</span></span>
+      <a class="btn secondary" href="/portal">返回用户中心</a>
+      <button class="btn primary" id="scanBtn" type="button">扫码添加</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="overview">
+      <div class="summary">
+        <h2>选择账号，执行小程序调用</h2>
+        <p class="summary-copy">界面与独立 YYB 控制台一致：先选账号队列中的绑定账号，再配置能力并查看返回结果。调试前请确保账号已通过扫码或认领绑定到您的门户。</p>
+        <div class="stat-row">
+          <span class="stat-chip">积分 <strong id="coinVal">-</strong></span>
+          <span class="stat-chip">扫码消耗 <strong id="scanCostVal">-</strong></span>
+          <span class="stat-chip">账号 <strong id="accountCount">0</strong></span>
+          <span class="stat-chip">当前 <strong id="currentAccountText">未选择</strong></span>
         </div>
-        <button class="nav-btn active" data-panel="accounts" onclick="switchPanel('accounts')">📱 我的账号</button>
-        <button class="nav-btn" data-panel="wxapp" onclick="switchPanel('wxapp')">🧪 小程序调试</button>
-        <button class="nav-btn" onclick="location.href='/portal'">↩ 返回用户中心</button>
-    </aside>
-    <main class="main">
-        <div class="topbar">
-            <div>
-                <h2 id="pageTitle">我的应用宝账号</h2>
-                <div class="sub">通过应用宝 WMPF 通道管理微信小程序协议账号，与 wechat08 iPad 协议相互独立</div>
-                <div class="chips">
-                    <span class="chip">积分 <strong id="chipCoin">-</strong></span>
-                    <span class="chip">扫码消耗 <strong id="chipCost">-</strong></span>
-                    <span class="chip">账号上限 <strong id="chipMax">-</strong></span>
-                </div>
-            </div>
-            <div class="actions">
-                <button class="btn btn-secondary" onclick="loadStatus()">刷新</button>
-                <button class="btn btn-primary" id="btnScan" onclick="startScan()">扫码添加账号</button>
-                <button class="btn btn-danger" onclick="logout()">退出</button>
-            </div>
+      </div>
+      <aside class="quick-actions">
+        <p>对当前选中账号执行维护操作。</p>
+        <div class="inline-actions">
+          <button class="btn" id="refreshBtn" type="button">刷新存活</button>
+          <button class="btn" id="resyncBtn" type="button">同步资料</button>
+          <button class="btn danger" id="deleteBtn" type="button">删除账号</button>
         </div>
+      </aside>
+    </section>
 
-        <div id="statusBanner" class="status-banner warn">正在检测模块状态…</div>
+    <section class="account-band">
+      <div class="section-head">
+        <div class="section-title">
+          <h3>账号队列</h3>
+          <p>仅显示已绑定到您门户的账号；点击选中后用于下方调用</p>
+        </div>
+        <div class="panel-actions">
+          <button class="btn secondary" id="reloadBtn" type="button">重新加载</button>
+        </div>
+      </div>
+      <div class="claim-row">
+        <input class="input" id="claimInput" placeholder="已有 openid？粘贴后认领（管理员扫码入库的账号）" autocomplete="off" spellcheck="false">
+        <button class="btn secondary" id="claimBtn" type="button">认领账号</button>
+      </div>
+      <div class="account-strip" id="accountStrip"><div class="empty-state">账号加载中</div></div>
+    </section>
 
-        <section class="panel active" id="panel-accounts">
-            <div class="grid">
-                <div class="card"><h3>已绑定账号</h3><div class="val" id="statCount">0</div><div class="hint">当前门户用户绑定数</div></div>
-                <div class="card"><h3>模块状态</h3><div class="val" id="statReady" style="font-size:20px;">-</div><div class="hint" id="statReadyHint">服务就绪后可扫码</div></div>
-                <div class="card"><h3>协议类型</h3><div class="val" style="font-size:20px;">WMPF</div><div class="hint">应用宝小程序框架通道</div></div>
+    <section class="work-grid">
+      <section class="panel">
+        <div class="section-head">
+          <div class="section-title"><h3>调用配置</h3><p>选择能力与 AppID</p></div>
+        </div>
+        <div class="panel-body">
+          <div class="selected-account"><span>当前账号</span><strong id="selectedAccountName">未选择</strong></div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="featureSel">能力</label>
+              <select class="select" id="featureSel">
+                <option value="getCode">getCode</option>
+                <option value="getPhoneNumber">getPhoneNumber</option>
+                <option value="operateWxData">operateWxData</option>
+              </select>
             </div>
-            <div class="section-title"><h3>账号列表</h3></div>
-            <div class="account-grid" id="accountList"></div>
-        </section>
-
-        <section class="panel" id="panel-wxapp">
-            <div class="card">
-                <div class="section-title"><h3>小程序 API 调试</h3></div>
-                <div class="form-grid">
-                    <div class="form-item">
-                        <label>账号 ref（openid 或绑定 ID）</label>
-                        <input id="wxRef" placeholder="选择账号后自动填入，或手动输入">
-                    </div>
-                    <div class="form-item">
-                        <label>AppID</label>
-                        <input id="wxAppId" placeholder="wx...">
-                    </div>
-                    <div class="form-item full">
-                        <label>operateWxData Payload（JSON，可选）</label>
-                        <textarea id="wxPayload" rows="4" placeholder='{"api_name":"...","data":{}}'></textarea>
-                    </div>
-                </div>
-                <div class="actions" style="margin-top:14px;">
-                    <button class="btn btn-primary btn-sm" onclick="wxappCall('getCode')">getCode</button>
-                    <button class="btn btn-secondary btn-sm" onclick="wxappCall('getPhoneNumber')">getPhoneNumber</button>
-                    <button class="btn btn-secondary btn-sm" onclick="wxappCall('operateWxData')">operateWxData</button>
-                </div>
-                <div class="result-box" id="wxResult">等待调用…</div>
+            <div class="field">
+              <label for="appidInput">AppID</label>
+              <input class="input" id="appidInput" value="wx91d27dbf599dff74" autocomplete="off" spellcheck="false">
             </div>
-        </section>
-    </main>
+            <div class="field hidden" id="payloadGroup">
+              <label for="payloadInput">请求 JSON</label>
+              <textarea class="textarea" id="payloadInput" spellcheck="false">{"api_name":"getUserInfo","data":{},"env":1}</textarea>
+            </div>
+          </div>
+          <div class="inline-actions">
+            <button class="btn primary" id="callBtn" type="button">执行调用</button>
+            <button class="btn secondary" id="clearBtn" type="button">清空结果</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div class="section-title"><h3>返回结果</h3><p id="resultMeta">等待调用</p></div>
+          <button class="btn secondary" id="copyBtn" type="button">复制</button>
+        </div>
+        <div class="panel-body">
+          <pre class="result-box" id="resultBox">选择账号并执行调用后，返回内容会显示在这里。</pre>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="section-head">
+          <div class="section-title"><h3>说明</h3><p>门户与脚本接口</p></div>
+        </div>
+        <div class="panel-body">
+          <div class="quick-list">
+            <div class="quick-link">门户 API<span>/api/portal/yyb/*</span></div>
+            <div class="quick-link">脚本 API<span>/api/yyb/* + api_token</span></div>
+            <div class="quick-link">与 wechat08 独立<span>iPad 协议与 WMPF 通道互不影响</span></div>
+          </div>
+          <div class="log-line" id="activityLine">尚未执行操作</div>
+        </div>
+      </aside>
+    </section>
+  </main>
 </div>
 
 <div class="modal-mask" id="qrModal">
-    <div class="modal">
-        <h3>微信扫码登录</h3>
-        <p id="qrHint">请使用微信扫描二维码，并在手机上确认登录</p>
-        <div class="qr-box" id="qrBox">生成中…</div>
-        <div class="actions" style="justify-content:flex-end;">
-            <button class="btn btn-secondary" onclick="closeQrModal()">关闭</button>
-        </div>
+  <div class="modal">
+    <h3>微信扫码登录</h3>
+    <p id="qrHint">请使用微信扫描二维码，并在手机上确认登录</p>
+    <div class="qr-box" id="qrBox">生成中…</div>
+    <div class="inline-actions" style="justify-content:flex-end;">
+      <button class="btn secondary" id="qrCloseBtn" type="button">关闭</button>
     </div>
+  </div>
 </div>
-<div class="toast" id="toast"></div>
 
 <script>
 const API = '/api/portal/yyb';
-let scanTimer = null;
-let scanSessionId = '';
+const state = { accounts: [], selectedOpenID: '', lastResult: '', scanSessionId: '', scanTimer: null };
+const $ = id => document.getElementById(id);
 
-function toast(msg) {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 2600);
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 async function request(path, options = {}) {
-    const res = await fetch(API + path, {
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'X-Request-Source': 'web', ...(options.headers || {}) },
-        ...options,
-    });
-    if (res.redirected && res.url.includes('/portal/login')) {
-        location.href = '/portal/login';
-        throw new Error('未登录');
-    }
-    const data = await res.json();
-    if (data.code !== 0) throw new Error(data.msg || '请求失败');
-    return data.data;
+  const res = await fetch(API + path, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-Request-Source': 'web', ...(options.headers || {}) },
+    ...options,
+  });
+  if (res.redirected && res.url.includes('/portal/login')) {
+    location.href = '/portal/login';
+    throw new Error('未登录');
+  }
+  const data = await res.json();
+  if (data.code !== 0) throw new Error(data.msg || '请求失败');
+  return data.data;
 }
 
-function switchPanel(name) {
-    document.querySelectorAll('.nav-btn[data-panel]').forEach(b => b.classList.toggle('active', b.dataset.panel === name));
-    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
-    document.getElementById('pageTitle').textContent = name === 'wxapp' ? '小程序调试台' : '我的应用宝账号';
+function accountName(a) { return a.nickname || a.openid || '未命名'; }
+function statusText(s) {
+  if (s === 'alive' || s === 'online') return '可用';
+  if (s === 'dead' || s === 'offline') return '需重扫';
+  return s || '待确认';
+}
+function formatChecked(ts) {
+  if (!ts) return '未检测';
+  const d = new Date(ts * 1000);
+  const p = n => String(n).padStart(2,'0');
+  return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function setActivity(msg) { $('activityLine').textContent = msg; }
+function setResult(val, meta, err) {
+  const text = typeof val === 'string' ? val : JSON.stringify(val, null, 2);
+  state.lastResult = text;
+  $('resultBox').textContent = text;
+  $('resultBox').classList.toggle('error', !!err);
+  $('resultMeta').textContent = meta || '已更新';
+}
+function selectedAccount() { return state.accounts.find(a => a.openid === state.selectedOpenID); }
+function syncSelected() {
+  const a = selectedAccount();
+  const label = a ? accountName(a) : '未选择';
+  $('selectedAccountName').textContent = label;
+  $('currentAccountText').textContent = label;
+  document.querySelectorAll('.account-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.openid === state.selectedOpenID);
+  });
+}
+function qrImgSrc(b64) {
+  if (!b64) return '';
+  if (String(b64).startsWith('data:')) return b64;
+  return 'data:image/png;base64,' + b64;
 }
 
-function statusClass(st) {
-    const s = (st.status || '').toLowerCase();
-    if (s === 'alive' || s === 'online') return 'alive';
-    if (s === 'dead' || s === 'offline') return 'dead';
-    return 'other';
-}
-
-function renderAccounts(accounts) {
-    const box = document.getElementById('accountList');
-    document.getElementById('statCount').textContent = accounts.length;
-    if (!accounts.length) {
-        box.innerHTML = '<div class="empty" style="grid-column:1/-1;">暂无绑定账号，点击右上角「扫码添加账号」开始</div>';
-        return;
-    }
-    box.innerHTML = accounts.map(a => `
-        <div class="account-card">
-            <div class="account-head">
-                <img class="avatar" src="${a.avatarUrl || ''}" alt="" onerror="this.style.display='none'">
-                <div>
-                    <div class="account-name">${escapeHtml(a.nickname || '未命名')}</div>
-                    <div class="account-meta">${escapeHtml(a.openid || '')}</div>
-                </div>
-            </div>
-            <div><span class="badge ${statusClass(a)}">${escapeHtml(a.status || 'unknown')}</span></div>
-            <div class="account-actions">
-                <button class="btn btn-secondary btn-sm" onclick="pickRef('${a.openid}')">选为调试</button>
-                <button class="btn btn-secondary btn-sm" onclick="refreshAcc('${a.openid}')">刷新</button>
-                <button class="btn btn-secondary btn-sm" onclick="resyncAcc('${a.openid}')">同步</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteAcc('${a.openid}')">删除</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function updateBanner(st) {
-    const el = document.getElementById('statusBanner');
-    if (!st.enabled) {
-        el.className = 'status-banner err';
-        el.innerHTML = '<div><strong>模块未启用</strong><div style="font-size:12px;margin-top:4px;">请在 config.yaml 中设置 yyb.enabled: true</div></div>';
-        document.getElementById('btnScan').disabled = true;
-        return;
-    }
-    if (!st.ready) {
-        el.className = 'status-banner warn';
-        el.innerHTML = `<div><strong>服务暂不可用</strong><div style="font-size:12px;margin-top:4px;">${escapeHtml(st.message || st.error || '应用宝进程未就绪，不影响其他 xdd 功能')}</div></div>`;
-        document.getElementById('btnScan').disabled = true;
-        return;
-    }
-    el.className = 'status-banner ok';
-    el.innerHTML = '<div><strong>服务正常</strong><div style="font-size:12px;margin-top:4px;">可扫码绑定账号，调用小程序 API</div></div>';
-    document.getElementById('btnScan').disabled = false;
+function renderAccounts() {
+  const strip = $('accountStrip');
+  $('accountCount').textContent = String(state.accounts.length);
+  if (!state.accounts.length) {
+    strip.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">暂无绑定账号。点击「扫码添加」或认领已有 openid。</div>';
+    state.selectedOpenID = '';
+    syncSelected();
+    return;
+  }
+  if (!state.accounts.some(a => a.openid === state.selectedOpenID)) {
+    state.selectedOpenID = state.accounts[0].openid;
+  }
+  strip.innerHTML = '';
+  for (const acc of state.accounts) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'account-card';
+    btn.dataset.openid = acc.openid;
+    const name = accountName(acc);
+    const alive = (acc.status === 'alive' || acc.status === 'online');
+    btn.innerHTML = `
+      <span class="avatar">
+        <img alt="" src="${esc(acc.avatarUrl || ('/api/portal/yyb/avatar?ref=' + encodeURIComponent(acc.openid)))}">
+        <span class="hidden">${esc(name.slice(0,1).toUpperCase())}</span>
+      </span>
+      <span class="account-main">
+        <span class="account-name">${esc(name)}</span>
+        <span class="account-status ${alive ? 'alive' : ''}"><span class="status-dot"></span>${esc(statusText(acc.status))}</span>
+        <span class="account-meta">openid: ${esc(acc.openid)}</span>
+      </span>`;
+    const img = btn.querySelector('img');
+    img.onerror = () => { img.style.display = 'none'; };
+    btn.onclick = () => { state.selectedOpenID = acc.openid; syncSelected(); setActivity('已选择：' + name); };
+    strip.appendChild(btn);
+  }
+  syncSelected();
 }
 
 async function loadStatus() {
-    try {
-        const st = await request('/status');
-        document.getElementById('chipCoin').textContent = st.coin ?? '-';
-        document.getElementById('chipCost').textContent = st.scanLoginCost ?? '-';
-        document.getElementById('chipMax').textContent = st.maxAccounts ?? '-';
-        document.getElementById('statReady').textContent = st.ready ? '就绪' : '不可用';
-        document.getElementById('statReadyHint').textContent = st.ready ? '可以扫码绑定' : (st.message || '请稍后再试');
-        updateBanner(st);
-        renderAccounts(st.accounts || []);
-    } catch (e) {
-        toast(e.message);
-    }
+  const st = await request('/status');
+  $('coinVal').textContent = st.coin ?? '-';
+  $('scanCostVal').textContent = st.scanLoginCost ?? '-';
+  const pill = $('healthPill');
+  if (!st.enabled || !st.ready) {
+    pill.classList.add('bad'); pill.classList.remove('ok');
+    pill.querySelector('span:last-child').textContent = st.message || '服务不可用';
+    $('scanBtn').disabled = true;
+  } else {
+    pill.classList.add('ok'); pill.classList.remove('bad');
+    pill.querySelector('span:last-child').textContent = '服务正常';
+    $('scanBtn').disabled = false;
+  }
+  state.accounts = st.accounts || [];
+  renderAccounts();
 }
 
-function closeQrModal() {
-    document.getElementById('qrModal').classList.remove('show');
-    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+function togglePayload() {
+  const v = $('featureSel').value.toLowerCase();
+  $('payloadGroup').classList.toggle('hidden', v !== 'operatewxdata');
 }
 
-function qrImgSrc(b64) {
-    if (!b64) return '';
-    if (String(b64).startsWith('data:')) return b64;
-    return 'data:image/png;base64,' + b64;
+async function callFeature() {
+  const acc = selectedAccount();
+  if (!acc) { setResult('请先从账号队列选择一个已绑定账号。', '缺少账号', true); return; }
+  const feature = $('featureSel').value;
+  const appId = $('appidInput').value.trim();
+  if (!appId) { setResult('请输入 AppID。', '缺少 AppID', true); return; }
+  const body = { ref: acc.openid, appId };
+  let path = '/wxapp/getCode';
+  if (feature === 'getPhoneNumber') path = '/wxapp/getPhoneNumber';
+  if (feature === 'operateWxData') {
+    path = '/wxapp/operateWxData';
+    try { body.payload = JSON.parse($('payloadInput').value || '{}'); }
+    catch { setResult('JSON 格式错误', '解析失败', true); return; }
+  }
+  $('callBtn').disabled = true;
+  setResult('调用中…', '请求进行中', false);
+  setActivity(`调用 ${feature}：${accountName(acc)}`);
+  try {
+    const result = await request(path, { method: 'POST', body: JSON.stringify(body) });
+    setResult(result, '调用完成', false);
+    await loadStatus();
+  } catch (e) {
+    setResult(e.message, '调用失败', true);
+  } finally {
+    $('callBtn').disabled = false;
+  }
 }
 
-async function startScan() {
-    try {
-        const data = await request('/qr', { method: 'POST' });
-        scanSessionId = data.sessionId;
-        const box = document.getElementById('qrBox');
-        const src = qrImgSrc(data.imageBase64);
-        if (src) {
-            box.innerHTML = `<img src="${src}" alt="微信扫码二维码">`;
-        } else {
-            box.textContent = '二维码加载失败';
-        }
-        document.getElementById('qrHint').textContent = `本次扫码将消耗 ${data.scanLoginCost} 积分`;
-        document.getElementById('qrModal').classList.add('show');
-        if (scanTimer) clearInterval(scanTimer);
-        scanTimer = setInterval(pollScan, 2000);
-        pollScan();
-    } catch (e) {
-        toast(e.message);
-    }
+async function claimAccount() {
+  const ref = $('claimInput').value.trim();
+  if (!ref) { setActivity('请输入要认领的 openid'); return; }
+  try {
+    await request('/accounts/claim', { method: 'POST', body: JSON.stringify({ ref }) });
+    $('claimInput').value = '';
+    setActivity('认领成功');
+    await loadStatus();
+  } catch (e) {
+    setResult(e.message, '认领失败', true);
+  }
+}
+
+async function refreshSelected() {
+  const acc = selectedAccount();
+  if (!acc) { setActivity('请先选择账号'); return; }
+  try {
+    const r = await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) });
+    setResult(r, '刷新完成', false);
+    await loadStatus();
+  } catch (e) { setResult(e.message, '刷新失败', true); }
+}
+
+async function resyncSelected() {
+  const acc = selectedAccount();
+  if (!acc) { setActivity('请先选择账号'); return; }
+  try {
+    const r = await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) });
+    setResult(r, '同步完成', false);
+    await loadStatus();
+  } catch (e) { setResult(e.message, '同步失败', true); }
+}
+
+async function deleteSelected() {
+  const acc = selectedAccount();
+  if (!acc || !confirm('确定删除该账号？')) return;
+  try {
+    await request('/accounts/delete', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) });
+    setActivity('已删除');
+    await loadStatus();
+  } catch (e) { setResult(e.message, '删除失败', true); }
+}
+
+function closeQr() {
+  $('qrModal').classList.remove('show');
+  if (state.scanTimer) { clearInterval(state.scanTimer); state.scanTimer = null; }
 }
 
 async function pollScan() {
-    if (!scanSessionId) return;
-    try {
-        const data = await request('/qr/' + encodeURIComponent(scanSessionId) + '/poll');
-        const status = (data.status || '').toLowerCase();
-        const hint = document.getElementById('qrHint');
-        if (status === 'scanned') {
-            hint.textContent = '已扫码，请在手机上点击「确认登录」';
-            return;
-        }
-        if (status === 'authorized' || status === 'confirmed') {
-            if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
-            await request('/qr/' + encodeURIComponent(scanSessionId) + '/confirm', { method: 'POST' });
-            closeQrModal();
-            toast('绑定成功');
-            loadStatus();
-            return;
-        }
-        if (status === 'expired' || status === 'cancelled' || status === 'unknown') {
-            if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
-            const msg = status === 'expired' ? '二维码已过期，请重新生成' : (status === 'cancelled' ? '已取消扫码' : '扫码异常，请重试');
-            hint.textContent = msg;
-            toast(msg);
-        }
-    } catch (e) {
-        if (!String(e.message).includes('会话')) toast(e.message);
+  if (!state.scanSessionId) return;
+  try {
+    const data = await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/poll');
+    const status = (data.status || '').toLowerCase();
+    if (status === 'scanned') {
+      $('qrHint').textContent = '已扫码，请在手机上点击「确认登录」';
+      return;
     }
-}
-
-async function deleteAcc(ref) {
-    if (!confirm('确定删除该账号？')) return;
-    try {
-        await request('/accounts/delete', { method: 'POST', body: JSON.stringify({ ref }) });
-        toast('已删除');
-        loadStatus();
-    } catch (e) { toast(e.message); }
-}
-
-async function refreshAcc(ref) {
-    try {
-        const data = await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref }) });
-        document.getElementById('wxResult').textContent = JSON.stringify(data, null, 2);
-        toast('刷新完成');
-        loadStatus();
-    } catch (e) { toast(e.message); }
-}
-
-async function resyncAcc(ref) {
-    try {
-        await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref }) });
-        toast('同步完成');
-        loadStatus();
-    } catch (e) { toast(e.message); }
-}
-
-function pickRef(ref) {
-    document.getElementById('wxRef').value = ref;
-    switchPanel('wxapp');
-    toast('已填入调试账号');
-}
-
-async function wxappCall(kind) {
-    const ref = document.getElementById('wxRef').value.trim();
-    const appId = document.getElementById('wxAppId').value.trim();
-    if (!ref || !appId) { toast('请填写 ref 和 AppID'); return; }
-    const body = { ref, appId };
-    let path = '/wxapp/getCode';
-    if (kind === 'getPhoneNumber') path = '/wxapp/getPhoneNumber';
-    if (kind === 'operateWxData') {
-        path = '/wxapp/operateWxData';
-        try {
-            body.payload = JSON.parse(document.getElementById('wxPayload').value || '{}');
-        } catch (e) {
-            toast('Payload JSON 格式错误');
-            return;
-        }
+    if (status === 'authorized' || status === 'confirmed') {
+      clearInterval(state.scanTimer); state.scanTimer = null;
+      await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/confirm', { method: 'POST' });
+      closeQr();
+      setActivity('扫码绑定成功');
+      await loadStatus();
     }
-    try {
-        const data = await request(path, { method: 'POST', body: JSON.stringify(body) });
-        document.getElementById('wxResult').textContent = JSON.stringify(data, null, 2);
-    } catch (e) {
-        document.getElementById('wxResult').textContent = e.message;
+    if (['expired','cancelled','unknown'].includes(status)) {
+      clearInterval(state.scanTimer); state.scanTimer = null;
+      $('qrHint').textContent = '二维码已失效，请重新生成';
     }
+  } catch (_) {}
 }
 
-function logout() { location.href = '/portal/login'; }
+async function startScan() {
+  try {
+    const data = await request('/qr', { method: 'POST' });
+    state.scanSessionId = data.sessionId;
+    const src = qrImgSrc(data.imageBase64);
+    $('qrBox').innerHTML = src ? `<img src="${src}" alt="二维码">` : '加载失败';
+    $('qrHint').textContent = `本次扫码消耗 ${data.scanLoginCost} 积分`;
+    $('qrModal').classList.add('show');
+    if (state.scanTimer) clearInterval(state.scanTimer);
+    state.scanTimer = setInterval(pollScan, 2000);
+    pollScan();
+  } catch (e) { setResult(e.message, '扫码失败', true); }
+}
 
+$('featureSel').onchange = togglePayload;
+$('callBtn').onclick = callFeature;
+$('clearBtn').onclick = () => setResult('结果已清空', '等待调用', false);
+$('copyBtn').onclick = async () => {
+  try { await navigator.clipboard.writeText(state.lastResult || $('resultBox').textContent); setActivity('已复制'); }
+  catch { setActivity('复制失败'); }
+};
+$('reloadBtn').onclick = loadStatus;
+$('refreshBtn').onclick = refreshSelected;
+$('resyncBtn').onclick = resyncSelected;
+$('deleteBtn').onclick = deleteSelected;
+$('claimBtn').onclick = claimAccount;
+$('scanBtn').onclick = startScan;
+$('qrCloseBtn').onclick = closeQr;
+togglePayload();
 loadStatus();
 </script>
 </body>

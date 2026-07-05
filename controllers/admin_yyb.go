@@ -52,7 +52,7 @@ func (c *AdminYybController) Config() {
 	c.jsonOK(yybportal.AdminConfigView(), "查询成功")
 }
 
-// Accounts 全站账号
+// Accounts 全站门户绑定
 func (c *AdminYybController) Accounts() {
 	data, err := yybportal.AdminListAccounts()
 	if err != nil {
@@ -60,6 +60,30 @@ func (c *AdminYybController) Accounts() {
 		return
 	}
 	c.jsonOK(data, "查询成功")
+}
+
+// ProtocolAccounts 协议库全部账号
+func (c *AdminYybController) ProtocolAccounts() {
+	data, err := yybportal.AdminListProtocolAccounts()
+	if err != nil {
+		c.jsonErr(err)
+		return
+	}
+	c.jsonOK(data, "查询成功")
+}
+
+// Avatar 头像
+func (c *AdminYybController) Avatar() {
+	ref := c.GetString("ref")
+	if ref == "" {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Ctx.WriteString("ref required")
+		return
+	}
+	if err := yybportal.AdminServeAvatar(c.Ctx.ResponseWriter, c.Ctx.Request, ref); err != nil {
+		c.Ctx.Output.SetStatus(http.StatusNotFound)
+		c.Ctx.WriteString(err.Error())
+	}
 }
 
 // DeleteAccount 删除
