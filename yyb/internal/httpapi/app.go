@@ -16,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
+	"gorm.io/gorm"
 
 	"github.com/cdle/xdd/yyb/internal/protocol"
 	"github.com/cdle/xdd/yyb/internal/qr"
@@ -25,6 +26,7 @@ import (
 type Config struct {
 	ResourceRoot   string
 	DBFilename     string
+	GormDB         *gorm.DB
 	TCPProxy       string
 	SessionTTL     time.Duration
 	RequestTimeout time.Duration
@@ -74,11 +76,16 @@ func NewApp(cfg Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	dbPath, err := prepareDBPath(res.DB, cfg.DBFilename)
-	if err != nil {
-		return nil, err
+	var db *store.DB
+	if cfg.GormDB != nil {
+		db, err = store.OpenGORM(cfg.GormDB)
+	} else {
+		dbPath, err := prepareDBPath(res.DB, cfg.DBFilename)
+		if err != nil {
+			return nil, err
+		}
+		db, err = store.Open(dbPath)
 	}
-	db, err := store.Open(dbPath)
 	if err != nil {
 		return nil, err
 	}

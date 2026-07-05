@@ -417,20 +417,30 @@ async function pollScan() {
         const data = await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/poll');
         const status = (data.status || '').toLowerCase();
         if (status === 'scanned') {
-            $('qrHint').textContent = '已扫码，请在手机上确认登录';
+            $('qrHint').textContent = '已扫码，请在手机上点击「确认登录」';
             return;
         }
         if (status === 'authorized' || status === 'confirmed') {
-            clearInterval(state.scanTimer); state.scanTimer = null;
+            clearInterval(state.scanTimer);
+            state.scanTimer = null;
+            $('qrHint').textContent = '正在完成绑定…';
             await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/confirm', { method: 'POST' });
             closeQr();
+            setResult('扫码登录成功，账号已绑定。', false);
             await loadStatus();
+            return;
         }
-        if (['expired','cancelled','unknown'].includes(status)) {
-            clearInterval(state.scanTimer); state.scanTimer = null;
-            $('qrHint').textContent = '二维码已失效，请重新生成';
+        if (['expired', 'cancelled', 'unknown'].includes(status)) {
+            clearInterval(state.scanTimer);
+            state.scanTimer = null;
+            $('qrHint').textContent = status === 'expired' ? '二维码已过期，请重新生成' : '扫码已取消';
         }
-    } catch (_) {}
+    } catch (e) {
+        clearInterval(state.scanTimer);
+        state.scanTimer = null;
+        $('qrHint').textContent = e.message || '登录失败';
+        setResult(e.message || '扫码确认失败', true);
+    }
 }
 
 async function startScan() {

@@ -1,12 +1,17 @@
 package yyb
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // Config 应用宝模块配置
 type Config struct {
 	Enabled            bool
 	ResourceRoot       string
 	DBFilename         string
+	GormDB             *gorm.DB
 	TCPProxy           string
 	SessionTTL         time.Duration
 	RequestTimeout     time.Duration

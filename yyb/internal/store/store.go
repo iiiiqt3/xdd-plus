@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"time"
 
+	"gorm.io/gorm"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -61,6 +63,7 @@ var defaultFeatures = []Feature{
 
 type DB struct {
 	sql *sql.DB
+	orm *gorm.DB
 }
 
 type WechatAccount struct {
@@ -150,13 +153,22 @@ func Open(path string) (*DB, error) {
 }
 
 func (db *DB) Close() error {
-	if db == nil || db.sql == nil {
+	if db == nil {
+		return nil
+	}
+	if db.orm != nil {
+		return nil
+	}
+	if db.sql == nil {
 		return nil
 	}
 	return db.sql.Close()
 }
 
 func (db *DB) EnsureDefaultFeatures(ctx context.Context) error {
+	if db.useGORM() {
+		return db.gormEnsureDefaultFeatures(ctx)
+	}
 	for _, f := range defaultFeatures {
 		desc := nullableString(f.Description)
 		if _, err := db.sql.ExecContext(ctx,
@@ -206,6 +218,9 @@ func sqliteTableExists(ctx context.Context, db *sql.DB, name string) (bool, erro
 }
 
 func (db *DB) UpsertAccount(ctx context.Context, openid, loginBuffer string, alias, nickname, avatar *string, userInfo map[string]any, credentials map[string]any, status *string) (*WechatAccount, error) {
+	if db.useGORM() {
+		return db.gormUpsertAccount(ctx, openid, loginBuffer, alias, nickname, avatar, userInfo, credentials, status)
+	}
 	now := time.Now().Unix()
 	userJSON, err := marshalNullable(userInfo)
 	if err != nil {
@@ -233,20 +248,41 @@ func (db *DB) UpsertAccount(ctx context.Context, openid, loginBuffer string, ali
 }
 
 func (db *DB) GetAccount(ctx context.Context, id int64) (*WechatAccount, error) {
+	if db.useGORM() {
+		return db.gormGetAccount(ctx, id)
+	}
 	return db.scanAccount(db.sql.QueryRowContext(ctx, selectAccountSQL+" WHERE id=?", id))
 }
 
 func (db *DB) GetAccountByOpenID(ctx context.Context, openid string) (*WechatAccount, error) {
+	if db.useGORM() {
+		return db.gormGetAccountByOpenID(ctx, openid)
+	}
 	return db.scanAccount(db.sql.QueryRowContext(ctx, selectAccountSQL+" WHERE openid=?", openid))
 }
 
 func (db *DB) GetAccountByUIN(ctx context.Context, uin int64) (*WechatAccount, error) {
+	if db.useGORM() {
+		return db.gormGetAccountByUIN(ctx, uin)
+	}
 	return db.scanAccount(db.sql.QueryRowContext(ctx, selectAccountSQL+" WHERE uin=?", uin))
 }
 
 func (db *DB) ResolveAccount(ctx context.Context, ref string) (*WechatAccount, error) {
 	if ref == "" {
 		return nil, sql.ErrNoRows
+	}
+	if db.useGORM() {
+		if isDigits(ref) {
+			n, _ := strconv.ParseInt(ref, 10, 64)
+			if acc, err := db.gormGetAccountByUIN(ctx, n); err == nil {
+				return acc, nil
+			} else if !errors.Is(err, sql.ErrNoRows) {
+				return nil, err
+			}
+			return db.gormGetAccount(ctx, n)
+		}
+		return db.gormGetAccountByOpenID(ctx, ref)
 	}
 	if isDigits(ref) {
 		n, _ := strconv.ParseInt(ref, 10, 64)
@@ -261,6 +297,9 @@ func (db *DB) ResolveAccount(ctx context.Context, ref string) (*WechatAccount, e
 }
 
 func (db *DB) ListAccounts(ctx context.Context) ([]*WechatAccount, error) {
+	if db.useGORM() {
+		return db.gormListAccounts(ctx)
+	}
 	rows, err := db.sql.QueryContext(ctx, selectAccountSQL+" ORDER BY id")
 	if err != nil {
 		return nil, err
@@ -278,11 +317,17 @@ func (db *DB) ListAccounts(ctx context.Context) ([]*WechatAccount, error) {
 }
 
 func (db *DB) SetAccountUIN(ctx context.Context, id, uin int64) error {
+	if db.useGORM() {
+		return db.gormSetAccountUIN(ctx, id, uin)
+	}
 	_, err := db.sql.ExecContext(ctx, "UPDATE wechat_accounts SET uin=?, updated_at=? WHERE id=?", uin, time.Now().Unix(), id)
 	return err
 }
 
 func (db *DB) SetAccountProfile(ctx context.Context, id int64, nickname, avatar *string, userInfo map[string]any) error {
+	if db.useGORM() {
+		return db.gormSetAccountProfile(ctx, id, nickname, avatar, userInfo)
+	}
 	userJSON, err := marshalNullable(userInfo)
 	if err != nil {
 		return err
@@ -295,6 +340,9 @@ func (db *DB) SetAccountProfile(ctx context.Context, id int64, nickname, avatar 
 }
 
 func (db *DB) SetAccountCredential(ctx context.Context, id int64, loginBuffer string, credentials map[string]any) error {
+	if db.useGORM() {
+		return db.gormSetAccountCredential(ctx, id, loginBuffer, credentials)
+	}
 	credJSON, err := marshalNullable(credentials)
 	if err != nil {
 		return err
@@ -307,6 +355,9 @@ func (db *DB) SetAccountCredential(ctx context.Context, id int64, loginBuffer st
 }
 
 func (db *DB) SetAccountStatus(ctx context.Context, id int64, status string) error {
+	if db.useGORM() {
+		return db.gormSetAccountStatus(ctx, id, status)
+	}
 	now := time.Now().Unix()
 	_, err := db.sql.ExecContext(ctx,
 		"UPDATE wechat_accounts SET status=?, last_checked_at=?, updated_at=? WHERE id=?",
@@ -316,11 +367,17 @@ func (db *DB) SetAccountStatus(ctx context.Context, id int64, status string) err
 }
 
 func (db *DB) DeleteAccount(ctx context.Context, id int64) error {
+	if db.useGORM() {
+		return db.gormDeleteAccount(ctx, id)
+	}
 	_, err := db.sql.ExecContext(ctx, "DELETE FROM wechat_accounts WHERE id=?", id)
 	return err
 }
 
 func (db *DB) GetSession(ctx context.Context, accountID int64, tcpProxy string) (*SessionRow, error) {
+	if db.useGORM() {
+		return db.gormGetSession(ctx, accountID, tcpProxy)
+	}
 	row := db.sql.QueryRowContext(ctx,
 		"SELECT id, wechat_account_id, uin, tcp_proxy, session_blob, expires_at, created_at, updated_at FROM sessions WHERE wechat_account_id=? AND tcp_proxy=? AND expires_at>?",
 		accountID, tcpProxy, time.Now().Unix(),
@@ -329,6 +386,9 @@ func (db *DB) GetSession(ctx context.Context, accountID int64, tcpProxy string) 
 }
 
 func (db *DB) PutSession(ctx context.Context, accountID int64, uin *int64, sessionBlob map[string]any, expiresAt int64, tcpProxy string) error {
+	if db.useGORM() {
+		return db.gormPutSession(ctx, accountID, uin, sessionBlob, expiresAt, tcpProxy)
+	}
 	now := time.Now().Unix()
 	blob, err := json.Marshal(sessionBlob)
 	if err != nil {
@@ -347,11 +407,17 @@ func (db *DB) PutSession(ctx context.Context, accountID int64, uin *int64, sessi
 }
 
 func (db *DB) InvalidateSession(ctx context.Context, accountID int64, tcpProxy string) error {
+	if db.useGORM() {
+		return db.gormInvalidateSession(ctx, accountID, tcpProxy)
+	}
 	_, err := db.sql.ExecContext(ctx, "DELETE FROM sessions WHERE wechat_account_id=? AND tcp_proxy=?", accountID, tcpProxy)
 	return err
 }
 
 func (db *DB) PurgeExpiredSessions(ctx context.Context) (int64, error) {
+	if db.useGORM() {
+		return db.gormPurgeExpiredSessions(ctx)
+	}
 	res, err := db.sql.ExecContext(ctx, "DELETE FROM sessions WHERE expires_at<=?", time.Now().Unix())
 	if err != nil {
 		return 0, err
@@ -360,6 +426,9 @@ func (db *DB) PurgeExpiredSessions(ctx context.Context) (int64, error) {
 }
 
 func (db *DB) ListFeatures(ctx context.Context, onlyEnabled bool) ([]Feature, error) {
+	if db.useGORM() {
+		return db.gormListFeatures(ctx, onlyEnabled)
+	}
 	sqlText := "SELECT code, name, description, enabled FROM features"
 	if onlyEnabled {
 		sqlText += " WHERE enabled=1"
@@ -399,6 +468,9 @@ func (db *DB) ResolveFeature(ctx context.Context, ref any) (*Feature, error) {
 }
 
 func (db *DB) GetFeature(ctx context.Context, code int) (*Feature, error) {
+	if db.useGORM() {
+		return db.gormGetFeature(ctx, code)
+	}
 	row := db.sql.QueryRowContext(ctx, "SELECT code, name, description, enabled FROM features WHERE code=?", code)
 	f, err := scanFeature(row)
 	if err != nil {
@@ -408,6 +480,9 @@ func (db *DB) GetFeature(ctx context.Context, code int) (*Feature, error) {
 }
 
 func (db *DB) GetFeatureByName(ctx context.Context, name string) (*Feature, error) {
+	if db.useGORM() {
+		return db.gormGetFeatureByName(ctx, name)
+	}
 	row := db.sql.QueryRowContext(ctx, "SELECT code, name, description, enabled FROM features WHERE name=? COLLATE NOCASE", name)
 	f, err := scanFeature(row)
 	if err != nil {

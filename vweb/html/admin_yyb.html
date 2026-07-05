@@ -396,15 +396,22 @@ async function pollScan() {
         if (status === 'scanned') { $('qrHint').textContent = '请在手机上确认登录'; return; }
         if (status === 'authorized' || status === 'confirmed') {
             clearInterval(state.scanTimer); state.scanTimer = null;
+            $('qrHint').textContent = '正在入库…';
             await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/confirm', { method: 'POST' });
             closeQr();
+            setResult('测试账号已入库', false);
             await loadAll();
+            return;
         }
         if (['expired','cancelled','unknown'].includes(status)) {
             clearInterval(state.scanTimer); state.scanTimer = null;
             $('qrHint').textContent = '二维码已失效';
         }
-    } catch (_) {}
+    } catch (e) {
+        clearInterval(state.scanTimer); state.scanTimer = null;
+        $('qrHint').textContent = e.message || '扫码失败';
+        setResult(e.message || '扫码确认失败', true);
+    }
 }
 
 async function startScan() {

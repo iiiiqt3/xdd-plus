@@ -42,7 +42,7 @@ func AdminConfigView() map[string]any {
 		"enabled":            c.Enabled,
 		"ready":              Ready(),
 		"resourceRoot":       c.ResourceRoot,
-		"dbFilename":         c.DBFilename,
+		"dbFilename":         "xdd 主库 (yyb_wechat_accounts / yyb_sessions / yyb_features)",
 		"tcpProxy":           c.TCPProxy,
 		"scanLoginCost":      getScanLoginCost(),
 		"maxAccountsPerUser": getMaxAccountsPerUser(),

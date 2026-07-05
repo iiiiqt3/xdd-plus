@@ -3,6 +3,7 @@ package yybportal
 import (
 	"sync"
 
+	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/yyb"
 )
 
@@ -55,6 +56,7 @@ func Init(c ModuleConfig) error {
 		Enabled:           true,
 		ResourceRoot:      c.ResourceRoot,
 		DBFilename:        c.DBFilename,
+		GormDB:            models.GormDB(),
 		TCPProxy:          c.TCPProxy,
 		ExposeInternalAPI: c.ExposeInternalAPI,
 	})

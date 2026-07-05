@@ -42,6 +42,7 @@ func Start(cfg Config) (*Service, error) {
 	app, err := httpapi.NewApp(httpapi.Config{
 		ResourceRoot:   cfg.ResourceRoot,
 		DBFilename:     cfg.DBFilename,
+		GormDB:         cfg.GormDB,
 		TCPProxy:       cfg.TCPProxy,
 		SessionTTL:     cfg.SessionTTL,
 		RequestTimeout: cfg.RequestTimeout,
