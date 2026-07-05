@@ -11,7 +11,7 @@ type PortalYybBinding struct {
 	ID           int64          `gorm:"primaryKey" json:"id"`
 	UserNumber   int            `gorm:"index;not null;uniqueIndex:idx_portal_yyb_user_openid" json:"userNumber"`
 	YybAccountID int64          `gorm:"index;not null" json:"yybAccountId"`
-	OpenID       string         `gorm:"size:128;not null;uniqueIndex:idx_portal_yyb_user_openid" json:"openid"`
+	OpenID       string         `gorm:"column:open_id;size:128;not null;uniqueIndex:idx_portal_yyb_user_openid" json:"openid"`
 	Nickname     string         `gorm:"size:128" json:"nickname"`
 	Status       string         `gorm:"size:32" json:"status"`
 	CreatedAt    time.Time      `json:"createdAt"`

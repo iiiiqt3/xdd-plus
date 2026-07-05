@@ -121,7 +121,7 @@ func findUserBindingByOpenID(userNumber int, openid string) (*PortalYybBinding, 
 		return nil, false
 	}
 	var row PortalYybBinding
-	err := db().Where("user_number = ? AND LOWER(openid) = LOWER(?)", userNumber, openid).First(&row).Error
+	err := db().Where("user_number = ? AND LOWER(open_id) = LOWER(?)", userNumber, openid).First(&row).Error
 	if err != nil {
 		return nil, false
 	}
@@ -174,15 +174,15 @@ func resolveBinding(userNumber int, ref string) (*PortalYybBinding, error) {
 			return &row, nil
 		}
 	}
-	if err := db().Where("user_number = ? AND openid = ?", userNumber, ref).First(&row).Error; err == nil {
+	if err := db().Where("user_number = ? AND open_id = ?", userNumber, ref).First(&row).Error; err == nil {
 		return &row, nil
 	}
-	if err := db().Where("user_number = ? AND LOWER(openid) = LOWER(?)", userNumber, ref).First(&row).Error; err == nil {
+	if err := db().Where("user_number = ? AND LOWER(open_id) = LOWER(?)", userNumber, ref).First(&row).Error; err == nil {
 		return &row, nil
 	}
 	if a, err := svc(); err == nil {
 		if acc, err := a.GetAccountPublic(context.Background(), ref); err == nil && acc != nil {
-			if err := db().Where("user_number = ? AND (openid = ? OR yyb_account_id = ?)",
+			if err := db().Where("user_number = ? AND (open_id = ? OR yyb_account_id = ?)",
 				userNumber, acc.OpenID, acc.ID).First(&row).Error; err == nil {
 				return &row, nil
 			}
@@ -193,7 +193,7 @@ func resolveBinding(userNumber int, ref string) (*PortalYybBinding, error) {
 
 func isOpenIDBoundToOther(userNumber int, openid string) bool {
 	var count int64
-	db().Model(&PortalYybBinding{}).Where("LOWER(openid) = LOWER(?) AND user_number <> ?", openid, userNumber).Count(&count)
+	db().Model(&PortalYybBinding{}).Where("LOWER(open_id) = LOWER(?) AND user_number <> ?", openid, userNumber).Count(&count)
 	return count > 0
 }
 

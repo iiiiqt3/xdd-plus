@@ -80,10 +80,10 @@ func AdminDeleteAccount(ref string) error {
 	acc, err := a.GetAccountPublic(context.Background(), ref)
 	if err == nil && acc != nil {
 		_ = a.DeleteAccount(context.Background(), strconv.FormatInt(acc.ID, 10))
-		db().Where("yyb_account_id = ? OR openid = ?", acc.ID, acc.OpenID).Delete(&PortalYybBinding{})
+		db().Where("yyb_account_id = ? OR open_id = ?", acc.ID, acc.OpenID).Delete(&PortalYybBinding{})
 		return nil
 	}
-	db().Where("openid = ? OR id = ? OR yyb_account_id = ?", ref, ref, ref).Delete(&PortalYybBinding{})
+	db().Where("open_id = ? OR id = ? OR yyb_account_id = ?", ref, ref, ref).Delete(&PortalYybBinding{})
 	return nil
 }
 
