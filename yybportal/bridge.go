@@ -92,7 +92,7 @@ func bindAccount(userNumber int, acc *yyb.AccountPublic, status string) (*Portal
 		return nil, fmt.Errorf("该微信账号已被其他用户绑定")
 	}
 	var count int64
-	db().Model(&PortalYybBinding{}).Where("user_number = ?", userNumber).Count(&count)
+	db().Model(&PortalYybBinding{}).Where(&PortalYybBinding{UserNumber: userNumber}).Count(&count)
 	if int(count) >= getMaxAccountsPerUser() {
 		return nil, fmt.Errorf("已达账号上限（%d 个）", getMaxAccountsPerUser())
 	}
@@ -167,7 +167,7 @@ func findBindingIncludingDeleted(userNumber int, openid string) (*PortalYybBindi
 func findBindingByYybIDUnscoped(userNumber int, yybAccountID int64) (*PortalYybBinding, bool) {
 	var rows []PortalYybBinding
 	err := db().Unscoped().
-		Where("user_number = ? AND yyb_account_id = ?", userNumber, yybAccountID).
+		Where(&PortalYybBinding{UserNumber: userNumber, YybAccountID: yybAccountID}).
 		Order("deleted_at asc, id desc").
 		Find(&rows).Error
 	if err != nil || len(rows) == 0 {
@@ -232,7 +232,7 @@ func dedupeBindings(rows []PortalYybBinding) []PortalYybBinding {
 
 func listBindings(userNumber int) ([]PortalYybBinding, error) {
 	var rows []PortalYybBinding
-	err := db().Where("user_number = ?", userNumber).Order("id asc").Find(&rows).Error
+	err := db().Where(&PortalYybBinding{UserNumber: userNumber}).Order("id asc").Find(&rows).Error
 	return rows, err
 }
 
@@ -243,12 +243,12 @@ func resolveBinding(userNumber int, ref string) (*PortalYybBinding, error) {
 	}
 	var row PortalYybBinding
 	if id, err := strconv.ParseInt(ref, 10, 64); err == nil {
-		err = db().Where("user_number = ? AND (id = ? OR yyb_account_id = ?)", userNumber, id, id).First(&row).Error
+		err = db().Where(&PortalYybBinding{UserNumber: userNumber}).Where("id = ? OR yyb_account_id = ?", id, id).First(&row).Error
 		if err == nil {
 			return &row, nil
 		}
 	}
-	if err := db().Where("user_number = ? AND open_id = ?", userNumber, ref).First(&row).Error; err == nil {
+	if err := db().Where(&PortalYybBinding{UserNumber: userNumber, OpenID: ref}).First(&row).Error; err == nil {
 		return &row, nil
 	}
 	if err := db().Where("user_number = ? AND LOWER(open_id) = LOWER(?)", userNumber, ref).First(&row).Error; err == nil {
@@ -256,8 +256,9 @@ func resolveBinding(userNumber int, ref string) (*PortalYybBinding, error) {
 	}
 	if a, err := svc(); err == nil {
 		if acc, err := a.GetAccountPublic(context.Background(), ref); err == nil && acc != nil {
-			if err := db().Where("user_number = ? AND (open_id = ? OR yyb_account_id = ?)",
-				userNumber, acc.OpenID, acc.ID).First(&row).Error; err == nil {
+			if err := db().Where(&PortalYybBinding{UserNumber: userNumber, OpenID: acc.OpenID}).
+				Or(&PortalYybBinding{UserNumber: userNumber, YybAccountID: acc.ID}).
+				First(&row).Error; err == nil {
 				return &row, nil
 			}
 		}

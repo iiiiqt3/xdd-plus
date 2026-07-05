@@ -6,17 +6,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// PortalYybBinding portal 用户与应用宝账号绑定
+// PortalYybBinding portal 用户与应用宝账号绑定（列名均显式声明，避免 GORM 命名歧义）
 type PortalYybBinding struct {
-	ID           int64          `gorm:"primaryKey" json:"id"`
-	UserNumber   int            `gorm:"index;not null;uniqueIndex:idx_portal_yyb_user_openid" json:"userNumber"`
-	YybAccountID int64          `gorm:"index;not null" json:"yybAccountId"`
+	ID           int64          `gorm:"column:id;primaryKey" json:"id"`
+	UserNumber   int            `gorm:"column:user_number;index;not null;uniqueIndex:idx_portal_yyb_user_openid" json:"userNumber"`
+	YybAccountID int64          `gorm:"column:yyb_account_id;index;not null" json:"yybAccountId"`
 	OpenID       string         `gorm:"column:open_id;size:128;not null;uniqueIndex:idx_portal_yyb_user_openid" json:"openid"`
-	Nickname     string         `gorm:"size:128" json:"nickname"`
-	Status       string         `gorm:"size:32" json:"status"`
-	CreatedAt    time.Time      `json:"createdAt"`
-	UpdatedAt    time.Time      `json:"updatedAt"`
-	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
+	Nickname     string         `gorm:"column:nickname;size:128" json:"nickname"`
+	Status       string         `gorm:"column:status;size:32" json:"status"`
+	CreatedAt    time.Time      `gorm:"column:created_at" json:"createdAt"`
+	UpdatedAt    time.Time      `gorm:"column:updated_at" json:"updatedAt"`
+	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;index" json:"-"`
 }
 
 func (PortalYybBinding) TableName() string { return "portal_yyb_bindings" }

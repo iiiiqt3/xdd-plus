@@ -175,14 +175,21 @@ func (db *DB) gormSetAccountProfile(ctx context.Context, id int64, nickname, ava
 	if err != nil {
 		return err
 	}
-	updates := map[string]any{"user_info": userJSON.String, "updated_at": time.Now().Unix()}
+	row := GormWechatAccount{
+		UserInfo:  userJSON.String,
+		UpdatedAt: time.Now().Unix(),
+	}
+	cols := []string{"UserInfo", "UpdatedAt"}
 	if nickname != nil {
-		updates["nickname"] = *nickname
+		row.Nickname = nickname
+		cols = append(cols, "Nickname")
 	}
 	if avatar != nil {
-		updates["avatar"] = *avatar
+		row.Avatar = avatar
+		cols = append(cols, "Avatar")
 	}
-	return db.orm.WithContext(ctx).Model(&GormWechatAccount{}).Where("id = ?", id).Updates(updates).Error
+	return db.orm.WithContext(ctx).Model(&GormWechatAccount{}).Where("id = ?", id).
+		Select(cols).Updates(row).Error
 }
 
 func (db *DB) gormSetAccountCredential(ctx context.Context, id int64, loginBuffer string, credentials map[string]any) error {
@@ -191,22 +198,28 @@ func (db *DB) gormSetAccountCredential(ctx context.Context, id int64, loginBuffe
 		return err
 	}
 	return db.orm.WithContext(ctx).Model(&GormWechatAccount{}).Where("id = ?", id).
-		Updates(map[string]any{
-			"login_buffer": loginBuffer,
-			"credentials":  credJSON.String,
-			"updated_at":   time.Now().Unix(),
+		Select("LoginBuffer", "Credentials", "UpdatedAt").
+		Updates(GormWechatAccount{
+			LoginBuffer: loginBuffer,
+			Credentials: credJSON.String,
+			UpdatedAt:   time.Now().Unix(),
 		}).Error
 }
 
 func (db *DB) gormSetAccountStatus(ctx context.Context, id int64, status string) error {
 	now := time.Now().Unix()
 	return db.orm.WithContext(ctx).Model(&GormWechatAccount{}).Where("id = ?", id).
-		Updates(map[string]any{"status": status, "last_checked_at": now, "updated_at": now}).Error
+		Select("Status", "LastCheckedAt", "UpdatedAt").
+		Updates(GormWechatAccount{
+			Status:        &status,
+			LastCheckedAt: &now,
+			UpdatedAt:     now,
+		}).Error
 }
 
 func (db *DB) gormDeleteAccount(ctx context.Context, id int64) error {
 	return db.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("wechat_account_id = ?", id).Delete(&GormSession{}).Error; err != nil {
+		if err := tx.Where(&GormSession{WechatAccountID: id}).Delete(&GormSession{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&GormWechatAccount{}, id).Error
@@ -216,7 +229,8 @@ func (db *DB) gormDeleteAccount(ctx context.Context, id int64) error {
 func (db *DB) gormGetSession(ctx context.Context, accountID int64, tcpProxy string) (*SessionRow, error) {
 	var m GormSession
 	err := db.orm.WithContext(ctx).
-		Where("wechat_account_id = ? AND tcp_proxy = ? AND expires_at > ?", accountID, tcpProxy, time.Now().Unix()).
+		Where(&GormSession{WechatAccountID: accountID, TCPProxy: tcpProxy}).
+		Where("expires_at > ?", time.Now().Unix()).
 		First(&m).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -267,7 +281,7 @@ func (db *DB) gormPutSession(ctx context.Context, accountID int64, uin *int64, s
 
 func (db *DB) gormInvalidateSession(ctx context.Context, accountID int64, tcpProxy string) error {
 	return db.orm.WithContext(ctx).
-		Where("wechat_account_id = ? AND tcp_proxy = ?", accountID, tcpProxy).
+		Where(&GormSession{WechatAccountID: accountID, TCPProxy: tcpProxy}).
 		Delete(&GormSession{}).Error
 }
 
@@ -292,7 +306,7 @@ func (db *DB) gormEnsureDefaultFeatures(ctx context.Context) error {
 func (db *DB) gormListFeatures(ctx context.Context, onlyEnabled bool) ([]Feature, error) {
 	q := db.orm.WithContext(ctx).Model(&GormFeature{})
 	if onlyEnabled {
-		q = q.Where("enabled = ?", true)
+		q = q.Where(&GormFeature{Enabled: true})
 	}
 	var rows []GormFeature
 	if err := q.Order("code asc").Find(&rows).Error; err != nil {
@@ -319,17 +333,26 @@ func (db *DB) gormGetFeature(ctx context.Context, code int) (*Feature, error) {
 
 func normalizeYybGormColumns(orm *gorm.DB) error {
 	m := orm.Migrator()
-	if m.HasColumn(&GormWechatAccount{}, "ui_n") {
-		if err := m.RenameColumn(&GormWechatAccount{}, "ui_n", "uin"); err != nil {
+	accountRenames := [][2]string{{"ui_n", "uin"}, {"openid", "open_id"}}
+	for _, pair := range accountRenames {
+		if err := renameGormColumnIfNeeded(m, &GormWechatAccount{}, pair[0], pair[1]); err != nil {
 			return err
 		}
 	}
-	if m.HasColumn(&GormSession{}, "ui_n") {
-		if err := m.RenameColumn(&GormSession{}, "ui_n", "uin"); err != nil {
-			return err
-		}
+	if err := renameGormColumnIfNeeded(m, &GormSession{}, "ui_n", "uin"); err != nil {
+		return err
 	}
 	return nil
+}
+
+func renameGormColumnIfNeeded(m gorm.Migrator, model any, from, to string) error {
+	if !m.HasColumn(model, from) {
+		return nil
+	}
+	if m.HasColumn(model, to) {
+		return nil
+	}
+	return m.RenameColumn(model, from, to)
 }
 
 func (db *DB) gormGetFeatureByName(ctx context.Context, name string) (*Feature, error) {

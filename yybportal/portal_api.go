@@ -232,7 +232,7 @@ func PortalClaimAccount(userNumber int, ref string) (PortalAccountView, error) {
 		return PortalAccountView{}, fmt.Errorf("该账号已被其他门户用户绑定")
 	}
 	var count int64
-	db().Model(&PortalYybBinding{}).Where("user_number = ?", userNumber).Count(&count)
+	db().Model(&PortalYybBinding{}).Where(&PortalYybBinding{UserNumber: userNumber}).Count(&count)
 	if int(count) >= getMaxAccountsPerUser() {
 		return PortalAccountView{}, fmt.Errorf("已达账号上限（%d 个）", getMaxAccountsPerUser())
 	}
