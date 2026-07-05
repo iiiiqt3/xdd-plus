@@ -224,6 +224,23 @@ function setResult(val, err) {
     $('resultBox').classList.toggle('error', !!err);
 }
 
+async function withAccountAction(btn, loadingLabel, resultHint, action) {
+    if (!btn || btn.disabled) return;
+    const prev = btn.textContent;
+    const peer = [$('refreshBtn'), $('resyncBtn')].filter(b => b && b !== btn);
+    btn.disabled = true;
+    peer.forEach(b => { b.disabled = true; });
+    btn.textContent = loadingLabel;
+    setResult(resultHint, false);
+    try {
+        await action();
+    } finally {
+        btn.disabled = false;
+        btn.textContent = prev;
+        peer.forEach(b => { b.disabled = false; });
+    }
+}
+
 function selectedAccount() { return state.accounts.find(a => a.openid === state.selectedOpenID); }
 
 function syncSelected() {
@@ -358,19 +375,23 @@ async function callFeature() {
 
 async function refreshSelected() {
     const acc = selectedAccount();
-    if (!acc) return;
+    if (!acc) { setResult('请先选择协议账号', true); return; }
     try {
-        setResult(await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) }), false);
-        await loadAll();
+        await withAccountAction($('refreshBtn'), '刷新中…', '正在刷新存活状态，请稍候…', async () => {
+            setResult(await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) }), false);
+            await loadAll();
+        });
     } catch (e) { setResult(e.message, true); }
 }
 
 async function resyncSelected() {
     const acc = selectedAccount();
-    if (!acc) return;
+    if (!acc) { setResult('请先选择协议账号', true); return; }
     try {
-        setResult(await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) }), false);
-        await loadAll();
+        await withAccountAction($('resyncBtn'), '同步中…', '正在同步账号资料，请稍候…', async () => {
+            setResult(await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) }), false);
+            await loadAll();
+        });
     } catch (e) { setResult(e.message, true); }
 }
 
