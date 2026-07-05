@@ -62,10 +62,9 @@ func bindAccount(userNumber int, acc *yyb.AccountPublic, status string) (*Portal
 	if acc == nil {
 		return nil, fmt.Errorf("账号数据为空")
 	}
-	var count int64
-	db().Model(&PortalYybBinding{}).Where("user_number = ?", userNumber).Count(&count)
-	if int(count) >= getMaxAccountsPerUser() {
-		return nil, fmt.Errorf("已达账号上限（%d 个）", getMaxAccountsPerUser())
+	openid := strings.TrimSpace(acc.OpenID)
+	if openid == "" {
+		return nil, fmt.Errorf("openid 为空")
 	}
 	nick := ""
 	if acc.Nickname != nil {
@@ -75,21 +74,38 @@ func bindAccount(userNumber int, acc *yyb.AccountPublic, status string) (*Portal
 	if st == "" {
 		st = "alive"
 	}
-	var existing PortalYybBinding
-	err := db().Where("user_number = ? AND openid = ?", userNumber, acc.OpenID).First(&existing).Error
-	if err == nil {
+	if existing, ok := findUserBindingByOpenID(userNumber, openid); ok {
 		existing.YybAccountID = acc.ID
+		existing.OpenID = openid
 		existing.Nickname = nick
 		existing.Status = st
-		if e := db().Save(&existing).Error; e != nil {
+		if e := db().Save(existing).Error; e != nil {
 			return nil, e
 		}
-		return &existing, nil
+		return existing, nil
+	}
+	var byYyb PortalYybBinding
+	if err := db().Where("user_number = ? AND yyb_account_id = ?", userNumber, acc.ID).First(&byYyb).Error; err == nil {
+		byYyb.OpenID = openid
+		byYyb.Nickname = nick
+		byYyb.Status = st
+		if e := db().Save(&byYyb).Error; e != nil {
+			return nil, e
+		}
+		return &byYyb, nil
+	}
+	if isOpenIDBoundToOther(userNumber, openid) {
+		return nil, fmt.Errorf("该微信账号已被其他用户绑定")
+	}
+	var count int64
+	db().Model(&PortalYybBinding{}).Where("user_number = ?", userNumber).Count(&count)
+	if int(count) >= getMaxAccountsPerUser() {
+		return nil, fmt.Errorf("已达账号上限（%d 个）", getMaxAccountsPerUser())
 	}
 	b := PortalYybBinding{
 		UserNumber:   userNumber,
 		YybAccountID: acc.ID,
-		OpenID:       acc.OpenID,
+		OpenID:       openid,
 		Nickname:     nick,
 		Status:       st,
 	}
@@ -97,6 +113,47 @@ func bindAccount(userNumber int, acc *yyb.AccountPublic, status string) (*Portal
 		return nil, err
 	}
 	return &b, nil
+}
+
+func findUserBindingByOpenID(userNumber int, openid string) (*PortalYybBinding, bool) {
+	openid = strings.TrimSpace(openid)
+	if openid == "" {
+		return nil, false
+	}
+	var row PortalYybBinding
+	err := db().Where("user_number = ? AND LOWER(openid) = LOWER(?)", userNumber, openid).First(&row).Error
+	if err != nil {
+		return nil, false
+	}
+	return &row, true
+}
+
+func isUserBoundOpenID(userNumber int, openid string) bool {
+	_, ok := findUserBindingByOpenID(userNumber, openid)
+	return ok
+}
+
+func dedupeBindings(rows []PortalYybBinding) []PortalYybBinding {
+	if len(rows) <= 1 {
+		return rows
+	}
+	seen := make(map[string]int, len(rows))
+	out := make([]PortalYybBinding, 0, len(rows))
+	for _, b := range rows {
+		key := strings.ToLower(strings.TrimSpace(b.OpenID))
+		if key == "" {
+			key = fmt.Sprintf("id:%d", b.ID)
+		}
+		if idx, ok := seen[key]; ok {
+			if b.ID > out[idx].ID {
+				out[idx] = b
+			}
+			continue
+		}
+		seen[key] = len(out)
+		out = append(out, b)
+	}
+	return out
 }
 
 func listBindings(userNumber int) ([]PortalYybBinding, error) {
@@ -136,7 +193,7 @@ func resolveBinding(userNumber int, ref string) (*PortalYybBinding, error) {
 
 func isOpenIDBoundToOther(userNumber int, openid string) bool {
 	var count int64
-	db().Model(&PortalYybBinding{}).Where("openid = ? AND user_number <> ?", openid, userNumber).Count(&count)
+	db().Model(&PortalYybBinding{}).Where("LOWER(openid) = LOWER(?) AND user_number <> ?", openid, userNumber).Count(&count)
 	return count > 0
 }
 

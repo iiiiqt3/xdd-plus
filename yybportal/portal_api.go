@@ -47,6 +47,7 @@ func PortalListAccounts(userNumber int) ([]PortalAccountView, error) {
 	if err != nil {
 		return nil, err
 	}
+	rows = dedupeBindings(rows)
 	ctx := context.Background()
 	out := make([]PortalAccountView, 0, len(rows))
 	for _, b := range rows {
@@ -61,9 +62,6 @@ func PortalCreateQR(userNumber int) (map[string]any, error) {
 		return nil, fmt.Errorf("应用宝服务不可用")
 	}
 	cost := getScanLoginCost()
-	if err := ensureCoin(userNumber, cost); err != nil {
-		return nil, err
-	}
 	a, err := svc()
 	if err != nil {
 		return nil, err
@@ -118,7 +116,9 @@ func PortalConfirmQR(userNumber int, sessionID string, clientCtx models.ClientCo
 	if err != nil {
 		return nil, err
 	}
-	if p.DeductCoin {
+	alreadyBound := isUserBoundOpenID(userNumber, acc.OpenID)
+	costCharged := 0
+	if p.DeductCoin && !alreadyBound {
 		nick := ""
 		if acc.Nickname != nil {
 			nick = *acc.Nickname
@@ -127,6 +127,7 @@ func PortalConfirmQR(userNumber int, sessionID string, clientCtx models.ClientCo
 			return nil, err
 		}
 		models.RecordClientSourceEvent(userNumber, "yyb_scan_login", clientCtx)
+		costCharged = p.Cost
 	}
 	binding, err := bindAccount(userNumber, acc, "alive")
 	if err != nil {
@@ -134,8 +135,9 @@ func PortalConfirmQR(userNumber int, sessionID string, clientCtx models.ClientCo
 	}
 	view := toPortalView(ctx, *binding, a)
 	return map[string]any{
-		"account": view,
-		"cost":    p.Cost,
+		"account":     view,
+		"cost":        costCharged,
+		"alreadyBound": alreadyBound,
 	}, nil
 }
 

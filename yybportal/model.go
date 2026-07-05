@@ -9,9 +9,9 @@ import (
 // PortalYybBinding portal 用户与应用宝账号绑定
 type PortalYybBinding struct {
 	ID           int64          `gorm:"primaryKey" json:"id"`
-	UserNumber   int            `gorm:"index;not null" json:"userNumber"`
+	UserNumber   int            `gorm:"index;not null;uniqueIndex:idx_portal_yyb_user_openid" json:"userNumber"`
 	YybAccountID int64          `gorm:"index;not null" json:"yybAccountId"`
-	OpenID       string         `gorm:"size:128;index;not null" json:"openid"`
+	OpenID       string         `gorm:"size:128;not null;uniqueIndex:idx_portal_yyb_user_openid" json:"openid"`
 	Nickname     string         `gorm:"size:128" json:"nickname"`
 	Status       string         `gorm:"size:32" json:"status"`
 	CreatedAt    time.Time      `json:"createdAt"`
