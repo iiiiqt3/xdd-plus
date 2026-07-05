@@ -77,6 +77,7 @@ func PortalCreateQR(userNumber int) (map[string]any, error) {
 		"status":        qr.Status,
 		"imageBase64":   qr.ImageB64,
 		"scanLoginCost": cost,
+		"scanCostHint":  fmt.Sprintf("首次绑定该微信扣除 %d 积分；已绑定过的账号再次扫码（在线或掉线）不扣积分", cost),
 	}, nil
 }
 
@@ -116,9 +117,9 @@ func PortalConfirmQR(userNumber int, sessionID string, clientCtx models.ClientCo
 	if err != nil {
 		return nil, err
 	}
-	alreadyBound := isUserBoundOpenID(userNumber, acc.OpenID)
+	everBound := hasEverBoundOpenID(userNumber, acc.OpenID)
 	costCharged := 0
-	if p.DeductCoin && !alreadyBound {
+	if p.DeductCoin && !everBound {
 		nick := ""
 		if acc.Nickname != nil {
 			nick = *acc.Nickname
@@ -135,9 +136,9 @@ func PortalConfirmQR(userNumber int, sessionID string, clientCtx models.ClientCo
 	}
 	view := toPortalView(ctx, *binding, a)
 	return map[string]any{
-		"account":     view,
-		"cost":        costCharged,
-		"alreadyBound": alreadyBound,
+		"account":      view,
+		"cost":         costCharged,
+		"alreadyBound": everBound,
 	}, nil
 }
 
@@ -246,7 +247,7 @@ func PortalClaimAccount(userNumber int, ref string) (PortalAccountView, error) {
 func PortalWxappGetCode(userNumber int, ref, appID string) (map[string]any, error) {
 	b, err := resolveBinding(userNumber, ref)
 	if err != nil {
-		return nil, fmt.Errorf("%w，请从账号队列选择或先认领账号", err)
+		return nil, fmt.Errorf("%w，请从账号列表选择", err)
 	}
 	a, err := svc()
 	if err != nil {
@@ -259,7 +260,7 @@ func PortalWxappGetCode(userNumber int, ref, appID string) (map[string]any, erro
 func PortalWxappGetPhone(userNumber int, ref, appID string) (map[string]any, error) {
 	b, err := resolveBinding(userNumber, ref)
 	if err != nil {
-		return nil, fmt.Errorf("%w，请从账号队列选择或先认领账号", err)
+		return nil, fmt.Errorf("%w，请从账号列表选择", err)
 	}
 	a, err := svc()
 	if err != nil {
@@ -272,7 +273,7 @@ func PortalWxappGetPhone(userNumber int, ref, appID string) (map[string]any, err
 func PortalWxappOperate(userNumber int, ref, appID string, payload map[string]any) (map[string]any, error) {
 	b, err := resolveBinding(userNumber, ref)
 	if err != nil {
-		return nil, fmt.Errorf("%w，请从账号队列选择或先认领账号", err)
+		return nil, fmt.Errorf("%w，请从账号列表选择", err)
 	}
 	a, err := svc()
 	if err != nil {

@@ -207,6 +207,12 @@ func isUserBoundOpenID(userNumber int, openid string) bool {
 	return ok
 }
 
+// hasEverBoundOpenID 用户是否曾绑定过该 openid（含软删记录，用于扫码扣费判断）
+func hasEverBoundOpenID(userNumber int, openid string) bool {
+	_, ok := findBindingIncludingDeleted(userNumber, openid)
+	return ok
+}
+
 func dedupeBindings(rows []PortalYybBinding) []PortalYybBinding {
 	if len(rows) <= 1 {
 		return rows

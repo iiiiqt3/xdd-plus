@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/cdle/xdd/models"
-	"github.com/cdle/xdd/vweb"
 	"github.com/cdle/xdd/yybportal"
 )
 
@@ -37,14 +36,9 @@ func (c *PortalYybController) jsonErr(err error) {
 	c.ServeJSON()
 }
 
-// Index 应用宝门户页面
+// Index 重定向到主后台嵌入页
 func (c *PortalYybController) Index() {
-	file, err := vweb.ReadFile("html/portal_yyb.html")
-	if err != nil {
-		c.Ctx.WriteString("portal yyb page not found")
-		return
-	}
-	c.Ctx.WriteString(string(file))
+	c.Redirect("/portal?panel=yyb", 302)
 }
 
 // Status 模块与用户状态
@@ -147,23 +141,6 @@ func (c *PortalYybController) ResyncAccount() {
 		return
 	}
 	c.jsonOK(data, "同步完成")
-}
-
-// ClaimAccount 认领应用宝库中已有账号到当前门户用户
-func (c *PortalYybController) ClaimAccount() {
-	var req struct {
-		Ref string `json:"ref"`
-	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil || req.Ref == "" {
-		c.jsonErr(errEmptyRef)
-		return
-	}
-	data, err := yybportal.PortalClaimAccount(c.PortalUserID, req.Ref)
-	if err != nil {
-		c.jsonErr(err)
-		return
-	}
-	c.jsonOK(data, "认领成功")
 }
 
 // Avatar 头像

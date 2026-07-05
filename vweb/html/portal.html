@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>用户中心</title>
+    <link rel="stylesheet" href="/vweb/css/yyb_embed.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -211,7 +212,7 @@
         .hero-blue-grad { background: linear-gradient(135deg, #2563eb, #3b82f6); }
         .hero-amber-grad { background: linear-gradient(135deg, #d97706, #f59e0b); }
 
-        .dash-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .dash-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px; }
         .dash-info-card {
             padding: 22px; border-radius: var(--radius);
             background: var(--card); border: 1px solid var(--card-border);
@@ -1180,6 +1181,18 @@
     </div>
 </div>
 
+<!-- 应用宝扫码模态框 -->
+<div class="modal-mask" id="yyb-qrModal">
+    <div class="modal" style="max-width:380px;">
+        <div class="modal-header">
+            <h3>微信扫码 <span class="yyb-test-tag">测试</span></h3>
+            <button class="modal-close" id="yyb-qrCloseBtn" type="button">×</button>
+        </div>
+        <p class="muted" id="yyb-qrHint" style="margin-bottom:14px;line-height:1.7;">请使用微信扫描二维码</p>
+        <div style="min-height:200px;display:grid;place-items:center;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:10px;margin-bottom:14px;" id="yyb-qrBox">生成中…</div>
+    </div>
+</div>
+
 <!-- 投稿与反馈模态框 -->
 <div class="modal-mask" id="feedbackModalMask">
     <div class="modal" style="max-width:520px;">
@@ -1249,7 +1262,7 @@
             <div class="menu-group-title">工具</div>
             <div class="menu">
                 <button data-panel="wx">💬 微信协议</button>
-                <button type="button" class="menu-link-btn" onclick="location.href='/portal/yyb'">📲 应用宝协议</button>
+                <button data-panel="yyb">📲 应用宝协议<span class="yyb-test-tag" style="margin-left:6px;">测试</span></button>
                 <button data-panel="feedback">📝 投稿反馈</button>
             </div>
         </div>
@@ -1345,6 +1358,18 @@
                     </div>
                     <div id="wxDashDevices" class="dash-wx-grid">
                         <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0;grid-column:1/-1;">暂无微信协议设备</div>
+                    </div>
+                </div>
+                <div class="dash-info-card">
+                    <div class="card-title" style="justify-content:space-between;">
+                        <span style="display:flex;align-items:center;gap:8px;">
+                            <span class="title-icon" style="background:var(--purple-dim);color:var(--purple);">📲</span>
+                            应用宝协议<span class="yyb-test-tag">测试</span>
+                        </span>
+                        <button class="btn small secondary" type="button" onclick="document.querySelector('button[data-panel=yyb]')?.click()">管理</button>
+                    </div>
+                    <div id="yybDashAccounts">
+                        <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0;">加载中…</div>
                     </div>
                 </div>
             </div>
@@ -1764,6 +1789,70 @@
             </div>
         </section>
 
+        <!-- ===== 应用宝协议 ===== -->
+        <section class="panel" id="panel-yyb">
+            <div class="section">
+                <div class="section-header panel-duplicate-title">
+                    <h3>📲 应用宝协议 <span class="yyb-test-tag">测试</span></h3>
+                    <span class="muted">管理绑定账号与小程序 API 调用</span>
+                </div>
+                <div class="yyb-hint-box" id="yyb-costHint">首次绑定该微信扣除积分；已绑定过的账号再次扫码（在线或掉线）不扣积分。</div>
+                <div class="yyb-chips" style="margin-bottom:14px;">
+                    <span class="yyb-chip" id="yyb-healthChip"><strong id="yyb-healthText">检测中</strong></span>
+                    <span class="yyb-chip">积分 <strong id="yyb-coinVal">-</strong></span>
+                    <span class="yyb-chip">扫码 <strong id="yyb-scanCostVal">-</strong> 积分</span>
+                    <span class="yyb-chip">账号 <strong id="yyb-accountCount">0</strong></span>
+                </div>
+                <div class="yyb-toolbar" style="margin-bottom:14px;">
+                    <button class="btn accent" id="yyb-scanBtn" type="button">扫码添加</button>
+                    <button class="btn secondary" id="yyb-reloadBtn" type="button">刷新</button>
+                </div>
+
+                <div class="card" style="margin-bottom:16px;padding:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+                        <h4 style="font-size:14px;margin:0;">我的账号</h4>
+                        <div class="yyb-toolbar">
+                            <button class="btn small secondary" id="yyb-refreshBtn" type="button">刷新存活</button>
+                            <button class="btn small secondary" id="yyb-resyncBtn" type="button">同步资料</button>
+                            <button class="btn small danger" id="yyb-deleteBtn" type="button">删除</button>
+                        </div>
+                    </div>
+                    <div class="yyb-account-grid" id="yyb-accountGrid"><div class="yyb-empty">加载中…</div></div>
+                </div>
+
+                <div class="card" style="padding:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+                        <h4 style="font-size:14px;margin:0;">API 调用</h4>
+                        <span class="muted" style="font-size:12px;" id="yyb-selectedLabel">未选择账号</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:14px;">
+                        <div class="form-item">
+                            <label style="font-size:12px;font-weight:700;color:var(--text-muted);">能力</label>
+                            <select id="yyb-featureSel" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;">
+                                <option value="getCode">getCode</option>
+                                <option value="getPhoneNumber">getPhoneNumber</option>
+                                <option value="operateWxData">operateWxData</option>
+                            </select>
+                        </div>
+                        <div class="form-item">
+                            <label style="font-size:12px;font-weight:700;color:var(--text-muted);">AppID</label>
+                            <input id="yyb-appidInput" value="wx91d27dbf599dff74" autocomplete="off" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;">
+                        </div>
+                        <div class="form-item hidden" id="yyb-payloadGroup" style="grid-column:1/-1;">
+                            <label style="font-size:12px;font-weight:700;color:var(--text-muted);">请求 JSON</label>
+                            <textarea id="yyb-payloadInput" spellcheck="false" style="width:100%;min-height:120px;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;font-family:Consolas,monospace;">{"api_name":"getUserInfo","data":{},"env":1}</textarea>
+                        </div>
+                    </div>
+                    <div class="yyb-toolbar">
+                        <button class="btn accent" id="yyb-callBtn" type="button">执行调用</button>
+                        <button class="btn secondary" id="yyb-clearBtn" type="button">清空结果</button>
+                        <button class="btn secondary" id="yyb-copyBtn" type="button">复制结果</button>
+                    </div>
+                    <pre class="yyb-result-box" id="yyb-resultBox">选择账号后执行调用，结果将显示在这里。</pre>
+                </div>
+            </div>
+        </section>
+
         <!-- ===== 微信协议 ===== -->
         <section class="panel" id="panel-wx">
             <div class="section">
@@ -1835,6 +1924,7 @@
     </main>
 </div>
 
+<script src="/vweb/js/portal_yyb.js"></script>
 <script>
 async function getSignatureHeaders(path) {
     try {
@@ -1944,6 +2034,7 @@ function syncPanelTitle(panel) {
         notifications: '🔔 通知中心',
         tasks: '⭐ 积分相关',
         wx: '💬 微信协议',
+        yyb: '📲 应用宝协议',
         feedback: '📝 投稿与反馈'
     };
     document.getElementById('pageTitle').textContent = titleMap[panel] || '用户中心';
@@ -1981,6 +2072,7 @@ async function loadDashboardData() {
         renderDashboard();
     });
     loadWxDevices().catch(function() {});
+    if (window.YybPortal) YybPortal.loadDashboard().catch(function() {});
 }
 
 async function loadProjectData() {
@@ -2179,6 +2271,9 @@ async function refreshCurrentPanel(showToast = true) {
             case 'notifications': await loadNotificationsData(); break;
             case 'tasks':      await loadDashboardData(); break;
             case 'wx':         await loadWxDevices(); break;
+            case 'yyb':
+                if (window.YybPortal) await YybPortal.loadPanel();
+                break;
             case 'kuwo':       await checkKuwoAuth(); break;
             case 'dashboard':
             default:           await loadDashboardData(); break;
@@ -2202,6 +2297,7 @@ async function initialLoad() {
         loadActivitiesData().catch(err => toast(err.message || '加载活动失败', 'error'));
         loadNotificationsData(1).catch(err => toast(err.message || '加载通知失败', 'error'));
         loadWxDevices().catch(function() {});
+        if (window.YybPortal) YybPortal.loadDashboard().catch(function() {});
         request('/api/portal/wx/status').then(function(wxStatus) {
             state.wxStatus = wxStatus.data;
             renderDashboard();
@@ -4904,6 +5000,11 @@ async function kuwoExecuteWithdraw(phone, password, smsCode, quotaId) {
 
 initialLoad();
 bindNotificationFilters();
+if (window.YybPortal) {
+    YybPortal.init();
+    var panelQ = new URLSearchParams(location.search).get('panel');
+    if (panelQ) document.querySelector('button[data-panel="' + panelQ + '"]')?.click();
+}
 </script>
 </body>
 </html>

@@ -51,3 +51,11 @@ func ReadFile(name string) ([]byte, error) {
 	diskPath := filepath.Join(vwebDir, name)
 	return os.ReadFile(diskPath)
 }
+
+// AssetDir 返回 vweb 下子目录的磁盘路径（用于静态资源路由）
+func AssetDir(sub string) string {
+	if vwebDir == "" {
+		return ""
+	}
+	return filepath.Join(vwebDir, sub)
+}

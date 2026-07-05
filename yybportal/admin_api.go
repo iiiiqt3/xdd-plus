@@ -5,10 +5,48 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/yyb"
 )
+
+// AdminStatusExtras 管理端状态扩展（绑定数、协议账号数、可用数）
+func AdminStatusExtras() map[string]any {
+	out := map[string]any{
+		"bindingCount":  0,
+		"protocolCount": 0,
+		"aliveCount":    0,
+	}
+	if !Ready() {
+		return out
+	}
+	var bindingCount int64
+	_ = db().Model(&PortalYybBinding{}).Count(&bindingCount).Error
+	out["bindingCount"] = bindingCount
+	a, err := svc()
+	if err != nil {
+		return out
+	}
+	accounts, err := a.ListAccounts(context.Background())
+	if err != nil {
+		out["protocolCount"] = 0
+		return out
+	}
+	out["protocolCount"] = len(accounts)
+	alive := 0
+	for _, acc := range accounts {
+		if acc.Status == nil {
+			continue
+		}
+		st := strings.ToLower(strings.TrimSpace(*acc.Status))
+		if st == "alive" || st == "online" {
+			alive++
+		}
+	}
+	out["aliveCount"] = alive
+	return out
+}
 
 // AdminListProtocolAccounts 协议库全部账号（用于管理端调试，不依赖门户绑定）
 func AdminListProtocolAccounts() ([]yyb.AccountPublic, error) {

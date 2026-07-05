@@ -19,10 +19,6 @@ func ModuleConfigFromModels() ModuleConfig {
 	} else if !filepath.IsAbs(dbFile) {
 		dbFile = filepath.Join(models.ExecPath, dbFile)
 	}
-	token := c.APIToken
-	if token == "" {
-		token = models.Config.ApiToken
-	}
 	return ModuleConfig{
 		Enabled:            c.Enabled,
 		ResourceRoot:       root,
@@ -30,7 +26,7 @@ func ModuleConfigFromModels() ModuleConfig {
 		TCPProxy:           c.TCPProxy,
 		ScanLoginCost:      c.ScanLoginCost,
 		MaxAccountsPerUser: c.MaxAccountsPerUser,
-		APIToken:           token,
+		APIToken:           c.APIToken,
 		ExposeInternalAPI:  c.ExposeInternalAPI,
 	}
 }

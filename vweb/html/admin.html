@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XDD 管理后台</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/vweb/css/yyb_embed.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #333; }
@@ -273,7 +274,7 @@
         .field-item-body .fi .fv { color: #333; word-break: break-all; }
         .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .dash-grid > .card { overflow: hidden; min-width: 0; }
-        .dash-summary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .dash-summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
         .dash-info-list { font-size: 12px; line-height: 2.0; }
         .dash-info-list .row { display: flex; justify-content: space-between; border-bottom: 1px solid #f5f5f5; padding: 0 4px; }
         .dash-info-list .row .lbl { color: #999; }
@@ -611,6 +612,7 @@
         <div class="nav-item" data-page="feedbacks" onclick="switchPage('feedbacks')"><i class="fas fa-comment-dots"></i><span>意见反馈</span></div>
         <div class="nav-item" data-page="envvars" onclick="switchPage('envvars')"><i class="fas fa-database"></i><span>xdd环境变量</span></div>
         <div class="nav-item" data-page="wxdevices" onclick="switchPage('wxdevices')"><i class="fab fa-weixin"></i><span>微信协议管理</span></div>
+        <div class="nav-item" data-page="yyb" onclick="switchPage('yyb')"><i class="fas fa-mobile-alt"></i><span>应用宝协议<span class="yyb-test-tag" style="margin-left:4px;">测试</span></span></div>
         <div class="nav-item" onclick="location.href='/admin/yyb'"><i class="fas fa-mobile-screen-button"></i><span>应用宝协议管理</span></div>
         <div class="nav-item" data-page="gameconfig" onclick="switchPage('gameconfig')"><i class="fas fa-gamepad"></i><span>娱乐功能</span></div>
         <div class="nav-item" data-page="logmgmt" onclick="switchPage('logmgmt')"><i class="fas fa-file-alt"></i><span>日志管理</span></div>
@@ -695,6 +697,19 @@
                         </div>
                     </div>
                     <div id="dashWxStats" class="loading"><i class="fas fa-spinner"></i> 加载中...</div>
+                </div>
+                <!-- 应用宝协议状态 -->
+                <div class="card" style="margin-bottom:0;padding:14px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div style="font-size:14px;font-weight:600;color:#1a1a2e;display:flex;align-items:center;gap:8px;">
+                            <i class="fas fa-mobile-alt" style="color:#722ed1;"></i> 应用宝协议<span class="yyb-test-tag">测试</span>
+                        </div>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-info btn-xs" onclick="loadDashYybStats()"><i class="fas fa-sync-alt"></i></button>
+                            <button class="btn btn-primary btn-xs" onclick="switchPage('yyb')"><i class="fas fa-external-link-alt"></i> 详情</button>
+                        </div>
+                    </div>
+                    <div id="dashYybStats" class="loading"><i class="fas fa-spinner"></i> 加载中...</div>
                 </div>
                 <!-- 活动人数统计 -->
                 <div class="card" style="margin-bottom:0;padding:14px;">
@@ -1488,6 +1503,89 @@
             </div>
         </div>
 
+        <!-- ========= 应用宝协议管理 ========= -->
+        <div id="page-yyb" class="page-section">
+            <div class="stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;">
+                <div class="stat-card" style="background:#fff;border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,0.04);">
+                    <h4 style="font-size:12px;color:#999;margin-bottom:8px;">服务状态</h4>
+                    <div style="font-size:18px;font-weight:700;" id="ayyb-stHealth">-</div>
+                </div>
+                <div class="stat-card" style="background:#fff;border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,0.04);">
+                    <h4 style="font-size:12px;color:#999;margin-bottom:8px;">协议账号</h4>
+                    <div style="font-size:26px;font-weight:700;" id="ayyb-stProtocol">0</div>
+                </div>
+                <div class="stat-card" style="background:#fff;border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,0.04);">
+                    <h4 style="font-size:12px;color:#999;margin-bottom:8px;">门户绑定</h4>
+                    <div style="font-size:26px;font-weight:700;" id="ayyb-stBindings">0</div>
+                </div>
+                <div class="stat-card" style="background:#fff;border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,0.04);">
+                    <h4 style="font-size:12px;color:#999;margin-bottom:8px;">扫码积分</h4>
+                    <div style="font-size:26px;font-weight:700;" id="ayyb-stCost">-</div>
+                </div>
+            </div>
+
+            <div class="ayyb-tab-bar">
+                <button type="button" class="ayyb-tab active" data-tab="debug">调试台</button>
+                <button type="button" class="ayyb-tab" data-tab="bindings">门户绑定</button>
+            </div>
+
+            <div class="ayyb-panel active" id="ayyb-panel-debug">
+                <div class="card">
+                    <div class="card-title">
+                        <span><i class="fas fa-users"></i> 选择账号</span>
+                        <div class="toolbar" style="margin:0;">
+                            <button class="btn btn-primary" id="ayyb-scanBtn" type="button"><i class="fas fa-qrcode"></i> 测试扫码</button>
+                            <button class="btn btn-default btn-sm" id="ayyb-refreshBtn" type="button">刷新存活</button>
+                            <button class="btn btn-default btn-sm" id="ayyb-resyncBtn" type="button">同步资料</button>
+                            <button class="btn btn-danger btn-sm" id="ayyb-deleteBtn" type="button">删除</button>
+                        </div>
+                    </div>
+                    <div class="account-select" id="ayyb-accountSelect" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;"><div class="empty-tip">加载中…</div></div>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-code"></i> API 调用</div>
+                    <div class="form-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                        <div class="form-item">
+                            <label>能力</label>
+                            <select id="ayyb-featureSel">
+                                <option value="getCode">getCode</option>
+                                <option value="getPhoneNumber">getPhoneNumber</option>
+                                <option value="operateWxData">operateWxData</option>
+                            </select>
+                        </div>
+                        <div class="form-item">
+                            <label>AppID</label>
+                            <input id="ayyb-appidInput" value="wx91d27dbf599dff74">
+                        </div>
+                        <div class="form-item full hidden" id="ayyb-payloadGroup" style="grid-column:1/-1;">
+                            <label>请求 JSON</label>
+                            <textarea id="ayyb-payloadInput" rows="4">{"api_name":"getUserInfo","data":{},"env":1}</textarea>
+                        </div>
+                    </div>
+                    <div class="toolbar" style="margin-top:10px;">
+                        <button class="btn btn-primary" id="ayyb-callBtn" type="button">执行调用</button>
+                        <button class="btn btn-default" id="ayyb-clearBtn" type="button">清空</button>
+                        <button class="btn btn-default" id="ayyb-copyBtn" type="button">复制</button>
+                    </div>
+                    <div class="result-box ayyb-result-box" id="ayyb-resultBox">选择账号后执行调用。</div>
+                </div>
+            </div>
+
+            <div class="ayyb-panel" id="ayyb-panel-bindings">
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-table"></i> 门户绑定列表</div>
+                    <div style="overflow:auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>用户编号</th><th>门户账号</th><th>昵称</th><th>OpenID</th><th>状态</th><th>操作</th></tr>
+                            </thead>
+                            <tbody id="ayyb-bindingTable"><tr><td colspan="6" class="empty-tip">加载中…</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ========= 微信协议管理 ========= -->
         <div id="page-wxdevices" class="page-section">
             <div class="stats-grid" id="wxStatsSummary">
@@ -2056,7 +2154,19 @@
     </div>
 </div>
 
+<!-- 应用宝测试扫码 -->
+<div class="modal-mask" id="ayyb-qrModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:200;">
+    <div class="modal" style="background:#fff;border-radius:10px;padding:20px;width:360px;max-width:92vw;">
+        <h3 style="margin-bottom:8px;">测试扫码 <span class="yyb-test-tag">测试</span></h3>
+        <p style="font-size:13px;color:#999;margin-bottom:10px;" id="ayyb-qrHint">不扣积分，仅写入协议库</p>
+        <div class="qr-box" id="ayyb-qrBox" style="min-height:200px;display:flex;align-items:center;justify-content:center;background:#fafafa;border:1px solid #eee;border-radius:8px;margin:12px 0;">生成中…</div>
+        <button class="btn btn-default" style="width:100%;" id="ayyb-qrCloseBtn" type="button">关闭</button>
+    </div>
+</div>
+<style>#ayyb-qrModal.show{display:flex!important;}</style>
+
 <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+<script src="/vweb/js/admin_yyb.js"></script>
 <script>
 // ============ 通用工具 ============
 function _fetchJson(method, url, data) {
@@ -2361,6 +2471,7 @@ function switchPage(page) {
         notifications: ['通知中心', '系统设置 / 通知中心'], feedbacks: ['意见反馈', '系统设置 / 意见反馈'], envvars: ['xdd环境变量', '系统设置 / xdd环境变量'],
         activities: ['活动配置', '系统设置 / 活动配置'], actauth: ['青龙活动授权', '系统设置 / 青龙活动授权'], actstats: ['活动人数统计', '系统设置 / 活动人数统计'],
         wxdevices: ['微信协议管理', '系统设置 / 微信协议管理'],
+        yyb: ['应用宝协议', '系统设置 / 应用宝协议'],
         containers: ['容器管理', '容器管理'],
         qlcontainers: ['青龙活动容器', '容器管理 / 青龙活动容器'],
         qlenvs: ['青龙活动变量', '容器管理 / 青龙活动变量'], jdcontainers: ['京东容器', '容器管理 / 京东容器'],
@@ -2379,6 +2490,7 @@ function switchPage(page) {
         coinlogs: function() { loadClientSourceStats(); },
         notifications: () => loadNotifications(1), feedbacks: () => loadFeedbacks(1), envvars: () => loadEnvVars(1), activities: loadActivities, actauth: loadActAuthList, actstats: loadActivityStats,
         wxdevices: loadWxDevices,
+        yyb: function() { if (window.AdminYyb) { AdminYyb.init(); AdminYyb.loadAll(); } },
         containers: loadContainers,
         qlcontainers: loadQLContainers,
         qlenvs: loadQLEnvConfigs, jdcontainers: loadJdContainers, jdcrontasks: initJdCronTaskPage,
@@ -2433,6 +2545,7 @@ async function loadDashboard() {
 
         // 微信协议状态
         loadDashWxStats();
+        loadDashYybStats();
 
         // 青龙容器状态（带连接检测）
         if (Array.isArray(qlRes.data) && qlRes.data.length > 0) {
@@ -3880,6 +3993,16 @@ async function loadDashWxStats() {
     } catch(e) {
         el.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">加载失败</p>';
     }
+}
+
+async function loadDashYybStats() {
+    const el = document.getElementById('dashYybStats');
+    if (!el) return;
+    if (window.AdminYyb && AdminYyb.loadDashboard) {
+        await AdminYyb.loadDashboard(el);
+        return;
+    }
+    el.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">模块未加载</p>';
 }
 
 // ============ 京东CK ============
@@ -6192,7 +6315,13 @@ window._pageSizeChange = function(key, size) {
 };
 
 // ============ 初始化 ============
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); initResizableColumns(); });
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.AdminYyb) AdminYyb.init();
+    loadDashboard();
+    initResizableColumns();
+    var pageQ = new URLSearchParams(location.search).get('page');
+    if (pageQ) switchPage(pageQ);
+});
 window.addEventListener('resize', function() { if (!isMobile()) closeSidebar(); });
 
 // ============ 列宽拖拽调整 + localStorage缓存 ============

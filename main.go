@@ -270,7 +270,6 @@ func main() {
 	web.Router("/api/portal/yyb/accounts/delete", &controllers.PortalYybController{}, "post:DeleteAccount")
 	web.Router("/api/portal/yyb/accounts/refresh", &controllers.PortalYybController{}, "post:RefreshAccount")
 	web.Router("/api/portal/yyb/accounts/resync", &controllers.PortalYybController{}, "post:ResyncAccount")
-	web.Router("/api/portal/yyb/accounts/claim", &controllers.PortalYybController{}, "post:ClaimAccount")
 	web.Router("/api/portal/yyb/avatar", &controllers.PortalYybController{}, "get:Avatar")
 	web.Router("/api/portal/yyb/wxapp/getCode", &controllers.PortalYybController{}, "post:WxappGetCode")
 	web.Router("/api/portal/yyb/wxapp/getPhoneNumber", &controllers.PortalYybController{}, "post:WxappGetPhone")
@@ -472,6 +471,12 @@ func main() {
 	uploadsDir := models.ExecPath + "/uploads"
 	os.MkdirAll(uploadsDir+"/guide", 0755)
 	web.BConfig.WebConfig.StaticDir["/uploads"] = uploadsDir
+	if jsDir := vweb.AssetDir("js"); jsDir != "" {
+		web.BConfig.WebConfig.StaticDir["/vweb/js"] = jsDir
+	}
+	if cssDir := vweb.AssetDir("css"); cssDir != "" {
+		web.BConfig.WebConfig.StaticDir["/vweb/css"] = cssDir
+	}
 
 	// 配置Web服务参数
 	web.BConfig.AppName = models.AppName

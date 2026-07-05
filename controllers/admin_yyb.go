@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/cdle/xdd/vweb"
 	"github.com/cdle/xdd/yybportal"
 )
 
@@ -30,19 +29,17 @@ func (c *AdminYybController) jsonErr(err error) {
 	c.ServeJSON()
 }
 
-// Index 管理页面
+// Index 重定向到主后台嵌入页
 func (c *AdminYybController) Index() {
-	file, err := vweb.ReadFile("html/admin_yyb.html")
-	if err != nil {
-		c.Ctx.WriteString("admin yyb page not found")
-		return
-	}
-	c.Ctx.WriteString(string(file))
+	c.Redirect("/admin?page=yyb", 302)
 }
 
 // Status 状态
 func (c *AdminYybController) Status() {
 	data := yybportal.StatusPayload()
+	for k, v := range yybportal.AdminStatusExtras() {
+		data[k] = v
+	}
 	data["config"] = yybportal.AdminConfigView()
 	c.jsonOK(data, "查询成功")
 }
