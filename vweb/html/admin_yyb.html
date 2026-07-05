@@ -270,11 +270,18 @@ async function adminScan() {
     scanTimer = setInterval(async () => {
         try {
             const poll = await request('/qr/' + encodeURIComponent(scanId) + '/poll');
-            if (poll.status === 'scanned' || poll.status === 'confirmed' || poll.account) {
+            const status = (poll.status || '').toLowerCase();
+            if (status === 'authorized' || status === 'confirmed') {
+                clearInterval(scanTimer);
+                scanTimer = null;
                 await request('/qr/' + encodeURIComponent(scanId) + '/confirm', { method: 'POST' });
                 closeQr();
                 alert('测试账号已入库');
                 loadAll();
+            } else if (status === 'expired' || status === 'cancelled') {
+                clearInterval(scanTimer);
+                scanTimer = null;
+                alert(status === 'expired' ? '二维码已过期' : '已取消扫码');
             }
         } catch (_) {}
     }, 2000);

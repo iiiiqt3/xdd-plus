@@ -234,7 +234,7 @@
 <div class="modal-mask" id="qrModal">
     <div class="modal">
         <h3>微信扫码登录</h3>
-        <p id="qrHint">请使用微信扫描下方二维码，扫码成功后自动确认</p>
+        <p id="qrHint">请使用微信扫描二维码，并在手机上确认登录</p>
         <div class="qr-box" id="qrBox">生成中…</div>
         <div class="actions" style="justify-content:flex-end;">
             <button class="btn btn-secondary" onclick="closeQrModal()">关闭</button>
@@ -385,11 +385,24 @@ async function pollScan() {
     try {
         const data = await request('/qr/' + encodeURIComponent(scanSessionId) + '/poll');
         const status = (data.status || '').toLowerCase();
-        if (status === 'scanned' || status === 'confirmed' || status === 'success' || data.account) {
+        const hint = document.getElementById('qrHint');
+        if (status === 'scanned') {
+            hint.textContent = '已扫码，请在手机上点击「确认登录」';
+            return;
+        }
+        if (status === 'authorized' || status === 'confirmed') {
+            if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
             await request('/qr/' + encodeURIComponent(scanSessionId) + '/confirm', { method: 'POST' });
             closeQrModal();
             toast('绑定成功');
             loadStatus();
+            return;
+        }
+        if (status === 'expired' || status === 'cancelled' || status === 'unknown') {
+            if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+            const msg = status === 'expired' ? '二维码已过期，请重新生成' : (status === 'cancelled' ? '已取消扫码' : '扫码异常，请重试');
+            hint.textContent = msg;
+            toast(msg);
         }
     } catch (e) {
         if (!String(e.message).includes('会话')) toast(e.message);
