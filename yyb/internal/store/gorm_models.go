@@ -4,7 +4,7 @@ package store
 type GormWechatAccount struct {
 	ID            int64   `gorm:"primaryKey"`
 	OpenID        string  `gorm:"column:open_id;size:128;uniqueIndex;not null"`
-	UIN           *int64  `gorm:"index"`
+	UIN           *int64  `gorm:"column:uin;index"`
 	Alias         *string `gorm:"size:256"`
 	Nickname      *string `gorm:"size:256"`
 	Avatar        *string `gorm:"size:512"`
@@ -23,7 +23,7 @@ func (GormWechatAccount) TableName() string { return "yyb_wechat_accounts" }
 type GormSession struct {
 	ID              int64  `gorm:"primaryKey"`
 	WechatAccountID int64  `gorm:"not null;uniqueIndex:idx_yyb_sess_acc_proxy"`
-	UIN             *int64
+	UIN             *int64 `gorm:"column:uin"`
 	TCPProxy        string `gorm:"size:256;not null;default:'';uniqueIndex:idx_yyb_sess_acc_proxy"`
 	SessionBlob     string `gorm:"type:longtext;not null"`
 	ExpiresAt       int64  `gorm:"not null;index"`

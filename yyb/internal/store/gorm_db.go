@@ -20,6 +20,9 @@ func OpenGORM(orm *gorm.DB) (*DB, error) {
 	if err := orm.AutoMigrate(&GormWechatAccount{}, &GormSession{}, &GormFeature{}); err != nil {
 		return nil, err
 	}
+	if err := normalizeYybGormColumns(orm); err != nil {
+		return nil, fmt.Errorf("normalize yyb columns: %w", err)
+	}
 	db := &DB{orm: orm}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -138,7 +141,8 @@ func (db *DB) gormGetAccountByOpenID(ctx context.Context, openid string) (*Wecha
 
 func (db *DB) gormGetAccountByUIN(ctx context.Context, uin int64) (*WechatAccount, error) {
 	var m GormWechatAccount
-	if err := db.orm.WithContext(ctx).Where("uin = ?", uin).First(&m).Error; err != nil {
+	v := uin
+	if err := db.orm.WithContext(ctx).Where(&GormWechatAccount{UIN: &v}).First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, sql.ErrNoRows
 		}
@@ -160,8 +164,10 @@ func (db *DB) gormListAccounts(ctx context.Context) ([]*WechatAccount, error) {
 }
 
 func (db *DB) gormSetAccountUIN(ctx context.Context, id, uin int64) error {
+	v := uin
 	return db.orm.WithContext(ctx).Model(&GormWechatAccount{}).Where("id = ?", id).
-		Updates(map[string]any{"uin": uin, "updated_at": time.Now().Unix()}).Error
+		Select("UIN", "UpdatedAt").
+		Updates(GormWechatAccount{UIN: &v, UpdatedAt: time.Now().Unix()}).Error
 }
 
 func (db *DB) gormSetAccountProfile(ctx context.Context, id int64, nickname, avatar *string, userInfo map[string]any) error {
@@ -309,6 +315,21 @@ func (db *DB) gormGetFeature(ctx context.Context, code int) (*Feature, error) {
 	}
 	f := Feature{Code: m.Code, Name: m.Name, Description: m.Description, Enabled: m.Enabled}
 	return &f, nil
+}
+
+func normalizeYybGormColumns(orm *gorm.DB) error {
+	m := orm.Migrator()
+	if m.HasColumn(&GormWechatAccount{}, "ui_n") {
+		if err := m.RenameColumn(&GormWechatAccount{}, "ui_n", "uin"); err != nil {
+			return err
+		}
+	}
+	if m.HasColumn(&GormSession{}, "ui_n") {
+		if err := m.RenameColumn(&GormSession{}, "ui_n", "uin"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (db *DB) gormGetFeatureByName(ctx context.Context, name string) (*Feature, error) {
