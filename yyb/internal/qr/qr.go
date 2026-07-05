@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,7 +28,9 @@ const (
 		"&state=web&fast_login=1&self_redirect=true"
 	callbackURL  = "https://yybadaccess.3g.qq.com/pc_yyb/pcyyb_oauth"
 	qrBase       = "https://open.weixin.qq.com/connect/qrcode/"
-	longPollBase = "https://long.open.weixin.qq.com/connect/l/qrconnect"
+	longPollBase     = "https://long.open.weixin.qq.com/connect/l/qrconnect"
+	longPollWait     = 35 * time.Second // 微信长轮询会挂起连接直至状态变化
+	longPollHTTPWait = 40 * time.Second // HTTP 客户端超时须大于长轮询等待
 )
 
 var (
@@ -157,15 +161,21 @@ func (c *Client) PollQRCode(ctx context.Context, sess *Session) (PollResult, err
 		"uuid": {sess.WXUUID},
 		"_":    {strconv.FormatInt(time.Now().UnixMilli(), 10)},
 	}.Encode()
-	reqCtx, cancel := context.WithTimeout(ctx, 35*time.Second)
+	reqCtx, cancel := context.WithTimeout(ctx, longPollWait)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, u, nil)
 	if err != nil {
 		return PollResult{}, err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0")
-	resp, err := sess.HTTPClient.Do(req)
+	// 长轮询不能用创建会话时的短超时 Client（默认 8s），否则会在微信返回前断开。
+	pollClient := &http.Client{Timeout: longPollHTTPWait, Jar: sess.Jar}
+	resp, err := pollClient.Do(req)
 	if err != nil {
+		if isPollTransientErr(err) {
+			sess.Status = "pending"
+			return PollResult{Status: "pending"}, nil
+		}
 		return PollResult{}, err
 	}
 	defer resp.Body.Close()
@@ -306,4 +316,17 @@ func randomHex(n int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+func isPollTransientErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "client.timeout") ||
+		strings.Contains(msg, "context deadline exceeded") ||
+		strings.Contains(msg, "i/o timeout")
 }

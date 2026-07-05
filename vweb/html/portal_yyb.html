@@ -243,7 +243,7 @@
 
 <script>
 const API = '/api/portal/yyb';
-const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null };
+const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false };
 const $ = id => document.getElementById(id);
 
 function esc(s) {
@@ -406,23 +406,35 @@ async function deleteSelected() {
     } catch (e) { setResult(e.message, true); }
 }
 
+function stopScanPoll() {
+    if (state.scanTimer) { clearTimeout(state.scanTimer); state.scanTimer = null; }
+    state.scanPolling = false;
+}
+
+function scheduleScanPoll(delay) {
+    if (state.scanTimer) clearTimeout(state.scanTimer);
+    state.scanTimer = setTimeout(() => { void pollScan(); }, delay);
+}
+
 function closeQr() {
     $('qrModal').classList.remove('show');
-    if (state.scanTimer) { clearInterval(state.scanTimer); state.scanTimer = null; }
+    stopScanPoll();
 }
 
 async function pollScan() {
-    if (!state.scanSessionId) return;
+    if (!state.scanSessionId || state.scanPolling) return;
+    state.scanPolling = true;
+    let keepPolling = false;
     try {
         const data = await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/poll');
         const status = (data.status || '').toLowerCase();
         if (status === 'scanned') {
             $('qrHint').textContent = '已扫码，请在手机上点击「确认登录」';
+            keepPolling = true;
             return;
         }
         if (status === 'authorized' || status === 'confirmed') {
-            clearInterval(state.scanTimer);
-            state.scanTimer = null;
+            stopScanPoll();
             $('qrHint').textContent = '正在完成绑定…';
             await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/confirm', { method: 'POST' });
             closeQr();
@@ -431,15 +443,24 @@ async function pollScan() {
             return;
         }
         if (['expired', 'cancelled', 'unknown'].includes(status)) {
-            clearInterval(state.scanTimer);
-            state.scanTimer = null;
+            stopScanPoll();
             $('qrHint').textContent = status === 'expired' ? '二维码已过期，请重新生成' : '扫码已取消';
+            return;
         }
+        keepPolling = true;
     } catch (e) {
-        clearInterval(state.scanTimer);
-        state.scanTimer = null;
-        $('qrHint').textContent = e.message || '登录失败';
-        setResult(e.message || '扫码确认失败', true);
+        const msg = e.message || '';
+        if (/deadline|timeout/i.test(msg)) {
+            $('qrHint').textContent = '等待扫码中（网络较慢）…';
+            keepPolling = true;
+            return;
+        }
+        stopScanPoll();
+        $('qrHint').textContent = msg || '登录失败';
+        setResult(msg || '扫码确认失败', true);
+    } finally {
+        state.scanPolling = false;
+        if (keepPolling && state.scanSessionId) scheduleScanPoll(800);
     }
 }
 
@@ -451,9 +472,8 @@ async function startScan() {
         $('qrBox').innerHTML = src ? `<img src="${src}" alt="二维码">` : '加载失败';
         $('qrHint').textContent = '本次消耗 ' + (data.scanLoginCost ?? '-') + ' 积分';
         $('qrModal').classList.add('show');
-        if (state.scanTimer) clearInterval(state.scanTimer);
-        state.scanTimer = setInterval(pollScan, 2000);
-        pollScan();
+        stopScanPoll();
+        scheduleScanPoll(0);
     } catch (e) { setResult(e.message, true); }
 }
 
