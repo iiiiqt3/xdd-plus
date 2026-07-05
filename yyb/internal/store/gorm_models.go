@@ -3,7 +3,7 @@ package store
 // GormWechatAccount 应用宝微信账号（存 xdd 主库）
 type GormWechatAccount struct {
 	ID            int64   `gorm:"primaryKey"`
-	OpenID        string  `gorm:"size:128;uniqueIndex;not null"`
+	OpenID        string  `gorm:"column:open_id;size:128;uniqueIndex;not null"`
 	UIN           *int64  `gorm:"index"`
 	Alias         *string `gorm:"size:256"`
 	Nickname      *string `gorm:"size:256"`

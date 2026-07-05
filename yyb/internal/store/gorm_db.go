@@ -103,7 +103,7 @@ func (db *DB) gormUpsertAccount(ctx context.Context, openid, loginBuffer string,
 		UpdatedAt:   now,
 	}
 	err = db.orm.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "openid"}},
+		Columns: []clause.Column{{Name: "open_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"login_buffer", "alias", "nickname", "avatar", "user_info", "credentials", "status", "updated_at",
 		}),
@@ -127,7 +127,7 @@ func (db *DB) gormGetAccount(ctx context.Context, id int64) (*WechatAccount, err
 
 func (db *DB) gormGetAccountByOpenID(ctx context.Context, openid string) (*WechatAccount, error) {
 	var m GormWechatAccount
-	if err := db.orm.WithContext(ctx).Where("openid = ?", openid).First(&m).Error; err != nil {
+	if err := db.orm.WithContext(ctx).Where(&GormWechatAccount{OpenID: openid}).First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, sql.ErrNoRows
 		}
