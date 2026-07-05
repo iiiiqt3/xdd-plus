@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>应用宝协议 · 用户中心</title>
+    <style>
+        :root {
+            --sidebar-bg: #0f172a;
+            --sidebar-hover: #1e293b;
+            --sidebar-active: #312e81;
+            --sidebar-text: #94a3b8;
+            --sidebar-text-active: #c7d2fe;
+            --sidebar-border: #334155;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --line: #e2e8f0;
+            --primary: #4f46e5;
+            --primary-soft: rgba(79,70,229,0.1);
+            --success: #059669;
+            --danger: #dc2626;
+            --warn: #d97706;
+            --radius: 14px;
+            --shadow: 0 10px 30px rgba(15,23,42,0.06);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: 240px; background: var(--sidebar-bg); color: #fff;
+            padding: 24px 16px; flex-shrink: 0; border-right: 1px solid var(--sidebar-border);
+        }
+        .brand { padding: 0 8px 20px; border-bottom: 1px solid var(--sidebar-border); margin-bottom: 16px; }
+        .brand h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.02em; }
+        .brand p { color: var(--sidebar-text); font-size: 12px; margin-top: 6px; line-height: 1.6; }
+        .nav-btn {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            padding: 11px 12px; border: none; border-radius: 10px; background: transparent;
+            color: var(--sidebar-text); font-size: 14px; cursor: pointer; text-align: left;
+            transition: all .15s ease; margin-bottom: 4px;
+        }
+        .nav-btn:hover { background: var(--sidebar-hover); color: #e2e8f0; }
+        .nav-btn.active { background: var(--sidebar-active); color: var(--sidebar-text-active); }
+        .main { flex: 1; min-width: 0; padding: 24px; }
+        .topbar {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .topbar h2 { font-size: 22px; font-weight: 700; }
+        .topbar .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+        .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 999px; background: #fff;
+            border: 1px solid var(--line); font-size: 12px; color: var(--muted);
+        }
+        .chip strong { color: var(--text); }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn {
+            border: none; border-radius: 10px; padding: 10px 16px; font-size: 13px;
+            font-weight: 600; cursor: pointer; transition: all .15s ease;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { filter: brightness(1.05); }
+        .btn-secondary { background: #fff; color: var(--text); border: 1px solid var(--line); }
+        .btn-danger { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+        .card {
+            background: var(--card); border-radius: var(--radius); padding: 18px;
+            border: 1px solid rgba(15,23,42,0.04); box-shadow: var(--shadow);
+        }
+        .card h3 { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+        .card .val { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+        .card .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+        .status-banner {
+            border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            border: 1px solid var(--line); background: #fff;
+        }
+        .status-banner.ok { border-color: #bbf7d0; background: #f0fdf4; }
+        .status-banner.warn { border-color: #fde68a; background: #fffbeb; }
+        .status-banner.err { border-color: #fecaca; background: #fef2f2; }
+        .section-title {
+            display: flex; align-items: center; justify-content: space-between;
+            margin: 8px 0 12px;
+        }
+        .section-title h3 { font-size: 16px; }
+        .account-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+        .account-card {
+            background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+            padding: 16px; display: flex; flex-direction: column; gap: 12px;
+        }
+        .account-head { display: flex; gap: 12px; align-items: center; }
+        .avatar {
+            width: 48px; height: 48px; border-radius: 12px; object-fit: cover;
+            background: var(--primary-soft); border: 1px solid var(--line);
+        }
+        .account-name { font-weight: 700; font-size: 15px; }
+        .account-meta { font-size: 12px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+        .badge {
+            display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+        }
+        .badge.alive { background: #dcfce7; color: #166534; }
+        .badge.dead { background: #fee2e2; color: #991b1b; }
+        .badge.other { background: #e0e7ff; color: #3730a3; }
+        .account-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-item label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+        .form-item input, .form-item textarea {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--line);
+            border-radius: 10px; font-size: 13px; outline: none;
+        }
+        .form-item input:focus, .form-item textarea:focus { border-color: var(--primary); }
+        .form-item.full { grid-column: 1 / -1; }
+        .result-box {
+            margin-top: 12px; padding: 12px; border-radius: 10px; background: #0f172a; color: #e2e8f0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+            max-height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-all;
+        }
+        .empty {
+            text-align: center; padding: 40px 20px; color: var(--muted);
+            border: 1px dashed var(--line); border-radius: var(--radius); background: #fff;
+        }
+        .modal-mask {
+            position: fixed; inset: 0; background: rgba(15,23,42,0.55);
+            display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px;
+        }
+        .modal-mask.show { display: flex; }
+        .modal {
+            width: 100%; max-width: 420px; background: #fff; border-radius: 18px;
+            padding: 24px; box-shadow: var(--shadow);
+        }
+        .modal h3 { font-size: 18px; margin-bottom: 8px; }
+        .modal p { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+        .qr-box {
+            display: flex; justify-content: center; align-items: center;
+            min-height: 220px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--line);
+            margin-bottom: 16px;
+        }
+        .qr-box img { width: 200px; height: 200px; object-fit: contain; }
+        .toast {
+            position: fixed; right: 20px; bottom: 20px; background: #0f172a; color: #fff;
+            padding: 12px 16px; border-radius: 10px; font-size: 13px; opacity: 0;
+            transform: translateY(8px); transition: all .2s ease; z-index: 200;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        @media (max-width: 960px) {
+            .layout { flex-direction: column; }
+            .sidebar { width: 100%; }
+            .grid { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="brand">
+            <h1>应用宝协议</h1>
+            <p>WMPF 小程序通道 · 扫码绑定 · 云函数调试</p>
+        </div>
+        <button class="nav-btn active" data-panel="accounts" onclick="switchPanel('accounts')">📱 我的账号</button>
+        <button class="nav-btn" data-panel="wxapp" onclick="switchPanel('wxapp')">🧪 小程序调试</button>
+        <button class="nav-btn" onclick="location.href='/portal'">↩ 返回用户中心</button>
+    </aside>
+    <main class="main">
+        <div class="topbar">
+            <div>
+                <h2 id="pageTitle">我的应用宝账号</h2>
+                <div class="sub">通过应用宝 WMPF 通道管理微信小程序协议账号，与 wechat08 iPad 协议相互独立</div>
+                <div class="chips">
+                    <span class="chip">积分 <strong id="chipCoin">-</strong></span>
+                    <span class="chip">扫码消耗 <strong id="chipCost">-</strong></span>
+                    <span class="chip">账号上限 <strong id="chipMax">-</strong></span>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-secondary" onclick="loadStatus()">刷新</button>
+                <button class="btn btn-primary" id="btnScan" onclick="startScan()">扫码添加账号</button>
+                <button class="btn btn-danger" onclick="logout()">退出</button>
+            </div>
+        </div>
+
+        <div id="statusBanner" class="status-banner warn">正在检测模块状态…</div>
+
+        <section class="panel active" id="panel-accounts">
+            <div class="grid">
+                <div class="card"><h3>已绑定账号</h3><div class="val" id="statCount">0</div><div class="hint">当前门户用户绑定数</div></div>
+                <div class="card"><h3>模块状态</h3><div class="val" id="statReady" style="font-size:20px;">-</div><div class="hint" id="statReadyHint">服务就绪后可扫码</div></div>
+                <div class="card"><h3>协议类型</h3><div class="val" style="font-size:20px;">WMPF</div><div class="hint">应用宝小程序框架通道</div></div>
+            </div>
+            <div class="section-title"><h3>账号列表</h3></div>
+            <div class="account-grid" id="accountList"></div>
+        </section>
+
+        <section class="panel" id="panel-wxapp">
+            <div class="card">
+                <div class="section-title"><h3>小程序 API 调试</h3></div>
+                <div class="form-grid">
+                    <div class="form-item">
+                        <label>账号 ref（openid 或绑定 ID）</label>
+                        <input id="wxRef" placeholder="选择账号后自动填入，或手动输入">
+                    </div>
+                    <div class="form-item">
+                        <label>AppID</label>
+                        <input id="wxAppId" placeholder="wx...">
+                    </div>
+                    <div class="form-item full">
+                        <label>operateWxData Payload（JSON，可选）</label>
+                        <textarea id="wxPayload" rows="4" placeholder='{"api_name":"...","data":{}}'></textarea>
+                    </div>
+                </div>
+                <div class="actions" style="margin-top:14px;">
+                    <button class="btn btn-primary btn-sm" onclick="wxappCall('getCode')">getCode</button>
+                    <button class="btn btn-secondary btn-sm" onclick="wxappCall('getPhoneNumber')">getPhoneNumber</button>
+                    <button class="btn btn-secondary btn-sm" onclick="wxappCall('operateWxData')">operateWxData</button>
+                </div>
+                <div class="result-box" id="wxResult">等待调用…</div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="modal-mask" id="qrModal">
+    <div class="modal">
+        <h3>微信扫码登录</h3>
+        <p id="qrHint">请使用微信扫描下方二维码，扫码成功后自动确认</p>
+        <div class="qr-box" id="qrBox">生成中…</div>
+        <div class="actions" style="justify-content:flex-end;">
+            <button class="btn btn-secondary" onclick="closeQrModal()">关闭</button>
+        </div>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api/portal/yyb';
+let scanTimer = null;
+let scanSessionId = '';
+
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+async function request(path, options = {}) {
+    const res = await fetch(API + path, {
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-Request-Source': 'web', ...(options.headers || {}) },
+        ...options,
+    });
+    if (res.redirected && res.url.includes('/portal/login')) {
+        location.href = '/portal/login';
+        throw new Error('未登录');
+    }
+    const data = await res.json();
+    if (data.code !== 0) throw new Error(data.msg || '请求失败');
+    return data.data;
+}
+
+function switchPanel(name) {
+    document.querySelectorAll('.nav-btn[data-panel]').forEach(b => b.classList.toggle('active', b.dataset.panel === name));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    document.getElementById('pageTitle').textContent = name === 'wxapp' ? '小程序调试台' : '我的应用宝账号';
+}
+
+function statusClass(st) {
+    const s = (st.status || '').toLowerCase();
+    if (s === 'alive' || s === 'online') return 'alive';
+    if (s === 'dead' || s === 'offline') return 'dead';
+    return 'other';
+}
+
+function renderAccounts(accounts) {
+    const box = document.getElementById('accountList');
+    document.getElementById('statCount').textContent = accounts.length;
+    if (!accounts.length) {
+        box.innerHTML = '<div class="empty" style="grid-column:1/-1;">暂无绑定账号，点击右上角「扫码添加账号」开始</div>';
+        return;
+    }
+    box.innerHTML = accounts.map(a => `
+        <div class="account-card">
+            <div class="account-head">
+                <img class="avatar" src="${a.avatarUrl || ''}" alt="" onerror="this.style.display='none'">
+                <div>
+                    <div class="account-name">${escapeHtml(a.nickname || '未命名')}</div>
+                    <div class="account-meta">${escapeHtml(a.openid || '')}</div>
+                </div>
+            </div>
+            <div><span class="badge ${statusClass(a)}">${escapeHtml(a.status || 'unknown')}</span></div>
+            <div class="account-actions">
+                <button class="btn btn-secondary btn-sm" onclick="pickRef('${a.openid}')">选为调试</button>
+                <button class="btn btn-secondary btn-sm" onclick="refreshAcc('${a.openid}')">刷新</button>
+                <button class="btn btn-secondary btn-sm" onclick="resyncAcc('${a.openid}')">同步</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteAcc('${a.openid}')">删除</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function updateBanner(st) {
+    const el = document.getElementById('statusBanner');
+    if (!st.enabled) {
+        el.className = 'status-banner err';
+        el.innerHTML = '<div><strong>模块未启用</strong><div style="font-size:12px;margin-top:4px;">请在 config.yaml 中设置 yyb.enabled: true</div></div>';
+        document.getElementById('btnScan').disabled = true;
+        return;
+    }
+    if (!st.ready) {
+        el.className = 'status-banner warn';
+        el.innerHTML = `<div><strong>服务暂不可用</strong><div style="font-size:12px;margin-top:4px;">${escapeHtml(st.message || st.error || '应用宝进程未就绪，不影响其他 xdd 功能')}</div></div>`;
+        document.getElementById('btnScan').disabled = true;
+        return;
+    }
+    el.className = 'status-banner ok';
+    el.innerHTML = '<div><strong>服务正常</strong><div style="font-size:12px;margin-top:4px;">可扫码绑定账号，调用小程序 API</div></div>';
+    document.getElementById('btnScan').disabled = false;
+}
+
+async function loadStatus() {
+    try {
+        const st = await request('/status');
+        document.getElementById('chipCoin').textContent = st.coin ?? '-';
+        document.getElementById('chipCost').textContent = st.scanLoginCost ?? '-';
+        document.getElementById('chipMax').textContent = st.maxAccounts ?? '-';
+        document.getElementById('statReady').textContent = st.ready ? '就绪' : '不可用';
+        document.getElementById('statReadyHint').textContent = st.ready ? '可以扫码绑定' : (st.message || '请稍后再试');
+        updateBanner(st);
+        renderAccounts(st.accounts || []);
+    } catch (e) {
+        toast(e.message);
+    }
+}
+
+function closeQrModal() {
+    document.getElementById('qrModal').classList.remove('show');
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+}
+
+async function startScan() {
+    try {
+        const data = await request('/qr', { method: 'POST' });
+        scanSessionId = data.sessionId;
+        const box = document.getElementById('qrBox');
+        if (data.imageBase64) {
+            box.innerHTML = `<img src="data:image/png;base64,${data.imageBase64}" alt="qr">`;
+        } else {
+            box.textContent = '二维码加载失败';
+        }
+        document.getElementById('qrHint').textContent = `本次扫码将消耗 ${data.scanLoginCost} 积分`;
+        document.getElementById('qrModal').classList.add('show');
+        if (scanTimer) clearInterval(scanTimer);
+        scanTimer = setInterval(pollScan, 2000);
+        pollScan();
+    } catch (e) {
+        toast(e.message);
+    }
+}
+
+async function pollScan() {
+    if (!scanSessionId) return;
+    try {
+        const data = await request('/qr/' + encodeURIComponent(scanSessionId) + '/poll');
+        const status = (data.status || '').toLowerCase();
+        if (status === 'scanned' || status === 'confirmed' || status === 'success' || data.account) {
+            await request('/qr/' + encodeURIComponent(scanSessionId) + '/confirm', { method: 'POST' });
+            closeQrModal();
+            toast('绑定成功');
+            loadStatus();
+        }
+    } catch (e) {
+        if (!String(e.message).includes('会话')) toast(e.message);
+    }
+}
+
+async function deleteAcc(ref) {
+    if (!confirm('确定删除该账号？')) return;
+    try {
+        await request('/accounts/delete', { method: 'POST', body: JSON.stringify({ ref }) });
+        toast('已删除');
+        loadStatus();
+    } catch (e) { toast(e.message); }
+}
+
+async function refreshAcc(ref) {
+    try {
+        const data = await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref }) });
+        document.getElementById('wxResult').textContent = JSON.stringify(data, null, 2);
+        toast('刷新完成');
+        loadStatus();
+    } catch (e) { toast(e.message); }
+}
+
+async function resyncAcc(ref) {
+    try {
+        await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref }) });
+        toast('同步完成');
+        loadStatus();
+    } catch (e) { toast(e.message); }
+}
+
+function pickRef(ref) {
+    document.getElementById('wxRef').value = ref;
+    switchPanel('wxapp');
+    toast('已填入调试账号');
+}
+
+async function wxappCall(kind) {
+    const ref = document.getElementById('wxRef').value.trim();
+    const appId = document.getElementById('wxAppId').value.trim();
+    if (!ref || !appId) { toast('请填写 ref 和 AppID'); return; }
+    const body = { ref, appId };
+    let path = '/wxapp/getCode';
+    if (kind === 'getPhoneNumber') path = '/wxapp/getPhoneNumber';
+    if (kind === 'operateWxData') {
+        path = '/wxapp/operateWxData';
+        try {
+            body.payload = JSON.parse(document.getElementById('wxPayload').value || '{}');
+        } catch (e) {
+            toast('Payload JSON 格式错误');
+            return;
+        }
+    }
+    try {
+        const data = await request(path, { method: 'POST', body: JSON.stringify(body) });
+        document.getElementById('wxResult').textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+        document.getElementById('wxResult').textContent = e.message;
+    }
+}
+
+function logout() { location.href = '/portal/login'; }
+
+loadStatus();
+</script>
+</body>
+</html>

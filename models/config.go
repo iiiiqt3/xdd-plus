@@ -27,6 +27,18 @@ type WxProtocolConfig struct {
 	JdServer         string `yaml:"jd_server"`
 }
 
+// YybConfig 应用宝模块配置（独立协议，不影响主服务）
+type YybConfig struct {
+	Enabled            bool   `yaml:"enabled"`
+	ResourceRoot       string `yaml:"resource_root"`
+	DBFilename         string `yaml:"db_filename"`
+	TCPProxy           string `yaml:"tcp_proxy"`
+	ScanLoginCost      int    `yaml:"scan_login_cost"`
+	MaxAccountsPerUser int    `yaml:"max_accounts_per_user"`
+	APIToken           string `yaml:"api_token"`
+	ExposeInternalAPI  bool   `yaml:"expose_internal_api"`
+}
+
 // GameConfig 游戏配置（支持热更新）
 type GameConfig struct {
 	GameOpen            bool `yaml:"game_open"`             // 游戏总开关
@@ -116,6 +128,7 @@ type Yaml struct {
 	FanLis              FanLi
 	Wx                  WxConfig
 	WxProtocol           WxProtocolConfig `yaml:"wx_protocol"`
+	Yyb                  YybConfig        `yaml:"yyb"`
 	Game                GameConfig `yaml:"game"`
 	HttpProxyServerPort int        `yaml:"http_proxy_server_port"`
 	Priority            int    `yaml:"Priority"`
@@ -211,6 +224,12 @@ func initConfig() {
 	}
 	if Config.WxProtocol.DeviceName == "" {
 		Config.WxProtocol.DeviceName = "Xiaomi-M2012K11AC"
+	}
+	if Config.Yyb.ScanLoginCost == 0 {
+		Config.Yyb.ScanLoginCost = 2000
+	}
+	if Config.Yyb.MaxAccountsPerUser == 0 {
+		Config.Yyb.MaxAccountsPerUser = 5
 	}
 
 	initConfigDefaults()

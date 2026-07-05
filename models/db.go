@@ -73,6 +73,11 @@ func initDB() {
 	}
 }
 
+// GormDB 返回主库 gorm 实例（供独立模块迁移/查询）
+func GormDB() *gorm.DB {
+	return db
+}
+
 func HasPin(pin string) bool {
 	if _, ok := pins[pin]; ok {
 		return ok

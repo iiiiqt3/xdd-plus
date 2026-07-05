@@ -1,33 +1,31 @@
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# 编译产物
-xdd
-*.exe
-*.dll
-*.so
-*.dylib
 
 # Go 相关
-vendor/
-
-# 配置文件（包含敏感信息）- 排除整个conf目录，防止更新时覆盖服务器配置
-conf/
-static/
-scripts/
-# 数据库和临时数据
-*.db
-userid_farmNew.json
-
-# 日志文件
-*.log
-logs/
-.md
+# IDE
 # 临时文件
-tmp/
+# 数据库和临时数据
+# 日志文件
+# 编译产物
+# 配置文件（包含敏感信息）- 排除整个conf目录，防止更新时覆盖服务器配置
+*.db
+*.dll
+*.dylib
+*.exe
+*.log
+*.so
+*.swo
+*.swp
 *.tmp
 .DS_Store
+.gomodcache/
+.idea/
+.md
+.vscode/
+conf/
 jd_query.js
+logs/
+scripts/
+static/
+tmp/
+userid_farmNew.json
+vendor/
+xdd

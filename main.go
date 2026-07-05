@@ -16,6 +16,7 @@ import (
 	"github.com/cdle/xdd/controllers"
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/vweb"
+	"github.com/cdle/xdd/yybportal"
 	"github.com/eatmoreapple/openwechat"
 )
 
@@ -41,6 +42,13 @@ type AuthResult struct {
 func main() {
 
 	models.System().Infof("XDD 服务启动")
+
+	// 应用宝模块（失败不影响主服务）
+	if err := yybportal.Init(yybportal.ModuleConfigFromModels()); err != nil {
+		models.System().Errorf("应用宝启动失败(主服务不受影响): %v", err)
+	} else if models.Config.Yyb.Enabled {
+		models.System().Infof("应用宝模块已加载 ready=%v", yybportal.Ready())
+	}
 
 	// 启动定时保存任务
 	go func() {
@@ -252,6 +260,20 @@ func main() {
 	web.Router("/api/portal/kuwo/schedule-withdraw", &controllers.PortalController{}, "post:KuwoScheduleWithdraw")
 	web.Router("/api/portal/kuwo/update-sms-code", &controllers.PortalController{}, "post:KuwoUpdateSmsCode")
 	web.Router("/api/portal/kuwo/withdraw-status", &controllers.PortalController{}, "get:KuwoGetWithdrawStatus")
+	// ===================== 应用宝门户 =====================
+	web.Router("/portal/yyb", &controllers.PortalYybController{}, "get:Index")
+	web.Router("/api/portal/yyb/status", &controllers.PortalYybController{}, "get:Status")
+	web.Router("/api/portal/yyb/accounts", &controllers.PortalYybController{}, "get:Accounts")
+	web.Router("/api/portal/yyb/qr", &controllers.PortalYybController{}, "post:CreateQR")
+	web.Router("/api/portal/yyb/qr/:id/poll", &controllers.PortalYybController{}, "get:PollQR")
+	web.Router("/api/portal/yyb/qr/:id/confirm", &controllers.PortalYybController{}, "post:ConfirmQR")
+	web.Router("/api/portal/yyb/accounts/delete", &controllers.PortalYybController{}, "post:DeleteAccount")
+	web.Router("/api/portal/yyb/accounts/refresh", &controllers.PortalYybController{}, "post:RefreshAccount")
+	web.Router("/api/portal/yyb/accounts/resync", &controllers.PortalYybController{}, "post:ResyncAccount")
+	web.Router("/api/portal/yyb/avatar", &controllers.PortalYybController{}, "get:Avatar")
+	web.Router("/api/portal/yyb/wxapp/getCode", &controllers.PortalYybController{}, "post:WxappGetCode")
+	web.Router("/api/portal/yyb/wxapp/getPhoneNumber", &controllers.PortalYybController{}, "post:WxappGetPhone")
+	web.Router("/api/portal/yyb/wxapp/operateWxData", &controllers.PortalYybController{}, "post:WxappOperate")
 	// 管理员登录页面
 	web.Get("/admin/login", func(ctx *context.Context) {
 		file, err := vweb.ReadFile("html/admin_login.html")
@@ -358,6 +380,26 @@ func main() {
 	// ===================== 微信协议配置管理 API =====================
 	web.Router("/api/admin/wx-protocol-config", &controllers.AdminApiController{}, "get:GetWxProtocolConfig")
 	web.Router("/api/admin/wx-protocol-config/save", &controllers.AdminApiController{}, "post:SaveWxProtocolConfig")
+	// ===================== 应用宝管理后台 =====================
+	web.Router("/admin/yyb", &controllers.AdminYybController{}, "get:Index")
+	web.Router("/api/admin/yyb/status", &controllers.AdminYybController{}, "get:Status")
+	web.Router("/api/admin/yyb/config", &controllers.AdminYybController{}, "get:Config")
+	web.Router("/api/admin/yyb/accounts", &controllers.AdminYybController{}, "get:Accounts")
+	web.Router("/api/admin/yyb/accounts/delete", &controllers.AdminYybController{}, "post:DeleteAccount")
+	web.Router("/api/admin/yyb/accounts/refresh", &controllers.AdminYybController{}, "post:RefreshAccount")
+	web.Router("/api/admin/yyb/accounts/resync", &controllers.AdminYybController{}, "post:ResyncAccount")
+	web.Router("/api/admin/yyb/qr", &controllers.AdminYybController{}, "post:CreateQR")
+	web.Router("/api/admin/yyb/qr/:id/poll", &controllers.AdminYybController{}, "get:PollQR")
+	web.Router("/api/admin/yyb/qr/:id/confirm", &controllers.AdminYybController{}, "post:ConfirmQR")
+	web.Router("/api/admin/yyb/wxapp/getCode", &controllers.AdminYybController{}, "post:WxappGetCode")
+	web.Router("/api/admin/yyb/wxapp/getPhoneNumber", &controllers.AdminYybController{}, "post:WxappGetPhone")
+	web.Router("/api/admin/yyb/wxapp/operateWxData", &controllers.AdminYybController{}, "post:WxappOperate")
+	// ===================== 应用宝脚本 API（青龙等） =====================
+	web.Router("/api/yyb/accounts", &controllers.YybScriptController{}, "get:Accounts")
+	web.Router("/api/yyb/accounts/refresh", &controllers.YybScriptController{}, "post:RefreshAccount")
+	web.Router("/api/yyb/wxapp/getCode", &controllers.YybScriptController{}, "post:WxappGetCode")
+	web.Router("/api/yyb/wxapp/getPhoneNumber", &controllers.YybScriptController{}, "post:WxappGetPhone")
+	web.Router("/api/yyb/wxapp/operateWxData", &controllers.YybScriptController{}, "post:WxappOperate")
 
 	// ===================== 玩法简介图片上传 =====================
 	web.Router("/api/admin/upload/guide-image", &controllers.AdminApiController{}, "post:UploadGuideImage")
