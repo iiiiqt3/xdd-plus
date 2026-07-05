@@ -2,6 +2,7 @@ package yybportal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,6 +10,9 @@ import (
 	"time"
 
 	"github.com/cdle/xdd/yyb"
+	"github.com/go-sql-driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type pendingScan struct {
@@ -74,25 +78,15 @@ func bindAccount(userNumber int, acc *yyb.AccountPublic, status string) (*Portal
 	if st == "" {
 		st = "alive"
 	}
+
 	if existing, ok := findUserBindingByOpenID(userNumber, openid); ok {
-		existing.YybAccountID = acc.ID
-		existing.OpenID = openid
-		existing.Nickname = nick
-		existing.Status = st
-		if e := db().Save(existing).Error; e != nil {
-			return nil, e
-		}
-		return existing, nil
+		return saveBinding(existing, userNumber, acc.ID, openid, nick, st)
 	}
-	var byYyb PortalYybBinding
-	if err := db().Where("user_number = ? AND yyb_account_id = ?", userNumber, acc.ID).First(&byYyb).Error; err == nil {
-		byYyb.OpenID = openid
-		byYyb.Nickname = nick
-		byYyb.Status = st
-		if e := db().Save(&byYyb).Error; e != nil {
-			return nil, e
-		}
-		return &byYyb, nil
+	if existing, ok := findBindingIncludingDeleted(userNumber, openid); ok {
+		return saveBinding(existing, userNumber, acc.ID, openid, nick, st)
+	}
+	if existing, ok := findBindingByYybIDUnscoped(userNumber, acc.ID); ok {
+		return saveBinding(existing, userNumber, acc.ID, openid, nick, st)
 	}
 	if isOpenIDBoundToOther(userNumber, openid) {
 		return nil, fmt.Errorf("该微信账号已被其他用户绑定")
@@ -102,6 +96,7 @@ func bindAccount(userNumber int, acc *yyb.AccountPublic, status string) (*Portal
 	if int(count) >= getMaxAccountsPerUser() {
 		return nil, fmt.Errorf("已达账号上限（%d 个）", getMaxAccountsPerUser())
 	}
+
 	b := PortalYybBinding{
 		UserNumber:   userNumber,
 		YybAccountID: acc.ID,
@@ -109,10 +104,89 @@ func bindAccount(userNumber int, acc *yyb.AccountPublic, status string) (*Portal
 		Nickname:     nick,
 		Status:       st,
 	}
-	if err := db().Create(&b).Error; err != nil {
+	err := db().Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "user_number"}, {Name: "open_id"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"yyb_account_id": acc.ID,
+			"nickname":       nick,
+			"status":         st,
+			"deleted_at":     nil,
+			"updated_at":     time.Now(),
+		}),
+	}).Create(&b).Error
+	if err != nil {
+		if isDuplicateKey(err) {
+			if existing, ok := findBindingIncludingDeleted(userNumber, openid); ok {
+				return saveBinding(existing, userNumber, acc.ID, openid, nick, st)
+			}
+		}
 		return nil, err
 	}
+	if b.ID == 0 {
+		if existing, ok := findBindingIncludingDeleted(userNumber, openid); ok {
+			return existing, nil
+		}
+	}
 	return &b, nil
+}
+
+func saveBinding(b *PortalYybBinding, userNumber int, yybAccountID int64, openid, nick, status string) (*PortalYybBinding, error) {
+	b.UserNumber = userNumber
+	b.YybAccountID = yybAccountID
+	b.OpenID = openid
+	b.Nickname = nick
+	b.Status = status
+	b.DeletedAt = gorm.DeletedAt{}
+	if err := db().Unscoped().Save(b).Error; err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func findBindingIncludingDeleted(userNumber int, openid string) (*PortalYybBinding, bool) {
+	openid = strings.TrimSpace(openid)
+	if openid == "" {
+		return nil, false
+	}
+	var rows []PortalYybBinding
+	err := db().Unscoped().
+		Where("user_number = ? AND LOWER(TRIM(open_id)) = LOWER(?)", userNumber, openid).
+		Order("deleted_at asc, id desc").
+		Find(&rows).Error
+	if err != nil || len(rows) == 0 {
+		return nil, false
+	}
+	for i := range rows {
+		if !rows[i].DeletedAt.Valid {
+			return &rows[i], true
+		}
+	}
+	return &rows[0], true
+}
+
+func findBindingByYybIDUnscoped(userNumber int, yybAccountID int64) (*PortalYybBinding, bool) {
+	var rows []PortalYybBinding
+	err := db().Unscoped().
+		Where("user_number = ? AND yyb_account_id = ?", userNumber, yybAccountID).
+		Order("deleted_at asc, id desc").
+		Find(&rows).Error
+	if err != nil || len(rows) == 0 {
+		return nil, false
+	}
+	for i := range rows {
+		if !rows[i].DeletedAt.Valid {
+			return &rows[i], true
+		}
+	}
+	return &rows[0], true
+}
+
+func isDuplicateKey(err error) bool {
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) {
+		return mysqlErr.Number == 1062
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "duplicate entry")
 }
 
 func findUserBindingByOpenID(userNumber int, openid string) (*PortalYybBinding, bool) {
@@ -121,7 +195,7 @@ func findUserBindingByOpenID(userNumber int, openid string) (*PortalYybBinding, 
 		return nil, false
 	}
 	var row PortalYybBinding
-	err := db().Where("user_number = ? AND LOWER(open_id) = LOWER(?)", userNumber, openid).First(&row).Error
+	err := db().Where("user_number = ? AND LOWER(TRIM(open_id)) = LOWER(?)", userNumber, openid).First(&row).Error
 	if err != nil {
 		return nil, false
 	}

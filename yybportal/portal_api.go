@@ -158,7 +158,7 @@ func PortalDeleteAccount(userNumber int, ref string) error {
 	if err := a.DeleteAccount(context.Background(), refID); err != nil {
 		// 本地账号可能已不存在，继续删绑定
 	}
-	return db().Delete(b).Error
+	return db().Unscoped().Delete(b).Error
 }
 
 // PortalRefreshAccount 刷新存活
