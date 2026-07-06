@@ -47,20 +47,49 @@
         box.classList.toggle('error', !!err);
     }
 
-    async function copyText(text, btn) {
-        const s = String(text || '');
-        if (!s) {
-            if (typeof global.toast === 'function') global.toast('没有可复制的内容', 'error');
-            return;
+    function doCopySync(text) {
+        if (typeof global.copyToClipboardSync === 'function') {
+            return global.copyToClipboardSync(text);
         }
-        const ok = typeof global.copyToClipboard === 'function'
-            ? await global.copyToClipboard(s)
-            : false;
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (_) {}
+        document.body.removeChild(ta);
+        return ok;
+    }
+
+    function attrEsc(s) {
+        return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    }
+
+    function resolveCopyText(btn) {
+        const wrap = btn.closest('.yyb-acc-openid-line, .yyb-table-openid');
+        const code = wrap && wrap.querySelector('.yyb-openid-text');
+        if (code) {
+            const t = (code.textContent || '').trim();
+            if (t && t !== '-') return t;
+        }
+        return (btn.getAttribute('data-ayyb-copy') || '').trim();
+    }
+
+    function copyText(text, btn) {
+        const s = String(text || '').trim();
+        if (!s || s === '-') {
+            if (typeof global.toast === 'function') global.toast('没有可复制的内容', 'error');
+            return false;
+        }
+        const ok = doCopySync(s);
         if (ok) {
             if (btn) { const p = btn.textContent; btn.textContent = '已复制'; setTimeout(() => { btn.textContent = p; }, 1200); }
-            return;
+            return true;
         }
         if (typeof global.toast === 'function') global.toast('复制失败', 'error');
+        return false;
     }
 
     function switchTab(tab) {
@@ -79,15 +108,16 @@
 
     function renderAccountCard(acc) {
         const st = accountStatus(acc);
-        const oid = esc(acc.openid);
-        return `<div class="yyb-acc-card ayyb-acc-opt" data-openid="${oid}" role="button" tabindex="0">
+        const rawOpenid = String(acc.openid || '');
+        const oid = esc(rawOpenid);
+        return `<div class="yyb-acc-card ayyb-acc-opt" data-openid="${attrEsc(rawOpenid)}" role="button" tabindex="0">
             <div class="yyb-acc-head">
                 <div class="yyb-acc-name">${esc(accountName(acc))}</div>
                 ${statusBadge(st)}
             </div>
             <div class="yyb-acc-openid-line">
-                <code class="yyb-openid-text" title="${oid}">${oid}</code>
-                <button type="button" class="yyb-copy-btn" data-ayyb-copy="${oid}">复制</button>
+                <code class="yyb-openid-text" title="${attrEsc(rawOpenid)}">${oid}</code>
+                <button type="button" class="yyb-copy-btn" data-ayyb-copy="${attrEsc(rawOpenid)}">复制</button>
             </div>
         </div>`;
     }
@@ -113,7 +143,7 @@
             };
         });
         box.querySelectorAll('[data-ayyb-copy]').forEach(btn => {
-            btn.onclick = (e) => { e.stopPropagation(); copyText(btn.getAttribute('data-ayyb-copy'), btn); };
+            btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); copyText(resolveCopyText(btn), btn); };
         });
         syncSelected();
     }
@@ -128,15 +158,16 @@
         }
         tbody.innerHTML = state.bindings.map(a => {
             const alive = /alive|online/i.test(a.status || '');
-            const oid = esc(a.openid);
+            const rawOpenid = String(a.openid || '');
+            const oid = esc(rawOpenid);
             return `<tr>
                 <td>${a.userNumber}</td>
                 <td>${esc(a.userNickname)}</td>
                 <td>${esc(a.nickname)}</td>
                 <td style="max-width:320px;">
                     <div class="yyb-table-openid">
-                        <code class="yyb-openid-text" title="${oid}">${oid}</code>
-                        <button type="button" class="yyb-copy-btn" data-ayyb-copy="${oid}">复制</button>
+                        <code class="yyb-openid-text" title="${attrEsc(rawOpenid)}">${oid}</code>
+                        <button type="button" class="yyb-copy-btn" data-ayyb-copy="${attrEsc(rawOpenid)}">复制</button>
                     </div>
                 </td>
                 <td><span class="badge ${alive ? 'ok' : 'bad'}">${esc(a.status)}</span></td>
@@ -147,7 +178,7 @@
             </tr>`;
         }).join('');
         tbody.querySelectorAll('[data-ayyb-copy]').forEach(btn => {
-            btn.onclick = () => copyText(btn.getAttribute('data-ayyb-copy'), btn);
+            btn.onclick = () => copyText(resolveCopyText(btn), btn);
         });
         tbody.querySelectorAll('[data-pick]').forEach(btn => {
             btn.onclick = () => {
@@ -378,12 +409,9 @@
         if ($('ayyb-featureSel')) $('ayyb-featureSel').onchange = togglePayload;
         if ($('ayyb-callBtn')) $('ayyb-callBtn').onclick = callFeature;
         if ($('ayyb-clearBtn')) $('ayyb-clearBtn').onclick = () => setResult('已清空', false);
-        if ($('ayyb-copyBtn')) $('ayyb-copyBtn').onclick = async () => {
+        if ($('ayyb-copyBtn')) $('ayyb-copyBtn').onclick = () => {
             const text = state.lastResult || ($('ayyb-resultBox') && $('ayyb-resultBox').textContent) || '';
-            const ok = typeof global.copyToClipboard === 'function' && await global.copyToClipboard(text);
-            if (typeof global.toast === 'function') {
-                global.toast(ok ? '已复制' : '复制失败', ok ? 'success' : 'error');
-            }
+            copyText(text, $('ayyb-copyBtn'));
         };
         if ($('ayyb-refreshBtn')) $('ayyb-refreshBtn').onclick = refreshSelected;
         if ($('ayyb-resyncBtn')) $('ayyb-resyncBtn').onclick = resyncSelected;

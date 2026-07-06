@@ -241,11 +241,27 @@
     </div>
 </div>
 
-<script src="/vweb/js/clipboard.js"></script>
+<script src="/vweb/js/clipboard.js?v=2"></script>
 <script>
 const API = '/api/portal/yyb';
 const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false };
 const $ = id => document.getElementById(id);
+
+function copySync(text) {
+    const s = String(text || '');
+    if (!s) return false;
+    if (typeof copyToClipboardSync === 'function' && copyToClipboardSync(s)) return true;
+    const ta = document.createElement('textarea');
+    ta.value = s;
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (_) {}
+    document.body.removeChild(ta);
+    return ok;
+}
 
 function esc(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -502,10 +518,9 @@ async function startScan() {
 $('featureSel').onchange = togglePayload;
 $('callBtn').onclick = callFeature;
 $('clearBtn').onclick = () => setResult('结果已清空', false);
-$('copyBtn').onclick = async () => {
+$('copyBtn').onclick = () => {
     const text = state.lastResult || $('resultBox').textContent || '';
-    const ok = typeof copyToClipboard === 'function' && await copyToClipboard(text);
-    if (!ok) alert('复制失败，请手动选择结果内容');
+    if (!copySync(text)) alert('复制失败，请手动选择结果内容');
 };
 $('reloadBtn').onclick = loadStatus;
 $('refreshBtn').onclick = refreshSelected;
