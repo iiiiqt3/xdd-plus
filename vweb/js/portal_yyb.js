@@ -91,13 +91,9 @@
         const uin = formatUin(acc);
         const display = uin || '未获取';
         const title = uin ? uin : '扫码绑定后会自动获取；若仍为空请点击「刷新账号」';
-        const copyBtn = uin
-            ? `<button type="button" class="yyb-copy-btn" data-yyb-copy="${attrEsc(uin)}">复制</button>`
-            : '';
         return `<div class="yyb-acc-uin-line">
             <span class="yyb-meta-label">UIN</span>
             <code class="yyb-uin-text${uin ? '' : ' missing'}" title="${attrEsc(title)}">${esc(display)}</code>
-            ${copyBtn}
         </div>`;
     }
 
@@ -109,12 +105,12 @@
                 <div class="yyb-acc-name">${esc(accountName(acc))}</div>
                 ${statusTag(acc.status)}
             </div>
+            ${renderUinLine(acc)}
             <div class="yyb-acc-openid-line">
                 <span class="yyb-meta-label">OpenID</span>
                 <code class="yyb-openid-text" title="${attrEsc(rawOpenid)}">${openid || '-'}</code>
                 <button type="button" class="yyb-copy-btn" data-yyb-copy="${attrEsc(rawOpenid)}">复制</button>
             </div>
-            ${renderUinLine(acc)}
         </div>`;
     }
 
@@ -171,8 +167,8 @@
                         <span class="yyb-dash-item-name">${esc(accountName(a))}</span>
                         ${statusTag(a.status)}
                     </div>
-                    <div class="yyb-dash-openid">OpenID: ${esc(a.openid)}</div>
                     <div class="yyb-dash-uin">UIN: ${esc(formatUin(a) || '未获取')}</div>
+                    <div class="yyb-dash-openid">OpenID: ${esc(a.openid)}</div>
                 </div>`).join('')}</div>
             ${accounts.length > 4 ? '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center;">还有 ' + (accounts.length - 4) + ' 个账号…</div>' : ''}`;
     }
