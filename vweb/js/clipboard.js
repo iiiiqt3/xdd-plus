@@ -61,9 +61,7 @@
         }
         if (copySync(s)) {
             if (btn) {
-                const prev = btn.textContent;
                 btn.textContent = '已复制';
-                setTimeout(() => { btn.textContent = prev; }, 1200);
             }
             return true;
         }
