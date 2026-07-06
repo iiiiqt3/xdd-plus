@@ -241,26 +241,21 @@
     </div>
 </div>
 
-<script src="/vweb/js/clipboard.js?v=2"></script>
+<script src="/vweb/js/clipboard.js?v=3"></script>
 <script>
 const API = '/api/portal/yyb';
 const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false };
 const $ = id => document.getElementById(id);
 
-function copySync(text) {
-    const s = String(text || '');
-    if (!s) return false;
-    if (typeof copyToClipboardSync === 'function' && copyToClipboardSync(s)) return true;
-    const ta = document.createElement('textarea');
-    ta.value = s;
-    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    let ok = false;
-    try { ok = document.execCommand('copy'); } catch (_) {}
-    document.body.removeChild(ta);
-    return ok;
+function copyFail(msg) { alert(msg); }
+function copyText(text, btn) {
+    if (window.YybClipboard) return YybClipboard.copyWithFeedback(text, btn, copyFail);
+    return false;
+}
+if (window.YybClipboard) YybClipboard.installCopyDelegation(copyFail);
+
+function attrEsc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
 }
 
 function esc(s) {
@@ -349,15 +344,23 @@ function renderAccounts() {
     if (!state.accounts.some(a => accountKey(a) === state.selectedKey)) {
         state.selectedKey = accountKey(state.accounts[0]);
     }
-    grid.innerHTML = state.accounts.map(acc => `
-        <button type="button" class="acc-item" data-key="${esc(accountKey(acc))}">
+    grid.innerHTML = state.accounts.map(acc => {
+        const raw = String(acc.openid || '');
+        return `<div class="acc-item" data-key="${attrEsc(accountKey(acc))}">
             <div class="acc-name">${esc(accountName(acc))}</div>
-            <div class="acc-meta">${esc(acc.openid)}</div>
+            <div class="yyb-acc-openid-line" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                <code class="yyb-openid-text" style="flex:1;word-break:break-all;font-size:11px;">${esc(raw) || '-'}</code>
+                <button type="button" class="yyb-copy-btn" data-yyb-copy="${attrEsc(raw)}" style="border:1px solid #c7d2fe;border-radius:6px;padding:4px 10px;font-size:12px;background:#eef2ff;color:#4f46e5;cursor:pointer;">复制</button>
+            </div>
             ${statusTag(acc.status)}
-        </button>
-    `).join('');
-    grid.querySelectorAll('.acc-item').forEach(btn => {
-        btn.onclick = () => { state.selectedKey = btn.dataset.key; syncSelected(); };
+        </div>`;
+    }).join('');
+    grid.querySelectorAll('.acc-item').forEach(item => {
+        item.onclick = (e) => {
+            if (e.target.closest('.yyb-copy-btn')) return;
+            state.selectedKey = item.dataset.key;
+            syncSelected();
+        };
     });
     syncSelected();
 }
@@ -520,7 +523,7 @@ $('callBtn').onclick = callFeature;
 $('clearBtn').onclick = () => setResult('结果已清空', false);
 $('copyBtn').onclick = () => {
     const text = state.lastResult || $('resultBox').textContent || '';
-    if (!copySync(text)) alert('复制失败，请手动选择结果内容');
+    copyText(text, $('copyBtn'));
 };
 $('reloadBtn').onclick = loadStatus;
 $('refreshBtn').onclick = refreshSelected;

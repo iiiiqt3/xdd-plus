@@ -47,49 +47,25 @@
         box.classList.toggle('error', !!err);
     }
 
-    function doCopySync(text) {
-        if (typeof global.copyToClipboardSync === 'function') {
-            return global.copyToClipboardSync(text);
+    function copyFail(msg) {
+        if (typeof global.toast === 'function') global.toast(msg, 'error');
+    }
+
+    function copyText(text, btn) {
+        if (global.YybClipboard) {
+            return global.YybClipboard.copyWithFeedback(text, btn, copyFail);
         }
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        let ok = false;
-        try { ok = document.execCommand('copy'); } catch (_) {}
-        document.body.removeChild(ta);
-        return ok;
+        return global.copyToClipboardSync && global.copyToClipboardSync(String(text || ''));
+    }
+
+    function setupCopy() {
+        if (global.YybClipboard) {
+            global.YybClipboard.installCopyDelegation(copyFail);
+        }
     }
 
     function attrEsc(s) {
         return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    }
-
-    function resolveCopyText(btn) {
-        const wrap = btn.closest('.yyb-acc-openid-line, .yyb-table-openid');
-        const code = wrap && wrap.querySelector('.yyb-openid-text');
-        if (code) {
-            const t = (code.textContent || '').trim();
-            if (t && t !== '-') return t;
-        }
-        return (btn.getAttribute('data-ayyb-copy') || '').trim();
-    }
-
-    function copyText(text, btn) {
-        const s = String(text || '').trim();
-        if (!s || s === '-') {
-            if (typeof global.toast === 'function') global.toast('没有可复制的内容', 'error');
-            return false;
-        }
-        const ok = doCopySync(s);
-        if (ok) {
-            if (btn) { const p = btn.textContent; btn.textContent = '已复制'; setTimeout(() => { btn.textContent = p; }, 1200); }
-            return true;
-        }
-        if (typeof global.toast === 'function') global.toast('复制失败', 'error');
-        return false;
     }
 
     function switchTab(tab) {
@@ -142,9 +118,6 @@
                 syncSelected();
             };
         });
-        box.querySelectorAll('[data-ayyb-copy]').forEach(btn => {
-            btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); copyText(resolveCopyText(btn), btn); };
-        });
         syncSelected();
     }
 
@@ -177,9 +150,6 @@
                 </td>
             </tr>`;
         }).join('');
-        tbody.querySelectorAll('[data-ayyb-copy]').forEach(btn => {
-            btn.onclick = () => copyText(resolveCopyText(btn), btn);
-        });
         tbody.querySelectorAll('[data-pick]').forEach(btn => {
             btn.onclick = () => {
                 const openid = btn.getAttribute('data-pick');
@@ -403,6 +373,7 @@
     function bindEvents() {
         if (state.inited) return;
         state.inited = true;
+        setupCopy();
         document.querySelectorAll('.ayyb-tab').forEach(btn => {
             btn.onclick = () => switchTab(btn.dataset.tab);
         });
