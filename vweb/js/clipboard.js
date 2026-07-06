@@ -44,11 +44,14 @@
 
     function resolveFromBtn(btn) {
         if (!btn) return '';
-        const wrap = btn.closest('.yyb-acc-openid-line, .yyb-table-openid');
-        const code = wrap && wrap.querySelector('.yyb-openid-text');
-        if (code) {
-            const t = (code.textContent || '').trim();
-            if (t && t !== '-') return t;
+        const wrap = btn.closest('.yyb-acc-openid-line, .yyb-table-openid, .yyb-acc-uin-line');
+        if (wrap) {
+            const sel = wrap.classList.contains('yyb-acc-uin-line') ? '.yyb-uin-text' : '.yyb-openid-text';
+            const code = wrap.querySelector(sel);
+            if (code) {
+                const t = (code.textContent || '').trim();
+                if (t && t !== '-' && t !== '未获取') return t;
+            }
         }
         return (btn.getAttribute('data-yyb-copy') || btn.getAttribute('data-ayyb-copy') || '').trim();
     }

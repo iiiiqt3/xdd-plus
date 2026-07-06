@@ -82,6 +82,26 @@
         });
     }
 
+    function formatUin(acc) {
+        const u = acc && acc.uin;
+        if (u != null && u !== '' && Number(u) > 0) return String(u);
+        return '';
+    }
+
+    function renderUinLine(acc) {
+        const uin = formatUin(acc);
+        const display = uin || '未获取';
+        const title = uin ? uin : '扫码绑定后会自动获取；若仍为空请点击「刷新账号」';
+        const copyBtn = uin
+            ? `<button type="button" class="yyb-copy-btn" data-ayyb-copy="${attrEsc(uin)}">复制</button>`
+            : '';
+        return `<div class="yyb-acc-uin-line">
+            <span class="yyb-meta-label">UIN</span>
+            <code class="yyb-uin-text${uin ? '' : ' missing'}" title="${attrEsc(title)}">${esc(display)}</code>
+            ${copyBtn}
+        </div>`;
+    }
+
     function renderAccountCard(acc) {
         const st = accountStatus(acc);
         const rawOpenid = String(acc.openid || '');
@@ -92,9 +112,11 @@
                 ${statusBadge(st)}
             </div>
             <div class="yyb-acc-openid-line">
+                <span class="yyb-meta-label">OpenID</span>
                 <code class="yyb-openid-text" title="${attrEsc(rawOpenid)}">${oid}</code>
                 <button type="button" class="yyb-copy-btn" data-ayyb-copy="${attrEsc(rawOpenid)}">复制</button>
             </div>
+            ${renderUinLine(acc)}
         </div>`;
     }
 
@@ -126,17 +148,19 @@
         const tbody = $('ayyb-bindingTable');
         if (!tbody) return;
         if (!state.bindings.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-tip">暂无绑定</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-tip">暂无绑定</td></tr>';
             return;
         }
         tbody.innerHTML = state.bindings.map(a => {
             const alive = /alive|online/i.test(a.status || '');
             const rawOpenid = String(a.openid || '');
             const oid = esc(rawOpenid);
+            const uin = formatUin(a);
             return `<tr>
                 <td>${a.userNumber}</td>
                 <td>${esc(a.userNickname)}</td>
                 <td>${esc(a.nickname)}</td>
+                <td style="max-width:140px;font-family:Consolas,monospace;font-size:12px;" title="${uin ? attrEsc(uin) : '扫码绑定后自动获取；若仍为空请刷新账号'}">${esc(uin || '未获取')}</td>
                 <td style="max-width:320px;">
                     <div class="yyb-table-openid">
                         <code class="yyb-openid-text" title="${attrEsc(rawOpenid)}">${oid}</code>

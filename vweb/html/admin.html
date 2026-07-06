@@ -600,7 +600,9 @@
         .yyb-acc-card.selected { border-color: #6366f1; background: rgba(99, 102, 241, 0.06); box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25); }
         .yyb-acc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; min-width: 0; }
         .yyb-acc-name { font-size: 14px; font-weight: 700; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
-        .yyb-acc-openid-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .yyb-acc-openid-line { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 8px; }
+        .yyb-acc-uin-line { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 8px; }
+        .yyb-meta-label { font-size: 10px; font-weight: 700; color: #94a3b8; flex-shrink: 0; width: 42px; letter-spacing: 0.02em; }
         .yyb-openid-text {
             flex: 1; min-width: 0; margin: 0; padding: 7px 10px; border-radius: 8px;
             background: #f1f5f9; border: 1px solid #e2e8f0; font-family: Consolas, monospace;
@@ -611,6 +613,12 @@
             cursor: pointer; background: #eef2ff; color: #4f46e5; flex-shrink: 0; line-height: 1;
         }
         .yyb-copy-btn:hover { background: #e0e7ff; }
+        .yyb-uin-text {
+            flex: 1; min-width: 0; margin: 0; padding: 7px 10px; border-radius: 8px;
+            background: #f8fafc; border: 1px solid #e2e8f0; font-family: Consolas, monospace;
+            font-size: 11px; line-height: 1.4; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+        }
+        .yyb-uin-text.missing { color: #94a3b8; font-style: italic; }
         .yyb-status-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
         .yyb-status-tag.ok { background: #ecfdf5; color: #059669; }
         .yyb-status-tag.bad { background: #fef2f2; color: #dc2626; }
@@ -1626,9 +1634,9 @@
                     <div style="overflow:auto;">
                         <table class="data-table">
                             <thead>
-                                <tr><th>用户编号</th><th>门户账号</th><th>昵称</th><th>OpenID</th><th>状态</th><th>操作</th></tr>
+                                <tr><th>用户编号</th><th>门户账号</th><th>昵称</th><th>UIN</th><th>OpenID</th><th>状态</th><th>操作</th></tr>
                             </thead>
-                            <tbody id="ayyb-bindingTable"><tr><td colspan="6" class="empty-tip">加载中…</td></tr></tbody>
+                            <tbody id="ayyb-bindingTable"><tr><td colspan="7" class="empty-tip">加载中…</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -2216,7 +2224,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/admin_yyb.js?v=4"></script>
+<script src="/vweb/js/admin_yyb.js?v=5"></script>
 <script>
 // ============ 通用工具 ============
 function _fetchJson(method, url, data) {

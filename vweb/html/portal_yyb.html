@@ -332,6 +332,12 @@ function qrImgSrc(b64) {
     return 'data:image/png;base64,' + b64;
 }
 
+function formatUin(acc) {
+    const u = acc && acc.uin;
+    if (u != null && u !== '' && Number(u) > 0) return String(u);
+    return '';
+}
+
 function renderAccounts() {
     const grid = $('accountGrid');
     $('accountCount').textContent = String(state.accounts.length);
@@ -346,11 +352,18 @@ function renderAccounts() {
     }
     grid.innerHTML = state.accounts.map(acc => {
         const raw = String(acc.openid || '');
+        const uin = formatUin(acc);
         return `<div class="acc-item" data-key="${attrEsc(accountKey(acc))}">
             <div class="acc-name">${esc(accountName(acc))}</div>
             <div class="yyb-acc-openid-line" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                <span style="font-size:10px;font-weight:700;color:#94a3b8;flex-shrink:0;width:42px;">OpenID</span>
                 <code class="yyb-openid-text" style="flex:1;word-break:break-all;font-size:11px;">${esc(raw) || '-'}</code>
                 <button type="button" class="yyb-copy-btn" data-yyb-copy="${attrEsc(raw)}" style="border:1px solid #c7d2fe;border-radius:6px;padding:4px 10px;font-size:12px;background:#eef2ff;color:#4f46e5;cursor:pointer;">复制</button>
+            </div>
+            <div class="yyb-acc-uin-line" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                <span style="font-size:10px;font-weight:700;color:#94a3b8;flex-shrink:0;width:42px;">UIN</span>
+                <code class="yyb-uin-text" style="flex:1;font-size:11px;color:${uin ? '#334155' : '#94a3b8'};font-style:${uin ? 'normal' : 'italic'};" title="${uin ? attrEsc(uin) : '扫码绑定后自动获取；若仍为空请刷新账号'}">${esc(uin || '未获取')}</code>
+                ${uin ? `<button type="button" class="yyb-copy-btn" data-yyb-copy="${attrEsc(uin)}" style="border:1px solid #c7d2fe;border-radius:6px;padding:4px 10px;font-size:12px;background:#eef2ff;color:#4f46e5;cursor:pointer;">复制</button>` : ''}
             </div>
             ${statusTag(acc.status)}
         </div>`;

@@ -289,6 +289,10 @@ func (a *App) handleQR(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		a.ensureAccountUIN(r.Context(), acc)
+		if updated, err := a.db.GetAccount(r.Context(), acc.ID); err == nil {
+			acc = updated
+		}
 		a.dropQRSession(sessionID)
 		writeJSON(w, http.StatusOK, acc.Public())
 	default:
@@ -568,6 +572,18 @@ func (a *App) storeFromScan(ctx context.Context, loginBuffer string, creds proto
 	avatar := a.resolveAvatar(ctx, openid, userInfo)
 	status := "alive"
 	return a.db.UpsertAccount(ctx, openid, loginBuffer, stringPtrMaybe(nick), stringPtrMaybe(nick), stringPtrMaybe(avatar), userInfo, creds.ToMap(), &status)
+}
+
+func (a *App) ensureAccountUIN(ctx context.Context, acc *store.WechatAccount) {
+	if acc == nil || strings.TrimSpace(acc.LoginBuffer) == "" {
+		return
+	}
+	if acc.UIN != nil && *acc.UIN > 0 {
+		return
+	}
+	loginCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	_ = a.pool.EnsureSession(loginCtx, acc.LoginBuffer, acc.ID, a.cfg.TCPProxy)
 }
 
 func (a *App) refreshLiveness(ctx context.Context, acc *store.WechatAccount) string {

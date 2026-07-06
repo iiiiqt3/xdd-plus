@@ -123,6 +123,13 @@ func (a *App) RefreshAccount(ctx context.Context, ref string) (map[string]any, e
 		return nil, err
 	}
 	status := a.refreshLiveness(ctx, acc)
+	if updated, err := a.db.GetAccount(ctx, acc.ID); err == nil {
+		acc = updated
+	}
+	a.ensureAccountUIN(ctx, acc)
+	if updated, err := a.db.GetAccount(ctx, acc.ID); err == nil {
+		acc = updated
+	}
 	return refreshOut(acc, status), nil
 }
 
