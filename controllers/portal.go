@@ -958,6 +958,7 @@ func (c *PortalController) KuwoWithdraw() {
 		QuotaId    string `json:"quotaId"`
 		SmsCode    string `json:"smsCode"`
 		RetryCount int    `json:"retryCount"`
+		UseProxy   *bool  `json:"useProxy"`
 	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
@@ -979,6 +980,10 @@ func (c *PortalController) KuwoWithdraw() {
 		c.ServeJSON()
 		return
 	}
+	useProxy := true
+	if req.UseProxy != nil {
+		useProxy = *req.UseProxy
+	}
 
 	accounts := make([]*models.KuwoAccountInput, 0, len(req.Sessions))
 	for _, s := range req.Sessions {
@@ -994,7 +999,7 @@ func (c *PortalController) KuwoWithdraw() {
 		return
 	}
 
-	results, proxyHost := models.KuwoManualWithdraw(sessions, quotaId, smsCode)
+	results, proxyHost := models.KuwoManualWithdraw(sessions, quotaId, smsCode, useProxy)
 	c.RecordPortalEvent(models.SourceEventKuwoWithdraw)
 
 	type withdrawResult struct {
@@ -1038,6 +1043,7 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 		SmsCode    string `json:"smsCode"`
 		TargetHour int    `json:"targetHour"`
 		Immediate  bool   `json:"immediate"`
+		UseProxy   *bool  `json:"useProxy"`
 	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
@@ -1066,6 +1072,10 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 			return
 		}
 	}
+	useProxy := true
+	if req.UseProxy != nil {
+		useProxy = *req.UseProxy
+	}
 
 	accounts := make([]*models.KuwoAccountInput, 0, len(req.Sessions))
 	for _, s := range req.Sessions {
@@ -1075,7 +1085,7 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 		})
 	}
 
-	task, reused := models.KuwoScheduleWithdraw(accounts, quotaId, smsCode, req.TargetHour, req.Immediate)
+	task, reused := models.KuwoScheduleWithdraw(accounts, quotaId, smsCode, req.TargetHour, req.Immediate, useProxy)
 	c.RecordPortalEvent(models.SourceEventKuwoSchedule)
 	msg := "任务已创建"
 	if reused {
@@ -1090,6 +1100,7 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 			"executeAt":  task.ExecuteAt.Format("2006-01-02 15:04:05"),
 			"status":     task.Status,
 			"reused":     reused,
+			"useProxy":   task.UseProxy,
 		},
 	}
 	c.ServeJSON()
@@ -1190,6 +1201,7 @@ func kuwoTaskStatusPayload(task *models.KuwoScheduledTask) map[string]interface{
 		"executeAt":     task.ExecuteAt.Format("15:04:05"),
 		"status":        task.Status,
 		"immediate":     task.Immediate,
+		"useProxy":      task.UseProxy,
 		"smsEditable":   task.Status == "pending",
 		"smsFatal":      smsFatal,
 		"results":       task.ResultsJSON,

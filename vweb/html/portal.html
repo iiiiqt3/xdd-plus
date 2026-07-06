@@ -1496,6 +1496,13 @@
                         </div>
                     </div>
 
+                    <div style="margin-bottom:14px;padding:12px 16px;border-radius:10px;background:var(--glass-bg);border:1px solid var(--glass-border);">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;">
+                            <input type="checkbox" id="kuwoUseProxy" checked style="width:16px;height:16px;accent-color:#6366f1;" /> 启用代理抢兑
+                        </label>
+                        <div style="margin-top:6px;font-size:12px;line-height:1.7;color:var(--text-muted);">默认开启。开启后抢兑会优先使用代理 IP；如果代理获取失败，系统会自动直连，不影响提交。</div>
+                    </div>
+
                     <!-- 当前北京时间 & 抢兑状态 -->
                     <div id="kuwoTimeInfo" style="padding:12px 16px;border-radius:10px;background:var(--glass-bg);border:1px solid var(--glass-border);font-size:13px;line-height:1.8;color:var(--text);margin-bottom:14px;">
                         <div>🕐 当前北京时间：<b id="kuwoNowTime">--:--:--</b></div>
@@ -4552,6 +4559,12 @@ async function kuwoRestoreState() {
             const def = document.querySelector('input[name="kuwoQuota"][value="' + KUWO_DEFAULT_QUOTA + '"]');
             if (def) def.checked = true;
         }
+        const proxyCheckbox = document.getElementById('kuwoUseProxy');
+        if (proxyCheckbox && typeof state.useProxy === 'boolean') {
+            proxyCheckbox.checked = state.useProxy;
+        } else if (proxyCheckbox && task && typeof task.useProxy === 'boolean') {
+            proxyCheckbox.checked = task.useProxy;
+        }
 
         kuwoLog('🔄 检测到进行中的抢兑任务，已恢复监控');
         if (task.logs && Array.isArray(task.logs)) {
@@ -4813,6 +4826,11 @@ function kuwoGetSelectedQuota() {
     return checked ? checked.value : KUWO_DEFAULT_QUOTA;
 }
 
+function kuwoUseProxyEnabled() {
+    const checkbox = document.getElementById('kuwoUseProxy');
+    return checkbox ? checkbox.checked : true;
+}
+
 async function kuwoUpdateSmsCode() {
     const taskId = kuwoActiveTaskId;
     const smsCode = (document.getElementById('kuwoSmsCode') || {}).value?.trim() || '';
@@ -4849,6 +4867,7 @@ function kuwoStartWithdraw() {
     const password = document.getElementById('kuwoPassword').value.trim();
     const smsCode = document.getElementById('kuwoSmsCode').value.trim();
     const quotaId = kuwoGetSelectedQuota();
+    const useProxy = kuwoUseProxyEnabled();
 
     if (!phone || !password) { toast('请填写手机号和密码', 'error'); return; }
     if (!smsCode) { toast('请输入验证码', 'error'); return; }
@@ -4863,23 +4882,24 @@ function kuwoStartWithdraw() {
         try {
             localStorage.setItem(KUWO_STATE_KEY, JSON.stringify({
                 phone, password, smsCode, quotaId,
+                useProxy,
                 targetHour: info.hour,
                 savedAt: Date.now()
             }));
         } catch (e) {}
         // 调后端定时接口
-        scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, info.hour, info, false);
+        scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, info.hour, info, false, useProxy);
         return;
     }
 
     // 非抢兑窗口 → 立即执行
     kuwoLog('⚡ 立即提交抢兑...');
     kuwoSetWithdrawLocked(true, false);
-    scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, null, null, true);
+    scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, null, null, true, useProxy);
 }
 
 // 调后端定时/立即抢兑接口
-async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targetHour, info, immediate) {
+async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targetHour, info, immediate, useProxy) {
     if (kuwoWithdrawSubmitting) return;
     kuwoWithdrawSubmitting = true;
     const withdrawBtn = document.getElementById('kuwoWithdrawBtn');
@@ -4888,7 +4908,8 @@ async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targ
         const body = {
             sessions: [{ phone, password }],
             quotaId, smsCode,
-            immediate: !!immediate
+            immediate: !!immediate,
+            useProxy: useProxy !== false
         };
         if (!immediate && targetHour != null) {
             body.targetHour = targetHour;
@@ -4908,6 +4929,7 @@ async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targ
             try {
                 const saved = localStorage.getItem(KUWO_STATE_KEY);
                 const state = saved ? JSON.parse(saved) : { phone, password, smsCode, quotaId };
+                state.useProxy = useProxy !== false;
                 state.taskId = taskId;
                 state.immediate = !!immediate;
                 if (!immediate && targetHour != null) state.targetHour = targetHour;
