@@ -749,45 +749,13 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 	return results
 }
 
-// KuwoBurstWithdraw 多轮爆发抢兑（倒计时抢兑用）
+// KuwoBurstWithdraw 多轮爆发抢兑（倒计时抢兑用，三轮并发错开触发）
 func KuwoBurstWithdraw(sessions []*KuwoSession, quotaID, smsCode string, task *KuwoScheduledTask) []KuwoWithdrawResult {
-	if task != nil {
-		task.AddLog("info", "开始爆发抢兑：共%d轮，每轮最多%d次，错峰%dms",
-			kuwoWithdrawRounds, kuwoWithdrawRetryPerRound, kuwoWithdrawStaggerMs)
+	executeAt := time.Now()
+	if task != nil && !task.ExecuteAt.IsZero() {
+		executeAt = task.ExecuteAt
 	}
-	var allResults []KuwoWithdrawResult
-	for round := 0; round < kuwoWithdrawRounds; round++ {
-		if round > 0 {
-			time.Sleep(80 * time.Millisecond)
-		}
-		if task != nil {
-			task.AddLog("info", "──── 第 %d/%d 轮 ────", round+1, kuwoWithdrawRounds)
-		}
-		if task != nil && round > 0 && IsJdTaskProxyEnabled() {
-			task.ensureWithdrawProxyFresh()
-		}
-		var withdrawProxy *kuwoWithdrawProxy
-		if task != nil {
-			withdrawProxy = task.withdrawProxy
-		}
-		roundResults := KuwoConcurrentWithdrawRetry(sessions, quotaID, smsCode, kuwoWithdrawRetryPerRound, task, round, withdrawProxy)
-		allResults = append(allResults, roundResults...)
-		if kuwoAnySuccess(roundResults) {
-			if task != nil {
-				task.AddLog("success", "第%d轮抢兑成功，提前结束", round+1)
-			}
-			break
-		}
-		if task != nil {
-			task.AddLog("warn", "第%d轮未成功，%s", round+1, func() string {
-				if round+1 < kuwoWithdrawRounds {
-					return "继续下一轮"
-				}
-				return "已无更多轮次"
-			}())
-		}
-	}
-	return kuwoBestResultsPerPhone(allResults)
+	return kuwoRunConcurrentWithdrawRounds(sessions, quotaID, smsCode, task, executeAt)
 }
 
 // KuwoSingleWithdraw 单次提现（立即/手动抢兑，可传代理）
@@ -954,6 +922,7 @@ type KuwoScheduledTask struct {
 	Accounts      []*KuwoAccountInput  `json:"-"`
 	Sessions      []*KuwoSession       `json:"-"`
 	withdrawProxy *kuwoWithdrawProxy   `json:"-"`
+	roundProxies  []*kuwoWithdrawProxy `json:"-"` // 每轮独立代理 IP
 	CreatedAt     time.Time            `json:"createdAt"`
 	ExecuteAt   time.Time            `json:"executeAt"`
 	Status      string               `json:"status"` // pending / running / completed / failed
@@ -1004,6 +973,45 @@ func (t *KuwoScheduledTask) prepareWithdrawProxy() {
 		t.AddLog("warn", "抢兑代理：%s 不可用，重新获取", proxy.host())
 	}
 	t.AddLog("error", "抢兑代理：准备失败，抢兑时将尝试直连")
+}
+
+// prepareRoundWithdrawProxies 为每轮抢兑并行准备独立代理 IP
+func (t *KuwoScheduledTask) prepareRoundWithdrawProxies(count int) {
+	if t == nil {
+		return
+	}
+	if !IsJdTaskProxyEnabled() {
+		t.AddLog("info", "抢兑代理：未启用（直连）")
+		return
+	}
+	if count < 1 {
+		count = kuwoWithdrawRounds
+	}
+	t.roundProxies = make([]*kuwoWithdrawProxy, count)
+	t.AddLog("info", "抢兑代理：并行准备 %d 个独立 IP…", count)
+	var wg sync.WaitGroup
+	for i := 0; i < count; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			caller := fmt.Sprintf("kuwo_withdraw_r%d", idx+1)
+			proxy := kuwoPrepareWithdrawProxy(caller)
+			t.roundProxies[idx] = proxy
+			if proxy != nil && proxy.host() != "" {
+				t.AddLog("success", "第%d轮代理：%s 已就绪", idx+1, proxy.host())
+			} else {
+				t.AddLog("warn", "第%d轮代理：准备失败，该轮将直连", idx+1)
+			}
+		}(i)
+	}
+	wg.Wait()
+	for _, p := range t.roundProxies {
+		if p != nil && p.host() != "" {
+			t.withdrawProxy = p
+			t.ProxyHost = p.host()
+			break
+		}
+	}
 }
 
 // ensureWithdrawProxyFresh 多轮抢兑间检查代理是否过期或失效
@@ -1303,7 +1311,7 @@ func kuwoRunScheduledTask(taskID string) {
 	proxyPrepAt := firstFireAt.Add(-time.Duration(kuwoProxyPrepareBeforeSec) * time.Second)
 
 	task.AddLog("info", "后台调度已启动，等待抢兑时刻…")
-	task.AddLog("info", "抢兑策略：%d轮（提前%v ms），每轮%d次并发", kuwoWithdrawRounds, kuwoScheduledLeadOffsets, kuwoWithdrawRetryPerRound)
+	task.AddLog("info", "抢兑策略：%d轮并发（提前%v ms），每轮%d次并发，每轮独立代理", kuwoWithdrawRounds, kuwoScheduledLeadOffsets, kuwoWithdrawRetryPerRound)
 
 	// 代理准备与预热/登录并行，避免卡点提交时取 IP 占用到点后的抢兑时间
 	var proxyWg sync.WaitGroup
@@ -1315,7 +1323,7 @@ func kuwoRunScheduledTask(taskID string) {
 				task.AddLog("info", "距抢兑代理准备还有 %s", d.Round(time.Millisecond))
 				kuwoSleepUntil(proxyPrepAt)
 			}
-			task.prepareWithdrawProxy()
+			task.prepareRoundWithdrawProxies(len(kuwoScheduledLeadOffsets))
 		}()
 	} else {
 		task.AddLog("info", "抢兑代理：未启用（直连）")
@@ -1362,6 +1370,95 @@ func kuwoRunScheduledTask(taskID string) {
 	kuwoExecuteScheduledRounds(taskID)
 }
 
+func kuwoRoundProxy(task *KuwoScheduledTask, roundIdx int) *kuwoWithdrawProxy {
+	if task == nil {
+		return nil
+	}
+	if task.roundProxies != nil && roundIdx < len(task.roundProxies) {
+		return task.roundProxies[roundIdx]
+	}
+	if roundIdx == 0 {
+		return task.withdrawProxy
+	}
+	return nil
+}
+
+// kuwoRunConcurrentWithdrawRounds 三轮并发：在整点前 30/20/10ms 错开触发，每轮独立代理
+func kuwoRunConcurrentWithdrawRounds(sessions []*KuwoSession, quotaID, smsCode string, task *KuwoScheduledTask, executeAt time.Time) []KuwoWithdrawResult {
+	leads := kuwoScheduledLeadOffsets
+	roundCount := len(leads)
+	if roundCount == 0 {
+		leads = []int{30, 20, 10}
+		roundCount = len(leads)
+	}
+	if task != nil {
+		task.AddLog("info", "开始并发抢兑：%d轮（提前%v ms），每轮最多%d次", roundCount, leads, kuwoWithdrawRetryPerRound)
+	}
+
+	var (
+		allResults   []KuwoWithdrawResult
+		allResultsMu sync.Mutex
+		successOnce  sync.Once
+		successCh    = make(chan struct{})
+		wg           sync.WaitGroup
+	)
+
+	for roundIdx, leadMs := range leads {
+		wg.Add(1)
+		go func(roundIdx, leadMs int) {
+			defer wg.Done()
+
+			fireAt := executeAt.Add(-time.Duration(leadMs) * time.Millisecond)
+			if d := time.Until(fireAt); d > 0 {
+				if task != nil {
+					task.AddLog("info", "第%d轮等待触发点 %s（提前%dms）", roundIdx+1, fireAt.Format("15:04:05.000"), leadMs)
+				}
+				kuwoSleepUntil(fireAt)
+			}
+
+			select {
+			case <-successCh:
+				if task != nil {
+					task.AddLog("info", "第%d轮已跳过（其他轮已成功）", roundIdx+1)
+				}
+				return
+			default:
+			}
+
+			proxy := kuwoRoundProxy(task, roundIdx)
+			proxyLabel := "直连"
+			if proxy != nil && proxy.host() != "" {
+				proxyLabel = proxy.host()
+			}
+			if task != nil {
+				task.AddLog("info", "═══ 第 %d/%d 轮（提前%dms）开始 [代理:%s] ═══", roundIdx+1, roundCount, leadMs, proxyLabel)
+			}
+			Kuwo().Infof("[kuwo] 并发第%d轮 at %s proxy=%s\n", roundIdx+1, time.Now().Format("15:04:05.000"), proxyLabel)
+
+			roundResults := KuwoConcurrentWithdrawRetry(sessions, quotaID, smsCode, kuwoWithdrawRetryPerRound, task, roundIdx, proxy)
+
+			allResultsMu.Lock()
+			allResults = append(allResults, roundResults...)
+			anySuccess := kuwoAnySuccess(roundResults)
+			allResultsMu.Unlock()
+
+			if anySuccess {
+				successOnce.Do(func() { close(successCh) })
+				if task != nil {
+					task.AddLog("success", "第%d轮抢兑成功", roundIdx+1)
+				}
+				return
+			}
+			if task != nil && kuwoAllResultsSmsFatal(roundResults) {
+				task.AddLog("warn", "第%d轮疑似验证码错误", roundIdx+1)
+			}
+		}(roundIdx, leadMs)
+	}
+
+	wg.Wait()
+	return kuwoBestResultsPerPhone(allResults)
+}
+
 func kuwoExecuteScheduledRounds(taskID string) {
 	kuwoScheduledTasks.RLock()
 	task, ok := kuwoScheduledTasks.tasks[taskID]
@@ -1384,33 +1481,7 @@ func kuwoExecuteScheduledRounds(taskID string) {
 	}
 
 	var allResults []KuwoWithdrawResult
-	leads := kuwoScheduledLeadOffsets
-	for roundIdx, leadMs := range leads {
-		fireAt := task.ExecuteAt.Add(-time.Duration(leadMs) * time.Millisecond)
-		if d := time.Until(fireAt); d > 0 {
-			task.AddLog("info", "第%d轮等待触发点 %s（提前%dms）", roundIdx+1, fireAt.Format("15:04:05.000"), leadMs)
-			kuwoSleepUntil(fireAt)
-		}
-		if roundIdx > 0 && IsJdTaskProxyEnabled() {
-			task.ensureWithdrawProxyFresh()
-		}
-		task.AddLog("info", "═══ 第 %d/%d 轮（提前%dms）开始 ═══", roundIdx+1, len(leads), leadMs)
-		Kuwo().Infof("[kuwo] 定时任务第%d轮: id=%s at %s proxy=%s\n", roundIdx+1, taskID, time.Now().Format("15:04:05.000"), task.currentProxyHost())
-
-		proxy := task.withdrawProxy
-		roundResults := KuwoConcurrentWithdrawRetry(task.Sessions, task.QuotaID, task.SmsCode, kuwoWithdrawRetryPerRound, task, roundIdx, proxy)
-		allResults = append(allResults, roundResults...)
-		if kuwoAnySuccess(roundResults) {
-			task.AddLog("success", "第%d轮抢兑成功，提前结束", roundIdx+1)
-			break
-		}
-		if kuwoAllResultsSmsFatal(roundResults) {
-			task.AddLog("warn", "疑似验证码错误，可在页面修改验证码并点击「更新验证码」后等待下轮")
-		}
-		if roundIdx+1 < len(leads) {
-			task.AddLog("warn", "第%d轮未成功，等待下一轮…", roundIdx+1)
-		}
-	}
+	allResults = kuwoRunConcurrentWithdrawRounds(task.Sessions, task.QuotaID, task.SmsCode, task, task.ExecuteAt)
 
 	task.Results = kuwoBestResultsPerPhone(allResults)
 	task.ResultsJSON = kuwoResultsToJSON(task.Results)

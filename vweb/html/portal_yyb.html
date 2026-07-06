@@ -241,6 +241,7 @@
     </div>
 </div>
 
+<script src="/vweb/js/clipboard.js"></script>
 <script>
 const API = '/api/portal/yyb';
 const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false };
@@ -502,8 +503,9 @@ $('featureSel').onchange = togglePayload;
 $('callBtn').onclick = callFeature;
 $('clearBtn').onclick = () => setResult('结果已清空', false);
 $('copyBtn').onclick = async () => {
-    try { await navigator.clipboard.writeText(state.lastResult || $('resultBox').textContent); }
-    catch { /* ignore */ }
+    const text = state.lastResult || $('resultBox').textContent || '';
+    const ok = typeof copyToClipboard === 'function' && await copyToClipboard(text);
+    if (!ok) alert('复制失败，请手动选择结果内容');
 };
 $('reloadBtn').onclick = loadStatus;
 $('refreshBtn').onclick = refreshSelected;

@@ -48,10 +48,19 @@
     }
 
     async function copyText(text, btn) {
-        try {
-            await navigator.clipboard.writeText(text);
+        const s = String(text || '');
+        if (!s) {
+            if (typeof global.toast === 'function') global.toast('没有可复制的内容', 'error');
+            return;
+        }
+        const ok = typeof global.copyToClipboard === 'function'
+            ? await global.copyToClipboard(s)
+            : false;
+        if (ok) {
             if (btn) { const p = btn.textContent; btn.textContent = '已复制'; setTimeout(() => { btn.textContent = p; }, 1200); }
-        } catch (_) { if (typeof global.toast === 'function') global.toast('复制失败', 'error'); }
+            return;
+        }
+        if (typeof global.toast === 'function') global.toast('复制失败', 'error');
     }
 
     function switchTab(tab) {
@@ -370,7 +379,11 @@
         if ($('ayyb-callBtn')) $('ayyb-callBtn').onclick = callFeature;
         if ($('ayyb-clearBtn')) $('ayyb-clearBtn').onclick = () => setResult('已清空', false);
         if ($('ayyb-copyBtn')) $('ayyb-copyBtn').onclick = async () => {
-            try { await navigator.clipboard.writeText(state.lastResult || $('ayyb-resultBox').textContent); } catch (_) {}
+            const text = state.lastResult || ($('ayyb-resultBox') && $('ayyb-resultBox').textContent) || '';
+            const ok = typeof global.copyToClipboard === 'function' && await global.copyToClipboard(text);
+            if (typeof global.toast === 'function') {
+                global.toast(ok ? '已复制' : '复制失败', ok ? 'success' : 'error');
+            }
         };
         if ($('ayyb-refreshBtn')) $('ayyb-refreshBtn').onclick = refreshSelected;
         if ($('ayyb-resyncBtn')) $('ayyb-resyncBtn').onclick = resyncSelected;
