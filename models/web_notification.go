@@ -21,6 +21,7 @@ const (
 	NotifySourceAuth       = "项目授权相关"
 	NotifySourceFeedback   = "意见反馈"
 	NotifySourceWx         = "微信协议"
+	NotifySourceYyb        = "应用宝协议"
 	NotifyDisplayNormal    = "normal"
 	NotifyDisplayPopup     = "popup"
 

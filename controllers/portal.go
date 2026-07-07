@@ -9,6 +9,7 @@ import (
 
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/vweb"
+	"github.com/cdle/xdd/yybportal"
 )
 
 // PortalController 门户控制器，处理用户门户相关的所有页面和API请求
@@ -682,6 +683,51 @@ func (c *PortalController) JdWxRefresh() {
 // JdWxContinueRisk 风控验证完成后继续刷新
 func (c *PortalController) JdWxContinueRisk() {
 	result, err := models.PortalJdWxContinueAfterRisk(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
+	c.ServeJSON()
+}
+
+// JdYybAccounts 获取可用于京东登录的应用宝账号
+func (c *PortalController) JdYybAccounts() {
+	accounts, err := yybportal.GetPortalJdYybAccounts(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": accounts}
+	c.ServeJSON()
+}
+
+// JdYybRefresh 通过应用宝协议刷新京东CK
+func (c *PortalController) JdYybRefresh() {
+	var req struct {
+		OpenID        string `json:"openid"`
+		RiskConfirmed bool   `json:"riskConfirmed"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	result, err := yybportal.PortalJdYybRefresh(c.PortalUserID, strings.TrimSpace(req.OpenID), req.RiskConfirmed)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": result}
+	c.ServeJSON()
+}
+
+// JdYybContinueRisk 应用宝风控验证完成后继续刷新
+func (c *PortalController) JdYybContinueRisk() {
+	result, err := yybportal.PortalJdYybContinueAfterRisk(c.PortalUserID)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()

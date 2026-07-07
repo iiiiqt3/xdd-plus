@@ -1782,6 +1782,7 @@
                             <div class="jd-sub-tabs">
                                 <button class="active" id="jdLoginTab-sms" onclick="switchJdLoginTab('sms')">📱 短信登录</button>
                                 <button id="jdLoginTab-wx" onclick="switchJdLoginTab('wx')">💬 微信协议登录</button>
+                                <button id="jdLoginTab-yyb" onclick="switchJdLoginTab('yyb')">📲 应用宝登录<span class="yyb-test-tag">测试</span></button>
                             </div>
                             <div class="jd-toolbar-actions" id="jdLoginToolbarActions"></div>
                         </div>
@@ -1831,6 +1832,23 @@
                                     </div>
                                 </div>
                                 <div class="jd-query-result" id="jdWxResult" style="display:none;"></div>
+                            </div>
+
+                            <div class="jd-login-tab-panel" id="jdLoginPanel-yyb">
+                                <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.12);font-size:11px;color:var(--purple);line-height:1.8;">
+                                    💡 需先在「应用宝协议」页面扫码绑定账号，再选择账号刷新京东 CK。首次绑定扣积分，再次扫码不扣。
+                                </div>
+                                <div class="jd-device-grid" id="jdYybAccountList">
+                                    <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载账号...</div>
+                                </div>
+                                <div id="jdYybRiskBox" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
+                                    <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdYybRiskMsg">账号需要短信验证</div>
+                                    <a id="jdYybRiskLink" href="#" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">验证链接</a>
+                                    <div style="margin-top:10px;">
+                                        <button class="btn accent" onclick="jdYybContinueRisk()">验证完成，继续刷新</button>
+                                    </div>
+                                </div>
+                                <div class="jd-query-result" id="jdYybResult" style="display:none;"></div>
                             </div>
                         </div>
                     </div>
@@ -2053,7 +2071,8 @@ var state = {
     jdTab: 'query',
     jdLoginTab: 'sms',
     jdAccounts: [],
-    jdWxDevices: []
+    jdWxDevices: [],
+    jdYybAccounts: []
 };
 
 const portalActionInflight = new Set();
@@ -3781,7 +3800,7 @@ function switchJdTab(tab) {
 
 function switchJdLoginTab(tab) {
     state.jdLoginTab = tab;
-    ['sms', 'wx'].forEach(function(name) {
+    ['sms', 'wx', 'yyb'].forEach(function(name) {
         var btn = document.getElementById('jdLoginTab-' + name);
         var panel = document.getElementById('jdLoginPanel-' + name);
         if (btn) btn.classList.toggle('active', name === tab);
@@ -3796,6 +3815,10 @@ function switchJdLoginTab(tab) {
             actions.innerHTML = '<button class="btn primary small" onclick="jdWxRefreshAll()">刷新全部CK</button>' +
                                '<button class="btn outline small" onclick="loadJdWxDevices()">刷新设备</button>';
             loadJdWxDevices().catch(function() {});
+        } else if (tab === 'yyb') {
+            actions.innerHTML = '<button class="btn primary small" onclick="jdYybRefreshAll()">刷新全部CK</button>' +
+                               '<button class="btn outline small" onclick="loadJdYybAccounts()">刷新账号</button>';
+            loadJdYybAccounts().catch(function() {});
         }
     }
 }
@@ -3806,6 +3829,8 @@ async function loadJdPanelData() {
     } else if (state.jdTab === 'login') {
         if (state.jdLoginTab === 'wx') {
             await loadJdWxDevices();
+        } else if (state.jdLoginTab === 'yyb') {
+            await loadJdYybAccounts();
         }
     } else {
         await loadJdAccounts();
@@ -4316,6 +4341,116 @@ async function jdWxContinueRisk() {
             body: '{}'
         });
         showJdWxResult(resp.data || {});
+        if (!(resp.data && resp.data.needRiskVerify)) {
+            toast('刷新完成', 'success');
+            await loadJdAccounts();
+        }
+    } catch (err) {
+        toast(err.message || '继续刷新失败', 'error');
+    }
+}
+
+async function loadJdYybAccounts() {
+    var box = document.getElementById('jdYybAccountList');
+    if (!box) return;
+    box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载账号...</div>';
+    try {
+        var resp = await request('/api/portal/jd/yyb/accounts');
+        state.jdYybAccounts = resp.data || [];
+        renderJdYybAccounts();
+    } catch (err) {
+        box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--danger);font-size:12px;">' + escapeHtml(err.message || '加载失败') + '</div>';
+    }
+}
+
+function renderJdYybAccounts() {
+    var box = document.getElementById('jdYybAccountList');
+    var list = state.jdYybAccounts || [];
+    if (!box) return;
+    if (!list.length) {
+        box.innerHTML = '<div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">暂无可用应用宝账号，请先到「应用宝协议」扫码绑定</div>';
+        return;
+    }
+    var html = '';
+    list.forEach(function(item) {
+        html += '<div class="jd-device-card">';
+        html += '<div class="jd-card-top"><span class="jd-dev-name">' + escapeHtml(item.nickname || item.openid) + '</span><span class="jd-dev-badge ok">可用</span></div>';
+        html += '<div class="jd-dev-meta-row"><span class="jd-dev-meta">OpenID</span><span class="jd-dev-val" title="' + escapeAttr(item.openid) + '">' + escapeHtml(item.openid) + '</span></div>';
+        html += '<div class="jd-card-bottom"><span class="jd-dev-meta">应用宝</span><button class="btn primary" onclick="jdYybRefreshAccount(\'' + escapeAttr(item.openid) + '\')">刷新CK</button></div>';
+        html += '</div>';
+    });
+    box.innerHTML = html;
+}
+
+function showJdYybResult(data) {
+    var el = document.getElementById('jdYybResult');
+    var riskBox = document.getElementById('jdYybRiskBox');
+    if (!el) return;
+    if (data.needRiskVerify) {
+        if (riskBox) {
+            riskBox.style.display = 'block';
+            document.getElementById('jdYybRiskMsg').textContent = data.riskMsg || '账号需要短信验证，请打开链接完成验证';
+            var link = document.getElementById('jdYybRiskLink');
+            if (link) { link.href = data.riskUrl || '#'; link.textContent = data.riskUrl || '验证链接'; }
+        }
+        el.style.display = 'none';
+        return;
+    }
+    if (riskBox) riskBox.style.display = 'none';
+    var details = (data.details || []).join('\n');
+    var summary = '成功 ' + (data.success || 0) + '，失败 ' + (data.fail || 0);
+    el.textContent = summary + (details ? '\n' + details : '');
+    el.style.display = 'block';
+}
+
+async function jdYybRefreshAccount(openid) {
+    var resultEl = document.getElementById('jdYybResult');
+    if (resultEl) { resultEl.style.display = 'block'; resultEl.textContent = '正在刷新，请稍候...'; }
+    try {
+        var resp = await request('/api/portal/jd/yyb/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ openid: openid })
+        });
+        showJdYybResult(resp.data || {});
+        if ((resp.data || {}).success > 0) {
+            toast('京东 CK 刷新成功', 'success');
+            await loadJdAccounts();
+        }
+    } catch (err) {
+        if (resultEl) resultEl.textContent = err.message || '刷新失败';
+        toast(err.message || '刷新失败', 'error');
+    }
+}
+
+async function jdYybRefreshAll() {
+    var resultEl = document.getElementById('jdYybResult');
+    if (resultEl) { resultEl.style.display = 'block'; resultEl.textContent = '正在刷新全部账号，请稍候...'; }
+    try {
+        var resp = await request('/api/portal/jd/yyb/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ openid: 'all' })
+        });
+        showJdYybResult(resp.data || {});
+        if ((resp.data || {}).success > 0) {
+            toast('批量刷新完成', 'success');
+            await loadJdAccounts();
+        }
+    } catch (err) {
+        if (resultEl) resultEl.textContent = err.message || '刷新失败';
+        toast(err.message || '刷新失败', 'error');
+    }
+}
+
+async function jdYybContinueRisk() {
+    try {
+        var resp = await request('/api/portal/jd/yyb/continue-risk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
+        });
+        showJdYybResult(resp.data || {});
         if (!(resp.data && resp.data.needRiskVerify)) {
             toast('刷新完成', 'success');
             await loadJdAccounts();

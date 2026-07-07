@@ -66,6 +66,7 @@ func Init(c ModuleConfig) error {
 	yybSvc = s
 	ready = true
 	initErr = nil
+	startJdCron()
 	return nil
 }
 

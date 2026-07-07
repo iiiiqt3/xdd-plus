@@ -314,6 +314,19 @@ func wxJdSilentAuthLogin(code string, eidToken string) (string, string, error) {
 	return ptKey, ptPin, nil
 }
 
+// WxJdAppID 京东小程序 AppID（供应用宝京东刷新复用）
+const WxJdAppID = wxJdAppID
+
+// WxJdSilentAuthLogin 京东静默登录（供应用宝京东刷新复用）
+func WxJdSilentAuthLogin(code, eidToken string) (string, string, error) {
+	return wxJdSilentAuthLogin(code, eidToken)
+}
+
+// WxJdGetFingerTk 获取京东 finger token 备用
+func WxJdGetFingerTk() (string, error) {
+	return wxJdGetFingerTk()
+}
+
 func wxJdRefreshCK(wxid string) (string, string, error) {
 	code, err := wxJdGetWxCode(wxid)
 	if err != nil {
