@@ -71,13 +71,17 @@ func PortalCreateQR(userNumber int) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	putPendingScan(userNumber, qr.SessionID, cost, true)
+	putPendingScan(userNumber, qr.SessionID, cost, cost > 0)
+	hint := "首次绑定该微信不扣积分；已绑定过的账号再次扫码（在线或掉线）也不扣积分"
+	if cost > 0 {
+		hint = fmt.Sprintf("首次绑定该微信扣除 %d 积分；已绑定过的账号再次扫码（在线或掉线）不扣积分", cost)
+	}
 	return map[string]any{
 		"sessionId":     qr.SessionID,
 		"status":        qr.Status,
 		"imageBase64":   qr.ImageB64,
 		"scanLoginCost": cost,
-		"scanCostHint":  fmt.Sprintf("首次绑定该微信扣除 %d 积分；已绑定过的账号再次扫码（在线或掉线）不扣积分", cost),
+		"scanCostHint":  hint,
 	}, nil
 }
 

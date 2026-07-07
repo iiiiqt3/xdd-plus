@@ -33,7 +33,7 @@ type YybConfig struct {
 	ResourceRoot       string `yaml:"resource_root"`
 	DBFilename         string `yaml:"db_filename"`
 	TCPProxy           string `yaml:"tcp_proxy"`
-	ScanLoginCost      int    `yaml:"scan_login_cost"`
+	ScanLoginCost      *int   `yaml:"scan_login_cost"`
 	MaxAccountsPerUser int    `yaml:"max_accounts_per_user"`
 	APIToken           string `yaml:"api_token"`
 	ExposeInternalAPI  bool   `yaml:"expose_internal_api"`
@@ -224,9 +224,6 @@ func initConfig() {
 	}
 	if Config.WxProtocol.DeviceName == "" {
 		Config.WxProtocol.DeviceName = "Xiaomi-M2012K11AC"
-	}
-	if Config.Yyb.ScanLoginCost == 0 {
-		Config.Yyb.ScanLoginCost = 2000
 	}
 	if Config.Yyb.MaxAccountsPerUser == 0 {
 		Config.Yyb.MaxAccountsPerUser = 5

@@ -6,6 +6,16 @@ import (
 	"github.com/cdle/xdd/models"
 )
 
+func yybScanLoginCostFromConfig(c models.YybConfig) int {
+	if c.ScanLoginCost != nil {
+		return *c.ScanLoginCost
+	}
+	if models.Config.WxProtocol.ScanLoginCost > 0 {
+		return models.Config.WxProtocol.ScanLoginCost
+	}
+	return 2000
+}
+
 // ModuleConfigFromModels 从全局配置构建模块配置
 func ModuleConfigFromModels() ModuleConfig {
 	c := models.Config.Yyb
@@ -24,7 +34,7 @@ func ModuleConfigFromModels() ModuleConfig {
 		ResourceRoot:       root,
 		DBFilename:         dbFile,
 		TCPProxy:           c.TCPProxy,
-		ScanLoginCost:      c.ScanLoginCost,
+		ScanLoginCost:      yybScanLoginCostFromConfig(c),
 		MaxAccountsPerUser: c.MaxAccountsPerUser,
 		APIToken:           c.APIToken,
 		ExposeInternalAPI:  c.ExposeInternalAPI,

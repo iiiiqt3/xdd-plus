@@ -8,9 +8,8 @@ import (
 )
 
 func getScanLoginCost() int {
-	c := Config().ScanLoginCost
-	if c > 0 {
-		return c
+	if models.Config.Yyb.ScanLoginCost != nil {
+		return *models.Config.Yyb.ScanLoginCost
 	}
 	if models.Config.WxProtocol.ScanLoginCost > 0 {
 		return models.Config.WxProtocol.ScanLoginCost

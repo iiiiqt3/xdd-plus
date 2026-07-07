@@ -38,9 +38,6 @@ func Init(c ModuleConfig) error {
 		initErr = nil
 		return nil
 	}
-	if c.ScanLoginCost <= 0 {
-		c.ScanLoginCost = 2000
-	}
 	if c.MaxAccountsPerUser <= 0 {
 		c.MaxAccountsPerUser = 5
 	}
