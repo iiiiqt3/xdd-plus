@@ -638,6 +638,17 @@
         .ayyb-panel.active { display: block; }
         .yyb-table-openid { display: flex; align-items: center; gap: 8px; max-width: 320px; }
         .yyb-table-openid .yyb-openid-text { font-size: 10px; padding: 5px 8px; }
+        .wx-device-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+        .wx-device-badge.online-badge { background: #ecfdf5; color: #059669; }
+        .wx-device-badge.offline-badge { background: #fef2f2; color: #dc2626; }
+        .wx-device-badge.secondary-badge { background: #f8fafc; color: #64748b; }
+        .ayyb-binding-status {
+            font-size: 12px; color: #606266; padding: 6px 10px; border-radius: 6px;
+            background: #f5f7fa; border: 1px solid #ebeef5; margin-right: auto;
+        }
+        .ayyb-binding-status.loading { color: #409eff; background: rgba(64,158,255,0.08); border-color: rgba(64,158,255,0.2); }
+        .ayyb-binding-status.ok { color: #67c23a; background: rgba(103,194,58,0.08); border-color: rgba(103,194,58,0.2); }
+        .ayyb-binding-status.warn { color: #e6a23c; background: rgba(230,162,60,0.08); border-color: rgba(230,162,60,0.2); }
     </style>
 </head>
 <body>
@@ -667,7 +678,6 @@
         <div class="nav-item" data-page="envvars" onclick="switchPage('envvars')"><i class="fas fa-database"></i><span>xdd环境变量</span></div>
         <div class="nav-item" data-page="wxdevices" onclick="switchPage('wxdevices')"><i class="fab fa-weixin"></i><span>微信协议管理</span></div>
         <div class="nav-item" data-page="yyb" onclick="switchPage('yyb')"><i class="fas fa-mobile-alt"></i><span>应用宝协议<span class="yyb-test-tag" style="margin-left:4px;">测试</span></span></div>
-        <div class="nav-item" onclick="location.href='/admin/yyb'"><i class="fas fa-mobile-screen-button"></i><span>应用宝协议管理</span></div>
         <div class="nav-item" data-page="gameconfig" onclick="switchPage('gameconfig')"><i class="fas fa-gamepad"></i><span>娱乐功能</span></div>
         <div class="nav-item" data-page="logmgmt" onclick="switchPage('logmgmt')"><i class="fas fa-file-alt"></i><span>日志管理</span></div>
         <div class="nav-item" data-page="sysconfig" onclick="switchPage('sysconfig')"><i class="fas fa-cog"></i><span>系统配置</span></div>
@@ -1586,19 +1596,16 @@
             <div class="ayyb-panel active" id="ayyb-panel-debug">
                 <div class="card">
                     <div class="card-title">
-                        <span><i class="fas fa-users"></i> 选择账号</span>
+                        <span><i class="fas fa-code"></i> API 调试</span>
                         <div class="toolbar" style="margin:0;">
                             <button class="btn btn-primary" id="ayyb-scanBtn" type="button"><i class="fas fa-qrcode"></i> 测试扫码</button>
-                            <button class="btn btn-default btn-sm" id="ayyb-refreshBtn" type="button">刷新存活</button>
-                            <button class="btn btn-default btn-sm" id="ayyb-resyncBtn" type="button">同步资料</button>
-                            <button class="btn btn-danger btn-sm" id="ayyb-deleteBtn" type="button">删除</button>
                         </div>
                     </div>
-                    <div class="yyb-account-grid" id="ayyb-accountSelect"><div class="empty-tip">加载中…</div></div>
-                </div>
-                <div class="card">
-                    <div class="card-title"><i class="fas fa-code"></i> API 调用</div>
                     <div class="form-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                        <div class="form-item">
+                            <label>账号 Ref（OpenID）</label>
+                            <input id="ayyb-refInput" placeholder="输入 OpenID 或账号 ID" autocomplete="off">
+                        </div>
                         <div class="form-item">
                             <label>能力</label>
                             <select id="ayyb-featureSel">
@@ -1623,14 +1630,21 @@
                     </div>
                     <div class="yyb-result-panel">
                         <div class="yyb-result-title"><i class="fas fa-terminal"></i> 调用结果</div>
-                        <pre class="yyb-result-box" id="ayyb-resultBox">选择账号后执行调用，结果将显示在这里。</pre>
+                        <pre class="yyb-result-box" id="ayyb-resultBox">输入 OpenID 后执行调用，结果将显示在这里。</pre>
                     </div>
                 </div>
             </div>
 
             <div class="ayyb-panel" id="ayyb-panel-bindings">
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-table"></i> 门户绑定列表</div>
+                    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <span><i class="fas fa-table"></i> 门户绑定列表</span>
+                        <div class="toolbar" style="margin:0;align-items:center;">
+                            <span class="ayyb-binding-status" id="ayyb-bindingStatus">加载中…</span>
+                            <button class="btn btn-primary btn-sm" id="ayyb-checkAllBtn" type="button"><i class="fas fa-stethoscope"></i> 一键检测</button>
+                            <button class="btn btn-default btn-sm" id="ayyb-reloadBindingsBtn" type="button"><i class="fas fa-sync-alt"></i> 刷新</button>
+                        </div>
+                    </div>
                     <div style="overflow:auto;">
                         <table class="data-table">
                             <thead>
@@ -2224,7 +2238,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/admin_yyb.js?v=6"></script>
+<script src="/vweb/js/admin_yyb.js?v=7"></script>
 <script>
 // ============ 通用工具 ============
 function _fetchJson(method, url, data) {

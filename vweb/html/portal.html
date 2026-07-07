@@ -1112,6 +1112,29 @@
         .yyb-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; font-size: 12px; background: rgba(128,128,128,0.06); border: 1px solid var(--glass-border); }
         .yyb-chip.ok { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.2); color: #059669; }
         .yyb-chip.bad { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.2); color: #dc2626; }
+        .yyb-chip.checking { background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.25); color: #4f46e5; }
+        .yyb-status-bar {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 11px 14px;
+            border-radius: 10px; font-size: 13px; line-height: 1.5; border: 1px solid var(--glass-border);
+            background: rgba(99,102,241,0.05); color: var(--text-secondary);
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+        }
+        .yyb-status-bar.loading { background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.22); color: #4338ca; }
+        .yyb-status-bar.ok { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.2); color: #047857; }
+        .yyb-status-bar.warn { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.22); color: #b45309; }
+        .yyb-status-bar.error { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.2); color: #b91c1c; }
+        .yyb-status-bar.hidden { display: none; }
+        .yyb-spin {
+            width: 16px; height: 16px; border: 2px solid rgba(99,102,241,0.2); border-top-color: #6366f1;
+            border-radius: 50%; flex-shrink: 0; animation: yybSpin 0.7s linear infinite;
+        }
+        @keyframes yybSpin { to { transform: rotate(360deg); } }
+        .yyb-account-grid.is-loading { position: relative; min-height: 88px; pointer-events: none; opacity: 0.55; }
+        .yyb-account-grid.is-loading::after {
+            content: '正在更新账号状态…'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 600; color: #4f46e5; background: rgba(255,255,255,0.72); border-radius: 10px;
+        }
+        .btn.is-loading { opacity: 0.72; pointer-events: none; }
         .yyb-result-panel { margin-top: 14px; }
         .yyb-result-title { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
         .yyb-result-box {
@@ -1890,14 +1913,18 @@
                     <span class="muted">管理绑定账号与小程序 API 调用</span>
                 </div>
                 <div class="yyb-chips" style="margin-bottom:14px;">
-                    <span class="yyb-chip" id="yyb-healthChip"><strong id="yyb-healthText">检测中</strong></span>
+                    <span class="yyb-chip checking" id="yyb-healthChip">服务 <strong id="yyb-healthText">待机</strong></span>
                     <span class="yyb-chip">积分 <strong id="yyb-coinVal">-</strong></span>
                     <span class="yyb-chip">扫码 <strong id="yyb-scanCostVal">-</strong> 积分</span>
                     <span class="yyb-chip">账号 <strong id="yyb-accountCount">0</strong></span>
                 </div>
+                <div class="yyb-status-bar hidden" id="yyb-statusBar" aria-live="polite">
+                    <span class="yyb-spin" id="yyb-statusSpin" style="display:none;"></span>
+                    <span id="yyb-statusText">准备就绪</span>
+                </div>
                 <div class="yyb-toolbar" style="margin-bottom:14px;">
                     <button class="btn accent" id="yyb-scanBtn" type="button">扫码添加</button>
-                    <button class="btn secondary" id="yyb-reloadBtn" type="button">刷新</button>
+                    <button class="btn secondary" id="yyb-reloadBtn" type="button">刷新并检测</button>
                 </div>
 
                 <div class="card" style="margin-bottom:16px;padding:16px;">

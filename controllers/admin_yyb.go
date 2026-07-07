@@ -116,6 +116,16 @@ func (c *AdminYybController) RefreshAccount() {
 	c.jsonOK(data, "刷新完成")
 }
 
+// CheckAllAccounts 一键检测全部门户绑定
+func (c *AdminYybController) CheckAllAccounts() {
+	data, err := yybportal.AdminCheckAllBindings()
+	if err != nil {
+		c.jsonErr(err)
+		return
+	}
+	c.jsonOK(data, "检测完成")
+}
+
 // ResyncAccount 同步
 func (c *AdminYybController) ResyncAccount() {
 	var req struct {

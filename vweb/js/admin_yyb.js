@@ -2,7 +2,7 @@
     'use strict';
 
     const API = '/api/admin/yyb';
-    const state = { accounts: [], bindings: [], selectedOpenID: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, tab: 'debug' };
+    const state = { bindings: [], protocolCount: 0, lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, tab: 'debug', bindingLoading: false };
 
     function $(id) { return document.getElementById(id); }
 
@@ -28,14 +28,11 @@
         return a.openid || '未命名';
     }
 
-    function accountStatus(a) {
-        const s = a.status;
-        return (s && typeof s === 'object') ? '' : (s || '');
-    }
-
-    function statusBadge(s) {
-        if (s === 'alive' || s === 'online') return '<span class="badge ok">可用</span>';
-        return '<span class="badge bad">异常</span>';
+    function statusTag(s) {
+        const st = String(s || '').toLowerCase();
+        if (st === 'alive' || st === 'online') return '<span class="wx-device-badge online-badge">🟢 可用</span>';
+        if (st === 'dead' || st === 'offline' || st === 'expired') return '<span class="wx-device-badge offline-badge">🔴 失效</span>';
+        return '<span class="wx-device-badge secondary-badge">' + esc(s || '未知') + '</span>';
     }
 
     function setResult(val, err) {
@@ -74,69 +71,30 @@
         document.querySelectorAll('.ayyb-panel').forEach(p => p.classList.toggle('active', p.id === 'ayyb-panel-' + tab));
     }
 
-    function selectedAccount() { return state.accounts.find(a => a.openid === state.selectedOpenID); }
-
-    function syncSelected() {
-        document.querySelectorAll('.ayyb-acc-opt').forEach(el => {
-            el.classList.toggle('selected', el.dataset.openid === state.selectedOpenID);
-        });
-    }
-
     function formatUin(acc) {
         const u = acc && acc.uin;
         if (u != null && u !== '' && Number(u) > 0) return String(u);
         return '';
     }
 
-    function renderUinLine(acc) {
-        const uin = formatUin(acc);
-        const display = uin || '未获取';
-        const title = uin ? uin : '扫码绑定后会自动获取；若仍为空请点击「刷新账号」';
-        return `<div class="yyb-acc-uin-line">
-            <span class="yyb-meta-label">UIN</span>
-            <code class="yyb-uin-text${uin ? '' : ' missing'}" title="${attrEsc(title)}">${esc(display)}</code>
-        </div>`;
+    function setBindingStatus(text, type) {
+        const el = $('ayyb-bindingStatus');
+        if (!el) return;
+        el.className = 'ayyb-binding-status' + (type ? (' ' + type) : '');
+        el.textContent = text || '';
     }
 
-    function renderAccountCard(acc) {
-        const st = accountStatus(acc);
-        const rawOpenid = String(acc.openid || '');
-        const oid = esc(rawOpenid);
-        return `<div class="yyb-acc-card ayyb-acc-opt" data-openid="${attrEsc(rawOpenid)}" role="button" tabindex="0">
-            <div class="yyb-acc-head">
-                <div class="yyb-acc-name">${esc(accountName(acc))}</div>
-                ${statusBadge(st)}
-            </div>
-            ${renderUinLine(acc)}
-            <div class="yyb-acc-openid-line">
-                <span class="yyb-meta-label">OpenID</span>
-                <code class="yyb-openid-text" title="${attrEsc(rawOpenid)}">${oid}</code>
-                <button type="button" class="yyb-copy-btn" data-ayyb-copy="${attrEsc(rawOpenid)}">复制</button>
-            </div>
-        </div>`;
-    }
-
-    function renderAccounts() {
-        const box = $('ayyb-accountSelect');
-        if ($('ayyb-stProtocol')) $('ayyb-stProtocol').textContent = state.accounts.length;
-        if (!box) return;
-        if (!state.accounts.length) {
-            box.innerHTML = '<div class="yyb-empty">暂无协议账号，可点击「测试扫码」添加</div>';
-            state.selectedOpenID = '';
-            return;
-        }
-        if (!state.accounts.some(a => a.openid === state.selectedOpenID)) {
-            state.selectedOpenID = state.accounts[0].openid;
-        }
-        box.innerHTML = state.accounts.map(renderAccountCard).join('');
-        box.querySelectorAll('.ayyb-acc-opt').forEach(card => {
-            card.onclick = (e) => {
-                if (e.target.closest('.yyb-copy-btn')) return;
-                state.selectedOpenID = card.dataset.openid;
-                syncSelected();
-            };
-        });
-        syncSelected();
+    function formatCheckSummary(s) {
+        if (!s) return '';
+        const alive = Number(s.alive || 0);
+        const dead = Number(s.dead || 0);
+        const failed = Number(s.failed || 0);
+        const total = Number(s.total || 0);
+        if (!total) return '暂无绑定账号';
+        let msg = '检测完成：共 ' + total + ' 个，可用 ' + alive + ' 个';
+        if (dead > 0) msg += '，失效 ' + dead + ' 个';
+        if (failed > 0) msg += '，失败 ' + failed + ' 个';
+        return msg;
     }
 
     function renderBindings() {
@@ -148,7 +106,6 @@
             return;
         }
         tbody.innerHTML = state.bindings.map(a => {
-            const alive = /alive|online/i.test(a.status || '');
             const rawOpenid = String(a.openid || '');
             const oid = esc(rawOpenid);
             const uin = formatUin(a);
@@ -156,28 +113,26 @@
                 <td>${a.userNumber}</td>
                 <td>${esc(a.userNickname)}</td>
                 <td>${esc(a.nickname)}</td>
-                <td style="max-width:140px;font-family:Consolas,monospace;font-size:12px;" title="${uin ? attrEsc(uin) : '扫码绑定后自动获取；若仍为空请刷新账号'}">${esc(uin || '未获取')}</td>
+                <td style="max-width:140px;font-family:Consolas,monospace;font-size:12px;" title="${uin ? attrEsc(uin) : '扫码绑定后自动获取'}">${esc(uin || '未获取')}</td>
                 <td style="max-width:320px;">
                     <div class="yyb-table-openid">
                         <code class="yyb-openid-text" title="${attrEsc(rawOpenid)}">${oid}</code>
                         <button type="button" class="yyb-copy-btn" data-ayyb-copy="${attrEsc(rawOpenid)}">复制</button>
                     </div>
                 </td>
-                <td><span class="badge ${alive ? 'ok' : 'bad'}">${esc(a.status)}</span></td>
+                <td>${statusTag(a.status)}</td>
                 <td>
-                    <button class="btn btn-default" style="padding:4px 8px;font-size:12px;" data-pick="${oid}">调试</button>
-                    <button class="btn btn-danger" style="padding:4px 8px;font-size:12px;" data-del="${oid}">删除</button>
+                    <button class="btn btn-default" style="padding:4px 8px;font-size:12px;" data-pick="${attrEsc(rawOpenid)}">调试</button>
+                    <button class="btn btn-danger" style="padding:4px 8px;font-size:12px;" data-del="${attrEsc(rawOpenid)}">删除</button>
                 </td>
             </tr>`;
         }).join('');
         tbody.querySelectorAll('[data-pick]').forEach(btn => {
             btn.onclick = () => {
                 const openid = btn.getAttribute('data-pick');
-                if (state.accounts.some(a => a.openid === openid)) {
-                    state.selectedOpenID = openid;
-                    syncSelected();
-                    switchTab('debug');
-                } else setResult('该账号不在协议库中', true);
+                if ($('ayyb-refInput')) $('ayyb-refInput').value = openid;
+                switchTab('debug');
+                if (typeof global.toast === 'function') global.toast('已填入 OpenID，可前往调试台执行调用', 'success');
             };
         });
         tbody.querySelectorAll('[data-del]').forEach(btn => {
@@ -186,7 +141,8 @@
                 if (!confirm('删除该绑定及协议账号？')) return;
                 try {
                     await request('/accounts/delete', { method: 'POST', body: JSON.stringify({ ref }) });
-                    await loadAll();
+                    await loadBindings(false);
+                    await loadStatus();
                 } catch (e) { setResult(e.message, true); }
             };
         });
@@ -200,21 +156,64 @@
             $('ayyb-stHealth').textContent = (!st.enabled || !st.ready) ? '不可用' : '正常';
             $('ayyb-stHealth').style.color = (!st.enabled || !st.ready) ? '#f56c6c' : '#67c23a';
         }
-        if ($('ayyb-stBindingCount')) $('ayyb-stBindingCount').textContent = st.bindingCount ?? state.bindings.length;
-        if ($('ayyb-stAliveCount')) $('ayyb-stAliveCount').textContent = st.aliveCount ?? '-';
+        if ($('ayyb-stProtocol')) $('ayyb-stProtocol').textContent = st.protocolCount ?? state.protocolCount;
         const disabled = !st.enabled || !st.ready;
         if ($('ayyb-scanBtn')) $('ayyb-scanBtn').disabled = disabled;
         if ($('ayyb-callBtn')) $('ayyb-callBtn').disabled = disabled;
+        if ($('ayyb-checkAllBtn')) $('ayyb-checkAllBtn').disabled = disabled;
         return st;
+    }
+
+    async function loadBindings(showToast) {
+        if (state.bindingLoading) return;
+        state.bindingLoading = true;
+        setBindingStatus('正在刷新绑定列表…', 'loading');
+        try {
+            state.bindings = await request('/accounts') || [];
+            renderBindings();
+            setBindingStatus('共 ' + state.bindings.length + ' 个绑定账号', 'ok');
+            if (showToast && typeof global.toast === 'function') global.toast('绑定列表已刷新', 'success');
+        } catch (e) {
+            setBindingStatus(e.message || '加载失败', 'warn');
+            if (typeof global.toast === 'function') global.toast(e.message || '加载失败', 'error');
+        } finally {
+            state.bindingLoading = false;
+        }
+    }
+
+    async function checkAllBindings() {
+        if (state.bindingLoading) return;
+        state.bindingLoading = true;
+        const btn = $('ayyb-checkAllBtn');
+        const prev = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = '检测中…'; }
+        setBindingStatus('正在检测全部账号存活状态，请稍候…', 'loading');
+        try {
+            const data = await request('/accounts/check-all', { method: 'POST', body: '{}' });
+            state.bindings = data.accounts || [];
+            renderBindings();
+            const summaryText = formatCheckSummary(data.checkSummary);
+            const dead = Number((data.checkSummary || {}).dead || 0);
+            const failed = Number((data.checkSummary || {}).failed || 0);
+            setBindingStatus(summaryText, (dead > 0 || failed > 0) ? 'warn' : 'ok');
+            await loadStatus();
+            if (typeof global.toast === 'function') global.toast(summaryText, dead > 0 ? 'error' : 'success');
+        } catch (e) {
+            setBindingStatus(e.message || '检测失败', 'warn');
+            if (typeof global.toast === 'function') global.toast(e.message || '检测失败', 'error');
+        } finally {
+            state.bindingLoading = false;
+            if (btn) { btn.disabled = false; btn.textContent = prev; }
+        }
     }
 
     async function loadAll() {
         try {
             await loadStatus();
-            state.accounts = await request('/protocol/accounts') || [];
-            renderAccounts();
-            state.bindings = await request('/accounts') || [];
-            renderBindings();
+            const protocol = await request('/protocol/accounts') || [];
+            state.protocolCount = protocol.length;
+            if ($('ayyb-stProtocol')) $('ayyb-stProtocol').textContent = state.protocolCount;
+            await loadBindings(false);
         } catch (e) { setResult(e.message, true); }
     }
 
@@ -229,7 +228,7 @@
             container.innerHTML = `
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
                     <div style="text-align:center;padding:10px 6px;border-radius:8px;background:linear-gradient(135deg,rgba(64,158,255,0.08),rgba(64,158,255,0.03));border:1px solid rgba(64,158,255,0.12);">
-                        <div style="font-size:22px;font-weight:800;color:#409eff;" id="ayybDashProtocol">${st.protocolCount ?? state.accounts.length}</div>
+                        <div style="font-size:22px;font-weight:800;color:#409eff;" id="ayybDashProtocol">${st.protocolCount ?? state.protocolCount}</div>
                         <div style="font-size:11px;color:#999;margin-top:2px;">协议账号</div>
                     </div>
                     <div style="text-align:center;padding:10px 6px;border-radius:8px;background:linear-gradient(135deg,rgba(103,194,58,0.08),rgba(103,194,58,0.03));border:1px solid rgba(103,194,58,0.12);">
@@ -246,21 +245,6 @@
         }
     }
 
-    async function withAccountAction(btn, loadingLabel, resultHint, action) {
-        if (!btn || btn.disabled) return;
-        const prev = btn.textContent;
-        const peer = [$('ayyb-refreshBtn'), $('ayyb-resyncBtn')].filter(b => b && b !== btn);
-        btn.disabled = true;
-        peer.forEach(b => { b.disabled = true; });
-        btn.textContent = loadingLabel;
-        setResult(resultHint, false);
-        try { await action(); } finally {
-            btn.disabled = false;
-            btn.textContent = prev;
-            peer.forEach(b => { b.disabled = false; });
-        }
-    }
-
     function togglePayload() {
         const g = $('ayyb-payloadGroup');
         const sel = $('ayyb-featureSel');
@@ -268,12 +252,12 @@
     }
 
     async function callFeature() {
-        const acc = selectedAccount();
-        if (!acc) { setResult('请先选择账号', true); return; }
+        const ref = ($('ayyb-refInput') && $('ayyb-refInput').value || '').trim();
+        if (!ref) { setResult('请输入 OpenID 或账号 Ref', true); return; }
         const feature = $('ayyb-featureSel').value;
         const appId = $('ayyb-appidInput').value.trim();
         if (!appId) { setResult('请输入 AppID', true); return; }
-        const body = { ref: acc.openid, appId };
+        const body = { ref, appId };
         let path = '/wxapp/getCode';
         if (feature === 'getPhoneNumber') path = '/wxapp/getPhoneNumber';
         if (feature === 'operateWxData') {
@@ -285,40 +269,8 @@
         setResult('调用中…', false);
         try {
             setResult(await request(path, { method: 'POST', body: JSON.stringify(body) }), false);
-            await loadAll();
         } catch (e) { setResult(e.message, true); }
         finally { $('ayyb-callBtn').disabled = false; }
-    }
-
-    async function refreshSelected() {
-        const acc = selectedAccount();
-        if (!acc) { setResult('请先选择协议账号', true); return; }
-        try {
-            await withAccountAction($('ayyb-refreshBtn'), '刷新中…', '正在刷新存活状态，请稍候…', async () => {
-                setResult(await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) }), false);
-                await loadAll();
-            });
-        } catch (e) { setResult(e.message, true); }
-    }
-
-    async function resyncSelected() {
-        const acc = selectedAccount();
-        if (!acc) { setResult('请先选择协议账号', true); return; }
-        try {
-            await withAccountAction($('ayyb-resyncBtn'), '同步中…', '正在同步账号资料，请稍候…', async () => {
-                setResult(await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) }), false);
-                await loadAll();
-            });
-        } catch (e) { setResult(e.message, true); }
-    }
-
-    async function deleteSelected() {
-        const acc = selectedAccount();
-        if (!acc || !confirm('确定删除该账号？')) return;
-        try {
-            await request('/accounts/delete', { method: 'POST', body: JSON.stringify({ ref: acc.openid }) });
-            await loadAll();
-        } catch (e) { setResult(e.message, true); }
     }
 
     function stopScanPoll() {
@@ -354,9 +306,12 @@
             if (status === 'authorized' || status === 'confirmed') {
                 stopScanPoll();
                 $('ayyb-qrHint').textContent = '正在入库…';
-                await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/confirm', { method: 'POST' });
+                const result = await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/confirm', { method: 'POST' });
                 closeQr();
                 setResult('测试账号已入库', false);
+                if (result && result.account && result.account.openid && $('ayyb-refInput')) {
+                    $('ayyb-refInput').value = result.account.openid;
+                }
                 await loadAll();
                 return;
             }
@@ -404,9 +359,8 @@
             const text = state.lastResult || ($('ayyb-resultBox') && $('ayyb-resultBox').textContent) || '';
             copyText(text, $('ayyb-copyBtn'));
         };
-        if ($('ayyb-refreshBtn')) $('ayyb-refreshBtn').onclick = refreshSelected;
-        if ($('ayyb-resyncBtn')) $('ayyb-resyncBtn').onclick = resyncSelected;
-        if ($('ayyb-deleteBtn')) $('ayyb-deleteBtn').onclick = deleteSelected;
+        if ($('ayyb-checkAllBtn')) $('ayyb-checkAllBtn').onclick = checkAllBindings;
+        if ($('ayyb-reloadBindingsBtn')) $('ayyb-reloadBindingsBtn').onclick = () => loadBindings(true);
         if ($('ayyb-scanBtn')) $('ayyb-scanBtn').onclick = startScan;
         if ($('ayyb-qrCloseBtn')) $('ayyb-qrCloseBtn').onclick = closeQr;
         togglePayload();
@@ -419,5 +373,7 @@
         loadAll,
         loadDashboard,
         switchTab,
+        checkAllBindings,
+        loadBindings,
     };
 })(window);

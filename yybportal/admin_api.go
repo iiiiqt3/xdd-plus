@@ -125,13 +125,75 @@ func AdminDeleteAccount(ref string) error {
 	return nil
 }
 
-// AdminRefreshAccount 刷新
+// AdminRefreshAccount 刷新并同步门户绑定状态
 func AdminRefreshAccount(ref string) (map[string]any, error) {
 	a, err := svc()
 	if err != nil {
 		return nil, err
 	}
-	return a.RefreshAccount(context.Background(), ref)
+	data, err := a.RefreshAccount(context.Background(), ref)
+	if err != nil {
+		return nil, err
+	}
+	adminSyncBindingByRef(ref, data)
+	return data, nil
+}
+
+func adminSyncBindingByRef(ref string, data map[string]any) {
+	ref = strings.TrimSpace(ref)
+	if ref == "" || data == nil {
+		return
+	}
+	var rows []PortalYybBinding
+	q := db().Where("open_id = ? OR CAST(yyb_account_id AS CHAR) = ?", ref, ref)
+	_ = q.Find(&rows).Error
+	for i := range rows {
+		syncBindingFromRefresh(&rows[i], data)
+	}
+}
+
+// AdminCheckAllBindings 一键检测全部门户绑定账号存活状态
+func AdminCheckAllBindings() (map[string]any, error) {
+	if !Ready() {
+		return nil, fmt.Errorf("应用宝服务不可用")
+	}
+	var bindings []PortalYybBinding
+	if err := db().Order("id asc").Find(&bindings).Error; err != nil {
+		return nil, err
+	}
+	alive, dead, failed := 0, 0, 0
+	for _, b := range bindings {
+		ref := strings.TrimSpace(b.OpenID)
+		if ref == "" {
+			ref = strconv.FormatInt(b.YybAccountID, 10)
+		}
+		if _, err := AdminRefreshAccount(ref); err != nil {
+			failed++
+			continue
+		}
+		var fresh PortalYybBinding
+		if db().Where("id = ?", b.ID).First(&fresh).Error == nil {
+			st := strings.ToLower(strings.TrimSpace(fresh.Status))
+			if st == "alive" || st == "online" {
+				alive++
+			} else {
+				dead++
+			}
+		}
+	}
+	accounts, err := AdminListAccounts()
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"checkSummary": map[string]any{
+			"total":  len(bindings),
+			"alive":  alive,
+			"dead":   dead,
+			"failed": failed,
+		},
+		"accounts": accounts,
+	}, nil
 }
 
 // AdminResyncAccount 同步
