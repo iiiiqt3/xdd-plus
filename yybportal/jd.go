@@ -321,6 +321,9 @@ func RefreshYybCKAuto() {
 
 // CheckYybOfflineAndNotify 每日检测应用宝账号掉线并通知用户
 func CheckYybOfflineAndNotify() {
+	if n := models.CleanupStaleOfflineNotifications(); n > 0 {
+		models.Yyb().Infof("已自动清理 %d 条超过 %d 天的微信/应用宝掉线提醒通知", n, models.OfflineNotifyRetentionDays)
+	}
 	CheckYybOfflineAndNotifyWithChannels(models.NotifyChannels{Web: true, App: true, Robot: false}, false)
 }
 
@@ -372,11 +375,12 @@ func CheckYybOfflineAndNotifyWithChannels(channels models.NotifyChannels, force 
 				"👤 %s (🔴 不可用)\n"+
 				"🆔 %s\n\n"+
 				"💡 请前往用户中心 → 应用宝协议，重新扫码登录。\n"+
-				"📌 本消息只发送一次，账号恢复后如再次掉线将重新通知。",
-			nick, openid,
+				"📌 本消息只发送一次，账号恢复后如再次掉线将重新通知。\n"+
+				"📌 网页/App 通知「%s」将在 %d 天后自动删除。",
+			nick, openid, models.NotifyTitleYybOffline, models.OfflineNotifyRetentionDays,
 		)
 		if !seenUser[b.UserNumber] {
-			_ = models.CreateSystemWebNotification("应用宝协议掉线提醒", notifyMsg, models.NotifyCategoryWx, models.NotifySourceYyb, b.UserNumber, channels)
+			_ = models.ReplaceUserOfflineNotification(models.NotifyTitleYybOffline, notifyMsg, models.NotifyCategoryWx, models.NotifySourceYyb, b.UserNumber, channels)
 			seenUser[b.UserNumber] = true
 			notifiedCount++
 		}

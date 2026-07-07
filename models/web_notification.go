@@ -25,6 +25,10 @@ const (
 	NotifyDisplayNormal    = "normal"
 	NotifyDisplayPopup     = "popup"
 
+	NotifyTitleWxOffline       = "微信协议掉线提醒"
+	NotifyTitleYybOffline      = "应用宝协议掉线提醒"
+	OfflineNotifyRetentionDays = 3
+
 	TargetScopeAll   = "all"
 	TargetScopeUser  = "user"
 	TargetScopeAdmin = "admin"
@@ -223,6 +227,58 @@ func CreateSystemWebNotification(title, content, category, source string, userNu
 	}).Error
 }
 
+// CleanupStaleOfflineNotifications 清理超过保留期的协议掉线提醒（网页/App 通知中心）
+func CleanupStaleOfflineNotifications() int {
+	cutoff := time.Now().AddDate(0, 0, -OfflineNotifyRetentionDays)
+	titles := []string{NotifyTitleWxOffline, NotifyTitleYybOffline}
+	var ids []int
+	db.Model(&WebNotification{}).Where("title IN ? AND created_at < ?", titles, cutoff).Pluck("id", &ids)
+	if len(ids) == 0 {
+		return 0
+	}
+	if err := deleteNotificationsByIDs(ids); err != nil {
+		System().Warnf("清理掉线提醒通知失败: %v", err)
+		return 0
+	}
+	return len(ids)
+}
+
+func deleteNotificationsByIDs(ids []int) error {
+	cleanIDs := make([]int, 0, len(ids))
+	seen := map[int]bool{}
+	for _, id := range ids {
+		if id > 0 && !seen[id] {
+			cleanIDs = append(cleanIDs, id)
+			seen[id] = true
+		}
+	}
+	if len(cleanIDs) == 0 {
+		return nil
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("notification_id IN ?", cleanIDs).Delete(&WebNotificationRead{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("id IN ?", cleanIDs).Delete(&WebNotification{}).Error
+	})
+}
+
+// ReplaceUserOfflineNotification 同一用户仅保留最新一条协议掉线提醒
+func ReplaceUserOfflineNotification(title, content, category, source string, userNumber int, channels NotifyChannels) error {
+	if !channels.Web && !channels.App {
+		return nil
+	}
+	if userNumber <= 0 {
+		return CreateSystemWebNotification(title, content, category, source, userNumber, channels)
+	}
+	var oldIDs []int
+	db.Model(&WebNotification{}).Where("title = ? AND target_user = ?", title, userNumber).Pluck("id", &oldIDs)
+	if len(oldIDs) > 0 {
+		_ = deleteNotificationsByIDs(oldIDs)
+	}
+	return CreateSystemWebNotification(title, content, category, source, userNumber, channels)
+}
+
 func CreateAdminOnlyWebNotification(title, content, category, source string, channels NotifyChannels) error {
 	if !channels.Web && !channels.App {
 		return nil
@@ -372,19 +428,7 @@ func DeleteAdminNotifications(ids []int) error {
 	if len(cleanIDs) == 0 {
 		return fmt.Errorf("请选择要删除的通知")
 	}
-	return db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("notification_id IN ?", cleanIDs).Delete(&WebNotificationRead{}).Error; err != nil {
-			return err
-		}
-		res := tx.Where("id IN ?", cleanIDs).Delete(&WebNotification{})
-		if res.Error != nil {
-			return res.Error
-		}
-		if res.RowsAffected == 0 {
-			return fmt.Errorf("通知不存在")
-		}
-		return nil
-	})
+	return deleteNotificationsByIDs(cleanIDs)
 }
 
 func UpdateAdminNotification(id int, title, content, category, displayType string, isTop bool) error {

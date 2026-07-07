@@ -1254,6 +1254,9 @@ func pollLoginStatusWithMigration(sender *Sender, uuid string, deductCoin bool, 
 
 // CheckWxOfflineAndNotify 检查所有微信设备在线状态，给掉线用户推送通知
 func CheckWxOfflineAndNotify() {
+	if n := CleanupStaleOfflineNotifications(); n > 0 {
+		Wx().Infof("已自动清理 %d 条超过 %d 天的微信/应用宝掉线提醒通知", n, OfflineNotifyRetentionDays)
+	}
 	CheckWxOfflineAndNotifyWithChannels(NotifyChannels{Web: true, App: true, Robot: true}, nil, false)
 }
 
@@ -1326,15 +1329,16 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 				"🆔 %s\n"+
 				"📱 %s\n"+
 				"💡 登录：%s | 刷新：%s\n\n"+
-				"📌 本消息只发送一次，设备恢复上线后如再次掉线将重新通知。",
-			info.Nickname, wxid, info.Device, loginTime, refreshTime,
+				"📌 本消息只发送一次，设备恢复上线后如再次掉线将重新通知。\n"+
+				"📌 网页/App 通知「%s」将在 %d 天后自动删除。",
+			info.Nickname, wxid, info.Device, loginTime, refreshTime, NotifyTitleWxOffline, OfflineNotifyRetentionDays,
 		)
 		if channels.Robot {
 			go SendWxMsg(wxid, notifyMsg)
 		}
 		var user User
 		if db.Where("wxid = ?", wxid).First(&user).Error == nil {
-			CreateSystemWebNotification("微信协议掉线提醒", notifyMsg, NotifyCategoryWx, NotifySourceWx, user.Number, channels)
+			ReplaceUserOfflineNotification(NotifyTitleWxOffline, notifyMsg, NotifyCategoryWx, NotifySourceWx, user.Number, channels)
 		}
 		notifiedCount++
 

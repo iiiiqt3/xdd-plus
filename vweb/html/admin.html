@@ -13,26 +13,43 @@
         .sidebar-header { padding: 20px 20px; border-bottom: 1px solid rgba(0,0,0,0.06); }
         .sidebar-header h2 { font-size: 20px; font-weight: 600; letter-spacing: 1px; color: #1a1a2e; }
         .sidebar-header span { font-size: 12px; color: #999; }
-        .nav-menu { padding: 8px 0; }
-        .nav-item { display: flex; align-items: center; padding: 11px 20px; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; color: #555; font-size: 14px; gap: 12px; border-radius: 0 8px 8px 0; margin-right: 8px; }
+        .nav-menu { padding: 4px 0 8px; }
+        .nav-search-wrap { position: relative; padding: 0 12px 10px; }
+        .nav-search-wrap i.fa-search { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); color: #909399; font-size: 12px; pointer-events: none; }
+        .nav-search-wrap input {
+            width: 100%; padding: 8px 10px 8px 30px; border: 1px solid rgba(0,0,0,0.08); border-radius: 8px;
+            font-size: 13px; background: rgba(255,255,255,0.72); color: #333; outline: none; transition: border-color .2s, box-shadow .2s;
+        }
+        .nav-search-wrap input:focus { border-color: #409eff; box-shadow: 0 0 0 2px rgba(64,158,255,0.12); background: #fff; }
+        .nav-search-wrap input::placeholder { color: #b0b3b8; }
+        .nav-item { display: flex; align-items: center; padding: 10px 20px; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; color: #555; font-size: 14px; gap: 12px; border-radius: 0 8px 8px 0; margin-right: 8px; }
         .nav-item:hover { background: rgba(64,158,255,0.08); color: #333; }
         .nav-item.active { background: rgba(64,158,255,0.12); color: #409eff; border-left-color: #409eff; font-weight: 500; }
-        .nav-item i { width: 20px; text-align: center; font-size: 15px; }
+        .nav-item i { width: 20px; text-align: center; font-size: 15px; flex-shrink: 0; }
+        .nav-item.nav-hidden, .nav-group.nav-hidden { display: none; }
         .nav-divider { height: 1px; background: rgba(0,0,0,0.05); margin: 6px 16px; }
-        /* ===== 二级菜单样式 ===== */
+        /* ===== 侧栏分组 ===== */
         .nav-group { margin-bottom: 2px; }
-        .nav-group-title { display: flex; align-items: center; padding: 11px 20px; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; color: #555; font-size: 14px; gap: 12px; border-radius: 0 8px 8px 0; margin-right: 8px; position: relative; }
-        .nav-group-title:hover { background: rgba(64,158,255,0.08); color: #333; }
-        .nav-group-title.active { background: rgba(64,158,255,0.12); color: #409eff; border-left-color: #409eff; font-weight: 500; }
-        .nav-group-title i { width: 20px; text-align: center; font-size: 15px; }
-        .nav-group-title .arrow { margin-left: auto; transition: transform 0.3s; font-size: 12px; }
+        .nav-group-title {
+            display: flex; align-items: center; padding: 9px 16px 9px 20px; cursor: pointer; transition: all 0.2s;
+            border-left: 3px solid transparent; color: #606266; font-size: 13px; font-weight: 600; gap: 10px;
+            border-radius: 0 8px 8px 0; margin-right: 8px; user-select: none;
+        }
+        .nav-group-title:hover { background: rgba(64,158,255,0.06); color: #333; }
+        .nav-group-title.has-active { color: #409eff; }
+        .nav-group-title i.group-icon { width: 18px; text-align: center; font-size: 14px; flex-shrink: 0; opacity: 0.9; }
+        .nav-group-title .arrow { margin-left: auto; transition: transform 0.22s ease; font-size: 11px; color: #909399; }
         .nav-group-title.expanded .arrow { transform: rotate(90deg); }
-        .nav-group-items { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
-        .nav-group-items.expanded { max-height: 200px; }
-        .nav-sub-item { display: flex; align-items: center; padding: 10px 20px 10px 52px; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; color: #555; font-size: 13px; gap: 10px; border-radius: 0 8px 8px 0; margin-right: 8px; }
+        .nav-group-items { max-height: 0; overflow: hidden; transition: max-height 0.28s ease; }
+        .nav-group-items.expanded { max-height: 520px; }
+        .nav-sub-item {
+            display: flex; align-items: center; padding: 9px 16px 9px 46px; cursor: pointer; transition: all 0.2s;
+            border-left: 3px solid transparent; color: #555; font-size: 13px; gap: 10px; border-radius: 0 8px 8px 0; margin-right: 8px;
+        }
         .nav-sub-item:hover { background: rgba(64,158,255,0.08); color: #333; }
         .nav-sub-item.active { background: rgba(64,158,255,0.12); color: #409eff; border-left-color: #409eff; font-weight: 500; }
-        .nav-sub-item i { width: 18px; text-align: center; font-size: 14px; }
+        .nav-sub-item i { width: 16px; text-align: center; font-size: 13px; flex-shrink: 0; opacity: 0.85; }
+        .nav-sub-item.nav-hidden { display: none; }
         /* ===== Tab切换样式 ===== */
         .tab-container { display: flex; gap: 0; margin-bottom: 16px; background: #f5f7fa; border-radius: 8px; padding: 4px; }
         .tab-btn { padding: 10px 24px; border: none; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #666; border-radius: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
@@ -543,6 +560,15 @@
         .log-stat-card .val { font-size: 22px; font-weight: 700; color: #303133; }
         .log-filter-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; padding: 12px 14px; background: #f5f7fa; border-radius: 8px; border: 1px solid #ebeef5; }
         .log-filter-bar select, .log-filter-bar input { padding: 6px 10px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 13px; }
+        .log-date-range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .log-date-presets { display: flex; gap: 4px; flex-wrap: wrap; }
+        .log-date-preset { padding: 5px 10px; border: 1px solid #dcdfe6; background: #fff; color: #606266; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all .15s; white-space: nowrap; line-height: 1.2; }
+        .log-date-preset:hover { border-color: #409eff; color: #409eff; }
+        .log-date-preset.active { background: #409eff; color: #fff; border-color: #409eff; }
+        .log-date-inputs { display: flex; align-items: center; gap: 6px; }
+        .log-date-inputs input { width: 118px; font-family: Consolas, Monaco, monospace; font-size: 12px; }
+        .log-date-sep { font-size: 12px; color: #909399; user-select: none; }
+        .log-date-clear { padding: 4px 8px; min-width: 28px; }
         .log-cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
         .log-cat-chip { padding: 4px 12px; border-radius: 999px; font-size: 12px; cursor: pointer; border: 1px solid #dcdfe6; background: #fff; color: #606266; transition: all .15s; }
         .log-cat-chip:hover { border-color: #409eff; color: #409eff; }
@@ -657,30 +683,71 @@
         <h2>XDD 管理</h2>
         <span>v2.0 控制面板</span>
     </div>
-    <div class="nav-menu">
-        <div class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')"><i class="fas fa-tachometer-alt"></i><span>仪表盘</span></div>
-        <div class="nav-divider"></div>
-        <div class="nav-item" data-page="jdcookies" onclick="switchPage('jdcookies')"><i class="fas fa-cookie"></i><span>京东账号</span></div>
-        <div class="nav-item" data-page="jdcrontasks" onclick="switchPage('jdcrontasks')"><i class="fas fa-list-check"></i><span>京东任务列表</span></div>
-        <div class="nav-item" data-page="jdtaskqueue" onclick="switchPage('jdtaskqueue')"><i class="fas fa-layer-group"></i><span>用户任务队列</span></div>
-        <div class="nav-item" data-page="users" onclick="switchPage('users')"><i class="fas fa-users"></i><span>用户管理</span></div>
-        <div class="nav-item" data-page="coinlogs" onclick="switchPage('coinlogs')"><i class="fas fa-history"></i><span>积分变动</span></div>
-        <div class="nav-divider"></div>
-        <div class="nav-item" data-page="activities" onclick="switchPage('activities')"><i class="fas fa-calendar-alt"></i><span>青龙活动配置</span></div>
-        <div class="nav-item" data-page="actauth" onclick="switchPage('actauth')"><i class="fas fa-user-shield"></i><span>青龙活动授权</span></div>
-        <div class="nav-item" data-page="actstats" onclick="switchPage('actstats')"><i class="fas fa-chart-pie"></i><span>活动人数统计</span></div>
-        <div class="nav-item" data-page="qlcrontasks" onclick="switchPage('qlcrontasks')"><i class="fas fa-tasks"></i><span>青龙活动任务</span></div>
-        <div class="nav-item" data-page="qlenvs" onclick="switchPage('qlenvs')"><i class="fas fa-cubes"></i><span>青龙活动变量</span></div>
-        <div class="nav-divider"></div>
-        <div class="nav-item" data-page="containers" onclick="switchPage('containers')"><i class="fas fa-boxes-stacked"></i><span>容器管理</span></div>
-        <div class="nav-item" data-page="notifications" onclick="switchPage('notifications')"><i class="fas fa-bell"></i><span>通知中心</span></div>
-        <div class="nav-item" data-page="feedbacks" onclick="switchPage('feedbacks')"><i class="fas fa-comment-dots"></i><span>意见反馈</span></div>
-        <div class="nav-item" data-page="envvars" onclick="switchPage('envvars')"><i class="fas fa-database"></i><span>xdd环境变量</span></div>
-        <div class="nav-item" data-page="wxdevices" onclick="switchPage('wxdevices')"><i class="fab fa-weixin"></i><span>微信协议管理</span></div>
-        <div class="nav-item" data-page="yyb" onclick="switchPage('yyb')"><i class="fas fa-mobile-alt"></i><span>应用宝协议<span class="yyb-test-tag" style="margin-left:4px;">测试</span></span></div>
-        <div class="nav-item" data-page="gameconfig" onclick="switchPage('gameconfig')"><i class="fas fa-gamepad"></i><span>娱乐功能</span></div>
-        <div class="nav-item" data-page="logmgmt" onclick="switchPage('logmgmt')"><i class="fas fa-file-alt"></i><span>日志管理</span></div>
-        <div class="nav-item" data-page="sysconfig" onclick="switchPage('sysconfig')"><i class="fas fa-cog"></i><span>系统配置</span></div>
+    <div class="nav-search-wrap">
+        <i class="fas fa-search"></i>
+        <input type="text" id="navSearchInput" placeholder="搜索菜单…" autocomplete="off" oninput="filterNavMenu(this.value)">
+    </div>
+    <div class="nav-menu" id="navMenu">
+        <div class="nav-item active" data-page="dashboard" data-search="仪表盘 dashboard 总览" onclick="switchPage('dashboard')"><i class="fas fa-tachometer-alt"></i><span>仪表盘</span></div>
+
+        <div class="nav-group" data-group="jd">
+            <div class="nav-group-title" onclick="toggleNavGroup('jd')">
+                <i class="fas fa-shopping-cart group-icon"></i><span>京东业务</span><i class="fas fa-chevron-right arrow"></i>
+            </div>
+            <div class="nav-group-items" data-group="jd">
+                <div class="nav-sub-item" data-page="jdcookies" data-search="京东账号 ck cookie" onclick="switchPage('jdcookies')"><i class="fas fa-cookie"></i><span>京东账号</span></div>
+                <div class="nav-sub-item" data-page="jdcrontasks" data-search="京东任务 cron 定时" onclick="switchPage('jdcrontasks')"><i class="fas fa-list-check"></i><span>京东任务列表</span></div>
+                <div class="nav-sub-item" data-page="jdtaskqueue" data-search="用户任务队列 排队" onclick="switchPage('jdtaskqueue')"><i class="fas fa-layer-group"></i><span>用户任务队列</span></div>
+            </div>
+        </div>
+
+        <div class="nav-group" data-group="user">
+            <div class="nav-group-title" onclick="toggleNavGroup('user')">
+                <i class="fas fa-users group-icon"></i><span>用户与积分</span><i class="fas fa-chevron-right arrow"></i>
+            </div>
+            <div class="nav-group-items" data-group="user">
+                <div class="nav-sub-item" data-page="users" data-search="用户管理 账号" onclick="switchPage('users')"><i class="fas fa-user-cog"></i><span>用户管理</span></div>
+                <div class="nav-sub-item" data-page="coinlogs" data-search="积分变动 金币" onclick="switchPage('coinlogs')"><i class="fas fa-history"></i><span>积分变动</span></div>
+                <div class="nav-sub-item" data-page="notifications" data-search="通知中心 消息" onclick="switchPage('notifications')"><i class="fas fa-bell"></i><span>通知中心</span></div>
+                <div class="nav-sub-item" data-page="feedbacks" data-search="意见反馈 投稿" onclick="switchPage('feedbacks')"><i class="fas fa-comment-dots"></i><span>意见反馈</span></div>
+            </div>
+        </div>
+
+        <div class="nav-group" data-group="ql">
+            <div class="nav-group-title" onclick="toggleNavGroup('ql')">
+                <i class="fas fa-dragon group-icon"></i><span>青龙与活动</span><i class="fas fa-chevron-right arrow"></i>
+            </div>
+            <div class="nav-group-items" data-group="ql">
+                <div class="nav-sub-item" data-page="activities" data-search="青龙活动配置 活动" onclick="switchPage('activities')"><i class="fas fa-calendar-alt"></i><span>青龙活动配置</span></div>
+                <div class="nav-sub-item" data-page="actauth" data-search="青龙活动授权 权限" onclick="switchPage('actauth')"><i class="fas fa-user-shield"></i><span>青龙活动授权</span></div>
+                <div class="nav-sub-item" data-page="actstats" data-search="活动人数统计" onclick="switchPage('actstats')"><i class="fas fa-chart-pie"></i><span>活动人数统计</span></div>
+                <div class="nav-sub-item" data-page="qlcrontasks" data-search="青龙活动任务 cron" onclick="switchPage('qlcrontasks')"><i class="fas fa-tasks"></i><span>青龙活动任务</span></div>
+                <div class="nav-sub-item" data-page="qlenvs" data-search="青龙活动变量 环境变量 env" onclick="switchPage('qlenvs')"><i class="fas fa-cubes"></i><span>青龙活动变量</span></div>
+                <div class="nav-sub-item" data-page="containers" data-search="容器管理 青龙容器" onclick="switchPage('containers')"><i class="fas fa-boxes-stacked"></i><span>容器管理</span></div>
+            </div>
+        </div>
+
+        <div class="nav-group" data-group="proto">
+            <div class="nav-group-title" onclick="toggleNavGroup('proto')">
+                <i class="fas fa-plug group-icon"></i><span>协议与接入</span><i class="fas fa-chevron-right arrow"></i>
+            </div>
+            <div class="nav-group-items" data-group="proto">
+                <div class="nav-sub-item" data-page="wxdevices" data-search="微信协议 设备 wx" onclick="switchPage('wxdevices')"><i class="fab fa-weixin"></i><span>微信协议管理</span></div>
+                <div class="nav-sub-item" data-page="yyb" data-search="应用宝协议 测试" onclick="switchPage('yyb')"><i class="fas fa-mobile-alt"></i><span>应用宝协议<span class="yyb-test-tag" style="margin-left:4px;">测试</span></span></div>
+                <div class="nav-sub-item" data-page="envvars" data-search="系统变量 xdd环境变量 env" onclick="switchPage('envvars')"><i class="fas fa-database"></i><span>系统变量</span></div>
+            </div>
+        </div>
+
+        <div class="nav-group" data-group="sys">
+            <div class="nav-group-title" onclick="toggleNavGroup('sys')">
+                <i class="fas fa-sliders-h group-icon"></i><span>系统运维</span><i class="fas fa-chevron-right arrow"></i>
+            </div>
+            <div class="nav-group-items" data-group="sys">
+                <div class="nav-sub-item" data-page="logmgmt" data-search="日志管理 log" onclick="switchPage('logmgmt')"><i class="fas fa-file-alt"></i><span>日志管理</span></div>
+                <div class="nav-sub-item" data-page="gameconfig" data-search="娱乐功能 游戏" onclick="switchPage('gameconfig')"><i class="fas fa-gamepad"></i><span>娱乐功能</span></div>
+                <div class="nav-sub-item" data-page="sysconfig" data-search="系统配置 设置 config" onclick="switchPage('sysconfig')"><i class="fas fa-cog"></i><span>系统配置</span></div>
+            </div>
+        </div>
     </div>
 </div>
 <div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
@@ -1753,8 +1820,21 @@
                             <option value="ERROR">ERROR</option>
                         </select>
                         <input type="text" id="logFilterKeyword" placeholder="关键词搜索..." style="min-width:160px;" onkeydown="if(event.key==='Enter')applyLogFilter()" />
-                        <input type="date" id="logFilterDateFrom" title="开始日期" />
-                        <input type="date" id="logFilterDateTo" title="结束日期" />
+                        <div class="log-date-range" id="logDateRange">
+                            <div class="log-date-presets">
+                                <button type="button" class="log-date-preset" data-preset="today">今天</button>
+                                <button type="button" class="log-date-preset" data-preset="yesterday">昨天</button>
+                                <button type="button" class="log-date-preset active" data-preset="7d">近7天</button>
+                                <button type="button" class="log-date-preset" data-preset="30d">近30天</button>
+                                <button type="button" class="log-date-preset" data-preset="all">全部</button>
+                            </div>
+                            <div class="log-date-inputs">
+                                <input type="text" id="logFilterDateFrom" placeholder="开始 yyyy-mm-dd" maxlength="10" autocomplete="off" title="开始日期" onkeydown="if(event.key==='Enter')applyLogFilter()" />
+                                <span class="log-date-sep">至</span>
+                                <input type="text" id="logFilterDateTo" placeholder="结束 yyyy-mm-dd" maxlength="10" autocomplete="off" title="结束日期" onkeydown="if(event.key==='Enter')applyLogFilter()" />
+                                <button type="button" class="btn btn-default btn-xs log-date-clear" onclick="clearLogDateRange()" title="清除日期"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
                         <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="logAutoScroll" checked /> 自动滚动</label>
                         <button class="btn btn-primary btn-sm" onclick="applyLogFilter()"><i class="fas fa-filter"></i> 筛选</button>
                     </div>
@@ -2527,32 +2607,111 @@ function switchContainerTab(tab) {
     }
 }
 
+// ============ 侧栏分组导航 ============
+var NAV_PAGE_GROUP = {
+    jdcookies: 'jd', jdcrontasks: 'jd', jdtaskqueue: 'jd',
+    users: 'user', coinlogs: 'user', notifications: 'user', feedbacks: 'user',
+    activities: 'ql', actauth: 'ql', actstats: 'ql', qlcrontasks: 'ql', qlenvs: 'ql', containers: 'ql',
+    wxdevices: 'proto', yyb: 'proto', envvars: 'proto',
+    logmgmt: 'sys', gameconfig: 'sys', sysconfig: 'sys'
+};
+var NAV_EXPAND_KEY = 'xdd_admin_nav_expanded';
+
+function getNavExpandedSet() {
+    try {
+        var arr = JSON.parse(localStorage.getItem(NAV_EXPAND_KEY) || '[]');
+        return new Set(Array.isArray(arr) ? arr : []);
+    } catch (e) { return new Set(); }
+}
+function saveNavExpandedSet(set) {
+    localStorage.setItem(NAV_EXPAND_KEY, JSON.stringify(Array.from(set)));
+}
+function setNavGroupExpanded(groupId, expanded, persist) {
+    var title = document.querySelector('.nav-group[data-group="' + groupId + '"] .nav-group-title');
+    var body = document.querySelector('.nav-group-items[data-group="' + groupId + '"]');
+    if (!title || !body) return;
+    title.classList.toggle('expanded', expanded);
+    body.classList.toggle('expanded', expanded);
+    if (persist !== false) {
+        var set = getNavExpandedSet();
+        if (expanded) set.add(groupId); else set.delete(groupId);
+        saveNavExpandedSet(set);
+    }
+}
+function toggleNavGroup(groupId) {
+    var body = document.querySelector('.nav-group-items[data-group="' + groupId + '"]');
+    if (!body) return;
+    setNavGroupExpanded(groupId, !body.classList.contains('expanded'));
+}
+function expandNavGroupForPage(page) {
+    var gid = NAV_PAGE_GROUP[page];
+    if (gid) setNavGroupExpanded(gid, true, false);
+}
+function updateNavGroupActiveState(page) {
+    document.querySelectorAll('.nav-group').forEach(function(group) {
+        var hasActive = !!group.querySelector('.nav-sub-item.active');
+        var title = group.querySelector('.nav-group-title');
+        if (title) title.classList.toggle('has-active', hasActive);
+    });
+}
+function syncNavActiveState(page) {
+    document.querySelectorAll('.nav-item, .nav-sub-item').forEach(function(el) {
+        el.classList.toggle('active', el.dataset.page === page);
+    });
+    expandNavGroupForPage(page);
+    updateNavGroupActiveState(page);
+}
+function filterNavMenu(keyword) {
+    var q = String(keyword || '').trim().toLowerCase();
+    var dash = document.querySelector('.nav-item[data-page="dashboard"]');
+    if (dash) {
+        var dashText = (dash.dataset.search || dash.textContent || '').toLowerCase();
+        dash.classList.toggle('nav-hidden', !!q && dashText.indexOf(q) < 0);
+    }
+    document.querySelectorAll('.nav-group').forEach(function(group) {
+        var gid = group.dataset.group;
+        var anyVisible = false;
+        group.querySelectorAll('.nav-sub-item').forEach(function(item) {
+            var text = (item.dataset.search || item.textContent || '').toLowerCase();
+            var match = !q || text.indexOf(q) >= 0;
+            item.classList.toggle('nav-hidden', !match);
+            if (match) anyVisible = true;
+        });
+        var groupTitle = (group.querySelector('.nav-group-title span') || {}).textContent || '';
+        var groupMatch = !q || groupTitle.toLowerCase().indexOf(q) >= 0;
+        group.classList.toggle('nav-hidden', !!q && !anyVisible && !groupMatch);
+        if (q && (anyVisible || groupMatch)) setNavGroupExpanded(gid, true, false);
+    });
+}
+function initNavMenu() {
+    getNavExpandedSet().forEach(function(gid) { setNavGroupExpanded(gid, true, false); });
+    syncNavActiveState(currentPage || 'dashboard');
+}
+
 // ============ 页面切换 ============
 function switchPage(page) {
     closeSidebar();
     currentPage = page;
     document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(el => {
-        el.classList.toggle('active', el.dataset.page === page);
-    });
+    syncNavActiveState(page);
     const pageEl = document.getElementById('page-' + page);
     if (pageEl) pageEl.classList.add('active');
     const titles = {
-        dashboard: ['仪表盘', '首页 / 仪表盘'], jdcookies: ['京东账号', '账号管理 / 京东账号'],
-        users: ['用户管理', '账号管理 / 用户管理'], coinlogs: ['积分变动', '账号管理 / 积分变动'],
-        notifications: ['通知中心', '系统设置 / 通知中心'], feedbacks: ['意见反馈', '系统设置 / 意见反馈'], envvars: ['xdd环境变量', '系统设置 / xdd环境变量'],
-        activities: ['活动配置', '系统设置 / 活动配置'], actauth: ['青龙活动授权', '系统设置 / 青龙活动授权'], actstats: ['活动人数统计', '系统设置 / 活动人数统计'],
-        wxdevices: ['微信协议管理', '系统设置 / 微信协议管理'],
-        yyb: ['应用宝协议', '系统设置 / 应用宝协议'],
-        containers: ['容器管理', '容器管理'],
-        qlcontainers: ['青龙活动容器', '容器管理 / 青龙活动容器'],
-        qlenvs: ['青龙活动变量', '容器管理 / 青龙活动变量'], jdcontainers: ['京东容器', '容器管理 / 京东容器'],
-        jdcrontasks: ['京东任务列表', '京东容器 / 京东任务列表'],
-        jdtaskqueue: ['用户任务队列', '京东容器 / 用户任务队列'],
-        qlcrontasks: ['青龙活动任务', '青龙活动 / 青龙活动任务'],
-        logmgmt: ['日志管理', '系统设置 / 日志管理'],
-        sysconfig: ['系统配置', '系统设置 / 系统配置'],
-        gameconfig: ['娱乐功能', '系统设置 / 娱乐功能'],
+        dashboard: ['仪表盘', '总览 / 仪表盘'], jdcookies: ['京东账号', '京东业务 / 京东账号'],
+        users: ['用户管理', '用户与积分 / 用户管理'], coinlogs: ['积分变动', '用户与积分 / 积分变动'],
+        notifications: ['通知中心', '用户与积分 / 通知中心'], feedbacks: ['意见反馈', '用户与积分 / 意见反馈'], envvars: ['系统变量', '协议与接入 / 系统变量'],
+        activities: ['活动配置', '青龙与活动 / 青龙活动配置'], actauth: ['青龙活动授权', '青龙与活动 / 青龙活动授权'], actstats: ['活动人数统计', '青龙与活动 / 活动人数统计'],
+        wxdevices: ['微信协议管理', '协议与接入 / 微信协议管理'],
+        yyb: ['应用宝协议', '协议与接入 / 应用宝协议'],
+        containers: ['容器管理', '青龙与活动 / 容器管理'],
+        qlcontainers: ['青龙活动容器', '青龙与活动 / 青龙活动容器'],
+        qlenvs: ['青龙活动变量', '青龙与活动 / 青龙活动变量'], jdcontainers: ['京东容器', '青龙与活动 / 京东容器'],
+        jdcrontasks: ['京东任务列表', '京东业务 / 京东任务列表'],
+        jdtaskqueue: ['用户任务队列', '京东业务 / 用户任务队列'],
+        qlcrontasks: ['青龙活动任务', '青龙与活动 / 青龙活动任务'],
+        logmgmt: ['日志管理', '系统运维 / 日志管理'],
+        sysconfig: ['系统配置', '系统运维 / 系统配置'],
+        gameconfig: ['娱乐功能', '系统运维 / 娱乐功能'],
     };
     const [title, breadcrumb] = titles[page] || [page, ''];
     document.getElementById('pageTitle').textContent = title;
@@ -6388,6 +6547,7 @@ window._pageSizeChange = function(key, size) {
 
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', () => {
+    initNavMenu();
     if (window.AdminYyb) AdminYyb.init();
     loadDashboard();
     initResizableColumns();
@@ -7432,8 +7592,84 @@ var _logCategories = [];
 var _logSelectedCat = '';
 var _logLastId = 0;
 var _logHistoryPage = 1;
+var _logDatePreset = '7d';
+
+function padLogDate(n) { return n < 10 ? '0' + n : '' + n; }
+function formatLogDate(d) {
+    return d.getFullYear() + '-' + padLogDate(d.getMonth() + 1) + '-' + padLogDate(d.getDate());
+}
+function normalizeLogDateInput(val) {
+    val = String(val || '').trim().replace(/\//g, '-');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) return '';
+    return val;
+}
+function syncLogDatePresetUI() {
+    document.querySelectorAll('.log-date-preset').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.preset === _logDatePreset);
+    });
+}
+function setLogDatePreset(preset, applyFilter) {
+    _logDatePreset = preset || 'all';
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var from = '';
+    var to = '';
+    if (preset === 'today') {
+        from = to = formatLogDate(today);
+    } else if (preset === 'yesterday') {
+        var y = new Date(today);
+        y.setDate(y.getDate() - 1);
+        from = to = formatLogDate(y);
+    } else if (preset === '7d') {
+        var s7 = new Date(today);
+        s7.setDate(s7.getDate() - 6);
+        from = formatLogDate(s7);
+        to = formatLogDate(today);
+    } else if (preset === '30d') {
+        var s30 = new Date(today);
+        s30.setDate(s30.getDate() - 29);
+        from = formatLogDate(s30);
+        to = formatLogDate(today);
+    }
+    if (preset !== 'custom') {
+        document.getElementById('logFilterDateFrom').value = from;
+        document.getElementById('logFilterDateTo').value = to;
+    }
+    syncLogDatePresetUI();
+    if (applyFilter !== false) applyLogFilter();
+}
+function onLogDateManualChange() {
+    _logDatePreset = 'custom';
+    syncLogDatePresetUI();
+}
+function clearLogDateRange() {
+    setLogDatePreset('all', false);
+    applyLogFilter();
+}
+function getLogDateRange() {
+    return {
+        from: normalizeLogDateInput(document.getElementById('logFilterDateFrom').value),
+        to: normalizeLogDateInput(document.getElementById('logFilterDateTo').value)
+    };
+}
+function initLogDateRange() {
+    setLogDatePreset('7d', false);
+    document.querySelectorAll('.log-date-preset').forEach(function(btn) {
+        btn.addEventListener('click', function() { setLogDatePreset(btn.dataset.preset); });
+    });
+    ['logFilterDateFrom', 'logFilterDateTo'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', onLogDateManualChange);
+        el.addEventListener('change', function() {
+            el.value = normalizeLogDateInput(el.value);
+            onLogDateManualChange();
+        });
+    });
+}
 
 function initLogMgmtPage() {
+    initLogDateRange();
     loadLogCategories();
     loadLogStats();
     switchLogTab('live');
@@ -7524,10 +7760,13 @@ function applyLogFilter() {
 async function queryLogHistory() {
     var params = buildLogQueryParams();
     params += '&source=file&page=' + _logHistoryPage + '&limit=200';
-    var df = document.getElementById('logFilterDateFrom').value;
-    var dt = document.getElementById('logFilterDateTo').value;
-    if (df) params += '&dateFrom=' + df;
-    if (dt) params += '&dateTo=' + dt;
+    var range = getLogDateRange();
+    if (range.from && range.to && range.from > range.to) {
+        toast('开始日期不能晚于结束日期', 'error');
+        return;
+    }
+    if (range.from) params += '&dateFrom=' + encodeURIComponent(range.from);
+    if (range.to) params += '&dateTo=' + encodeURIComponent(range.to);
     clearLogViewer();
     appendLogLine({ level: 'INFO', category: 'system', message: '正在查询历史日志...', time: '' });
     try {
