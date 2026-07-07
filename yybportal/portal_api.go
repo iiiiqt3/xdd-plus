@@ -29,11 +29,15 @@ func PortalStatus(userNumber int, autoCheck bool) (map[string]any, error) {
 		return st, nil
 	}
 	if autoCheck {
+		models.Yyb().Infof("门户用户 %d 进入应用宝页，开始自动检测账号存活", userNumber)
 		summary, err := portalCheckAllAccounts(userNumber)
 		if err != nil {
+			models.Yyb().Errorf("门户用户 %d 应用宝自动检测失败: %v", userNumber, err)
 			return nil, err
 		}
 		st["checkSummary"] = summary
+		models.Yyb().Infof("门户用户 %d 应用宝检测完成: total=%v alive=%v dead=%v failed=%v",
+			userNumber, summary["total"], summary["alive"], summary["dead"], summary["failed"])
 	}
 	accounts, err := PortalListAccounts(userNumber)
 	if err != nil {

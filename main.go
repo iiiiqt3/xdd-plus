@@ -45,9 +45,9 @@ func main() {
 
 	// 应用宝模块（失败不影响主服务）
 	if err := yybportal.Init(yybportal.ModuleConfigFromModels()); err != nil {
-		models.System().Errorf("应用宝启动失败(主服务不受影响): %v", err)
+		models.Yyb().Errorf("应用宝启动失败(主服务不受影响): %v", err)
 	} else if models.Config.Yyb.Enabled {
-		models.System().Infof("应用宝模块已加载 ready=%v", yybportal.Ready())
+		models.Yyb().Infof("应用宝模块已加载 ready=%v", yybportal.Ready())
 		models.SetYybJdLoginHandler(yybportal.HandleBotJdLogin)
 	}
 

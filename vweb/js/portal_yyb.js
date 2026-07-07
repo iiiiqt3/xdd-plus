@@ -2,7 +2,7 @@
     'use strict';
 
     const API = '/api/portal/yyb';
-    const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false };
+    const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, panelLoading: false };
 
     function $(id) { return document.getElementById(id); }
 
@@ -184,8 +184,6 @@
         }
     }
 
-    const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, panelLoading: false };
-
     function setStatusBar(message, type, loading) {
         const bar = $('yyb-statusBar');
         const text = $('yyb-statusText');
@@ -241,10 +239,18 @@
     }
 
     async function loadPanel(options = {}) {
-        if (state.panelLoading) return;
         const autoCheck = !!options.autoCheck;
         const triggerBtn = options.triggerBtn || null;
+        if (state.panelLoading) {
+            const busyMsg = autoCheck ? '正在检测中，请稍候…' : '正在刷新中，请稍候…';
+            setStatusBar(busyMsg, 'loading', true);
+            if (typeof global.toast === 'function') global.toast(busyMsg, 'info');
+            return;
+        }
         state.panelLoading = true;
+        if (autoCheck && typeof global.toast === 'function') {
+            global.toast('开始检测应用宝账号状态…', 'info');
+        }
         setGridLoading(true);
         setBtnLoading(triggerBtn || $('yyb-reloadBtn'), true, autoCheck ? '检测中…' : '刷新中…');
         setHealthStatus(autoCheck ? '检测中…' : '刷新中…', 'checking');
@@ -260,13 +266,14 @@
             } else {
                 setHealthStatus(autoCheck ? '检测完成' : '已刷新', 'ok');
                 if ($('yyb-scanBtn')) $('yyb-scanBtn').disabled = false;
-                if (autoCheck && st.checkSummary) {
-                    const summaryText = formatCheckSummary(st.checkSummary);
-                    const dead = Number(st.checkSummary.dead || 0);
-                    const failed = Number(st.checkSummary.failed || 0);
+                if (autoCheck) {
+                    const summaryText = st.checkSummary ? formatCheckSummary(st.checkSummary) : '检测完成';
+                    const dead = Number((st.checkSummary && st.checkSummary.dead) || 0);
+                    const failed = Number((st.checkSummary && st.checkSummary.failed) || 0);
                     setStatusBar(summaryText, (dead > 0 || failed > 0) ? 'warn' : 'ok', false);
                     if (typeof global.toast === 'function') {
-                        global.toast(summaryText, dead > 0 ? 'error' : 'success');
+                        const toastType = dead > 0 ? 'error' : (failed > 0 ? 'warn' : 'success');
+                        global.toast(summaryText, toastType);
                     }
                 } else {
                     setStatusBar('账号列表已刷新', 'ok', false);
@@ -462,7 +469,10 @@
             const text = state.lastResult || ($('yyb-resultBox') && $('yyb-resultBox').textContent) || '';
             copyText(text, $('yyb-copyBtn'));
         };
-        if ($('yyb-reloadBtn')) $('yyb-reloadBtn').onclick = () => loadPanel({ autoCheck: true, triggerBtn: $('yyb-reloadBtn') });
+        if ($('yyb-reloadBtn')) $('yyb-reloadBtn').onclick = () => {
+            if (typeof global.toast === 'function') global.toast('开始检测应用宝账号状态…', 'info');
+            loadPanel({ autoCheck: true, triggerBtn: $('yyb-reloadBtn') });
+        };
         if ($('yyb-refreshBtn')) $('yyb-refreshBtn').onclick = refreshSelected;
         if ($('yyb-resyncBtn')) $('yyb-resyncBtn').onclick = resyncSelected;
         if ($('yyb-deleteBtn')) $('yyb-deleteBtn').onclick = deleteSelected;

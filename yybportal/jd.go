@@ -122,7 +122,7 @@ func yybJdRefreshCK(openid string) (string, string, error) {
 	}
 	eidToken := yybJdGetEidToken(openid)
 	if eidToken == "" {
-		models.Info("应用宝 eid_token 为空，尝试 finger_tk")
+		models.Yyb().Infof("应用宝 eid_token 为空，尝试 finger_tk")
 		tk, err := models.WxJdGetFingerTk()
 		if err == nil {
 			eidToken = tk
@@ -279,6 +279,7 @@ func RefreshYybCKAuto() {
 	if !Ready() {
 		return
 	}
+	models.Yyb().Infof("开始应用宝京东 CK 自动刷新")
 	(&models.JdCookie{}).Push("开始应用宝京东 CK 自动刷新")
 	cks := models.GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 		return sb.Where(fmt.Sprintf("%s >= ? and %s = ? and %s != ''", models.Priority, models.Available, "YybOpenID"), 0, models.True)
@@ -311,7 +312,9 @@ func RefreshYybCKAuto() {
 		}
 	}
 	if refreshOK > 0 || refreshFail > 0 {
-		(&models.JdCookie{}).Push(fmt.Sprintf("应用宝京东 CK 自动刷新完成：成功%d，失败%d", refreshOK, refreshFail))
+		msg := fmt.Sprintf("应用宝京东 CK 自动刷新完成：成功%d，失败%d", refreshOK, refreshFail)
+		models.Yyb().Infof(msg)
+		(&models.JdCookie{}).Push(msg)
 	}
 	go func() { models.Save <- &models.JdCookie{} }()
 }
@@ -324,13 +327,13 @@ func CheckYybOfflineAndNotify() {
 // CheckYybOfflineAndNotifyWithChannels 带渠道的应用宝掉线检测
 func CheckYybOfflineAndNotifyWithChannels(channels models.NotifyChannels, force bool) {
 	if !Ready() {
-		models.Info("应用宝掉线检测：服务不可用，跳过")
+		models.Yyb().Infof("应用宝掉线检测：服务不可用，跳过")
 		return
 	}
-	models.Info("开始执行应用宝掉线检测推送...")
+	models.Yyb().Infof("开始执行应用宝掉线检测推送...")
 	bindings, err := ListAllBindings()
 	if err != nil || len(bindings) == 0 {
-		models.Info("应用宝掉线检测：暂无绑定账号，跳过")
+		models.Yyb().Infof("应用宝掉线检测：暂无绑定账号，跳过")
 		return
 	}
 
@@ -346,7 +349,7 @@ func CheckYybOfflineAndNotifyWithChannels(channels models.NotifyChannels, force 
 		alive := IsYybAccountAlive(openid)
 		if alive {
 			if _, loaded := offlineNotifiedYybOIDs.LoadAndDelete(openid); loaded {
-				models.Info("应用宝掉线检测：账号 %s 已恢复可用，清除通知记录", openid)
+				models.Yyb().Infof("应用宝掉线检测：账号 %s 已恢复可用，清除通知记录", openid)
 			}
 			continue
 		}
@@ -381,7 +384,7 @@ func CheckYybOfflineAndNotifyWithChannels(channels models.NotifyChannels, force 
 			time.Sleep(time.Duration(3+rand.Intn(3)) * time.Second)
 		}
 	}
-	models.Info("应用宝掉线检测完成，共 %d 个绑定，%d 个掉线，通知 %d 个用户", len(bindings), offlineCount, notifiedCount)
+	models.Yyb().Infof("应用宝掉线检测完成，共 %d 个绑定，%d 个掉线，通知 %d 个用户", len(bindings), offlineCount, notifiedCount)
 }
 
 func truncateMap(v map[string]any, maxLen int) string {

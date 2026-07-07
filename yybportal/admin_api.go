@@ -157,6 +157,7 @@ func AdminCheckAllBindings() (map[string]any, error) {
 	if !Ready() {
 		return nil, fmt.Errorf("应用宝服务不可用")
 	}
+	models.Yyb().Infof("管理后台开始一键检测门户绑定账号存活")
 	var bindings []PortalYybBinding
 	if err := db().Order("id asc").Find(&bindings).Error; err != nil {
 		return nil, err
@@ -185,6 +186,7 @@ func AdminCheckAllBindings() (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	models.Yyb().Infof("管理后台一键检测完成: total=%d alive=%d dead=%d failed=%d", len(bindings), alive, dead, failed)
 	return map[string]any{
 		"checkSummary": map[string]any{
 			"total":  len(bindings),

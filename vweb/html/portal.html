@@ -1918,9 +1918,9 @@
                     <span class="yyb-chip">扫码 <strong id="yyb-scanCostVal">-</strong> 积分</span>
                     <span class="yyb-chip">账号 <strong id="yyb-accountCount">0</strong></span>
                 </div>
-                <div class="yyb-status-bar hidden" id="yyb-statusBar" aria-live="polite">
-                    <span class="yyb-spin" id="yyb-statusSpin" style="display:none;"></span>
-                    <span id="yyb-statusText">准备就绪</span>
+                <div class="yyb-status-bar loading" id="yyb-statusBar" aria-live="polite">
+                    <span class="yyb-spin" id="yyb-statusSpin" style="display:inline-block;"></span>
+                    <span id="yyb-statusText">进入页面后将自动检测账号状态</span>
                 </div>
                 <div class="yyb-toolbar" style="margin-bottom:14px;">
                     <button class="btn accent" id="yyb-scanBtn" type="button">扫码添加</button>
@@ -2047,7 +2047,7 @@
 </div>
 
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/portal_yyb.js?v=6"></script>
+<script src="/vweb/js/portal_yyb.js?v=7"></script>
 <script>
 async function getSignatureHeaders(path) {
     try {

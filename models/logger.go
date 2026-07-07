@@ -32,6 +32,7 @@ const (
 	CatAPI      Category = "api"      // 通用 HTTP 请求
 	CatDB       Category = "db"       // 数据库迁移与异常
 	CatTask     Category = "task"     // 通用任务调度
+	CatYyb      Category = "yyb"      // 应用宝协议
 )
 
 // Level 日志级别
@@ -68,11 +69,15 @@ func AllCategories() []CategoryMeta {
 		{Key: string(CatAPI), Label: "HTTP", Desc: "通用 HTTP 请求追踪"},
 		{Key: string(CatDB), Label: "数据库", Desc: "迁移与数据库异常"},
 		{Key: string(CatTask), Label: "任务", Desc: "通用任务执行"},
+		{Key: string(CatYyb), Label: "应用宝", Desc: "应用宝协议扫码、存活检测、京东刷新"},
 	}
 }
 
 // CategoryFromPath 根据请求路径推断分类（HTTP 中间件用）
 func CategoryFromPath(path string) Category {
+	if strings.Contains(path, "/yyb") {
+		return CatYyb
+	}
 	switch {
 	case hasPrefix(path, "/api/admin/"):
 		return CatAdmin
@@ -777,6 +782,7 @@ func Bot() *Module      { return For(CatBot) }
 func API() *Module      { return For(CatAPI) }
 func DB() *Module       { return For(CatDB) }
 func TaskLog() *Module  { return For(CatTask) }
+func Yyb() *Module      { return For(CatYyb) }
 
 // ========== beego logs 兼容层（默认 system 分类）==========
 
