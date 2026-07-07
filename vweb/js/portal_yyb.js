@@ -28,9 +28,9 @@
     function accountName(a) { return a.nickname || a.openid || '未命名'; }
 
     function statusTag(s) {
-        if (s === 'alive' || s === 'online') return '<span class="yyb-status-tag ok">可用</span>';
-        if (s === 'dead' || s === 'offline' || s === 'expired') return '<span class="yyb-status-tag bad">已失效</span>';
-        return '<span class="yyb-status-tag">' + esc(s || '未知') + '</span>';
+        if (s === 'alive' || s === 'online') return '<span class="wx-device-badge online-badge">🟢 可用</span>';
+        if (s === 'dead' || s === 'offline' || s === 'expired') return '<span class="wx-device-badge offline-badge">🔴 失效</span>';
+        return '<span class="wx-device-badge secondary-badge">' + esc(s || '未知') + '</span>';
     }
 
     function accountKey(acc) {
@@ -201,9 +201,7 @@
             }
         }
         const hint = $('yyb-costHint');
-        if (hint && st.scanLoginCost) {
-            hint.textContent = '首次绑定该微信扣除 ' + st.scanLoginCost + ' 积分；已绑定过的账号再次扫码（在线或掉线）不扣积分。';
-        }
+        if (hint) hint.style.display = 'none';
         state.accounts = st.accounts || [];
         renderAccounts();
         loadDashboard();
@@ -324,7 +322,7 @@
                 const result = await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/confirm', { method: 'POST' });
                 closeQr();
                 if (result.alreadyBound) {
-                    setResult('扫码成功，该账号已绑定过，本次未扣积分。', false);
+                    setResult('扫码成功，账号已绑定。', false);
                 } else if (result.cost > 0) {
                     setResult('扫码登录成功，已扣除 ' + result.cost + ' 积分。', false);
                 } else {
@@ -362,7 +360,7 @@
             const src = qrImgSrc(data.imageBase64);
             $('yyb-qrBox').innerHTML = src ? '<img src="' + src + '" alt="二维码" style="width:180px;height:180px;">' : '加载失败';
             const cost = data.scanLoginCost ?? '-';
-            $('yyb-qrHint').textContent = data.scanCostHint || ('首次绑定扣除 ' + cost + ' 积分；已绑定账号再次扫码不扣积分');
+            $('yyb-qrHint').textContent = data.scanCostHint || '请使用微信扫码确认登录';
             $('yyb-qrModal').classList.add('show');
             stopScanPoll();
             scheduleScanPoll(0);

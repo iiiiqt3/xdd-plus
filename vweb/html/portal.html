@@ -604,8 +604,10 @@
             font-size:16px; font-weight:700; color:#fff; flex-shrink:0; background:#8b5cf6;
         }
         .jd-device-card .jd-dev-info { flex:1; min-width:0; }
-        .jd-device-card .jd-dev-info strong { font-size:15px; display:block; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .jd-device-card .jd-dev-info .jd-dev-title-row { display:flex; align-items:center; gap:8px; min-width:0; }
+        .jd-device-card .jd-dev-info .jd-dev-title-row strong { flex:1; min-width:0; font-size:15px; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .jd-device-card .jd-dev-meta { font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; }
+        .jd-device-card.offline-card { opacity: 0.82; }
         .jd-device-card .jd-card-bottom { display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:auto; padding-top:12px; border-top:1px solid var(--glass-border); }
         .jd-device-card .jd-card-bottom .btn { font-size:12px; padding:5px 16px; border-radius:8px; }
         .iframe-modal .modal { width: min(960px, 96vw); max-width: 96vw; height: min(88vh, 900px); display: flex; flex-direction: column; }
@@ -1780,15 +1782,49 @@
                     <div class="jd-section-card jd-login-layout">
                         <div class="jd-toolbar">
                             <div class="jd-sub-tabs">
-                                <button class="active" id="jdLoginTab-sms" onclick="switchJdLoginTab('sms')">📱 短信登录</button>
+                                <button class="active" id="jdLoginTab-yyb" onclick="switchJdLoginTab('yyb')">📲 应用宝登录<span class="yyb-test-tag">测试</span></button>
                                 <button id="jdLoginTab-wx" onclick="switchJdLoginTab('wx')">💬 微信协议登录</button>
-                                <button id="jdLoginTab-yyb" onclick="switchJdLoginTab('yyb')">📲 应用宝登录<span class="yyb-test-tag">测试</span></button>
+                                <button id="jdLoginTab-sms" onclick="switchJdLoginTab('sms')">📱 短信登录</button>
                             </div>
                             <div class="jd-toolbar-actions" id="jdLoginToolbarActions"></div>
                         </div>
 
                         <div class="jd-login-body">
-                            <div class="jd-login-tab-panel active" id="jdLoginPanel-sms">
+                            <div class="jd-login-tab-panel active" id="jdLoginPanel-yyb">
+                                <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.12);font-size:11px;color:var(--purple);line-height:1.8;">
+                                    💡 需先在「应用宝协议」页面扫码绑定账号，再选择账号刷新京东 CK。
+                                </div>
+                                <div class="jd-device-grid" id="jdYybAccountList">
+                                    <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载账号...</div>
+                                </div>
+                                <div id="jdYybRiskBox" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
+                                    <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdYybRiskMsg">账号需要短信验证</div>
+                                    <a id="jdYybRiskLink" href="#" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">验证链接</a>
+                                    <div style="margin-top:10px;">
+                                        <button class="btn accent" onclick="jdYybContinueRisk()">验证完成，继续刷新</button>
+                                    </div>
+                                </div>
+                                <div class="jd-query-result" id="jdYybResult" style="display:none;"></div>
+                            </div>
+
+                            <div class="jd-login-tab-panel" id="jdLoginPanel-wx">
+                                <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:11px;color:var(--cyan);line-height:1.8;">
+                                    💡 需先在「微信协议」页面扫码绑定在线设备，再选择设备刷新京东 CK。
+                                </div>
+                                <div class="jd-device-grid" id="jdWxDeviceList">
+                                    <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载设备...</div>
+                                </div>
+                                <div id="jdWxRiskBox" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
+                                    <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdWxRiskMsg">账号需要短信验证</div>
+                                    <a id="jdWxRiskLink" href="#" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">验证链接</a>
+                                    <div style="margin-top:10px;">
+                                        <button class="btn accent" onclick="jdWxContinueRisk()">验证完成，继续刷新</button>
+                                    </div>
+                                </div>
+                                <div class="jd-query-result" id="jdWxResult" style="display:none;"></div>
+                            </div>
+
+                            <div class="jd-login-tab-panel" id="jdLoginPanel-sms">
                                 <div class="jd-sms-card">
                                     <div class="jd-sms-header">
                                         <div style="font-size:28px;line-height:1;">📱</div>
@@ -1815,40 +1851,6 @@
                                     <button class="btn accent" onclick="jdSmsVerify()" id="jdSmsVerifyBtn" style="width:100%;margin-top:8px;">提交登录</button>
                                 </div>
                                 <div class="jd-query-result" id="jdSmsResult" style="display:none;"></div>
-                            </div>
-
-                            <div class="jd-login-tab-panel" id="jdLoginPanel-wx">
-                                <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:11px;color:var(--cyan);line-height:1.8;">
-                                    💡 需先在「微信协议」页面扫码绑定在线设备，再选择设备刷新京东 CK。
-                                </div>
-                                <div class="jd-device-grid" id="jdWxDeviceList">
-                                    <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载设备...</div>
-                                </div>
-                                <div id="jdWxRiskBox" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
-                                    <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdWxRiskMsg">账号需要短信验证</div>
-                                    <a id="jdWxRiskLink" href="#" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">验证链接</a>
-                                    <div style="margin-top:10px;">
-                                        <button class="btn accent" onclick="jdWxContinueRisk()">验证完成，继续刷新</button>
-                                    </div>
-                                </div>
-                                <div class="jd-query-result" id="jdWxResult" style="display:none;"></div>
-                            </div>
-
-                            <div class="jd-login-tab-panel" id="jdLoginPanel-yyb">
-                                <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.12);font-size:11px;color:var(--purple);line-height:1.8;">
-                                    💡 需先在「应用宝协议」页面扫码绑定账号，再选择账号刷新京东 CK。首次绑定扣积分，再次扫码不扣。
-                                </div>
-                                <div class="jd-device-grid" id="jdYybAccountList">
-                                    <div class="empty" style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">正在加载账号...</div>
-                                </div>
-                                <div id="jdYybRiskBox" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
-                                    <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdYybRiskMsg">账号需要短信验证</div>
-                                    <a id="jdYybRiskLink" href="#" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">验证链接</a>
-                                    <div style="margin-top:10px;">
-                                        <button class="btn accent" onclick="jdYybContinueRisk()">验证完成，继续刷新</button>
-                                    </div>
-                                </div>
-                                <div class="jd-query-result" id="jdYybResult" style="display:none;"></div>
                             </div>
                         </div>
                     </div>
@@ -1887,7 +1889,6 @@
                     <h3>📲 应用宝协议 <span class="yyb-test-tag">测试</span></h3>
                     <span class="muted">管理绑定账号与小程序 API 调用</span>
                 </div>
-                <div class="yyb-hint-box" id="yyb-costHint">首次绑定该微信扣除积分；已绑定过的账号再次扫码（在线或掉线）不扣积分。</div>
                 <div class="yyb-chips" style="margin-bottom:14px;">
                     <span class="yyb-chip" id="yyb-healthChip"><strong id="yyb-healthText">检测中</strong></span>
                     <span class="yyb-chip">积分 <strong id="yyb-coinVal">-</strong></span>
@@ -2069,7 +2070,7 @@ var state = {
     activitySearch: '',
     activityCategoryFilter: '',
     jdTab: 'query',
-    jdLoginTab: 'sms',
+    jdLoginTab: 'yyb',
     jdAccounts: [],
     jdWxDevices: [],
     jdYybAccounts: []
@@ -3792,7 +3793,7 @@ function switchJdTab(tab) {
     if (tab === 'query') {
         loadJdAccounts().catch(function() {});
     } else if (tab === 'login') {
-        switchJdLoginTab(state.jdLoginTab || 'sms');
+        switchJdLoginTab(state.jdLoginTab || 'yyb');
     } else if (tab === 'task') {
         loadJdTasks().catch(function() {});
     }
@@ -3800,7 +3801,7 @@ function switchJdTab(tab) {
 
 function switchJdLoginTab(tab) {
     state.jdLoginTab = tab;
-    ['sms', 'wx', 'yyb'].forEach(function(name) {
+    ['yyb', 'wx', 'sms'].forEach(function(name) {
         var btn = document.getElementById('jdLoginTab-' + name);
         var panel = document.getElementById('jdLoginPanel-' + name);
         if (btn) btn.classList.toggle('active', name === tab);
@@ -4373,9 +4374,22 @@ function renderJdYybAccounts() {
     }
     var html = '';
     list.forEach(function(item) {
-        html += '<div class="jd-device-card">';
-        html += '<div class="jd-card-top"><span class="jd-dev-name">' + escapeHtml(item.nickname || item.openid) + '</span><span class="jd-dev-badge ok">可用</span></div>';
-        html += '<div class="jd-dev-meta-row"><span class="jd-dev-meta">OpenID</span><span class="jd-dev-val" title="' + escapeAttr(item.openid) + '">' + escapeHtml(item.openid) + '</span></div>';
+        var name = item.nickname || item.openid;
+        var initial = (name || '?').charAt(0).toUpperCase();
+        var st = String(item.status || '').toLowerCase();
+        var isAlive = st === 'alive' || st === 'online' || st === '';
+        var badgeClass = isAlive ? 'online-badge' : 'offline-badge';
+        var badgeText = isAlive ? '🟢 可用' : '🔴 失效';
+        html += '<div class="jd-device-card' + (isAlive ? '' : ' offline-card') + '">';
+        html += '<div class="jd-dev-top">';
+        html += '<div class="jd-dev-avatar">' + escapeHtml(initial) + '</div>';
+        html += '<div class="jd-dev-info">';
+        html += '<div class="jd-dev-title-row">';
+        html += '<strong>' + escapeHtml(name) + '</strong>';
+        html += '<span class="wx-device-badge ' + badgeClass + '">' + badgeText + '</span>';
+        html += '</div>';
+        html += '<div class="jd-dev-meta" title="' + escapeAttr(item.openid) + '">' + escapeHtml(item.openid) + '</div>';
+        html += '</div></div>';
         html += '<div class="jd-card-bottom"><span class="jd-dev-meta">应用宝</span><button class="btn primary" onclick="jdYybRefreshAccount(\'' + escapeAttr(item.openid) + '\')">刷新CK</button></div>';
         html += '</div>';
     });
