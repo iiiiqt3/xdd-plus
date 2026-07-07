@@ -2369,7 +2369,7 @@ async function refreshCurrentPanel(showToast = true) {
             case 'tasks':      await loadDashboardData(); break;
             case 'wx':         await loadWxDevices(); break;
             case 'yyb':
-                if (window.YybPortal) await YybPortal.loadPanel();
+                if (window.YybPortal) await YybPortal.loadPanel({ autoCheck: true });
                 break;
             case 'kuwo':       await checkKuwoAuth(); break;
             case 'dashboard':

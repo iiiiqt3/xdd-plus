@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/yybportal"
@@ -43,7 +44,8 @@ func (c *PortalYybController) Index() {
 
 // Status 模块与用户状态
 func (c *PortalYybController) Status() {
-	data, err := yybportal.PortalStatus(c.PortalUserID)
+	autoCheck := c.GetString("check") == "1" || strings.EqualFold(c.GetString("check"), "true")
+	data, err := yybportal.PortalStatus(c.PortalUserID, autoCheck)
 	if err != nil {
 		c.jsonErr(err)
 		return

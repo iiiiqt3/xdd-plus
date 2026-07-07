@@ -184,19 +184,23 @@
         }
     }
 
-    async function loadPanel() {
-        const st = await request('/status');
+    async function loadPanel(options = {}) {
+        const autoCheck = !!options.autoCheck;
+        const chip = $('yyb-healthChip');
+        const healthText = $('yyb-healthText');
+        if (autoCheck && healthText) healthText.textContent = '检测中…';
+        if (autoCheck && chip) chip.className = 'yyb-chip';
+        const st = await request('/status' + (autoCheck ? '?check=1' : ''));
         if ($('yyb-coinVal')) $('yyb-coinVal').textContent = st.coin ?? '-';
         if ($('yyb-scanCostVal')) $('yyb-scanCostVal').textContent = st.scanLoginCost ?? '-';
-        const chip = $('yyb-healthChip');
         if (chip) {
             if (!st.enabled || !st.ready) {
                 chip.className = 'yyb-chip bad';
-                if ($('yyb-healthText')) $('yyb-healthText').textContent = st.message || '服务不可用';
+                if (healthText) healthText.textContent = st.message || '服务不可用';
                 if ($('yyb-scanBtn')) $('yyb-scanBtn').disabled = true;
             } else {
                 chip.className = 'yyb-chip ok';
-                if ($('yyb-healthText')) $('yyb-healthText').textContent = '服务正常';
+                if (healthText) healthText.textContent = autoCheck ? '检测完成' : '服务正常';
                 if ($('yyb-scanBtn')) $('yyb-scanBtn').disabled = false;
             }
         }
@@ -205,6 +209,18 @@
         state.accounts = st.accounts || [];
         renderAccounts();
         loadDashboard();
+        if (autoCheck && st.checkSummary && typeof global.toast === 'function') {
+            const s = st.checkSummary;
+            const alive = Number(s.alive || 0);
+            const dead = Number(s.dead || 0);
+            const failed = Number(s.failed || 0);
+            const total = Number(s.total || 0);
+            if (total > 0) {
+                if (dead > 0 || failed > 0) {
+                    global.toast('检测完成：' + alive + ' 个可用，' + dead + ' 个失效' + (failed > 0 ? ('，' + failed + ' 个检测失败') : ''), dead > 0 ? 'error' : 'info');
+                }
+            }
+        }
     }
 
     async function withAccountAction(btn, loadingLabel, resultHint, action) {
@@ -257,7 +273,7 @@
         try {
             await withAccountAction($('yyb-refreshBtn'), '刷新中…', '正在刷新存活状态，请稍候…', async () => {
                 setResult(await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) }), false);
-                await loadPanel();
+                await loadPanel({ autoCheck: true });
             });
         } catch (e) { setResult(e.message, true); }
     }
@@ -268,7 +284,7 @@
         try {
             await withAccountAction($('yyb-resyncBtn'), '同步中…', '正在同步账号资料，请稍候…', async () => {
                 setResult(await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) }), false);
-                await loadPanel();
+                await loadPanel({ autoCheck: true });
             });
         } catch (e) { setResult(e.message, true); }
     }
@@ -328,7 +344,7 @@
                 } else {
                     setResult('扫码登录成功，账号已绑定。', false);
                 }
-                await loadPanel();
+                await loadPanel({ autoCheck: true });
                 return;
             }
             if (['expired', 'cancelled', 'unknown'].includes(status)) {
@@ -378,7 +394,7 @@
             const text = state.lastResult || ($('yyb-resultBox') && $('yyb-resultBox').textContent) || '';
             copyText(text, $('yyb-copyBtn'));
         };
-        if ($('yyb-reloadBtn')) $('yyb-reloadBtn').onclick = loadPanel;
+        if ($('yyb-reloadBtn')) $('yyb-reloadBtn').onclick = () => loadPanel({ autoCheck: false });
         if ($('yyb-refreshBtn')) $('yyb-refreshBtn').onclick = refreshSelected;
         if ($('yyb-resyncBtn')) $('yyb-resyncBtn').onclick = resyncSelected;
         if ($('yyb-deleteBtn')) $('yyb-deleteBtn').onclick = deleteSelected;

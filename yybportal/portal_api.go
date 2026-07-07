@@ -10,8 +10,8 @@ import (
 	"github.com/cdle/xdd/models"
 )
 
-// PortalStatus 门户状态
-func PortalStatus(userNumber int) (map[string]any, error) {
+// PortalStatus 门户状态；autoCheck 为 true 时自动刷新全部绑定账号存活状态
+func PortalStatus(userNumber int, autoCheck bool) (map[string]any, error) {
 	if !Config().Enabled {
 		return map[string]any{
 			"enabled": false,
@@ -23,14 +23,23 @@ func PortalStatus(userNumber int) (map[string]any, error) {
 	st["scanLoginCost"] = getScanLoginCost()
 	st["maxAccounts"] = getMaxAccountsPerUser()
 	st["coin"] = models.GetCoin(userNumber)
+	if !Ready() {
+		st["message"] = "应用宝服务暂不可用，请稍后再试"
+		st["accounts"] = []PortalAccountView{}
+		return st, nil
+	}
+	if autoCheck {
+		summary, err := portalCheckAllAccounts(userNumber)
+		if err != nil {
+			return nil, err
+		}
+		st["checkSummary"] = summary
+	}
 	accounts, err := PortalListAccounts(userNumber)
 	if err != nil {
 		return nil, err
 	}
 	st["accounts"] = accounts
-	if !Ready() {
-		st["message"] = "应用宝服务暂不可用，请稍后再试"
-	}
 	return st, nil
 }
 
@@ -172,7 +181,72 @@ func PortalRefreshAccount(userNumber int, ref string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return a.RefreshAccount(context.Background(), strconv.FormatInt(b.YybAccountID, 10))
+	data, err := a.RefreshAccount(context.Background(), strconv.FormatInt(b.YybAccountID, 10))
+	if err != nil {
+		return nil, err
+	}
+	syncBindingFromRefresh(b, data)
+	return data, nil
+}
+
+func syncBindingFromRefresh(b *PortalYybBinding, data map[string]any) {
+	if b == nil || data == nil {
+		return
+	}
+	changed := false
+	if st, ok := data["status"].(string); ok && st != "" && b.Status != st {
+		b.Status = st
+		changed = true
+	}
+	if nick, ok := data["nickname"].(string); ok && nick != "" && b.Nickname != nick {
+		b.Nickname = nick
+		changed = true
+	}
+	if changed {
+		_ = db().Save(b).Error
+	}
+}
+
+// portalCheckAllAccounts 检测用户全部绑定账号存活状态
+func portalCheckAllAccounts(userNumber int) (map[string]any, error) {
+	rows, err := listBindings(userNumber)
+	if err != nil {
+		return nil, err
+	}
+	rows = dedupeBindings(rows)
+	summary := map[string]any{
+		"total": len(rows),
+	}
+	alive, dead, failed := 0, 0, 0
+	if len(rows) == 0 {
+		summary["alive"] = 0
+		summary["dead"] = 0
+		summary["failed"] = 0
+		return summary, nil
+	}
+	for _, b := range rows {
+		ref := strconv.FormatInt(b.ID, 10)
+		if strings.TrimSpace(b.OpenID) != "" {
+			ref = b.OpenID
+		}
+		if _, err := PortalRefreshAccount(userNumber, ref); err != nil {
+			failed++
+			continue
+		}
+		var fresh PortalYybBinding
+		if db().Where("id = ?", b.ID).First(&fresh).Error == nil {
+			st := strings.ToLower(strings.TrimSpace(fresh.Status))
+			if st == "alive" || st == "online" {
+				alive++
+			} else {
+				dead++
+			}
+		}
+	}
+	summary["alive"] = alive
+	summary["dead"] = dead
+	summary["failed"] = failed
+	return summary, nil
 }
 
 // PortalResyncAccount 同步资料
