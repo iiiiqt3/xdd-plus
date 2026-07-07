@@ -122,17 +122,14 @@ func LoginSelect(sender *Sender, msg chan string) {
 
 			num, err := strconv.Atoi(n)
 			if err != nil {
-				sender.Reply("请输入数字 1 或 2，或输入 q 退出")
+				sender.Reply("请输入数字 1、2 或 3，或输入 q 退出")
 				continue
 			}
 
 			switch num {
 			case 1:
 				close(msg)
-				c2 := make(chan string)
-				smsList[sender.UserID] = c2
-				sender.Reply("请输入手机号...\n上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密\n回复'q'退出登录流程")
-				go SmsSelect(sender, c2, "Nolan")
+				StartYybJdLogin(sender)
 				return
 			case 2:
 				close(msg)
@@ -140,8 +137,15 @@ func LoginSelect(sender *Sender, msg chan string) {
 				wxJdList[sender.UserID] = c2
 				go handleWxJdLogin(sender, c2)
 				return
+			case 3:
+				close(msg)
+				c2 := make(chan string)
+				smsList[sender.UserID] = c2
+				sender.Reply("请输入手机号...\n上车后请到京东-我的-支付设置，关闭小额免密，同时开启虚拟资产验密\n回复'q'退出登录流程")
+				go SmsSelect(sender, c2, "Nolan")
+				return
 			default:
-				sender.Reply("无效输入，请输入数字 1 或 2，或输入 q 退出")
+				sender.Reply("无效输入，请输入数字 1、2 或 3，或输入 q 退出")
 			}
 		}
 	}

@@ -457,7 +457,7 @@ func handleWxJdLogin(sender *Sender, msg chan string) {
 	devMenu.WriteString("\n输入序号刷新对应设备，输入 0 刷新全部，输入 q 退出：")
 	sender.Reply(devMenu.String())
 
-	devInput, ok := wxJdWaitInput(sender, msg, 60)
+	devInput, ok := WaitJdBotInput(sender, msg, 60)
 	if !ok {
 		return
 	}
@@ -497,33 +497,10 @@ func wxJdRefreshByDevice(sender *Sender, wxid string) bool {
 	if err != nil {
 		var riskErr *RiskVerifyError
 		if errors.As(err, &riskErr) {
-			sender.Reply(fmt.Sprintf("⚠️ 账号需要短信验证\n\n🔗 请点击网址进行验证：\n%s\n\n验证完成后回复 y 继续执行，回复 q 退出", riskErr.JmpURL))
-			if smsList[sender.UserID] == nil {
-				smsList[sender.UserID] = make(chan string)
+			if WaitJdRiskVerify(sender, riskErr.JmpURL) {
+				return wxJdRefreshByDevice(sender, wxid)
 			}
-			defer delete(smsList, sender.UserID)
-			timeout := time.After(200 * time.Second)
-			for {
-				select {
-				case msg, ok := <-smsList[sender.UserID]:
-					if !ok {
-						sender.Reply("通道已关闭，退出验证流程")
-						return false
-					}
-					if msg == "q" || msg == "Q" {
-						sender.Reply("已退出验证流程")
-						return false
-					}
-					if msg == "y" || msg == "Y" {
-						sender.Reply("⏳ 验证通过，正在重新刷新...")
-						return wxJdRefreshByDevice(sender, wxid)
-					}
-					sender.Reply("无效输入，请回复 y 继续，或回复 q 退出")
-				case <-timeout:
-					sender.Reply("⏰ 操作超时，已退出验证流程")
-					return false
-				}
-			}
+			return false
 		}
 		sender.Reply(fmt.Sprintf("❌ 刷新失败: %v", err))
 		return false
@@ -563,7 +540,39 @@ func wxJdRefreshByDevice(sender *Sender, wxid string) bool {
 	return true
 }
 
-func wxJdWaitInput(sender *Sender, msg chan string, timeoutSec int) (string, bool) {
+// WaitJdRiskVerify 京东风控短信验证后等待用户确认继续
+func WaitJdRiskVerify(sender *Sender, riskURL string) bool {
+	sender.Reply("⚠️ 账号需要短信验证\n\n🔗 请点击网址进行验证：\n" + riskURL + "\n\n验证完成后回复 y 继续执行，回复 q 退出")
+	if smsList[sender.UserID] == nil {
+		smsList[sender.UserID] = make(chan string)
+	}
+	defer delete(smsList, sender.UserID)
+	timeout := time.After(200 * time.Second)
+	for {
+		select {
+		case msg, ok := <-smsList[sender.UserID]:
+			if !ok {
+				sender.Reply("通道已关闭，退出验证流程")
+				return false
+			}
+			if msg == "q" || msg == "Q" {
+				sender.Reply("已退出验证流程")
+				return false
+			}
+			if msg == "y" || msg == "Y" {
+				sender.Reply("⏳ 验证通过，正在重新刷新...")
+				return true
+			}
+			sender.Reply("无效输入，请回复 y 继续，或回复 q 退出")
+		case <-timeout:
+			sender.Reply("⏰ 操作超时，已退出验证流程")
+			return false
+		}
+	}
+}
+
+// WaitJdBotInput 机器人交互等待用户输入
+func WaitJdBotInput(sender *Sender, msg chan string, timeoutSec int) (string, bool) {
 	timeout := time.After(time.Duration(timeoutSec) * time.Second)
 	select {
 	case input, ok := <-msg:
@@ -576,6 +585,10 @@ func wxJdWaitInput(sender *Sender, msg chan string, timeoutSec int) (string, boo
 		sender.Reply("操作超时，已退出登录流程")
 		return "", false
 	}
+}
+
+func wxJdWaitInput(sender *Sender, msg chan string, timeoutSec int) (string, bool) {
+	return WaitJdBotInput(sender, msg, timeoutSec)
 }
 
 func wxJdFingerEncode(obj map[string]interface{}) string {

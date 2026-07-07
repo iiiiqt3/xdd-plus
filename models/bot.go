@@ -216,6 +216,11 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		c2 <- msg
 		return nil
 	}
+	if yybJdList[sender.UserID] != nil {
+		c2 := yybJdList[sender.UserID]
+		c2 <- msg
+		return nil
+	}
 
 if TryHandleSshMessage(sender) {
     return nil
@@ -298,7 +303,7 @@ if TryHandleSshMessage(sender) {
 				if msg == "登录" || msg == "登陆" {
 					c2 := make(chan string)
 					loginList[sender.UserID] = c2
-					sender.Reply("请选择登录方式：\n1️⃣ 短信登录\n2️⃣ 微信协议自动登录\n\n回复 q 退出登录流程\n⏰ 30秒未操作自动退出")
+					sender.Reply("请选择登录方式：\n1️⃣ 应用宝协议自动登录\n2️⃣ 微信协议自动登录\n3️⃣ 短信登录\n\n回复 q 退出登录流程\n⏰ 30秒未操作自动退出")
 					go LoginSelect(sender, c2)
 				}
 			}

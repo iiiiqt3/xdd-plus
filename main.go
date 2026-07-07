@@ -48,6 +48,7 @@ func main() {
 		models.System().Errorf("应用宝启动失败(主服务不受影响): %v", err)
 	} else if models.Config.Yyb.Enabled {
 		models.System().Infof("应用宝模块已加载 ready=%v", yybportal.Ready())
+		models.SetYybJdLoginHandler(yybportal.HandleBotJdLogin)
 	}
 
 	// 启动定时保存任务

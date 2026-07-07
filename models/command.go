@@ -594,6 +594,18 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"应用宝协议登录", "应用宝登录", "应用宝协议登陆", "应用宝登陆"},
+		Handle: func(sender *Sender) interface{} {
+			if !Config.Yyb.Enabled {
+				sender.Reply("应用宝功能未开启")
+				return nil
+			}
+			StartYybJdLogin(sender)
+			return nil
+		},
+	},
+
+	{
     Command: []string{"赠送卡密"},
     Admin:   true,
     Handle: func(sender *Sender) interface{} {
