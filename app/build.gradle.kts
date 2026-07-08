@@ -11,11 +11,19 @@ android {
         applicationId = "com.goudong.jd"
         minSdk = 23
         targetSdk = 36
-        versionCode = 34
-        versionName = "2.8.10"
+        versionCode = 35
+        versionName = "2.8.11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
+
+        manifestPlaceholders["JPUSH_PKGNAME"] = applicationId!!
+        manifestPlaceholders["JPUSH_APPKEY"] = "173ed5f89f68ae2599e666ae"
+        manifestPlaceholders["JPUSH_CHANNEL"] = "default_developer"
     }
 
     signingConfigs {
@@ -96,4 +104,6 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
     implementation("com.google.code.gson:gson:2.11.0")
+
+    implementation("cn.jiguang.sdk:jpush:5.8.0")
 }

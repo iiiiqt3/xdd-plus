@@ -1,9 +1,11 @@
 package com.goudong.jd
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
@@ -40,6 +42,8 @@ import com.goudong.jd.update.ApkInstaller
 import com.goudong.jd.update.UpdateChecker
 import com.goudong.jd.update.UpdateInfo
 import com.goudong.jd.push.PushManager
+import com.goudong.jd.ui.more.NotificationDetailActivity
+import com.goudong.jd.ui.more.NotificationListActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.coroutines.launch
 import com.goudong.jd.R
@@ -60,8 +64,17 @@ class MainActivity : AppCompatActivity() {
             val target = pendingTabId ?: TAB_HOME
             switchToTab(target)
             reloadVisibleFragment()
+            PushManager.onUserLogin(this)
         }
         pendingTabId = null
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted && AppServices.sessionManager.isAuthenticated()) {
+            PushManager.startMonitoring(this)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -200,12 +213,51 @@ class MainActivity : AppCompatActivity() {
         }
 
         checkUpdate()
+        handleLaunchIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleLaunchIntent(intent)
+    }
+
+    private fun handleLaunchIntent(intent: Intent?) {
+        if (intent == null) return
+        val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
+        if (notificationId > 0) {
+            intent.removeExtra(EXTRA_NOTIFICATION_ID)
+            startActivity(
+                Intent(this, NotificationDetailActivity::class.java).apply {
+                    putExtra(NotificationDetailActivity.EXTRA_NOTIFICATION_ID, notificationId)
+                }
+            )
+            return
+        }
+        if (intent.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false)) {
+            intent.removeExtra(EXTRA_OPEN_NOTIFICATIONS)
+            if (AppServices.sessionManager.isAuthenticated()) {
+                startActivity(Intent(this, NotificationListActivity::class.java))
+            }
+        }
+    }
+
+    private fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (!AppServices.sessionManager.isAuthenticated()) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     override fun onResume() {
         super.onResume()
         PushManager.onAppForeground()
         if (AppServices.sessionManager.isAuthenticated()) {
+            ensureNotificationPermission()
             PushManager.startMonitoring(this)
         }
     }
@@ -287,6 +339,7 @@ class MainActivity : AppCompatActivity() {
 
                 AppServices.sessionManager.setAuthenticated(false)
                 AppServices.apiClient.clearCookies()
+                PushManager.onUserLogout()
                 pendingTabId = tabOrder[viewPager.currentItem]
                 authLauncher.launch(Intent(this@MainActivity, AuthActivity::class.java))
             } finally {
@@ -626,5 +679,7 @@ class MainActivity : AppCompatActivity() {
         const val TAB_JD = 102
         const val TAB_TASKS = 103
         const val TAB_MORE = 104
+        const val EXTRA_OPEN_NOTIFICATIONS = "open_notifications"
+        const val EXTRA_NOTIFICATION_ID = "notification_id"
     }
 }

@@ -7,6 +7,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -27,26 +28,50 @@ class NotificationDetailActivity : AppCompatActivity() {
     
     companion object {
         const val EXTRA_NOTIFICATION = "notification"
+        const val EXTRA_NOTIFICATION_ID = "notification_id"
     }
     
-    private lateinit var notification: PortalNotification
+    private var notification: PortalNotification? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         AppTheme.applySystemBars(this)
-        notification = intent.getSerializableExtra(EXTRA_NOTIFICATION) as? PortalNotification 
-            ?: run { finish(); return }
-        
+        val cached = intent.getSerializableExtra(EXTRA_NOTIFICATION) as? PortalNotification
+        val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
+        if (cached != null) {
+            notification = cached
+            renderDetail()
+            return
+        }
+        if (notificationId > 0) {
+            supportActionBar?.setDisplayHomeAsUpEnabled(true)
+            title = "通知详情"
+            setContentView(ProgressBar(this).apply {
+                isIndeterminate = true
+            })
+            lifecycleScope.launch {
+                runCatching { AppServices.portalRepository.markNotificationRead(notificationId) }
+                    .onSuccess {
+                        notification = it
+                        renderDetail()
+                    }
+                    .onFailure { finish() }
+            }
+            return
+        }
+        finish()
+    }
+
+    private fun renderDetail() {
+        val current = notification ?: run { finish(); return }
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = "通知详情"
-        
         val wrapper = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val (scroll, root) = makeScrollContainer()
-        root.addView(createDetailView())
+        root.addView(createDetailView(current))
         wrapper.addView(scroll)
         setContentView(wrapper)
-        
         markAsRead()
     }
     
@@ -60,7 +85,7 @@ class NotificationDetailActivity : AppCompatActivity() {
         markAsRead()
     }
     
-    private fun createDetailView(): View {
+    private fun createDetailView(notification: PortalNotification): View {
         val ctx = this
         
         return cardView().apply {
@@ -128,13 +153,14 @@ class NotificationDetailActivity : AppCompatActivity() {
     }
     
     private fun markAsRead() {
+        val current = notification ?: return
         lifecycleScope.launch {
             runCatching {
                 android.util.Log.d("NotificationDetail", "=== 开始标记已读 ===")
-                android.util.Log.d("NotificationDetail", "通知ID: ${notification.id}")
-                android.util.Log.d("NotificationDetail", "调用API: /api/portal/notification?id=${notification.id}")
+                android.util.Log.d("NotificationDetail", "通知ID: ${current.id}")
+                android.util.Log.d("NotificationDetail", "调用API: /api/portal/notification?id=${current.id}")
                 
-                val result = AppServices.portalRepository.markNotificationRead(notification.id)
+                val result = AppServices.portalRepository.markNotificationRead(current.id)
                 
                 android.util.Log.d("NotificationDetail", "✅ API调用成功")
                 android.util.Log.d("NotificationDetail", "返回的isRead状态: ${result.isRead}")

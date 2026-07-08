@@ -35,8 +35,6 @@ import com.goudong.jd.ui.common.makeScrollContainer
 import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.common.findFirstScrollView
 import com.goudong.jd.ui.common.wrapMainTabSwipe
-import com.goudong.jd.push.NotificationHelper
-import com.goudong.jd.push.PushCheckWorker
 import com.goudong.jd.ui.more.NotificationListActivity
 import android.os.Handler
 import android.os.Looper
@@ -274,15 +272,6 @@ class HomeFragment : Fragment(), MainTabResettable {
                         clearNotificationPlaceholders()
                         addNoNotificationHint()
                     }
-                    
-                    lifecycleScope.launch {
-                        runCatching { 
-                            val allNotifications = AppServices.portalRepository.fetchNotifications(includeContent = true)
-                            checkAndNotifyNew(allNotifications.list)
-                        }.onFailure { error ->
-                            android.util.Log.e("HomeFragment", "推送检测失败: ${error.message}", error)
-                        }
-                    }
 
                     AppServices.sessionManager.saveHomeSummary(
                         summaryText.text.toString(),
@@ -416,36 +405,6 @@ class HomeFragment : Fragment(), MainTabResettable {
             setPadding(0, ctx.dp(4), 0, 0)
             gravity = Gravity.CENTER
         })
-    }
-
-    private fun checkAndNotifyNew(notifications: List<PortalNotification>) {
-        if (!PushCheckWorker.isAppInForeground) return
-        if (notifications.isEmpty()) return
-
-        val notifiedIds = PushCheckWorker.getNotifiedIds(requireContext())
-        
-        val newMessages = notifications.filter { it.id !in notifiedIds }
-        if (newMessages.isEmpty()) return
-
-        val newIds = newMessages.map { it.id }
-        PushCheckWorker.addNotifiedIds(requireContext(), newIds)
-        
-        val allUnread = notifications.filter { !it.isRead }
-        val displayCount = allUnread.size.coerceAtLeast(newMessages.size)
-        val latestForDisplay = allUnread
-            .sortedByDescending { it.id }
-            .take(5)
-            .ifEmpty { 
-                newMessages.sortedByDescending { it.id }.take(5) 
-            }
-        
-        NotificationHelper.showUnreadSummaryNotification(
-            requireContext(),
-            displayCount,
-            latestForDisplay
-        )
-        
-        android.util.Log.d("HomeFragment", "前台检测到 ${newMessages.size} 条新消息，已发送通知")
     }
 
     override fun resetToInitialState() {

@@ -278,6 +278,21 @@ class PortalRepository(
         return apiClient.requestData("/api/portal/notification?id=$notificationId")
     }
 
+    suspend fun registerPushDevice(registrationId: String, alias: String) {
+        apiClient.requestMessage(
+            path = "/api/portal/push/register",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(
+                mapOf(
+                    "registrationId" to registrationId,
+                    "alias" to alias,
+                    "platform" to ApiClient.CLIENT_PLATFORM,
+                )
+            ),
+        )
+    }
+
     suspend fun submitFeedback(payload: SubmitFeedbackPayload): String {
         return apiClient.requestMessage(
             path = "/api/portal/feedback",
