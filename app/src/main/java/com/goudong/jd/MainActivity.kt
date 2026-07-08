@@ -26,8 +26,10 @@ import com.goudong.jd.ui.common.InnerTabSwipeHost
 import com.goudong.jd.ui.common.MainTabResettable
 import com.goudong.jd.ui.auth.AuthActivity
 import com.goudong.jd.ui.common.alert
+import com.goudong.jd.ui.common.AppTheme
 import com.goudong.jd.ui.common.cardView
 import com.goudong.jd.ui.common.dp
+import com.goudong.jd.ui.common.themeColor
 import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.home.HomeFragment
 import com.goudong.jd.ui.jd.JdFragment
@@ -40,6 +42,7 @@ import com.goudong.jd.update.UpdateInfo
 import com.goudong.jd.push.PushManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.coroutines.launch
+import com.goudong.jd.R
 
 class MainActivity : AppCompatActivity() {
     private lateinit var bottomNav: BottomNavigationView
@@ -64,9 +67,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         title = "狗东"
-
-        window.statusBarColor = ContextCompat.getColor(this, R.color.surface_soft)
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        AppTheme.applySystemBars(this)
 
         val statusBarHeight = run {
             val resId = resources.getIdentifier("status_bar_height", "dimen", "android")
@@ -128,7 +129,7 @@ class MainActivity : AppCompatActivity() {
             background = GradientDrawable().apply {
                 setColor(ContextCompat.getColor(context, R.color.surface_card))
                 cornerRadius = dp(22).toFloat()
-                setStroke(dp(1), Color.parseColor("#E2E8F0"))
+                setStroke(dp(1), themeColor(R.color.border_light))
             }
             itemIconTintList = android.content.res.ColorStateList(
                 arrayOf(
@@ -137,7 +138,7 @@ class MainActivity : AppCompatActivity() {
                 ),
                 intArrayOf(
                     ContextCompat.getColor(context, R.color.brand_primary),
-                    Color.parseColor("#94A3B8")
+                    themeColor(R.color.nav_inactive)
                 )
             )
             itemTextColor = android.content.res.ColorStateList(
@@ -147,7 +148,7 @@ class MainActivity : AppCompatActivity() {
                 ),
                 intArrayOf(
                     ContextCompat.getColor(context, R.color.brand_primary),
-                    Color.parseColor("#94A3B8")
+                    themeColor(R.color.nav_inactive)
                 )
             )
             menu.add(Menu.NONE, TAB_HOME, 0, "首页").setIcon(android.R.drawable.ic_menu_view)
@@ -220,8 +221,8 @@ class MainActivity : AppCompatActivity() {
             if (unreadCount > 0) {
                 badge.isVisible = true
                 badge.number = unreadCount.coerceAtMost(99)
-                badge.badgeTextColor = Color.WHITE
-                badge.backgroundColor = Color.parseColor("#EF4444")
+                badge.badgeTextColor = themeColor(R.color.chip_active_text)
+                badge.backgroundColor = themeColor(R.color.brand_red)
             } else {
                 badge.isVisible = false
                 badge.clearNumber()
@@ -448,7 +449,7 @@ class MainActivity : AppCompatActivity() {
         val dialog = android.app.Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
 
         val container = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#80000000"))
+            setBackgroundColor(themeColor(R.color.overlay_scrim))
             setPadding(dp(24), dp(24), dp(24), dp(24))
         }
 
@@ -467,7 +468,7 @@ class MainActivity : AppCompatActivity() {
 
                 addView(TextView(this@MainActivity).apply {
                     text = "发现新版本"
-                    setTextColor(Color.parseColor("#0F172A"))
+                    setTextColor(themeColor(R.color.text_primary))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
                     setTypeface(typeface, android.graphics.Typeface.BOLD)
                     setPadding(dp(12), 0, 0, 0)
@@ -495,7 +496,7 @@ class MainActivity : AppCompatActivity() {
 
                     addView(TextView(this@MainActivity).apply {
                         text = "此版本为强制更新，请尽快升级以获得最佳体验"
-                        setTextColor(Color.parseColor("#DC2626"))
+                        setTextColor(themeColor(R.color.negative))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                         setPadding(dp(6), 0, 0, 0)
                     })
@@ -504,7 +505,7 @@ class MainActivity : AppCompatActivity() {
 
             addView(View(this@MainActivity).apply {
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1))
-                setBackgroundColor(Color.parseColor("#E2E8F0"))
+                setBackgroundColor(themeColor(R.color.border_light))
                 setPadding(0, dp(12), 0, dp(12))
             })
 
@@ -513,7 +514,7 @@ class MainActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(0), 1f)
                 addView(TextView(this@MainActivity).apply {
                     text = update.changelog
-                    setTextColor(Color.parseColor("#475569"))
+                    setTextColor(themeColor(R.color.text_secondary))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
                     setLineSpacing(0f, 1.6f)
                 })
@@ -521,13 +522,13 @@ class MainActivity : AppCompatActivity() {
 
             addView(View(this@MainActivity).apply {
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1))
-                setBackgroundColor(Color.parseColor("#E2E8F0"))
+                setBackgroundColor(themeColor(R.color.border_light))
                 setPadding(0, dp(12), 0, dp(12))
             })
 
             addView(TextView(this@MainActivity).apply {
                 text = "立即更新"
-                setTextColor(Color.WHITE)
+                setTextColor(themeColor(R.color.chip_active_text))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 gravity = Gravity.CENTER
@@ -548,7 +549,7 @@ class MainActivity : AppCompatActivity() {
             if (!update.forceUpdate) {
                 addView(TextView(this@MainActivity).apply {
                     text = "稍后再说"
-                    setTextColor(Color.parseColor("#64748B"))
+                    setTextColor(themeColor(R.color.text_muted))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                     gravity = Gravity.CENTER
                     setPadding(0, dp(12), 0, 0)
@@ -587,7 +588,7 @@ class MainActivity : AppCompatActivity() {
         }
         val progressText = TextView(this).apply {
             text = "准备下载..."
-            setTextColor(Color.parseColor("#475569"))
+            setTextColor(themeColor(R.color.text_secondary))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             setPadding(dp(16), 0, dp(16), dp(16))
         }

@@ -25,6 +25,9 @@ import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.common.primaryButton
 import kotlinx.coroutines.launch
+import com.goudong.jd.ui.common.themeColor
+import com.goudong.jd.ui.common.AppTheme
+import com.goudong.jd.R
 
 class JdLoginActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -35,6 +38,7 @@ class JdLoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.applySystemBars(this)
         title = "京东登录"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
@@ -63,7 +67,7 @@ class JdLoginActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(10), dp(14), dp(10))
             background = GradientDrawable().apply {
-                setColor(Color.WHITE)
+                setColor(themeColor(R.color.surface_card))
                 cornerRadius = dp(16).toFloat()
             }
             elevation = dp(6).toFloat()
@@ -76,7 +80,7 @@ class JdLoginActivity : AppCompatActivity() {
         // 状态文字（左）
         statusText = TextView(this).apply {
             text = "加载中..."
-            setTextColor(Color.parseColor("#94A3B8"))
+            setTextColor(themeColor(R.color.text_hint))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                 marginEnd = dp(6)
@@ -94,7 +98,7 @@ class JdLoginActivity : AppCompatActivity() {
         submitBtn = Button(this).apply {
             text = "提交"
             setAllCaps(false)
-            setTextColor(Color.WHITE)
+            setTextColor(themeColor(R.color.chip_active_text))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             setPadding(dp(16), dp(2), dp(16), dp(2))
             background = GradientDrawable().apply {

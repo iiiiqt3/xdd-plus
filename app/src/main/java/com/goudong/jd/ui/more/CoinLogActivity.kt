@@ -1,7 +1,7 @@
 package com.goudong.jd.ui.more
 
-import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
@@ -18,10 +18,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.goudong.jd.AppServices
 import com.goudong.jd.R
 import com.goudong.jd.data.model.CoinLog
-import com.goudong.jd.ui.common.bodyText
-import com.goudong.jd.ui.common.captionText
+import com.goudong.jd.ui.common.AppTheme
 import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.makeScrollContainer
+import com.goudong.jd.ui.common.themeColor
 import kotlinx.coroutines.launch
 
 class CoinLogActivity : AppCompatActivity() {
@@ -30,39 +30,34 @@ class CoinLogActivity : AppCompatActivity() {
     private lateinit var filterBar: LinearLayout
     private var currentSource: String = ""
     private val filterButtons = mutableListOf<TextView>()
-    private val filters = listOf(
-        "" to "全部",
-        "Web端" to "Web端",
-        "App端" to "App端",
-        "微信" to "微信",
-        "后台及其他" to "后台及其他",
-    )
     private var touchStartX = 0f
     private var touchStartY = 0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.applySystemBars(this)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = "积分变动记录"
 
-        val wrapper = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val wrapper = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(themeColor(R.color.surface_soft))
+        }
 
-        // 筛选栏
         filterBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(16.dp, 12.dp, 16.dp, 8.dp)
+            setPadding(dp(16), dp(12), dp(16), dp(8))
             gravity = Gravity.CENTER_VERTICAL
         }
-        filters.forEach { (source, label) ->
+        AppTheme.coinLogFilters.forEach { (source, label) ->
             val btn = TextView(this).apply {
                 text = label
                 textSize = 12f
-                setPadding(20.dp, 8.dp, 20.dp, 8.dp)
-                val params = LinearLayout.LayoutParams(
+                setPadding(dp(20), dp(8), dp(20), dp(8))
+                layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { marginEnd = 8.dp }
-                layoutParams = params
+                ).apply { marginEnd = dp(8) }
                 setOnClickListener { selectFilter(source, this) }
             }
             filterButtons.add(btn)
@@ -76,7 +71,8 @@ class CoinLogActivity : AppCompatActivity() {
         val (scroll, root) = makeScrollContainer()
         contentRoot = root
         swipeRefreshLayout = SwipeRefreshLayout(this).apply {
-            setColorSchemeColors(ContextCompat.getColor(this@CoinLogActivity, R.color.brand_primary))
+            setColorSchemeColors(themeColor(R.color.brand_primary))
+            setProgressBackgroundColorSchemeColor(themeColor(R.color.surface_card))
             setOnRefreshListener { loadCoinLogs() }
             addView(scroll)
         }
@@ -95,12 +91,12 @@ class CoinLogActivity : AppCompatActivity() {
             MotionEvent.ACTION_UP -> {
                 val dx = ev.x - touchStartX
                 val dy = ev.y - touchStartY
-                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 100) {
-                    val currentIdx = filters.indexOfFirst { it.first == currentSource }
-                    if (dx < 0 && currentIdx < filters.size - 1) {
-                        selectFilter(filters[currentIdx + 1].first, filterButtons[currentIdx + 1])
+                if (kotlin.math.abs(dx) > kotlin.math.abs(dy) && kotlin.math.abs(dx) > 100) {
+                    val currentIdx = AppTheme.coinLogFilters.indexOfFirst { it.first == currentSource }
+                    if (dx < 0 && currentIdx < AppTheme.coinLogFilters.size - 1) {
+                        selectFilter(AppTheme.coinLogFilters[currentIdx + 1].first, filterButtons[currentIdx + 1])
                     } else if (dx > 0 && currentIdx > 0) {
-                        selectFilter(filters[currentIdx - 1].first, filterButtons[currentIdx - 1])
+                        selectFilter(AppTheme.coinLogFilters[currentIdx - 1].first, filterButtons[currentIdx - 1])
                     }
                 }
             }
@@ -121,11 +117,14 @@ class CoinLogActivity : AppCompatActivity() {
     private fun selectFilter(source: String, btn: TextView) {
         currentSource = source
         filterButtons.forEach { b ->
-            b.setTextColor(Color.parseColor("#999999"))
-            b.setBackgroundColor(Color.TRANSPARENT)
+            b.setTextColor(themeColor(R.color.text_muted))
+            b.background = null
         }
-        btn.setTextColor(Color.WHITE)
-        btn.setBackgroundColor(Color.parseColor("#FF6B35"))
+        btn.setTextColor(themeColor(R.color.chip_active_text))
+        btn.background = GradientDrawable().apply {
+            setColor(themeColor(R.color.brand_primary))
+            cornerRadius = dp(18).toFloat()
+        }
         loadCoinLogs()
     }
 
@@ -139,13 +138,10 @@ class CoinLogActivity : AppCompatActivity() {
                 .onSuccess { logs ->
                     contentRoot.removeAllViews()
                     swipeRefreshLayout.isRefreshing = false
-
                     if (logs.isEmpty()) {
                         contentRoot.addView(emptyCard("暂无积分变动记录"))
                     } else {
-                        logs.forEach { log ->
-                            contentRoot.addView(createLogItem(log))
-                        }
+                        logs.forEach { log -> contentRoot.addView(createLogItem(log)) }
                     }
                 }
                 .onFailure { e ->
@@ -159,104 +155,101 @@ class CoinLogActivity : AppCompatActivity() {
     private fun createLogItem(log: CoinLog): View {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(16.dp, 12.dp, 16.dp, 12.dp)
-            val params = LinearLayout.LayoutParams(
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(16.dp, 0.dp, 16.dp, 8.dp) }
-            layoutParams = params
-            setBackgroundColor(Color.WHITE)
-            elevation = 2.dp.toFloat()
+            ).apply { setMargins(dp(16), dp(0), dp(16), dp(8)) }
+            background = GradientDrawable().apply {
+                setColor(themeColor(R.color.surface_card))
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), themeColor(R.color.border_default))
+            }
+            elevation = dp(2).toFloat()
         }
 
-        // 顶部：类型 + 时间
         val topRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-
-        val typeText = TextView(this).apply {
+        topRow.addView(TextView(this).apply {
             text = log.type ?: "其他"
             textSize = 14f
-            setTextColor(Color.parseColor("#333333"))
+            setTextColor(themeColor(R.color.text_primary))
             setTypeface(null, Typeface.BOLD)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        topRow.addView(typeText)
-
-        val timeText = TextView(this).apply {
+        })
+        topRow.addView(TextView(this).apply {
             text = log.createdAt ?: ""
             textSize = 11f
-            setTextColor(Color.parseColor("#999999"))
-        }
-        topRow.addView(timeText)
+            setTextColor(themeColor(R.color.text_hint))
+        })
         card.addView(topRow)
 
-        // 详情
         if (!log.detail.isNullOrEmpty()) {
-            val detailText = TextView(this).apply {
+            card.addView(TextView(this).apply {
                 text = log.detail
                 textSize = 12f
-                setTextColor(Color.parseColor("#666666"))
-                setPadding(0, 4.dp, 0, 0)
-            }
-            card.addView(detailText)
+                setTextColor(themeColor(R.color.text_secondary))
+                setPadding(0, dp(4), 0, 0)
+            })
         }
 
-        // 底部：金额 + 余额 + 来源
         val bottomRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 8.dp, 0, 0)
+            setPadding(0, dp(8), 0, 0)
         }
-
-        val amountText = TextView(this).apply {
+        bottomRow.addView(TextView(this).apply {
             val amount = log.amount
             text = if (amount > 0) "+$amount" else "$amount"
             textSize = 16f
-            setTextColor(if (amount > 0) Color.parseColor("#4CAF50") else Color.parseColor("#F44336"))
+            setTextColor(if (amount > 0) themeColor(R.color.positive) else themeColor(R.color.negative))
             setTypeface(null, Typeface.BOLD)
-        }
-        bottomRow.addView(amountText)
-
-        val balanceText = TextView(this).apply {
+        })
+        bottomRow.addView(TextView(this).apply {
             text = "  余额: ${log.balanceAfter}"
             textSize = 12f
-            setTextColor(Color.parseColor("#999999"))
-        }
-        bottomRow.addView(balanceText)
+            setTextColor(themeColor(R.color.text_hint))
+        })
 
+        val tag = AppTheme.sourceTagStyle(this, log.sourceTagCls, log.source)
         val sourceText = TextView(this).apply {
-            text = log.source ?: ""
+            text = AppTheme.sourceLabel(log)
             textSize = 11f
-            setPadding(12.dp, 4.dp, 12.dp, 4.dp)
-            setTextColor(Color.parseColor("#666666"))
-            setBackgroundColor(Color.parseColor("#F0F0F0"))
+            setPadding(dp(12), dp(4), dp(12), dp(4))
+            setTextColor(tag.text)
+            background = GradientDrawable().apply {
+                setColor(tag.background)
+                cornerRadius = dp(10).toFloat()
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginStart = dp(8) }
         }
         bottomRow.addView(sourceText)
-
         card.addView(bottomRow)
         return card
     }
 
     private fun showLoading() {
-        val loading = TextView(this).apply {
+        contentRoot.addView(TextView(this).apply {
             text = "加载中..."
             textSize = 14f
-            setTextColor(Color.parseColor("#999999"))
+            setTextColor(themeColor(R.color.text_hint))
             gravity = Gravity.CENTER
-            setPadding(0, 48.dp, 0, 0)
-        }
-        contentRoot.addView(loading)
+            setPadding(0, dp(48), 0, 0)
+        })
     }
 
     private fun emptyCard(msg: String): View {
         return TextView(this).apply {
             text = msg
             textSize = 14f
-            setTextColor(Color.parseColor("#999999"))
+            setTextColor(themeColor(R.color.text_hint))
             gravity = Gravity.CENTER
-            setPadding(0, 48.dp, 0, 0)
+            setPadding(0, dp(48), 0, 0)
         }
     }
 
@@ -264,14 +257,9 @@ class CoinLogActivity : AppCompatActivity() {
         return TextView(this).apply {
             text = msg
             textSize = 14f
-            setTextColor(Color.parseColor("#F44336"))
+            setTextColor(themeColor(R.color.negative))
             gravity = Gravity.CENTER
-            setPadding(0, 48.dp, 0, 0)
+            setPadding(0, dp(48), 0, 0)
         }
     }
-
-    private val Int.dp: Int
-        get() = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, this.toFloat(), resources.displayMetrics
-        ).toInt()
 }

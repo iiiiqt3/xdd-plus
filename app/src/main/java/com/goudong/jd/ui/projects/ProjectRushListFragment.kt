@@ -16,6 +16,7 @@ import com.goudong.jd.ui.common.captionText
 import com.goudong.jd.ui.common.cardView
 import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.makeScrollContainer
+import com.goudong.jd.ui.common.themeColor
 
 class ProjectRushListFragment : Fragment() {
 
@@ -25,7 +26,7 @@ class ProjectRushListFragment : Fragment() {
 
         root.addView(TextView(ctx).apply {
             text = "⚡ 项目抢兑"
-            setTextColor(Color.parseColor("#0F172A"))
+            setTextColor(ctx.themeColor(R.color.text_primary))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
             setTypeface(typeface, Typeface.BOLD)
             setPadding(ctx.dp(14), ctx.dp(4), ctx.dp(14), ctx.dp(8))
@@ -72,13 +73,13 @@ class ProjectRushListFragment : Fragment() {
             }
             infoWrap.addView(TextView(ctx).apply {
                 text = title
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(ctx.themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, Typeface.BOLD)
             })
             infoWrap.addView(TextView(ctx).apply {
                 text = subtitle
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(ctx.themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
                 setPadding(0, ctx.dp(4), 0, 0)
             })

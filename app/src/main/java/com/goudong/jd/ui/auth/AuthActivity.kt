@@ -1,6 +1,5 @@
 package com.goudong.jd.ui.auth
 
-import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -20,7 +19,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.goudong.jd.AppServices
 import com.goudong.jd.R
+import com.goudong.jd.ui.common.AppTheme
 import com.goudong.jd.ui.common.alert
+import com.goudong.jd.ui.common.themeColor
 import com.goudong.jd.ui.common.bodyText
 import com.goudong.jd.ui.common.cardView
 import com.goudong.jd.ui.common.captionText
@@ -40,11 +41,12 @@ class AuthActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.applySystemBars(this)
         title = "登录"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         val scroll = ScrollView(this).apply {
-            setBackgroundColor(Color.parseColor("#F4F7FB"))
+            setBackgroundColor(themeColor(R.color.surface_soft))
         }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -76,7 +78,7 @@ class AuthActivity : AppCompatActivity() {
             })
             addView(TextView(context).apply {
                 text = "欢迎回来"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f)
                 setTypeface(typeface, Typeface.BOLD)
                 gravity = Gravity.CENTER
@@ -84,7 +86,7 @@ class AuthActivity : AppCompatActivity() {
             })
             addView(TextView(context).apply {
                 text = "登录后即可访问全部功能"
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 gravity = Gravity.CENTER
             })
@@ -101,13 +103,13 @@ class AuthActivity : AppCompatActivity() {
     private fun styledInput(hint: String, multiline: Boolean = false, number: Boolean = false): EditText {
         return EditText(this).apply {
             this.hint = hint
-            setTextColor(Color.parseColor("#0F172A"))
-            setHintTextColor(Color.parseColor("#94A3B8"))
+            setTextColor(themeColor(R.color.text_primary))
+            setHintTextColor(themeColor(R.color.text_hint))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#F8FAFC"))
+                setColor(themeColor(R.color.input_bg))
                 cornerRadius = dp(14).toFloat()
-                setStroke(dp(1), Color.parseColor("#D6E0EA"))
+                setStroke(dp(1), themeColor(R.color.input_border))
             }
             setPadding(dp(16), dp(14), dp(16), dp(14))
             inputType = when {
@@ -136,7 +138,7 @@ class AuthActivity : AppCompatActivity() {
         val rememberCheck = CheckBox(this).apply {
             text = "记住账号密码"
             isChecked = remember
-            setTextColor(Color.parseColor("#475569"))
+            setTextColor(themeColor(R.color.text_secondary))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             setPadding(dp(4), 0, 0, dp(12))
             buttonTintList = android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this@AuthActivity, R.color.brand_primary))
@@ -174,7 +176,7 @@ class AuthActivity : AppCompatActivity() {
             setPadding(dp(20), dp(24), dp(20), dp(20))
             addView(TextView(context).apply {
                 text = "登录"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
                 setTypeface(typeface, Typeface.BOLD)
                 setPadding(0, 0, 0, dp(20))
@@ -185,7 +187,7 @@ class AuthActivity : AppCompatActivity() {
             addView(loginBtn)
             // 分割线 + 注册/忘记
             addView(android.view.View(context).apply {
-                setBackgroundColor(Color.parseColor("#E7EDF5"))
+                setBackgroundColor(themeColor(R.color.border_default))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
                     topMargin = dp(8)
                     bottomMargin = dp(12)
@@ -231,14 +233,14 @@ class AuthActivity : AppCompatActivity() {
             setPadding(dp(20), dp(24), dp(20), dp(20))
             addView(TextView(context).apply {
                 text = "注册新账号"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
                 setTypeface(typeface, Typeface.BOLD)
                 setPadding(0, 0, 0, dp(6))
             })
             addView(TextView(context).apply {
                 text = "请先给机器人发送「账号注册」获取绑定码"
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                 setPadding(0, 0, 0, dp(20))
             })
@@ -247,7 +249,7 @@ class AuthActivity : AppCompatActivity() {
             addView(bindCode)
             addView(submit)
             addView(android.view.View(context).apply {
-                setBackgroundColor(Color.parseColor("#E7EDF5"))
+                setBackgroundColor(themeColor(R.color.border_default))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
                     topMargin = dp(8)
                     bottomMargin = dp(12)
@@ -293,14 +295,14 @@ class AuthActivity : AppCompatActivity() {
             setPadding(dp(20), dp(24), dp(20), dp(20))
             addView(TextView(context).apply {
                 text = "重置密码"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
                 setTypeface(typeface, Typeface.BOLD)
                 setPadding(0, 0, 0, dp(6))
             })
             addView(TextView(context).apply {
                 text = "请先给机器人发送「忘记密码」获取 6 位重置验证码"
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                 setPadding(0, 0, 0, dp(20))
             })
@@ -310,7 +312,7 @@ class AuthActivity : AppCompatActivity() {
             addView(password)
             addView(submit)
             addView(android.view.View(context).apply {
-                setBackgroundColor(Color.parseColor("#E7EDF5"))
+                setBackgroundColor(themeColor(R.color.border_default))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
                     topMargin = dp(8)
                     bottomMargin = dp(12)

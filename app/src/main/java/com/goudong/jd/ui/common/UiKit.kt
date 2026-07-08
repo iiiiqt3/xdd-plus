@@ -33,8 +33,7 @@ import com.goudong.jd.ui.auth.AuthActivity
 fun Context.dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
 fun AppCompatActivity.applySafeStatusBar(root: View? = null) {
-    window.statusBarColor = Color.parseColor("#F4F7FB")
-    window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+    AppTheme.applySystemBars(this)
     val statusBarHeight = run {
         val resId = resources.getIdentifier("status_bar_height", "dimen", "android")
         if (resId > 0) resources.getDimensionPixelSize(resId) else 0
@@ -43,7 +42,7 @@ fun AppCompatActivity.applySafeStatusBar(root: View? = null) {
 }
 
 fun Context.pageBackground(view: View) {
-    view.setBackgroundColor(Color.parseColor("#F4F7FB"))
+    view.setBackgroundColor(AppTheme.pageBackground(this))
 }
 
 fun Context.heroCard(
@@ -58,7 +57,7 @@ fun Context.heroCard(
         setPadding(p, p, p, p)
         background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
-            intArrayOf(adjustAlpha(tint, 0.10f), Color.WHITE)
+            intArrayOf(adjustAlpha(tint, 0.10f), AppTheme.cardBackground(this@heroCard))
         ).apply {
             cornerRadius = dp(22).toFloat()
             setStroke(dp(1), adjustAlpha(tint, 0.14f))
@@ -93,14 +92,14 @@ fun Context.heroCard(
         }
         textWrap.addView(TextView(context).apply {
             text = title
-            setTextColor(Color.parseColor("#0F172A"))
+            setTextColor(AppTheme.textPrimary(context))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
             setTypeface(typeface, Typeface.BOLD)
             setTextIsSelectable(true)
         })
         textWrap.addView(TextView(context).apply {
             text = subtitle
-            setTextColor(Color.parseColor("#475569"))
+            setTextColor(AppTheme.textSecondary(context))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
             setLineSpacing(0f, 1.2f)
             setTextIsSelectable(true)
@@ -117,9 +116,9 @@ fun Context.cardView(): LinearLayout {
         val p = dp(14)
         setPadding(p, p, p, p)
         background = GradientDrawable().apply {
-            setColor(Color.WHITE)
+            setColor(AppTheme.cardBackground(this@cardView))
             cornerRadius = dp(20).toFloat()
-            setStroke(dp(1), Color.parseColor("#E7EDF5"))
+            setStroke(dp(1), AppTheme.borderDefault(this@cardView))
         }
         elevation = dp(2).toFloat()
         layoutParams = ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
@@ -150,7 +149,7 @@ fun Context.compactHeroCard(
         setPadding(p, p, p, p)
         background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
-            intArrayOf(adjustAlpha(tint, 0.10f), Color.WHITE)
+            intArrayOf(adjustAlpha(tint, 0.10f), AppTheme.cardBackground(this@compactHeroCard))
         ).apply {
             cornerRadius = dp(16).toFloat()
             setStroke(dp(1), adjustAlpha(tint, 0.14f))
@@ -185,14 +184,14 @@ fun Context.compactHeroCard(
         }
         textWrap.addView(TextView(context).apply {
             text = title
-            setTextColor(Color.parseColor("#0F172A"))
+            setTextColor(AppTheme.textPrimary(context))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setTypeface(typeface, Typeface.BOLD)
             setTextIsSelectable(true)
         })
         textWrap.addView(TextView(context).apply {
             text = subtitle
-            setTextColor(Color.parseColor("#475569"))
+            setTextColor(AppTheme.textSecondary(context))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
             setLineSpacing(0f, 1.2f)
             setTextIsSelectable(true)
@@ -207,12 +206,12 @@ fun Context.compactHeroCard(
 fun Context.compactPrimaryButton(text: String, @ColorInt color: Int = ContextCompat.getColor(this, R.color.brand_primary)): Button {
     return Button(this).apply {
         this.text = text
-        setTextColor(Color.WHITE)
+        setTextColor(themeColor(R.color.chip_active_text))
         setAllCaps(false)
         textSize = 12f
         background = GradientDrawable(
             GradientDrawable.Orientation.LEFT_RIGHT,
-            intArrayOf(color, blendColor(color, Color.WHITE, 0.16f))
+            intArrayOf(color, blendColor(color, themeColor(R.color.chip_active_text), 0.16f))
         ).apply { cornerRadius = dp(12).toFloat() }
         layoutParams = ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             bottomMargin = dp(6)
@@ -229,7 +228,7 @@ fun Context.compactPrimaryButton(text: String, onClick: () -> Unit): Button {
 fun Context.sectionTitle(text: String): TextView {
     return TextView(this).apply {
         this.text = text
-        setTextColor(Color.parseColor("#0F172A"))
+        setTextColor(AppTheme.textPrimary(this@sectionTitle))
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
         setTypeface(typeface, Typeface.BOLD)
         setTextIsSelectable(true)
@@ -239,7 +238,7 @@ fun Context.sectionTitle(text: String): TextView {
 fun Context.bodyText(text: String = ""): TextView {
     return TextView(this).apply {
         this.text = text
-        setTextColor(Color.parseColor("#475569"))
+        setTextColor(AppTheme.textSecondary(this@bodyText))
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.2f)
         setLineSpacing(0f, 1.28f)
         setTextIsSelectable(true)
@@ -249,7 +248,7 @@ fun Context.bodyText(text: String = ""): TextView {
 fun Context.captionText(text: String = ""): TextView {
     return TextView(this).apply {
         this.text = text
-        setTextColor(Color.parseColor("#64748B"))
+        setTextColor(AppTheme.textMuted(this@captionText))
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.8f)
         setLineSpacing(0f, 1.2f)
         setTextIsSelectable(true)
@@ -261,7 +260,7 @@ fun Context.statCard(title: String, value: String, @ColorInt tint: Int): LinearL
         addView(captionText(title))
         addView(TextView(context).apply {
             text = value
-            setTextColor(Color.parseColor("#0F172A"))
+            setTextColor(AppTheme.textPrimary(context))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 19f)
             setTypeface(typeface, Typeface.BOLD)
         })
@@ -271,13 +270,13 @@ fun Context.statCard(title: String, value: String, @ColorInt tint: Int): LinearL
 fun Context.inputField(hint: String, multiline: Boolean = false, number: Boolean = false): EditText {
     return EditText(this).apply {
         this.hint = hint
-        setTextColor(Color.parseColor("#0F172A"))
-        setHintTextColor(Color.parseColor("#94A3B8"))
+        setTextColor(AppTheme.textPrimary(this@inputField))
+        setHintTextColor(AppTheme.textHint(this@inputField))
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
         background = GradientDrawable().apply {
-            setColor(Color.parseColor("#F8FAFC"))
+            setColor(AppTheme.inputBackground(this@inputField))
             cornerRadius = dp(15).toFloat()
-            setStroke(dp(1), Color.parseColor("#D6E0EA"))
+            setStroke(dp(1), AppTheme.inputBorder(this@inputField))
         }
         setPadding(dp(13))
         inputType = when {
@@ -295,12 +294,12 @@ fun Context.inputField(hint: String, multiline: Boolean = false, number: Boolean
 fun Context.primaryButton(text: String, @ColorInt color: Int = ContextCompat.getColor(this, R.color.brand_primary)): Button {
     return Button(this).apply {
         this.text = text
-        setTextColor(Color.WHITE)
+        setTextColor(themeColor(R.color.chip_active_text))
         setAllCaps(false)
         textSize = 13.5f
         background = GradientDrawable(
             GradientDrawable.Orientation.LEFT_RIGHT,
-            intArrayOf(color, blendColor(color, Color.WHITE, 0.16f))
+            intArrayOf(color, blendColor(color, themeColor(R.color.chip_active_text), 0.16f))
         ).apply { cornerRadius = dp(16).toFloat() }
         layoutParams = ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             bottomMargin = dp(8)
@@ -319,11 +318,11 @@ fun Context.secondaryButton(text: String): Button {
         this.text = text
         setAllCaps(false)
         textSize = 13.5f
-        setTextColor(Color.parseColor("#0F172A"))
+        setTextColor(AppTheme.textPrimary(this@secondaryButton))
         background = GradientDrawable().apply {
-            setColor(Color.WHITE)
+            setColor(AppTheme.cardBackground(this@secondaryButton))
             cornerRadius = dp(16).toFloat()
-            setStroke(dp(1), Color.parseColor("#D6E0EA"))
+            setStroke(dp(1), AppTheme.inputBorder(this@secondaryButton))
         }
         layoutParams = ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             bottomMargin = dp(8)
@@ -435,7 +434,7 @@ fun Context.actionGridTile(
                     // 标题
                     addView(TextView(context).apply {
                         text = title
-                        setTextColor(Color.parseColor("#0F172A"))
+                        setTextColor(AppTheme.textPrimary(context))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                         setTypeface(typeface, Typeface.BOLD)
                         gravity = Gravity.CENTER
@@ -445,7 +444,7 @@ fun Context.actionGridTile(
                     // 描述
                     addView(TextView(context).apply {
                         text = desc
-                        setTextColor(Color.parseColor("#64748B"))
+                        setTextColor(AppTheme.textMuted(context))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f)
                         gravity = Gravity.CENTER
                         setLineSpacing(0f, 1.15f)
@@ -561,7 +560,7 @@ fun Context.openUrl(url: String) {
 
 fun Context.makeScrollContainer(): Pair<ScrollView, LinearLayout> {
     val scroll = ScrollView(this).apply {
-        setBackgroundColor(Color.parseColor("#F4F7FB"))
+        setBackgroundColor(AppTheme.pageBackground(this@makeScrollContainer))
     }
     val content = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL

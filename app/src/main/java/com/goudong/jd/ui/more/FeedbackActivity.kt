@@ -21,6 +21,8 @@ import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.common.inputField
 import com.goudong.jd.ui.common.primaryButton
 import kotlinx.coroutines.launch
+import com.goudong.jd.ui.common.themeColor
+import com.goudong.jd.ui.common.AppTheme
 
 class FeedbackActivity : AppCompatActivity() {
     private var selectedType = ""
@@ -32,6 +34,7 @@ class FeedbackActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.applySystemBars(this)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = "投稿与反馈"
 
@@ -73,7 +76,7 @@ class FeedbackActivity : AppCompatActivity() {
             typeLabel = TextView(this@FeedbackActivity).apply {
                 text = if (selectedType.isEmpty()) "请点击选择反馈类型 ›" else "已选：$selectedType"
                 textSize = 15f
-                setTextColor(if (selectedType.isEmpty()) Color.parseColor("#94A3B8") else Color.parseColor("#0F172A"))
+                setTextColor(if (selectedType.isEmpty()) themeColor(R.color.text_hint) else themeColor(R.color.text_primary))
                 setTypeface(typeface, if (selectedType.isEmpty()) android.graphics.Typeface.NORMAL else android.graphics.Typeface.BOLD)
                 setPadding(0, dp(8), 0, 0)
                 foreground = context.obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackground)).getDrawable(0)
@@ -139,7 +142,7 @@ class FeedbackActivity : AppCompatActivity() {
             })
             addView(TextView(this@FeedbackActivity).apply {
                 text = "• Bug反馈：发现App问题请选择此项\n• 活动投稿：参与活动或分享经验\n• 建议：功能改进建议或其他想法\n\n提交后管理员会在后台处理，处理结果会在消息通知中推送给你。"
-                setTextColor(Color.parseColor("#475569"))
+                setTextColor(themeColor(R.color.text_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
                 setLineSpacing(0f, 1.55f)
                 setPadding(0, dp(6), 0, 0)
@@ -159,7 +162,7 @@ class FeedbackActivity : AppCompatActivity() {
             .setItems(types) { _, which ->
                 selectedType = types[which]
                 typeLabel.text = "已选：$selectedType"
-                typeLabel.setTextColor(Color.parseColor("#0F172A"))
+                typeLabel.setTextColor(themeColor(R.color.text_primary))
                 typeLabel.setTypeface(typeLabel.typeface, android.graphics.Typeface.BOLD)
             }
             .show()

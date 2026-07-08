@@ -1,7 +1,6 @@
 package com.goudong.jd.ui.jd
 
 import android.content.Intent
-import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
 import android.util.TypedValue
@@ -36,6 +35,7 @@ import com.goudong.jd.ui.common.primaryButton
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
+import com.goudong.jd.ui.common.themeColor
 
 class JdGuestFragment : Fragment() {
     private lateinit var noticeText: TextView
@@ -50,14 +50,14 @@ class JdGuestFragment : Fragment() {
             setPadding(context.dp(16), context.dp(14), context.dp(16), context.dp(14))
             addView(TextView(context).apply {
                 text = "公告"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(requireContext().themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                 setTypeface(typeface, Typeface.BOLD)
                 gravity = Gravity.CENTER
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             })
             addView(android.view.View(context).apply {
-                setBackgroundColor(Color.parseColor("#E7EDF5"))
+                setBackgroundColor(requireContext().themeColor(R.color.border_default))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, context.dp(1)).apply {
                     topMargin = context.dp(10)
                     bottomMargin = context.dp(10)
@@ -65,7 +65,7 @@ class JdGuestFragment : Fragment() {
             })
             noticeText = TextView(context).apply {
                 text = "公告加载中..."
-                setTextColor(Color.parseColor("#475569"))
+                setTextColor(requireContext().themeColor(R.color.text_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setLineSpacing(0f, 1.4f)
             }
@@ -94,7 +94,7 @@ class JdGuestFragment : Fragment() {
             bottomRow.addView(noticeSpinner)
             refreshBtn = TextView(context).apply {
                 text = "刷新公告"
-                setTextColor(Color.parseColor("#94A3B8"))
+                setTextColor(requireContext().themeColor(R.color.text_hint))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 setPadding(context.dp(8), context.dp(4), context.dp(8), context.dp(4))
                 setOnClickListener { loadNotice() }

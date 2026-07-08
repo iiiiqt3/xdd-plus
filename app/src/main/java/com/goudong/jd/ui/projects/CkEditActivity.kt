@@ -26,6 +26,8 @@ import com.goudong.jd.ui.common.captionText
 import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.primaryButton
 import com.goudong.jd.ui.common.sectionTitle
+import com.goudong.jd.ui.common.themeColor
+import com.goudong.jd.ui.common.AppTheme
 
 class CkEditActivity : AppCompatActivity() {
     private lateinit var projectRemark: String
@@ -40,6 +42,7 @@ class CkEditActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.applySystemBars(this)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = "修改 CK"
 
@@ -51,7 +54,7 @@ class CkEditActivity : AppCompatActivity() {
         inputFields = intent.getSerializableExtra(EXTRA_INPUT_FIELDS) as? List<PortalActivityField> ?: emptyList()
 
         val scroll = ScrollView(this).apply {
-            setBackgroundColor(Color.parseColor("#F4F7FB"))
+            setBackgroundColor(themeColor(R.color.surface_soft))
         }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -91,7 +94,7 @@ class CkEditActivity : AppCompatActivity() {
 
                     if (prompt != key) {
                         addView(bodyText(prompt).apply {
-                            setTextColor(Color.parseColor("#94A3B8"))
+                            setTextColor(themeColor(R.color.text_hint))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                             setPadding(0, 0, 0, dp(6))
                         })
@@ -101,13 +104,13 @@ class CkEditActivity : AppCompatActivity() {
                     val input = EditText(context).apply {
                         hint = "请输入 $key 的值"
                         setText(inputValue)
-                        setTextColor(Color.parseColor("#0F172A"))
-                        setHintTextColor(Color.parseColor("#94A3B8"))
+                        setTextColor(themeColor(R.color.text_primary))
+                        setHintTextColor(themeColor(R.color.text_hint))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                         background = android.graphics.drawable.GradientDrawable().apply {
-                            setColor(Color.parseColor("#F8FAFC"))
+                            setColor(themeColor(R.color.input_bg))
                             cornerRadius = dp(12).toFloat()
-                            setStroke(dp(1), Color.parseColor("#D6E0EA"))
+                            setStroke(dp(1), themeColor(R.color.input_border))
                         }
                         setPadding(dp(14), dp(10), dp(14), dp(10))
                         inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
@@ -128,7 +131,7 @@ class CkEditActivity : AppCompatActivity() {
                 addView(captionText("提示：字段值将按模板自动拼接，无需手动输入连接符").apply {
                     setPadding(0, dp(6), 0, 0)
                     gravity = Gravity.END
-                    setTextColor(Color.parseColor("#94A3B8"))
+                    setTextColor(themeColor(R.color.text_hint))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 })
             } else {
@@ -136,13 +139,13 @@ class CkEditActivity : AppCompatActivity() {
                 fieldInputs["full"] = EditText(context).apply {
                     hint = "请输入完整的 CK 值"
                     setText(originalCk)
-                    setTextColor(Color.parseColor("#0F172A"))
-                    setHintTextColor(Color.parseColor("#94A3B8"))
+                    setTextColor(themeColor(R.color.text_primary))
+                    setHintTextColor(themeColor(R.color.text_hint))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     background = android.graphics.drawable.GradientDrawable().apply {
-                        setColor(Color.parseColor("#F8FAFC"))
+                        setColor(themeColor(R.color.input_bg))
                         cornerRadius = dp(12).toFloat()
-                        setStroke(dp(1), Color.parseColor("#D6E0EA"))
+                        setStroke(dp(1), themeColor(R.color.input_border))
                     }
                     setPadding(dp(14), dp(10), dp(14), dp(10))
                     inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
@@ -157,7 +160,7 @@ class CkEditActivity : AppCompatActivity() {
                 }.also { addView(it) }
 
                 addView(captionText("注意：请保留字段名和连接符格式").apply {
-                    setTextColor(Color.parseColor("#94A3B8"))
+                    setTextColor(themeColor(R.color.text_hint))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 })
             }
@@ -167,11 +170,11 @@ class CkEditActivity : AppCompatActivity() {
             addView(sectionTitle("保存预览"))
             previewText = TextView(this@CkEditActivity).apply {
                 text = buildPreview()
-                setTextColor(Color.parseColor("#334155"))
+                setTextColor(themeColor(R.color.text_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 setLineSpacing(0f, 1.5f)
                 background = android.graphics.drawable.GradientDrawable().apply {
-                    setColor(Color.parseColor("#F1F5F9"))
+                    setColor(themeColor(R.color.chip_bg))
                     cornerRadius = dp(10).toFloat()
                 }
                 setPadding(dp(14), dp(14), dp(14), dp(14))

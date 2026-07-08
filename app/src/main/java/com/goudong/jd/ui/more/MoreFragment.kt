@@ -21,6 +21,7 @@ import com.goudong.jd.ui.common.findFirstScrollView
 import com.goudong.jd.ui.common.wrapMainTabSwipe
 import com.goudong.jd.ui.common.makeScrollContainer
 import kotlinx.coroutines.launch
+import com.goudong.jd.ui.common.themeColor
 
 class MoreFragment : Fragment(), MainTabResettable {
     private var notificationBadge: TextView? = null
@@ -89,7 +90,7 @@ class MoreFragment : Fragment(), MainTabResettable {
             
             notificationBadge = TextView(requireContext()).apply {
                 text = ""
-                setTextColor(android.graphics.Color.WHITE)
+                setTextColor(requireContext().themeColor(R.color.chip_active_text))
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11f)
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 gravity = android.view.Gravity.CENTER
@@ -98,7 +99,7 @@ class MoreFragment : Fragment(), MainTabResettable {
                 
                 background = android.graphics.drawable.GradientDrawable().apply {
                     shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                    setColor(android.graphics.Color.parseColor("#EF4444"))
+                    setColor(requireContext().themeColor(R.color.brand_red))
                     cornerRadius = (badgeSize / 2).toFloat()
                 }
                 

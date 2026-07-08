@@ -4,8 +4,8 @@
         <item name="colorSecondary">@color/brand_secondary</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@color/surface_soft</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
         <item name="android:colorBackground">@color/surface_soft</item>
         <item name="colorSurface">@color/surface_card</item>
         <item name="android:textColorPrimary">@color/text_primary</item>

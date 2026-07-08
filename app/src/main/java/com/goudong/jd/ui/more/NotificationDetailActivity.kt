@@ -20,6 +20,8 @@ import com.goudong.jd.ui.common.captionText
 import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.makeScrollContainer
 import kotlinx.coroutines.launch
+import com.goudong.jd.ui.common.themeColor
+import com.goudong.jd.ui.common.AppTheme
 
 class NotificationDetailActivity : AppCompatActivity() {
     
@@ -32,6 +34,7 @@ class NotificationDetailActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        AppTheme.applySystemBars(this)
         notification = intent.getSerializableExtra(EXTRA_NOTIFICATION) as? PortalNotification 
             ?: run { finish(); return }
         
@@ -65,7 +68,7 @@ class NotificationDetailActivity : AppCompatActivity() {
             
             addView(TextView(ctx).apply {
                 text = notification.title ?: "无标题"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
                 setTypeface(typeface, Typeface.BOLD)
                 setPadding(0, 0, 0, dp(8))
@@ -79,7 +82,7 @@ class NotificationDetailActivity : AppCompatActivity() {
                     
                     addView(TextView(ctx).apply {
                         text = "📌 置顶通知"
-                        setTextColor(Color.parseColor("#EF4444"))
+                        setTextColor(themeColor(R.color.brand_red))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                         setTypeface(typeface, Typeface.BOLD)
                         background = android.graphics.drawable.GradientDrawable().apply {
@@ -93,7 +96,7 @@ class NotificationDetailActivity : AppCompatActivity() {
             
             if (!notification.category.isNullOrBlank()) {
                 addView(captionText("分类：${notification.category}").apply {
-                    setTextColor(Color.parseColor("#64748B"))
+                    setTextColor(themeColor(R.color.text_muted))
                     setPadding(0, 0, 0, dp(16))
                 })
             }
@@ -106,11 +109,11 @@ class NotificationDetailActivity : AppCompatActivity() {
                     topMargin = dp(12)
                     bottomMargin = dp(16)
                 }
-                setBackgroundColor(Color.parseColor("#E2E8F0"))
+                setBackgroundColor(themeColor(R.color.border_light))
             })
             
             addView(bodyText(notification.content ?: "暂无内容").apply {
-                setTextColor(Color.parseColor("#334155"))
+                setTextColor(themeColor(R.color.text_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14.5f)
                 setLineSpacing(0f, 1.7f)
                 setTextIsSelectable(true)
@@ -118,7 +121,7 @@ class NotificationDetailActivity : AppCompatActivity() {
             })
             
             addView(captionText("发布时间：${notification.createdAt ?: "-"}").apply {
-                setTextColor(Color.parseColor("#94A3B8"))
+                setTextColor(themeColor(R.color.text_hint))
                 gravity = Gravity.END
             })
         }

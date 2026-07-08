@@ -44,6 +44,7 @@ import com.goudong.jd.data.model.AppEnvironment
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import com.goudong.jd.ui.common.themeColor
 
 private data class JdTaskDef(val id: String, val name: String, val icon: String, val desc: String)
 
@@ -220,7 +221,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     setPadding(0, 0, 0, ctx.dp(8))
                     addView(TextView(ctx).apply {
                         text = "有效 $validCount / 共 ${list.size} 个账号"
-                        setTextColor(Color.parseColor("#0F172A"))
+                        setTextColor(requireContext().themeColor(R.color.text_primary))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                         setTypeface(typeface, Typeface.BOLD)
                         layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -253,21 +254,21 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 ?: "?").first().toString()
             infoRow.addView(TextView(ctx).apply {
                 text = initial
-                setTextColor(Color.WHITE)
+                setTextColor(requireContext().themeColor(R.color.chip_active_text))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 setTypeface(typeface, Typeface.BOLD)
                 gravity = Gravity.CENTER
                 layoutParams = LinearLayout.LayoutParams(ctx.dp(36), ctx.dp(36)).apply { marginEnd = ctx.dp(8) }
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(if (isPrimary) Color.parseColor("#3B82F6") else Color.parseColor("#94A3B8")) }
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(if (isPrimary) Color.parseColor("#3B82F6") else requireContext().themeColor(R.color.text_hint)) }
             })
             val textCol = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f) }
-            textCol.addView(TextView(ctx).apply { text = acc.nickname ?: acc.pin ?: "未知"; setTextColor(Color.parseColor("#0F172A")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTypeface(typeface, Typeface.BOLD) })
-            textCol.addView(TextView(ctx).apply { text = acc.pin ?: ""; setTextColor(Color.parseColor("#94A3B8")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) })
+            textCol.addView(TextView(ctx).apply { text = acc.nickname ?: acc.pin ?: "未知"; setTextColor(requireContext().themeColor(R.color.text_primary)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTypeface(typeface, Typeface.BOLD) })
+            textCol.addView(TextView(ctx).apply { text = acc.pin ?: ""; setTextColor(requireContext().themeColor(R.color.text_hint)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) })
             infoRow.addView(textCol)
             addView(infoRow)
             // 状态标签
             val tagText = if (isPrimary) "有效" else "失效"
-            val tagColor = if (isPrimary) Color.parseColor("#16A34A") else Color.parseColor("#DC2626")
+            val tagColor = if (isPrimary) requireContext().themeColor(R.color.positive) else requireContext().themeColor(R.color.negative)
             val tagBg = if (isPrimary) Color.parseColor("#DCFCE7") else Color.parseColor("#FEE2E2")
             addView(TextView(ctx).apply {
                 text = tagText; setTextColor(tagColor)
@@ -278,7 +279,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             })
             // 查询按钮
             addView(Button(ctx).apply {
-                text = "查询"; setTextColor(Color.WHITE); setAllCaps(false)
+                text = "查询"; setTextColor(requireContext().themeColor(R.color.chip_active_text)); setAllCaps(false)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 background = GradientDrawable().apply { setColor(Color.parseColor("#3B82F6")); cornerRadius = ctx.dp(8).toFloat() }
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, ctx.dp(36)).apply { topMargin = ctx.dp(8) }
@@ -335,7 +336,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         val ctx = requireContext()
         contentHost.addView(ctx.cardView().apply {
             setPadding(ctx.dp(16), ctx.dp(16), ctx.dp(16), ctx.dp(16))
-            addView(TextView(ctx).apply { text = "短信验证码登录"; setTextColor(Color.parseColor("#0F172A")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f); setTypeface(typeface, Typeface.BOLD) })
+            addView(TextView(ctx).apply { text = "短信验证码登录"; setTextColor(requireContext().themeColor(R.color.text_primary)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f); setTypeface(typeface, Typeface.BOLD) })
             addView(ctx.captionText("输入京东绑定的手机号，验证码登录后自动绑定到账号").apply { setPadding(0, ctx.dp(6), 0, ctx.dp(14)) })
             smsPhoneInput = ctx.inputField("请输入11位手机号", number = true).also { addView(it) }
             addView(spacer(12))
@@ -401,7 +402,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             background = GradientDrawable().apply { setColor(Color.parseColor("#FEF3C7")); cornerRadius = ctx.dp(10).toFloat(); setStroke(ctx.dp(1), Color.parseColor("#FDE68A")) }
             wxRiskMsg = TextView(ctx).apply { setTextColor(Color.parseColor("#D97706")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); text = "账号需要短信验证" }.also { addView(it) }
             wxRiskLink = TextView(ctx).apply { setTextColor(Color.parseColor("#2563EB")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f); paint?.isUnderlineText = true; setPadding(0, ctx.dp(6), 0, 0); setOnClickListener { wxRiskUrl?.let { url -> try { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) } catch (_: Exception) {} } } }.also { addView(it) }
-            val continueBtn = TextView(ctx).apply { text = "验证完成，继续刷新"; setTextColor(Color.WHITE); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); background = GradientDrawable().apply { setColor(Color.parseColor("#F59E0B")); cornerRadius = ctx.dp(8).toFloat() }; setPadding(ctx.dp(14), ctx.dp(8), ctx.dp(14), ctx.dp(8)); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = ctx.dp(10) }; setOnClickListener { continueWxRisk() } }
+            val continueBtn = TextView(ctx).apply { text = "验证完成，继续刷新"; setTextColor(requireContext().themeColor(R.color.chip_active_text)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); background = GradientDrawable().apply { setColor(Color.parseColor("#F59E0B")); cornerRadius = ctx.dp(8).toFloat() }; setPadding(ctx.dp(14), ctx.dp(8), ctx.dp(14), ctx.dp(8)); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = ctx.dp(10) }; setOnClickListener { continueWxRisk() } }
             addView(continueBtn)
         }.also { contentHost.addView(it) }
         wxResultText = ctx.bodyText("").apply { visibility = View.GONE; setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) }.also { contentHost.addView(it) }
@@ -434,9 +435,9 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 list.forEachIndexed { i, d ->
                     val card = ctx.cardView().apply {
                         setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
-                        addView(TextView(ctx).apply { text = "🟢 在线"; setTextColor(Color.parseColor("#16A34A")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f); setTypeface(typeface, Typeface.BOLD); background = GradientDrawable().apply { setColor(Color.parseColor("#DCFCE7")); cornerRadius = ctx.dp(4).toFloat() }; setPadding(ctx.dp(6), ctx.dp(2), ctx.dp(6), ctx.dp(2)) })
-                        addView(TextView(ctx).apply { text = d.nickname ?: d.wxid ?: "设备"; setTextColor(Color.parseColor("#0F172A")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTypeface(typeface, Typeface.BOLD); setPadding(0, ctx.dp(6), 0, 0) })
-                        addView(TextView(ctx).apply { text = d.wxid ?: ""; setTextColor(Color.parseColor("#94A3B8")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) })
+                        addView(TextView(ctx).apply { text = "🟢 在线"; setTextColor(requireContext().themeColor(R.color.positive)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f); setTypeface(typeface, Typeface.BOLD); background = GradientDrawable().apply { setColor(Color.parseColor("#DCFCE7")); cornerRadius = ctx.dp(4).toFloat() }; setPadding(ctx.dp(6), ctx.dp(2), ctx.dp(6), ctx.dp(2)) })
+                        addView(TextView(ctx).apply { text = d.nickname ?: d.wxid ?: "设备"; setTextColor(requireContext().themeColor(R.color.text_primary)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTypeface(typeface, Typeface.BOLD); setPadding(0, ctx.dp(6), 0, 0) })
+                        addView(TextView(ctx).apply { text = d.wxid ?: ""; setTextColor(requireContext().themeColor(R.color.text_hint)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) })
                         addView(TextView(ctx).apply { text = "刷新CK"; setTextColor(Color.parseColor("#3B82F6")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f); background = GradientDrawable().apply { setColor(Color.parseColor("#EFF6FF")); cornerRadius = ctx.dp(8).toFloat() }; setPadding(ctx.dp(10), ctx.dp(4), ctx.dp(10), ctx.dp(4)); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, ctx.dp(28)).apply { topMargin = ctx.dp(6) }; setOnClickListener { refreshWx(d, this) } })
                     }
                     if (i % 2 == 0) left.addView(card) else right.addView(card)
@@ -497,7 +498,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private fun renderTaskTab() {
         val ctx = requireContext()
         contentHost.addView(ctx.bodyText("选择任务和账号，点击执行开始").apply {
-            setTextColor(Color.parseColor("#64748B"))
+            setTextColor(requireContext().themeColor(R.color.text_muted))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             setPadding(0, 0, 0, ctx.dp(8))
         })
@@ -511,10 +512,10 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         contentHost.addView(ctx.cardView().apply {
             setPadding(ctx.dp(10), ctx.dp(8), ctx.dp(10), ctx.dp(8))
             val hdr = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-            hdr.addView(TextView(ctx).apply { text = "📋 执行日志"; setTextColor(Color.parseColor("#475569")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f); setTypeface(typeface, Typeface.BOLD); layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f) })
+            hdr.addView(TextView(ctx).apply { text = "📋 执行日志"; setTextColor(requireContext().themeColor(R.color.text_secondary)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f); setTypeface(typeface, Typeface.BOLD); layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f) })
             hdr.addView(makeSmallBtn("清空") { logLines.clear(); refreshLogView() })
             addView(hdr)
-            logText = ctx.bodyText("暂无日志").apply { setPadding(0, ctx.dp(4), 0, 0); setBackgroundColor(Color.parseColor("#F8FAFC")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f) }.also { addView(it) }
+            logText = ctx.bodyText("暂无日志").apply { setPadding(0, ctx.dp(4), 0, 0); setBackgroundColor(requireContext().themeColor(R.color.input_bg)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f) }.also { addView(it) }
         })
 
         lifecycleScope.launch {
@@ -536,25 +537,25 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         return ctx.cardView().apply {
             setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
             // 任务名
-            addView(TextView(ctx).apply { text = "${task.icon} ${task.name}"; setTextColor(Color.parseColor("#0F172A")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTypeface(typeface, Typeface.BOLD) })
+            addView(TextView(ctx).apply { text = "${task.icon} ${task.name}"; setTextColor(requireContext().themeColor(R.color.text_primary)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTypeface(typeface, Typeface.BOLD) })
             addView(ctx.captionText(task.desc).apply { setPadding(0, ctx.dp(2), 0, ctx.dp(4)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f) })
             // 已选账号（动态更新）
-            val label = TextView(ctx).apply { setTextColor(Color.parseColor("#64748B")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f); setPadding(0, 0, 0, ctx.dp(6)) }
+            val label = TextView(ctx).apply { setTextColor(requireContext().themeColor(R.color.text_muted)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f); setPadding(0, 0, 0, ctx.dp(6)) }
             selectedLabels[task.id] = label
             updateSelectedLabel(task)
             addView(label)
             // 选账号按钮（紧凑）
             addView(TextView(ctx).apply {
-                text = "选账号"; setTextColor(Color.parseColor("#374151")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                background = GradientDrawable().apply { setColor(Color.parseColor("#F3F4F6")); cornerRadius = ctx.dp(6).toFloat(); setStroke(ctx.dp(1), Color.parseColor("#D1D5DB")) }
+                text = "选账号"; setTextColor(requireContext().themeColor(R.color.text_secondary)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                background = GradientDrawable().apply { setColor(Color.parseColor("#F3F4F6")); cornerRadius = ctx.dp(6).toFloat(); setStroke(ctx.dp(1), requireContext().themeColor(R.color.border_default)) }
                 gravity = Gravity.CENTER; setPadding(0, ctx.dp(4), 0, ctx.dp(4))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, ctx.dp(28)).apply { bottomMargin = ctx.dp(6) }
                 setOnClickListener { showAccountPicker(task, selection, this) }
             })
             // 执行按钮
-            val btnColor = if (isRunning) Color.parseColor("#EF4444") else Color.parseColor("#3B82F6")
+            val btnColor = if (isRunning) requireContext().themeColor(R.color.brand_red) else Color.parseColor("#3B82F6")
             val execBtn = TextView(ctx).apply {
-                text = if (isRunning) "停止" else "执行"; setTextColor(Color.WHITE); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                text = if (isRunning) "停止" else "执行"; setTextColor(requireContext().themeColor(R.color.chip_active_text)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 background = GradientDrawable().apply { setColor(btnColor); cornerRadius = ctx.dp(8).toFloat() }
                 gravity = Gravity.CENTER; setPadding(0, ctx.dp(6), 0, ctx.dp(6))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, ctx.dp(32))
@@ -658,7 +659,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         subTabRow.addView(TextView(requireContext()).apply {
             text = label; setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             setTypeface(typeface, if (active) Typeface.BOLD else Typeface.NORMAL)
-            setTextColor(if (active) ContextCompat.getColor(context, R.color.brand_primary) else Color.parseColor("#64748B"))
+            setTextColor(if (active) ContextCompat.getColor(context, R.color.brand_primary) else requireContext().themeColor(R.color.text_muted))
             setPadding(context.dp(12), context.dp(6), context.dp(12), context.dp(6))
             background = GradientDrawable().apply { setColor(if (active) Color.parseColor("#EFF6FF") else Color.TRANSPARENT); cornerRadius = context.dp(8).toFloat() }
             setOnClickListener { onClick() }
@@ -667,8 +668,8 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     private fun makeSmallBtn(label: String, onClick: () -> Unit): TextView {
         return TextView(requireContext()).apply {
-            text = label; setTextColor(Color.parseColor("#64748B")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            background = GradientDrawable().apply { setColor(Color.parseColor("#F1F5F9")); cornerRadius = requireContext().dp(6).toFloat() }
+            text = label; setTextColor(requireContext().themeColor(R.color.text_muted)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            background = GradientDrawable().apply { setColor(requireContext().themeColor(R.color.chip_bg)); cornerRadius = requireContext().dp(6).toFloat() }
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, requireContext().dp(26)).apply { marginStart = requireContext().dp(6) }
             gravity = Gravity.CENTER
             setPadding(requireContext().dp(10), 0, requireContext().dp(10), 0)
@@ -679,7 +680,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private fun makeEmptyCard(message: String): View {
         val ctx = requireContext()
         return ctx.cardView().apply { setPadding(0, ctx.dp(20), 0, ctx.dp(20)); gravity = Gravity.CENTER
-            addView(ctx.bodyText(message).apply { textSize = 13f; gravity = Gravity.CENTER; setTextColor(Color.parseColor("#64748B")) })
+            addView(ctx.bodyText(message).apply { textSize = 13f; gravity = Gravity.CENTER; setTextColor(requireContext().themeColor(R.color.text_muted)) })
         }
     }
 

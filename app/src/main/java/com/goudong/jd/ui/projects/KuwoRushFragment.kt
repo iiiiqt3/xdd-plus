@@ -39,6 +39,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import com.goudong.jd.ui.common.themeColor
 
 class KuwoRushFragment : Fragment() {
     private lateinit var contentRoot: LinearLayout
@@ -120,7 +121,7 @@ class KuwoRushFragment : Fragment() {
 
         contentRoot.addView(TextView(ctx).apply {
             text = "酷我提现"
-            setTextColor(Color.parseColor("#0F172A"))
+            setTextColor(requireContext().themeColor(R.color.text_primary))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
             setTypeface(typeface, Typeface.BOLD)
             setPadding(ctx.dp(14), ctx.dp(4), ctx.dp(14), ctx.dp(8))
@@ -141,7 +142,7 @@ class KuwoRushFragment : Fragment() {
 
         authHint = TextView(ctx).apply {
             visibility = View.GONE
-            setTextColor(Color.parseColor("#DC2626"))
+            setTextColor(requireContext().themeColor(R.color.negative))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
             setTypeface(typeface, Typeface.BOLD)
             background = GradientDrawable().apply {
@@ -162,7 +163,7 @@ class KuwoRushFragment : Fragment() {
             }
             addView(TextView(ctx).apply {
                 text = "账号配置"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(requireContext().themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 setTypeface(typeface, Typeface.BOLD)
             })
@@ -178,9 +179,9 @@ class KuwoRushFragment : Fragment() {
             accountSelectWrap?.addView(fieldLabel("选择抢兑账号"))
             accountSpinner = Spinner(ctx).apply {
                 background = GradientDrawable().apply {
-                    setColor(Color.WHITE)
+                    setColor(requireContext().themeColor(R.color.surface_card))
                     cornerRadius = ctx.dp(10).toFloat()
-                    setStroke(ctx.dp(1), Color.parseColor("#E2E8F0"))
+                    setStroke(ctx.dp(1), requireContext().themeColor(R.color.border_light))
                 }
                 setPadding(ctx.dp(8), ctx.dp(4), ctx.dp(8), ctx.dp(4))
                 onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -211,7 +212,7 @@ class KuwoRushFragment : Fragment() {
             }
             smsRow.addView(TextView(ctx).apply {
                 text = "发送验证码"
-                setTextColor(Color.WHITE)
+                setTextColor(requireContext().themeColor(R.color.chip_active_text))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 setTypeface(typeface, Typeface.BOLD)
                 gravity = Gravity.CENTER
@@ -223,7 +224,7 @@ class KuwoRushFragment : Fragment() {
                 setOnClickListener { sendSms() }
             })
             smsStatus = TextView(ctx).apply {
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(requireContext().themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                     marginStart = ctx.dp(10)
@@ -239,7 +240,7 @@ class KuwoRushFragment : Fragment() {
             }
             addView(TextView(ctx).apply {
                 text = "提现设置"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(requireContext().themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 setTypeface(typeface, Typeface.BOLD)
             })
@@ -268,15 +269,15 @@ class KuwoRushFragment : Fragment() {
                 orientation = LinearLayout.VERTICAL
                 setPadding(ctx.dp(12), ctx.dp(12), ctx.dp(12), ctx.dp(12))
                 background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#F8FAFC"))
+                    setColor(requireContext().themeColor(R.color.input_bg))
                     cornerRadius = ctx.dp(10).toFloat()
-                    setStroke(ctx.dp(1), Color.parseColor("#E2E8F0"))
+                    setStroke(ctx.dp(1), requireContext().themeColor(R.color.border_light))
                 }
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                     topMargin = ctx.dp(12)
                 }
-                nowTimeText = TextView(ctx).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f); setTextColor(Color.parseColor("#0F172A")) }
-                nextTimeText = TextView(ctx).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f); setTextColor(Color.parseColor("#0F172A")) }
+                nowTimeText = TextView(ctx).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f); setTextColor(requireContext().themeColor(R.color.text_primary)) }
+                nextTimeText = TextView(ctx).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f); setTextColor(requireContext().themeColor(R.color.text_primary)) }
                 timeHintText = TextView(ctx).apply {
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                     setTypeface(typeface, Typeface.BOLD)
@@ -289,7 +290,7 @@ class KuwoRushFragment : Fragment() {
 
             addView(TextView(ctx).apply {
                 text = "💡 抢兑说明\n• 抢兑时段：00:00、09:00、13:00、17:00、20:00\n• 抢兑时段前4分钟内开始，将倒计时到点抢兑\n• 非抢兑时段点击开始，将立即提交抢兑"
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(requireContext().themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
                 setLineSpacing(0f, 1.4f)
                 background = GradientDrawable().apply {
@@ -310,7 +311,7 @@ class KuwoRushFragment : Fragment() {
             withdrawBtn = TextView(ctx).apply {
                 text = "开始抢兑"
                 gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
+                setTextColor(requireContext().themeColor(R.color.chip_active_text))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 setTypeface(typeface, Typeface.BOLD)
                 background = GradientDrawable(
@@ -328,9 +329,9 @@ class KuwoRushFragment : Fragment() {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setTypeface(typeface, Typeface.BOLD)
                 background = GradientDrawable().apply {
-                    setColor(Color.WHITE)
+                    setColor(requireContext().themeColor(R.color.surface_card))
                     cornerRadius = ctx.dp(10).toFloat()
-                    setStroke(ctx.dp(1), Color.parseColor("#E2E8F0"))
+                    setStroke(ctx.dp(1), requireContext().themeColor(R.color.border_light))
                 }
                 setPadding(ctx.dp(16), ctx.dp(10), ctx.dp(16), ctx.dp(10))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -351,12 +352,12 @@ class KuwoRushFragment : Fragment() {
             countdownText = TextView(ctx).apply {
                 visibility = View.GONE
                 gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
+                setTextColor(requireContext().themeColor(R.color.chip_active_text))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, Typeface.BOLD)
                 background = GradientDrawable(
                     GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.parseColor("#F59E0B"), Color.parseColor("#EF4444")),
+                    intArrayOf(Color.parseColor("#F59E0B"), requireContext().themeColor(R.color.brand_red)),
                 ).apply { cornerRadius = ctx.dp(10).toFloat() }
                 setPadding(0, ctx.dp(12), 0, ctx.dp(12))
             }
@@ -377,14 +378,14 @@ class KuwoRushFragment : Fragment() {
             }
             hdr.addView(TextView(ctx).apply {
                 text = "执行日志"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(requireContext().themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 setTypeface(typeface, Typeface.BOLD)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             })
             hdr.addView(TextView(ctx).apply {
                 text = "清空"
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(requireContext().themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 setPadding(ctx.dp(8), ctx.dp(4), ctx.dp(8), ctx.dp(4))
                 setOnClickListener { clearLogs() }
@@ -394,9 +395,9 @@ class KuwoRushFragment : Fragment() {
             logText = ctx.bodyText("").apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 typeface = Typeface.MONOSPACE
-                setTextColor(Color.parseColor("#475569"))
+                setTextColor(requireContext().themeColor(R.color.text_secondary))
                 setLineSpacing(0f, 1.5f)
-                setBackgroundColor(Color.parseColor("#F8FAFC"))
+                setBackgroundColor(requireContext().themeColor(R.color.input_bg))
                 setPadding(ctx.dp(10), ctx.dp(10), ctx.dp(10), ctx.dp(10))
             }
             addView(logText)
@@ -408,7 +409,7 @@ class KuwoRushFragment : Fragment() {
 
     private fun fieldLabel(text: String) = TextView(requireContext()).apply {
         this.text = text
-        setTextColor(Color.parseColor("#64748B"))
+        setTextColor(requireContext().themeColor(R.color.text_muted))
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
     }
 
@@ -417,12 +418,12 @@ class KuwoRushFragment : Fragment() {
         isFocusable = false
         setHint(hint)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-        setTextColor(Color.parseColor("#64748B"))
+        setTextColor(requireContext().themeColor(R.color.text_muted))
         setPadding(requireContext().dp(12), requireContext().dp(10), requireContext().dp(12), requireContext().dp(10))
         background = GradientDrawable().apply {
-            setColor(Color.parseColor("#F1F5F9"))
+            setColor(requireContext().themeColor(R.color.chip_bg))
             cornerRadius = requireContext().dp(10).toFloat()
-            setStroke(requireContext().dp(1), Color.parseColor("#E2E8F0"))
+            setStroke(requireContext().dp(1), requireContext().themeColor(R.color.border_light))
         }
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
     }
@@ -432,9 +433,9 @@ class KuwoRushFragment : Fragment() {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
         setPadding(requireContext().dp(12), requireContext().dp(10), requireContext().dp(12), requireContext().dp(10))
         background = GradientDrawable().apply {
-            setColor(Color.WHITE)
+            setColor(requireContext().themeColor(R.color.surface_card))
             cornerRadius = requireContext().dp(10).toFloat()
-            setStroke(requireContext().dp(1), Color.parseColor("#E2E8F0"))
+            setStroke(requireContext().dp(1), requireContext().themeColor(R.color.border_light))
         }
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
     }
@@ -557,7 +558,7 @@ class KuwoRushFragment : Fragment() {
         passwordInput?.setText(password)
         smsInput?.setText("")
         smsStatus?.text = ""
-        smsStatus?.setTextColor(Color.parseColor("#64748B"))
+        smsStatus?.setTextColor(requireContext().themeColor(R.color.text_muted))
     }
 
     private fun updateTimeDisplay() {
@@ -569,12 +570,12 @@ class KuwoRushFragment : Fragment() {
             info.inWindow && info.diffMin > 0 -> {
                 nextTimeText?.text = "⏰ 下次抢兑：$nextLabel（${info.diffMin}分钟后）"
                 timeHintText?.text = "✅ 可点击【开始抢兑】自动倒计时到点提交"
-                timeHintText?.setTextColor(Color.parseColor("#059669"))
+                timeHintText?.setTextColor(requireContext().themeColor(R.color.positive))
             }
             info.inWindow && info.diffMin == 0 -> {
                 nextTimeText?.text = "⏰ 下次抢兑：$nextLabel（当前时段）"
                 timeHintText?.text = "🚀 当前为抢兑时段，点击可直接提交"
-                timeHintText?.setTextColor(Color.parseColor("#DC2626"))
+                timeHintText?.setTextColor(requireContext().themeColor(R.color.negative))
             }
             else -> {
                 nextTimeText?.text = "⏰ 下次抢兑：$nextLabel（还有${info.diffMin}分钟）"
@@ -612,13 +613,13 @@ class KuwoRushFragment : Fragment() {
                 .onSuccess {
                     val masked = if (phone.length >= 11) phone.substring(0, 3) + "****" + phone.substring(7) else phone
                     smsStatus?.text = "✅ 已发送至 $masked"
-                    smsStatus?.setTextColor(Color.parseColor("#059669"))
+                    smsStatus?.setTextColor(requireContext().themeColor(R.color.positive))
                     appendLog("验证码已发送，请输入验证码")
                     toast("验证码已发送")
                 }
                 .onFailure {
                     smsStatus?.text = "❌ ${it.message}"
-                    smsStatus?.setTextColor(Color.parseColor("#DC2626"))
+                    smsStatus?.setTextColor(requireContext().themeColor(R.color.negative))
                     appendLog("发送失败: ${it.message}")
                     handlePortalError(it)
                 }

@@ -40,6 +40,7 @@ import com.goudong.jd.push.PushCheckWorker
 import com.goudong.jd.ui.more.NotificationListActivity
 import android.os.Handler
 import android.os.Looper
+import com.goudong.jd.ui.common.themeColor
 
 class HomeFragment : Fragment(), MainTabResettable {
     private lateinit var summaryText: TextView
@@ -89,7 +90,7 @@ class HomeFragment : Fragment(), MainTabResettable {
                 setPadding(0, requireContext().dp(6), 0, requireContext().dp(8))
                 addView(TextView(context).apply {
                     text = "正在加载通知..."
-                    setTextColor(Color.parseColor("#94A3B8"))
+                    setTextColor(requireContext().themeColor(R.color.text_hint))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                     id = View.generateViewId()
@@ -215,7 +216,7 @@ class HomeFragment : Fragment(), MainTabResettable {
 
             addView(TextView(ctx).apply {
                 text = label
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(requireContext().themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 setPadding(0, ctx.dp(3), 0, 0)
             })
@@ -331,7 +332,7 @@ class HomeFragment : Fragment(), MainTabResettable {
         if (notifications.size > 1) {
             notificationSection.addView(TextView(ctx).apply {
                 text = "共 ${notifications.size} 条通知"
-                setTextColor(Color.parseColor("#94A3B8"))
+                setTextColor(requireContext().themeColor(R.color.text_hint))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 setPadding(0, ctx.dp(4), 0, ctx.dp(6))
             })
@@ -361,7 +362,7 @@ class HomeFragment : Fragment(), MainTabResettable {
                         else -> "📄 "
                     }
                     text = "$prefix${item.title ?: "无标题"}"
-                    setTextColor(if (item.isTop == true || !item.isRead) Color.parseColor("#0F172A") else Color.parseColor("#475569"))
+                    setTextColor(if (item.isTop == true || !item.isRead) requireContext().themeColor(R.color.text_primary) else requireContext().themeColor(R.color.text_secondary))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     setTypeface(typeface, if (item.isTop == true) Typeface.BOLD else Typeface.NORMAL)
                     maxLines = 1
@@ -388,7 +389,7 @@ class HomeFragment : Fragment(), MainTabResettable {
         if (notifications.size > 3) {
             notificationSection.addView(TextView(ctx).apply {
                 text = "还有 ${notifications.size - 3} 条..."
-                setTextColor(Color.parseColor("#94A3B8"))
+                setTextColor(requireContext().themeColor(R.color.text_hint))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 gravity = Gravity.END
                 setPadding(0, ctx.dp(4), 0, 0)

@@ -30,6 +30,8 @@ import com.goudong.jd.ui.common.inputField
 import com.goudong.jd.ui.common.primaryButton
 import com.goudong.jd.ui.common.sectionTitle
 import kotlinx.coroutines.launch
+import com.goudong.jd.ui.common.themeColor
+import com.goudong.jd.ui.common.AppTheme
 
 class ProjectFormActivity : AppCompatActivity() {
 
@@ -38,6 +40,7 @@ class ProjectFormActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.applySystemBars(this)
         @Suppress("DEPRECATION")
         activityItem = intent.getSerializableExtra(EXTRA_ACTIVITY) as? PortalActivity
             ?: return finish()
@@ -45,7 +48,7 @@ class ProjectFormActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         val scroll = ScrollView(this).apply {
-            setBackgroundColor(Color.parseColor("#F4F7FB"))
+            setBackgroundColor(themeColor(R.color.surface_soft))
         }
         applySafeStatusBar(scroll)
         val root = LinearLayout(this).apply {
@@ -62,7 +65,7 @@ class ProjectFormActivity : AppCompatActivity() {
             // 项目名
             addView(TextView(context).apply {
                 text = activityItem.name ?: "未命名项目"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
                 setTypeface(typeface, Typeface.BOLD)
             })
@@ -80,13 +83,13 @@ class ProjectFormActivity : AppCompatActivity() {
             })
             // 分割线
             addView(android.view.View(context).apply {
-                setBackgroundColor(Color.parseColor("#E7EDF5"))
+                setBackgroundColor(themeColor(R.color.border_default))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1))
             })
             // 填写说明标题
             addView(TextView(context).apply {
                 text = "填写说明"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, Typeface.BOLD)
                 setPadding(0, dp(18), 0, dp(8))
@@ -95,9 +98,9 @@ class ProjectFormActivity : AppCompatActivity() {
                 addView(LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
                     background = android.graphics.drawable.GradientDrawable().apply {
-                        setColor(Color.parseColor("#F8FAFC"))
+                        setColor(themeColor(R.color.input_bg))
                         cornerRadius = dp(14).toFloat()
-                        setStroke(dp(1), Color.parseColor("#E2E8F0"))
+                        setStroke(dp(1), themeColor(R.color.border_light))
                     }
                     setPadding(dp(14), dp(12), dp(14), dp(12))
                     layoutParams = LinearLayout.LayoutParams(
@@ -108,7 +111,7 @@ class ProjectFormActivity : AppCompatActivity() {
                     }
                     addView(TextView(context).apply {
                         text = "玩法和说明"
-                        setTextColor(Color.parseColor("#0F172A"))
+                        setTextColor(themeColor(R.color.text_primary))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                         setTypeface(typeface, Typeface.BOLD)
                     })
@@ -142,7 +145,7 @@ class ProjectFormActivity : AppCompatActivity() {
             activityItem.inputFields.orEmpty().forEach { field ->
                 addView(TextView(context).apply {
                     text = field.prompt ?: field.key ?: "输入项"
-                    setTextColor(Color.parseColor("#475569"))
+                    setTextColor(themeColor(R.color.text_secondary))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                     setPadding(0, dp(14), 0, dp(6))
                 })
@@ -153,7 +156,7 @@ class ProjectFormActivity : AppCompatActivity() {
             // 备注名
             addView(TextView(context).apply {
                 text = "用户备注名"
-                setTextColor(Color.parseColor("#475569"))
+                setTextColor(themeColor(R.color.text_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                 setPadding(0, dp(14), 0, dp(6))
             })
@@ -165,7 +168,7 @@ class ProjectFormActivity : AppCompatActivity() {
                     val minDays = activityItem.minDays ?: 1
                     addView(TextView(context).apply {
                         text = "授权天数（最少${minDays}天）"
-                        setTextColor(Color.parseColor("#475569"))
+                        setTextColor(themeColor(R.color.text_secondary))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                         setPadding(0, dp(14), 0, dp(6))
                     })
@@ -174,7 +177,7 @@ class ProjectFormActivity : AppCompatActivity() {
                 activityItem.isMonthlyDeduct == true -> {
                     addView(TextView(context).apply {
                         text = "授权月数"
-                        setTextColor(Color.parseColor("#475569"))
+                        setTextColor(themeColor(R.color.text_secondary))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                         setPadding(0, dp(14), 0, dp(6))
                     })

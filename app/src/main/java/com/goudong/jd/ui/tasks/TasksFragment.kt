@@ -34,6 +34,7 @@ import com.goudong.jd.ui.more.CoinLogActivity
 import com.goudong.jd.data.model.AppEnvironment
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
+import com.goudong.jd.ui.common.themeColor
 
 class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
 
@@ -95,7 +96,7 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
             setPadding(ctx.dp(14), ctx.dp(14), ctx.dp(14), ctx.dp(14))
             addView(TextView(ctx).apply {
                 text = "每日任务"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(ctx.themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, Typeface.BOLD)
             })
@@ -107,7 +108,7 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
                 setPadding(0, ctx.dp(10), 0, 0)
             }.also { addView(it) }
             authHintView = TextView(ctx).apply {
-                setTextColor(Color.parseColor("#DC2626"))
+                setTextColor(ctx.themeColor(R.color.negative))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 setPadding(0, ctx.dp(10), 0, 0)
                 visibility = View.GONE
@@ -119,7 +120,7 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
             }
             checkinBtn = Button(ctx).apply {
                 text = "每日打卡"
-                setTextColor(Color.WHITE)
+                setTextColor(ctx.themeColor(R.color.chip_active_text))
                 setAllCaps(false)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 background = GradientDrawable().apply {
@@ -131,7 +132,7 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
             }
             prayBtn = Button(ctx).apply {
                 text = "每日祈福"
-                setTextColor(Color.WHITE)
+                setTextColor(ctx.themeColor(R.color.chip_active_text))
                 setAllCaps(false)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 background = GradientDrawable().apply {
@@ -155,7 +156,7 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
             setPadding(context.dp(14), context.dp(14), context.dp(14), context.dp(14))
             addView(TextView(context).apply {
                 text = "卡密兑换"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(ctx.themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, Typeface.BOLD)
             })
@@ -163,7 +164,7 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
             addView(redeemInput)
             addView(Button(context).apply {
                 text = "兑换"
-                setTextColor(Color.WHITE)
+                setTextColor(ctx.themeColor(R.color.chip_active_text))
                 setAllCaps(false)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 background = GradientDrawable().apply {
@@ -212,7 +213,7 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
             setPadding(ctx.dp(14), ctx.dp(14), ctx.dp(14), ctx.dp(14))
             addView(TextView(ctx).apply {
                 text = "积分变动记录"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(ctx.themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, Typeface.BOLD)
             })
@@ -221,7 +222,7 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
             })
             addView(Button(ctx).apply {
                 text = "查看记录"
-                setTextColor(Color.WHITE)
+                setTextColor(ctx.themeColor(R.color.chip_active_text))
                 setAllCaps(false)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 background = GradientDrawable().apply {
@@ -251,7 +252,7 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
         })
         card.addView(TextView(requireContext()).apply {
             text = desc
-            setTextColor(Color.parseColor("#94A3B8"))
+            setTextColor(requireContext().themeColor(R.color.text_hint))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
             setPadding(0, requireContext().dp(2), 0, 0)
         })
@@ -309,15 +310,15 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
             "已达最高档"
         }
         val topRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        topRow.addView(makeStatTile("连续打卡", "${d.continuousDays} 天", Color.parseColor("#2563EB")))
+        topRow.addView(makeStatTile("连续打卡", "${d.continuousDays} 天", ctx.themeColor(R.color.brand_primary)))
         topRow.addView(makeStatTile("今日状态", if (d.checkedInToday) "已打卡" else "未打卡",
-            if (d.checkedInToday) Color.parseColor("#059669") else Color.parseColor("#64748B")))
+            if (d.checkedInToday) ctx.themeColor(R.color.positive) else ctx.themeColor(R.color.text_muted)))
         val bottomRow = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, ctx.dp(8), 0, 0)
         }
-        bottomRow.addView(makeStatTile("下次奖励", bonusText, Color.parseColor("#D97706")))
-        bottomRow.addView(makeStatTile("今日打卡", "${d.todayCheckInCount} 人", Color.parseColor("#7C3AED")))
+        bottomRow.addView(makeStatTile("下次奖励", bonusText, ctx.themeColor(R.color.brand_orange)))
+        bottomRow.addView(makeStatTile("今日打卡", "${d.todayCheckInCount} 人", ctx.themeColor(R.color.brand_secondary)))
         return LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             addView(topRow)
@@ -333,13 +334,13 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
                 marginEnd = ctx.dp(4)
             }
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#F8FAFC"))
+                setColor(ctx.themeColor(R.color.input_bg))
                 cornerRadius = ctx.dp(8).toFloat()
             }
             setPadding(ctx.dp(10), ctx.dp(10), ctx.dp(10), ctx.dp(10))
             addView(TextView(ctx).apply {
                 text = label
-                setTextColor(Color.parseColor("#94A3B8"))
+                setTextColor(ctx.themeColor(R.color.text_hint))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
             })
             addView(TextView(ctx).apply {

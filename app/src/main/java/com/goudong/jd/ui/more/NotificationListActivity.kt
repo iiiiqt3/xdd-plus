@@ -26,6 +26,8 @@ import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.common.makeScrollContainer
 import kotlinx.coroutines.launch
+import com.goudong.jd.ui.common.themeColor
+import com.goudong.jd.ui.common.AppTheme
 
 class NotificationListActivity : AppCompatActivity() {
     private lateinit var contentRoot: LinearLayout
@@ -33,6 +35,7 @@ class NotificationListActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.applySystemBars(this)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         val wrapper = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -114,7 +117,7 @@ class NotificationListActivity : AppCompatActivity() {
             })
             addView(TextView(this@NotificationListActivity).apply {
                 text = "加载中..."
-                setTextColor(Color.parseColor("#94A3B8"))
+                setTextColor(themeColor(R.color.text_hint))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 gravity = Gravity.CENTER
                 setPadding(0, dp(10), 0, 0)
@@ -149,14 +152,14 @@ class NotificationListActivity : AppCompatActivity() {
                     }
                     background = android.graphics.drawable.GradientDrawable().apply {
                         shape = android.graphics.drawable.GradientDrawable.OVAL
-                        setColor(Color.parseColor("#EF4444"))
+                        setColor(themeColor(R.color.brand_red))
                     }
                 })
             }
 
             val titleText = TextView(context).apply {
                 text = item.title ?: "无标题"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, if (item.isTop == true) Typeface.BOLD else Typeface.NORMAL)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -166,11 +169,11 @@ class NotificationListActivity : AppCompatActivity() {
             if (item.isTop == true) {
                 topRow.addView(TextView(context).apply {
                     text = "置顶"
-                    setTextColor(Color.parseColor("#FFFFFF"))
+                    setTextColor(themeColor(R.color.chip_active_text))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                     setTypeface(typeface, Typeface.BOLD)
                     background = android.graphics.drawable.GradientDrawable().apply {
-                        setColor(Color.parseColor("#EF4444"))
+                        setColor(themeColor(R.color.brand_red))
                         cornerRadius = dp(4).toFloat()
                     }
                     setPadding(dp(6), dp(1), dp(6), dp(1))
@@ -207,7 +210,7 @@ class NotificationListActivity : AppCompatActivity() {
                 val preview = if (content.length > 120) content.take(120) + "..." else content
                 addView(TextView(context).apply {
                     text = preview
-                    setTextColor(Color.parseColor("#475569"))
+                    setTextColor(themeColor(R.color.text_secondary))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.2f)
                     setLineSpacing(0f, 1.28f)
                     setPadding(0, dp(6), 0, 0)
@@ -237,7 +240,7 @@ class NotificationListActivity : AppCompatActivity() {
             setPadding(0, dp(48), 0, dp(48))
             addView(bodyText(message).apply {
                 gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#94A3B8"))
+                setTextColor(themeColor(R.color.text_hint))
             })
         }
     }

@@ -1,7 +1,6 @@
 package com.goudong.jd.ui.more
 
 import android.content.Intent
-import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.util.TypedValue
@@ -15,7 +14,9 @@ import androidx.lifecycle.lifecycleScope
 import com.goudong.jd.AppServices
 import com.goudong.jd.BuildConfig
 import com.goudong.jd.R
+import com.goudong.jd.ui.common.AppTheme
 import com.goudong.jd.ui.common.bodyText
+import com.goudong.jd.ui.common.themeColor
 import com.goudong.jd.ui.common.cardView
 import com.goudong.jd.ui.common.captionText
 import com.goudong.jd.ui.common.dp
@@ -30,6 +31,7 @@ class AboutVersionActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.applySystemBars(this)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = "关于版本"
 
@@ -157,14 +159,14 @@ class AboutVersionActivity : AppCompatActivity() {
 
             addView(TextView(this@AboutVersionActivity).apply {
                 text = label
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.35f)
             })
 
             addView(TextView(this@AboutVersionActivity).apply {
                 text = value
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.65f)

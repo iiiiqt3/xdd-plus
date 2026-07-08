@@ -50,6 +50,7 @@ import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
+import com.goudong.jd.ui.common.themeColor
 
 class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private lateinit var contentRoot: LinearLayout
@@ -118,7 +119,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setPadding(requireContext().dp(14), requireContext().dp(10), requireContext().dp(14), requireContext().dp(10))
             setBackgroundDrawable(GradientDrawable().apply {
-                setColor(Color.parseColor("#F1F5F9"))
+                setColor(requireContext().themeColor(R.color.chip_bg))
                 cornerRadius = requireContext().dp(10).toFloat()
             })
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -229,7 +230,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             })
             addView(TextView(requireContext()).apply {
                 text = "加载中..."
-                setTextColor(Color.parseColor("#94A3B8"))
+                setTextColor(requireContext().themeColor(R.color.text_hint))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 gravity = Gravity.CENTER
                 setPadding(0, requireContext().dp(10), 0, 0)
@@ -247,9 +248,9 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 text = cat
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 setTypeface(typeface, Typeface.BOLD)
-                setTextColor(if (isSelected) Color.WHITE else Color.parseColor("#475569"))
+                setTextColor(if (isSelected) requireContext().themeColor(R.color.chip_active_text) else requireContext().themeColor(R.color.text_secondary))
                 background = GradientDrawable().apply {
-                    setColor(if (isSelected) brandBlue else Color.parseColor("#F1F5F9"))
+                    setColor(if (isSelected) brandBlue else requireContext().themeColor(R.color.chip_bg))
                     cornerRadius = requireContext().dp(16).toFloat()
                 }
                 setPadding(requireContext().dp(14), requireContext().dp(6), requireContext().dp(14), requireContext().dp(6))
@@ -362,13 +363,13 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             }
             infoWrap.addView(TextView(context).apply {
                 text = item.name ?: "未命名项目"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(requireContext().themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, Typeface.BOLD)
             })
             infoWrap.addView(TextView(context).apply {
                 text = "青龙：${item.qingLongConfig ?: "默认容器"}"
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(requireContext().themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
                 setPadding(0, context.dp(4), 0, context.dp(6))
             })
@@ -385,7 +386,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     else -> "一次性上车"
                 }
                 setTextColor(when {
-                    daily -> Color.parseColor("#059669")
+                    daily -> requireContext().themeColor(R.color.positive)
                     monthly -> Color.parseColor("#7C3AED")
                     else -> Color.parseColor("#0369A1")
                 })
@@ -421,7 +422,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 val preview = if (guideText.length > 56) guideText.take(56) + "..." else guideText
                 infoWrap.addView(TextView(context).apply {
                     text = "玩法摘要：$preview"
-                    setTextColor(Color.parseColor("#64748B"))
+                    setTextColor(requireContext().themeColor(R.color.text_muted))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                     setLineSpacing(0f, 1.25f)
                     setPadding(0, context.dp(8), 0, 0)
@@ -456,7 +457,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             })
             topRow.addView(TextView(context).apply {
                 text = "共 ${items.size} 个账号"
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(requireContext().themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             })
             addView(topRow)
@@ -530,7 +531,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     setColor(if (expanded) Color.parseColor("#FEF3C7") else Color.parseColor("#DCFCE7"))
                     cornerRadius = context.dp(10).toFloat()
                 }
-                setTextColor(if (expanded) Color.parseColor("#B45309") else Color.parseColor("#15803D"))
+                setTextColor(if (expanded) Color.parseColor("#B45309") else requireContext().themeColor(R.color.positive))
             }
             actionRow.addView(queryBtn)
             actionRow.addView(View(context).apply {
@@ -574,9 +575,9 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             orientation = LinearLayout.VERTICAL
             setPadding(context.dp(12), context.dp(10), context.dp(12), context.dp(10))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#F8FAFC"))
+                setColor(requireContext().themeColor(R.color.input_bg))
                 cornerRadius = context.dp(12).toFloat()
-                setStroke(context.dp(1), Color.parseColor("#E7EDF5"))
+                setStroke(context.dp(1), requireContext().themeColor(R.color.border_default))
             }
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = context.dp(8)
@@ -584,7 +585,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             val nameRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL ; gravity = Gravity.CENTER_VERTICAL }
             nameRow.addView(TextView(context).apply {
                 text = item.displayName ?: item.remark ?: item.activityName ?: "项目"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(requireContext().themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setTypeface(typeface, Typeface.BOLD)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -595,14 +596,14 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     "active" -> ContextCompat.getColor(context, R.color.brand_green)
                     "expiring" -> ContextCompat.getColor(context, R.color.brand_orange)
                     "expired" -> ContextCompat.getColor(context, R.color.brand_red)
-                    else -> Color.parseColor("#64748B")
+                    else -> requireContext().themeColor(R.color.text_muted)
                 })
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             })
             addView(nameRow)
             addView(TextView(context).apply {
                 text = "到期：${item.expireDate ?: "长期"}  ·  ${item.qingLongConfig ?: "默认容器"}"
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(requireContext().themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 setPadding(0, context.dp(3), 0, context.dp(8))
             })
@@ -785,7 +786,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             if (unitPrice != null && n > 0) {
                 val total = unitPrice * n
                 totalView.text = "💰 预计扣除：$total 积分（${n}${unit} × ${unitPrice}积分/${unit}）"
-                totalView.setTextColor(android.graphics.Color.parseColor("#E53935"))
+                totalView.setTextColor(requireContext().themeColor(R.color.brand_red))
             } else {
                 totalView.text = ""
             }
@@ -851,14 +852,14 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             }
             val titleText = TextView(context).apply {
                 text = "📖 什么是微信协议？"
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(requireContext().themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, Typeface.BOLD)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
             val toggleIcon = TextView(context).apply {
                 text = "▶"
-                setTextColor(Color.parseColor("#94A3B8"))
+                setTextColor(requireContext().themeColor(R.color.text_hint))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             }
             titleRow.addView(titleText)
@@ -1005,13 +1006,13 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 setPadding(0, requireContext().dp(24), 0, requireContext().dp(24))
                 addView(TextView(context).apply {
                     text = "📱 暂无微信协议设备"
-                    setTextColor(Color.parseColor("#64748B"))
+                    setTextColor(requireContext().themeColor(R.color.text_muted))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                     gravity = Gravity.CENTER
                 })
                 addView(TextView(context).apply {
                     text = "首次使用请点击下方「微信扫码登录」添加主设备"
-                    setTextColor(Color.parseColor("#94A3B8"))
+                    setTextColor(requireContext().themeColor(R.color.text_hint))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                     gravity = Gravity.CENTER
                     setPadding(0, context.dp(6), 0, 0)
@@ -1033,7 +1034,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
             if (isPrimary) {
                 background = GradientDrawable().apply {
-                    setColor(Color.WHITE)
+                    setColor(requireContext().themeColor(R.color.surface_card))
                     cornerRadius = context.dp(20).toFloat()
                     setStroke(context.dp(1), Color.parseColor("#BAE6FD"))
                 }
@@ -1062,11 +1063,11 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             } else {
                 headerRow.addView(TextView(context).apply {
                     text = "📋 监控"
-                    setTextColor(Color.parseColor("#64748B"))
+                    setTextColor(requireContext().themeColor(R.color.text_muted))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                     setTypeface(typeface, Typeface.BOLD)
                     background = GradientDrawable().apply {
-                        setColor(Color.parseColor("#F1F5F9"))
+                        setColor(requireContext().themeColor(R.color.chip_bg))
                         cornerRadius = context.dp(6).toFloat()
                     }
                     setPadding(context.dp(7), context.dp(2), context.dp(7), context.dp(2))
@@ -1078,7 +1079,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
             headerRow.addView(TextView(context).apply {
                 text = if (isOnline) "🟢 在线" else "🔴 离线"
-                setTextColor(if (isOnline) Color.parseColor("#16A34A") else Color.parseColor("#DC2626"))
+                setTextColor(if (isOnline) requireContext().themeColor(R.color.positive) else requireContext().themeColor(R.color.negative))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 setTypeface(typeface, Typeface.BOLD)
                 background = GradientDrawable().apply {
@@ -1093,7 +1094,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
             headerRow.addView(TextView(context).apply {
                 text = device.nickname ?: device.wxid ?: "未知"
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(requireContext().themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                 setTypeface(typeface, Typeface.BOLD)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -1103,7 +1104,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             if (!isPrimary) {
                 headerRow.addView(TextView(context).apply {
                     text = "✕"
-                    setTextColor(Color.parseColor("#94A3B8"))
+                    setTextColor(requireContext().themeColor(R.color.text_hint))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                     gravity = Gravity.CENTER
                     setOnClickListener {
@@ -1188,7 +1189,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             btnRow.addView(mkBtn("🔄 重登", "#F3E8FF", Color.parseColor("#7C3AED")) {
                 confirmWxActionForDevice("重新登录", "确认对${if (isPrimary) "主设备" else "监控设备"}执行「重新登录」？\n\n作用：设备掉线时重新上线，需要用手机微信扫码确认。\n不扣积分。", "/api/portal/wx/relogin", device.wxid)
             })
-            btnRow.addView(mkBtn("🚪 登出", "#F1F5F9", Color.parseColor("#475569")) {
+            btnRow.addView(mkBtn("🚪 登出", "#F1F5F9", requireContext().themeColor(R.color.text_secondary)) {
                 confirmWxActionForDevice("登出", "确认对${if (isPrimary) "主设备" else "监控设备"}执行「登出」？\n\n作用：退出当前登录的设备，设备将变为离线状态。\n不扣积分。", "/api/portal/wx/logout", device.wxid)
             })
             btnRow.addView(mkBtn("🗑️ 删除", "#FEF2F2", ContextCompat.getColor(context, R.color.brand_red)) {

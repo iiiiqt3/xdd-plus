@@ -167,6 +167,10 @@ data class CoinLog(
     val type: String? = null,
     val detail: String? = null,
     val source: String? = null,
+    val sourceLabel: String? = null,
+    val sourceTagCls: String? = null,
+    val clientSource: String? = null,
+    val clientPlatform: String? = null,
     val createdAt: String? = null,
 )
 

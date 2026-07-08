@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -19,17 +18,21 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.goudong.jd.R
+import com.goudong.jd.ui.common.AppTheme
+import com.goudong.jd.ui.common.themeColor
 
 class ResultTextActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.applySystemBars(this)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = intent.getStringExtra(EXTRA_TITLE) ?: "结果"
 
         val p = dp(16)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#F4F7FB"))
+            setBackgroundColor(themeColor(R.color.surface_soft))
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         }
         applySafeStatusBar(root)
@@ -39,9 +42,9 @@ class ResultTextActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(p, p, p, dp(12))
             background = GradientDrawable().apply {
-                setColor(Color.WHITE)
+                setColor(themeColor(R.color.surface_card))
                 cornerRadius = dp(16).toFloat()
-                setStroke(dp(1), Color.parseColor("#E7EDF5"))
+                setStroke(dp(1), themeColor(R.color.border_default))
             }
             elevation = dp(2).toFloat()
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -54,7 +57,7 @@ class ResultTextActivity : AppCompatActivity() {
 
         val textView = TextView(this).apply {
             text = intent.getStringExtra(EXTRA_TEXT).orEmpty()
-            setTextColor(Color.parseColor("#334155"))
+            setTextColor(themeColor(R.color.text_secondary))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f)
             setLineSpacing(0f, 1.5f)
             setTextIsSelectable(true)
@@ -67,12 +70,12 @@ class ResultTextActivity : AppCompatActivity() {
         // 复制按钮
         val copyBtn = TextView(this).apply {
             text = "复制全部内容"
-            setTextColor(Color.parseColor("#475569"))
+            setTextColor(themeColor(R.color.text_secondary))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(8), dp(12), dp(8))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#F1F5F9"))
+                setColor(themeColor(R.color.chip_bg))
                 cornerRadius = dp(10).toFloat()
             }
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
