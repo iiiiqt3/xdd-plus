@@ -480,6 +480,37 @@ func (c *PortalController) SubmitFeedback() {
 	c.ServeJSON()
 }
 
+// PushRegister App 登记极光 RegistrationID / 别名（登录后调用）
+func (c *PortalController) PushRegister() {
+	if c.PortalUserID <= 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "登录状态失效，请重新登录"}
+		c.ServeJSON()
+		return
+	}
+	var req struct {
+		RegistrationID string `json:"registrationId"`
+		Alias          string `json:"alias"`
+		Platform       string `json:"platform"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	alias := strings.TrimSpace(req.Alias)
+	if alias == "" {
+		alias = models.PortalJPushAlias(c.PortalUserID)
+	}
+	appVersion := strings.TrimSpace(c.Ctx.Input.Header("X-App-Version"))
+	if err := models.UpsertUserPushDevice(c.PortalUserID, req.RegistrationID, alias, appVersion); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "ok"}
+	c.ServeJSON()
+}
+
 func (c *PortalController) WxDelete() {
 	var req struct {
 		Wxid string `json:"wxid"`

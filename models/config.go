@@ -136,6 +136,7 @@ type Yaml struct {
 	RefreshTime         int    `yaml:"refresh_time"`
 	Title               string
 	PortalPublicURL     string `yaml:"portal_public_url"` // 门户/上传资源公网地址，用于QQ/微信群推送图片
+	Jpush               JpushConfig `yaml:"jpush"`
 }
 
 var Balance = "balance"

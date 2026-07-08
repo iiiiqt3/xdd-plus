@@ -136,6 +136,20 @@ func GetJdConfigForAdmin() map[string]interface{} {
 		"wxActiveProtocol": Config.WxProtocol.ActiveProtocol,
 		"wxScanLoginCost": Config.WxProtocol.ScanLoginCost,
 		"wxDeviceName":   Config.WxProtocol.DeviceName,
+		// 应用宝协议
+		"yybEnabled":            Config.Yyb.Enabled,
+		"yybResourceRoot":       Config.Yyb.ResourceRoot,
+		"yybDBFilename":         Config.Yyb.DBFilename,
+		"yybTCPProxy":           Config.Yyb.TCPProxy,
+		"yybScanLoginCost":      yybScanLoginCostForAdmin(),
+		"yybMaxAccountsPerUser": Config.Yyb.MaxAccountsPerUser,
+		"yybAPIToken":           Config.Yyb.APIToken,
+		"yybExposeInternalAPI":  Config.Yyb.ExposeInternalAPI,
+		// 极光推送
+		"jpushEnabled":      Config.Jpush.Enabled,
+		"jpushAppKey":       Config.Jpush.AppKey,
+		"jpushMasterSecret": Config.Jpush.MasterSecret,
+		"jpushProduction":   Config.Jpush.Production,
 		// 游戏配置
 		"guessNumberCost":     Config.Game.GuessNumberCost,
 		"guessNumberTimes":    Config.Game.GuessNumberTimes,
@@ -148,6 +162,16 @@ func GetJdConfigForAdmin() map[string]interface{} {
 		"duelDefaultBet":      Config.Game.DuelDefaultBet,
 		"duelMaxRooms":        Config.Game.DuelMaxRooms,
 	}
+}
+
+func yybScanLoginCostForAdmin() int {
+	if Config.Yyb.ScanLoginCost != nil {
+		return *Config.Yyb.ScanLoginCost
+	}
+	if Config.WxProtocol.ScanLoginCost > 0 {
+		return Config.WxProtocol.ScanLoginCost
+	}
+	return 2000
 }
 
 // dedupeTopLevelYAMLKeys 去除重复的顶级 YAML 键（保留第一次出现，清理历史误追加的重复项）
@@ -312,6 +336,46 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		configMap["wp_device_name"] = v
 	}
 
+	// 应用宝协议
+	if v, ok := req["yybEnabled"].(bool); ok {
+		configMap["yyb_enabled"] = fmt.Sprintf("%v", v)
+	}
+	if v, ok := req["yybResourceRoot"].(string); ok {
+		configMap["yyb_resource_root"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybDBFilename"].(string); ok {
+		configMap["yyb_db_filename"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybTCPProxy"].(string); ok {
+		configMap["yyb_tcp_proxy"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybScanLoginCost"].(float64); ok {
+		configMap["yyb_scan_login_cost"] = fmt.Sprintf("%d", int(v))
+	}
+	if v, ok := req["yybMaxAccountsPerUser"].(float64); ok {
+		configMap["yyb_max_accounts_per_user"] = fmt.Sprintf("%d", int(v))
+	}
+	if v, ok := req["yybAPIToken"].(string); ok {
+		configMap["yyb_api_token"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybExposeInternalAPI"].(bool); ok {
+		configMap["yyb_expose_internal_api"] = fmt.Sprintf("%v", v)
+	}
+
+	// 极光推送
+	if v, ok := req["jpushEnabled"].(bool); ok {
+		configMap["jpush_enabled"] = fmt.Sprintf("%v", v)
+	}
+	if v, ok := req["jpushAppKey"].(string); ok {
+		configMap["jpush_app_key"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["jpushMasterSecret"].(string); ok {
+		configMap["jpush_master_secret"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["jpushProduction"].(bool); ok {
+		configMap["jpush_production"] = fmt.Sprintf("%v", v)
+	}
+
 	// 游戏配置
 	if v, ok := req["guessNumberCost"].(float64); ok {
 		configMap["game.guess_number_cost"] = fmt.Sprintf("%d", int(v))
@@ -370,7 +434,11 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	var newLines []string
 	skipKeys := map[string]bool{"containers": true}
 	inWxProtocol := false
+	inYyb := false
+	inJpush := false
 	wxProtocolEndIdx := -1
+	yybEndIdx := -1
+	jpushEndIdx := -1
 
 	wpYamlKeys := map[string]string{
 		"wp_login_base_url":     "login_base_url",
@@ -378,6 +446,22 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		"wp_active_protocol":    "active_protocol",
 		"wp_scan_login_cost":    "scan_login_cost",
 		"wp_device_name":        "device_name",
+	}
+	yybYamlKeys := map[string]string{
+		"yyb_enabled":               "enabled",
+		"yyb_resource_root":         "resource_root",
+		"yyb_db_filename":           "db_filename",
+		"yyb_tcp_proxy":             "tcp_proxy",
+		"yyb_scan_login_cost":       "scan_login_cost",
+		"yyb_max_accounts_per_user": "max_accounts_per_user",
+		"yyb_api_token":             "api_token",
+		"yyb_expose_internal_api":   "expose_internal_api",
+	}
+	jpushYamlKeys := map[string]string{
+		"jpush_enabled":       "enabled",
+		"jpush_app_key":         "app_key",
+		"jpush_master_secret":   "master_secret",
+		"jpush_production":      "production",
 	}
 
 	isIndentedLine := func(line string) bool {
@@ -406,11 +490,31 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		if strings.HasPrefix(trimmed, "wx:") {
 			inWx = true
 			inWxProtocol = false
+			inYyb = false
+			inJpush = false
 			newLines = append(newLines, line)
 			continue
 		}
 		if strings.HasPrefix(trimmed, "wx_protocol:") {
 			inWxProtocol = true
+			inYyb = false
+			inJpush = false
+			inWx = false
+			newLines = append(newLines, line)
+			continue
+		}
+		if strings.HasPrefix(trimmed, "yyb:") {
+			inYyb = true
+			inJpush = false
+			inWxProtocol = false
+			inWx = false
+			newLines = append(newLines, line)
+			continue
+		}
+		if strings.HasPrefix(trimmed, "jpush:") {
+			inJpush = true
+			inYyb = false
+			inWxProtocol = false
 			inWx = false
 			newLines = append(newLines, line)
 			continue
@@ -418,6 +522,12 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		// wx_protocol 节遇到下一个顶级键时结束（注释/空行不算）
 		if inWxProtocol && isTopLevelKeyLine(line, trimmed) && !strings.HasPrefix(trimmed, "wx_protocol:") {
 			inWxProtocol = false
+		}
+		if inYyb && isTopLevelKeyLine(line, trimmed) && !strings.HasPrefix(trimmed, "yyb:") {
+			inYyb = false
+		}
+		if inJpush && isTopLevelKeyLine(line, trimmed) && !strings.HasPrefix(trimmed, "jpush:") {
+			inJpush = false
 		}
 		// wx 节遇到下一个顶级键时结束
 		if inWx && isTopLevelKeyLine(line, trimmed) && !strings.HasPrefix(trimmed, "wx:") {
@@ -454,6 +564,42 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		if inWxProtocol {
 			wxProtocolEndIdx = len(newLines) + 1
 		}
+		if inYyb && isIndentedLine(line) && strings.Contains(trimmed, ":") && !strings.HasPrefix(trimmed, "#") {
+			indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
+			for yybKey, yamlKey := range yybYamlKeys {
+				if strings.HasPrefix(trimmed, yamlKey+":") {
+					if newVal, ok := configMap[yybKey]; ok {
+						newLines = append(newLines, fmt.Sprintf("%s%s: %s", indent, yamlKey, newVal))
+						delete(configMap, yybKey)
+						goto next
+					}
+				}
+			}
+			yybEndIdx = len(newLines) + 1
+			newLines = append(newLines, line)
+			goto next
+		}
+		if inYyb {
+			yybEndIdx = len(newLines) + 1
+		}
+		if inJpush && isIndentedLine(line) && strings.Contains(trimmed, ":") && !strings.HasPrefix(trimmed, "#") {
+			indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
+			for jpKey, yamlKey := range jpushYamlKeys {
+				if strings.HasPrefix(trimmed, yamlKey+":") {
+					if newVal, ok := configMap[jpKey]; ok {
+						newLines = append(newLines, fmt.Sprintf("%s%s: %s", indent, yamlKey, newVal))
+						delete(configMap, jpKey)
+						goto next
+					}
+				}
+			}
+			jpushEndIdx = len(newLines) + 1
+			newLines = append(newLines, line)
+			goto next
+		}
+		if inJpush {
+			jpushEndIdx = len(newLines) + 1
+		}
 
 		// 处理顶级配置
 		if isTopLevelKeyLine(line, trimmed) {
@@ -483,6 +629,60 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	}
 	if len(wpInsertLines) > 0 {
 		newLines = append(newLines[:wxProtocolEndIdx], append(wpInsertLines, newLines[wxProtocolEndIdx:]...)...)
+	}
+
+	if yybEndIdx < 0 {
+		yybEndIdx = len(newLines)
+	}
+	var yybInsertLines []string
+	for yybKey, yamlKey := range yybYamlKeys {
+		if newVal, ok := configMap[yybKey]; ok {
+			yybInsertLines = append(yybInsertLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+			delete(configMap, yybKey)
+		}
+	}
+	if len(yybInsertLines) > 0 {
+		hasYybSection := false
+		for _, line := range newLines {
+			if strings.HasPrefix(strings.TrimSpace(line), "yyb:") {
+				hasYybSection = true
+				break
+			}
+		}
+		if hasYybSection {
+			newLines = append(newLines[:yybEndIdx], append(yybInsertLines, newLines[yybEndIdx:]...)...)
+		} else {
+			newLines = append(newLines, "", "# ==================== 应用宝协议配置 ====================")
+			newLines = append(newLines, "yyb:")
+			newLines = append(newLines, yybInsertLines...)
+		}
+	}
+
+	if jpushEndIdx < 0 {
+		jpushEndIdx = len(newLines)
+	}
+	var jpushInsertLines []string
+	for jpKey, yamlKey := range jpushYamlKeys {
+		if newVal, ok := configMap[jpKey]; ok {
+			jpushInsertLines = append(jpushInsertLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+			delete(configMap, jpKey)
+		}
+	}
+	if len(jpushInsertLines) > 0 {
+		hasJpushSection := false
+		for _, line := range newLines {
+			if strings.HasPrefix(strings.TrimSpace(line), "jpush:") {
+				hasJpushSection = true
+				break
+			}
+		}
+		if hasJpushSection {
+			newLines = append(newLines[:jpushEndIdx], append(jpushInsertLines, newLines[jpushEndIdx:]...)...)
+		} else {
+			newLines = append(newLines, "", "# ==================== 极光推送（狗东 App Android） ====================")
+			newLines = append(newLines, "jpush:")
+			newLines = append(newLines, jpushInsertLines...)
+		}
 	}
 
 	// 剩余未匹配项：更新已有同名顶级键，避免在文件末尾重复追加

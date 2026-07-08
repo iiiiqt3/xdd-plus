@@ -745,7 +745,7 @@
             <div class="nav-group-items" data-group="sys">
                 <div class="nav-sub-item" data-page="logmgmt" data-search="日志管理 log" onclick="switchPage('logmgmt')"><i class="fas fa-file-alt"></i><span>日志管理</span></div>
                 <div class="nav-sub-item" data-page="gameconfig" data-search="娱乐功能 游戏" onclick="switchPage('gameconfig')"><i class="fas fa-gamepad"></i><span>娱乐功能</span></div>
-                <div class="nav-sub-item" data-page="sysconfig" data-search="系统配置 设置 config" onclick="switchPage('sysconfig')"><i class="fas fa-cog"></i><span>系统配置</span></div>
+                <div class="nav-sub-item" data-page="sysconfig" data-search="系统配置 设置 config 应用宝 极光 推送 jpush yyb" onclick="switchPage('sysconfig')"><i class="fas fa-cog"></i><span>系统配置</span></div>
             </div>
         </div>
     </div>
@@ -6384,6 +6384,38 @@ async function loadSysConfig() {
                 </div>
             </div>
             <div class="config-section">
+                <div class="config-section-title"><i class="fas fa-mobile-alt"></i> 应用宝协议配置 <span class="tag tag-info" style="font-size:11px;">京东 CK 刷新 / 门户应用宝</span></div>
+                <div class="form-grid">
+                    <div class="form-item"><label>启用模块</label><select id="cfg_yybEnabled">${sel(cfg.yybEnabled)}</select></div>
+                    <div class="form-item"><label>每用户账号上限</label><input type="number" id="cfg_yybMaxAccountsPerUser" value="${cfg.yybMaxAccountsPerUser || 5}" min="1"></div>
+                    <div class="form-item"><label>扫码登录积分</label><input type="number" id="cfg_yybScanLoginCost" value="${cfg.yybScanLoginCost || 2000}" placeholder="留空则沿用微信协议扫码积分"></div>
+                    <div class="form-item"><label>暴露内部 API</label><select id="cfg_yybExposeInternalAPI">${sel(cfg.yybExposeInternalAPI)}</select></div>
+                    <div class="form-item full"><label>资源目录</label><input type="text" id="cfg_yybResourceRoot" value="${v(cfg.yybResourceRoot)}" placeholder="默认 yyb/resource"></div>
+                    <div class="form-item full"><label>数据库路径</label><input type="text" id="cfg_yybDBFilename" value="${v(cfg.yybDBFilename)}" placeholder="默认 yyb/resource/yyb.db"></div>
+                    <div class="form-item full"><label>TCP 代理</label><input type="text" id="cfg_yybTCPProxy" value="${v(cfg.yybTCPProxy)}" placeholder="socks5://127.0.0.1:1080"></div>
+                    <div class="form-item full"><label>API Token <span class="tip">脚本/内部接口鉴权</span></label>
+                        <div style="display:flex;gap:6px;position:relative;">
+                            <input type="password" id="cfg_yybAPIToken" value="${v(cfg.yybAPIToken)}" style="flex:1;" autocomplete="off">
+                            <button type="button" onclick="togglePasswordVisibility('cfg_yybAPIToken',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#909399;padding:4px;"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="config-section">
+                <div class="config-section-title"><i class="fas fa-bell"></i> 极光推送（狗东 App） <span class="tag tag-info" style="font-size:11px;">Android 通知推送</span></div>
+                <div class="form-grid">
+                    <div class="form-item"><label>启用推送</label><select id="cfg_jpushEnabled">${sel(cfg.jpushEnabled)}</select></div>
+                    <div class="form-item"><label>生产环境</label><select id="cfg_jpushProduction">${sel(cfg.jpushProduction)}</select></div>
+                    <div class="form-item full"><label>AppKey</label><input type="text" id="cfg_jpushAppKey" value="${v(cfg.jpushAppKey)}" placeholder="极光控制台 AppKey"></div>
+                    <div class="form-item full"><label>Master Secret</label>
+                        <div style="display:flex;gap:6px;position:relative;">
+                            <input type="password" id="cfg_jpushMasterSecret" value="${v(cfg.jpushMasterSecret)}" style="flex:1;" autocomplete="off" placeholder="极光控制台 Master Secret">
+                            <button type="button" onclick="togglePasswordVisibility('cfg_jpushMasterSecret',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#909399;padding:4px;"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="config-section">
                 <div class="config-section-title"><i class="fas fa-plug"></i> 第三方服务配置 <span class="tag tag-info" style="font-size:11px;">数据库存储</span></div>
                 <div class="form-grid">
                     <div class="form-item"><label>Image 用户名 <span class="tip">邮箱/账号</span></label><input type="text" id="sys_ImageUserName" value="${v(sys.ImageUserName)}"></div>
@@ -6470,6 +6502,18 @@ async function saveSysConfig() {
             wxActiveProtocol: (document.getElementById('cfg_wxActiveProtocol')||{}).value,
             wxScanLoginCost: parseInt((document.getElementById('cfg_wxScanLoginCost')||{}).value) || 2000,
             wxDeviceName: (document.getElementById('cfg_wxDeviceName')||{}).value,
+            yybEnabled: (document.getElementById('cfg_yybEnabled')||{}).value === 'true',
+            yybResourceRoot: (document.getElementById('cfg_yybResourceRoot')||{}).value || '',
+            yybDBFilename: (document.getElementById('cfg_yybDBFilename')||{}).value || '',
+            yybTCPProxy: (document.getElementById('cfg_yybTCPProxy')||{}).value || '',
+            yybScanLoginCost: parseInt((document.getElementById('cfg_yybScanLoginCost')||{}).value) || 0,
+            yybMaxAccountsPerUser: parseInt((document.getElementById('cfg_yybMaxAccountsPerUser')||{}).value) || 5,
+            yybAPIToken: (document.getElementById('cfg_yybAPIToken')||{}).value || '',
+            yybExposeInternalAPI: (document.getElementById('cfg_yybExposeInternalAPI')||{}).value === 'true',
+            jpushEnabled: (document.getElementById('cfg_jpushEnabled')||{}).value === 'true',
+            jpushAppKey: (document.getElementById('cfg_jpushAppKey')||{}).value || '',
+            jpushMasterSecret: (document.getElementById('cfg_jpushMasterSecret')||{}).value || '',
+            jpushProduction: (document.getElementById('cfg_jpushProduction')||{}).value === 'true',
             activityPushQQGroupId: (document.getElementById('cfg_activityPushQQGroupId')||{}).value || '',
             activityPushWXGroupId: (document.getElementById('cfg_activityPushWXGroupId')||{}).value || '',
         };

@@ -53,6 +53,7 @@ func initDB() {
 		&PortalCheckInRecord{},
 		&AppFeedback{},
 		&ClientSourceEvent{},
+		&UserPushDevice{},
 		&PortalWxDevice{},
 		&WxProtocolMigration{},
 		&CoinLog{},

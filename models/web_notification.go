@@ -197,6 +197,7 @@ func CreateAdminWebNotification(title, content, category, displayType string, is
 	if err := db.Create(n).Error; err != nil {
 		return nil, err
 	}
+	DispatchJPushNotification(n)
 	return n, nil
 }
 
@@ -216,7 +217,7 @@ func CreateSystemWebNotification(title, content, category, source string, userNu
 	if userNumber > 0 {
 		scope = "user"
 	}
-	return db.Create(&WebNotification{
+	n := &WebNotification{
 		Title:       title,
 		Content:     content,
 		Category:    normalizeNoticeCategory(category),
@@ -224,7 +225,12 @@ func CreateSystemWebNotification(title, content, category, source string, userNu
 		Channels:    channelsToString(NotifyChannels{Web: channels.Web, App: channels.App}),
 		TargetScope: scope,
 		TargetUser:  userNumber,
-	}).Error
+	}
+	if err := db.Create(n).Error; err != nil {
+		return err
+	}
+	DispatchJPushNotification(n)
+	return nil
 }
 
 // CleanupStaleOfflineNotifications 清理超过保留期的协议掉线提醒（网页/App 通知中心）

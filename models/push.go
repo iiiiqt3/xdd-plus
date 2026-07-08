@@ -1,11 +1,15 @@
 package models
 
 import (
+	"encoding/base64"
 	"encoding/json"
-	"github.com/beego/beego/v2/client/httplib"
-	"time"
+	"fmt"
+	"io"
 	"strconv" // 用于字符串转数字
-	"strings"  // 用于字符串判断 (修复 undefined: strings)
+	"strings" // 用于字符串判断 (修复 undefined: strings)
+	"time"
+
+	"github.com/beego/beego/v2/client/httplib"
 )
 
 // Push 推送消息到用户，根据用户配置推送到QQ、微信、TG等渠道
@@ -136,4 +140,141 @@ func qywxNotify(c *QywxConfig) {
 	req, _ = req.JSONBody(wx)
 	req.SetTimeout(time.Second*2, time.Second*2)
 	req.Response()
+}
+
+// JpushConfig 极光推送（仅 Android，本期不含 iOS）
+type JpushConfig struct {
+	Enabled      bool   `yaml:"enabled"`
+	AppKey       string `yaml:"app_key"`
+	MasterSecret string `yaml:"master_secret"`
+	Production   bool   `yaml:"production"`
+}
+
+func jpushConfig() JpushConfig {
+	return Config.Jpush
+}
+
+func JPushEnabled() bool {
+	cfg := jpushConfig()
+	return cfg.Enabled && strings.TrimSpace(cfg.AppKey) != "" && strings.TrimSpace(cfg.MasterSecret) != ""
+}
+
+// PortalJPushAlias 与安卓端一致的别名格式
+func PortalJPushAlias(userNumber int) string {
+	return fmt.Sprintf("portal_%d", userNumber)
+}
+
+func channelsIncludeApp(channels string) bool {
+	channels = strings.TrimSpace(channels)
+	if channels == "" {
+		return true
+	}
+	for _, part := range strings.Split(channels, ",") {
+		switch strings.ToLower(strings.TrimSpace(part)) {
+		case "app", "webapp", "所有", "all":
+			return true
+		}
+	}
+	return false
+}
+
+func summarizeNotificationBody(content string) string {
+	text := strings.TrimSpace(content)
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	if len([]rune(text)) > 120 {
+		rs := []rune(text)
+		return string(rs[:120]) + "..."
+	}
+	if text == "" {
+		return "您有一条新消息"
+	}
+	return text
+}
+
+// DispatchJPushNotification 门户通知写入后触发极光推送（异步）
+func DispatchJPushNotification(n *WebNotification) {
+	if n == nil || n.ID <= 0 || !JPushEnabled() {
+		return
+	}
+	if !channelsIncludeApp(n.Channels) {
+		return
+	}
+	title := strings.TrimSpace(n.Title)
+	if title == "" {
+		title = "狗东通知"
+	}
+	body := summarizeNotificationBody(n.Content)
+	extras := map[string]interface{}{
+		"notificationId": n.ID,
+		"category":       n.Category,
+		"source":         n.Source,
+	}
+	switch strings.TrimSpace(n.TargetScope) {
+	case TargetScopeUser:
+		if n.TargetUser <= 0 {
+			return
+		}
+		go func() {
+			if err := jpushSendToAlias([]string{PortalJPushAlias(n.TargetUser)}, title, body, extras); err != nil {
+				Warn("[极光推送] 单用户推送失败 user=%d id=%d: %v", n.TargetUser, n.ID, err)
+			}
+		}()
+	default:
+		go func() {
+			if err := jpushSendToAll(title, body, extras); err != nil {
+				Warn("[极光推送] 全体推送失败 id=%d: %v", n.ID, err)
+			}
+		}()
+	}
+}
+
+func jpushSendToAll(title, body string, extras map[string]interface{}) error {
+	return jpushSend("all", title, body, extras)
+}
+
+func jpushSendToAlias(aliases []string, title, body string, extras map[string]interface{}) error {
+	if len(aliases) == 0 {
+		return nil
+	}
+	audience := map[string]interface{}{"alias": aliases}
+	return jpushSend(audience, title, body, extras)
+}
+
+func jpushSend(audience interface{}, title, body string, extras map[string]interface{}) error {
+	cfg := jpushConfig()
+	payload := map[string]interface{}{
+		"platform": "android",
+		"audience": audience,
+		"notification": map[string]interface{}{
+			"android": map[string]interface{}{
+				"alert":  body,
+				"title":  title,
+				"extras": extras,
+			},
+		},
+	}
+	if cfg.Production {
+		payload["options"] = map[string]interface{}{"apns_production": true}
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	auth := base64.StdEncoding.EncodeToString([]byte(cfg.AppKey + ":" + cfg.MasterSecret))
+	req := httplib.Post("https://api.jpush.cn/v3/push").
+		Header("Authorization", "Basic "+auth).
+		Header("Content-Type", "application/json").
+		SetTimeout(15*time.Second, 15*time.Second)
+	req.Body(raw)
+	resp, err := req.Response()
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("status %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
+	}
+	Info("[极光推送] 已发送 title=%s audience=%v", title, audience)
+	return nil
 }
