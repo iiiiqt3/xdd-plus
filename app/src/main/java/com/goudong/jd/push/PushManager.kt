@@ -9,6 +9,8 @@ import com.goudong.jd.AppServices
 
 object PushManager {
     private var isInitialized = false
+    private var lastBindAt = 0L
+    private const val BIND_INTERVAL_MS = 30_000L
 
     fun init(context: Context) {
         if (isInitialized) return
@@ -19,6 +21,9 @@ object PushManager {
 
     fun startMonitoring(context: Context) {
         if (!AppServices.sessionManager.isAuthenticated()) return
+        val now = System.currentTimeMillis()
+        if (now - lastBindAt < BIND_INTERVAL_MS) return
+        lastBindAt = now
         JPushHelper.bindUser(context)
     }
 
@@ -44,7 +49,7 @@ object PushManager {
     }
 
     fun onUserLogin(context: Context) {
-        requestNotificationPermissionIfNeeded(context)
+        lastBindAt = 0L
         JPushHelper.bindUser(context)
     }
 

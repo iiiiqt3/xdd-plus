@@ -32,6 +32,7 @@ import com.goudong.jd.ui.common.AppTheme
 class NotificationListActivity : AppCompatActivity() {
     private lateinit var contentRoot: LinearLayout
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
+    private var isLoadingNotifications = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,49 +62,53 @@ class NotificationListActivity : AppCompatActivity() {
     }
 
     private fun loadNotifications(forceRefresh: Boolean = false) {
+        if (isLoadingNotifications) return
+        isLoadingNotifications = true
         android.util.Log.d("NotificationList", "=== 开始加载通知列表 (forceRefresh=$forceRefresh) ===")
-        
+
         if (!swipeRefreshLayout.isRefreshing && forceRefresh) swipeRefreshLayout.isRefreshing = true
         contentRoot.removeAllViews()
         showLoading()
-        
+
         lifecycleScope.launch {
-            runCatching { AppServices.portalRepository.fetchNotifications(includeContent = true) }
-                .onSuccess { page ->
-                    contentRoot.removeAllViews()
-                    title = if (page.unread > 0) "消息通知 ($page.unread条未读)" else "消息通知"
-                    
-                    android.util.Log.d("NotificationList", "✅ 通知列表加载成功")
-                    android.util.Log.d("NotificationList", "总数量: ${page.list.size}, 未读数: ${page.unread}")
-                    
-                    if (page.list.isEmpty()) {
-                        contentRoot.addView(emptyCard("暂无通知"))
-                    } else {
-                        page.list.forEachIndexed { index, item ->
-                            android.util.Log.d("NotificationList", "通知[$index]: id=${item.id}, title=${item.title}, isRead=${item.isRead}")
-                            contentRoot.addView(notificationItem(item))
+            try {
+                runCatching { AppServices.portalRepository.fetchNotifications(includeContent = true) }
+                    .onSuccess { page ->
+                        contentRoot.removeAllViews()
+                        title = if (page.unread > 0) "消息通知 ($page.unread条未读)" else "消息通知"
+
+                        android.util.Log.d("NotificationList", "✅ 通知列表加载成功")
+                        android.util.Log.d("NotificationList", "总数量: ${page.list.size}, 未读数: ${page.unread}")
+
+                        if (page.list.isEmpty()) {
+                            contentRoot.addView(emptyCard("暂无通知"))
+                        } else {
+                            page.list.forEachIndexed { index, item ->
+                                android.util.Log.d("NotificationList", "通知[$index]: id=${item.id}, title=${item.title}, isRead=${item.isRead}")
+                                contentRoot.addView(notificationItem(item))
+                            }
                         }
                     }
-                    
-                    swipeRefreshLayout.isRefreshing = false
-                }
-                .onFailure { error ->
-                    contentRoot.removeAllViews()
-                    android.util.Log.e("NotificationList", "❌ 通知列表加载失败: ${error.message}", error)
-                    
-                    when (error) {
-                        is ApiError -> {
-                            if (error.unauthorized) handlePortalError(error)
-                            else {
+                    .onFailure { error ->
+                        contentRoot.removeAllViews()
+                        android.util.Log.e("NotificationList", "❌ 通知列表加载失败: ${error.message}", error)
+
+                        when (error) {
+                            is ApiError -> {
+                                if (error.unauthorized) handlePortalError(error)
+                                else {
+                                    contentRoot.addView(emptyCard(com.goudong.jd.ui.common.sanitizeErrorMessage(error.message)))
+                                }
+                            }
+                            else -> {
                                 contentRoot.addView(emptyCard(com.goudong.jd.ui.common.sanitizeErrorMessage(error.message)))
                             }
                         }
-                        else -> {
-                            contentRoot.addView(emptyCard(com.goudong.jd.ui.common.sanitizeErrorMessage(error.message)))
-                        }
                     }
-                    swipeRefreshLayout.isRefreshing = false
-                }
+            } finally {
+                isLoadingNotifications = false
+                swipeRefreshLayout.isRefreshing = false
+            }
         }
     }
 

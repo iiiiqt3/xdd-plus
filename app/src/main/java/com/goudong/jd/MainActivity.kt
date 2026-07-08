@@ -56,6 +56,9 @@ class MainActivity : AppCompatActivity() {
     private var isSyncing = false
     private var lastSwipeHandledAt = 0L
     private var lastVisiblePage = -1
+    private var notificationPermissionRequestInFlight = false
+
+    private val pushPrefs by lazy { getSharedPreferences(PUSH_PREFS_NAME, MODE_PRIVATE) }
 
     private val tabOrder = intArrayOf(TAB_HOME, TAB_PROJECTS, TAB_TASKS, TAB_JD, TAB_MORE)
     private val badgeRefreshListener = { refreshNotificationBadge() }
@@ -75,6 +78,8 @@ class MainActivity : AppCompatActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
+        notificationPermissionRequestInFlight = false
+        pushPrefs.edit().putBoolean(KEY_NOTIFICATION_PERMISSION_ASKED, true).apply()
         if (granted && AppServices.sessionManager.isAuthenticated()) {
             PushManager.startMonitoring(this)
         }
@@ -277,6 +282,25 @@ class MainActivity : AppCompatActivity() {
         ) {
             return
         }
+        // 已询问过（含拒绝/不再询问），避免 onResume 循环弹窗导致小米等设备转圈闪退
+        if (pushPrefs.getBoolean(KEY_NOTIFICATION_PERMISSION_ASKED, false)) return
+        if (notificationPermissionRequestInFlight) return
+
+        notificationPermissionRequestInFlight = true
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    /** 供设置页等场景在用户主动操作时再次申请通知权限 */
+    fun requestNotificationPermissionFromUser() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (notificationPermissionRequestInFlight) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            PushManager.startMonitoring(this)
+            return
+        }
+        notificationPermissionRequestInFlight = true
         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
@@ -727,5 +751,7 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_PUSH_ACTION = "push_action"
         const val EXTRA_PROJECTS_INNER_TAB = "projects_inner_tab"
         const val PROJECTS_TAB_WX = 3
+        private const val PUSH_PREFS_NAME = "push_prefs"
+        private const val KEY_NOTIFICATION_PERMISSION_ASKED = "notification_permission_asked"
     }
 }

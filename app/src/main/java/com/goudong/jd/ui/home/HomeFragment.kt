@@ -222,7 +222,7 @@ class HomeFragment : Fragment(), MainTabResettable {
     }
 
     fun loadData(forceRefresh: Boolean = false) {
-        if (::swipeRefreshLayout.isInitialized) {
+        if (::swipeRefreshLayout.isInitialized && forceRefresh) {
             swipeRefreshLayout.isRefreshing = true
         }
         lifecycleScope.launch {
