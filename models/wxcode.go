@@ -1330,15 +1330,15 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 				"📱 %s\n"+
 				"💡 登录：%s | 刷新：%s\n\n"+
 				"📌 本消息只发送一次，设备恢复上线后如再次掉线将重新通知。\n"+
-				"📌 网页/App 通知「%s」将在 %d 天后自动删除。",
-			info.Nickname, wxid, info.Device, loginTime, refreshTime, NotifyTitleWxOffline, OfflineNotifyRetentionDays,
+				"📌 狗东 App 将同步推送提醒，请打开 App 处理。",
+			info.Nickname, wxid, info.Device, loginTime, refreshTime,
 		)
 		if channels.Robot {
 			go SendWxMsg(wxid, notifyMsg)
 		}
 		var user User
 		if db.Where("wxid = ?", wxid).First(&user).Error == nil {
-			ReplaceUserOfflineNotification(NotifyTitleWxOffline, notifyMsg, NotifyCategoryWx, NotifySourceWx, user.Number, channels)
+			PushUserOfflineNotification(NotifyTitleWxOffline, notifyMsg, NotifyCategoryWx, NotifySourceWx, user.Number, channels)
 		}
 		notifiedCount++
 

@@ -376,11 +376,11 @@ func CheckYybOfflineAndNotifyWithChannels(channels models.NotifyChannels, force 
 				"🆔 %s\n\n"+
 				"💡 请前往用户中心 → 应用宝协议，重新扫码登录。\n"+
 				"📌 本消息只发送一次，账号恢复后如再次掉线将重新通知。\n"+
-				"📌 网页/App 通知「%s」将在 %d 天后自动删除。",
-			nick, openid, models.NotifyTitleYybOffline, models.OfflineNotifyRetentionDays,
+				"📌 狗东 App 将同步推送提醒，请打开 App 处理。",
+			nick, openid,
 		)
 		if !seenUser[b.UserNumber] {
-			_ = models.ReplaceUserOfflineNotification(models.NotifyTitleYybOffline, notifyMsg, models.NotifyCategoryWx, models.NotifySourceYyb, b.UserNumber, channels)
+			_ = models.PushUserOfflineNotification(models.NotifyTitleYybOffline, notifyMsg, models.NotifyCategoryWx, models.NotifySourceYyb, b.UserNumber, channels)
 			seenUser[b.UserNumber] = true
 			notifiedCount++
 		}

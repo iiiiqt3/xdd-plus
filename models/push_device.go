@@ -70,3 +70,14 @@ func DeleteUserPushDevices(userNumber int) error {
 	}
 	return db.Where("user_number = ?", userNumber).Delete(&UserPushDevice{}).Error
 }
+
+func DeleteUserPushDevice(userNumber int, registrationID string) error {
+	if userNumber <= 0 {
+		return nil
+	}
+	registrationID = strings.TrimSpace(registrationID)
+	if registrationID == "" {
+		return DeleteUserPushDevices(userNumber)
+	}
+	return db.Where("user_number = ? AND registration_id = ?", userNumber, registrationID).Delete(&UserPushDevice{}).Error
+}

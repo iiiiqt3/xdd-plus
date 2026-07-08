@@ -201,8 +201,17 @@ func CreateAdminWebNotification(title, content, category, displayType string, is
 	return n, nil
 }
 
+// portalNotificationQuery 通知中心仅展示管理员全体公告（持久通知）
+func portalNotificationQuery(userNumber int) *gorm.DB {
+	return db.Model(&WebNotification{}).Where(
+		"target_scope = ? AND source = ?",
+		TargetScopeAll, NotifySourceAdmin,
+	)
+}
+
+// CreateSystemWebNotification 系统瞬时提示：仅 App 极光推送，不写库（机器人等渠道由调用方自行处理）
 func CreateSystemWebNotification(title, content, category, source string, userNumber int, channels NotifyChannels) error {
-	if !channels.Web && !channels.App {
+	if !channels.App || userNumber <= 0 {
 		return nil
 	}
 	title = strings.TrimSpace(title)
@@ -213,37 +222,34 @@ func CreateSystemWebNotification(title, content, category, source string, userNu
 	if source == "" {
 		source = NotifySourceRobot
 	}
-	scope := "all"
-	if userNumber > 0 {
-		scope = "user"
-	}
-	n := &WebNotification{
-		Title:       title,
-		Content:     content,
-		Category:    normalizeNoticeCategory(category),
-		Source:      source,
-		Channels:    channelsToString(NotifyChannels{Web: channels.Web, App: channels.App}),
-		TargetScope: scope,
-		TargetUser:  userNumber,
-	}
-	if err := db.Create(n).Error; err != nil {
-		return err
-	}
-	DispatchJPushNotification(n)
+	DispatchEphemeralPush(userNumber, title, content, normalizeNoticeCategory(category), source, "", NotifyDisplayNormal)
 	return nil
 }
 
-// CleanupStaleOfflineNotifications 清理超过保留期的协议掉线提醒（网页/App 通知中心）
+// CleanupStaleOfflineNotifications 清理历史遗留的系统通知（迁移后不再写入库）
 func CleanupStaleOfflineNotifications() int {
-	cutoff := time.Now().AddDate(0, 0, -OfflineNotifyRetentionDays)
-	titles := []string{NotifyTitleWxOffline, NotifyTitleYybOffline}
+	return cleanupLegacySystemNotifications()
+}
+
+func cleanupLegacySystemNotifications() int {
+	systemSources := []string{
+		NotifySourceRobot, NotifySourceWx, NotifySourceYyb,
+		NotifySourceAuth, NotifySourceFeedback, NotifySourceJd,
+	}
+	systemTitles := []string{
+		NotifyTitleWxOffline, NotifyTitleYybOffline,
+		"授权时间调整通知", "活动计费方式变更通知", "授权过期删除提醒", "反馈处理结果",
+	}
 	var ids []int
-	db.Model(&WebNotification{}).Where("title IN ? AND created_at < ?", titles, cutoff).Pluck("id", &ids)
+	db.Model(&WebNotification{}).
+		Where("source IN ? OR title IN ?", systemSources, systemTitles).
+		Where("source != ?", NotifySourceAdmin).
+		Pluck("id", &ids)
 	if len(ids) == 0 {
 		return 0
 	}
 	if err := deleteNotificationsByIDs(ids); err != nil {
-		System().Warnf("清理掉线提醒通知失败: %v", err)
+		System().Warnf("清理遗留系统通知失败: %v", err)
 		return 0
 	}
 	return len(ids)
@@ -269,18 +275,10 @@ func deleteNotificationsByIDs(ids []int) error {
 	})
 }
 
-// ReplaceUserOfflineNotification 同一用户仅保留最新一条协议掉线提醒
-func ReplaceUserOfflineNotification(title, content, category, source string, userNumber int, channels NotifyChannels) error {
-	if !channels.Web && !channels.App {
+// PushUserOfflineNotification 协议掉线等系统提醒：仅 App 推送，不写库
+func PushUserOfflineNotification(title, content, category, source string, userNumber int, channels NotifyChannels) error {
+	if !channels.App || userNumber <= 0 {
 		return nil
-	}
-	if userNumber <= 0 {
-		return CreateSystemWebNotification(title, content, category, source, userNumber, channels)
-	}
-	var oldIDs []int
-	db.Model(&WebNotification{}).Where("title = ? AND target_user = ?", title, userNumber).Pluck("id", &oldIDs)
-	if len(oldIDs) > 0 {
-		_ = deleteNotificationsByIDs(oldIDs)
 	}
 	return CreateSystemWebNotification(title, content, category, source, userNumber, channels)
 }
@@ -347,7 +345,7 @@ func GetPortalNotifications(userNumber int, category string, page, limit int) ([
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	q := db.Model(&WebNotification{}).Where("(target_scope = ? OR target_user = ?) AND target_scope != ?", TargetScopeAll, userNumber, TargetScopeAdmin)
+	q := portalNotificationQuery(userNumber)
 	if strings.TrimSpace(category) != "" && category != "全部" {
 		q = q.Where("category = ?", category)
 	}
@@ -376,20 +374,18 @@ func GetPortalNotifications(userNumber int, category string, page, limit int) ([
 		})
 	}
 	var unread int64
-	db.Model(&WebNotification{}).
-		Where("(target_scope = ? OR target_user = ?) AND target_scope != ?", TargetScopeAll, userNumber, TargetScopeAdmin).
+	portalNotificationQuery(userNumber).
 		Where("id NOT IN (?)", db.Model(&WebNotificationRead{}).Select("notification_id").Where("user_number = ?", userNumber)).
 		Count(&unread)
 	return items, total, unread
 }
 
 func GetPortalNotificationCounts(userNumber int) (int64, int64) {
-	base := db.Model(&WebNotification{}).Where("(target_scope = ? OR target_user = ?) AND target_scope != ?", TargetScopeAll, userNumber, TargetScopeAdmin)
+	base := portalNotificationQuery(userNumber)
 	var total int64
 	base.Count(&total)
 	var unread int64
-	db.Model(&WebNotification{}).
-		Where("(target_scope = ? OR target_user = ?) AND target_scope != ?", TargetScopeAll, userNumber, TargetScopeAdmin).
+	portalNotificationQuery(userNumber).
 		Where("id NOT IN (?)", db.Model(&WebNotificationRead{}).Select("notification_id").Where("user_number = ?", userNumber)).
 		Count(&unread)
 	return total, unread
@@ -404,8 +400,8 @@ func GetPortalNotificationUnreadStats(userNumber int) NotifyUnreadStats {
 		ByCategory: map[string]int64{},
 	}
 	var rows []WebNotification
-	db.Select("source, category").
-		Where("(target_scope = ? OR target_user = ?) AND target_scope != ?", TargetScopeAll, userNumber, TargetScopeAdmin).
+	portalNotificationQuery(userNumber).
+		Select("source, category").
 		Where("id NOT IN (?)", db.Model(&WebNotificationRead{}).Select("notification_id").Where("user_number = ?", userNumber)).
 		Find(&rows)
 	for _, row := range rows {
@@ -467,7 +463,7 @@ func UpdateAdminNotification(id int, title, content, category, displayType strin
 
 func GetPortalNotificationPreview(userNumber, id int) (*PortalNotificationItem, error) {
 	var n WebNotification
-	if err := db.Where("id = ? AND (target_scope = ? OR target_user = ?)", id, "all", userNumber).First(&n).Error; err != nil {
+	if err := portalNotificationQuery(userNumber).Where("id = ?", id).First(&n).Error; err != nil {
 		return nil, fmt.Errorf("通知不存在或无权限查看")
 	}
 	return &PortalNotificationItem{ID: n.ID, Title: n.Title, Content: n.Content, Category: n.Category, Source: n.Source, Channels: n.Channels, DisplayType: normalizeNotifyDisplayType(n.DisplayType), IsTop: n.IsTop, CreatedAt: n.CreatedAt}, nil
@@ -475,7 +471,7 @@ func GetPortalNotificationPreview(userNumber, id int) (*PortalNotificationItem, 
 
 func GetPortalNotificationDetail(userNumber, id int) (*PortalNotificationItem, error) {
 	var n WebNotification
-	if err := db.Where("id = ? AND (target_scope = ? OR target_user = ?)", id, "all", userNumber).First(&n).Error; err != nil {
+	if err := portalNotificationQuery(userNumber).Where("id = ?", id).First(&n).Error; err != nil {
 		return nil, fmt.Errorf("通知不存在或无权限查看")
 	}
 	n.ClickCount++

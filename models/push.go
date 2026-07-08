@@ -167,7 +167,7 @@ func PortalJPushAlias(userNumber int) string {
 func channelsIncludeApp(channels string) bool {
 	channels = strings.TrimSpace(channels)
 	if channels == "" {
-		return true
+		return false
 	}
 	for _, part := range strings.Split(channels, ",") {
 		switch strings.ToLower(strings.TrimSpace(part)) {
@@ -176,6 +176,32 @@ func channelsIncludeApp(channels string) bool {
 		}
 	}
 	return false
+}
+
+const jpushAndroidChannelID = "admin_push_channel"
+
+func listUserPushRegistrationIDs(userNumber int) []string {
+	if userNumber <= 0 {
+		return nil
+	}
+	var devices []UserPushDevice
+	if err := db.Where("user_number = ? AND registration_id != ''", userNumber).Find(&devices).Error; err != nil {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(devices))
+	ids := make([]string, 0, len(devices))
+	for _, device := range devices {
+		regID := strings.TrimSpace(device.RegistrationID)
+		if regID == "" {
+			continue
+		}
+		if _, ok := seen[regID]; ok {
+			continue
+		}
+		seen[regID] = struct{}{}
+		ids = append(ids, regID)
+	}
+	return ids
 }
 
 func summarizeNotificationBody(content string) string {
@@ -208,6 +234,7 @@ func DispatchJPushNotification(n *WebNotification) {
 		"notificationId": n.ID,
 		"category":       n.Category,
 		"source":         n.Source,
+		"displayType":    n.DisplayType,
 	}
 	switch strings.TrimSpace(n.TargetScope) {
 	case TargetScopeUser:
@@ -215,7 +242,7 @@ func DispatchJPushNotification(n *WebNotification) {
 			return
 		}
 		go func() {
-			if err := jpushSendToAlias([]string{PortalJPushAlias(n.TargetUser)}, title, body, extras); err != nil {
+			if err := jpushSendToUser(n.TargetUser, title, body, extras); err != nil {
 				Warn("[极光推送] 单用户推送失败 user=%d id=%d: %v", n.TargetUser, n.ID, err)
 			}
 		}()
@@ -240,6 +267,25 @@ func jpushSendToAlias(aliases []string, title, body string, extras map[string]in
 	return jpushSend(audience, title, body, extras)
 }
 
+func jpushSendToRegistrationIDs(registrationIDs []string, title, body string, extras map[string]interface{}) error {
+	if len(registrationIDs) == 0 {
+		return nil
+	}
+	audience := map[string]interface{}{"registration_id": registrationIDs}
+	return jpushSend(audience, title, body, extras)
+}
+
+// jpushSendToUser 优先 registration_id（登录登记），无记录时回退 alias
+func jpushSendToUser(userNumber int, title, body string, extras map[string]interface{}) error {
+	regIDs := listUserPushRegistrationIDs(userNumber)
+	if len(regIDs) > 0 {
+		if err := jpushSendToRegistrationIDs(regIDs, title, body, extras); err == nil {
+			return nil
+		}
+	}
+	return jpushSendToAlias([]string{PortalJPushAlias(userNumber)}, title, body, extras)
+}
+
 func jpushSend(audience interface{}, title, body string, extras map[string]interface{}) error {
 	cfg := jpushConfig()
 	payload := map[string]interface{}{
@@ -247,9 +293,10 @@ func jpushSend(audience interface{}, title, body string, extras map[string]inter
 		"audience": audience,
 		"notification": map[string]interface{}{
 			"android": map[string]interface{}{
-				"alert":  body,
-				"title":  title,
-				"extras": extras,
+				"alert":      body,
+				"title":      title,
+				"extras":     extras,
+				"channel_id": jpushAndroidChannelID,
 			},
 		},
 	}
@@ -277,4 +324,89 @@ func jpushSend(audience interface{}, title, body string, extras map[string]inter
 	}
 	Info("[极光推送] 已发送 title=%s audience=%v", title, audience)
 	return nil
+}
+
+// App 瞬时推送深链（与安卓 PushNavigationHelper 一致）
+const (
+	PushActionOpenWx       = "open_wx"
+	PushActionOpenJdYyb    = "open_jd_yyb"
+	PushActionOpenProjects = "open_projects"
+	PushActionOpenFeedback = "open_feedback"
+	PushActionShowBody     = "show_body"
+)
+
+func resolveEphemeralPushAction(source, category, title string) string {
+	title = strings.TrimSpace(title)
+	source = strings.TrimSpace(source)
+	switch title {
+	case NotifyTitleWxOffline:
+		return PushActionOpenWx
+	case NotifyTitleYybOffline:
+		return PushActionOpenJdYyb
+	case "反馈处理结果":
+		return PushActionOpenFeedback
+	}
+	switch source {
+	case NotifySourceWx:
+		return PushActionOpenWx
+	case NotifySourceYyb, NotifySourceJd:
+		return PushActionOpenJdYyb
+	case NotifySourceFeedback:
+		return PushActionOpenFeedback
+	case NotifySourceAuth:
+		return PushActionOpenProjects
+	}
+	switch strings.TrimSpace(category) {
+	case NotifyCategoryWx:
+		return PushActionOpenWx
+	case NotifyCategoryJd:
+		return PushActionOpenJdYyb
+	case NotifyCategoryFeedback:
+		return PushActionOpenFeedback
+	case NotifyCategoryAuth:
+		return PushActionOpenProjects
+	}
+	return PushActionShowBody
+}
+
+func truncateEphemeralFullBody(content string) string {
+	content = strings.TrimSpace(content)
+	rs := []rune(content)
+	if len(rs) <= 500 {
+		return content
+	}
+	return string(rs[:500]) + "..."
+}
+
+// DispatchEphemeralPush 系统瞬时推送：不写库，仅极光 App
+func DispatchEphemeralPush(userNumber int, title, content, category, source, action, displayType string) {
+	if userNumber <= 0 || !JPushEnabled() {
+		return
+	}
+	title = strings.TrimSpace(title)
+	content = strings.TrimSpace(content)
+	if title == "" || content == "" {
+		return
+	}
+	if strings.TrimSpace(action) == "" {
+		action = resolveEphemeralPushAction(source, category, title)
+	}
+	if strings.TrimSpace(displayType) == "" {
+		displayType = NotifyDisplayNormal
+	}
+	body := summarizeNotificationBody(content)
+	extras := map[string]interface{}{
+		"notificationId": 0,
+		"ephemeral":      true,
+		"action":         action,
+		"category":       category,
+		"source":         source,
+		"displayType":    displayType,
+		"fullBody":       truncateEphemeralFullBody(content),
+	}
+	go func() {
+		if err := jpushSendToUser(userNumber, title, body, extras); err != nil {
+			Warn("[极光推送] 瞬时推送失败 user=%d title=%s: %v", userNumber, title, err)
+		}
+	}()
 }

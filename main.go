@@ -241,6 +241,7 @@ func main() {
 	web.Router("/api/portal/notifications", &controllers.PortalController{}, "get:Notifications")
 	web.Router("/api/portal/notification", &controllers.PortalController{}, "get:NotificationDetail")
 	web.Router("/api/portal/push/register", &controllers.PortalController{}, "post:PushRegister")
+	web.Router("/api/portal/push/unregister", &controllers.PortalController{}, "post:PushUnregister")
 	web.Router("/api/portal/feedback", &controllers.PortalController{}, "post:SubmitFeedback")
 	web.Router("/api/portal/coin-logs", &controllers.PortalController{}, "get:CoinLogs")
 	web.Router("/api/portal/jd/accounts", &controllers.PortalController{}, "get:JdAccounts")

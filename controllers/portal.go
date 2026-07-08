@@ -511,6 +511,33 @@ func (c *PortalController) PushRegister() {
 	c.ServeJSON()
 }
 
+// PushUnregister App 登出时注销极光设备登记
+func (c *PortalController) PushUnregister() {
+	if c.PortalUserID <= 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "登录状态失效，请重新登录"}
+		c.ServeJSON()
+		return
+	}
+	var req struct {
+		RegistrationID string `json:"registrationId"`
+	}
+	_ = json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	registrationID := strings.TrimSpace(req.RegistrationID)
+	var err error
+	if registrationID != "" {
+		err = models.DeleteUserPushDevice(c.PortalUserID, registrationID)
+	} else {
+		err = models.DeleteUserPushDevices(c.PortalUserID)
+	}
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "ok"}
+	c.ServeJSON()
+}
+
 func (c *PortalController) WxDelete() {
 	var req struct {
 		Wxid string `json:"wxid"`
