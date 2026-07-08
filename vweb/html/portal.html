@@ -1824,7 +1824,7 @@
                                     <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdYybRiskMsg">账号需要短信验证</div>
                                     <a id="jdYybRiskLink" href="#" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">验证链接</a>
                                     <div style="margin-top:10px;">
-                                        <button class="btn accent" onclick="jdYybContinueRisk()">验证完成，继续刷新</button>
+                                        <button id="jdYybContinueRiskBtn" class="btn accent" onclick="jdYybContinueRisk(this)">验证完成，继续刷新</button>
                                     </div>
                                 </div>
                                 <div class="jd-query-result" id="jdYybResult" style="display:none;"></div>
@@ -1841,7 +1841,7 @@
                                     <div style="font-size:13px;color:var(--amber);margin-bottom:8px;" id="jdWxRiskMsg">账号需要短信验证</div>
                                     <a id="jdWxRiskLink" href="#" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">验证链接</a>
                                     <div style="margin-top:10px;">
-                                        <button class="btn accent" onclick="jdWxContinueRisk()">验证完成，继续刷新</button>
+                                        <button id="jdWxContinueRiskBtn" class="btn accent" onclick="jdWxContinueRisk(this)">验证完成，继续刷新</button>
                                     </div>
                                 </div>
                                 <div class="jd-query-result" id="jdWxResult" style="display:none;"></div>
@@ -2127,6 +2127,43 @@ async function runPortalActionGuard(key, fn, options) {
             btn.disabled = false;
             btn.textContent = defaultText;
         }
+    }
+}
+
+async function withJdCkRefreshGuard(kind, fn, btn, loadingText) {
+    var lockKey = kind === 'wx' ? 'jd-wx-ck-refresh' : 'jd-yyb-ck-refresh';
+    if (portalActionInflight.has(lockKey)) {
+        toast('正在刷新中，请勿重复点击', 'error');
+        return null;
+    }
+    portalActionInflight.add(lockKey);
+    var allBtnId = kind === 'wx' ? 'jdWxRefreshAllBtn' : 'jdYybRefreshAllBtn';
+    var listId = kind === 'wx' ? 'jdWxDeviceList' : 'jdYybAccountList';
+    var dataAttr = kind === 'wx' ? 'data-jd-wx-refresh-btn' : 'data-jd-yyb-refresh-btn';
+    var continueBtnId = kind === 'wx' ? 'jdWxContinueRiskBtn' : 'jdYybContinueRiskBtn';
+    var refreshBtns = [];
+    var allBtn = document.getElementById(allBtnId);
+    if (allBtn) refreshBtns.push(allBtn);
+    var list = document.getElementById(listId);
+    if (list) {
+        list.querySelectorAll('[' + dataAttr + ']').forEach(function(b) { refreshBtns.push(b); });
+    }
+    var continueBtn = document.getElementById(continueBtnId);
+    if (continueBtn) refreshBtns.push(continueBtn);
+    var prevTexts = new Map();
+    refreshBtns.forEach(function(b) {
+        prevTexts.set(b, b.textContent);
+        b.disabled = true;
+        if (btn && b === btn) b.textContent = loadingText || '刷新中...';
+    });
+    try {
+        return await fn();
+    } finally {
+        portalActionInflight.delete(lockKey);
+        refreshBtns.forEach(function(b) {
+            b.disabled = false;
+            if (prevTexts.has(b)) b.textContent = prevTexts.get(b);
+        });
     }
 }
 
@@ -3840,11 +3877,11 @@ function switchJdLoginTab(tab) {
         if (tab === 'sms') {
             actions.innerHTML = '';
         } else if (tab === 'wx') {
-            actions.innerHTML = '<button class="btn primary small" onclick="jdWxRefreshAll()">刷新全部CK</button>' +
+            actions.innerHTML = '<button id="jdWxRefreshAllBtn" class="btn primary small" data-jd-wx-refresh-btn onclick="jdWxRefreshAll(this)">刷新全部CK</button>' +
                                '<button class="btn outline small" onclick="loadJdWxDevices()">刷新设备</button>';
             loadJdWxDevices().catch(function() {});
         } else if (tab === 'yyb') {
-            actions.innerHTML = '<button class="btn primary small" onclick="jdYybRefreshAll()">刷新全部CK</button>' +
+            actions.innerHTML = '<button id="jdYybRefreshAllBtn" class="btn primary small" data-jd-yyb-refresh-btn onclick="jdYybRefreshAll(this)">刷新全部CK</button>' +
                                '<button class="btn outline small" onclick="loadJdYybAccounts()">刷新账号</button>';
             loadJdYybAccounts().catch(function() {});
         }
@@ -4287,7 +4324,7 @@ function renderJdWxDevices() {
         html += '<div class="jd-dev-meta">' + escapeHtml(item.wxid) + '</div>';
         html += '</div></div>';
         if (item.device) html += '<div class="jd-dev-meta" style="margin-top:8px;">' + escapeHtml(item.device) + ' · ' + escapeHtml(item.serverType || '') + '设备</div>';
-        html += '<div class="jd-card-bottom"><span class="jd-dev-meta">设备</span><button class="btn primary" onclick="jdWxRefreshDevice(\'' + escapeAttr(item.wxid) + '\')">刷新CK</button></div>';
+        html += '<div class="jd-card-bottom"><span class="jd-dev-meta">设备</span><button class="btn primary" data-jd-wx-refresh-btn onclick="jdWxRefreshDevice(\'' + escapeAttr(item.wxid) + '\', this)">刷新CK</button></div>';
         html += '</div>';
     });
     box.innerHTML = html;
@@ -4315,67 +4352,73 @@ function showJdWxResult(data) {
     el.textContent = lines.join('\n');
 }
 
-async function jdWxRefreshDevice(wxid) {
-    var resultEl = document.getElementById('jdWxResult');
-    if (resultEl) {
-        resultEl.style.display = 'block';
-        resultEl.textContent = '正在刷新，请稍候...';
-    }
-    try {
-        var resp = await request('/api/portal/jd/wx/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ wxid: wxid, riskConfirmed: false })
-        });
-        showJdWxResult(resp.data || {});
-        if (!(resp.data && resp.data.needRiskVerify)) {
-            toast('刷新完成', 'success');
-            await loadJdAccounts();
+async function jdWxRefreshDevice(wxid, btn) {
+    await withJdCkRefreshGuard('wx', async function() {
+        var resultEl = document.getElementById('jdWxResult');
+        if (resultEl) {
+            resultEl.style.display = 'block';
+            resultEl.textContent = '正在刷新，请稍候...';
         }
-    } catch (err) {
-        if (resultEl) resultEl.textContent = '刷新失败：' + (err.message || '未知错误');
-        toast(err.message || '刷新失败', 'error');
-    }
+        try {
+            var resp = await request('/api/portal/jd/wx/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wxid: wxid, riskConfirmed: false })
+            });
+            showJdWxResult(resp.data || {});
+            if (!(resp.data && resp.data.needRiskVerify)) {
+                toast('刷新完成', 'success');
+                await loadJdAccounts();
+            }
+        } catch (err) {
+            if (resultEl) resultEl.textContent = '刷新失败：' + (err.message || '未知错误');
+            toast(err.message || '刷新失败', 'error');
+        }
+    }, btn, '刷新中...');
 }
 
-async function jdWxRefreshAll() {
-    var resultEl = document.getElementById('jdWxResult');
-    if (resultEl) {
-        resultEl.style.display = 'block';
-        resultEl.textContent = '正在刷新全部设备，请稍候...';
-    }
-    try {
-        var resp = await request('/api/portal/jd/wx/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ wxid: 'all', riskConfirmed: false })
-        });
-        showJdWxResult(resp.data || {});
-        if (!(resp.data && resp.data.needRiskVerify)) {
-            toast('批量刷新完成', 'success');
-            await loadJdAccounts();
+async function jdWxRefreshAll(btn) {
+    await withJdCkRefreshGuard('wx', async function() {
+        var resultEl = document.getElementById('jdWxResult');
+        if (resultEl) {
+            resultEl.style.display = 'block';
+            resultEl.textContent = '正在刷新全部设备，请稍候...';
         }
-    } catch (err) {
-        if (resultEl) resultEl.textContent = '刷新失败：' + (err.message || '未知错误');
-        toast(err.message || '刷新失败', 'error');
-    }
+        try {
+            var resp = await request('/api/portal/jd/wx/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wxid: 'all', riskConfirmed: false })
+            });
+            showJdWxResult(resp.data || {});
+            if (!(resp.data && resp.data.needRiskVerify)) {
+                toast('批量刷新完成', 'success');
+                await loadJdAccounts();
+            }
+        } catch (err) {
+            if (resultEl) resultEl.textContent = '刷新失败：' + (err.message || '未知错误');
+            toast(err.message || '刷新失败', 'error');
+        }
+    }, btn, '刷新中...');
 }
 
-async function jdWxContinueRisk() {
-    try {
-        var resp = await request('/api/portal/jd/wx/continue-risk', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: '{}'
-        });
-        showJdWxResult(resp.data || {});
-        if (!(resp.data && resp.data.needRiskVerify)) {
-            toast('刷新完成', 'success');
-            await loadJdAccounts();
+async function jdWxContinueRisk(btn) {
+    await withJdCkRefreshGuard('wx', async function() {
+        try {
+            var resp = await request('/api/portal/jd/wx/continue-risk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}'
+            });
+            showJdWxResult(resp.data || {});
+            if (!(resp.data && resp.data.needRiskVerify)) {
+                toast('刷新完成', 'success');
+                await loadJdAccounts();
+            }
+        } catch (err) {
+            toast(err.message || '继续刷新失败', 'error');
         }
-    } catch (err) {
-        toast(err.message || '继续刷新失败', 'error');
-    }
+    }, btn, '刷新中...');
 }
 
 async function loadJdYybAccounts() {
@@ -4417,7 +4460,7 @@ function renderJdYybAccounts() {
         html += '</div>';
         html += '<div class="jd-dev-meta" title="' + escapeAttr(item.openid) + '">' + escapeHtml(item.openid) + '</div>';
         html += '</div></div>';
-        html += '<div class="jd-card-bottom"><span class="jd-dev-meta">应用宝</span><button class="btn primary" onclick="jdYybRefreshAccount(\'' + escapeAttr(item.openid) + '\')">刷新CK</button></div>';
+        html += '<div class="jd-card-bottom"><span class="jd-dev-meta">应用宝</span><button class="btn primary" data-jd-yyb-refresh-btn onclick="jdYybRefreshAccount(\'' + escapeAttr(item.openid) + '\', this)">刷新CK</button></div>';
         html += '</div>';
     });
     box.innerHTML = html;
@@ -4444,61 +4487,67 @@ function showJdYybResult(data) {
     el.style.display = 'block';
 }
 
-async function jdYybRefreshAccount(openid) {
-    var resultEl = document.getElementById('jdYybResult');
-    if (resultEl) { resultEl.style.display = 'block'; resultEl.textContent = '正在刷新，请稍候...'; }
-    try {
-        var resp = await request('/api/portal/jd/yyb/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ openid: openid })
-        });
-        showJdYybResult(resp.data || {});
-        if ((resp.data || {}).success > 0) {
-            toast('京东 CK 刷新成功', 'success');
-            await loadJdAccounts();
+async function jdYybRefreshAccount(openid, btn) {
+    await withJdCkRefreshGuard('yyb', async function() {
+        var resultEl = document.getElementById('jdYybResult');
+        if (resultEl) { resultEl.style.display = 'block'; resultEl.textContent = '正在刷新，请稍候...'; }
+        try {
+            var resp = await request('/api/portal/jd/yyb/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ openid: openid })
+            });
+            showJdYybResult(resp.data || {});
+            if ((resp.data || {}).success > 0) {
+                toast('京东 CK 刷新成功', 'success');
+                await loadJdAccounts();
+            }
+        } catch (err) {
+            if (resultEl) resultEl.textContent = err.message || '刷新失败';
+            toast(err.message || '刷新失败', 'error');
         }
-    } catch (err) {
-        if (resultEl) resultEl.textContent = err.message || '刷新失败';
-        toast(err.message || '刷新失败', 'error');
-    }
+    }, btn, '刷新中...');
 }
 
-async function jdYybRefreshAll() {
-    var resultEl = document.getElementById('jdYybResult');
-    if (resultEl) { resultEl.style.display = 'block'; resultEl.textContent = '正在刷新全部账号，请稍候...'; }
-    try {
-        var resp = await request('/api/portal/jd/yyb/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ openid: 'all' })
-        });
-        showJdYybResult(resp.data || {});
-        if ((resp.data || {}).success > 0) {
-            toast('批量刷新完成', 'success');
-            await loadJdAccounts();
+async function jdYybRefreshAll(btn) {
+    await withJdCkRefreshGuard('yyb', async function() {
+        var resultEl = document.getElementById('jdYybResult');
+        if (resultEl) { resultEl.style.display = 'block'; resultEl.textContent = '正在刷新全部账号，请稍候...'; }
+        try {
+            var resp = await request('/api/portal/jd/yyb/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ openid: 'all' })
+            });
+            showJdYybResult(resp.data || {});
+            if ((resp.data || {}).success > 0) {
+                toast('批量刷新完成', 'success');
+                await loadJdAccounts();
+            }
+        } catch (err) {
+            if (resultEl) resultEl.textContent = err.message || '刷新失败';
+            toast(err.message || '刷新失败', 'error');
         }
-    } catch (err) {
-        if (resultEl) resultEl.textContent = err.message || '刷新失败';
-        toast(err.message || '刷新失败', 'error');
-    }
+    }, btn, '刷新中...');
 }
 
-async function jdYybContinueRisk() {
-    try {
-        var resp = await request('/api/portal/jd/yyb/continue-risk', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: '{}'
-        });
-        showJdYybResult(resp.data || {});
-        if (!(resp.data && resp.data.needRiskVerify)) {
-            toast('刷新完成', 'success');
-            await loadJdAccounts();
+async function jdYybContinueRisk(btn) {
+    await withJdCkRefreshGuard('yyb', async function() {
+        try {
+            var resp = await request('/api/portal/jd/yyb/continue-risk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}'
+            });
+            showJdYybResult(resp.data || {});
+            if (!(resp.data && resp.data.needRiskVerify)) {
+                toast('刷新完成', 'success');
+                await loadJdAccounts();
+            }
+        } catch (err) {
+            toast(err.message || '继续刷新失败', 'error');
         }
-    } catch (err) {
-        toast(err.message || '继续刷新失败', 'error');
-    }
+    }, btn, '刷新中...');
 }
 
 // ===================== 酷我提现 =====================
