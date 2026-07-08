@@ -30,6 +30,8 @@ import com.goudong.jd.ui.common.inputField
 import com.goudong.jd.ui.common.primaryButton
 import com.goudong.jd.ui.common.secondaryButton
 import com.goudong.jd.ui.common.sectionTitle
+import com.goudong.jd.push.PushManager
+import com.goudong.jd.push.PushNavigationHelper
 import kotlinx.coroutines.launch
 
 class AuthActivity : AppCompatActivity() {
@@ -333,6 +335,8 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun finishWithSuccess(message: String) {
+        PushManager.onUserLogin(this)
+        PushNavigationHelper.consumePendingAfterLogin(this)
         setResult(RESULT_OK)
         android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
         finish()

@@ -13,6 +13,7 @@ object PushManager {
     fun init(context: Context) {
         if (isInitialized) return
         NotificationHelper.createNotificationChannel(context)
+        JPushHelper.ensureInitialized(context)
         isInitialized = true
     }
 
@@ -26,16 +27,20 @@ object PushManager {
     }
 
     fun onAppForeground() {
-        // 极光推送由 SDK 处理，前台不再轮询弹系统通知
+        ForegroundPushNotifier.isAppInForeground = true
     }
 
     fun onAppBackground() {
-        // no-op
+        ForegroundPushNotifier.isAppInForeground = false
+        ForegroundPushNotifier.topActivity = null
+        InAppPushBanner.dismiss()
     }
 
     fun onUserLogout() {
         JPushHelper.unbindUser(AppServices.appContext)
         NotificationHelper.cancelAll(AppServices.appContext)
+        ForegroundPushNotifier.clearPending()
+        InAppPushBanner.dismiss()
     }
 
     fun onUserLogin(context: Context) {

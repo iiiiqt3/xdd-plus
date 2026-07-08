@@ -37,13 +37,14 @@ import com.goudong.jd.ui.home.HomeFragment
 import com.goudong.jd.ui.jd.JdFragment
 import com.goudong.jd.ui.more.MoreFragment
 import com.goudong.jd.ui.projects.ProjectsFragment
+import com.goudong.jd.ui.more.FeedbackActivity
 import com.goudong.jd.ui.tasks.TasksFragment
 import com.goudong.jd.update.ApkInstaller
 import com.goudong.jd.update.UpdateChecker
 import com.goudong.jd.update.UpdateInfo
 import com.goudong.jd.push.PushManager
-import com.goudong.jd.ui.more.NotificationDetailActivity
-import com.goudong.jd.ui.more.NotificationListActivity
+import com.goudong.jd.push.NotificationBadgeRefresher
+import com.goudong.jd.push.PushNavigationHelper
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.coroutines.launch
 import com.goudong.jd.R
@@ -57,6 +58,7 @@ class MainActivity : AppCompatActivity() {
     private var lastVisiblePage = -1
 
     private val tabOrder = intArrayOf(TAB_HOME, TAB_PROJECTS, TAB_TASKS, TAB_JD, TAB_MORE)
+    private val badgeRefreshListener = { refreshNotificationBadge() }
 
     private val authLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         AppServices.isAuthInProgress = false
@@ -65,6 +67,7 @@ class MainActivity : AppCompatActivity() {
             switchToTab(target)
             reloadVisibleFragment()
             PushManager.onUserLogin(this)
+            PushNavigationHelper.consumePendingAfterLogin(this)
         }
         pendingTabId = null
     }
@@ -224,21 +227,45 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleLaunchIntent(intent: Intent?) {
         if (intent == null) return
+        val pushAction = intent.getStringExtra(EXTRA_PUSH_ACTION)?.trim().orEmpty()
+        if (pushAction.isNotEmpty()) {
+            val innerTab = intent.getIntExtra(EXTRA_PROJECTS_INNER_TAB, -1)
+            intent.removeExtra(EXTRA_PUSH_ACTION)
+            intent.removeExtra(EXTRA_PROJECTS_INNER_TAB)
+            executePushAction(pushAction, innerTab)
+            return
+        }
         val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
         if (notificationId > 0) {
             intent.removeExtra(EXTRA_NOTIFICATION_ID)
-            startActivity(
-                Intent(this, NotificationDetailActivity::class.java).apply {
-                    putExtra(NotificationDetailActivity.EXTRA_NOTIFICATION_ID, notificationId)
-                }
-            )
+            PushNavigationHelper.openNotification(this, notificationId, openList = false)
             return
         }
         if (intent.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false)) {
             intent.removeExtra(EXTRA_OPEN_NOTIFICATIONS)
-            if (AppServices.sessionManager.isAuthenticated()) {
-                startActivity(Intent(this, NotificationListActivity::class.java))
+            PushNavigationHelper.openNotification(this, notificationId = 0, openList = true)
+        }
+    }
+
+    private fun executePushAction(action: String, projectsInnerTab: Int = -1) {
+        when (action) {
+            PushNavigationHelper.ACTION_OPEN_WX -> {
+                switchToTab(TAB_PROJECTS)
+                selectProjectsInnerTab(if (projectsInnerTab >= 0) projectsInnerTab else PROJECTS_TAB_WX)
             }
+            PushNavigationHelper.ACTION_OPEN_JD_YYB -> switchToTab(TAB_JD)
+            PushNavigationHelper.ACTION_OPEN_PROJECTS -> switchToTab(TAB_PROJECTS)
+            PushNavigationHelper.ACTION_OPEN_FEEDBACK -> {
+                startActivity(Intent(this, FeedbackActivity::class.java))
+            }
+        }
+    }
+
+    private fun selectProjectsInnerTab(index: Int) {
+        viewPager.post {
+            val position = tabOrder.indexOf(TAB_PROJECTS)
+            val fragment = mainFragmentAt(position) as? ProjectsFragment ?: return@post
+            fragment.selectInnerTab(index)
         }
     }
 
@@ -253,9 +280,18 @@ class MainActivity : AppCompatActivity() {
         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
+    override fun onStart() {
+        super.onStart()
+        NotificationBadgeRefresher.register(badgeRefreshListener)
+    }
+
+    override fun onStop() {
+        NotificationBadgeRefresher.unregister(badgeRefreshListener)
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
-        PushManager.onAppForeground()
         if (AppServices.sessionManager.isAuthenticated()) {
             ensureNotificationPermission()
             PushManager.startMonitoring(this)
@@ -264,7 +300,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        PushManager.onAppBackground()
     }
 
     fun updateMoreBadge(unreadCount: Int) {
@@ -279,6 +314,14 @@ class MainActivity : AppCompatActivity() {
                 badge.isVisible = false
                 badge.clearNumber()
             }
+        }
+    }
+
+    fun refreshNotificationBadge() {
+        if (!AppServices.sessionManager.isAuthenticated()) return
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.fetchNotifications(includeContent = false) }
+                .onSuccess { response -> updateMoreBadge(response.unread) }
         }
     }
 
@@ -337,9 +380,9 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                PushManager.onUserLogout()
                 AppServices.sessionManager.setAuthenticated(false)
                 AppServices.apiClient.clearCookies()
-                PushManager.onUserLogout()
                 pendingTabId = tabOrder[viewPager.currentItem]
                 authLauncher.launch(Intent(this@MainActivity, AuthActivity::class.java))
             } finally {
@@ -681,5 +724,8 @@ class MainActivity : AppCompatActivity() {
         const val TAB_MORE = 104
         const val EXTRA_OPEN_NOTIFICATIONS = "open_notifications"
         const val EXTRA_NOTIFICATION_ID = "notification_id"
+        const val EXTRA_PUSH_ACTION = "push_action"
+        const val EXTRA_PROJECTS_INNER_TAB = "projects_inner_tab"
+        const val PROJECTS_TAB_WX = 3
     }
 }

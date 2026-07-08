@@ -14,7 +14,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.goudong.jd.AppServices
 import com.goudong.jd.R
+import com.goudong.jd.data.model.ApiError
 import com.goudong.jd.data.model.PortalNotification
+import com.goudong.jd.push.PushNavigationHelper
 import com.goudong.jd.ui.common.bodyText
 import com.goudong.jd.ui.common.cardView
 import com.goudong.jd.ui.common.captionText
@@ -56,7 +58,13 @@ class NotificationDetailActivity : AppCompatActivity() {
                         notification = it
                         renderDetail()
                     }
-                    .onFailure { finish() }
+                    .onFailure { error ->
+                        val unauthorized = (error as? ApiError)?.unauthorized == true
+                        if (unauthorized) {
+                            PushNavigationHelper.openNotification(this@NotificationDetailActivity, notificationId, openList = false)
+                        }
+                        finish()
+                    }
             }
             return
         }

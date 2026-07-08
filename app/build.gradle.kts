@@ -11,8 +11,8 @@ android {
         applicationId = "com.goudong.jd"
         minSdk = 23
         targetSdk = 36
-        versionCode = 35
-        versionName = "2.8.11"
+        versionCode = 39
+        versionName = "2.8.15"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -96,7 +96,6 @@ dependencies {
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

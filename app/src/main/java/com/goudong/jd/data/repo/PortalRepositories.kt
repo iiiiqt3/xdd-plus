@@ -293,6 +293,15 @@ class PortalRepository(
         )
     }
 
+    suspend fun unregisterPushDevice(registrationId: String = "") {
+        apiClient.requestMessage(
+            path = "/api/portal/push/unregister",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("registrationId" to registrationId)),
+        )
+    }
+
     suspend fun submitFeedback(payload: SubmitFeedbackPayload): String {
         return apiClient.requestMessage(
             path = "/api/portal/feedback",
