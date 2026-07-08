@@ -30,6 +30,7 @@ object ForegroundPushNotifier {
     private val pending = LinkedHashMap<Int, PushPayload>()
     private var lastDuplicateId = 0
     private var lastDuplicateAt = 0L
+    private var lastEphemeralFingerprint = ""
 
     fun pendingCount(): Int = pending.size
 
@@ -47,10 +48,20 @@ object ForegroundPushNotifier {
         val safeTitle = title.trim().ifEmpty { "狗东通知" }
         val safeBody = body.trim().ifEmpty { "您有一条新消息" }
         val now = System.currentTimeMillis()
-        if (notificationId > 0 && notificationId == lastDuplicateId && now - lastDuplicateAt < 3000) {
-            return
+        val fingerprint = "$safeTitle|$safeBody|${action.trim()}"
+        if (notificationId > 0) {
+            if (notificationId == lastDuplicateId && now - lastDuplicateAt < 3000) {
+                return
+            }
+            lastDuplicateId = notificationId
+            lastEphemeralFingerprint = ""
+        } else {
+            if (fingerprint == lastEphemeralFingerprint && now - lastDuplicateAt < 3000) {
+                return
+            }
+            lastEphemeralFingerprint = fingerprint
+            lastDuplicateId = 0
         }
-        lastDuplicateId = notificationId
         lastDuplicateAt = now
 
         val key = if (notificationId > 0) notificationId else -now.toInt()
@@ -67,6 +78,7 @@ object ForegroundPushNotifier {
         pending.clear()
         lastDuplicateId = 0
         lastDuplicateAt = 0L
+        lastEphemeralFingerprint = ""
     }
 
     fun refreshBannerIfNeeded(context: Context) {

@@ -19,10 +19,16 @@ import com.goudong.jd.ui.common.themeColor
 object InAppPushBanner {
     private const val AUTO_DISMISS_MS = 6000L
     private const val POPUP_DISMISS_MS = 12000L
+    private const val BANNER_VIEW_TAG = "jd_in_app_push_banner"
 
     private val handler = Handler(Looper.getMainLooper())
     private var hideRunnable: Runnable? = null
     private var bannerView: View? = null
+
+    fun isShowing(): Boolean {
+        val view = bannerView ?: return false
+        return view.parent != null
+    }
 
     fun showSummary(activity: Activity, items: List<ForegroundPushNotifier.PushPayload>) {
         if (items.isEmpty()) {
@@ -45,14 +51,15 @@ object InAppPushBanner {
             displayBody = "最新：${latest.title}"
         }
 
-        val existing = bannerView
-        if (existing != null && existing.parent === root) {
+        val existing = findBannerIn(root)
+        if (existing != null) {
+            bannerView = existing
             updateBannerText(existing, displayTitle, displayBody, isPopup)
             resetAutoDismiss(isPopup)
             return
         }
 
-        dismissImmediate()
+        dismissImmediate(root)
         val banner = buildBanner(ctx, displayTitle, displayBody, isPopup) {
             onBannerClicked(ctx, items)
         }
@@ -95,6 +102,7 @@ object InAppPushBanner {
         onClick: () -> Unit,
     ): LinearLayout {
         return LinearLayout(ctx).apply {
+            tag = BANNER_VIEW_TAG
             orientation = LinearLayout.VERTICAL
             elevation = ctx.dp(if (isPopup) 16 else 12).toFloat()
             background = GradientDrawable().apply {
@@ -175,6 +183,7 @@ object InAppPushBanner {
         hideRunnable?.let { handler.removeCallbacks(it) }
         hideRunnable = null
         val view = bannerView ?: return
+        view.animate().cancel()
         bannerView = null
         view.animate()
             .translationY(-view.context.dp(24).toFloat())
@@ -186,12 +195,32 @@ object InAppPushBanner {
             .start()
     }
 
-    private fun dismissImmediate() {
+    private fun dismissImmediate(root: ViewGroup? = null) {
         hideRunnable?.let { handler.removeCallbacks(it) }
         hideRunnable = null
-        val view = bannerView ?: return
+        bannerView?.animate()?.cancel()
+        if (root != null) {
+            removeBannersFrom(root)
+        } else {
+            (bannerView?.parent as? ViewGroup)?.let { removeBannersFrom(it) }
+        }
         bannerView = null
-        (view.parent as? ViewGroup)?.removeView(view)
+    }
+
+    private fun findBannerIn(root: ViewGroup): View? {
+        for (i in 0 until root.childCount) {
+            val child = root.getChildAt(i)
+            if (child.tag == BANNER_VIEW_TAG) return child
+        }
+        return null
+    }
+
+    private fun removeBannersFrom(root: ViewGroup) {
+        for (i in root.childCount - 1 downTo 0) {
+            if (root.getChildAt(i).tag == BANNER_VIEW_TAG) {
+                root.removeViewAt(i)
+            }
+        }
     }
 
     private fun vibrateOnce(ctx: android.content.Context) {

@@ -24,7 +24,7 @@ class AndroidApp : Application() {
 
             override fun onActivityResumed(activity: Activity) {
                 ForegroundPushNotifier.topActivity = activity
-                if (ForegroundPushNotifier.pendingCount() > 0) {
+                if (ForegroundPushNotifier.pendingCount() > 0 && !InAppPushBanner.isShowing()) {
                     ForegroundPushNotifier.refreshBannerIfNeeded(activity)
                 }
             }
