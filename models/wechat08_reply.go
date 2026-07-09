@@ -15,16 +15,22 @@ import (
 	"github.com/buger/jsonparser"
 )
 
-// wechat08BotBaseURL 机器人专用 API 根路径，例如 http://host:8061/api/v1/bot/
+const wechat08BotAPIPath = "/api/v1/bot/"
+
+// wechat08BotBaseURL 机器人专用 API 根路径。
+// 配置只需填主机，例如 http://host:9059 ；代码自动补全 /api/v1/bot/
+// 若已包含 /api/v1/bot 也会兼容。
 func wechat08BotBaseURL() string {
 	u := strings.TrimSpace(Config.Wx.Url)
 	if u == "" {
 		return ""
 	}
-	if !strings.HasSuffix(u, "/") {
-		u += "/"
+	u = strings.TrimRight(u, "/")
+	lower := strings.ToLower(u)
+	if strings.HasSuffix(lower, "/api/v1/bot") {
+		return u + "/"
 	}
-	return u
+	return u + wechat08BotAPIPath
 }
 
 func wechat08HttpAPIURL() string {
