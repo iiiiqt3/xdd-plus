@@ -322,7 +322,8 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		configMap["robotid"] = v
 	}
 	if v, ok := req["wxToken"].(string); ok {
-		configMap["token"] = fmt.Sprintf("%q", v)
+		// 使用 wx_token 前缀，避免与文件顶层 token 冲突；落盘时写入 wx.token
+		configMap["wx_token"] = fmt.Sprintf("%q", v)
 	}
 	if v, ok := req["wxLoginBaseURL"].(string); ok {
 		configMap["wp_login_base_url"] = v
@@ -441,9 +442,16 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	inYyb := false
 	inJpush := false
 	wxProtocolEndIdx := -1
+	wxEndIdx := -1
 	yybEndIdx := -1
 	jpushEndIdx := -1
 
+	wxYamlKeys := map[string]string{
+		"model":    "model",
+		"url":      "url",
+		"robotid":  "robotid",
+		"wx_token": "token",
+	}
 	wpYamlKeys := map[string]string{
 		"wp_login_base_url":     "login_base_url",
 		"wp_new_login_base_url": "new_login_base_url",
@@ -538,16 +546,26 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 			inWx = false
 		}
 
-		// 处理 wx 嵌套配置（model/url/robotid，必须缩进且在 wx 节内）
+		// 处理 wx 嵌套配置（model/url/robotid/token，必须缩进且在 wx 节内）
 		if inWx && isIndentedLine(line) {
-			for yamlKey, newVal := range configMap {
-				if strings.HasPrefix(trimmed, yamlKey+":") {
-					indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
+			indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
+			// 注释掉的 # token: 也视为可替换目标
+			checkTrimmed := trimmed
+			if strings.HasPrefix(checkTrimmed, "#") {
+				checkTrimmed = strings.TrimSpace(strings.TrimPrefix(checkTrimmed, "#"))
+			}
+			for mapKey, yamlKey := range wxYamlKeys {
+				if newVal, ok := configMap[mapKey]; ok && strings.HasPrefix(checkTrimmed, yamlKey+":") {
 					newLines = append(newLines, fmt.Sprintf("%s%s: %s", indent, yamlKey, newVal))
-					delete(configMap, yamlKey)
+					delete(configMap, mapKey)
+					wxEndIdx = len(newLines)
 					goto next
 				}
 			}
+			wxEndIdx = len(newLines) + 1
+		}
+		if inWx {
+			wxEndIdx = len(newLines) + 1
 		}
 		// 处理 wx_protocol 嵌套配置（仅缩进行）
 		if inWxProtocol && isIndentedLine(line) && strings.Contains(trimmed, ":") && !strings.HasPrefix(trimmed, "#") {
@@ -619,6 +637,45 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		newLines = append(newLines, line)
 	next:
 	}
+
+	// 将未匹配的 wx 字段插入到 wx 节末尾（例如原先只有注释 # token 时）
+	if wxEndIdx < 0 {
+		wxEndIdx = len(newLines)
+	}
+	var wxInsertLines []string
+	for mapKey, yamlKey := range wxYamlKeys {
+		if newVal, ok := configMap[mapKey]; ok {
+			wxInsertLines = append(wxInsertLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+			delete(configMap, mapKey)
+		}
+	}
+	if len(wxInsertLines) > 0 {
+		hasWxSection := false
+		for _, line := range newLines {
+			if strings.HasPrefix(strings.TrimSpace(line), "wx:") {
+				hasWxSection = true
+				break
+			}
+		}
+		if hasWxSection {
+			newLines = append(newLines[:wxEndIdx], append(wxInsertLines, newLines[wxEndIdx:]...)...)
+		} else {
+			newLines = append(newLines, "", "# ==================== 微信机器人配置 ====================")
+			newLines = append(newLines, "wx:")
+			newLines = append(newLines, wxInsertLines...)
+		}
+	}
+
+	// 清理历史误写入的顶级 token:（应属于 wx.token）
+	cleaned := make([]string, 0, len(newLines))
+	for _, line := range newLines {
+		trimmed := strings.TrimSpace(line)
+		if isTopLevelKeyLine(line, trimmed) && strings.HasPrefix(trimmed, "token:") {
+			continue
+		}
+		cleaned = append(cleaned, line)
+	}
+	newLines = cleaned
 
 	// 将未匹配的 wx_protocol 字段插入到 wx_protocol 节末尾
 	if wxProtocolEndIdx < 0 {
