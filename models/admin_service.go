@@ -131,6 +131,7 @@ func GetJdConfigForAdmin() map[string]interface{} {
 		"wxModel":        Config.Wx.Model,
 		"wxUrl":          Config.Wx.Url,
 		"wxRobotId":      Config.Wx.Robotid,
+		"wxToken":        Config.Wx.Token,
 		"wxLoginBaseURL": Config.WxProtocol.LoginBaseURL,
 		"wxNewLoginBaseURL": Config.WxProtocol.NewLoginBaseURL,
 		"wxActiveProtocol": Config.WxProtocol.ActiveProtocol,
@@ -319,6 +320,9 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	}
 	if v, ok := req["wxRobotId"].(string); ok {
 		configMap["robotid"] = v
+	}
+	if v, ok := req["wxToken"].(string); ok {
+		configMap["token"] = fmt.Sprintf("%q", v)
 	}
 	if v, ok := req["wxLoginBaseURL"].(string); ok {
 		configMap["wp_login_base_url"] = v

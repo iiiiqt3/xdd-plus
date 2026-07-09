@@ -179,6 +179,11 @@ func (c *WxController) HandleWxMessage() {
 	data := c.Ctx.Input.RequestBody
 	models.Bot().Infof("微信Hook原始消息: %s", string(data))
 
+	if models.Config.Wx.Model == "wechat08" {
+		c.HandleWechat08Message(data)
+		return
+	}
+
 	if models.Config.Wx.Model == "qx" {
 		event, _ := jsonparser.GetInt(data, "event")
 		val, _ := jsonparser.GetString(data, "wxid")
@@ -448,6 +453,8 @@ func AgreeFriendVerify(args interface{}) {
 				models.SendWxMsg(arg["uid"], welcome)
 			}
 		}
+	case "wechat08":
+		models.Wechat08AgreeFriend(arg["v3"], arg["v4"], arg["scene"], arg["uid"])
 	}
 }
 

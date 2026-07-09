@@ -2813,7 +2813,7 @@ async function loadDashboard() {
         // 系统信息（两列网格布局）
         const jdCfg = await api.get('/api/admin/jdconfig').catch(() => ({ data: {} }));
         const cfg = jdCfg.data || {};
-        const wxModelMap = { 'qx': '千寻 (qx)', 'my': '美云 (my)', '': '-' };
+        const wxModelMap = { 'qx': '千寻 (qx)', 'my': '美云 (my)', 'wechat08': 'WeChat08 (wechat08)', '': '-' };
         document.getElementById('dashSysInfo').innerHTML = `<div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
             <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
                 <span style="color:#999;">运行模式</span>
@@ -6368,9 +6368,10 @@ async function loadSysConfig() {
             <div class="config-section">
                 <div class="config-section-title"><i class="fab fa-weixin"></i> 微信机器人配置</div>
                 <div class="form-grid">
-                    <div class="form-item"><label>框架类型</label><select id="cfg_wxModel"><option value="qx" ${cfg.wxModel==='qx'?'selected':''}>千寻 (qx)</option><option value="my" ${cfg.wxModel==='my'?'selected':''}>西瓜 (my)</option></select></div>
-                    <div class="form-item"><label>机器人地址</label><input type="text" id="cfg_wxUrl" value="${v(cfg.wxUrl)}"></div>
+                    <div class="form-item"><label>框架类型</label><select id="cfg_wxModel"><option value="qx" ${cfg.wxModel==='qx'?'selected':''}>千寻 (qx)</option><option value="my" ${cfg.wxModel==='my'?'selected':''}>西瓜 (my)</option><option value="wechat08" ${cfg.wxModel==='wechat08'?'selected':''}>WeChat08 (wechat08)</option></select></div>
+                    <div class="form-item"><label>机器人地址</label><input type="text" id="cfg_wxUrl" value="${v(cfg.wxUrl)}" placeholder="千寻: http://host:8012/  |  wechat08: http://host:8061/api/v1/bot/"></div>
                     <div class="form-item"><label>RobotID</label><input type="text" id="cfg_wxRobotId" value="${v(cfg.wxRobotId)}"></div>
+                    <div class="form-item"><label>Token</label><input type="text" id="cfg_wxToken" value="${v(cfg.wxToken)}" placeholder="西瓜 / wechat08 需要；千寻可空"></div>
                 </div>
             </div>
             <div class="config-section">
@@ -6497,6 +6498,7 @@ async function saveSysConfig() {
             wxModel: (document.getElementById('cfg_wxModel')||{}).value,
             wxUrl: (document.getElementById('cfg_wxUrl')||{}).value,
             wxRobotId: (document.getElementById('cfg_wxRobotId')||{}).value,
+            wxToken: (document.getElementById('cfg_wxToken')||{}).value,
             wxLoginBaseURL: (document.getElementById('cfg_wxLoginBaseURL')||{}).value,
             wxNewLoginBaseURL: (document.getElementById('cfg_wxNewLoginBaseURL')||{}).value,
             wxActiveProtocol: (document.getElementById('cfg_wxActiveProtocol')||{}).value,

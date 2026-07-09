@@ -355,6 +355,8 @@ var codeSignals = []CodeSignal{
 							QxInviteGroup(sender.WxId, env)
 						} else if Config.Wx.Model == "my" {
 							InviteGroup(sender.WxId, env)
+						} else if Config.Wx.Model == "wechat08" {
+							Wechat08InviteGroup(sender.WxId, env)
 						} else {
 							return "未知的拉群模式，请检查配置"
 						}
