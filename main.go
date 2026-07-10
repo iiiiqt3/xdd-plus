@@ -396,6 +396,8 @@ func main() {
 	web.Router("/api/admin/yyb/accounts/delete", &controllers.AdminYybController{}, "post:DeleteAccount")
 	web.Router("/api/admin/yyb/accounts/refresh", &controllers.AdminYybController{}, "post:RefreshAccount")
 	web.Router("/api/admin/yyb/accounts/check-all", &controllers.AdminYybController{}, "post:CheckAllAccounts")
+	web.Router("/api/admin/yyb/protocol/warmup", &controllers.AdminYybController{}, "post:WarmupProtocol")
+	web.Router("/api/admin/yyb/protocol/check-all", &controllers.AdminYybController{}, "post:CheckAllProtocol")
 	web.Router("/api/admin/yyb/accounts/resync", &controllers.AdminYybController{}, "post:ResyncAccount")
 	web.Router("/api/admin/yyb/qr", &controllers.AdminYybController{}, "post:CreateQR")
 	web.Router("/api/admin/yyb/qr/:id/poll", &controllers.AdminYybController{}, "get:PollQR")

@@ -101,6 +101,7 @@
         <div class="stats">
             <div class="stat-card"><h4>服务状态</h4><div class="num" id="stHealth" style="font-size:18px;">-</div></div>
             <div class="stat-card"><h4>协议账号</h4><div class="num" id="stProtocol">0</div></div>
+            <div class="stat-card"><h4>可用</h4><div class="num" id="stAlive" style="color:#67c23a;">0</div></div>
             <div class="stat-card"><h4>门户绑定</h4><div class="num" id="stBindings">0</div></div>
             <div class="stat-card"><h4>扫码积分</h4><div class="num" id="stCost">-</div></div>
         </div>
@@ -266,6 +267,11 @@ function qrImgSrc(b64) {
 function renderAccounts() {
     const box = $('accountSelect');
     $('stProtocol').textContent = state.accounts.length;
+    const alive = state.accounts.filter(a => {
+        const st = String(accountStatus(a) || '').toLowerCase();
+        return st === 'alive' || st === 'online';
+    }).length;
+    if ($('stAlive')) $('stAlive').textContent = alive;
     if (!state.accounts.length) {
         box.innerHTML = '<div class="empty-tip">暂无协议账号，可点击「测试扫码」添加</div>';
         state.selectedOpenID = '';
@@ -336,9 +342,13 @@ function renderBindings() {
 async function loadStatus() {
     const st = await request('/status');
     const cfg = st.config || {};
-    $('stCost').textContent = cfg.scanLoginCost ?? '-';
+    const cost = cfg.scanLoginCost;
+    $('stCost').textContent = (cost == null ? 2000 : cost);
     $('stHealth').textContent = (!st.enabled || !st.ready) ? '不可用' : '正常';
     $('stHealth').style.color = (!st.enabled || !st.ready) ? '#f56c6c' : '#67c23a';
+    if (st.protocolCount != null) $('stProtocol').textContent = st.protocolCount;
+    if ($('stAlive') && st.aliveCount != null) $('stAlive').textContent = st.aliveCount;
+    if (st.bindingCount != null) $('stBindings').textContent = st.bindingCount;
     $('scanBtn').disabled = !st.enabled || !st.ready;
     $('callBtn').disabled = !st.enabled || !st.ready;
 }
@@ -496,6 +506,18 @@ $('scanBtn').onclick = startScan;
 $('qrCloseBtn').onclick = closeQr;
 togglePayload();
 loadAll();
+(function () {
+    try {
+        if (sessionStorage.getItem('xdd_admin_yyb_proto_warmup') === '1') return;
+        sessionStorage.setItem('xdd_admin_yyb_proto_warmup', '1');
+    } catch (e) {}
+    fetch('/api/admin/yyb/protocol/warmup', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+    }).catch(function () {});
+})();
 </script>
 </body>
 </html>

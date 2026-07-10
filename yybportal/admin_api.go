@@ -6,9 +6,16 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/yyb"
+)
+
+var (
+	adminProtoCheckRunning int32
+	adminProtoCheckedAt    int64
 )
 
 // AdminStatusExtras 管理端状态扩展（绑定数、协议账号数、可用数）
@@ -45,6 +52,10 @@ func AdminStatusExtras() map[string]any {
 		}
 	}
 	out["aliveCount"] = alive
+	out["checkRunning"] = atomic.LoadInt32(&adminProtoCheckRunning) == 1
+	if ts := atomic.LoadInt64(&adminProtoCheckedAt); ts > 0 {
+		out["checkedAt"] = ts
+	}
 	return out
 }
 
@@ -150,6 +161,72 @@ func adminSyncBindingByRef(ref string, data map[string]any) {
 	for i := range rows {
 		syncBindingFromRefresh(&rows[i], data)
 	}
+}
+
+// AdminCheckAllProtocolAccounts 检测全部协议账号存活（更新可用数）
+func AdminCheckAllProtocolAccounts() (map[string]any, error) {
+	if !Ready() {
+		return nil, fmt.Errorf("应用宝服务不可用")
+	}
+	a, err := svc()
+	if err != nil {
+		return nil, err
+	}
+	models.Yyb().Infof("管理后台开始检测协议账号存活")
+	accounts, err := a.ListAccounts(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	alive, dead, failed := 0, 0, 0
+	for _, acc := range accounts {
+		ref := strings.TrimSpace(acc.OpenID)
+		if ref == "" {
+			ref = strconv.FormatInt(acc.ID, 10)
+		}
+		data, err := AdminRefreshAccount(ref)
+		if err != nil {
+			failed++
+			continue
+		}
+		st := ""
+		if data != nil {
+			st = strings.ToLower(strings.TrimSpace(fmt.Sprint(data["status"])))
+		}
+		if st == "alive" || st == "online" {
+			alive++
+		} else {
+			dead++
+		}
+	}
+	atomic.StoreInt64(&adminProtoCheckedAt, time.Now().Unix())
+	models.Yyb().Infof("管理后台协议账号检测完成: total=%d alive=%d dead=%d failed=%d", len(accounts), alive, dead, failed)
+	extras := AdminStatusExtras()
+	return map[string]any{
+		"checkSummary": map[string]any{
+			"total":  len(accounts),
+			"alive":  alive,
+			"dead":   dead,
+			"failed": failed,
+		},
+		"protocolCount": extras["protocolCount"],
+		"aliveCount":    extras["aliveCount"],
+		"bindingCount":  extras["bindingCount"],
+	}, nil
+}
+
+// AdminTriggerProtocolWarmup 管理员进入后台时后台预检协议账号（不阻塞）
+func AdminTriggerProtocolWarmup() map[string]any {
+	if !Ready() {
+		return map[string]any{"started": false, "running": false, "reason": "unavailable"}
+	}
+	if !atomic.CompareAndSwapInt32(&adminProtoCheckRunning, 0, 1) {
+		return map[string]any{"started": false, "running": true}
+	}
+	go func() {
+		defer atomic.StoreInt32(&adminProtoCheckRunning, 0)
+		_, _ = AdminCheckAllProtocolAccounts()
+	}()
+	return map[string]any{"started": true, "running": true}
 }
 
 // AdminCheckAllBindings 一键检测全部门户绑定账号存活状态

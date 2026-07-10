@@ -2,7 +2,7 @@
     'use strict';
 
     const API = '/api/admin/yyb';
-    const state = { bindings: [], protocolCount: 0, lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, tab: 'debug', bindingLoading: false };
+    const state = { bindings: [], protocolCount: 0, aliveCount: 0, lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, tab: 'debug', bindingLoading: false, warmupStarted: false, statusPollTimer: null };
 
     function $(id) { return document.getElementById(id); }
 
@@ -148,20 +148,70 @@
         });
     }
 
+    const WARMUP_KEY = 'xdd_admin_yyb_proto_warmup';
+
+    function applyAliveCount(n) {
+        state.aliveCount = Number(n || 0);
+        if ($('ayyb-stAlive')) $('ayyb-stAlive').textContent = state.aliveCount;
+        if ($('ayybDashAlive')) $('ayybDashAlive').textContent = state.aliveCount;
+    }
+
     async function loadStatus() {
         const st = await request('/status');
         const cfg = st.config || {};
-        if ($('ayyb-stCost')) $('ayyb-stCost').textContent = cfg.scanLoginCost ?? '-';
+        if ($('ayyb-stCost')) {
+            const cost = cfg.scanLoginCost;
+            $('ayyb-stCost').textContent = (cost == null ? 2000 : cost);
+        }
         if ($('ayyb-stHealth')) {
             $('ayyb-stHealth').textContent = (!st.enabled || !st.ready) ? '不可用' : '正常';
             $('ayyb-stHealth').style.color = (!st.enabled || !st.ready) ? '#f56c6c' : '#67c23a';
         }
         if ($('ayyb-stProtocol')) $('ayyb-stProtocol').textContent = st.protocolCount ?? state.protocolCount;
+        if (st.protocolCount != null) state.protocolCount = st.protocolCount;
+        applyAliveCount(st.aliveCount ?? state.aliveCount);
+        if ($('ayyb-stBindings') && st.bindingCount != null) $('ayyb-stBindings').textContent = st.bindingCount;
         const disabled = !st.enabled || !st.ready;
         if ($('ayyb-scanBtn')) $('ayyb-scanBtn').disabled = disabled;
         if ($('ayyb-callBtn')) $('ayyb-callBtn').disabled = disabled;
         if ($('ayyb-checkAllBtn')) $('ayyb-checkAllBtn').disabled = disabled;
         return st;
+    }
+
+    function stopStatusPoll() {
+        if (state.statusPollTimer) {
+            clearTimeout(state.statusPollTimer);
+            state.statusPollTimer = null;
+        }
+    }
+
+    function scheduleStatusPoll(delay) {
+        stopStatusPoll();
+        state.statusPollTimer = setTimeout(async () => {
+            try {
+                const st = await loadStatus();
+                if (st && st.checkRunning) scheduleStatusPoll(2500);
+            } catch (_) { /* ignore */ }
+        }, delay);
+    }
+
+    // 每次管理员登录会话只自动检测 1 次（切页/再进应用宝不再触发）
+    async function warmupProtocolCheck() {
+        if (state.warmupStarted) return;
+        try {
+            if (sessionStorage.getItem(WARMUP_KEY) === '1') {
+                state.warmupStarted = true;
+                return;
+            }
+        } catch (_) { /* ignore */ }
+        state.warmupStarted = true;
+        try {
+            sessionStorage.setItem(WARMUP_KEY, '1');
+        } catch (_) { /* ignore */ }
+        try {
+            const data = await request('/protocol/warmup', { method: 'POST', body: '{}' });
+            if (data && data.started) scheduleStatusPoll(2000);
+        } catch (_) { /* 静默：不影响其他页面 */ }
     }
 
     async function loadBindings(showToast) {
@@ -213,6 +263,11 @@
             const protocol = await request('/protocol/accounts') || [];
             state.protocolCount = protocol.length;
             if ($('ayyb-stProtocol')) $('ayyb-stProtocol').textContent = state.protocolCount;
+            const alive = protocol.filter(a => {
+                const st = String((a && a.status) || '').toLowerCase();
+                return st === 'alive' || st === 'online';
+            }).length;
+            applyAliveCount(alive);
             await loadBindings(false);
         } catch (e) { setResult(e.message, true); }
     }
@@ -366,7 +421,9 @@
         togglePayload();
     }
 
-    function init() { bindEvents(); }
+    function init() {
+        bindEvents();
+    }
 
     global.AdminYyb = {
         init,
@@ -375,5 +432,6 @@
         switchTab,
         checkAllBindings,
         loadBindings,
+        warmupProtocolCheck,
     };
 })(window);

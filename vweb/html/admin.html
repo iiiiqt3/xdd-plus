@@ -1748,7 +1748,7 @@
 
         <!-- ========= 应用宝协议管理 ========= -->
         <div id="page-yyb" class="page-section">
-            <div class="stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;">
+            <div class="stats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:16px;">
                 <div class="stat-card" style="background:#fff;border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,0.04);">
                     <h4 style="font-size:12px;color:#999;margin-bottom:8px;">服务状态</h4>
                     <div style="font-size:18px;font-weight:700;" id="ayyb-stHealth">-</div>
@@ -1756,6 +1756,10 @@
                 <div class="stat-card" style="background:#fff;border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,0.04);">
                     <h4 style="font-size:12px;color:#999;margin-bottom:8px;">协议账号</h4>
                     <div style="font-size:26px;font-weight:700;" id="ayyb-stProtocol">0</div>
+                </div>
+                <div class="stat-card" style="background:#fff;border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,0.04);">
+                    <h4 style="font-size:12px;color:#999;margin-bottom:8px;">可用</h4>
+                    <div style="font-size:26px;font-weight:700;color:#67c23a;" id="ayyb-stAlive">0</div>
                 </div>
                 <div class="stat-card" style="background:#fff;border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,0.04);">
                     <h4 style="font-size:12px;color:#999;margin-bottom:8px;">门户绑定</h4>
@@ -2467,7 +2471,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/admin_yyb.js?v=7"></script>
+<script src="/vweb/js/admin_yyb.js?v=8"></script>
 <script src="/vweb/js/api_docs_data.js?v=1"></script>
 <script>
 // ============ 通用工具 ============
@@ -6750,7 +6754,10 @@ window._pageSizeChange = function(key, size) {
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', () => {
     initNavMenu();
-    if (window.AdminYyb) AdminYyb.init();
+    if (window.AdminYyb) {
+        AdminYyb.init();
+        AdminYyb.warmupProtocolCheck(); // 登录进后台只自动检测 1 次
+    }
     loadDashboard();
     initResizableColumns();
     var pageQ = new URLSearchParams(location.search).get('page');

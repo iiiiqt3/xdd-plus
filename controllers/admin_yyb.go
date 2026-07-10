@@ -126,6 +126,21 @@ func (c *AdminYybController) CheckAllAccounts() {
 	c.jsonOK(data, "检测完成")
 }
 
+// WarmupProtocol 管理员进入后台时后台预检协议账号存活（立即返回）
+func (c *AdminYybController) WarmupProtocol() {
+	c.jsonOK(yybportal.AdminTriggerProtocolWarmup(), "ok")
+}
+
+// CheckAllProtocol 同步检测全部协议账号存活
+func (c *AdminYybController) CheckAllProtocol() {
+	data, err := yybportal.AdminCheckAllProtocolAccounts()
+	if err != nil {
+		c.jsonErr(err)
+		return
+	}
+	c.jsonOK(data, "检测完成")
+}
+
 // ResyncAccount 同步
 func (c *AdminYybController) ResyncAccount() {
 	var req struct {
