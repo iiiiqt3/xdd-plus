@@ -6541,7 +6541,7 @@ async function loadSysConfig() {
                 <div class="form-grid">
                     <div class="form-item"><label>启用模块</label><select id="cfg_yybEnabled">${sel(cfg.yybEnabled)}</select></div>
                     <div class="form-item"><label>每用户账号上限</label><input type="number" id="cfg_yybMaxAccountsPerUser" value="${cfg.yybMaxAccountsPerUser || 5}" min="1"></div>
-                    <div class="form-item"><label>扫码登录积分</label><input type="number" id="cfg_yybScanLoginCost" value="${cfg.yybScanLoginCost || 2000}" placeholder="留空则沿用微信协议扫码积分"></div>
+                    <div class="form-item"><label>扫码登录积分</label><input type="number" id="cfg_yybScanLoginCost" min="0" value="${cfg.yybScanLoginCost == null ? 2000 : cfg.yybScanLoginCost}" placeholder="0 表示免费，不扣积分"></div>
                     <div class="form-item"><label>暴露内部 API</label><select id="cfg_yybExposeInternalAPI">${sel(cfg.yybExposeInternalAPI)}</select></div>
                     <div class="form-item full"><label>资源目录</label><input type="text" id="cfg_yybResourceRoot" value="${v(cfg.yybResourceRoot)}" placeholder="默认 yyb/resource"></div>
                     <div class="form-item full"><label>数据库路径</label><input type="text" id="cfg_yybDBFilename" value="${v(cfg.yybDBFilename)}" placeholder="默认 yyb/resource/yyb.db"></div>
