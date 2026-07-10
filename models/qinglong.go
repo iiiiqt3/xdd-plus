@@ -254,28 +254,6 @@ func (q *QingLongClient) QueryEnvs(searchValue string) ([]QLEnvItem, error) {
 	return envsResp.Data, nil
 }
 
-// QueryEnvByRemarks 根据备注和环境变量名查询
-// QueryEnvByRemarks 根据备注和环境变量名查询
-// 修复：返回完整的QLEnvItem结构体，而非map，确保状态信息不丢失
-func (q *QingLongClient) QueryEnvByRemarks(userID, envName string) ([]QLEnvItem, error) {
-	envs, err := q.QueryEnvs(envName)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []QLEnvItem
-	for _, env := range envs {
-		if env.Name == envName {
-			extractID := ExtractUserIDFromRemarks(env.Remarks)
-			if extractID == userID && env.Value != "" {
-				result = append(result, env) // 直接返回完整的QLEnvItem
-			}
-		}
-	}
-
-	return result, nil
-}
-
 // SubmitEnv 提交环境变量（修复响应解析问题）
 func (q *QingLongClient) SubmitEnv(envName, value, remarks string) error {
 	token, err := q.GetToken()
@@ -413,29 +391,32 @@ func (q *QingLongClient) UpdateEnvContent(envID int, envName, value, remarks str
 	return nil
 }
 
-// remarksBelongsToProject 判断青龙备注是否属于该 DB 项目（完全匹配 / 用户ID / 别名前缀）
+// remarksBelongsToProject 判断青龙备注是否属于该 DB 项目
+// 规则：完整备注相同，或「备注别名 + 用户编号」相同（忽略到期日）
+// 不单独用用户号/别名匹配，避免「大师」与「大师的机器人」互相命中
 func remarksBelongsToProject(qlRemarks string, project *ActivityProject) bool {
 	if project == nil {
 		return false
 	}
 	expected := strings.TrimSpace(project.Remarks)
 	qlRemarks = strings.TrimSpace(qlRemarks)
+	if expected == "" || qlRemarks == "" {
+		return false
+	}
 	if qlRemarks == expected {
 		return true
 	}
+
+	dbAlias := strings.TrimSpace(project.RemarkAlias)
+	if dbAlias == "" {
+		dbAlias = GetFirstRemarkParam(expected)
+	}
+	qlAlias := GetFirstRemarkParam(qlRemarks)
 	dbUID := ExtractUserIDFromRemarks(expected)
 	qlUID := ExtractUserIDFromRemarks(qlRemarks)
-	if dbUID != "" && dbUID == qlUID {
-		return true
-	}
-	alias := strings.TrimSpace(project.RemarkAlias)
-	if alias == "" {
-		alias = GetFirstRemarkParam(expected)
-	}
-	if alias != "" && (strings.HasPrefix(qlRemarks, alias+"/") || qlRemarks == alias) {
-		return true
-	}
-	return false
+
+	return dbAlias != "" && qlAlias != "" && dbAlias == qlAlias &&
+		dbUID != "" && qlUID != "" && dbUID == qlUID
 }
 
 func isQLUniqueConstraintError(err error) bool {
@@ -490,48 +471,32 @@ func FormatQLSyncError(action string, err error, project *ActivityProject) error
 	return fmt.Errorf("%s: %s", ctx, zh)
 }
 
-// FindEnvForProject 多策略查找青龙变量（备注、EnvID、用户ID、CK值）
+// FindEnvForProject 按「备注别名 + 用户编号」查找青龙变量（不使用 EnvID / CK）
+// 备注格式：备注/用户编号/到期日；续费只改日期时仍能命中同一条
 func (q *QingLongClient) FindEnvForProject(project *ActivityProject) (*QLEnvItem, string, error) {
 	if project == nil {
 		return nil, "", fmt.Errorf("项目为空")
 	}
 
-	if project.QingLongEnvID > 0 {
-		if env, err := q.findEnvByID(project.QingLongEnvID, project.EnvKey); err == nil {
-			return env, "EnvID", nil
-		}
+	if strings.TrimSpace(project.Remarks) == "" || strings.TrimSpace(project.EnvKey) == "" {
+		return nil, "", fmt.Errorf("备注或变量名为空")
 	}
 
-	if env, err := q.FindEnvByRemarks(project.Remarks, project.EnvKey); err == nil {
+	// 完整备注优先（含到期日完全一致）
+	if env, err := q.FindEnvByRemarksExact(project.Remarks, project.EnvKey); err == nil {
 		return env, "备注完全匹配", nil
 	}
 
+	alias := strings.TrimSpace(project.RemarkAlias)
+	if alias == "" {
+		alias = GetFirstRemarkParam(project.Remarks)
+	}
 	uid := ExtractUserIDFromRemarks(project.Remarks)
-	if uid != "" {
-		if envs, err := q.QueryEnvByRemarks(uid, project.EnvKey); err == nil {
-			var matched []QLEnvItem
-			for _, e := range envs {
-				if remarksBelongsToProject(e.Remarks, project) {
-					matched = append(matched, e)
-				}
-			}
-			if len(matched) == 1 {
-				return &matched[0], "用户ID匹配", nil
-			}
-			if len(matched) > 1 {
-				return nil, "", fmt.Errorf("青龙中存在多个匹配变量（用户ID=%s）", uid)
-			}
-		}
+	if alias == "" || uid == "" {
+		return nil, "", fmt.Errorf("未找到备注为 %s 的环境变量", project.Remarks)
 	}
 
-	searchKeys := []string{project.EnvKey}
-	if alias := GetFirstRemarkParam(project.Remarks); alias != "" {
-		searchKeys = append(searchKeys, alias)
-	}
-	if uid != "" {
-		searchKeys = append(searchKeys, uid)
-	}
-
+	searchKeys := []string{project.EnvKey, alias, uid}
 	seen := make(map[int]bool)
 	var candidates []*QLEnvItem
 	for _, key := range searchKeys {
@@ -552,46 +517,15 @@ func (q *QingLongClient) FindEnvForProject(project *ActivityProject) (*QLEnvItem
 	}
 
 	if len(candidates) == 1 {
-		return candidates[0], "备注规则匹配", nil
+		return candidates[0], "备注/用户号匹配", nil
 	}
 	if len(candidates) > 1 {
-		return nil, "", fmt.Errorf("青龙中存在多个匹配变量，备注=%s", project.Remarks)
+		return nil, "", fmt.Errorf("青龙中存在多个匹配变量，备注=%s/%s", alias, uid)
 	}
-
-	if strings.TrimSpace(project.EnvValue) != "" {
-		for _, key := range searchKeys {
-			envs, err := q.QueryEnvs(key)
-			if err != nil {
-				continue
-			}
-			for i := range envs {
-				env := &envs[i]
-				if env.Name == project.EnvKey && env.Value == project.EnvValue {
-					return env, "CK值匹配", nil
-				}
-			}
-		}
-	}
-
 	return nil, "", fmt.Errorf("未找到备注为 %s 的环境变量", project.Remarks)
 }
 
-func (q *QingLongClient) findEnvByID(envID int, envName string) (*QLEnvItem, error) {
-	envs, err := q.QueryEnvs(fmt.Sprintf("%d", envID))
-	if err != nil {
-		return nil, err
-	}
-	for i := range envs {
-		if envs[i].ID == envID {
-			if envName == "" || envs[i].Name == envName {
-				return &envs[i], nil
-			}
-		}
-	}
-	return nil, fmt.Errorf("未找到环境变量 ID=%d", envID)
-}
-
-// ResolveEnvByProject 按备注、EnvID、用户ID、CK值解析青龙变量
+// ResolveEnvByProject 按备注别名 + 用户编号解析青龙变量
 func (q *QingLongClient) ResolveEnvByProject(project *ActivityProject) (*QLEnvItem, error) {
 	env, _, err := q.FindEnvForProject(project)
 	return env, err
@@ -878,8 +812,8 @@ func (q *QingLongClient) GetRemarksByEnvName(envName string) ([]string, error) {
 	return remarks, nil
 }
 
-// FindEnvByRemarks 根据备注和环境变量名查找环境变量（按备注/用户号搜索，避免列表截断漏查）
-func (q *QingLongClient) FindEnvByRemarks(remark, envName string) (*QLEnvItem, error) {
+// FindEnvByRemarksExact 按完整备注 + 变量名精确查找
+func (q *QingLongClient) FindEnvByRemarksExact(remark, envName string) (*QLEnvItem, error) {
 	remark = strings.TrimSpace(remark)
 	if remark == "" {
 		return nil, fmt.Errorf("备注为空")
@@ -905,17 +839,60 @@ func (q *QingLongClient) FindEnvByRemarks(remark, envName string) (*QLEnvItem, e
 				continue
 			}
 			seenID[env.ID] = true
-			if env.Name == envName {
-				if strings.TrimSpace(env.Remarks) == remark || remarksBelongsToProject(env.Remarks, &ActivityProject{
-					Remarks:     remark,
-					RemarkAlias: GetFirstRemarkParam(remark),
-				}) {
-					return env, nil
-				}
+			if env.Name == envName && strings.TrimSpace(env.Remarks) == remark {
+				return env, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("未找到备注为 %s 的环境变量", remark)
+}
+
+// FindEnvByRemarks 根据备注和环境变量名查找环境变量（按备注别名+用户号匹配，忽略到期日）
+func (q *QingLongClient) FindEnvByRemarks(remark, envName string) (*QLEnvItem, error) {
+	remark = strings.TrimSpace(remark)
+	if remark == "" {
+		return nil, fmt.Errorf("备注为空")
+	}
+
+	project := &ActivityProject{
+		Remarks:     remark,
+		RemarkAlias: GetFirstRemarkParam(remark),
+		EnvKey:      envName,
+	}
+
+	searchKeys := []string{remark, envName}
+	if uid := ExtractUserIDFromRemarks(remark); uid != "" {
+		searchKeys = append(searchKeys, uid)
+	}
+	if alias := GetFirstRemarkParam(remark); alias != "" && alias != remark {
+		searchKeys = append(searchKeys, alias)
+	}
+
+	seenID := make(map[int]bool)
+	var candidates []*QLEnvItem
+	for _, key := range searchKeys {
+		envs, err := q.QueryEnvs(key)
+		if err != nil {
+			continue
+		}
+		for i := range envs {
+			env := &envs[i]
+			if seenID[env.ID] {
+				continue
+			}
+			seenID[env.ID] = true
+			if env.Name == envName && remarksBelongsToProject(env.Remarks, project) {
+				candidates = append(candidates, env)
 			}
 		}
 	}
 
+	if len(candidates) == 1 {
+		return candidates[0], nil
+	}
+	if len(candidates) > 1 {
+		return nil, fmt.Errorf("青龙中存在多个匹配变量，备注=%s", remark)
+	}
 	return nil, fmt.Errorf("未找到备注为 %s 的环境变量", remark)
 }
 

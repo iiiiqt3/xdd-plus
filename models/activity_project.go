@@ -150,6 +150,22 @@ func CalcPaidRemainingDays(project *ActivityProject) int {
 
 func CreateActivityProject(project *ActivityProject) error {
 	NormalizeProjectBilling(project)
+
+	if project.RemarkAlias == "" {
+		project.RemarkAlias = GetFirstRemarkParam(project.Remarks)
+	}
+
+	// 同用户 + 同活动：备注别名不可重复
+	if project.UserNumber > 0 && project.ActivityID != "" && project.RemarkAlias != "" {
+		exists, err := HasActiveProjectByUserActivityAlias(project.UserNumber, project.ActivityID, project.RemarkAlias)
+		if err != nil {
+			return fmt.Errorf("检查重复备注失败：%v", err)
+		}
+		if exists {
+			return fmt.Errorf("该账号备注已存在，请勿重复提交")
+		}
+	}
+
 	duplicate, err := CheckDuplicateRemarksDB(project.Remarks, project.EnvKey)
 	if err != nil {
 		return fmt.Errorf("检查重复备注失败：%v", err)
@@ -165,9 +181,6 @@ func CreateActivityProject(project *ActivityProject) error {
 	project.SyncRetryCount = 0
 	project.SyncError = ""
 
-	if project.RemarkAlias == "" {
-		project.RemarkAlias = GetFirstRemarkParam(project.Remarks)
-	}
 	return db.Create(project).Error
 }
 
@@ -296,9 +309,33 @@ func GetActivityProjectByRemarks(activityID, remarks, envKey string) (*ActivityP
 }
 
 func CheckDuplicateRemarksDB(remarks, envKey string) (bool, error) {
+	remarks = strings.TrimSpace(remarks)
+	envKey = strings.TrimSpace(envKey)
+	if remarks == "" || envKey == "" {
+		return false, nil
+	}
+
+	// 完整备注重复
 	var count int64
 	err := db.Model(&ActivityProject{}).
 		Where("remarks = ? AND env_key = ? AND deleted_at IS NULL", remarks, envKey).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	if count > 0 {
+		return true, nil
+	}
+
+	// 同活动下「备注别名 + 用户编号」重复（忽略到期日）
+	alias := GetFirstRemarkParam(remarks)
+	uid := ExtractUserIDFromRemarks(remarks)
+	if alias == "" || uid == "" {
+		return false, nil
+	}
+	err = db.Model(&ActivityProject{}).
+		Where("env_key = ? AND remark_alias = ? AND deleted_at IS NULL AND remarks LIKE ?",
+			envKey, alias, "%/"+uid+"/%").
 		Count(&count).Error
 	if err != nil {
 		return false, err

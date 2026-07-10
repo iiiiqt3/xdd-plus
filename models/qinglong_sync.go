@@ -295,10 +295,10 @@ func (sq *SyncQueue) handleUpdate(project *ActivityProject, client *QingLongClie
 			go TriggerSync(project.ID)
 			return nil
 		}
-		// 过期 EnvID 或备注已变更时，按备注重新定位再更新
+		// 冲突时按备注/用户号重新定位后再更新（不依赖 EnvID）
 		if strings.Contains(err.Error(), "Validation error") || isQLUniqueConstraintError(err) {
-			if fresh, _, findErr := client.FindEnvForProject(project); findErr == nil && fresh.ID != envItem.ID {
-				Sync().Infof("[同步服务] 更新失败，改按备注绑定 ID=%d → QL=%d", project.ID, fresh.ID)
+			if fresh, how, findErr := client.FindEnvForProject(project); findErr == nil && fresh.ID != envItem.ID {
+				Sync().Infof("[同步服务] 更新冲突，改按备注重定位 ID=%d → QL=%d (%s)", project.ID, fresh.ID, how)
 				if err2 := client.UpdateEnvContent(fresh.ID, project.EnvKey, project.EnvValue, project.Remarks); err2 != nil {
 					return FormatQLSyncError(fmt.Sprintf("更新环境变量 %d", fresh.ID), err2, project)
 				}
