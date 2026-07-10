@@ -896,18 +896,6 @@ func (q *QingLongClient) FindEnvByRemarks(remark, envName string) (*QLEnvItem, e
 	return nil, fmt.Errorf("未找到备注为 %s 的环境变量", remark)
 }
 
-// CheckDuplicateRemarks 检查备注是否重复
-func (q *QingLongClient) CheckDuplicateRemarks(remark, envName string) (bool, error) {
-	_, err := q.FindEnvByRemarks(remark, envName)
-	if err == nil {
-		return true, nil
-	}
-	if strings.Contains(err.Error(), "未找到") {
-		return false, nil
-	}
-	return false, err
-}
-
 // ===================== 青龙 Cron 任务管理 API =====================
 
 // QLCronTask 青龙任务结构

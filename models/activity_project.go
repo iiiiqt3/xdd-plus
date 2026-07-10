@@ -95,7 +95,7 @@ func ApplyConfigBillingToProject(project *ActivityProject, cfg *ActivityConfig) 
 	}
 }
 
-// RepairActivityProjectBillingRecords 修正历史数据中互斥计费字段
+// RepairActivityProjectBillingRecords 修正历史数据中互斥计费字段，并回填空 remark_alias
 func RepairActivityProjectBillingRecords() {
 	if db == nil {
 		return
@@ -109,6 +109,20 @@ func RepairActivityProjectBillingRecords() {
 	db.Model(&ActivityProject{}).
 		Where("is_monthly_deduct = ? AND is_daily_deduct = ?", false, false).
 		Updates(map[string]interface{}{"monthly_coin": 0, "daily_coin": 0})
+
+	var emptyAlias []ActivityProject
+	if err := db.Where("deleted_at IS NULL AND (remark_alias = '' OR remark_alias IS NULL) AND remarks != ''").
+		Find(&emptyAlias).Error; err != nil {
+		return
+	}
+	for i := range emptyAlias {
+		alias := GetFirstRemarkParam(emptyAlias[i].Remarks)
+		if alias == "" {
+			continue
+		}
+		_ = db.Model(&ActivityProject{}).Where("id = ?", emptyAlias[i].ID).
+			Update("remark_alias", alias).Error
+	}
 }
 
 func CalcPaidRemainingDays(project *ActivityProject) int {
@@ -166,7 +180,7 @@ func CreateActivityProject(project *ActivityProject) error {
 		}
 	}
 
-	duplicate, err := CheckDuplicateRemarksDB(project.Remarks, project.EnvKey)
+	duplicate, err := CheckDuplicateRemarksDB(project.ActivityID, project.Remarks, project.EnvKey)
 	if err != nil {
 		return fmt.Errorf("检查重复备注失败：%v", err)
 	}
@@ -225,6 +239,7 @@ func tryAcquireProjectLock(key string) (release func(), acquired bool) {
 }
 
 // HasActiveProjectByUserActivityAlias 检查用户在某活动下是否已有相同备注别名
+// 兼容历史数据 remark_alias 为空：按 remarks 前缀「别名/」或整段别名匹配
 func HasActiveProjectByUserActivityAlias(userNumber int, activityID, remarkAlias string) (bool, error) {
 	remarkAlias = strings.TrimSpace(remarkAlias)
 	if remarkAlias == "" {
@@ -232,8 +247,9 @@ func HasActiveProjectByUserActivityAlias(userNumber int, activityID, remarkAlias
 	}
 	var count int64
 	err := db.Model(&ActivityProject{}).
-		Where("user_number = ? AND activity_id = ? AND remark_alias = ? AND deleted_at IS NULL",
-			userNumber, activityID, remarkAlias).
+		Where("user_number = ? AND activity_id = ? AND deleted_at IS NULL", userNumber, activityID).
+		Where("(remark_alias = ? OR ((remark_alias = '' OR remark_alias IS NULL) AND (remarks = ? OR remarks LIKE ?)))",
+			remarkAlias, remarkAlias, remarkAlias+"/%").
 		Count(&count).Error
 	return count > 0, err
 }
@@ -308,39 +324,55 @@ func GetActivityProjectByRemarks(activityID, remarks, envKey string) (*ActivityP
 	return &project, nil
 }
 
-func CheckDuplicateRemarksDB(remarks, envKey string) (bool, error) {
+// CheckDuplicateRemarksDB 检查同活动下备注是否重复
+// 规则：完整备注相同，或「备注别名 + 用户编号」相同（忽略到期日）
+func CheckDuplicateRemarksDB(activityID, remarks, envKey string) (bool, error) {
 	remarks = strings.TrimSpace(remarks)
 	envKey = strings.TrimSpace(envKey)
+	activityID = strings.TrimSpace(activityID)
 	if remarks == "" || envKey == "" {
 		return false, nil
 	}
 
-	// 完整备注重复
+	q := db.Model(&ActivityProject{}).Where("env_key = ? AND deleted_at IS NULL", envKey)
+	if activityID != "" {
+		q = q.Where("activity_id = ?", activityID)
+	}
+
 	var count int64
-	err := db.Model(&ActivityProject{}).
-		Where("remarks = ? AND env_key = ? AND deleted_at IS NULL", remarks, envKey).
-		Count(&count).Error
-	if err != nil {
+	if err := q.Where("remarks = ?", remarks).Count(&count).Error; err != nil {
 		return false, err
 	}
 	if count > 0 {
 		return true, nil
 	}
 
-	// 同活动下「备注别名 + 用户编号」重复（忽略到期日）
 	alias := GetFirstRemarkParam(remarks)
 	uid := ExtractUserIDFromRemarks(remarks)
 	if alias == "" || uid == "" {
 		return false, nil
 	}
-	err = db.Model(&ActivityProject{}).
-		Where("env_key = ? AND remark_alias = ? AND deleted_at IS NULL AND remarks LIKE ?",
-			envKey, alias, "%/"+uid+"/%").
-		Count(&count).Error
-	if err != nil {
+
+	var candidates []ActivityProject
+	cq := db.Where("env_key = ? AND deleted_at IS NULL", envKey)
+	if activityID != "" {
+		cq = cq.Where("activity_id = ?", activityID)
+	}
+	// 先按别名收窄，再在应用层精确比对用户号（避免 LIKE %/123/% 误伤 9123）
+	if err := cq.Where("remark_alias = ? OR remarks = ? OR remarks LIKE ?",
+		alias, alias, alias+"/%").Find(&candidates).Error; err != nil {
 		return false, err
 	}
-	return count > 0, nil
+	for _, p := range candidates {
+		pAlias := strings.TrimSpace(p.RemarkAlias)
+		if pAlias == "" {
+			pAlias = GetFirstRemarkParam(p.Remarks)
+		}
+		if pAlias == alias && ExtractUserIDFromRemarks(p.Remarks) == uid {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func GetActivityProjectsByUser(userNumber int) ([]ActivityProject, error) {

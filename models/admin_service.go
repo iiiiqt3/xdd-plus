@@ -2648,6 +2648,7 @@ type ActivityAuthItem struct {
 }
 
 type ActivityAuthAccountItem struct {
+	// EnvID 实际为数据库 activity_project.id（前端勾选/批量操作用），不再使用青龙 EnvID
 	EnvID        int    `json:"envId"`
 	Remarks      string `json:"remarks"`
 	AccountAlias string `json:"accountAlias"`
@@ -2805,7 +2806,7 @@ func buildActivityAuthAccountItemByProject(cfg *ActivityConfig, project *Activit
 		statusText = "已到期"
 	}
 	return ActivityAuthAccountItem{
-		EnvID:        project.QingLongEnvID,
+		EnvID:        project.ID,
 		Remarks:      project.Remarks,
 		AccountAlias: accountAlias,
 		UserNumber:   project.UserNumber,
@@ -2816,41 +2817,6 @@ func buildActivityAuthAccountItemByProject(cfg *ActivityConfig, project *Activit
 		Status:       project.Status,
 		StatusText:   statusText,
 	}
-}
-
-func buildActivityAuthAccountItem(cfg *ActivityConfig, env QLEnvItem) ActivityAuthAccountItem {
-	parts := strings.Split(env.Remarks, "/")
-	accountAlias := strings.TrimSpace(env.Remarks)
-	userNumber := 0
-	if len(parts) >= 1 && strings.TrimSpace(parts[0]) != "" {
-		accountAlias = strings.TrimSpace(parts[0])
-	}
-	if len(parts) >= 2 {
-		userNumber, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
-	}
-	expireDate := ""
-	remainDays := 0
-	refundCoin := 0
-	if d, ok := ParseRemarksDate(env.Remarks); ok {
-		expireDate = d.Format(DateLayout)
-		remainDays = int(math.Ceil(time.Until(d).Hours() / 24))
-		if remainDays < 0 {
-			remainDays = 0
-		}
-		if remainDays > 0 {
-			remainDays = remainDays - 1
-		}
-		if cfg.MonthlyCoin > 0 {
-			refundCoin = int(math.Round(float64(cfg.MonthlyCoin) * float64(remainDays) / 30))
-		}
-	}
-	statusText := "正常"
-	if env.Status != 0 {
-		statusText = "已禁用"
-	} else if remainDays <= 0 && expireDate != "" {
-		statusText = "已到期"
-	}
-	return ActivityAuthAccountItem{EnvID: env.ID, Remarks: env.Remarks, AccountAlias: accountAlias, UserNumber: userNumber, ExpireDate: expireDate, RemainDays: remainDays, RefundCoin: refundCoin, Status: env.Status, StatusText: statusText}
 }
 
 func DeleteActivityAuthAccount(activityID string, envID int, reason string, channels NotifyChannels) (int, error) {
@@ -2890,17 +2856,18 @@ func DeleteActivityAuthAccounts(activityID string, envIDs []int, reason string, 
 	if err != nil {
 		return 0, 0, fmt.Errorf("查询数据库失败：%v", err)
 	}
-	projectMapByEnvID := make(map[int]ActivityProject, len(projects))
+	// 按数据库项目 ID 定位（前端 envId 已改为 project.ID）
+	projectMapByID := make(map[int]ActivityProject, len(projects))
 	for _, p := range projects {
-		projectMapByEnvID[p.QingLongEnvID] = p
+		projectMapByID[p.ID] = p
 	}
 
 	selectedItems := make([]ActivityAuthAccountItem, 0, len(cleanEnvIDs))
 	selectedDBIDs := make([]int, 0, len(cleanEnvIDs))
-	for _, envID := range cleanEnvIDs {
-		target, ok := projectMapByEnvID[envID]
+	for _, projectID := range cleanEnvIDs {
+		target, ok := projectMapByID[projectID]
 		if !ok {
-			return 0, 0, fmt.Errorf("未找到要删除的授权账号：%d", envID)
+			return 0, 0, fmt.Errorf("未找到要删除的授权账号：%d", projectID)
 		}
 		selectedItems = append(selectedItems, buildActivityAuthAccountItemByProject(cfg, &target))
 		selectedDBIDs = append(selectedDBIDs, target.ID)
@@ -3004,15 +2971,16 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 		return 0, 0, fmt.Errorf("该活动暂无用户数据")
 	}
 
-	projectMapByEnvID := make(map[int]ActivityProject, len(projects))
+	// 按数据库项目 ID 定位（前端 envId 已改为 project.ID）
+	projectMapByID := make(map[int]ActivityProject, len(projects))
 	for _, p := range projects {
-		projectMapByEnvID[p.QingLongEnvID] = p
+		projectMapByID[p.ID] = p
 	}
 	selectedProjects := make([]ActivityProject, 0, len(cleanEnvIDs))
-	for _, envID := range cleanEnvIDs {
-		target, ok := projectMapByEnvID[envID]
+	for _, projectID := range cleanEnvIDs {
+		target, ok := projectMapByID[projectID]
 		if !ok {
-			return 0, 0, fmt.Errorf("未找到要调整的授权账号：%d", envID)
+			return 0, 0, fmt.Errorf("未找到要调整的授权账号：%d", projectID)
 		}
 		selectedProjects = append(selectedProjects, target)
 	}
