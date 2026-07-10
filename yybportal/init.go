@@ -32,6 +32,7 @@ func Init(c ModuleConfig) error {
 	mu.Lock()
 	defer mu.Unlock()
 	cfg = c
+	models.RegisterConfigReloadHook(RefreshConfigFromModels)
 	if !c.Enabled {
 		ready = false
 		yybSvc = nil
@@ -89,6 +90,21 @@ func Config() ModuleConfig {
 	mu.RLock()
 	defer mu.RUnlock()
 	return cfg
+}
+
+// RefreshConfigFromModels 热更新可即时生效的配置项（扫码积分、账号上限等）
+func RefreshConfigFromModels() {
+	c := ModuleConfigFromModels()
+	mu.Lock()
+	defer mu.Unlock()
+	cfg.ScanLoginCost = c.ScanLoginCost
+	cfg.MaxAccountsPerUser = c.MaxAccountsPerUser
+	cfg.APIToken = c.APIToken
+	cfg.ExposeInternalAPI = c.ExposeInternalAPI
+	cfg.TCPProxy = c.TCPProxy
+	cfg.ResourceRoot = c.ResourceRoot
+	cfg.DBFilename = c.DBFilename
+	cfg.Enabled = c.Enabled
 }
 
 // LastError 启动错误

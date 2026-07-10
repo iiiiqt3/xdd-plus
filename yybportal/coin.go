@@ -8,8 +8,12 @@ import (
 )
 
 func getScanLoginCost() int {
+	// 优先读热更新后的内存配置；未单独配置时回退微信协议积分
 	if models.Config.Yyb.ScanLoginCost != nil {
 		return *models.Config.Yyb.ScanLoginCost
+	}
+	if c := Config().ScanLoginCost; c > 0 {
+		return c
 	}
 	if models.Config.WxProtocol.ScanLoginCost > 0 {
 		return models.Config.WxProtocol.ScanLoginCost
@@ -18,6 +22,9 @@ func getScanLoginCost() int {
 }
 
 func getMaxAccountsPerUser() int {
+	if models.Config.Yyb.MaxAccountsPerUser > 0 {
+		return models.Config.Yyb.MaxAccountsPerUser
+	}
 	if Config().MaxAccountsPerUser > 0 {
 		return Config().MaxAccountsPerUser
 	}

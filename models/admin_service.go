@@ -175,17 +175,28 @@ func yybScanLoginCostForAdmin() int {
 	return 2000
 }
 
-// dedupeTopLevelYAMLKeys 去除重复的顶级 YAML 键（保留第一次出现，清理历史误追加的重复项）
+// dedupeTopLevelYAMLKeys 去除重复的顶级 YAML 键及其缩进子块（保留第一次出现）
 func dedupeTopLevelYAMLKeys(lines []string) []string {
 	seen := map[string]bool{}
 	var result []string
+	skipChildren := false
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
+		isIndented := strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t")
+
+		// 重复节的缩进子行 / 紧随其后的空行与注释一并跳过，直到下一个顶级键
+		if skipChildren {
+			if trimmed == "" || strings.HasPrefix(trimmed, "#") || isIndented {
+				continue
+			}
+			skipChildren = false
+		}
+
 		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			result = append(result, line)
 			continue
 		}
-		if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
+		if isIndented {
 			result = append(result, line)
 			continue
 		}
@@ -196,6 +207,8 @@ func dedupeTopLevelYAMLKeys(lines []string) []string {
 		}
 		key := trimmed[:idx]
 		if seen[key] {
+			// 跳过重复顶级键，并丢弃其后续缩进内容
+			skipChildren = true
 			continue
 		}
 		seen[key] = true

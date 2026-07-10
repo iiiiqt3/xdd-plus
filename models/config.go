@@ -310,6 +310,36 @@ func initConfigDefaults() {
 	}
 }
 
+// configReloadHooks 配置热更新后的回调（避免 models ↔ 业务模块循环依赖）
+var configReloadHooks []func()
+var configReloadHooksMu sync.Mutex
+
+// RegisterConfigReloadHook 注册配置热更新回调
+func RegisterConfigReloadHook(fn func()) {
+	if fn == nil {
+		return
+	}
+	configReloadHooksMu.Lock()
+	configReloadHooks = append(configReloadHooks, fn)
+	configReloadHooksMu.Unlock()
+}
+
+func runConfigReloadHooks() {
+	configReloadHooksMu.Lock()
+	hooks := append([]func(){}, configReloadHooks...)
+	configReloadHooksMu.Unlock()
+	for _, fn := range hooks {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					Warn("配置热更新回调异常: %v", r)
+				}
+			}()
+			fn()
+		}()
+	}
+}
+
 // ReloadConfig 热更新配置（无需重启）
 func ReloadConfig() error {
 	content, err := ioutil.ReadFile(ExecPath + "/conf/config.yaml")
@@ -324,15 +354,14 @@ func ReloadConfig() error {
 	}
 
 	configMutex.Lock()
-	defer configMutex.Unlock()
-
 	Config = newConfig
-
 	initConfigDefaults()
-
 	if envWxgid := GetEnv("WxGroupID"); envWxgid != "" {
 		Config.WXGroupID = envWxgid
 	}
+	configMutex.Unlock()
+
+	runConfigReloadHooks()
 
 	Info("配置已热更新成功")
 	return nil

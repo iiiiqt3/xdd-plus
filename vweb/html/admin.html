@@ -6660,7 +6660,11 @@ async function saveSysConfig() {
             yybResourceRoot: (document.getElementById('cfg_yybResourceRoot')||{}).value || '',
             yybDBFilename: (document.getElementById('cfg_yybDBFilename')||{}).value || '',
             yybTCPProxy: (document.getElementById('cfg_yybTCPProxy')||{}).value || '',
-            yybScanLoginCost: parseInt((document.getElementById('cfg_yybScanLoginCost')||{}).value) || 0,
+            yybScanLoginCost: (function() {
+                var el = document.getElementById('cfg_yybScanLoginCost');
+                var n = parseInt(el && el.value, 10);
+                return Number.isFinite(n) ? n : 0;
+            })(),
             yybMaxAccountsPerUser: parseInt((document.getElementById('cfg_yybMaxAccountsPerUser')||{}).value) || 5,
             yybAPIToken: (document.getElementById('cfg_yybAPIToken')||{}).value || '',
             yybExposeInternalAPI: (document.getElementById('cfg_yybExposeInternalAPI')||{}).value === 'true',
