@@ -41,7 +41,7 @@
         .nav-group-title .arrow { margin-left: auto; transition: transform 0.22s ease; font-size: 11px; color: #909399; }
         .nav-group-title.expanded .arrow { transform: rotate(90deg); }
         .nav-group-items { max-height: 0; overflow: hidden; transition: max-height 0.28s ease; }
-        .nav-group-items.expanded { max-height: 520px; }
+        .nav-group-items.expanded { max-height: 640px; }
         .nav-sub-item {
             display: flex; align-items: center; padding: 9px 16px 9px 46px; cursor: pointer; transition: all 0.2s;
             border-left: 3px solid transparent; color: #555; font-size: 13px; gap: 10px; border-radius: 0 8px 8px 0; margin-right: 8px;
@@ -377,6 +377,117 @@
         .mobile-menu-btn:hover { background: rgba(64,158,255,0.2); }
         .mobile-menu-btn:active { background: rgba(64,158,255,0.3); }
         .sidebar-backdrop { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); z-index: 199; -webkit-tap-highlight-color: transparent; }
+
+        /* ===== API 接口文档 ===== */
+        .apidocs-page { --ad-primary: #2563EB; --ad-text: #1E293B; --ad-muted: #64748B; --ad-bg: #F8FAFC; --ad-border: #E2E8F0; }
+        .apidocs-hero {
+            background: linear-gradient(135deg, #1E293B 0%, #334155 55%, #2563EB 140%);
+            border-radius: 12px; padding: 22px 24px; color: #fff; margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(30,41,59,0.18);
+        }
+        .apidocs-hero h2 { font-size: 20px; font-weight: 700; letter-spacing: 0.2px; margin-bottom: 6px; }
+        .apidocs-hero p { font-size: 13px; opacity: 0.85; margin-bottom: 14px; line-height: 1.5; max-width: 720px; }
+        .apidocs-search-wrap { position: relative; max-width: 560px; }
+        .apidocs-search-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94A3B8; font-size: 13px; pointer-events: none; }
+        .apidocs-search-wrap input {
+            width: 100%; padding: 11px 14px 11px 38px; border: none; border-radius: 10px;
+            font-size: 14px; background: rgba(255,255,255,0.96); color: #1E293B; outline: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: box-shadow .2s;
+        }
+        .apidocs-search-wrap input:focus { box-shadow: 0 0 0 3px rgba(37,99,235,0.28); }
+        .apidocs-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+        .apidocs-stat {
+            background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 8px; padding: 8px 12px; min-width: 88px;
+        }
+        .apidocs-stat .n { font-size: 18px; font-weight: 700; line-height: 1.1; }
+        .apidocs-stat .l { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+        .apidocs-toolbar {
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px;
+            background: #fff; border: 1px solid var(--ad-border); border-radius: 10px; padding: 10px 12px;
+        }
+        .apidocs-toolbar select {
+            padding: 7px 10px; border: 1px solid var(--ad-border); border-radius: 8px; font-size: 13px;
+            background: #fff; color: #1E293B; cursor: pointer; outline: none;
+        }
+        .apidocs-toolbar select:focus { border-color: #2563EB; }
+        .apidocs-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+        .apidocs-chip {
+            border: 1px solid var(--ad-border); background: #fff; color: #475569; border-radius: 999px;
+            padding: 6px 12px; font-size: 12px; cursor: pointer; transition: all .2s; user-select: none;
+        }
+        .apidocs-chip:hover { border-color: #93C5FD; color: #2563EB; background: #EFF6FF; }
+        .apidocs-chip.active { background: #2563EB; border-color: #2563EB; color: #fff; }
+        .apidocs-chip .cnt { opacity: 0.75; margin-left: 4px; }
+        .apidocs-list { display: flex; flex-direction: column; gap: 8px; }
+        .apidocs-item {
+            background: #fff; border: 1px solid var(--ad-border); border-radius: 10px; overflow: hidden;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .apidocs-item:hover { border-color: #BFDBFE; box-shadow: 0 2px 10px rgba(37,99,235,0.06); }
+        .apidocs-item.open { border-color: #93C5FD; }
+        .apidocs-item-head {
+            display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; cursor: pointer;
+            transition: background .15s;
+        }
+        .apidocs-item-head:hover { background: #F8FAFC; }
+        .apidocs-method {
+            flex-shrink: 0; min-width: 58px; text-align: center; font-size: 11px; font-weight: 700;
+            letter-spacing: 0.4px; border-radius: 6px; padding: 4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+        .apidocs-method.get { background: #ECFDF5; color: #047857; }
+        .apidocs-method.post { background: #EFF6FF; color: #1D4ED8; }
+        .apidocs-method.put { background: #FFFBEB; color: #B45309; }
+        .apidocs-method.delete { background: #FEF2F2; color: #B91C1C; }
+        .apidocs-main { flex: 1; min-width: 0; }
+        .apidocs-name { font-size: 14px; font-weight: 600; color: #1E293B; margin-bottom: 4px; }
+        .apidocs-path {
+            font-size: 12px; color: #334155; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            word-break: break-all; line-height: 1.4;
+        }
+        .apidocs-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .apidocs-tag {
+            font-size: 11px; border-radius: 999px; padding: 2px 8px; background: #F1F5F9; color: #475569;
+        }
+        .apidocs-tag.auth-admin { background: #FEF2F2; color: #B91C1C; }
+        .apidocs-tag.auth-user { background: #EFF6FF; color: #1D4ED8; }
+        .apidocs-tag.auth-public { background: #ECFDF5; color: #047857; }
+        .apidocs-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .apidocs-icon-btn {
+            width: 30px; height: 30px; border: 1px solid var(--ad-border); border-radius: 8px; background: #fff;
+            color: #64748B; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+            transition: all .2s;
+        }
+        .apidocs-icon-btn:hover { color: #2563EB; border-color: #93C5FD; background: #EFF6FF; }
+        .apidocs-item-body {
+            display: none; border-top: 1px solid var(--ad-border); padding: 12px 14px 14px; background: #F8FAFC;
+        }
+        .apidocs-item.open .apidocs-item-body { display: block; }
+        .apidocs-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .apidocs-detail-block {
+            background: #fff; border: 1px solid var(--ad-border); border-radius: 8px; padding: 10px 12px;
+        }
+        .apidocs-detail-block.full { grid-column: 1 / -1; }
+        .apidocs-detail-label { font-size: 11px; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+        .apidocs-detail-text { font-size: 13px; color: #1E293B; line-height: 1.55; word-break: break-word; }
+        .apidocs-code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
+            background: #0F172A; color: #E2E8F0; border-radius: 8px; padding: 10px 12px; overflow-x: auto;
+            white-space: pre-wrap; word-break: break-all; line-height: 1.5;
+        }
+        .apidocs-empty {
+            text-align: center; padding: 48px 16px; color: #64748B; background: #fff;
+            border: 1px dashed var(--ad-border); border-radius: 10px;
+        }
+        .apidocs-empty i { font-size: 28px; color: #94A3B8; margin-bottom: 10px; }
+        @media (max-width: 768px) {
+            .apidocs-detail-grid { grid-template-columns: 1fr; }
+            .apidocs-item-head { flex-wrap: wrap; }
+            .apidocs-actions { width: 100%; justify-content: flex-end; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .apidocs-chip, .apidocs-item, .apidocs-icon-btn, .apidocs-item-head { transition: none; }
+        }
 
         @media (max-width: 1200px) {
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -746,6 +857,7 @@
                 <div class="nav-sub-item" data-page="logmgmt" data-search="日志管理 log" onclick="switchPage('logmgmt')"><i class="fas fa-file-alt"></i><span>日志管理</span></div>
                 <div class="nav-sub-item" data-page="gameconfig" data-search="娱乐功能 游戏" onclick="switchPage('gameconfig')"><i class="fas fa-gamepad"></i><span>娱乐功能</span></div>
                 <div class="nav-sub-item" data-page="sysconfig" data-search="系统配置 设置 config 应用宝 极光 推送 jpush yyb" onclick="switchPage('sysconfig')"><i class="fas fa-cog"></i><span>系统配置</span></div>
+                <div class="nav-sub-item" data-page="apidocs" data-search="API 接口文档 接口说明 调用方式 docs" onclick="switchPage('apidocs')"><i class="fas fa-book"></i><span>API 接口文档</span></div>
             </div>
         </div>
     </div>
@@ -1863,6 +1975,43 @@
                 <div id="sysConfigForm" style="margin-bottom:24px;"></div>
             </div>
         </div>
+
+        <!-- ========= API 接口文档 ========= -->
+        <div id="page-apidocs" class="page-section apidocs-page">
+            <div class="apidocs-hero">
+                <h2>XDD API 接口文档</h2>
+                <p>汇总登录、用户门户、管理后台等全部 HTTP 接口。支持按分组 / 方法 / 权限筛选，点击条目查看参数与调用示例。</p>
+                <div class="apidocs-search-wrap">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <input type="search" id="apiDocsSearch" placeholder="搜索路径、名称、说明、分组…" aria-label="搜索 API 接口" autocomplete="off" />
+                </div>
+                <div class="apidocs-stats">
+                    <div class="apidocs-stat"><div class="n" id="apiDocsTotal">0</div><div class="l">接口总数</div></div>
+                    <div class="apidocs-stat"><div class="n" id="apiDocsShown">0</div><div class="l">当前显示</div></div>
+                    <div class="apidocs-stat"><div class="n" id="apiDocsGroups">0</div><div class="l">分组数</div></div>
+                </div>
+            </div>
+            <div class="apidocs-toolbar">
+                <select id="apiDocsMethod" aria-label="按请求方法筛选">
+                    <option value="">全部方法</option>
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+                <select id="apiDocsAuth" aria-label="按权限筛选">
+                    <option value="">全部权限</option>
+                    <option value="公开">公开</option>
+                    <option value="用户登录">用户登录</option>
+                    <option value="管理员">管理员</option>
+                </select>
+                <button type="button" class="btn btn-default btn-sm" onclick="resetApiDocsFilters()"><i class="fas fa-undo"></i> 重置</button>
+                <button type="button" class="btn btn-info btn-sm" onclick="expandAllApiDocs(true)"><i class="fas fa-expand-alt"></i> 展开</button>
+                <button type="button" class="btn btn-info btn-sm" onclick="expandAllApiDocs(false)"><i class="fas fa-compress-alt"></i> 收起</button>
+            </div>
+            <div class="apidocs-chips" id="apiDocsChips" role="tablist" aria-label="接口分组"></div>
+            <div class="apidocs-list" id="apiDocsList" role="list"></div>
+        </div>
     </div>
 </div>
 
@@ -2319,6 +2468,7 @@
 <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/admin_yyb.js?v=7"></script>
+<script src="/vweb/js/api_docs_data.js?v=1"></script>
 <script>
 // ============ 通用工具 ============
 function _fetchJson(method, url, data) {
@@ -2712,6 +2862,7 @@ function switchPage(page) {
         logmgmt: ['日志管理', '系统运维 / 日志管理'],
         sysconfig: ['系统配置', '系统运维 / 系统配置'],
         gameconfig: ['娱乐功能', '系统运维 / 娱乐功能'],
+        apidocs: ['API 接口文档', '系统运维 / API 接口文档'],
     };
     const [title, breadcrumb] = titles[page] || [page, ''];
     document.getElementById('pageTitle').textContent = title;
@@ -2727,6 +2878,7 @@ function switchPage(page) {
         qlenvs: loadQLEnvConfigs, jdcontainers: loadJdContainers, jdcrontasks: initJdCronTaskPage,
         jdtaskqueue: initJdTaskQueuePage,
         qlcrontasks: initQlCronTaskPage, logmgmt: initLogMgmtPage, sysconfig: function() { loadSysConfig(); }, gameconfig: loadGameConfig,
+        apidocs: initApiDocsPage,
     };
     if (loaders[page]) loaders[page]();
 }
@@ -8070,6 +8222,200 @@ async function cleanupJdOrphanNodes() {
         toast(res.msg || '清理完成', res.code === 0 ? 'success' : 'error');
         if (res.code === 0) loadJdTaskQueue(false);
     } catch (e) { toast('清理失败: ' + e.message, 'error'); }
+}
+
+// ============ API 接口文档 ============
+var apiDocsState = { group: '', q: '', method: '', auth: '', inited: false };
+
+function initApiDocsPage() {
+    if (!Array.isArray(window.XDD_API_DOCS) || !window.XDD_API_DOCS.length) {
+        document.getElementById('apiDocsList').innerHTML = '<div class="apidocs-empty"><i class="fas fa-exclamation-circle"></i><div>未加载到接口数据，请确认 /vweb/js/api_docs_data.js 可访问</div></div>';
+        return;
+    }
+    if (!apiDocsState.inited) {
+        var search = document.getElementById('apiDocsSearch');
+        var method = document.getElementById('apiDocsMethod');
+        var auth = document.getElementById('apiDocsAuth');
+        var timer = null;
+        search.addEventListener('input', function() {
+            clearTimeout(timer);
+            timer = setTimeout(function() {
+                apiDocsState.q = (search.value || '').trim().toLowerCase();
+                renderApiDocs();
+            }, 180);
+        });
+        method.addEventListener('change', function() {
+            apiDocsState.method = method.value || '';
+            renderApiDocs();
+        });
+        auth.addEventListener('change', function() {
+            apiDocsState.auth = auth.value || '';
+            renderApiDocs();
+        });
+        apiDocsState.inited = true;
+    }
+    document.getElementById('apiDocsTotal').textContent = String(window.XDD_API_DOCS.length);
+    renderApiDocsChips();
+    renderApiDocs();
+}
+
+function getApiDocsGroups() {
+    var map = {};
+    (window.XDD_API_DOCS || []).forEach(function(item) {
+        var g = item.group || '其他';
+        map[g] = (map[g] || 0) + 1;
+    });
+    return Object.keys(map).sort(function(a, b) { return map[b] - map[a] || a.localeCompare(b, 'zh'); }).map(function(g) {
+        return { name: g, count: map[g] };
+    });
+}
+
+function renderApiDocsChips() {
+    var groups = getApiDocsGroups();
+    document.getElementById('apiDocsGroups').textContent = String(groups.length);
+    var html = '<button type="button" class="apidocs-chip' + (!apiDocsState.group ? ' active' : '') + '" data-group="" onclick="selectApiDocsGroup(\'\')">全部<span class="cnt">' + (window.XDD_API_DOCS || []).length + '</span></button>';
+    groups.forEach(function(g) {
+        html += '<button type="button" class="apidocs-chip' + (apiDocsState.group === g.name ? ' active' : '') + '" data-group="' + escapeHtml(g.name) + '" onclick="selectApiDocsGroup(this.getAttribute(\'data-group\'))">' + escapeHtml(g.name) + '<span class="cnt">' + g.count + '</span></button>';
+    });
+    document.getElementById('apiDocsChips').innerHTML = html;
+}
+
+function selectApiDocsGroup(group) {
+    apiDocsState.group = group || '';
+    renderApiDocsChips();
+    renderApiDocs();
+}
+
+function resetApiDocsFilters() {
+    apiDocsState = { group: '', q: '', method: '', auth: '', inited: true };
+    document.getElementById('apiDocsSearch').value = '';
+    document.getElementById('apiDocsMethod').value = '';
+    document.getElementById('apiDocsAuth').value = '';
+    renderApiDocsChips();
+    renderApiDocs();
+}
+
+function filterApiDocsList() {
+    var q = apiDocsState.q;
+    return (window.XDD_API_DOCS || []).filter(function(item) {
+        if (apiDocsState.group && item.group !== apiDocsState.group) return false;
+        if (apiDocsState.method && String(item.method || '').toUpperCase() !== apiDocsState.method) return false;
+        if (apiDocsState.auth && item.auth !== apiDocsState.auth) return false;
+        if (!q) return true;
+        var hay = [item.method, item.path, item.group, item.name, item.desc, item.auth, item.body, item.note].join(' ').toLowerCase();
+        return hay.indexOf(q) >= 0;
+    });
+}
+
+function apiDocsMethodClass(method) {
+    var m = String(method || '').toLowerCase();
+    if (m === 'get' || m === 'post' || m === 'put' || m === 'delete') return m;
+    return 'get';
+}
+
+function apiDocsAuthClass(auth) {
+    if (auth === '管理员') return 'auth-admin';
+    if (auth === '用户登录') return 'auth-user';
+    return 'auth-public';
+}
+
+function buildApiDocsExample(item) {
+    var method = String(item.method || 'GET').toUpperCase();
+    var path = item.path || '';
+    var lines = [];
+    if (method === 'GET') {
+        lines.push('curl -X GET "' + path + '" \\');
+        if (item.auth === '管理员' || item.auth === '用户登录') {
+            lines.push('  -H "Cookie: session=..."');
+        } else {
+            lines.push('  -H "Accept: application/json"');
+        }
+    } else {
+        lines.push('curl -X ' + method + ' "' + path + '" \\');
+        lines.push('  -H "Content-Type: application/json" \\');
+        if (item.auth === '管理员' || item.auth === '用户登录') {
+            lines.push('  -H "Cookie: session=..." \\');
+        }
+        var bodyHint = item.body ? item.body : '';
+        if (bodyHint) {
+            lines.push('  -d \'{ /* ' + bodyHint.replace(/'/g, '') + ' */ }\'');
+        } else {
+            lines.push('  -d \'{}\'');
+        }
+    }
+    return lines.join('\n');
+}
+
+function renderApiDocs() {
+    var list = filterApiDocsList();
+    document.getElementById('apiDocsShown').textContent = String(list.length);
+    var box = document.getElementById('apiDocsList');
+    if (!list.length) {
+        box.innerHTML = '<div class="apidocs-empty"><i class="fas fa-search"></i><div>没有匹配的接口</div><div style="margin-top:6px;font-size:12px;">试试更换关键词，或点击「重置」清空筛选</div></div>';
+        return;
+    }
+    var html = '';
+    list.forEach(function(item, idx) {
+        var method = String(item.method || '').toUpperCase();
+        var id = 'apiDoc_' + idx + '_' + method + '_' + encodeURIComponent(item.path || '').replace(/%/g, '');
+        html += '<article class="apidocs-item" id="' + id + '" role="listitem">' +
+            '<div class="apidocs-item-head" onclick="toggleApiDocItem(this.parentNode)">' +
+            '<span class="apidocs-method ' + apiDocsMethodClass(method) + '">' + escapeHtml(method) + '</span>' +
+            '<div class="apidocs-main">' +
+            '<div class="apidocs-name">' + escapeHtml(item.name || '') + '</div>' +
+            '<div class="apidocs-path">' + escapeHtml(item.path || '') + '</div>' +
+            '<div class="apidocs-meta">' +
+            '<span class="apidocs-tag">' + escapeHtml(item.group || '其他') + '</span>' +
+            '<span class="apidocs-tag ' + apiDocsAuthClass(item.auth) + '">' + escapeHtml(item.auth || '公开') + '</span>' +
+            '</div></div>' +
+            '<div class="apidocs-actions" onclick="event.stopPropagation()">' +
+            '<button type="button" class="apidocs-icon-btn" title="复制路径" aria-label="复制路径" onclick="copyApiDocsText(\'' + escapeJs(item.path || '') + '\')"><i class="fas fa-copy"></i></button>' +
+            '<button type="button" class="apidocs-icon-btn" title="展开/收起" aria-label="展开或收起详情" onclick="toggleApiDocItem(this.closest(\'.apidocs-item\'))"><i class="fas fa-chevron-down"></i></button>' +
+            '</div></div>' +
+            '<div class="apidocs-item-body">' +
+            '<div class="apidocs-detail-grid">' +
+            '<div class="apidocs-detail-block full"><div class="apidocs-detail-label">作用说明</div><div class="apidocs-detail-text">' + escapeHtml(item.desc || '-') + '</div></div>' +
+            '<div class="apidocs-detail-block"><div class="apidocs-detail-label">调用方式</div><div class="apidocs-detail-text">' + escapeHtml(method) + ' ' + escapeHtml(item.path || '') + '</div></div>' +
+            '<div class="apidocs-detail-block"><div class="apidocs-detail-label">权限</div><div class="apidocs-detail-text">' + escapeHtml(item.auth || '公开') + '</div></div>' +
+            '<div class="apidocs-detail-block full"><div class="apidocs-detail-label">请求参数</div><div class="apidocs-detail-text">' + escapeHtml(item.body || '无特殊 Body 参数（以 Query / Path 为准）') + '</div></div>' +
+            (item.note ? '<div class="apidocs-detail-block full"><div class="apidocs-detail-label">注意事项</div><div class="apidocs-detail-text">' + escapeHtml(item.note) + '</div></div>' : '') +
+            '<div class="apidocs-detail-block full"><div class="apidocs-detail-label">调用示例</div><div class="apidocs-code">' + escapeHtml(buildApiDocsExample(item)) + '</div></div>' +
+            '</div></div></article>';
+    });
+    box.innerHTML = html;
+}
+
+function toggleApiDocItem(el) {
+    if (!el) return;
+    el.classList.toggle('open');
+}
+
+function expandAllApiDocs(open) {
+    document.querySelectorAll('#apiDocsList .apidocs-item').forEach(function(el) {
+        el.classList.toggle('open', !!open);
+    });
+}
+
+function copyApiDocsText(text) {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() { toast('已复制路径', 'success'); }).catch(function() { fallbackCopyApiDocs(text); });
+    } else {
+        fallbackCopyApiDocs(text);
+    }
+}
+
+function fallbackCopyApiDocs(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast('已复制路径', 'success'); } catch (e) { toast('复制失败', 'error'); }
+    document.body.removeChild(ta);
+}
+
+function escapeJs(str) {
+    return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 </script>
