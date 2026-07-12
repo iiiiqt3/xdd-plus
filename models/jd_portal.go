@@ -492,7 +492,7 @@ func FindJdNicknameByYybOpenID(userNumber int, openid string) string {
 		return ""
 	}
 	var cks []JdCookie
-	db.Where("QQ = ? AND YybOpenID = ?", userNumber, openid).Order("ID desc").Find(&cks)
+	db.Where("QQ = ? AND (YybOpenID = ? OR WeiXin = ?)", userNumber, openid, openid).Order("ID desc").Find(&cks)
 	for _, ck := range cks {
 		if n := strings.TrimSpace(ck.Nickname); n != "" {
 			return n
