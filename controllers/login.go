@@ -52,11 +52,8 @@ type Result struct {
 var JdCookieRunners sync.Map
 var jdua = models.GetUserAgent
 
-// GetUserInfo 根据pin获取京东用户Cookie信息（VIP功能）
+// GetUserInfo 根据pin获取京东用户Cookie信息
 func (c *LoginController) GetUserInfo() {
-	if !models.Config.VIP {
-		return
-	}
 	pin := c.GetString("pin")
 	cookie, err := models.GetJdCookie(pin)
 	ok := models.CookieOK(cookie)
@@ -97,11 +94,8 @@ func (c *LoginController) GetUserInfo() {
 	}
 }
 
-// GetUserPin 根据QQ号获取关联的京东pin列表（VIP功能）
+// GetUserPin 根据QQ号获取关联的京东pin列表
 func (c *LoginController) GetUserPin() {
-	if !models.Config.VIP {
-		return
-	}
 	qq := c.GetString("QQ")
 	if strings.EqualFold(qq, strconv.Itoa(models.Config.QQID)) {
 		return
@@ -442,7 +436,7 @@ const maxLoginFails = 5
 const loginLockMinutes = 10
 
 type loginFailRecord struct {
-	count    int
+	count     int
 	lockUntil time.Time
 }
 
@@ -767,20 +761,20 @@ func (c *LoginController) SMSLogin() {
 					if qq != "" && len(qq) > 6 {
 						atoi, _ := strconv.Atoi(qq)
 						ck.Updates(models.JdCookie{
-							PtKey:    ptKey,
-							PtPin:    ptPin,
-							QQ:       atoi,
-							Available:   "true",
+							PtKey:     ptKey,
+							PtPin:     ptPin,
+							QQ:        atoi,
+							Available: "true",
 							IsApp:     "true",
-							UpdateAt: time.Now().Local().Format("2006-01-02"),
+							UpdateAt:  time.Now().Local().Format("2006-01-02"),
 						})
 					} else {
 						ck.Updates(models.JdCookie{
-							PtKey:    ptKey,
-							PtPin:    ptPin,
-							Available:   "true",
+							PtKey:     ptKey,
+							PtPin:     ptPin,
+							Available: "true",
 							IsApp:     "true",
-							UpdateAt: time.Now().Local().Format("2006-01-02"),
+							UpdateAt:  time.Now().Local().Format("2006-01-02"),
 						})
 					}
 					msg := fmt.Sprintf("来自APP的更新,账号：%s,QQ: %v", nck.PtPin, qq)
@@ -803,7 +797,6 @@ func (c *LoginController) SMSLogin() {
 					go func() {
 						models.Save <- &models.JdCookie{}
 					}()
-
 
 				}
 

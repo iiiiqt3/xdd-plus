@@ -5,16 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-//	"path/filepath" 
+	//	"path/filepath"
 	"os"
 	//	"math"
 	//	"bufio"
-	"sort"
- 	"sync"
 	"bytes"
 	"encoding/json"
 	browser "github.com/EDDYCJY/fake-useragent"
 	"github.com/beego/beego/v2/client/httplib"
+	"sort"
+	"sync"
 	//	"sync"
 	"compress/gzip"
 	"github.com/google/uuid"
@@ -26,28 +26,25 @@ import (
 	"strconv"
 	"strings"
 	"time"
-//	"log"
-	
-	
+	//	"log"
 )
+
 var (
-    duelMutex   sync.Mutex       // 决斗房间互斥锁
-    duels       map[string]*Duel // 存储所有决斗房间，key为决斗ID
-    duelsByTime []*Duel          // 按时间排序的决斗列表
-    
+	duelMutex   sync.Mutex       // 决斗房间互斥锁
+	duels       map[string]*Duel // 存储所有决斗房间，key为决斗ID
+	duelsByTime []*Duel          // 按时间排序的决斗列表
+
 )
-
-
 
 // 游戏结构体定义
 type Game struct {
-    ID       string            // 游戏ID
-    Creator  int               // 创建人ID
-    Platform string            // 平台类型（"wxg"或"qqg"）
-    Players  map[int]int       // 玩家ID到数字的映射
-    Status   string            // 游戏状态（waiting/playing/finished）
-    Scores   map[int]int       // 玩家ID到奖励积分的映射
-    CreateTime time.Time         // 游戏创建时间
+	ID         string      // 游戏ID
+	Creator    int         // 创建人ID
+	Platform   string      // 平台类型（"wxg"或"qqg"）
+	Players    map[int]int // 玩家ID到数字的映射
+	Status     string      // 游戏状态（waiting/playing/finished）
+	Scores     map[int]int // 玩家ID到奖励积分的映射
+	CreateTime time.Time   // 游戏创建时间
 }
 
 type CodeSignal struct {
@@ -64,7 +61,7 @@ type Sender struct {
 	WxGroupId         string
 	Type              string
 	Contents          []string
-     RawMessage string  // ← 新增字段
+	RawMessage        string // ← 新增字段
 	MessageID         int
 	Username          string
 	IsAdmin           bool
@@ -99,7 +96,7 @@ func (sender *Sender) Reply(msg string) {
 	case "tgg":
 		SendTggMsg(sender.ChatID, sender.UserID, msg, sender.MessageID, sender.Username)
 	case "qq":
-		if strings.Contains(msg, "账号昵称：") && Config.VIP && isOpenImg() {
+		if strings.Contains(msg, "账号昵称：") && isOpenImg() {
 			SendQQ(sender.UserID, strtoimg(msg))
 		} else {
 			SendQQ(sender.UserID, msg)
@@ -213,8 +210,6 @@ func (sender *Sender) SendImg2(msg string) {
 		SendWxImg2(sender.WxGroupId, msg)
 	}
 }
-
-
 
 func (sender *Sender) JoinContens() string {
 	return strings.Join(sender.Contents, " ")
@@ -434,7 +429,7 @@ var codeSignals = []CodeSignal{
 
 	// 更新CK命令（修复语法，和你的结构对齐）
 	{
-		Command: []string{"更新ck", "更新CK","记录更新"},
+		Command: []string{"更新ck", "更新CK", "记录更新"},
 		Handle: func(sender *Sender) interface{} {
 			return HandleUpdateCK(sender)
 		},
@@ -447,39 +442,39 @@ var codeSignals = []CodeSignal{
 			return HandleRecordCK(sender)
 		},
 	},
-{
-    Command: []string{"授权禁用了"},
-    	Admin:   true,    
-    Handle: func(sender *Sender) interface{} {
-        // 1. 先给用户返回响应，告知指令已触发
-        sender.Reply("开始检查并禁用过期CK，请稍候...")
-        // 2. 异步执行禁用逻辑（避免阻塞指令响应）
-        go func() {
-            DisableExpiredCKs(sender) // 传入sender，便于日志关联用户
-        }()
-        return nil
-    },
-},
-{
-	Command: []string{"检查过期", "check_expire", "push_expire"}, // 设置多个触发命令，方便记忆
-	Admin:   true,                                                // 限制仅管理员可用
-	Handle: func(sender *Sender) interface{} {
-		// 定义提前提醒的天数，例如：3天
-		thresholdDays := 3
-		
-		UserLog().Infof("管理员【%d】手动触发检查即将过期的授权...", sender.UserID)
-		
-		// 调用之前编写的 CheckExpiringCKs 函数
-		// 参数1: 提前多少天提醒 (int)
-		// 参数2: 发送者对象 (*Sender)，用于接收执行结果的反馈消息
-		CheckExpiringCKs(thresholdDays, sender)
-		
-		// 注意：CheckExpiringCKs 内部已经包含了 sender.Reply() 逻辑，
-		// 所以这里不需要再额外回复，除非你想覆盖默认消息。
-		
-		return nil
+	{
+		Command: []string{"授权禁用了"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			// 1. 先给用户返回响应，告知指令已触发
+			sender.Reply("开始检查并禁用过期CK，请稍候...")
+			// 2. 异步执行禁用逻辑（避免阻塞指令响应）
+			go func() {
+				DisableExpiredCKs(sender) // 传入sender，便于日志关联用户
+			}()
+			return nil
+		},
 	},
-},
+	{
+		Command: []string{"检查过期", "check_expire", "push_expire"}, // 设置多个触发命令，方便记忆
+		Admin:   true,                                            // 限制仅管理员可用
+		Handle: func(sender *Sender) interface{} {
+			// 定义提前提醒的天数，例如：3天
+			thresholdDays := 3
+
+			UserLog().Infof("管理员【%d】手动触发检查即将过期的授权...", sender.UserID)
+
+			// 调用之前编写的 CheckExpiringCKs 函数
+			// 参数1: 提前多少天提醒 (int)
+			// 参数2: 发送者对象 (*Sender)，用于接收执行结果的反馈消息
+			CheckExpiringCKs(thresholdDays, sender)
+
+			// 注意：CheckExpiringCKs 内部已经包含了 sender.Reply() 逻辑，
+			// 所以这里不需要再额外回复，除非你想覆盖默认消息。
+
+			return nil
+		},
+	},
 
 	// 查询记录命令（修复语法）
 	{
@@ -489,29 +484,19 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-
-{
-	Command: []string{"记录授权", "授权续期"},
-	Handle: func(sender *Sender) interface{} {
-		return HandleAuthorizeCK(sender)
+	{
+		Command: []string{"记录授权", "授权续期"},
+		Handle: func(sender *Sender) interface{} {
+			return HandleAuthorizeCK(sender)
+		},
 	},
-},
 
-{
-    Command: []string{"记录删除", "删除记录"},
-    Handle: func(sender *Sender) interface{} {
-        return HandleDeleteCK(sender)
-    },
-},
-
-
-
-
-
-
-
-
-	
+	{
+		Command: []string{"记录删除", "删除记录"},
+		Handle: func(sender *Sender) interface{} {
+			return HandleDeleteCK(sender)
+		},
+	},
 
 	// {
 	// 	Command: []string{"密码登陆", "密码登录"},
@@ -537,7 +522,6 @@ var codeSignals = []CodeSignal{
 
 	// 		go UpAutoCookie()
 
-			
 	// 	return nil
 	// 	},
 	// },
@@ -555,8 +539,6 @@ var codeSignals = []CodeSignal{
 	// 		return nil
 	// 	},
 	// },
-
-	
 
 	// {
 	// 	Command: []string{"账密检测", "密码检测"},
@@ -608,112 +590,96 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-    Command: []string{"赠送卡密"},
-    Admin:   true,
-    Handle: func(sender *Sender) interface{} {
-        // 1. 首先校验VIP权限
-        if !Config.VIP {
-            return "非VIP用户"
-        }
+		Command: []string{"赠送卡密"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			msg := make(chan string)
+			ckList[sender.UserID] = msg
 
-        // 2. 创建通道存储用户输入，并注册到ckList中
-        msg := make(chan string)
-        ckList[sender.UserID] = msg
+			go func() {
+				defer delete(ckList, sender.UserID)
 
-        // 3. 启动goroutine处理引导式交互
-        go func() {
-            // 确保函数结束时从ckList中删除用户通道，防止内存泄漏
-            defer delete(ckList, sender.UserID)
+				sender.Reply("请输入要赠送的卡密数量：")
+				numInput := <-msg
+				numInput = strings.TrimSpace(numInput)
+				num, err := strconv.Atoi(numInput)
+				// 校验数量输入的合法性：必须是正整数
+				if err != nil || num <= 0 {
+					sender.Reply("输入的数量不合法，请输入正整数！")
+					return
+				}
 
-            // 步骤1：提示用户输入要赠送的卡密数量
-            sender.Reply("请输入要赠送的卡密数量：")
-            numInput := <-msg
-            numInput = strings.TrimSpace(numInput)
-            num, err := strconv.Atoi(numInput)
-            // 校验数量输入的合法性：必须是正整数
-            if err != nil || num <= 0 {
-                sender.Reply("输入的数量不合法，请输入正整数！")
-                return
-            }
+				// 步骤2：提示用户输入卡密对应的面额（数值）
+				sender.Reply("请输入卡密对应的面额（可输入负数）：")
+				valueInput := <-msg
+				valueInput = strings.TrimSpace(valueInput)
+				value, err := strconv.Atoi(valueInput)
+				// 校验数值输入的合法性：仅校验是否为整数（允许负数、0、正数）
+				if err != nil {
+					sender.Reply("输入的面额不合法，请输入整数（可负数）！")
+					return
+				}
 
-            // 步骤2：提示用户输入卡密对应的面额（数值）
-            sender.Reply("请输入卡密对应的面额（可输入负数）：")
-            valueInput := <-msg
-            valueInput = strings.TrimSpace(valueInput)
-            value, err := strconv.Atoi(valueInput)
-            // 校验数值输入的合法性：仅校验是否为整数（允许负数、0、正数）
-            if err != nil {
-                sender.Reply("输入的面额不合法，请输入整数（可负数）！")
-                return
-            }
+				// 步骤3：调用赠送卡密函数并获取结果（字符串类型）
+				result := create_ZSKey(num, value)
 
-            // 步骤3：调用赠送卡密函数并获取结果（字符串类型）
-            result := create_ZSKey(num, value)
-            
-            // 步骤4：回复赠送结果给用户（避免nil比较，适配字符串类型）
-       
-                sender.Reply(fmt.Sprintf("成功赠送 %d 个卡密，面额为 %d\n赠送结果：\n\n%s", num, value, result))
-   
-        }()
+				// 步骤4：回复赠送结果给用户（避免nil比较，适配字符串类型）
 
-        // 返回nil表示由goroutine处理后续回复，无需立即返回内容
-        return nil
-    },
-},
+				sender.Reply(fmt.Sprintf("成功赠送 %d 个卡密，面额为 %d\n赠送结果：\n\n%s", num, value, result))
 
-{
-    Command: []string{"创建卡密"},
-    Admin:   true,
-    Handle: func(sender *Sender) interface{} {
-        // 1. 首先校验VIP权限
-        if !Config.VIP {
-            return "非VIP用户"
-        }
+			}()
 
-        // 2. 创建通道存储用户输入，并注册到ckList中
-        msg := make(chan string)
-        ckList[sender.UserID] = msg
+			// 返回nil表示由goroutine处理后续回复，无需立即返回内容
+			return nil
+		},
+	},
 
-        // 3. 启动goroutine处理引导式交互
-        go func() {
-            // 确保函数结束时从ckList中删除用户通道，防止内存泄漏
-            defer delete(ckList, sender.UserID)
+	{
+		Command: []string{"创建卡密"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			msg := make(chan string)
+			ckList[sender.UserID] = msg
 
-            // 步骤1：提示用户输入要创建的卡密数量
-            sender.Reply("请输入要创建的卡密数量：")
-            numInput := <-msg
-            numInput = strings.TrimSpace(numInput)
-            num, err := strconv.Atoi(numInput)
-            // 校验数量输入的合法性：必须是正整数
-            if err != nil || num <= 0 {
-                sender.Reply("输入的数量不合法，请输入正整数！")
-                return
-            }
+			go func() {
+				// 确保函数结束时从ckList中删除用户通道，防止内存泄漏
+				defer delete(ckList, sender.UserID)
 
-            // 步骤2：提示用户输入卡密对应的面额（数值）
-            sender.Reply("请输入卡密对应的面额：")
-            valueInput := <-msg
-            valueInput = strings.TrimSpace(valueInput)
-            value, err := strconv.Atoi(valueInput)
-            // 校验数值输入的合法性：仅校验是否为整数（允许负数、0、正数）
-            if err != nil {
-                sender.Reply("请输入正确的面额")
-                return
-            }
+				// 步骤1：提示用户输入要创建的卡密数量
+				sender.Reply("请输入要创建的卡密数量：")
+				numInput := <-msg
+				numInput = strings.TrimSpace(numInput)
+				num, err := strconv.Atoi(numInput)
+				// 校验数量输入的合法性：必须是正整数
+				if err != nil || num <= 0 {
+					sender.Reply("输入的数量不合法，请输入正整数！")
+					return
+				}
 
-            // 步骤3：调用创建卡密函数并返回结果
-            result := createKey(num, value)
-            
-            // 步骤4：回复创建结果给用户
-  
-                sender.Reply(fmt.Sprintf("成功创建 %d 个卡密，面额为 %d\n创建结果：\n\n%s", num, value, result))
-  
-        }()
+				// 步骤2：提示用户输入卡密对应的面额（数值）
+				sender.Reply("请输入卡密对应的面额：")
+				valueInput := <-msg
+				valueInput = strings.TrimSpace(valueInput)
+				value, err := strconv.Atoi(valueInput)
+				// 校验数值输入的合法性：仅校验是否为整数（允许负数、0、正数）
+				if err != nil {
+					sender.Reply("请输入正确的面额")
+					return
+				}
 
-        // 返回nil表示由goroutine处理后续回复，无需立即返回内容
-        return nil
-    },
-},
+				// 步骤3：调用创建卡密函数并返回结果
+				result := createKey(num, value)
+
+				// 步骤4：回复创建结果给用户
+
+				sender.Reply(fmt.Sprintf("成功创建 %d 个卡密，面额为 %d\n创建结果：\n\n%s", num, value, result))
+
+			}()
+
+			// 返回nil表示由goroutine处理后续回复，无需立即返回内容
+			return nil
+		},
+	},
 	{
 		Command: []string{"status", "状态"},
 		Admin:   true,
@@ -736,120 +702,118 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-
-{
-	Command: []string{"京豆排名", "富豪榜", "京豆榜"},
-	Handle: func(sender *Sender) interface{} {
-		// 定义存储排名信息的结构体
-		type BeanRanking struct {
-			Rank     int    // 排名
-			Nickname string // 昵称
-			BeanNum  int    // 京豆数量（整型）
-		}
-		var beanRankings []BeanRanking
-		var allCookies []JdCookie // 假设你的Cookie结构体类型为JdCookie
-
-		// 1. 查询数据库所有JD Cookie（去掉Available条件，不做数据库排序）
-		allCookies = GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb // 全量查询，无过滤条件
-		})
-
-		// 2. 先将所有Cookie转换为带数值BeanNum的结构，方便排序
-		type CookieWithNum struct {
-			JdCookie
-			Num int // 京豆数量的数值类型
-		}
-		var cookieWithNums []CookieWithNum
-
-		for _, cookie := range allCookies {
-			// 将字符串类型的BeanNum转换为整型，失败则设为0
-			num, err := strconv.Atoi(cookie.BeanNum)
-			if err != nil {
-				num = 0 // 转换失败默认设为0，也可改为continue跳过
+	{
+		Command: []string{"京豆排名", "富豪榜", "京豆榜"},
+		Handle: func(sender *Sender) interface{} {
+			// 定义存储排名信息的结构体
+			type BeanRanking struct {
+				Rank     int    // 排名
+				Nickname string // 昵称
+				BeanNum  int    // 京豆数量（整型）
 			}
-			cookieWithNums = append(cookieWithNums, CookieWithNum{
-				JdCookie: cookie,
-				Num:      num,
+			var beanRankings []BeanRanking
+			var allCookies []JdCookie // 假设你的Cookie结构体类型为JdCookie
+
+			// 1. 查询数据库所有JD Cookie（去掉Available条件，不做数据库排序）
+			allCookies = GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+				return sb // 全量查询，无过滤条件
 			})
-		}
 
-		// 3. 按京豆数量数值降序排序（避免字符串字典序排序错误）
-		sort.Slice(cookieWithNums, func(i, j int) bool {
-			return cookieWithNums[i].Num > cookieWithNums[j].Num
-		})
-
-		// 4. 取前20名构造排名列表
-		for i, c := range cookieWithNums {
-			if i >= 20 { // 仅保留前20名
-				break
+			// 2. 先将所有Cookie转换为带数值BeanNum的结构，方便排序
+			type CookieWithNum struct {
+				JdCookie
+				Num int // 京豆数量的数值类型
 			}
-			beanRankings = append(beanRankings, BeanRanking{
-				Rank:     i + 1,
-				Nickname: c.Nickname,
-				BeanNum:  c.Num,
+			var cookieWithNums []CookieWithNum
+
+			for _, cookie := range allCookies {
+				// 将字符串类型的BeanNum转换为整型，失败则设为0
+				num, err := strconv.Atoi(cookie.BeanNum)
+				if err != nil {
+					num = 0 // 转换失败默认设为0，也可改为continue跳过
+				}
+				cookieWithNums = append(cookieWithNums, CookieWithNum{
+					JdCookie: cookie,
+					Num:      num,
+				})
+			}
+
+			// 3. 按京豆数量数值降序排序（避免字符串字典序排序错误）
+			sort.Slice(cookieWithNums, func(i, j int) bool {
+				return cookieWithNums[i].Num > cookieWithNums[j].Num
 			})
-		}
 
-		// 5. 构造回复消息
-		var replyMessage string
-		// 存储前三名的恭喜语（后续拼接在末尾）
-		var congratulateList []string
-		// 数字对应的emoji序号映射（4-20，前三名不再使用）
-		numEmojis := map[int]string{
-			4:  "4️⃣", 5:  "5️⃣", 6:  "6️⃣", 7:  "7️⃣", 8:  "8️⃣",
-			9:  "9️⃣", 10: "🔟", 11: "⑪", 12: "⑫", 13: "⑬",
-			14: "⑭", 15: "⑮", 16: "⑯", 17: "⑰", 18: "⑱",
-			19: "⑲", 20: "⑳",
-		}
-		// 奖牌图标（前3名特殊标识）
-		medalEmojis := map[int]string{
-			1: "🏅", 2: "🥈", 3: "🥉",
-		}
-		// 前三名恭喜语模板（动态填充昵称）
-		congratulateTpl := map[int]string{
-			1: "🎉 恭喜【%s】荣获京豆富豪榜冠军！太厉害了～",
-			2: "🥳 恭喜【%s】荣获京豆富豪榜亚军！继续加油～",
-			3: "👏 恭喜【%s】荣获京豆富豪榜季军！表现超棒～",
-		}
+			// 4. 取前20名构造排名列表
+			for i, c := range cookieWithNums {
+				if i >= 20 { // 仅保留前20名
+					break
+				}
+				beanRankings = append(beanRankings, BeanRanking{
+					Rank:     i + 1,
+					Nickname: c.Nickname,
+					BeanNum:  c.Num,
+				})
+			}
 
-		if len(beanRankings) == 0 {
-			replyMessage = "暂无京豆数据可统计～"
-		} else {
-			replyMessage = "🏆 京豆富豪榜 Top20 🏆\n\n"
-			for _, ranking := range beanRankings {
-				// 前3名：仅奖牌图标 + 昵称 ------ 京豆（移除数字emoji）
-				if medal, ok := medalEmojis[ranking.Rank]; ok {
-					// 季军后增加一个空格，保证与后续排名的视觉对齐
-					if ranking.Rank == 3 {
-						replyMessage += fmt.Sprintf("%s  %s ------ %d 京豆\n", medal, ranking.Nickname, ranking.BeanNum)
+			// 5. 构造回复消息
+			var replyMessage string
+			// 存储前三名的恭喜语（后续拼接在末尾）
+			var congratulateList []string
+			// 数字对应的emoji序号映射（4-20，前三名不再使用）
+			numEmojis := map[int]string{
+				4: "4️⃣", 5: "5️⃣", 6: "6️⃣", 7: "7️⃣", 8: "8️⃣",
+				9: "9️⃣", 10: "🔟", 11: "⑪", 12: "⑫", 13: "⑬",
+				14: "⑭", 15: "⑮", 16: "⑯", 17: "⑰", 18: "⑱",
+				19: "⑲", 20: "⑳",
+			}
+			// 奖牌图标（前3名特殊标识）
+			medalEmojis := map[int]string{
+				1: "🏅", 2: "🥈", 3: "🥉",
+			}
+			// 前三名恭喜语模板（动态填充昵称）
+			congratulateTpl := map[int]string{
+				1: "🎉 恭喜【%s】荣获京豆富豪榜冠军！太厉害了～",
+				2: "🥳 恭喜【%s】荣获京豆富豪榜亚军！继续加油～",
+				3: "👏 恭喜【%s】荣获京豆富豪榜季军！表现超棒～",
+			}
+
+			if len(beanRankings) == 0 {
+				replyMessage = "暂无京豆数据可统计～"
+			} else {
+				replyMessage = "🏆 京豆富豪榜 Top20 🏆\n\n"
+				for _, ranking := range beanRankings {
+					// 前3名：仅奖牌图标 + 昵称 ------ 京豆（移除数字emoji）
+					if medal, ok := medalEmojis[ranking.Rank]; ok {
+						// 季军后增加一个空格，保证与后续排名的视觉对齐
+						if ranking.Rank == 3 {
+							replyMessage += fmt.Sprintf("%s  %s ------ %d 京豆\n", medal, ranking.Nickname, ranking.BeanNum)
+						} else {
+							replyMessage += fmt.Sprintf("%s %s ------ %d 京豆\n", medal, ranking.Nickname, ranking.BeanNum)
+						}
+						// 动态生成恭喜语并存储
+						congratulateList = append(congratulateList, fmt.Sprintf(congratulateTpl[ranking.Rank], ranking.Nickname))
 					} else {
-						replyMessage += fmt.Sprintf("%s %s ------ %d 京豆\n", medal, ranking.Nickname, ranking.BeanNum)
+						// 4-20名：数字emoji + 昵称 ------ 京豆
+						numEmoji := numEmojis[ranking.Rank]
+						replyMessage += fmt.Sprintf("%s %s ------ %d 京豆\n", numEmoji, ranking.Nickname, ranking.BeanNum)
 					}
-					// 动态生成恭喜语并存储
-					congratulateList = append(congratulateList, fmt.Sprintf(congratulateTpl[ranking.Rank], ranking.Nickname))
-				} else {
-					// 4-20名：数字emoji + 昵称 ------ 京豆
-					numEmoji := numEmojis[ranking.Rank]
-					replyMessage += fmt.Sprintf("%s %s ------ %d 京豆\n", numEmoji, ranking.Nickname, ranking.BeanNum)
+				}
+
+				// 若有前三名恭喜语，添加分割线并拼接
+				if len(congratulateList) > 0 {
+					replyMessage += "\n------------------------\n"
+					for _, msg := range congratulateList {
+						replyMessage += msg + "\n"
+					}
 				}
 			}
 
-			// 若有前三名恭喜语，添加分割线并拼接
-			if len(congratulateList) > 0 {
-				replyMessage += "\n------------------------\n"
-				for _, msg := range congratulateList {
-					replyMessage += msg + "\n"
-				}
-			}
-		}
+			// 发送回复
+			sender.Reply(replyMessage)
 
-		// 发送回复
-		sender.Reply(replyMessage)
-
-		return nil
+			return nil
+		},
 	},
-},
-
 
 	{
 		Command: []string{"我的排名", "我的优先级"},
@@ -951,96 +915,92 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-{
-    Command: []string{"微信协议掉线推送"},
-    Admin:   true,
-    Handle: func(sender *Sender) interface{} {
-        // 调用上面编写的函数
-       CheckWxOfflineAndNotify() 
-        return nil
-    },
-},
+	{
+		Command: []string{"微信协议掉线推送"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			// 调用上面编写的函数
+			CheckWxOfflineAndNotify()
+			return nil
+		},
+	},
 
+	{
+		Command: []string{"微信扫码登录", "微信扫码登陆"},
+		Handle: func(sender *Sender) interface{} {
+			if sender.Type != "wx" {
+				sender.Reply("此功能仅支持微信私聊使用")
+				return nil
+			}
+			WXID_CODE(sender)
+			return nil
+		},
+	},
 
-{
-    Command: []string{"微信扫码登录","微信扫码登陆"},
-    Handle: func(sender *Sender) interface{} {
-            if sender.Type != "wx" {
-            sender.Reply("此功能仅支持微信私聊使用")
-            return nil
-        }
-        WXID_CODE(sender)
-        return nil
-    },
-},
-
-
-{
-    Command: []string{"微信重新登录","微信重新登陆"},
-    Handle: func(sender *Sender) interface{} {
-        if sender.Type != "wx" {
-            sender.Reply("此功能仅支持微信私聊使用")
-            return nil
-        }
-        WXID_RELOGIN(sender)
-        return nil
-    },
-},
-{
-    Command: []string{"微信唤醒登录","微信唤醒登陆"},
-    Handle: func(sender *Sender) interface{} {
-        if sender.Type != "wx" {
-            sender.Reply("此功能仅支持微信私聊使用")
-            return nil
-        }
-        WXID_WAKE_LOGIN(sender)
-        return nil
-    },
-},
-{
-    Command: []string{"微信登出"},
-    Handle: func(sender *Sender) interface{} {
-        if sender.Type != "wx" && sender.Type != "wxg" {
-            sender.Reply("此功能仅支持微信/群聊使用")
-            return nil
-        }
-        WXID_LOGOUT(sender)
-        return nil
-    },
-},
-{
-    Command: []string{"微信删除","删除微信"},
-    Handle: func(sender *Sender) interface{} {
-        if sender.Type != "wx" && sender.Type != "wxg" {
-            sender.Reply("此功能仅支持微信/群聊使用")
-            return nil
-        }
-        WXID_DELETE(sender)
-        return nil
-    },
-},
-{
-    Command: []string{"微信设备状态"},
-    Admin:   true,
-    Handle: func(sender *Sender) interface{} {
-        WXID_USER_STATUS(sender)
-        return nil
-    },
-},
-{
-    Command: []string{"微信状态"},
-    Handle: func(sender *Sender) interface{} {
-        // 允许 wx  + wxg 群聊
-        if sender.Type != "wx" && sender.Type != "wxg" {
-            sender.Reply("此功能仅支持微信/群聊使用")
-            return nil
-        }
-        WXID_MY_STATUS(sender)
-        return nil
-    },
-},
-
-
+	{
+		Command: []string{"微信重新登录", "微信重新登陆"},
+		Handle: func(sender *Sender) interface{} {
+			if sender.Type != "wx" {
+				sender.Reply("此功能仅支持微信私聊使用")
+				return nil
+			}
+			WXID_RELOGIN(sender)
+			return nil
+		},
+	},
+	{
+		Command: []string{"微信唤醒登录", "微信唤醒登陆"},
+		Handle: func(sender *Sender) interface{} {
+			if sender.Type != "wx" {
+				sender.Reply("此功能仅支持微信私聊使用")
+				return nil
+			}
+			WXID_WAKE_LOGIN(sender)
+			return nil
+		},
+	},
+	{
+		Command: []string{"微信登出"},
+		Handle: func(sender *Sender) interface{} {
+			if sender.Type != "wx" && sender.Type != "wxg" {
+				sender.Reply("此功能仅支持微信/群聊使用")
+				return nil
+			}
+			WXID_LOGOUT(sender)
+			return nil
+		},
+	},
+	{
+		Command: []string{"微信删除", "删除微信"},
+		Handle: func(sender *Sender) interface{} {
+			if sender.Type != "wx" && sender.Type != "wxg" {
+				sender.Reply("此功能仅支持微信/群聊使用")
+				return nil
+			}
+			WXID_DELETE(sender)
+			return nil
+		},
+	},
+	{
+		Command: []string{"微信设备状态"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			WXID_USER_STATUS(sender)
+			return nil
+		},
+	},
+	{
+		Command: []string{"微信状态"},
+		Handle: func(sender *Sender) interface{} {
+			// 允许 wx  + wxg 群聊
+			if sender.Type != "wx" && sender.Type != "wxg" {
+				sender.Reply("此功能仅支持微信/群聊使用")
+				return nil
+			}
+			WXID_MY_STATUS(sender)
+			return nil
+		},
+	},
 
 	// {
 	// 	Command: []string{"扫码", "扫码登录"},
@@ -1100,7 +1060,7 @@ var codeSignals = []CodeSignal{
 					"5. 一键评价",
 					"6. 删除垃圾券（慎用，会误删，到已删除券恢复）",
 					"7. 问卷调查得豆",
-				//	"8. 京东外卖券",
+					//	"8. 京东外卖券",
 
 					//     "7. 自动挖宝",
 					"如需退出请回复'q'退出流程：",
@@ -1119,23 +1079,17 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-{
-    Command: []string{"sign", "打卡", "签到"},
-    Handle: func(sender *Sender) interface{} {
-        sender.Reply("🔄 机器人端打卡功能升级中\n\n📱 请前往以下渠道完成打卡：\n\n💻 电脑网页用户\n请复制以下地址到浏览器打开：\nhttp://180.152.5.230:5701\n\n📲 手机用户\n⚠️ 请复制链接到浏览器打开，以免被腾讯拦截\n安卓版本下载地址：http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk\niOS版本下载地址：http://180.152.5.230:8888/down/QaWi0JBZgb3t.ipa\n\n⏳ 升级完成后将第一时间通知大家，感谢理解！")
-        return nil
-    },
-},
-
-	
-
-	
-
-
+	{
+		Command: []string{"sign", "打卡", "签到"},
+		Handle: func(sender *Sender) interface{} {
+			sender.Reply("🔄 机器人端打卡功能升级中\n\n📱 请前往以下渠道完成打卡：\n\n💻 电脑网页用户\n请复制以下地址到浏览器打开：\nhttp://180.152.5.230:5701\n\n📲 手机用户\n⚠️ 请复制链接到浏览器打开，以免被腾讯拦截\n安卓版本下载地址：http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk\niOS版本下载地址：http://180.152.5.230:8888/down/QaWi0JBZgb3t.ipa\n\n⏳ 升级完成后将第一时间通知大家，感谢理解！")
+			return nil
+		},
+	},
 
 	{
 		Command: []string{"账号管理", "任务屏蔽", "取消屏蔽", "账号状态管理", "加入内测", "屏蔽任务"},
-	Admin:   true,
+		Admin:   true,
 		Handle: func(sender *Sender) interface{} {
 			// 获取用户的账号列表
 			id := sender.UserID
@@ -1361,8 +1315,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-
-
 	{
 		Command: []string{"更新优先级", "更新车位", "车位更新", "优先级更新", "排名更新", "更新排名"},
 		Handle: func(sender *Sender) interface{} {
@@ -1586,74 +1538,74 @@ var codeSignals = []CodeSignal{
 			return makeWxId(sender.UserID, "DXWX"+getMd5String1(strconv.Itoa(sender.UserID)))
 		},
 	},
-{
-	Command: []string{"账号注册", "注册账号", "网页注册","帐号注册","注册帐号"},
-	Handle: func(sender *Sender) interface{} {
-		// 群聊判断：和你短信登录逻辑保持一致
-		if sender.Type == "qqg" || sender.Type == "wxg" {
-			sender.Reply("为了账号安全，请私聊本机器人进行注册操作")
-			return nil
-		}
-
-		// 检查用户是否已经有网页账号
-		var accountCount int64
-		db.Model(&WebUserAccount{}).Where("user_number = ?", sender.UserID).Count(&accountCount)
-		if accountCount > 0 {
-			return "您已经注册过账号，无需重复注册。如需找回密码，请发送【忘记密码】"
-		}
-
-		// 如果用户不存在，自动创建用户记录（类似打卡时的逻辑）
-		var u User
-		ntime := time.Now()
-		err := db.Where("number = ?", sender.UserID).First(&u).Error
-		if err != nil {
-			// 用户不存在，自动创建
-			u = User{
-				Class:              sender.Type,
-				Number:             sender.UserID,
-				Coin:               0,
-				ActiveAt:           ntime,
-				LastSignIn:         ntime,
-				ContinuousSignIns:  0,
-				SignInDate:         ntime,
+	{
+		Command: []string{"账号注册", "注册账号", "网页注册", "帐号注册", "注册帐号"},
+		Handle: func(sender *Sender) interface{} {
+			// 群聊判断：和你短信登录逻辑保持一致
+			if sender.Type == "qqg" || sender.Type == "wxg" {
+				sender.Reply("为了账号安全，请私聊本机器人进行注册操作")
+				return nil
 			}
-			// 根据不同渠道类型设置对应字段
-			switch sender.Type {
-			case "wx", "wxg":
-				u.Wxid = sender.WxId
-			case "qq", "qqg":
-				u.QQ = fmt.Sprintf("%d", sender.UserID)
-			case "tg":
-				u.Telegram = fmt.Sprintf("%d", sender.UserID)
-			}
-			if err := db.Create(&u).Error; err != nil {
-				return "自动创建用户记录失败：" + err.Error()
-			}
-		}
 
-		bind, err := CreateRegisterBindCode(sender.UserID)
-		if err != nil {
-			return "生成注册绑定ID失败：" + err.Error()
-		}
-		return fmt.Sprintf("你的APP/网页注册绑定ID如下：\n%s\n\n有效期：30分钟，仅可使用一次。\n请打开http://180.152.5.230:5701网页或者app注册时填写这个绑定ID完成绑定。\n打不开复制到浏览器打开", bind.Code)
+			// 检查用户是否已经有网页账号
+			var accountCount int64
+			db.Model(&WebUserAccount{}).Where("user_number = ?", sender.UserID).Count(&accountCount)
+			if accountCount > 0 {
+				return "您已经注册过账号，无需重复注册。如需找回密码，请发送【忘记密码】"
+			}
+
+			// 如果用户不存在，自动创建用户记录（类似打卡时的逻辑）
+			var u User
+			ntime := time.Now()
+			err := db.Where("number = ?", sender.UserID).First(&u).Error
+			if err != nil {
+				// 用户不存在，自动创建
+				u = User{
+					Class:             sender.Type,
+					Number:            sender.UserID,
+					Coin:              0,
+					ActiveAt:          ntime,
+					LastSignIn:        ntime,
+					ContinuousSignIns: 0,
+					SignInDate:        ntime,
+				}
+				// 根据不同渠道类型设置对应字段
+				switch sender.Type {
+				case "wx", "wxg":
+					u.Wxid = sender.WxId
+				case "qq", "qqg":
+					u.QQ = fmt.Sprintf("%d", sender.UserID)
+				case "tg":
+					u.Telegram = fmt.Sprintf("%d", sender.UserID)
+				}
+				if err := db.Create(&u).Error; err != nil {
+					return "自动创建用户记录失败：" + err.Error()
+				}
+			}
+
+			bind, err := CreateRegisterBindCode(sender.UserID)
+			if err != nil {
+				return "生成注册绑定ID失败：" + err.Error()
+			}
+			return fmt.Sprintf("你的APP/网页注册绑定ID如下：\n%s\n\n有效期：30分钟，仅可使用一次。\n请打开http://180.152.5.230:5701网页或者app注册时填写这个绑定ID完成绑定。\n打不开复制到浏览器打开", bind.Code)
+		},
 	},
-},
-{
-	Command: []string{"忘记密码", "重置密码", "找回密码"},
-	Handle: func(sender *Sender) interface{} {
-		// 群聊判断：和你短信登录逻辑保持一致
-		if sender.Type == "qqg" || sender.Type == "wxg" {
-			sender.Reply("为了账号安全，请私聊本机器人进行密码重置")
-			return nil
-		}
+	{
+		Command: []string{"忘记密码", "重置密码", "找回密码"},
+		Handle: func(sender *Sender) interface{} {
+			// 群聊判断：和你短信登录逻辑保持一致
+			if sender.Type == "qqg" || sender.Type == "wxg" {
+				sender.Reply("为了账号安全，请私聊本机器人进行密码重置")
+				return nil
+			}
 
-		resetCode, err := CreatePasswordResetCode(sender.UserID)
-		if err != nil {
-			return "生成重置验证码失败：" + err.Error()
-		}
-		return fmt.Sprintf("你的APP/网页重置验证码如下：\n%s\n\n有效期：30分钟，仅可使用一次。\n请打开APP/网页登录页，进入【忘记密码】界面后输入该验证码完成密码重置。", resetCode.Code)
+			resetCode, err := CreatePasswordResetCode(sender.UserID)
+			if err != nil {
+				return "生成重置验证码失败：" + err.Error()
+			}
+			return fmt.Sprintf("你的APP/网页重置验证码如下：\n%s\n\n有效期：30分钟，仅可使用一次。\n请打开APP/网页登录页，进入【忘记密码】界面后输入该验证码完成密码重置。", resetCode.Code)
+		},
 	},
-},
 
 	{
 		Command: []string{"授权"},
@@ -1683,7 +1635,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	
 	{
 		Command: []string{"取消授权"},
 		Admin:   true,
@@ -1825,116 +1776,115 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	
-{
-    Command: []string{"ip统计"},
-    Admin:   true,
-    Handle: func(sender *Sender) interface{} {
-        // 定义统计结构体，存储每个IP的账号总数和有效数
-        type IpStat struct {
-            total     int // 账号总数
-            available int // 有效账号数
-        }
+	{
+		Command: []string{"ip统计"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			// 定义统计结构体，存储每个IP的账号总数和有效数
+			type IpStat struct {
+				total     int // 账号总数
+				available int // 有效账号数
+			}
 
-        statMap := make(map[string]*IpStat) // key: Socks5_Ip（去空格后）, value: 统计数据
-        var totalCookiesTraversed int       // 调试用：记录实际遍历的总账号数
-        var unknownIpKey = "未绑定IP"          // 统一未绑定IP的key
+			statMap := make(map[string]*IpStat) // key: Socks5_Ip（去空格后）, value: 统计数据
+			var totalCookiesTraversed int       // 调试用：记录实际遍历的总账号数
+			var unknownIpKey = "未绑定IP"          // 统一未绑定IP的key
 
-        // 核心修复：使用全量Cookie获取方法
-        allCookies := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-            return sb // 获取全部Cookie
-        })
+			// 核心修复：使用全量Cookie获取方法
+			allCookies := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+				return sb // 获取全部Cookie
+			})
 
-        // 遍历所有全量Cookie，仅统计password非空的账号
-        for _, ck := range allCookies {
-            // 仅处理password字段非空的账号
-            if strings.TrimSpace(ck.Password) == "" {
-                continue // password为空则跳过该账号
-            }
+			// 遍历所有全量Cookie，仅统计password非空的账号
+			for _, ck := range allCookies {
+				// 仅处理password字段非空的账号
+				if strings.TrimSpace(ck.Password) == "" {
+					continue // password为空则跳过该账号
+				}
 
-            totalCookiesTraversed++ // 累计有效遍历数（仅统计password非空的）
+				totalCookiesTraversed++ // 累计有效遍历数（仅统计password非空的）
 
-            // 处理IP：去空格+空IP归类
-            ip := strings.TrimSpace(ck.Socks5_Ip)
-            if ip == "" {
-                ip = unknownIpKey
-            }
+				// 处理IP：去空格+空IP归类
+				ip := strings.TrimSpace(ck.Socks5_Ip)
+				if ip == "" {
+					ip = unknownIpKey
+				}
 
-            // 初始化当前IP的统计数据
-            if _, exists := statMap[ip]; !exists {
-                statMap[ip] = &IpStat{total: 0, available: 0}
-            }
+				// 初始化当前IP的统计数据
+				if _, exists := statMap[ip]; !exists {
+					statMap[ip] = &IpStat{total: 0, available: 0}
+				}
 
-            statMap[ip].total++ // 累计该IP的账号总数
+				statMap[ip].total++ // 累计该IP的账号总数
 
-            // 有效账号判断
-            validValues := map[string]bool{"true": true}
-            availableVal := strings.TrimSpace(ck.Available)
-            if availableVal != "" && validValues[availableVal] {
-                statMap[ip].available++
-            }
-        }
+				// 有效账号判断
+				validValues := map[string]bool{"true": true}
+				availableVal := strings.TrimSpace(ck.Available)
+				if availableVal != "" && validValues[availableVal] {
+					statMap[ip].available++
+				}
+			}
 
-        // 拼接统计结果（包含调试信息）
-        var result strings.Builder
-        result.WriteString(fmt.Sprintf("📊 IP统计结果（账号登录用户总数：%d）：\n", totalCookiesTraversed))
+			// 拼接统计结果（包含调试信息）
+			var result strings.Builder
+			result.WriteString(fmt.Sprintf("📊 IP统计结果（账号登录用户总数：%d）：\n", totalCookiesTraversed))
 
-        if len(statMap) == 0 {
-            result.WriteString("暂无符合条件的账号数据（未查询到password非空的京东Cookie）\n")
-        } else {
-            // 拆分IP列表：已绑定IP和未绑定IP，确保未绑定IP最后显示
-            var boundIps []string       // 已绑定IP列表
-            var unknownIpStat *IpStat   // 未绑定IP的统计数据
-            var hasUnknownIp bool       // 是否存在未绑定IP的账号
+			if len(statMap) == 0 {
+				result.WriteString("暂无符合条件的账号数据（未查询到password非空的京东Cookie）\n")
+			} else {
+				// 拆分IP列表：已绑定IP和未绑定IP，确保未绑定IP最后显示
+				var boundIps []string     // 已绑定IP列表
+				var unknownIpStat *IpStat // 未绑定IP的统计数据
+				var hasUnknownIp bool     // 是否存在未绑定IP的账号
 
-            for ip, stat := range statMap {
-                if ip == unknownIpKey {
-                    hasUnknownIp = true
-                    unknownIpStat = stat
-                } else {
-                    boundIps = append(boundIps, ip)
-                }
-            }
+				for ip, stat := range statMap {
+					if ip == unknownIpKey {
+						hasUnknownIp = true
+						unknownIpStat = stat
+					} else {
+						boundIps = append(boundIps, ip)
+					}
+				}
 
-            // 输出已绑定IP的统计结果
-            for _, ip := range boundIps {
-                stat := statMap[ip]
-                result.WriteString(fmt.Sprintf("%s --- 总计：%d  有效：%d\n", 
-                    ip, stat.total, stat.available))
-            }
+				// 输出已绑定IP的统计结果
+				for _, ip := range boundIps {
+					stat := statMap[ip]
+					result.WriteString(fmt.Sprintf("%s --- 总计：%d  有效：%d\n",
+						ip, stat.total, stat.available))
+				}
 
-            // 最后输出未绑定IP的统计结果（单独显示，不计入总IP数）
-            if hasUnknownIp {
-                result.WriteString(fmt.Sprintf("%s --- 总计：%d  有效：%d\n", 
-                    unknownIpKey, unknownIpStat.total, unknownIpStat.available))
-            }
+				// 最后输出未绑定IP的统计结果（单独显示，不计入总IP数）
+				if hasUnknownIp {
+					result.WriteString(fmt.Sprintf("%s --- 总计：%d  有效：%d\n",
+						unknownIpKey, unknownIpStat.total, unknownIpStat.available))
+				}
 
-            // 计算汇总数据（核心调整：总IP数 = 已绑定IP数量，未绑定IP不计入）
-            totalIP := len(boundIps) // 总IP数 = 已绑定IP列表长度（未绑定IP不计入）
-            totalAccounts := 0
-            totalAvailable := 0
-            // 计算所有账号的汇总（包含未绑定IP的账号）
-            for _, stat := range statMap {
-                totalAccounts += stat.total
-                totalAvailable += stat.available
-            }
+				// 计算汇总数据（核心调整：总IP数 = 已绑定IP数量，未绑定IP不计入）
+				totalIP := len(boundIps) // 总IP数 = 已绑定IP列表长度（未绑定IP不计入）
+				totalAccounts := 0
+				totalAvailable := 0
+				// 计算所有账号的汇总（包含未绑定IP的账号）
+				for _, stat := range statMap {
+					totalAccounts += stat.total
+					totalAvailable += stat.available
+				}
 
-            // 拼接汇总信息（总IP数仅统计已绑定IP）
-            result.WriteString(fmt.Sprintf("\n📈 【汇总信息】\n"))
-            result.WriteString(fmt.Sprintf("总IP数（已绑定）：%d\n", totalIP)) // 明确标注"已绑定"
-            result.WriteString(fmt.Sprintf("总账号数：%d\n", totalAccounts))
-            result.WriteString(fmt.Sprintf("总有效账号数：%d\n", totalAvailable))
-            if totalAccounts > 0 {
-                availabilityRate := float64(totalAvailable) / float64(totalAccounts) * 100
-                result.WriteString(fmt.Sprintf("账号有效率：%.2f%%", availabilityRate))
-            } else {
-                result.WriteString("账号有效率：0.00%")
-            }
-        }
+				// 拼接汇总信息（总IP数仅统计已绑定IP）
+				result.WriteString(fmt.Sprintf("\n📈 【汇总信息】\n"))
+				result.WriteString(fmt.Sprintf("总IP数（已绑定）：%d\n", totalIP)) // 明确标注"已绑定"
+				result.WriteString(fmt.Sprintf("总账号数：%d\n", totalAccounts))
+				result.WriteString(fmt.Sprintf("总有效账号数：%d\n", totalAvailable))
+				if totalAccounts > 0 {
+					availabilityRate := float64(totalAvailable) / float64(totalAccounts) * 100
+					result.WriteString(fmt.Sprintf("账号有效率：%.2f%%", availabilityRate))
+				} else {
+					result.WriteString("账号有效率：0.00%")
+				}
+			}
 
-        return result.String()
-    },
-},
+			return result.String()
+		},
+	},
 	{
 		Command: []string{"备注", "bz"},
 		Handle: func(sender *Sender) interface{} {
@@ -1997,8 +1947,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-
-
 	{
 		Command: []string{"积分变动"},
 		Handle: func(sender *Sender) interface{} {
@@ -2026,94 +1974,93 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-	Command: []string{"查询", "我的资产"},
-	Handle: func(sender *Sender) interface{} {
-		sender.Reply("正在为您查询，请耐心等待，回复 手机卡 指令可办理超值流量卡，回复 登陆，ck不掉线")
+		Command: []string{"查询", "我的资产"},
+		Handle: func(sender *Sender) interface{} {
+			sender.Reply("正在为您查询，请耐心等待，回复 手机卡 指令可办理超值流量卡，回复 登陆，ck不掉线")
 
-		// 获取用户ID和类型
-		id := sender.UserID
-		var idType string
-		if sender.Type == "tg" {
-			idType = Telegram
-		} else {
-			idType = QQ
-		}
-
-		// 获取用户的京东账号列表
-		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s = ?", idType), id)
-		})
-
-		if len(cks) > 0 {
-			msgChan := make(chan string)
-			ckList[sender.UserID] = msgChan
-
-			// 构建账号选择列表
-			var msgs []string
-			msgs = append(msgs, "请回复下面【】里面序号进行查询，0为查询全部：\n--------------------------------")
-			msgs = append(msgs, "【0】全部")
-
-			// 统计有效账号数量
-			var validCount int
-			for i, ck := range cks {
-				// #调用独立的状态展示函数（核心修改点）
-				statusText, isValid := GetAccountStatusText(&ck)
-				if isValid {
-					validCount++
-				}
-				// 拼接账号条目
-				msgs = append(msgs, fmt.Sprintf("【%d】%s %s", i+1, ck.Nickname, statusText))
+			// 获取用户ID和类型
+			id := sender.UserID
+			var idType string
+			if sender.Type == "tg" {
+				idType = Telegram
+			} else {
+				idType = QQ
 			}
 
-			// 添加有效账号统计
-			msgs = append(msgs, fmt.Sprintf("--------------------------------\n有效账号: %d/%d", validCount, len(cks)))
+			// 获取用户的京东账号列表
+			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+				return sb.Where(fmt.Sprintf("%s = ?", idType), id)
+			})
 
-			// 拼接并发送列表消息
-			accountListMsg := ""
-			for _, msg := range msgs {
-				accountListMsg += msg + "\n"
-			}
-			sender.Reply(accountListMsg)
+			if len(cks) > 0 {
+				msgChan := make(chan string)
+				ckList[sender.UserID] = msgChan
 
-			// 异步处理用户输入
-			go func() {
-				defer delete(ckList, sender.UserID) // 退出时清理通道
+				// 构建账号选择列表
+				var msgs []string
+				msgs = append(msgs, "请回复下面【】里面序号进行查询，0为查询全部：\n--------------------------------")
+				msgs = append(msgs, "【0】全部")
 
-				select {
-				case input := <-msgChan:
-					// 处理退出指令
-					if input == "Q" || input == "q" {
-						sender.Reply("查询已退出。")
-						return
+				// 统计有效账号数量
+				var validCount int
+				for i, ck := range cks {
+					// #调用独立的状态展示函数（核心修改点）
+					statusText, isValid := GetAccountStatusText(&ck)
+					if isValid {
+						validCount++
 					}
-
-					// 处理查询指令
-					switch input {
-					case "0":
-						for _, ck := range cks {
-							sender.Reply(ck.Query())
-						}
-					default:
-						index, err := strconv.Atoi(input)
-						if err != nil || index < 1 || index > len(cks) {
-							sender.Reply("无效的输入，已退出程序。")
-						} else {
-							selectedCk := cks[index-1]
-							sender.Reply(selectedCk.Query())
-						}
-					}
-				case <-time.After(30 * time.Second):
-					sender.Reply("查询超时，程序自动退出。")
+					// 拼接账号条目
+					msgs = append(msgs, fmt.Sprintf("【%d】%s %s", i+1, ck.Nickname, statusText))
 				}
-			}()
-		} else {
-			sender.Reply("没有找到您的有效账号，请直接发送【登陆】上车。")
-		}
 
-		return nil
-	 },
+				// 添加有效账号统计
+				msgs = append(msgs, fmt.Sprintf("--------------------------------\n有效账号: %d/%d", validCount, len(cks)))
+
+				// 拼接并发送列表消息
+				accountListMsg := ""
+				for _, msg := range msgs {
+					accountListMsg += msg + "\n"
+				}
+				sender.Reply(accountListMsg)
+
+				// 异步处理用户输入
+				go func() {
+					defer delete(ckList, sender.UserID) // 退出时清理通道
+
+					select {
+					case input := <-msgChan:
+						// 处理退出指令
+						if input == "Q" || input == "q" {
+							sender.Reply("查询已退出。")
+							return
+						}
+
+						// 处理查询指令
+						switch input {
+						case "0":
+							for _, ck := range cks {
+								sender.Reply(ck.Query())
+							}
+						default:
+							index, err := strconv.Atoi(input)
+							if err != nil || index < 1 || index > len(cks) {
+								sender.Reply("无效的输入，已退出程序。")
+							} else {
+								selectedCk := cks[index-1]
+								sender.Reply(selectedCk.Query())
+							}
+						}
+					case <-time.After(30 * time.Second):
+						sender.Reply("查询超时，程序自动退出。")
+					}
+				}()
+			} else {
+				sender.Reply("没有找到您的有效账号，请直接发送【登陆】上车。")
+			}
+
+			return nil
+		},
 	},
-
 
 	{
 		Command: []string{"京豆明细", "资产明细"},
@@ -2128,8 +2075,6 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
-	
 
 	{
 		Command: []string{"发送", "通知", "notify", "send"},
@@ -2223,11 +2168,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-
-
-
-
-	
 	{
 		Command: []string{"设置管理员"},
 		Admin:   true,
@@ -2350,8 +2290,8 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-{
-	Command: []string{"猜拳"},
+	{
+		Command: []string{"猜拳"},
 		Handle: func(sender *Sender) interface{} {
 			if !Config.Game.GameOpen || !Config.Game.RockPaperScissorsOpen {
 				sender.Reply("管理员已关闭游戏")
@@ -2361,205 +2301,215 @@ var codeSignals = []CodeSignal{
 
 			sender.Reply(fmt.Sprintf("请回复你的出拳选择：剪刀、石头或布（每次游戏固定%d积分）", Config.Game.RockPaperScissors))
 
-		msgChan := make(chan string)
-		ckList[sender.UserID] = msgChan
-		go func() {
-			defer close(msgChan)
-			userChoice := <-msgChan
+			msgChan := make(chan string)
+			ckList[sender.UserID] = msgChan
+			go func() {
+				defer close(msgChan)
+				userChoice := <-msgChan
 
-			// 输入有效性检查
-			validChoices := map[string]bool{"剪刀": true, "石头": true, "布": true}
-			if !validChoices[userChoice] {
-				sender.Reply("无效的选择...已退出")
-				delete(ckList, sender.UserID)
-				return
-			}
-
-			// 积分检查
-			if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < Config.Game.RockPaperScissors {
-				sender.Reply("积分不足...已退出")
-				delete(ckList, sender.UserID)
-				return
-			}
-
-			// **合并后的电脑出拳逻辑（原getComputerChoice函数）**
-			computerChoice := func(uc string) int {
-				r := time.Now().Nanosecond() % 10 // 10种可能性
-				switch uc {
-				case "剪刀":
-					if r < 6 { return 1 } // 60%出石头（克制）
-					if r < 9 { return 2 } // 30%出布
-					return 0             // 10%出剪刀
-				case "石头":
-					if r < 6 { return 2 } // 60%出布（克制）
-					if r < 9 { return 0 } // 30%出剪刀
-					return 1             // 10%出石头
-				case "布":
-					if r < 6 { return 0 } // 60%出剪刀（克制）
-					if r < 9 { return 1 } // 30%出石头
-					return 2             // 10%出布
-				default:
-					return time.Now().Nanosecond() % 3
+				// 输入有效性检查
+				validChoices := map[string]bool{"剪刀": true, "石头": true, "布": true}
+				if !validChoices[userChoice] {
+					sender.Reply("无效的选择...已退出")
+					delete(ckList, sender.UserID)
+					return
 				}
-			}(userChoice)
 
-			choiceMap := []string{"剪刀", "石头", "布"}
-			computerChoiceStr := choiceMap[computerChoice]
-			
-			sender.Reply(fmt.Sprintf("你出了：%s ✊，电脑出了：%s 🤖", userChoice, computerChoiceStr))
-			time.Sleep(time.Second)
-			
-			// 判断结果...（同原代码）
-			var resultMsg string
-			var result int
-			if userChoice == computerChoiceStr {
-				result = 0
-			} else if (userChoice == "剪刀" && computerChoiceStr == "布") || 
-				(userChoice == "石头" && computerChoiceStr == "剪刀") || 
-				(userChoice == "布" && computerChoiceStr == "石头") {
-				result = 1
-			} else {
-				result = -1
-			}
-			
-			// 积分处理（优化回复消息）
-			var pointChange int
-			if result == 1 {
-				pointChange = Config.Game.RockPaperScissors
-				resultMsg = fmt.Sprintf("恭喜你赢了！获得%d积分，当前积分余额", pointChange)
-			} else if result == -1 {
-				pointChange = -Config.Game.RockPaperScissors
-				resultMsg = fmt.Sprintf("很遗憾你输了，扣除%d积分，当前积分余额", -pointChange)
-			} else {
-				resultMsg = "平局！积分不变，当前积分余额"
-			}
-			
-			// 更新数据库积分
-			db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", pointChange)))
-			if pointChange > 0 {
-				RecordCoinForSender(sender, sender.UserID, pointChange, "游戏", "猜拳获胜")
-			} else if pointChange < 0 {
-				RecordCoinForSender(sender, sender.UserID, pointChange, "游戏", "猜拳失败")
-			}
-			
-			// 查询最新积分
-			if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil {
-				sender.Reply("查询积分失败...")
+				// 积分检查
+				if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < Config.Game.RockPaperScissors {
+					sender.Reply("积分不足...已退出")
+					delete(ckList, sender.UserID)
+					return
+				}
+
+				// **合并后的电脑出拳逻辑（原getComputerChoice函数）**
+				computerChoice := func(uc string) int {
+					r := time.Now().Nanosecond() % 10 // 10种可能性
+					switch uc {
+					case "剪刀":
+						if r < 6 {
+							return 1
+						} // 60%出石头（克制）
+						if r < 9 {
+							return 2
+						} // 30%出布
+						return 0 // 10%出剪刀
+					case "石头":
+						if r < 6 {
+							return 2
+						} // 60%出布（克制）
+						if r < 9 {
+							return 0
+						} // 30%出剪刀
+						return 1 // 10%出石头
+					case "布":
+						if r < 6 {
+							return 0
+						} // 60%出剪刀（克制）
+						if r < 9 {
+							return 1
+						} // 30%出石头
+						return 2 // 10%出布
+					default:
+						return time.Now().Nanosecond() % 3
+					}
+				}(userChoice)
+
+				choiceMap := []string{"剪刀", "石头", "布"}
+				computerChoiceStr := choiceMap[computerChoice]
+
+				sender.Reply(fmt.Sprintf("你出了：%s ✊，电脑出了：%s 🤖", userChoice, computerChoiceStr))
+				time.Sleep(time.Second)
+
+				// 判断结果...（同原代码）
+				var resultMsg string
+				var result int
+				if userChoice == computerChoiceStr {
+					result = 0
+				} else if (userChoice == "剪刀" && computerChoiceStr == "布") ||
+					(userChoice == "石头" && computerChoiceStr == "剪刀") ||
+					(userChoice == "布" && computerChoiceStr == "石头") {
+					result = 1
+				} else {
+					result = -1
+				}
+
+				// 积分处理（优化回复消息）
+				var pointChange int
+				if result == 1 {
+					pointChange = Config.Game.RockPaperScissors
+					resultMsg = fmt.Sprintf("恭喜你赢了！获得%d积分，当前积分余额", pointChange)
+				} else if result == -1 {
+					pointChange = -Config.Game.RockPaperScissors
+					resultMsg = fmt.Sprintf("很遗憾你输了，扣除%d积分，当前积分余额", -pointChange)
+				} else {
+					resultMsg = "平局！积分不变，当前积分余额"
+				}
+
+				// 更新数据库积分
+				db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", pointChange)))
+				if pointChange > 0 {
+					RecordCoinForSender(sender, sender.UserID, pointChange, "游戏", "猜拳获胜")
+				} else if pointChange < 0 {
+					RecordCoinForSender(sender, sender.UserID, pointChange, "游戏", "猜拳失败")
+				}
+
+				// 查询最新积分
+				if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil {
+					sender.Reply("查询积分失败...")
+					delete(ckList, sender.UserID)
+					return
+				}
+
+				// 发送最终结果（确保消息完整）
+				sender.Reply(resultMsg + fmt.Sprintf("%d", u.Coin))
 				delete(ckList, sender.UserID)
-				return
-			}
-			
-			// 发送最终结果（确保消息完整）
-			sender.Reply(resultMsg + fmt.Sprintf("%d", u.Coin))
-			delete(ckList, sender.UserID)
-		}()
+			}()
 
-		return nil
-	},
-},
-
-{
-	Command: []string{"踩雷", "拼了"},
-	Handle: func(sender *Sender) interface{} {
-		u := &User{}
-
-		// 提示用户输入积分
-		currentCoin := GetCoin(sender.UserID)
-		sender.Reply(fmt.Sprintf("请回复您想要使用的积分数量，理性踩雷，别上头 （当前积分：%d）：", currentCoin))
-
-		msgChan := make(chan string)
-		ckList[sender.UserID] = msgChan
-
-		go func() {
-			defer close(msgChan) // 确保在函数结束时关闭通道
-			costStr := <-msgChan // 等待用户输入的积分数量
-
-			// 输入有效性检查
-			cost, err := strconv.Atoi(costStr)
-			if err != nil {
-				sender.Reply("无效的输入，请输入一个正整数。")
-				delete(ckList, sender.UserID)
-				return
-			}
-
-			if cost < 0 {
-				sender.Reply("不允许输入负数。")
-				delete(ckList, sender.UserID)
-				return
-			}
-
-			if cost <= 0 || cost > 100000000000000 {
-				sender.Reply("仿佛发生了点什么")
-				delete(ckList, sender.UserID)
-				return
-			}
-
-			// 检查用户积分
-			if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < cost {
-				sender.Reply("哎呀积分不够了，快去搞点积分吧？=> 请直接微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者复制网址http://180.152.5.230:8005/到其他浏览器打开购买卡密充值。")
-				delete(ckList, sender.UserID)
-				return
-			}
-
-			// 临时扣除积分（显示用）
-			newBalance := GetCoin(sender.UserID) - cost
-			sender.Reply(fmt.Sprintf("你使用%d枚积分，使用后积分余额%d。", cost, newBalance))
-
-			// 生成随机数
-			r := time.Now().Nanosecond() % 10
-			
-			// 新增逻辑：当投入积分大于1500时必输
-			if cost > 1500 {
-				r = -1 // 标记为必输情况
-			}
-
-			var resultMsg string
-			var newCost int
-
-			// 修改后的随机结果判断逻辑
-			if r == 9 {
-				// 10%概率2倍暴击
-				newCost = cost * 2
-				resultMsg = fmt.Sprintf("恭喜你2倍暴击！很幸运获得%d枚积分，已为你到账，当前积分余额", newCost)
-			} else if r == 3 || r == 5 {
-				// r=7或r=5时赢取积分
-				newCost = cost
-				resultMsg = fmt.Sprintf("很幸运你获得%d枚积分，已为你到账，当前积分余额", newCost)
-			} else {
-				// 其他情况失去积分（包括r为-1的必输情况）
-				newCost = -cost
-				resultMsg = fmt.Sprintf("很遗憾你失去了%d枚积分，当前积分余额", cost)
-			}
-			
-			time.Sleep(time.Second * 2)
-			// **关键：先更新数据库**
-			db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", newCost)))
-			if newCost > 0 {
-				RecordCoinForSender(sender, sender.UserID, newCost, "游戏", "踩雷获胜")
-			} else if newCost < 0 {
-				RecordCoinForSender(sender, sender.UserID, newCost, "游戏", "踩雷失败")
-			}
-			
-
-			// **再查询最新积分余额**
-			if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil {
-				sender.Reply("查询积分失败，请稍后再试")
-				delete(ckList, sender.UserID)
-				return
-			}
-			
-			// 补全结果消息（包含数据库查询的真实余额）
-			sender.Reply(resultMsg + fmt.Sprintf("%d。", u.Coin))
-
-			// 清除用户记录
-			delete(ckList, sender.UserID)
-		}()
-
-		return nil
-	},
+			return nil
+		},
 	},
 
-	
+	{
+		Command: []string{"踩雷", "拼了"},
+		Handle: func(sender *Sender) interface{} {
+			u := &User{}
+
+			// 提示用户输入积分
+			currentCoin := GetCoin(sender.UserID)
+			sender.Reply(fmt.Sprintf("请回复您想要使用的积分数量，理性踩雷，别上头 （当前积分：%d）：", currentCoin))
+
+			msgChan := make(chan string)
+			ckList[sender.UserID] = msgChan
+
+			go func() {
+				defer close(msgChan) // 确保在函数结束时关闭通道
+				costStr := <-msgChan // 等待用户输入的积分数量
+
+				// 输入有效性检查
+				cost, err := strconv.Atoi(costStr)
+				if err != nil {
+					sender.Reply("无效的输入，请输入一个正整数。")
+					delete(ckList, sender.UserID)
+					return
+				}
+
+				if cost < 0 {
+					sender.Reply("不允许输入负数。")
+					delete(ckList, sender.UserID)
+					return
+				}
+
+				if cost <= 0 || cost > 100000000000000 {
+					sender.Reply("仿佛发生了点什么")
+					delete(ckList, sender.UserID)
+					return
+				}
+
+				// 检查用户积分
+				if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < cost {
+					sender.Reply("哎呀积分不够了，快去搞点积分吧？=> 请直接微信机器人转账，1元=100积分，转账成功即可完成积分充值，或者复制网址http://180.152.5.230:8005/到其他浏览器打开购买卡密充值。")
+					delete(ckList, sender.UserID)
+					return
+				}
+
+				// 临时扣除积分（显示用）
+				newBalance := GetCoin(sender.UserID) - cost
+				sender.Reply(fmt.Sprintf("你使用%d枚积分，使用后积分余额%d。", cost, newBalance))
+
+				// 生成随机数
+				r := time.Now().Nanosecond() % 10
+
+				// 新增逻辑：当投入积分大于1500时必输
+				if cost > 1500 {
+					r = -1 // 标记为必输情况
+				}
+
+				var resultMsg string
+				var newCost int
+
+				// 修改后的随机结果判断逻辑
+				if r == 9 {
+					// 10%概率2倍暴击
+					newCost = cost * 2
+					resultMsg = fmt.Sprintf("恭喜你2倍暴击！很幸运获得%d枚积分，已为你到账，当前积分余额", newCost)
+				} else if r == 3 || r == 5 {
+					// r=7或r=5时赢取积分
+					newCost = cost
+					resultMsg = fmt.Sprintf("很幸运你获得%d枚积分，已为你到账，当前积分余额", newCost)
+				} else {
+					// 其他情况失去积分（包括r为-1的必输情况）
+					newCost = -cost
+					resultMsg = fmt.Sprintf("很遗憾你失去了%d枚积分，当前积分余额", cost)
+				}
+
+				time.Sleep(time.Second * 2)
+				// **关键：先更新数据库**
+				db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin + %d", newCost)))
+				if newCost > 0 {
+					RecordCoinForSender(sender, sender.UserID, newCost, "游戏", "踩雷获胜")
+				} else if newCost < 0 {
+					RecordCoinForSender(sender, sender.UserID, newCost, "游戏", "踩雷失败")
+				}
+
+				// **再查询最新积分余额**
+				if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil {
+					sender.Reply("查询积分失败，请稍后再试")
+					delete(ckList, sender.UserID)
+					return
+				}
+
+				// 补全结果消息（包含数据库查询的真实余额）
+				sender.Reply(resultMsg + fmt.Sprintf("%d。", u.Coin))
+
+				// 清除用户记录
+				delete(ckList, sender.UserID)
+			}()
+
+			return nil
+		},
+	},
+
 	{
 		Command: []string{"许愿", "愿望", "wish", "hope", "want"},
 		Handle: func(sender *Sender) interface{} {
@@ -2732,7 +2682,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	
 	{
 		Command: []string{"cmd", "command"},
 		Admin:   true,
@@ -2761,9 +2710,6 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-
-
-
 
 	{
 		Command: []string{"管理后台"},
@@ -2875,8 +2821,6 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-	
-
 	{
 		Command: []string{"reply", "回复"},
 		Admin:   true,
@@ -2902,14 +2846,14 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
-    Command: []string{"新闻"},
-    Admin:   true,
-    Handle: func(sender *Sender) interface{} {
-        // 调用上面编写的函数
-        HandleNews() 
-        return nil
-    },
-},
+		Command: []string{"新闻"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			// 调用上面编写的函数
+			HandleNews()
+			return nil
+		},
+	},
 
 	{
 		Command: []string{"图片推送"},
@@ -3223,35 +3167,35 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-	
-{
-    Command: []string{"用户信息", "查询id", "查询ID", "我的ID", "我的信息"},
-    Admin:   false,
-    Handle: func(sender *Sender) interface{} {
-        var user User
-        db.Where("number = ?", sender.UserID).First(&user)
-        nickname := user.Nickname
-        if nickname == "" {
-            nickname = "未设置"
-        }
-        coin := user.Coin
-        msgs := []string{
-            "",
-            "📋 用户信息：",
-            "",
-            "🆔 UserID：" + strconv.Itoa(sender.UserID),
-            "👤 昵称：" + nickname,
-            "💰 积分：" + strconv.Itoa(coin),
-            "💬 WxId：" + sender.WxId,
-            "📱 QQ：" + user.QQ,
-            "🏷️ ChatID：" + strconv.Itoa(sender.ChatID),
-            "🏠 GroupId：" + strconv.Itoa(sender.GroupId),
-            "📂 WxGroupId：" + sender.WxGroupId,
-            "📌 Type：" + sender.Type,
-        }
-        return strings.Join(msgs, "\n")
-    },
-},
+
+	{
+		Command: []string{"用户信息", "查询id", "查询ID", "我的ID", "我的信息"},
+		Admin:   false,
+		Handle: func(sender *Sender) interface{} {
+			var user User
+			db.Where("number = ?", sender.UserID).First(&user)
+			nickname := user.Nickname
+			if nickname == "" {
+				nickname = "未设置"
+			}
+			coin := user.Coin
+			msgs := []string{
+				"",
+				"📋 用户信息：",
+				"",
+				"🆔 UserID：" + strconv.Itoa(sender.UserID),
+				"👤 昵称：" + nickname,
+				"💰 积分：" + strconv.Itoa(coin),
+				"💬 WxId：" + sender.WxId,
+				"📱 QQ：" + user.QQ,
+				"🏷️ ChatID：" + strconv.Itoa(sender.ChatID),
+				"🏠 GroupId：" + strconv.Itoa(sender.GroupId),
+				"📂 WxGroupId：" + sender.WxGroupId,
+				"📌 Type：" + sender.Type,
+			}
+			return strings.Join(msgs, "\n")
+		},
+	},
 	{
 		Command: []string{"项目中心", "项目", "活动中心", "活动列表", "上车项目"},
 		Admin:   false,
@@ -3513,7 +3457,7 @@ var codeSignals = []CodeSignal{
 		},
 	},
 
-{
+	{
 		Command: []string{"比大小"},
 		Handle: func(sender *Sender) interface{} {
 			if !Config.Game.GameOpen || !Config.Game.BigSmallOpen {
@@ -3551,7 +3495,7 @@ var codeSignals = []CodeSignal{
 			}
 			newGame.Players[sender.UserID] = -1
 			games[gameID] = newGame
-			
+
 			// 更新按时间排序的游戏列表
 			gamesByTime = append(gamesByTime, newGame)
 			sort.Slice(gamesByTime, func(i, j int) bool {
@@ -3580,21 +3524,21 @@ var codeSignals = []CodeSignal{
 			go func(gameID string) {
 				defer close(msgChan)
 				delete(ckList, sender.UserID)
-				
+
 				var game *Game
 				var gameExists bool
-				
+
 				// 定义锁操作辅助函数
 				lockAndCheckGame := func() bool {
 					gameMutex.Lock()
 					game, gameExists = games[gameID]
 					return gameExists
 				}
-				
+
 				unlockGame := func() {
 					gameMutex.Unlock()
 				}
-				
+
 				// 等待玩家加入
 				startTime := time.Now()
 				for {
@@ -3698,17 +3642,23 @@ var codeSignals = []CodeSignal{
 						rank := i + 1
 						var reward int
 						switch rank {
-						case 1: reward = 120
-						case 2: reward = 90
-						case 3: reward = 70
-						case 4: reward = 40
-						case 5: reward = 20
-						case 6: reward = 0
+						case 1:
+							reward = 120
+						case 2:
+							reward = 90
+						case 3:
+							reward = 70
+						case 4:
+							reward = 40
+						case 5:
+							reward = 20
+						case 6:
+							reward = 0
 						}
 						icon := rankIcons[rank]
-						
+
 						// 纯文本分行格式
-						resultMsg += fmt.Sprintf("  %s 第%d名 - 用户%05d | 数字: %-2d | 奖励: +%3d\n", 
+						resultMsg += fmt.Sprintf("  %s 第%d名 - 用户%05d | 数字: %-2d | 奖励: +%3d\n",
 							icon, rank, player.ID, player.Score, reward)
 					}
 					resultMsg += "-----------------------------\n"
@@ -3728,527 +3678,525 @@ var codeSignals = []CodeSignal{
 			return nil
 		},
 	},
-	
 
-{
-    Command: []string{"加入"},
-    Handle: func(sender *Sender) interface{} {
-        if !Config.Game.GameOpen || !Config.Game.BigSmallOpen {
-            sender.Reply("管理员已关闭游戏")
-            return nil
-        }
-        gameMutex.Lock()
-        var waitingGames []*Game
-        now := time.Now()
-        
-        // 先过滤掉过期的游戏
-        var validGamesByTime []*Game
-        for _, game := range gamesByTime {
-            if now.Sub(game.CreateTime) <= 20*time.Minute {
-                validGamesByTime = append(validGamesByTime, game)
-            } else {
-                // 删除过期的游戏
-                delete(games, game.ID)
-            }
-        }
-        gamesByTime = validGamesByTime
-        
-        // 现在只收集未过期且等待中的游戏
-        for _, game := range gamesByTime {
-            if game.Status == "waiting" {
-                waitingGames = append(waitingGames, game)
-            }
-        }
-        gameMutex.Unlock()
-
-        if len(waitingGames) == 0 {
-            sender.Reply("当前没有等待中的游戏，你可以发送【比大小】创建游戏")
-            return nil
-        }
-
-        // 发送优化后的游戏列表
-        gameListMsg := "当前等待中的游戏（按创建时间排序）：\n\n"
-        for i, game := range waitingGames {
-            platformDesc := "微信"
-            if game.Platform == "qqg" {
-                platformDesc = "QQ"
-            }
-            
-            // 计算剩余时间
-            remainingTime := 20*time.Minute - now.Sub(game.CreateTime)
-            remainingMinutes := int(remainingTime.Minutes())
-            remainingSeconds := int(remainingTime.Seconds()) % 60
-            
-            // 格式化创建时间
-            timeDesc := game.CreateTime.Format("15:04:05")
-            
-            gameInfo := fmt.Sprintf("【%d】游戏ID: %s\n", i+1, game.ID)
-            gameInfo += fmt.Sprintf("  ├─ 创建时间: %s\n", timeDesc)
-            gameInfo += fmt.Sprintf("  ├─ 剩余时间: %d分%d秒\n",  remainingMinutes, remainingSeconds)
-            gameInfo += fmt.Sprintf("  ├─ 创建平台: %s\n", platformDesc)
-            gameInfo += fmt.Sprintf("  ├─ 创建人: 用户%d\n", game.Creator)
-            gameInfo += fmt.Sprintf("  └─ 当前人数: %d/6 (还差: %d人)\n", 
-                len(game.Players), 6-len(game.Players))
-            
-            gameListMsg += gameInfo + "\n"
-        }
-        
-        gameListMsg += "请在30秒内输入【】中的数字序号选择游戏\n" +
-                       "示例：输入【1】加入第一个游戏"
-
-        sender.Reply(gameListMsg)
-
-        // 创建channel并处理用户输入
-        msgChan := make(chan string)
-        ckList[sender.UserID] = msgChan
-
-        go func() {
-            defer close(msgChan)
-            defer delete(ckList, sender.UserID)
-            timeout := time.NewTimer(30 * time.Second)
-            defer timeout.Stop()
-
-            // 异常处理
-            defer func() {
-                if r := recover(); r != nil {
-                    gameMutex.Lock()
-                    for _, game := range games {
-                        if game.Status == "waiting" {
-                            delete(game.Players, sender.UserID)
-                        }
-                    }
-                    gameMutex.Unlock()
-                }
-            }()
-
-            select {
-            case msg := <-msgChan:
-                // 用户输入处理
-                selectedGameIndex, err := strconv.Atoi(strings.TrimSpace(msg))
-                if err != nil {
-                    sender.Reply("输入无效，请输入一个有效的数字序号！")
-                    return
-                }
-
-                if selectedGameIndex < 1 || selectedGameIndex > len(waitingGames) {
-                    sender.Reply(fmt.Sprintf("输入无效，有效序号范围是1到%d！", len(waitingGames)))
-                    return
-                }
-
-                sliceIndex := selectedGameIndex - 1
-                selectedGame := waitingGames[sliceIndex]
-                selectedGameID := selectedGame.ID
-
-                gameMutex.Lock()
-                game, exists := games[selectedGameID]
-                if !exists || game.Status != "waiting" {
-                    sender.Reply("该游戏已不存在或状态已改变，无法加入")
-                    gameMutex.Unlock()
-                    return
-                }
-
-                // 再次检查游戏是否过期
-                if now.Sub(game.CreateTime) > 20*time.Minute {
-                    sender.Reply("该游戏已过期，无法加入")
-                    delete(games, selectedGameID)
-                    gameMutex.Unlock()
-                    return
-                }
-
-                if len(game.Players) >= Config.Game.BigSmallPlayers {
-                    sender.Reply("该游戏已满员，无法加入")
-                    gameMutex.Unlock()
-                    return
-                }
-
-                if _, alreadyJoined := game.Players[sender.UserID]; alreadyJoined {
-                    sender.Reply("你已加入该游戏")
-                    gameMutex.Unlock()
-                    return
-                }
-
-                u := &User{}
-                if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < Config.Game.BigSmallCost {
-                    sender.Reply(fmt.Sprintf("加入游戏需要%d积分，你的积分不足", Config.Game.BigSmallCost))
-                    gameMutex.Unlock()
-                    return
-                }
-
-                // 加入游戏
-                game.Players[sender.UserID] = -1
-                gameMutex.Unlock()
-                sender.Reply(fmt.Sprintf("成功加入游戏 %s！当前玩家 %d/6，等待游戏开始...", selectedGameID, len(game.Players)))
-
-            case <-timeout.C:
-                // 超时处理
-                sender.Reply("选择超时！30秒内未选择游戏，操作已取消。")
-                
-                // 清理可能的临时加入状态
-                gameMutex.Lock()
-                for _, game := range games {
-                    if game.Status == "waiting" {
-                        delete(game.Players, sender.UserID)
-                    }
-                }
-                gameMutex.Unlock()
-            }
-        }()
-        return nil
-    },
-},
-
-{
-	// ────────────────────────────────────────────────────────────
-	//  决斗发起命令（支持自定义下注：决斗 100）
-	// ────────────────────────────────────────────────────────────
-	Command: []string{"决斗"},
-	Handle: func(sender *Sender) interface{} {
-		if !Config.Game.GameOpen || !Config.Game.DuelOpen {
-			sender.Reply("管理员已关闭游戏")
-			return nil
-		}
-		bet := Config.Game.DuelDefaultBet
-		if len(sender.Contents) > 1 {
-			if v, err := strconv.Atoi(strings.TrimSpace(sender.Contents[1])); err == nil && v >= Config.Game.DuelDefaultBet && v <= 500 {
-				bet = v
+	{
+		Command: []string{"加入"},
+		Handle: func(sender *Sender) interface{} {
+			if !Config.Game.GameOpen || !Config.Game.BigSmallOpen {
+				sender.Reply("管理员已关闭游戏")
+				return nil
 			}
-		}
+			gameMutex.Lock()
+			var waitingGames []*Game
+			now := time.Now()
 
-		duelMutex.Lock()
-		duelCount := len(duels)
-		duelMutex.Unlock()
-		if duelCount >= Config.Game.DuelMaxRooms {
-			sender.Reply(fmt.Sprintf("当前决斗房间已满（最多%d个），请回复【迎战】参与现有决斗", Config.Game.DuelMaxRooms))
-			return nil
-		}
-
-		u := &User{}
-		if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < bet {
-			sender.Reply(fmt.Sprintf("发起决斗需要至少 %d 积分，你的积分不足", bet))
-			return nil
-		}
-
-		// ──── Step 1: 让发起者选职业 ────
-		sender.Reply(ClassListMsg())
-
-		// Step 1: 仅在选职业阶段注册 ckList，选完后立即注销，不影响其他指令
-		msgChan := make(chan string, 3)
-		ckList[sender.UserID] = msgChan
-
-		go func() {
-			// ── 选职业阶段：用完立即注销，让用户恢复正常消息流 ──
-			var chosenClass ClassType
-			classTimeout := time.NewTimer(40 * time.Second)
-			defer classTimeout.Stop()
-			select {
-			case msg := <-msgChan:
-				idx, err := strconv.Atoi(strings.TrimSpace(msg))
-				if err == nil && idx >= 1 && idx <= len(AllClasses) {
-					chosenClass = AllClasses[idx-1].Name
+			// 先过滤掉过期的游戏
+			var validGamesByTime []*Game
+			for _, game := range gamesByTime {
+				if now.Sub(game.CreateTime) <= 20*time.Minute {
+					validGamesByTime = append(validGamesByTime, game)
 				} else {
-					chosenClass = AllClasses[rand.Intn(len(AllClasses))].Name
-					sender.Reply(fmt.Sprintf("输入无效，已随机分配职业：%s", string(chosenClass)))
+					// 删除过期的游戏
+					delete(games, game.ID)
 				}
-			case <-classTimeout.C:
-				chosenClass = AllClasses[rand.Intn(len(AllClasses))].Name
-				sender.Reply(fmt.Sprintf("选择超时，随机分配职业：%s", string(chosenClass)))
+			}
+			gamesByTime = validGamesByTime
+
+			// 现在只收集未过期且等待中的游戏
+			for _, game := range gamesByTime {
+				if game.Status == "waiting" {
+					waitingGames = append(waitingGames, game)
+				}
+			}
+			gameMutex.Unlock()
+
+			if len(waitingGames) == 0 {
+				sender.Reply("当前没有等待中的游戏，你可以发送【比大小】创建游戏")
+				return nil
 			}
 
-			// ★ 选完职业后立即从 ckList 注销，用户可以正常使用其他指令了 ★
-			delete(ckList, sender.UserID)
-			for len(msgChan) > 0 {
-				<-msgChan
-			}
-			close(msgChan)
+			// 发送优化后的游戏列表
+			gameListMsg := "当前等待中的游戏（按创建时间排序）：\n\n"
+			for i, game := range waitingGames {
+				platformDesc := "微信"
+				if game.Platform == "qqg" {
+					platformDesc = "QQ"
+				}
 
-			// 生成发起者属性
-			name := sender.Username
-			if name == "" {
-				name = fmt.Sprintf("用户%d", sender.UserID)
-			}
-			initiatorAttrs := GenerateBattleAttr(sender.UserID, name, chosenClass)
+				// 计算剩余时间
+				remainingTime := 20*time.Minute - now.Sub(game.CreateTime)
+				remainingMinutes := int(remainingTime.Minutes())
+				remainingSeconds := int(remainingTime.Seconds()) % 60
 
-			// 创建决斗房间
-			duelID := fmt.Sprintf("%04d", rand.Intn(10000))
-			duelMutex.Lock()
-			newDuel := &Duel{
-				ID:             duelID,
-				Initiator:      sender.UserID,
-				InitiatorAttrs: initiatorAttrs,
-				InitiatorClass: chosenClass,
-				Challenger:     0,
-				Status:         "waiting",
-				CreateTime:     time.Now(),
-				Platform:       sender.Type,
-				Bet:            bet,
-			}
-			duels[duelID] = newDuel
-			duelsByTime = append(duelsByTime, newDuel)
-			sort.Slice(duelsByTime, func(i, j int) bool {
-				return duelsByTime[i].CreateTime.Before(duelsByTime[j].CreateTime)
-			})
-			duelMutex.Unlock()
+				// 格式化创建时间
+				timeDesc := game.CreateTime.Format("15:04:05")
 
-			def := GetClassDef(chosenClass)
-			platformDesc := "微信"
-			if strings.HasPrefix(sender.Type, "qq") {
-				platformDesc = "QQ"
+				gameInfo := fmt.Sprintf("【%d】游戏ID: %s\n", i+1, game.ID)
+				gameInfo += fmt.Sprintf("  ├─ 创建时间: %s\n", timeDesc)
+				gameInfo += fmt.Sprintf("  ├─ 剩余时间: %d分%d秒\n", remainingMinutes, remainingSeconds)
+				gameInfo += fmt.Sprintf("  ├─ 创建平台: %s\n", platformDesc)
+				gameInfo += fmt.Sprintf("  ├─ 创建人: 用户%d\n", game.Creator)
+				gameInfo += fmt.Sprintf("  └─ 当前人数: %d/6 (还差: %d人)\n",
+					len(game.Players), 6-len(game.Players))
+
+				gameListMsg += gameInfo + "\n"
 			}
 
-			// 展示属性面板
-			attrs := initiatorAttrs
-			skillNames := ""
-			for _, sk := range attrs.Skills {
-				skillNames += fmt.Sprintf("[%s%s] ", sk.Emoji, sk.Name)
-			}
-			sender.Reply(fmt.Sprintf(
-				"⚔️ 决斗已发起！ID: %s\n\n"+
-					"🎭 职业：%s %s\n%s\n\n"+
-					"━━━ 你的属性 ━━━\n"+
-					"❤️ 生命：%d  💪 力量：%d\n"+
-					"🧠 智力：%d  ⚡ 敏捷：%d\n"+
-					"🍀 运气：%d  🛡️ 物防：%d  🔮 魔防：%d\n\n"+
-					"🎯 本次技能：%s\n\n"+
-					"💰 下注积分：%d，胜者获得 %d（净赚 %d）\n"+
-					"平台(%s)玩家回复【迎战】即可加入，等待15分钟",
-				duelID,
-				def.Emoji, string(chosenClass), def.Description,
-				attrs.MaxHP, attrs.Str,
-				attrs.Int, attrs.Agi,
-				attrs.Luck, attrs.PDef, attrs.MDef,
-				skillNames,
-				bet, bet*2, bet,
-				platformDesc,
-			))
+			gameListMsg += "请在30秒内输入【】中的数字序号选择游戏\n" +
+				"示例：输入【1】加入第一个游戏"
 
-			// ──── Step 2: 等待对手加入（后台静默，不拦截任何消息）────
-			waitTimeout := time.NewTimer(15 * time.Minute)
-			defer waitTimeout.Stop()
-			ticker := time.NewTicker(1 * time.Second)
-			defer ticker.Stop()
-			var targetDuel *Duel
-		waitLoop:
-			for {
+			sender.Reply(gameListMsg)
+
+			// 创建channel并处理用户输入
+			msgChan := make(chan string)
+			ckList[sender.UserID] = msgChan
+
+			go func() {
+				defer close(msgChan)
+				defer delete(ckList, sender.UserID)
+				timeout := time.NewTimer(30 * time.Second)
+				defer timeout.Stop()
+
+				// 异常处理
+				defer func() {
+					if r := recover(); r != nil {
+						gameMutex.Lock()
+						for _, game := range games {
+							if game.Status == "waiting" {
+								delete(game.Players, sender.UserID)
+							}
+						}
+						gameMutex.Unlock()
+					}
+				}()
+
 				select {
-				case <-waitTimeout.C:
-					duelMutex.Lock()
-					if d, exists := duels[duelID]; exists && d.Status == "waiting" {
-						cleanupDuel(duelID)
-						_ = d
+				case msg := <-msgChan:
+					// 用户输入处理
+					selectedGameIndex, err := strconv.Atoi(strings.TrimSpace(msg))
+					if err != nil {
+						sender.Reply("输入无效，请输入一个有效的数字序号！")
+						return
 					}
-					duelMutex.Unlock()
-					sender.Reply(fmt.Sprintf("决斗 %s 因超时无人迎战已取消 😔", duelID))
-					return
-				case <-ticker.C:
-					duelMutex.Lock()
-					targetDuel, _ = duels[duelID]
-					if targetDuel != nil && targetDuel.Challenger != 0 && targetDuel.ChallengerAttrs != nil {
-						targetDuel.Status = "fighting"
-						duelMutex.Unlock()
-						break waitLoop
+
+					if selectedGameIndex < 1 || selectedGameIndex > len(waitingGames) {
+						sender.Reply(fmt.Sprintf("输入无效，有效序号范围是1到%d！", len(waitingGames)))
+						return
 					}
-					duelMutex.Unlock()
+
+					sliceIndex := selectedGameIndex - 1
+					selectedGame := waitingGames[sliceIndex]
+					selectedGameID := selectedGame.ID
+
+					gameMutex.Lock()
+					game, exists := games[selectedGameID]
+					if !exists || game.Status != "waiting" {
+						sender.Reply("该游戏已不存在或状态已改变，无法加入")
+						gameMutex.Unlock()
+						return
+					}
+
+					// 再次检查游戏是否过期
+					if now.Sub(game.CreateTime) > 20*time.Minute {
+						sender.Reply("该游戏已过期，无法加入")
+						delete(games, selectedGameID)
+						gameMutex.Unlock()
+						return
+					}
+
+					if len(game.Players) >= Config.Game.BigSmallPlayers {
+						sender.Reply("该游戏已满员，无法加入")
+						gameMutex.Unlock()
+						return
+					}
+
+					if _, alreadyJoined := game.Players[sender.UserID]; alreadyJoined {
+						sender.Reply("你已加入该游戏")
+						gameMutex.Unlock()
+						return
+					}
+
+					u := &User{}
+					if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < Config.Game.BigSmallCost {
+						sender.Reply(fmt.Sprintf("加入游戏需要%d积分，你的积分不足", Config.Game.BigSmallCost))
+						gameMutex.Unlock()
+						return
+					}
+
+					// 加入游戏
+					game.Players[sender.UserID] = -1
+					gameMutex.Unlock()
+					sender.Reply(fmt.Sprintf("成功加入游戏 %s！当前玩家 %d/6，等待游戏开始...", selectedGameID, len(game.Players)))
+
+				case <-timeout.C:
+					// 超时处理
+					sender.Reply("选择超时！30秒内未选择游戏，操作已取消。")
+
+					// 清理可能的临时加入状态
+					gameMutex.Lock()
+					for _, game := range games {
+						if game.Status == "waiting" {
+							delete(game.Players, sender.UserID)
+						}
+					}
+					gameMutex.Unlock()
 				}
-			}
-
-			// ──── Step 3: 开始战斗 ────
-			RunDuelBattle(duelID, targetDuel, sender)
-		}()
-
-		return nil
+			}()
+			return nil
+		},
 	},
-},
-{
-	// ────────────────────────────────────────────────────────────
-	//  迎战命令：列出等待中的决斗 → 选择 → 选职业 → 加入
-	// ────────────────────────────────────────────────────────────
-	Command: []string{"迎战", "应战", "挑战"},
-	Handle: func(sender *Sender) interface{} {
-		if !Config.Game.GameOpen || !Config.Game.DuelOpen {
-			sender.Reply("管理员已关闭游戏")
-			return nil
-		}
-		duelMutex.Lock()
-		var waitingDuels []*Duel
-		now := time.Now()
 
-		// 清理过期决斗
-		var validByTime []*Duel
-		for _, d := range duelsByTime {
-			if now.Sub(d.CreateTime) <= 15*time.Minute {
-				validByTime = append(validByTime, d)
-			} else {
-				delete(duels, d.ID)
+	{
+		// ────────────────────────────────────────────────────────────
+		//  决斗发起命令（支持自定义下注：决斗 100）
+		// ────────────────────────────────────────────────────────────
+		Command: []string{"决斗"},
+		Handle: func(sender *Sender) interface{} {
+			if !Config.Game.GameOpen || !Config.Game.DuelOpen {
+				sender.Reply("管理员已关闭游戏")
+				return nil
 			}
-		}
-		duelsByTime = validByTime
-
-		// 筛选同平台等待中的决斗
-		for _, d := range duelsByTime {
-			if d.Status == "waiting" && d.Initiator != sender.UserID {
-				senderIsQQ := strings.HasPrefix(sender.Type, "qq")
-				duelIsQQ := strings.HasPrefix(d.Platform, "qq")
-				if senderIsQQ == duelIsQQ {
-					waitingDuels = append(waitingDuels, d)
+			bet := Config.Game.DuelDefaultBet
+			if len(sender.Contents) > 1 {
+				if v, err := strconv.Atoi(strings.TrimSpace(sender.Contents[1])); err == nil && v >= Config.Game.DuelDefaultBet && v <= 500 {
+					bet = v
 				}
 			}
-		}
-		duelMutex.Unlock()
 
-		if len(waitingDuels) == 0 {
-			sender.Reply("当前没有等待中的决斗\n可以回复【决斗】自己发起挑战！")
-			return nil
-		}
+			duelMutex.Lock()
+			duelCount := len(duels)
+			duelMutex.Unlock()
+			if duelCount >= Config.Game.DuelMaxRooms {
+				sender.Reply(fmt.Sprintf("当前决斗房间已满（最多%d个），请回复【迎战】参与现有决斗", Config.Game.DuelMaxRooms))
+				return nil
+			}
 
-		// 展示决斗列表
-		listMsg := "🗡️ 等待挑战者的决斗列表：\n\n"
-		for i, d := range waitingDuels {
-			remaining := 15*time.Minute - now.Sub(d.CreateTime)
-			def := GetClassDef(d.InitiatorClass)
-			listMsg += fmt.Sprintf("【%d】决斗ID: %s\n", i+1, d.ID)
-			listMsg += fmt.Sprintf("  ├─ 发起者：用户%d (%s%s)\n", d.Initiator, def.Emoji, string(d.InitiatorClass))
-			listMsg += fmt.Sprintf("  ├─ 下注积分：%d → 胜者获得 %d\n", d.Bet, d.Bet*2)
-			listMsg += fmt.Sprintf("  └─ 剩余时间：%d分%d秒\n\n",
-				int(remaining.Minutes()), int(remaining.Seconds())%60)
-		}
-		listMsg += "30秒内回复序号加入（例如：1）"
-		sender.Reply(listMsg)
+			u := &User{}
+			if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < bet {
+				sender.Reply(fmt.Sprintf("发起决斗需要至少 %d 积分，你的积分不足", bet))
+				return nil
+			}
 
-		// 使用带缓冲的单 channel 全程复用，避免二次注册 ckList 造成的竞态阻塞
-		msgChan := make(chan string, 1)
-		ckList[sender.UserID] = msgChan
+			// ──── Step 1: 让发起者选职业 ────
+			sender.Reply(ClassListMsg())
 
-		go func() {
-			defer func() {
+			// Step 1: 仅在选职业阶段注册 ckList，选完后立即注销，不影响其他指令
+			msgChan := make(chan string, 3)
+			ckList[sender.UserID] = msgChan
+
+			go func() {
+				// ── 选职业阶段：用完立即注销，让用户恢复正常消息流 ──
+				var chosenClass ClassType
+				classTimeout := time.NewTimer(40 * time.Second)
+				defer classTimeout.Stop()
+				select {
+				case msg := <-msgChan:
+					idx, err := strconv.Atoi(strings.TrimSpace(msg))
+					if err == nil && idx >= 1 && idx <= len(AllClasses) {
+						chosenClass = AllClasses[idx-1].Name
+					} else {
+						chosenClass = AllClasses[rand.Intn(len(AllClasses))].Name
+						sender.Reply(fmt.Sprintf("输入无效，已随机分配职业：%s", string(chosenClass)))
+					}
+				case <-classTimeout.C:
+					chosenClass = AllClasses[rand.Intn(len(AllClasses))].Name
+					sender.Reply(fmt.Sprintf("选择超时，随机分配职业：%s", string(chosenClass)))
+				}
+
+				// ★ 选完职业后立即从 ckList 注销，用户可以正常使用其他指令了 ★
 				delete(ckList, sender.UserID)
-				// 排空 channel 后再关闭，防止 bot 主循环卡在 c2 <- msg
 				for len(msgChan) > 0 {
 					<-msgChan
 				}
 				close(msgChan)
+
+				// 生成发起者属性
+				name := sender.Username
+				if name == "" {
+					name = fmt.Sprintf("用户%d", sender.UserID)
+				}
+				initiatorAttrs := GenerateBattleAttr(sender.UserID, name, chosenClass)
+
+				// 创建决斗房间
+				duelID := fmt.Sprintf("%04d", rand.Intn(10000))
+				duelMutex.Lock()
+				newDuel := &Duel{
+					ID:             duelID,
+					Initiator:      sender.UserID,
+					InitiatorAttrs: initiatorAttrs,
+					InitiatorClass: chosenClass,
+					Challenger:     0,
+					Status:         "waiting",
+					CreateTime:     time.Now(),
+					Platform:       sender.Type,
+					Bet:            bet,
+				}
+				duels[duelID] = newDuel
+				duelsByTime = append(duelsByTime, newDuel)
+				sort.Slice(duelsByTime, func(i, j int) bool {
+					return duelsByTime[i].CreateTime.Before(duelsByTime[j].CreateTime)
+				})
+				duelMutex.Unlock()
+
+				def := GetClassDef(chosenClass)
+				platformDesc := "微信"
+				if strings.HasPrefix(sender.Type, "qq") {
+					platformDesc = "QQ"
+				}
+
+				// 展示属性面板
+				attrs := initiatorAttrs
+				skillNames := ""
+				for _, sk := range attrs.Skills {
+					skillNames += fmt.Sprintf("[%s%s] ", sk.Emoji, sk.Name)
+				}
+				sender.Reply(fmt.Sprintf(
+					"⚔️ 决斗已发起！ID: %s\n\n"+
+						"🎭 职业：%s %s\n%s\n\n"+
+						"━━━ 你的属性 ━━━\n"+
+						"❤️ 生命：%d  💪 力量：%d\n"+
+						"🧠 智力：%d  ⚡ 敏捷：%d\n"+
+						"🍀 运气：%d  🛡️ 物防：%d  🔮 魔防：%d\n\n"+
+						"🎯 本次技能：%s\n\n"+
+						"💰 下注积分：%d，胜者获得 %d（净赚 %d）\n"+
+						"平台(%s)玩家回复【迎战】即可加入，等待15分钟",
+					duelID,
+					def.Emoji, string(chosenClass), def.Description,
+					attrs.MaxHP, attrs.Str,
+					attrs.Int, attrs.Agi,
+					attrs.Luck, attrs.PDef, attrs.MDef,
+					skillNames,
+					bet, bet*2, bet,
+					platformDesc,
+				))
+
+				// ──── Step 2: 等待对手加入（后台静默，不拦截任何消息）────
+				waitTimeout := time.NewTimer(15 * time.Minute)
+				defer waitTimeout.Stop()
+				ticker := time.NewTicker(1 * time.Second)
+				defer ticker.Stop()
+				var targetDuel *Duel
+			waitLoop:
+				for {
+					select {
+					case <-waitTimeout.C:
+						duelMutex.Lock()
+						if d, exists := duels[duelID]; exists && d.Status == "waiting" {
+							cleanupDuel(duelID)
+							_ = d
+						}
+						duelMutex.Unlock()
+						sender.Reply(fmt.Sprintf("决斗 %s 因超时无人迎战已取消 😔", duelID))
+						return
+					case <-ticker.C:
+						duelMutex.Lock()
+						targetDuel, _ = duels[duelID]
+						if targetDuel != nil && targetDuel.Challenger != 0 && targetDuel.ChallengerAttrs != nil {
+							targetDuel.Status = "fighting"
+							duelMutex.Unlock()
+							break waitLoop
+						}
+						duelMutex.Unlock()
+					}
+				}
+
+				// ──── Step 3: 开始战斗 ────
+				RunDuelBattle(duelID, targetDuel, sender)
 			}()
 
-			// Step 1: 等待选择决斗序号
-			selectTimeout := time.NewTimer(30 * time.Second)
-			defer selectTimeout.Stop()
-			var selectedDuel *Duel
-			select {
-			case msg := <-msgChan:
-				idx, err := strconv.Atoi(strings.TrimSpace(msg))
-				if err != nil || idx < 1 || idx > len(waitingDuels) {
-					sender.Reply("输入无效，请重新回复【迎战】")
-					return
-				}
-				selectedDuel = waitingDuels[idx-1]
-			case <-selectTimeout.C:
-				sender.Reply("选择超时，请重新回复【迎战】")
-				return
+			return nil
+		},
+	},
+	{
+		// ────────────────────────────────────────────────────────────
+		//  迎战命令：列出等待中的决斗 → 选择 → 选职业 → 加入
+		// ────────────────────────────────────────────────────────────
+		Command: []string{"迎战", "应战", "挑战"},
+		Handle: func(sender *Sender) interface{} {
+			if !Config.Game.GameOpen || !Config.Game.DuelOpen {
+				sender.Reply("管理员已关闭游戏")
+				return nil
 			}
-
-			// 检查积分
-			u := &User{}
-			if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < selectedDuel.Bet {
-				sender.Reply(fmt.Sprintf("参与此决斗需要至少 %d 积分，你的积分不足", selectedDuel.Bet))
-				return
-			}
-
-			// Step 2: 让挑战者选职业（复用同一 channel，无需重新注册 ckList）
-			sender.Reply(ClassListMsg())
-
-			var chosenClass ClassType
-			classTimeout := time.NewTimer(40 * time.Second)
-			defer classTimeout.Stop()
-			select {
-			case msg := <-msgChan:
-				idx, err := strconv.Atoi(strings.TrimSpace(msg))
-				if err == nil && idx >= 1 && idx <= len(AllClasses) {
-					chosenClass = AllClasses[idx-1].Name
-				} else {
-					chosenClass = AllClasses[rand.Intn(len(AllClasses))].Name
-					sender.Reply(fmt.Sprintf("输入无效，已随机分配职业：%s", string(chosenClass)))
-				}
-			case <-classTimeout.C:
-				chosenClass = AllClasses[rand.Intn(len(AllClasses))].Name
-				sender.Reply(fmt.Sprintf("选择超时，随机分配职业：%s", string(chosenClass)))
-			}
-
-			// 生成挑战者属性
-			name := sender.Username
-			if name == "" {
-				name = fmt.Sprintf("用户%d", sender.UserID)
-			}
-			challengerAttrs := GenerateBattleAttr(sender.UserID, name, chosenClass)
-
-			// Step 3: 加入决斗
 			duelMutex.Lock()
-			d, exists := duels[selectedDuel.ID]
-			if !exists || d.Status != "waiting" || d.Challenger != 0 {
-				duelMutex.Unlock()
-				sender.Reply("该决斗已被其他人加入或已结束，请重新回复【迎战】")
-				return
+			var waitingDuels []*Duel
+			now := time.Now()
+
+			// 清理过期决斗
+			var validByTime []*Duel
+			for _, d := range duelsByTime {
+				if now.Sub(d.CreateTime) <= 15*time.Minute {
+					validByTime = append(validByTime, d)
+				} else {
+					delete(duels, d.ID)
+				}
 			}
-			d.Challenger = sender.UserID
-			d.ChallengerAttrs = challengerAttrs
-			d.ChallengerClass = chosenClass
+			duelsByTime = validByTime
+
+			// 筛选同平台等待中的决斗
+			for _, d := range duelsByTime {
+				if d.Status == "waiting" && d.Initiator != sender.UserID {
+					senderIsQQ := strings.HasPrefix(sender.Type, "qq")
+					duelIsQQ := strings.HasPrefix(d.Platform, "qq")
+					if senderIsQQ == duelIsQQ {
+						waitingDuels = append(waitingDuels, d)
+					}
+				}
+			}
 			duelMutex.Unlock()
 
-			def := GetClassDef(chosenClass)
-			skillNames := ""
-			for _, sk := range challengerAttrs.Skills {
-				skillNames += fmt.Sprintf("[%s%s] ", sk.Emoji, sk.Name)
+			if len(waitingDuels) == 0 {
+				sender.Reply("当前没有等待中的决斗\n可以回复【决斗】自己发起挑战！")
+				return nil
 			}
-			sender.Reply(fmt.Sprintf(
-				"✅ 成功加入决斗 %s！\n\n"+
-					"🎭 职业：%s %s\n\n"+
-					"━━━ 你的属性 ━━━\n"+
-					"❤️ 生命：%d  💪 力量：%d\n"+
-					"🧠 智力：%d  ⚡ 敏捷：%d\n"+
-					"🍀 运气：%d  🛡️ 物防：%d  🔮 魔防：%d\n\n"+
-					"🎯 本次技能：%s\n\n"+
-					"战斗即将开始，请等待战报...",
-				selectedDuel.ID,
-				def.Emoji, string(chosenClass),
-				challengerAttrs.MaxHP, challengerAttrs.Str,
-				challengerAttrs.Int, challengerAttrs.Agi,
-				challengerAttrs.Luck, challengerAttrs.PDef, challengerAttrs.MDef,
-				skillNames,
-			))
-		}()
 
-		return nil
-	},
-},
-{
-	// ────────────────────────────────────────────────────────────
-	//  决斗排行榜
-	// ────────────────────────────────────────────────────────────
-	Command: []string{"决斗排行", "战斗排行"},
-	Handle: func(sender *Sender) interface{} {
-		var users []User
-		if err := db.Order("coin desc").Limit(10).Find(&users).Error; err != nil {
-			sender.Reply("查询排行榜失败")
+			// 展示决斗列表
+			listMsg := "🗡️ 等待挑战者的决斗列表：\n\n"
+			for i, d := range waitingDuels {
+				remaining := 15*time.Minute - now.Sub(d.CreateTime)
+				def := GetClassDef(d.InitiatorClass)
+				listMsg += fmt.Sprintf("【%d】决斗ID: %s\n", i+1, d.ID)
+				listMsg += fmt.Sprintf("  ├─ 发起者：用户%d (%s%s)\n", d.Initiator, def.Emoji, string(d.InitiatorClass))
+				listMsg += fmt.Sprintf("  ├─ 下注积分：%d → 胜者获得 %d\n", d.Bet, d.Bet*2)
+				listMsg += fmt.Sprintf("  └─ 剩余时间：%d分%d秒\n\n",
+					int(remaining.Minutes()), int(remaining.Seconds())%60)
+			}
+			listMsg += "30秒内回复序号加入（例如：1）"
+			sender.Reply(listMsg)
+
+			// 使用带缓冲的单 channel 全程复用，避免二次注册 ckList 造成的竞态阻塞
+			msgChan := make(chan string, 1)
+			ckList[sender.UserID] = msgChan
+
+			go func() {
+				defer func() {
+					delete(ckList, sender.UserID)
+					// 排空 channel 后再关闭，防止 bot 主循环卡在 c2 <- msg
+					for len(msgChan) > 0 {
+						<-msgChan
+					}
+					close(msgChan)
+				}()
+
+				// Step 1: 等待选择决斗序号
+				selectTimeout := time.NewTimer(30 * time.Second)
+				defer selectTimeout.Stop()
+				var selectedDuel *Duel
+				select {
+				case msg := <-msgChan:
+					idx, err := strconv.Atoi(strings.TrimSpace(msg))
+					if err != nil || idx < 1 || idx > len(waitingDuels) {
+						sender.Reply("输入无效，请重新回复【迎战】")
+						return
+					}
+					selectedDuel = waitingDuels[idx-1]
+				case <-selectTimeout.C:
+					sender.Reply("选择超时，请重新回复【迎战】")
+					return
+				}
+
+				// 检查积分
+				u := &User{}
+				if err := db.Where("number = ?", sender.UserID).First(u).Error; err != nil || u.Coin < selectedDuel.Bet {
+					sender.Reply(fmt.Sprintf("参与此决斗需要至少 %d 积分，你的积分不足", selectedDuel.Bet))
+					return
+				}
+
+				// Step 2: 让挑战者选职业（复用同一 channel，无需重新注册 ckList）
+				sender.Reply(ClassListMsg())
+
+				var chosenClass ClassType
+				classTimeout := time.NewTimer(40 * time.Second)
+				defer classTimeout.Stop()
+				select {
+				case msg := <-msgChan:
+					idx, err := strconv.Atoi(strings.TrimSpace(msg))
+					if err == nil && idx >= 1 && idx <= len(AllClasses) {
+						chosenClass = AllClasses[idx-1].Name
+					} else {
+						chosenClass = AllClasses[rand.Intn(len(AllClasses))].Name
+						sender.Reply(fmt.Sprintf("输入无效，已随机分配职业：%s", string(chosenClass)))
+					}
+				case <-classTimeout.C:
+					chosenClass = AllClasses[rand.Intn(len(AllClasses))].Name
+					sender.Reply(fmt.Sprintf("选择超时，随机分配职业：%s", string(chosenClass)))
+				}
+
+				// 生成挑战者属性
+				name := sender.Username
+				if name == "" {
+					name = fmt.Sprintf("用户%d", sender.UserID)
+				}
+				challengerAttrs := GenerateBattleAttr(sender.UserID, name, chosenClass)
+
+				// Step 3: 加入决斗
+				duelMutex.Lock()
+				d, exists := duels[selectedDuel.ID]
+				if !exists || d.Status != "waiting" || d.Challenger != 0 {
+					duelMutex.Unlock()
+					sender.Reply("该决斗已被其他人加入或已结束，请重新回复【迎战】")
+					return
+				}
+				d.Challenger = sender.UserID
+				d.ChallengerAttrs = challengerAttrs
+				d.ChallengerClass = chosenClass
+				duelMutex.Unlock()
+
+				def := GetClassDef(chosenClass)
+				skillNames := ""
+				for _, sk := range challengerAttrs.Skills {
+					skillNames += fmt.Sprintf("[%s%s] ", sk.Emoji, sk.Name)
+				}
+				sender.Reply(fmt.Sprintf(
+					"✅ 成功加入决斗 %s！\n\n"+
+						"🎭 职业：%s %s\n\n"+
+						"━━━ 你的属性 ━━━\n"+
+						"❤️ 生命：%d  💪 力量：%d\n"+
+						"🧠 智力：%d  ⚡ 敏捷：%d\n"+
+						"🍀 运气：%d  🛡️ 物防：%d  🔮 魔防：%d\n\n"+
+						"🎯 本次技能：%s\n\n"+
+						"战斗即将开始，请等待战报...",
+					selectedDuel.ID,
+					def.Emoji, string(chosenClass),
+					challengerAttrs.MaxHP, challengerAttrs.Str,
+					challengerAttrs.Int, challengerAttrs.Agi,
+					challengerAttrs.Luck, challengerAttrs.PDef, challengerAttrs.MDef,
+					skillNames,
+				))
+			}()
+
 			return nil
-		}
-		var sb strings.Builder
-		sb.WriteString("🏆 积分排行榜 TOP 10\n\n")
-		medals := []string{"🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"}
-		for i, u := range users {
-			medal := ""
-			if i < len(medals) {
-				medal = medals[i]
-			}
-			name := u.Nickname
-			if name == "" {
-				name = fmt.Sprintf("用户%d", u.Number)
-			}
-			sb.WriteString(fmt.Sprintf("%s %s — %d 积分\n", medal, name, u.Coin))
-		}
-		sender.Reply(sb.String())
-		return nil
+		},
 	},
-},
+	{
+		// ────────────────────────────────────────────────────────────
+		//  决斗排行榜
+		// ────────────────────────────────────────────────────────────
+		Command: []string{"决斗排行", "战斗排行"},
+		Handle: func(sender *Sender) interface{} {
+			var users []User
+			if err := db.Order("coin desc").Limit(10).Find(&users).Error; err != nil {
+				sender.Reply("查询排行榜失败")
+				return nil
+			}
+			var sb strings.Builder
+			sb.WriteString("🏆 积分排行榜 TOP 10\n\n")
+			medals := []string{"🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"}
+			for i, u := range users {
+				medal := ""
+				if i < len(medals) {
+					medal = medals[i]
+				}
+				name := u.Nickname
+				if name == "" {
+					name = fmt.Sprintf("用户%d", u.Number)
+				}
+				sb.WriteString(fmt.Sprintf("%s %s — %d 积分\n", medal, name, u.Coin))
+			}
+			sender.Reply(sb.String())
+			return nil
+		},
+	},
 }
-
 
 func Guess_Number(sender *Sender, msg chan string, maxGuessCount int) {
 	// 生成主要数字
@@ -4365,11 +4313,10 @@ var mx = map[int]time.Time{} // 存储用户上次祈福的日期
 // 全局游戏状态变量
 
 var (
-    games     = make(map[string]*Game)
-    gameMutex sync.Mutex
-   gamesByTime []*Game  // 按创建时间升序排列的游戏指针数组
+	games       = make(map[string]*Game)
+	gameMutex   sync.Mutex
+	gamesByTime []*Game // 按创建时间升序排列的游戏指针数组
 )
-
 
 func InviteGroup(uid string, gid string) {
 	type AutoGenerated1 struct {
@@ -4499,20 +4446,17 @@ func ReturnCoin(sender *Sender) {
 	tx.Commit()
 }
 
-
-//##检查ck显示函数
+// ##检查ck显示函数
 func GetAccountStatusText(ck *JdCookie) (string, bool) {
 	// 核心检测逻辑（复用原有CookieOK函数）
 	isValid := CookieOK(ck)
-	
+
 	// 带图标的状态文本
 	if isValid {
 		return "✅有效", true
 	}
 	return "❌无效", false
 }
-
-
 
 func WxImg_ts() {
 	type AutoGenerated1 struct {
@@ -4600,27 +4544,6 @@ func QxInviteGroup(uid string, gid string) {
 	// 记录响应结果
 	UserLog().Infof("邀请请求响应:", string(respBody))
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //###精粉查询
 

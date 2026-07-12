@@ -141,8 +141,6 @@ var ckList = make(map[int]chan string)
 
 var inputList = make(map[int]chan string)
 
-
-
 var handleMessage = func(msgs ...interface{}) interface{} {
 	time.Sleep(time.Second * time.Duration(rand.Intn(3)))
 	msg := msgs[0].(string)
@@ -150,10 +148,10 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 	head := args[0]
 	contents := args[1:]
 	sender := &Sender{
-		UserID:   0,
-		Type:     msgs[1].(string),
-		RawMessage: msg, 
-		Contents: contents,
+		UserID:     0,
+		Type:       msgs[1].(string),
+		RawMessage: msg,
+		Contents:   contents,
 	}
 
 	if msgs[1].(string) == "wx" || msgs[1].(string) == "wxg" {
@@ -222,9 +220,9 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 		return nil
 	}
 
-if TryHandleSshMessage(sender) {
-    return nil
-}
+	if TryHandleSshMessage(sender) {
+		return nil
+	}
 	for i := range codeSignals {
 		for j := range codeSignals[i].Command {
 			if codeSignals[i].Command[j] == head {
@@ -239,76 +237,67 @@ if TryHandleSshMessage(sender) {
 		}
 	}
 
-	if Config.VIP {
-		switch msg {
-		default:
+	switch msg {
+	default:
 
-
-			
-
-			{
-				matched, _ := regexp.MatchString("https://item(.m)?.jd.com/(product/)?([0-9]+).html", msg)
-				b2 := matched || strings.Contains(msg, "https://u.jd.com/") || strings.Contains(msg, "https://3.cn/")
-				if b2 {
-					GetUniversal(sender, msg)
-				}
+		{
+			matched, _ := regexp.MatchString("https://item(.m)?.jd.com/(product/)?([0-9]+).html", msg)
+			b2 := matched || strings.Contains(msg, "https://u.jd.com/") || strings.Contains(msg, "https://3.cn/")
+			if b2 {
+				GetUniversal(sender, msg)
 			}
-
-			{
-				if strings.HasPrefix(msg, "DXWX") {
-					return setWxId(msg, sender.WxId)
-				}
-			}
-
-			{
-				if strings.HasPrefix(msg, "XDD") {
-					return useKey(msg, sender.UserID, sender.ClientContext())
-				}
-			}
-			{
-				if strings.HasPrefix(msg, "ZSKM") {
-					return use_ZSKey(msg, sender.UserID, sender.ClientContext())
-				}
-			}
-
-			
-
-			{
-				if strings.Contains(msg, "我要转口令") {
-					sender.Reply(KLtoLJ(msg))
-
-				}
-			}
-			{
-				if strings.Contains(msg, "口令") {
-					sender.Reply("请求失败，返回错误码: 1002")
-
-				}
-			}
-			
-
-			{
-				if strings.Contains(msg, "运行") {
-					lj := KLtoLJ(msg)
-					msg = lj
-				}
-			}
-
-			//
-			//
-			//
-
-
-	{
-				if msg == "登录" || msg == "登陆" {
-					c2 := make(chan string)
-					loginList[sender.UserID] = c2
-					sender.Reply("请选择登录方式：\n1️⃣ 应用宝协议自动登录\n2️⃣ 微信协议自动登录\n3️⃣ 短信登录\n\n回复 q 退出登录流程\n⏰ 30秒未操作自动退出")
-					go LoginSelect(sender, c2)
-				}
-			}
-
 		}
+
+		{
+			if strings.HasPrefix(msg, "DXWX") {
+				return setWxId(msg, sender.WxId)
+			}
+		}
+
+		{
+			if strings.HasPrefix(msg, "XDD") {
+				return useKey(msg, sender.UserID, sender.ClientContext())
+			}
+		}
+		{
+			if strings.HasPrefix(msg, "ZSKM") {
+				return use_ZSKey(msg, sender.UserID, sender.ClientContext())
+			}
+		}
+
+		{
+			if strings.Contains(msg, "我要转口令") {
+				sender.Reply(KLtoLJ(msg))
+
+			}
+		}
+		{
+			if strings.Contains(msg, "口令") {
+				sender.Reply("请求失败，返回错误码: 1002")
+
+			}
+		}
+
+		{
+			if strings.Contains(msg, "运行") {
+				lj := KLtoLJ(msg)
+				msg = lj
+			}
+		}
+
+		//
+		//
+		//
+
+		{
+			if msg == "登录" || msg == "登陆" {
+				c2 := make(chan string)
+				loginList[sender.UserID] = c2
+				sender.Reply("请选择登录方式：\n1️⃣ 应用宝协议自动登录\n2️⃣ 微信协议自动登录\n3️⃣ 短信登录\n\n回复 q 退出登录流程\n⏰ 30秒未操作自动退出")
+				go LoginSelect(sender, c2)
+			}
+		}
+
 	}
 	switch msg {
 	default:
@@ -392,552 +381,540 @@ if TryHandleSshMessage(sender) {
 				}
 			}
 
-		{
-			if strings.Contains(msg, "Bkfj1KTXRrTkmpwkQsmRf33WZbC") { // 判断信息中是否包含"挖宝"
-				ss := regexp.MustCompile(`inviterId=([^&]+)(?:&|&amp;)inviterCode=([^&]+)`).FindStringSubmatch(msg)
-				if len(ss) > 0 {
-					inviterId := fmt.Sprintf("%s&%s", ss[1], ss[2])
-					zlMatch := regexp.MustCompile(`助力(\d+)个`).FindStringSubmatch(msg)
-					zl_NUM := 20
-					if len(zlMatch) > 1 {
-						zl_NUM, _ = strconv.Atoi(zlMatch[1])
-					}
-					if !sender.IsAdmin {
-						coin := GetCoin(sender.UserID)
-						if coin < 2000 {
-							return fmt.Sprintf("挖宝不对积分少于%d的用户开放", 2000)
-						}
-						sender.Reply(fmt.Sprintf("即将开始，助力成功1头扣10积分"))
-					} else {
-					}
-					queuePosition := atomic.LoadInt32(&taskCounter)
-					atomic.AddInt32(&taskCounter, 1)
-					orderID := atomic.AddInt32(&orderCounter, 1)
-					sender.Reply(fmt.Sprintf("生成挖宝订单编号：%d \n助力码：%s \n前面还有%d个任务在等待", orderID, inviterId, queuePosition))
-					envVars := map[string]string{
-						"JD_FCWB_InviterId": inviterId,
-						"JD_FCWB_NUM":       fmt.Sprintf("%d", zl_NUM),
-					}
-					taskQueue <- func() {
-						sender.Reply(fmt.Sprintf("挖宝订单编号：%d 开始运行", orderID))
-						result := run_fcwb_help_Task(sender, envVars, "jd_fcwb_help")
-						sender.Reply(fmt.Sprintf("订单%d挖宝任务结果如下：\n%s", orderID, result))
-					}
-				}
-			}
-		}
-
-		
-
-		if strings.Contains(msg, "Bc9WX7MpCW7nW9QjZ5N3fFeJXMH") || strings.Contains(msg, "42HV4J3Q87B2xFQMJk81PCc1mEs3") {
-
-			ss := regexp.MustCompile("inviteCode=([^&]+)").FindStringSubmatch(msg) // 提取助力码
-			if len(ss) > 0 {
-				inviterId := ss[1]
-
-				 {
-					id := sender.UserID
-					var idType string
-					if sender.Type == "tg" {
-						idType = "Telegram"
-					} else {
-						idType = "QQ"
-					}
-
-					cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-						return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, "Available"), id, "True")
-					})
-
-					if len(cks) == 0 {
-						sender.Reply("无法助力，您没有挂机京东账号或者账号已失效。上车请发送【登陆】")
-						return nil
-					}
-
-					currentTime := time.Now()
-					currentHour := currentTime.Hour()
-					
-				      if currentHour < 9 || currentHour >= 23 {
-		                   sender.Reply("只能在9:00到23:00期间执行助力任务。")
-		                   return nil
-		                }
-					if IsUserInFarmNewTask(sender.UserID) {
-						sender.Reply("你当前已有任务在排队或者正在执行，请等待完成后再提交新任务。")
-						return nil
-					}
-				}
-
-				if !sender.IsAdmin {
-				value := GetEnv("xnczl")
-				if value == "" {
-					sender.Reply("群主未开启新农场种树")
-					return nil
-				}
-			}
-				go func() {
-
-					defer delete(ckList, sender.UserID) // 确保在函数退出时清理通道
-					msgChan := make(chan string)
-					ckList[sender.UserID] = msgChan
-
-					sender.Reply("请输入需要助力的次数，每天最大助力次数为11（当天超过11次会火爆）：")
-
-					zl_NUM_Str := <-msgChan
-
-					zl_NUM, err := strconv.Atoi(zl_NUM_Str)
-					if err != nil || zl_NUM <= 0 || zl_NUM > 11 {
-						sender.Reply("输入的次数不符合要求，请重新执行指令输入正确的次数，当前已退出程序")
-						return
-					}
-
-					jbcoinStr := GetEnv("jd_farmnew_code_help") // #从环境变量获取的字符串
-					jbcoin, err := strconv.Atoi(jbcoinStr)      // #将字符串转换为整数
-					if err != nil {
-						sender.Reply("获取积分值失败，请检查环境配置。")
-						return
-					}
-
-					requiredCoins := zl_NUM * jbcoin
-
-					coin := GetCoin(sender.UserID)
-					if coin < requiredCoins {
-						sender.Reply(fmt.Sprintf("积分不足，助力需要 %d 积分，当前积分 %d。", requiredCoins, coin))
-						time.Sleep(time.Second * 1)
-						sender.Reply("通过以下方法获取积分：\n1、签到、祈福\n2、直接私聊微信机器人转账1R=100积分\n3、复制网址：http://180.152.5.230:8005 到浏览器打开购买京东积分")
-						return
-					}
-
-					if coin < 1000 {
-						sender.Reply(fmt.Sprintf("总积分不能低于1000，当前积分 %d。", coin))
-						time.Sleep(time.Second * 1)
-
-						sender.Reply("通过以下方法获取积分：\n1、签到、祈福\n2、直接私聊微信机器人转账1R=100积分\n3、复制网址：http://180.152.5.230:8005 到浏览器打开购买京东积分")
-						return
-					}
-
-					queuePosition := atomic.LoadInt32(&taskCounter)
-					atomic.AddInt32(&taskCounter, 1)             // 增加任务计数
-					orderID := atomic.AddInt32(&orderCounter, 1) // 生成订单编号
-					SetFarmNewTaskStatus(sender.UserID, true)
-
-					sender.Reply(fmt.Sprintf("生成新农场助力订单【%d】 \n助力码：%s \n前面还有%d个任务在等待", orderID, inviterId, queuePosition))
-					sender.Reply(fmt.Sprintf("即将开始，助力成功1头扣%d积分，本次助力需要 %d 积分。", jbcoin, requiredCoins))
-
-					envs := map[string]string{
-						"NEWFRUITCODES": inviterId,
-						"FRUIT_HELPNUM": fmt.Sprintf("%d", zl_NUM),
-						"FRUIT_HOTNUM" : "4",
-
-					}
-					taskQueue <- func() {
-						sender.Reply(fmt.Sprintf("新农场助力订单%d开始运行", orderID))
-						result := run_fcwb_help_Task(sender, envs, "jd_farmnew_code_help")
-						remainingTasks := atomic.LoadInt32(&taskCounter) - 1
-						(&JdCookie{}).Push(fmt.Sprintf("===管理员通知===\n用户：%d的订单%d新农场助力结果如下：\n\n%s\n\n----------------------------\n后面一共还有%d个任务在等待执行", sender.UserID, orderID, result, remainingTasks))
-						sender.Reply(fmt.Sprintf("订单【%d】新农场助力任务结果如下：\n\n%s \n\n-------------------------------\n你后面还有%d个任务在等待执行", orderID, result, remainingTasks))
-						SetFarmNewTaskStatus(sender.UserID, false)
-					}
-				}()
-			}
-		}
-
-		{
-			if strings.Contains(msg, "4SJgvbvkFsTLRLhZqGU5ASjt1ahB") { // 判断信息中是否包含"心动乐园助力"
-				ss := regexp.MustCompile(`wegameInviteId=([^&]+)`).FindStringSubmatch(msg) // 修复正则表达式引号问题
-				zlMatch := regexp.MustCompile(`助力(\d+)[^0-9].*`).FindStringSubmatch(msg)
-				zl_NUM := 3
-				if len(zlMatch) > 1 {
-					zl_NUM, _ = strconv.Atoi(zlMatch[1])
-				}
-
-				if len(ss) > 0 {
-					inviterId := ss[1]
-					if !sender.IsAdmin {
-						value := GetEnv("gfjd")
-						if value == "" {
-							sender.Reply("助力瓜分100京豆已关闭，等群主开启")
-							return nil
-						}
-					}
-
-					coin := GetCoin(sender.UserID)
-
-					jbcoin := GetEnv("jd_zlyhl")
-					var requiredCoins int
-					if jbcoin == "" {
-						jbcoin = "20"
-					}
-					jbcoinValue, _ := strconv.Atoi(jbcoin)
-					requiredCoins = zl_NUM * jbcoinValue
-
-					if coin < 100 || requiredCoins > coin {
-						return fmt.Sprintf("积分不足，总积分不能低于100，当前积分 %d，助力需要 %d 积分。", coin, requiredCoins)
-					}
-
-					sender.Reply(fmt.Sprintf("即将开始，助力成功1头扣%d", jbcoinValue))
-					queuePosition := atomic.LoadInt32(&taskCounter)
-					atomic.AddInt32(&taskCounter, 1)
-					orderID := atomic.AddInt32(&orderCounter, 1)
-					sender.Reply(fmt.Sprintf("助力瓜分100京豆订单%d \n助力码：%s \n预期助力%d个\n前面还有%d个任务在等待", orderID, inviterId, zl_NUM, queuePosition))
-
-					envs := map[string]string{
-						"jd_zlyhl_code": inviterId,
-						"jd_zlyhl_num":  fmt.Sprintf("%d", zl_NUM),
-					}
-
-					taskQueue <- func() {
-						sender.Reply(fmt.Sprintf("助力瓜分100京豆订单%d开始运行", orderID))
-						result := run_fcwb_help_Task1(sender, envs, "jd_zlyhl")
-						(&JdCookie{}).Push(fmt.Sprintf("===管理员通知===\n用户：%d的订单%d助力瓜分100京豆结果如下：\n%s", sender.UserID, orderID, result))
-						sender.Reply(fmt.Sprintf("订单%d助力瓜分100京豆任务结果如下：\n%s", orderID, result))
-					}
-				}
-			}
-		}
-
-
-if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是否包含"赚赚记助力"
-    ss := regexp.MustCompile(`inviterId=([^&]+)`).FindStringSubmatch(msg) // 提取助力码
-    if len(ss) > 0 {
-        inviterId := ss[1]
-
-        if !sender.IsAdmin {
-            value := GetEnv("zzzl")
-            if value == "" {
-                sender.Reply("赚赚助力活动没水，等有水群主会开启")
-                return nil
-            }
-        }
-
-        go func() {
-            defer delete(ckList, sender.UserID) // 函数退出时清理通道
-            msgChan := make(chan string)
-            ckList[sender.UserID] = msgChan
-
-
-            sender.Reply(fmt.Sprintf("您当前需要助力的助力码是：%s\n\n请输入需要助力的次数：", inviterId))
-
-            zl_NUM_Str := <-msgChan
-
-            zl_NUM, err := strconv.Atoi(zl_NUM_Str)
-            if err != nil || zl_NUM <= 0 || zl_NUM > 400 {
-                sender.Reply("输入的次数不符合要求，请重新执行指令输入正确的次数，当前已退出程序")
-                return
-            }
-
-            if !sender.IsAdmin {
-                jbcoinStr := GetEnv("jd_zzhb_code_help") // 赚赚助力单头积分环境变量
-                jbcoin, err := strconv.Atoi(jbcoinStr)
-                if err != nil {
-                    sender.Reply("获取积分值失败，请检查环境配置。")
-                    return
-                }
-                requiredCoins := zl_NUM * jbcoin
-
-                coin := GetCoin(sender.UserID)
-                if coin < requiredCoins {
-                    sender.Reply(fmt.Sprintf("积分不足，助力需要 %d 积分，当前积分 %d。", requiredCoins, coin))
-                    time.Sleep(time.Second * 1)
-                    sender.Reply("通过以下方法获取积分：\n1、签到、祈福\n2、直接私聊微信机器人转账1R=100积分\n3、复制网址：http://180.152.5.230:8005 到浏览器打开购买京东积分")
-                    return
-                }
-
-                if coin < 500 {
-                    sender.Reply(fmt.Sprintf("总积分不能低于500，当前积分 %d。", coin))
-                    time.Sleep(time.Second * 1)
-                    sender.Reply("通过以下方法获取积分：\n1、签到、祈福\n2、直接私聊微信机器人转账1R=100积分\n3、复制网址：http://180.152.5.230:8005 到浏览器打开购买京东积分")
-                    return
-                }
-            }
-
-            queuePosition := atomic.LoadInt32(&taskCounter)
-            atomic.AddInt32(&taskCounter, 1)
-            orderID := atomic.AddInt32(&orderCounter, 1)
-            sender.Reply(fmt.Sprintf("生成赚赚助力订单%d \n助力码：%s \n预期助力%d个\n前面还有%d个任务在等待", orderID, inviterId, zl_NUM, queuePosition))
-
-            if sender.IsAdmin {
-                sender.Reply("您是管理员，已跳过zzzl环境变量检查和积分限制")
-            }
-
-            envs := map[string]string{
-                "ZZHB2CODE": inviterId,
-                "JDZHB2NUM": fmt.Sprintf("%d", zl_NUM),
-            }
-
-            taskQueue <- func() {
-                sender.Reply(fmt.Sprintf("赚赚助力订单%d开始运行", orderID))
-                result := run_fcwb_help_Task_zz(sender, envs, "jd_zzhb_new_help")
-                (&JdCookie{}).Push(fmt.Sprintf("===管理员通知===\n用户：%d的订单%d赚赚助力结果如下：\n%s", sender.UserID, orderID, result))
-                sender.Reply(fmt.Sprintf("订单%d赚赚助力任务结果如下：\n%s", orderID, result))
-            }
-        }()
-    }
-}
-
-
-
-		{
-			if strings.Contains(msg, "3ABYwYuC87Dcx4gZYGKw6fqtE8WN") { // 判断信息中是否包含"3c记助力"
-
-
-				ss := regexp.MustCompile(`inviterId=([^&]+)`).FindStringSubmatch(msg) // 修复正则表达式引号问题
-				zlMatch := regexp.MustCompile(`助力(\d+)[^0-9].*`).FindStringSubmatch(msg)
-				zl_NUM := 50
-				if len(zlMatch) > 1 {
-					zl_NUM, _ = strconv.Atoi(zlMatch[1])
-				}
-				if len(ss) > 0 {
-					inviterId := ss[1]
-					if !sender.IsAdmin {
-						value := GetEnv("3czl")
-						if value == "" {
-							sender.Reply("3c助力活动没水，等有水群主会开启")
-							return nil
-						}
-						coin := GetCoin(sender.UserID)
-
-						requiredCoins := zl_NUM * 8
-
-						if coin < 500 || requiredCoins > coin {
-							return fmt.Sprintf("积分不足，总积分不能低于500，当前积分 %d，助力需要 %d 积分。", coin, requiredCoins)
-						}
-
-						sender.Reply(fmt.Sprintf("即将开始，助力成功1头扣8积分"))
-					}
-
-					queuePosition := atomic.LoadInt32(&taskCounter)
-					atomic.AddInt32(&taskCounter, 1)
-					orderID := atomic.AddInt32(&orderCounter, 1)
-					sender.Reply(fmt.Sprintf("生成3c助力订单%d \n助力码：%s \n预期助力%d个\n前面还有%d个任务在等待", orderID, inviterId, zl_NUM, queuePosition))
-
-					envs := map[string]string{
-						"SMQCODE": inviterId,
-						"SMQNUM":  fmt.Sprintf("%d", zl_NUM),
-					}
-
-					taskQueue <- func() {
-						sender.Reply(fmt.Sprintf("3c助力订单%d开始运行", orderID))
-						result := run_fcwb_help_Task(sender, envs, "jd_smq_help")
-						(&JdCookie{}).Push(fmt.Sprintf("===管理员通知===\n用户：%d的订单%d3c助力结果如下：\n%s", sender.UserID, orderID, result))
-						sender.Reply(fmt.Sprintf("订单%d3c助力任务结果如下：\n%s", orderID, result))
-					}
-				}
-			}
-		}
-
-		if strings.Contains(msg, "【东东1农场】") { // 判断信息中是否包含"东东农场"
-			value := GetEnv("ncxcx")
-			if value == "" {
-				return "脚本有问题，已关闭小程序助力"
-			}
-
-			ss := regexp.MustCompile(`inviteCode=([^&]+)`).FindStringSubmatch(msg)
-
-			if len(ss) > 0 {
-				inviterId := ss[1] // 们只提取了 inviteCode
-
-				if !sender.IsAdmin {
-					coin := GetCoin(sender.UserID)
-					if coin < 100 {
-						return fmt.Sprintf("小程序助力不对积分少于%d的用户开放，请发送【充值】，到网站购买", 100)
-					}
-					sender.Reply(fmt.Sprintf("即将开始，助力成功1头扣2积分"))
-				} else {
-				}
-
-				queuePosition := atomic.LoadInt32(&taskCounter)
-				atomic.AddInt32(&taskCounter, 1)
-				orderID := atomic.AddInt32(&orderCounter, 1)
-				sender.Reply(fmt.Sprintf("生成新农场小程序助力订单编号：%d \n助力码：%s \n前面还有%d个任务在等待", orderID, inviterId, queuePosition))
-
-				envVars := map[string]string{
-					"NEWFRUITCODES": inviterId,
-				}
-
-				taskQueue <- func() {
-					sender.Reply(fmt.Sprintf("新农场小程序助力订单编号：%d 开始运行", orderID))
-					result := run_ncxcx_help_Task(sender, envVars, "jd_farmshare")
-					sender.Reply(fmt.Sprintf("订单%d新农场小程序助力任务结果如下：\n%s", orderID, result))
-				}
-			}
-		}
-
-		{ //tyt
-			if strings.Contains(msg, "e6ad1ef1a55c440e9054e663be14e1d6") {
-				no := tytno
-				tytno += 1
-				split := strings.Split(msg, "&amp;")
-				for i := range split {
-					if strings.Contains(split[i], "packetId=") {
-						env := strings.Split(split[i], "=")
-						if strings.Contains(env[1], "微信") {
-							sender.Reply("微信渠道暂时无法识别")
+			{
+				if strings.Contains(msg, "Bkfj1KTXRrTkmpwkQsmRf33WZbC") { // 判断信息中是否包含"挖宝"
+					ss := regexp.MustCompile(`inviterId=([^&]+)(?:&|&amp;)inviterCode=([^&]+)`).FindStringSubmatch(msg)
+					if len(ss) > 0 {
+						inviterId := fmt.Sprintf("%s&%s", ss[1], ss[2])
+						zlMatch := regexp.MustCompile(`助力(\d+)个`).FindStringSubmatch(msg)
+						zl_NUM := 20
+						if len(zlMatch) > 1 {
+							zl_NUM, _ = strconv.Atoi(zlMatch[1])
 						}
 						if !sender.IsAdmin {
 							coin := GetCoin(sender.UserID)
-							if coin < Config.Tyt {
-								return fmt.Sprintf("推一推需要%d个积分", Config.Tyt)
+							if coin < 2000 {
+								return fmt.Sprintf("挖宝不对积分少于%d的用户开放", 2000)
 							}
-							RemCoin(sender.UserID, Config.Tyt)
-							RecordCoinForSender(sender, sender.UserID, -Config.Tyt, "推一推", "推一推扣费")
-
-							sender.Reply(fmt.Sprintf("推一推即将开始，已扣除%d个积分,订单编号:%d，剩余%d", Config.Tyt, no, GetCoin(sender.UserID)))
+							sender.Reply(fmt.Sprintf("即将开始，助力成功1头扣10积分"))
 						} else {
-							sender.Reply(fmt.Sprintf("推一推即将开始，已扣除%d个积分，管理员通道", Config.Tyt))
 						}
-						tytlist[env[1]] = no
-						go runtyt(sender, env[1])
+						queuePosition := atomic.LoadInt32(&taskCounter)
+						atomic.AddInt32(&taskCounter, 1)
+						orderID := atomic.AddInt32(&orderCounter, 1)
+						sender.Reply(fmt.Sprintf("生成挖宝订单编号：%d \n助力码：%s \n前面还有%d个任务在等待", orderID, inviterId, queuePosition))
+						envVars := map[string]string{
+							"JD_FCWB_InviterId": inviterId,
+							"JD_FCWB_NUM":       fmt.Sprintf("%d", zl_NUM),
+						}
+						taskQueue <- func() {
+							sender.Reply(fmt.Sprintf("挖宝订单编号：%d 开始运行", orderID))
+							result := run_fcwb_help_Task(sender, envVars, "jd_fcwb_help")
+							sender.Reply(fmt.Sprintf("订单%d挖宝任务结果如下：\n%s", orderID, result))
+						}
 					}
 				}
 			}
-		}
 
-	
+			if strings.Contains(msg, "Bc9WX7MpCW7nW9QjZ5N3fFeJXMH") || strings.Contains(msg, "42HV4J3Q87B2xFQMJk81PCc1mEs3") {
 
+				ss := regexp.MustCompile("inviteCode=([^&]+)").FindStringSubmatch(msg) // 提取助力码
+				if len(ss) > 0 {
+					inviterId := ss[1]
 
+					{
+						id := sender.UserID
+						var idType string
+						if sender.Type == "tg" {
+							idType = "Telegram"
+						} else {
+							idType = "QQ"
+						}
 
-						{
-							if Config.QQID == 694738267 {
-								if msg == "导出助力账号" {
-									var msgs []string
-									cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-										return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 0, True, True)
-									})
-									for _, ck := range cks {
-										msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
-									}
-									sender.Reply("导出所有账号")
-									Info("导出所有账号")
-									f, err := os.OpenFile(ExecPath+"/scripts/ck.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
-									if err != nil {
-										Warn("创建jdCookie.txt失败，", err)
-									}
-									join := strings.Join(msgs, "\n")
-									f.WriteString(join)
-									f.Close()
-									return nil
-								}
+						cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+							return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, "Available"), id, "True")
+						})
+
+						if len(cks) == 0 {
+							sender.Reply("无法助力，您没有挂机京东账号或者账号已失效。上车请发送【登陆】")
+							return nil
+						}
+
+						currentTime := time.Now()
+						currentHour := currentTime.Hour()
+
+						if currentHour < 9 || currentHour >= 23 {
+							sender.Reply("只能在9:00到23:00期间执行助力任务。")
+							return nil
+						}
+						if IsUserInFarmNewTask(sender.UserID) {
+							sender.Reply("你当前已有任务在排队或者正在执行，请等待完成后再提交新任务。")
+							return nil
+						}
+					}
+
+					if !sender.IsAdmin {
+						value := GetEnv("xnczl")
+						if value == "" {
+							sender.Reply("群主未开启新农场种树")
+							return nil
+						}
+					}
+					go func() {
+
+						defer delete(ckList, sender.UserID) // 确保在函数退出时清理通道
+						msgChan := make(chan string)
+						ckList[sender.UserID] = msgChan
+
+						sender.Reply("请输入需要助力的次数，每天最大助力次数为11（当天超过11次会火爆）：")
+
+						zl_NUM_Str := <-msgChan
+
+						zl_NUM, err := strconv.Atoi(zl_NUM_Str)
+						if err != nil || zl_NUM <= 0 || zl_NUM > 11 {
+							sender.Reply("输入的次数不符合要求，请重新执行指令输入正确的次数，当前已退出程序")
+							return
+						}
+
+						jbcoinStr := GetEnv("jd_farmnew_code_help") // #从环境变量获取的字符串
+						jbcoin, err := strconv.Atoi(jbcoinStr)      // #将字符串转换为整数
+						if err != nil {
+							sender.Reply("获取积分值失败，请检查环境配置。")
+							return
+						}
+
+						requiredCoins := zl_NUM * jbcoin
+
+						coin := GetCoin(sender.UserID)
+						if coin < requiredCoins {
+							sender.Reply(fmt.Sprintf("积分不足，助力需要 %d 积分，当前积分 %d。", requiredCoins, coin))
+							time.Sleep(time.Second * 1)
+							sender.Reply("通过以下方法获取积分：\n1、签到、祈福\n2、直接私聊微信机器人转账1R=100积分\n3、复制网址：http://180.152.5.230:8005 到浏览器打开购买京东积分")
+							return
+						}
+
+						if coin < 1000 {
+							sender.Reply(fmt.Sprintf("总积分不能低于1000，当前积分 %d。", coin))
+							time.Sleep(time.Second * 1)
+
+							sender.Reply("通过以下方法获取积分：\n1、签到、祈福\n2、直接私聊微信机器人转账1R=100积分\n3、复制网址：http://180.152.5.230:8005 到浏览器打开购买京东积分")
+							return
+						}
+
+						queuePosition := atomic.LoadInt32(&taskCounter)
+						atomic.AddInt32(&taskCounter, 1)             // 增加任务计数
+						orderID := atomic.AddInt32(&orderCounter, 1) // 生成订单编号
+						SetFarmNewTaskStatus(sender.UserID, true)
+
+						sender.Reply(fmt.Sprintf("生成新农场助力订单【%d】 \n助力码：%s \n前面还有%d个任务在等待", orderID, inviterId, queuePosition))
+						sender.Reply(fmt.Sprintf("即将开始，助力成功1头扣%d积分，本次助力需要 %d 积分。", jbcoin, requiredCoins))
+
+						envs := map[string]string{
+							"NEWFRUITCODES": inviterId,
+							"FRUIT_HELPNUM": fmt.Sprintf("%d", zl_NUM),
+							"FRUIT_HOTNUM":  "4",
+						}
+						taskQueue <- func() {
+							sender.Reply(fmt.Sprintf("新农场助力订单%d开始运行", orderID))
+							result := run_fcwb_help_Task(sender, envs, "jd_farmnew_code_help")
+							remainingTasks := atomic.LoadInt32(&taskCounter) - 1
+							(&JdCookie{}).Push(fmt.Sprintf("===管理员通知===\n用户：%d的订单%d新农场助力结果如下：\n\n%s\n\n----------------------------\n后面一共还有%d个任务在等待执行", sender.UserID, orderID, result, remainingTasks))
+							sender.Reply(fmt.Sprintf("订单【%d】新农场助力任务结果如下：\n\n%s \n\n-------------------------------\n你后面还有%d个任务在等待执行", orderID, result, remainingTasks))
+							SetFarmNewTaskStatus(sender.UserID, false)
+						}
+					}()
+				}
+			}
+
+			{
+				if strings.Contains(msg, "4SJgvbvkFsTLRLhZqGU5ASjt1ahB") { // 判断信息中是否包含"心动乐园助力"
+					ss := regexp.MustCompile(`wegameInviteId=([^&]+)`).FindStringSubmatch(msg) // 修复正则表达式引号问题
+					zlMatch := regexp.MustCompile(`助力(\d+)[^0-9].*`).FindStringSubmatch(msg)
+					zl_NUM := 3
+					if len(zlMatch) > 1 {
+						zl_NUM, _ = strconv.Atoi(zlMatch[1])
+					}
+
+					if len(ss) > 0 {
+						inviterId := ss[1]
+						if !sender.IsAdmin {
+							value := GetEnv("gfjd")
+							if value == "" {
+								sender.Reply("助力瓜分100京豆已关闭，等群主开启")
+								return nil
 							}
 						}
 
+						coin := GetCoin(sender.UserID)
 
-{
-	if strings.Contains(msg, "pt_key") && strings.Contains(msg, "pt_pin") { // 双关键字前置判断，减少无效校验
-		Info(msg + "开始CK登录")
+						jbcoin := GetEnv("jd_zlyhl")
+						var requiredCoins int
+						if jbcoin == "" {
+							jbcoin = "20"
+						}
+						jbcoinValue, _ := strconv.Atoi(jbcoin)
+						requiredCoins = zl_NUM * jbcoinValue
 
-		chineseSymbolRegex := regexp.MustCompile(`[；，。：“”‘’（）【】、＝￥～]`)
-		if chineseSymbolRegex.MatchString(msg) {
-			sender.Reply("你提交的ck里面包含中文字符")
-			return nil
-		}
+						if coin < 100 || requiredCoins > coin {
+							return fmt.Sprintf("积分不足，总积分不能低于100，当前积分 %d，助力需要 %d 积分。", coin, requiredCoins)
+						}
 
-		dealMsg := regexp.MustCompile(`;( +)`).ReplaceAllString(msg, ";")
+						sender.Reply(fmt.Sprintf("即将开始，助力成功1头扣%d", jbcoinValue))
+						queuePosition := atomic.LoadInt32(&taskCounter)
+						atomic.AddInt32(&taskCounter, 1)
+						orderID := atomic.AddInt32(&orderCounter, 1)
+						sender.Reply(fmt.Sprintf("助力瓜分100京豆订单%d \n助力码：%s \n预期助力%d个\n前面还有%d个任务在等待", orderID, inviterId, zl_NUM, queuePosition))
 
-		ckRegex := regexp.MustCompile(`.*(pt_key=([^;]+);pt_pin=([^;]+);).*|.*(pt_pin=([^;]+);pt_key=([^;]+);).*`)
-		match := ckRegex.FindStringSubmatch(dealMsg)
-		if match == nil {
-			sender.Reply("CK格式错误，正确的ck有效格式是：pt_key=xxxx;pt_pin=xxxx; 或者 pt_pin=xxxx;pt_key=xxxx;")
-			return nil
-		}
+						envs := map[string]string{
+							"jd_zlyhl_code": inviterId,
+							"jd_zlyhl_num":  fmt.Sprintf("%d", zl_NUM),
+						}
 
-		var ptKey, ptPin string
-		if match[2] != "" && match[3] != "" {
-			ptKey = match[2]
-			ptPin = match[3]
-		} else if match[5] != "" && match[6] != "" {
-			ptPin = match[5]
-			ptKey = match[6]
-		}
-
-		if len(ptPin) == 0 || len(ptKey) == 0 {
-			sender.Reply("CK格式错误，正确的ck有效格式是：pt_key=xxxx;pt_pin=xxxx; 或者 pt_pin=xxxx;pt_key=xxxx;")
-			return nil
-		}
-
-		ck := JdCookie{
-			PtKey: ptKey,
-			PtPin: ptPin,
-		}
-		if CookieOK(&ck) {
-			if sender.IsQQ() || sender.isWX() { // 保留原有isWX首字母小写写法
-				ck.QQ = sender.UserID
-			} else if sender.IsTG() {
-				ck.Telegram = sender.UserID
-			}
-			if HasKey(ck.PtKey) {
-				sender.Reply(fmt.Sprintf("重复提交"))
-			} else {
-				if nck, err := GetJdCookie(ck.PtPin); err == nil {
-					nck.Updates(JdCookie{PtKey: ptKey, WeiXin: sender.WxId})
-					msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
-					if sender.IsQQ() {
-						ck.Update(QQ, ck.QQ)
-						ck.Update(Available, True) // 完全保留原有大写True，不做任何修正
+						taskQueue <- func() {
+							sender.Reply(fmt.Sprintf("助力瓜分100京豆订单%d开始运行", orderID))
+							result := run_fcwb_help_Task1(sender, envs, "jd_zlyhl")
+							(&JdCookie{}).Push(fmt.Sprintf("===管理员通知===\n用户：%d的订单%d助力瓜分100京豆结果如下：\n%s", sender.UserID, orderID, result))
+							sender.Reply(fmt.Sprintf("订单%d助力瓜分100京豆任务结果如下：\n%s", orderID, result))
+						}
 					}
-					sender.Reply(fmt.Sprintf(msg))
-					(&JdCookie{}).Push(msg)
-					Info(msg)
-				} else {
-					NewJdCookie(&ck)
-					msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
-					if sender.IsQQ() {
-						ck.Update(QQ, ck.QQ)
-						ck.Update(Available, True) // 完全保留原有大写True，不做任何修正
-					}
-					sender.Reply(fmt.Sprintf(msg))
-					sender.Reply(ck.Query())
-					(&JdCookie{}).Push(msg)
-					Info(msg)
 				}
 			}
-		} else {
-			sender.Reply(fmt.Sprintf("无效的ck"))
+
+			if strings.Contains(msg, "B2Y13x641hwWfpsoRenCzfbz4jR") { // 判断信息中是否包含"赚赚记助力"
+				ss := regexp.MustCompile(`inviterId=([^&]+)`).FindStringSubmatch(msg) // 提取助力码
+				if len(ss) > 0 {
+					inviterId := ss[1]
+
+					if !sender.IsAdmin {
+						value := GetEnv("zzzl")
+						if value == "" {
+							sender.Reply("赚赚助力活动没水，等有水群主会开启")
+							return nil
+						}
+					}
+
+					go func() {
+						defer delete(ckList, sender.UserID) // 函数退出时清理通道
+						msgChan := make(chan string)
+						ckList[sender.UserID] = msgChan
+
+						sender.Reply(fmt.Sprintf("您当前需要助力的助力码是：%s\n\n请输入需要助力的次数：", inviterId))
+
+						zl_NUM_Str := <-msgChan
+
+						zl_NUM, err := strconv.Atoi(zl_NUM_Str)
+						if err != nil || zl_NUM <= 0 || zl_NUM > 400 {
+							sender.Reply("输入的次数不符合要求，请重新执行指令输入正确的次数，当前已退出程序")
+							return
+						}
+
+						if !sender.IsAdmin {
+							jbcoinStr := GetEnv("jd_zzhb_code_help") // 赚赚助力单头积分环境变量
+							jbcoin, err := strconv.Atoi(jbcoinStr)
+							if err != nil {
+								sender.Reply("获取积分值失败，请检查环境配置。")
+								return
+							}
+							requiredCoins := zl_NUM * jbcoin
+
+							coin := GetCoin(sender.UserID)
+							if coin < requiredCoins {
+								sender.Reply(fmt.Sprintf("积分不足，助力需要 %d 积分，当前积分 %d。", requiredCoins, coin))
+								time.Sleep(time.Second * 1)
+								sender.Reply("通过以下方法获取积分：\n1、签到、祈福\n2、直接私聊微信机器人转账1R=100积分\n3、复制网址：http://180.152.5.230:8005 到浏览器打开购买京东积分")
+								return
+							}
+
+							if coin < 500 {
+								sender.Reply(fmt.Sprintf("总积分不能低于500，当前积分 %d。", coin))
+								time.Sleep(time.Second * 1)
+								sender.Reply("通过以下方法获取积分：\n1、签到、祈福\n2、直接私聊微信机器人转账1R=100积分\n3、复制网址：http://180.152.5.230:8005 到浏览器打开购买京东积分")
+								return
+							}
+						}
+
+						queuePosition := atomic.LoadInt32(&taskCounter)
+						atomic.AddInt32(&taskCounter, 1)
+						orderID := atomic.AddInt32(&orderCounter, 1)
+						sender.Reply(fmt.Sprintf("生成赚赚助力订单%d \n助力码：%s \n预期助力%d个\n前面还有%d个任务在等待", orderID, inviterId, zl_NUM, queuePosition))
+
+						if sender.IsAdmin {
+							sender.Reply("您是管理员，已跳过zzzl环境变量检查和积分限制")
+						}
+
+						envs := map[string]string{
+							"ZZHB2CODE": inviterId,
+							"JDZHB2NUM": fmt.Sprintf("%d", zl_NUM),
+						}
+
+						taskQueue <- func() {
+							sender.Reply(fmt.Sprintf("赚赚助力订单%d开始运行", orderID))
+							result := run_fcwb_help_Task_zz(sender, envs, "jd_zzhb_new_help")
+							(&JdCookie{}).Push(fmt.Sprintf("===管理员通知===\n用户：%d的订单%d赚赚助力结果如下：\n%s", sender.UserID, orderID, result))
+							sender.Reply(fmt.Sprintf("订单%d赚赚助力任务结果如下：\n%s", orderID, result))
+						}
+					}()
+				}
+			}
+
+			{
+				if strings.Contains(msg, "3ABYwYuC87Dcx4gZYGKw6fqtE8WN") { // 判断信息中是否包含"3c记助力"
+
+					ss := regexp.MustCompile(`inviterId=([^&]+)`).FindStringSubmatch(msg) // 修复正则表达式引号问题
+					zlMatch := regexp.MustCompile(`助力(\d+)[^0-9].*`).FindStringSubmatch(msg)
+					zl_NUM := 50
+					if len(zlMatch) > 1 {
+						zl_NUM, _ = strconv.Atoi(zlMatch[1])
+					}
+					if len(ss) > 0 {
+						inviterId := ss[1]
+						if !sender.IsAdmin {
+							value := GetEnv("3czl")
+							if value == "" {
+								sender.Reply("3c助力活动没水，等有水群主会开启")
+								return nil
+							}
+							coin := GetCoin(sender.UserID)
+
+							requiredCoins := zl_NUM * 8
+
+							if coin < 500 || requiredCoins > coin {
+								return fmt.Sprintf("积分不足，总积分不能低于500，当前积分 %d，助力需要 %d 积分。", coin, requiredCoins)
+							}
+
+							sender.Reply(fmt.Sprintf("即将开始，助力成功1头扣8积分"))
+						}
+
+						queuePosition := atomic.LoadInt32(&taskCounter)
+						atomic.AddInt32(&taskCounter, 1)
+						orderID := atomic.AddInt32(&orderCounter, 1)
+						sender.Reply(fmt.Sprintf("生成3c助力订单%d \n助力码：%s \n预期助力%d个\n前面还有%d个任务在等待", orderID, inviterId, zl_NUM, queuePosition))
+
+						envs := map[string]string{
+							"SMQCODE": inviterId,
+							"SMQNUM":  fmt.Sprintf("%d", zl_NUM),
+						}
+
+						taskQueue <- func() {
+							sender.Reply(fmt.Sprintf("3c助力订单%d开始运行", orderID))
+							result := run_fcwb_help_Task(sender, envs, "jd_smq_help")
+							(&JdCookie{}).Push(fmt.Sprintf("===管理员通知===\n用户：%d的订单%d3c助力结果如下：\n%s", sender.UserID, orderID, result))
+							sender.Reply(fmt.Sprintf("订单%d3c助力任务结果如下：\n%s", orderID, result))
+						}
+					}
+				}
+			}
+
+			if strings.Contains(msg, "【东东1农场】") { // 判断信息中是否包含"东东农场"
+				value := GetEnv("ncxcx")
+				if value == "" {
+					return "脚本有问题，已关闭小程序助力"
+				}
+
+				ss := regexp.MustCompile(`inviteCode=([^&]+)`).FindStringSubmatch(msg)
+
+				if len(ss) > 0 {
+					inviterId := ss[1] // 们只提取了 inviteCode
+
+					if !sender.IsAdmin {
+						coin := GetCoin(sender.UserID)
+						if coin < 100 {
+							return fmt.Sprintf("小程序助力不对积分少于%d的用户开放，请发送【充值】，到网站购买", 100)
+						}
+						sender.Reply(fmt.Sprintf("即将开始，助力成功1头扣2积分"))
+					} else {
+					}
+
+					queuePosition := atomic.LoadInt32(&taskCounter)
+					atomic.AddInt32(&taskCounter, 1)
+					orderID := atomic.AddInt32(&orderCounter, 1)
+					sender.Reply(fmt.Sprintf("生成新农场小程序助力订单编号：%d \n助力码：%s \n前面还有%d个任务在等待", orderID, inviterId, queuePosition))
+
+					envVars := map[string]string{
+						"NEWFRUITCODES": inviterId,
+					}
+
+					taskQueue <- func() {
+						sender.Reply(fmt.Sprintf("新农场小程序助力订单编号：%d 开始运行", orderID))
+						result := run_ncxcx_help_Task(sender, envVars, "jd_farmshare")
+						sender.Reply(fmt.Sprintf("订单%d新农场小程序助力任务结果如下：\n%s", orderID, result))
+					}
+				}
+			}
+
+			{ //tyt
+				if strings.Contains(msg, "e6ad1ef1a55c440e9054e663be14e1d6") {
+					no := tytno
+					tytno += 1
+					split := strings.Split(msg, "&amp;")
+					for i := range split {
+						if strings.Contains(split[i], "packetId=") {
+							env := strings.Split(split[i], "=")
+							if strings.Contains(env[1], "微信") {
+								sender.Reply("微信渠道暂时无法识别")
+							}
+							if !sender.IsAdmin {
+								coin := GetCoin(sender.UserID)
+								if coin < Config.Tyt {
+									return fmt.Sprintf("推一推需要%d个积分", Config.Tyt)
+								}
+								RemCoin(sender.UserID, Config.Tyt)
+								RecordCoinForSender(sender, sender.UserID, -Config.Tyt, "推一推", "推一推扣费")
+
+								sender.Reply(fmt.Sprintf("推一推即将开始，已扣除%d个积分,订单编号:%d，剩余%d", Config.Tyt, no, GetCoin(sender.UserID)))
+							} else {
+								sender.Reply(fmt.Sprintf("推一推即将开始，已扣除%d个积分，管理员通道", Config.Tyt))
+							}
+							tytlist[env[1]] = no
+							go runtyt(sender, env[1])
+						}
+					}
+				}
+			}
+
+			{
+				if Config.QQID == 694738267 {
+					if msg == "导出助力账号" {
+						var msgs []string
+						cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
+							return sb.Where(fmt.Sprintf("%s >= ? and %s != ? and %s = ?", Priority, Hack, Available), 0, True, True)
+						})
+						for _, ck := range cks {
+							msgs = append(msgs, fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin))
+						}
+						sender.Reply("导出所有账号")
+						Info("导出所有账号")
+						f, err := os.OpenFile(ExecPath+"/scripts/ck.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+						if err != nil {
+							Warn("创建jdCookie.txt失败，", err)
+						}
+						join := strings.Join(msgs, "\n")
+						f.WriteString(join)
+						f.Close()
+						return nil
+					}
+				}
+			}
+
+			{
+				if strings.Contains(msg, "pt_key") && strings.Contains(msg, "pt_pin") { // 双关键字前置判断，减少无效校验
+					Info(msg + "开始CK登录")
+
+					chineseSymbolRegex := regexp.MustCompile(`[；，。：“”‘’（）【】、＝￥～]`)
+					if chineseSymbolRegex.MatchString(msg) {
+						sender.Reply("你提交的ck里面包含中文字符")
+						return nil
+					}
+
+					dealMsg := regexp.MustCompile(`;( +)`).ReplaceAllString(msg, ";")
+
+					ckRegex := regexp.MustCompile(`.*(pt_key=([^;]+);pt_pin=([^;]+);).*|.*(pt_pin=([^;]+);pt_key=([^;]+);).*`)
+					match := ckRegex.FindStringSubmatch(dealMsg)
+					if match == nil {
+						sender.Reply("CK格式错误，正确的ck有效格式是：pt_key=xxxx;pt_pin=xxxx; 或者 pt_pin=xxxx;pt_key=xxxx;")
+						return nil
+					}
+
+					var ptKey, ptPin string
+					if match[2] != "" && match[3] != "" {
+						ptKey = match[2]
+						ptPin = match[3]
+					} else if match[5] != "" && match[6] != "" {
+						ptPin = match[5]
+						ptKey = match[6]
+					}
+
+					if len(ptPin) == 0 || len(ptKey) == 0 {
+						sender.Reply("CK格式错误，正确的ck有效格式是：pt_key=xxxx;pt_pin=xxxx; 或者 pt_pin=xxxx;pt_key=xxxx;")
+						return nil
+					}
+
+					ck := JdCookie{
+						PtKey: ptKey,
+						PtPin: ptPin,
+					}
+					if CookieOK(&ck) {
+						if sender.IsQQ() || sender.isWX() { // 保留原有isWX首字母小写写法
+							ck.QQ = sender.UserID
+						} else if sender.IsTG() {
+							ck.Telegram = sender.UserID
+						}
+						if HasKey(ck.PtKey) {
+							sender.Reply(fmt.Sprintf("重复提交"))
+						} else {
+							if nck, err := GetJdCookie(ck.PtPin); err == nil {
+								nck.Updates(JdCookie{PtKey: ptKey, WeiXin: sender.WxId})
+								msg := fmt.Sprintf("更新账号，%s", ck.PtPin)
+								if sender.IsQQ() {
+									ck.Update(QQ, ck.QQ)
+									ck.Update(Available, True) // 完全保留原有大写True，不做任何修正
+								}
+								sender.Reply(fmt.Sprintf(msg))
+								(&JdCookie{}).Push(msg)
+								Info(msg)
+							} else {
+								NewJdCookie(&ck)
+								msg := fmt.Sprintf("添加账号，账号名:%s", ck.PtPin)
+								if sender.IsQQ() {
+									ck.Update(QQ, ck.QQ)
+									ck.Update(Available, True) // 完全保留原有大写True，不做任何修正
+								}
+								sender.Reply(fmt.Sprintf(msg))
+								sender.Reply(ck.Query())
+								(&JdCookie{}).Push(msg)
+								Info(msg)
+							}
+						}
+					} else {
+						sender.Reply(fmt.Sprintf("无效的ck"))
+					}
+					go func() {
+						Save <- &JdCookie{}
+					}()
+					return nil
+				}
+			}
+
+			if content, ok := GetReplyContent(msg); ok {
+				replyStr, isString := content.(string)
+
+				if isString && replyStr != "" {
+					if (sender.Type == "wx" || sender.Type == "wxg") && strings.Contains(replyStr, "[CQ:image") {
+
+						re := regexp.MustCompile(`\[CQ:image,file=([^\]]+)\]`)
+						matches := re.FindStringSubmatch(replyStr)
+
+						if len(matches) > 1 {
+							imgUrl := matches[1]
+							Info("【微信图片适配】拦截 CQ 码，直接发送图片:", imgUrl)
+
+							targetId := ""
+							if sender.Type == "wxg" {
+								targetId = sender.WxGroupId
+							} else {
+								targetId = sender.WxId
+							}
+
+							if targetId != "" {
+								SendWxImg2(targetId, imgUrl)
+							} else {
+								Error("发送失败：未获取到有效的微信接收者ID (Type:", sender.Type, ")")
+							}
+
+							return nil
+						}
+					}
+
+					return content
+				}
+				return content
+			}
+
 		}
-		go func() {
-			Save <- &JdCookie{}
-		}()
 		return nil
 	}
 }
 
-		if content, ok := GetReplyContent(msg); ok {
-			replyStr, isString := content.(string)
-			
-			if isString && replyStr != "" {
-				if (sender.Type == "wx" || sender.Type == "wxg") && strings.Contains(replyStr, "[CQ:image") {
-					
-					re := regexp.MustCompile(`\[CQ:image,file=([^\]]+)\]`)
-					matches := re.FindStringSubmatch(replyStr)
-					
-					if len(matches) > 1 {
-						imgUrl := matches[1]
-						Info("【微信图片适配】拦截 CQ 码，直接发送图片:", imgUrl)
-						
-						targetId := ""
-						if sender.Type == "wxg" {
-							targetId = sender.WxGroupId
-						} else {
-							targetId = sender.WxId
-						}
-
-						if targetId != "" {
-							SendWxImg2(targetId, imgUrl)
-						} else {
-							Error("发送失败：未获取到有效的微信接收者ID (Type:", sender.Type, ")")
-						}
-						
-						return nil
-					}
-				}
-				
-				return content
-			}
-			return content
-		}
-
-	}
-	return nil
- }
-}
 func runtyt(sender *Sender, code string) {
 	for {
 		time.Sleep(time.Duration(rand.Intn(60)))
@@ -954,10 +931,6 @@ func runtyt(sender *Sender, code string) {
 		}
 	}
 }
-
-
-
-
 
 func AutoCollectionAndAddCoin(autocollect map[string]string) {
 	AutoCollection(autocollect)
@@ -1020,7 +993,6 @@ func setupOrderResetTask() {
 		}
 	})
 }
-
 
 func LoadFarmNewTasks() map[string]bool {
 	file := "userid_farmNew.json"

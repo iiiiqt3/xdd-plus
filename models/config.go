@@ -19,12 +19,12 @@ type WxConfig struct {
 }
 
 type WxProtocolConfig struct {
-	LoginBaseURL     string `yaml:"login_base_url"`
-	NewLoginBaseURL  string `yaml:"new_login_base_url"`
-	ActiveProtocol   string `yaml:"active_protocol"`
-	ScanLoginCost    int    `yaml:"scan_login_cost"`
-	DeviceName       string `yaml:"device_name"`
-	JdServer         string `yaml:"jd_server"`
+	LoginBaseURL    string `yaml:"login_base_url"`
+	NewLoginBaseURL string `yaml:"new_login_base_url"`
+	ActiveProtocol  string `yaml:"active_protocol"`
+	ScanLoginCost   int    `yaml:"scan_login_cost"`
+	DeviceName      string `yaml:"device_name"`
+	JdServer        string `yaml:"jd_server"`
 }
 
 // YybConfig 应用宝模块配置（独立协议，不影响主服务）
@@ -41,21 +41,21 @@ type YybConfig struct {
 
 // GameConfig 游戏配置（支持热更新）
 type GameConfig struct {
-	GameOpen            bool `yaml:"game_open"`             // 游戏总开关
-	GuessNumberOpen     bool `yaml:"guess_number_open"`     // 猜数字开关
-	GuessNumberCost     int  `yaml:"guess_number_cost"`     // 猜数字每次积分
-	GuessNumberTimes    int  `yaml:"guess_number_times"`    // 猜数字游戏次数
-	GuessNumberReward   int  `yaml:"guess_number_reward"`   // 猜数字猜中奖励
-	GuessNumberMineCost int  `yaml:"guess_number_mine_cost"` // 猜数字踩雷扣分
+	GameOpen              bool `yaml:"game_open"`                // 游戏总开关
+	GuessNumberOpen       bool `yaml:"guess_number_open"`        // 猜数字开关
+	GuessNumberCost       int  `yaml:"guess_number_cost"`        // 猜数字每次积分
+	GuessNumberTimes      int  `yaml:"guess_number_times"`       // 猜数字游戏次数
+	GuessNumberReward     int  `yaml:"guess_number_reward"`      // 猜数字猜中奖励
+	GuessNumberMineCost   int  `yaml:"guess_number_mine_cost"`   // 猜数字踩雷扣分
 	RockPaperScissorsOpen bool `yaml:"rock_paper_scissors_open"` // 猜拳开关
-	RockPaperScissors   int  `yaml:"rock_paper_scissors"`   // 猜拳每次积分
-	BigSmallOpen        bool `yaml:"big_small_open"`        // 比大小开关
-	BigSmallCost        int  `yaml:"big_small_cost"`        // 比大小参与积分
-	BigSmallPlayers     int  `yaml:"big_small_players"`     // 比大小最大人数
-	BigSmallMaxGames    int  `yaml:"big_small_max_games"`   // 比大小最大游戏数
-	DuelOpen            bool `yaml:"duel_open"`             // 决斗开关
-	DuelDefaultBet      int  `yaml:"duel_default_bet"`      // 决斗默认下注
-	DuelMaxRooms        int  `yaml:"duel_max_rooms"`        // 决斗最大房间数
+	RockPaperScissors     int  `yaml:"rock_paper_scissors"`      // 猜拳每次积分
+	BigSmallOpen          bool `yaml:"big_small_open"`           // 比大小开关
+	BigSmallCost          int  `yaml:"big_small_cost"`           // 比大小参与积分
+	BigSmallPlayers       int  `yaml:"big_small_players"`        // 比大小最大人数
+	BigSmallMaxGames      int  `yaml:"big_small_max_games"`      // 比大小最大游戏数
+	DuelOpen              bool `yaml:"duel_open"`                // 决斗开关
+	DuelDefaultBet        int  `yaml:"duel_default_bet"`         // 决斗默认下注
+	DuelMaxRooms          int  `yaml:"duel_max_rooms"`           // 决斗最大房间数
 }
 
 type FanLi struct {
@@ -65,78 +65,77 @@ type FanLi struct {
 }
 
 type Yaml struct {
-	Containers          []Container
-	Tasks               []Task
-	Qrcode              string
-	Account             string
-	Master              string
-	Mode                string
-	Static              string
-	Database            string
-	QywxKey             string `yaml:"qywx_key"`
-	Resident            string
-	UserAgent           string `yaml:"user_agent"` // 已弃用：自定义UA
-	Theme               string
-	TelegramBotToken    string `yaml:"telegram_bot_token"`
-	TelegramUserID      int    `yaml:"telegram_user_id"`
-	QQID                int    `yaml:"qquid"`
-	QQGroupID              string `yaml:"qqgid"`               // QQ群号（机器人监听交互）
-	WXGroupID              string `yaml:"wxgid"`               // 微信群号（机器人监听交互）
-	ActivityPushQQGroupID  string `yaml:"activity_push_qqgid"` // 活动推送QQ群号
-	ActivityPushWXGroupID  string `yaml:"activity_push_wxgid"` // 活动推送微信群号
-	DefaultPriority     int    `yaml:"default_priority"`
-	InviteGroupID       string
-	Autocollection      string
-	NoGhproxy           bool   `yaml:"no_ghproxy"` // 已弃用：不使用代理开关
-	QbotPublicMode      bool   `yaml:"qbot_public_mode"`
-	DailyAssetPushCron  string `yaml:"daily_asset_push_cron"` // 已弃用：每日资产推送Cron
-	Version             string `yaml:"version"`
-	CTime               string `yaml:"AtTime"`
-	IsHelp              bool   `yaml:"IsHelp"` // 已弃用：助力开关
-	ApiToken            string `yaml:"ApiToken"`
-	Invalid             string `yaml:"Invalid"`
-	Query               string `yaml:"Query"`
-	Query1              string `yaml:"Query1"`
-	TGURL               string `yaml:"TGURL"`
-	CXURL               string `yaml:"CXURL"`
-	SMSAddress          string `yaml:"SMSAddress"`
-	IsAddFriend         bool   `yaml:"IsAddFriend"`
-	Lim                 int    `yaml:"Lim"`
-	Tyt                 int    `yaml:"Tyt"`
-	IFC                 bool   `yaml:"IFC"`
-	Later               int    `yaml:"Later"`
-	Jdcurl              string `yaml:"Jdcurl"` // 已弃用：NVJDC地址
-	Madurl              string `yaml:"Madurl"`
-	GAMEOPEN            bool   `yaml:"GameOpen"` // 已弃用：游戏功能开关
-	IsOldV4             bool   `yaml:"IsOldV4"`
-	WsToken             int    `yaml:"WsToken"`
-	Wskey               bool   `yaml:"Wskey"` // 已弃用：Wskey转换开关
-	Pzz                 int    `yaml:"Pzz"`
-	Jbzl                int    `yaml:"Jbzl"`
-	OpenQQ              bool   `yaml:"OpenQQ"`
-	Note                string `yaml:"Note"`
-	Rotation            bool   `yaml:"Rotation"`
-	VIP                 bool
-	Node                string
-	Npm                 string
-	Python              string
-	Pip                 string
-	OpenFan             bool
-	NoAdmin             bool   `yaml:"no_admin"`
-	QbotConfigFile      string `yaml:"qbot_config_file"`
-	Repos               []Repo
-	FanLis              FanLi
-	Wx                  WxConfig
-	WxProtocol           WxProtocolConfig `yaml:"wx_protocol"`
-	Yyb                  YybConfig        `yaml:"yyb"`
-	Game                GameConfig `yaml:"game"`
-	HttpProxyServerPort int        `yaml:"http_proxy_server_port"`
-	Priority            int    `yaml:"Priority"`
-	DailyCompletePush   string `yaml:"daily_complete_push"`
-	RefreshTime         int    `yaml:"refresh_time"`
-	Title               string
-	PortalPublicURL     string `yaml:"portal_public_url"` // 门户/上传资源公网地址，用于QQ/微信群推送图片
-	Jpush               JpushConfig `yaml:"jpush"`
+	Containers            []Container
+	Tasks                 []Task
+	Qrcode                string
+	Account               string
+	Master                string
+	Mode                  string
+	Static                string
+	Database              string
+	QywxKey               string `yaml:"qywx_key"`
+	Resident              string
+	UserAgent             string `yaml:"user_agent"` // 已弃用：自定义UA
+	Theme                 string
+	TelegramBotToken      string `yaml:"telegram_bot_token"`
+	TelegramUserID        int    `yaml:"telegram_user_id"`
+	QQID                  int    `yaml:"qquid"`
+	QQGroupID             string `yaml:"qqgid"`               // QQ群号（机器人监听交互）
+	WXGroupID             string `yaml:"wxgid"`               // 微信群号（机器人监听交互）
+	ActivityPushQQGroupID string `yaml:"activity_push_qqgid"` // 活动推送QQ群号
+	ActivityPushWXGroupID string `yaml:"activity_push_wxgid"` // 活动推送微信群号
+	DefaultPriority       int    `yaml:"default_priority"`
+	InviteGroupID         string
+	Autocollection        string
+	NoGhproxy             bool   `yaml:"no_ghproxy"` // 已弃用：不使用代理开关
+	QbotPublicMode        bool   `yaml:"qbot_public_mode"`
+	DailyAssetPushCron    string `yaml:"daily_asset_push_cron"` // 已弃用：每日资产推送Cron
+	Version               string `yaml:"version"`
+	CTime                 string `yaml:"AtTime"`
+	IsHelp                bool   `yaml:"IsHelp"` // 已弃用：助力开关
+	ApiToken              string `yaml:"ApiToken"`
+	Invalid               string `yaml:"Invalid"`
+	Query                 string `yaml:"Query"`
+	Query1                string `yaml:"Query1"`
+	TGURL                 string `yaml:"TGURL"`
+	CXURL                 string `yaml:"CXURL"`
+	SMSAddress            string `yaml:"SMSAddress"`
+	IsAddFriend           bool   `yaml:"IsAddFriend"`
+	Lim                   int    `yaml:"Lim"`
+	Tyt                   int    `yaml:"Tyt"`
+	IFC                   bool   `yaml:"IFC"`
+	Later                 int    `yaml:"Later"`
+	Jdcurl                string `yaml:"Jdcurl"` // 已弃用：NVJDC地址
+	Madurl                string `yaml:"Madurl"`
+	GAMEOPEN              bool   `yaml:"GameOpen"` // 已弃用：游戏功能开关
+	IsOldV4               bool   `yaml:"IsOldV4"`
+	WsToken               int    `yaml:"WsToken"`
+	Wskey                 bool   `yaml:"Wskey"` // 已弃用：Wskey转换开关
+	Pzz                   int    `yaml:"Pzz"`
+	Jbzl                  int    `yaml:"Jbzl"`
+	OpenQQ                bool   `yaml:"OpenQQ"`
+	Note                  string `yaml:"Note"`
+	Rotation              bool   `yaml:"Rotation"`
+	Node                  string
+	Npm                   string
+	Python                string
+	Pip                   string
+	OpenFan               bool
+	NoAdmin               bool   `yaml:"no_admin"`
+	QbotConfigFile        string `yaml:"qbot_config_file"`
+	Repos                 []Repo
+	FanLis                FanLi
+	Wx                    WxConfig
+	WxProtocol            WxProtocolConfig `yaml:"wx_protocol"`
+	Yyb                   YybConfig        `yaml:"yyb"`
+	Game                  GameConfig       `yaml:"game"`
+	HttpProxyServerPort   int              `yaml:"http_proxy_server_port"`
+	Priority              int              `yaml:"Priority"`
+	DailyCompletePush     string           `yaml:"daily_complete_push"`
+	RefreshTime           int              `yaml:"refresh_time"`
+	Title                 string
+	PortalPublicURL       string      `yaml:"portal_public_url"` // 门户/上传资源公网地址，用于QQ/微信群推送图片
+	Jpush                 JpushConfig `yaml:"jpush"`
 }
 
 var Balance = "balance"

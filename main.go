@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/client/httplib"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
 	"github.com/beego/beego/v2/server/web/filter/cors"
@@ -20,7 +19,6 @@ import (
 	"github.com/eatmoreapple/openwechat"
 )
 
-var query = ""
 var friedns openwechat.Friends
 
 // Result 通用API响应结构体
@@ -163,24 +161,6 @@ func main() {
 		}
 		ctx.WriteString(string(jsons))
 	})
-
-	// VIP用户查询页面，从远程下载最新版本
-	if models.Config.VIP {
-		web.Get("/query", func(ctx *context.Context) {
-			if query != "" {
-				ctx.WriteString(query)
-				return
-			}
-			models.Info("下载最新网页查询版本")
-			s, _ := httplib.Get("https://git.smxy.xyz/jia_yuan/xdd-html/raw/branch/xdd/version/index.html").String()
-			if s != "" {
-				query = s
-				ctx.WriteString(s)
-				return
-			}
-			models.Warn("主题下载失败，请注意查看网络环境")
-		})
-	}
 
 	// 默认首页，返回门户登录页面
 	web.Get("/", func(ctx *context.Context) {
@@ -459,17 +439,14 @@ func main() {
 	web.Router("/api/admin/jdcrontasks/delete", &controllers.AdminApiController{}, "post:DeleteJdCronTask")
 	web.Router("/api/admin/jdcrontasks/run", &controllers.AdminApiController{}, "post:RunJdCronTask")
 	web.Router("/api/admin/jdcrontasks/stop", &controllers.AdminApiController{}, "post:StopJdCronTask")
-	// VIP用户额外路由：微信消息接收、QQ机器人、环境变量管理、配置管理
-	if models.Config.VIP {
-		web.Router("/wx/receive", &controllers.WxController{}, "post:HandleWxMessage")
-		web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
-		web.Router("/qq", &controllers.QQController{}, "get,post:Echo")
-		web.Router("/api/envs", &controllers.AccountController{}, "get:ListEnvs")
-		web.Router("/api/envs", &controllers.AccountController{}, "post:CreateOrUpdateEnv")
-		web.Router("/api/config", &controllers.ConfigController{}, "get:ListConfig")
-		web.Router("/api/config", &controllers.ConfigController{}, "post:CreateOrUpdateConfig")
-
-		}
+	// 微信消息接收、QQ机器人、环境变量管理、配置管理
+	web.Router("/wx/receive", &controllers.WxController{}, "post:HandleWxMessage")
+	web.Router("/api/login/wskeylogin", &controllers.LoginController{}, "post:WskeyLogin")
+	web.Router("/qq", &controllers.QQController{}, "get,post:Echo")
+	web.Router("/api/envs", &controllers.AccountController{}, "get:ListEnvs")
+	web.Router("/api/envs", &controllers.AccountController{}, "post:CreateOrUpdateEnv")
+	web.Router("/api/config", &controllers.ConfigController{}, "get:ListConfig")
+	web.Router("/api/config", &controllers.ConfigController{}, "post:CreateOrUpdateConfig")
 
 	// 设置静态文件目录
 	if models.Config.Static == "" {

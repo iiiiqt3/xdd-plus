@@ -32,7 +32,6 @@ func init() {
 	go initTgBot()
 	initTask()
 	InitJdTaskScheduler()
-	initNolan()
 	initWX()
 	tempToken()
 	// InitActivityListWithHotReload() 会自动加载 YAML 配置并启动热加载监控
@@ -49,17 +48,10 @@ func init() {
 	initiiiiqtTask()
 }
 
-
-func initNolan() {
-    Config.VIP = true
-    Info("VIP验证成功")
-}
-
-
 func initWX() {
 	env := GetEnv("WxGroupID")
 	Config.WXGroupID = env
-		//Autocollection
- 	env = GetEnv("Autocollection")
+	//Autocollection
+	env = GetEnv("Autocollection")
 	Config.Autocollection = env
 }

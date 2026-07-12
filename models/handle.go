@@ -51,11 +51,11 @@ func initHandle() {
 			if err != nil {
 				JD().Warnf("创建jdCookie.js失败，", err)
 			}
-              f2, err := os.OpenFile(ExecPath+"/scripts/feverrun_my_scripts/jdCookie.js", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+			f2, err := os.OpenFile(ExecPath+"/scripts/feverrun_my_scripts/jdCookie.js", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 			if err != nil {
 				JD().Warnf("创建jdCookie.js失败，", err)
 			}
-			
+
 			f2.WriteString(fmt.Sprintf(`
 var cookies = %s
 var pins = process.env.pins
@@ -96,9 +96,6 @@ if(pins){
 }
 module.exports = cookies`, cookies))
 
-
-			
-
 			f.WriteString(fmt.Sprintf(`
 var cookies = %s
 var pins = process.env.pins
@@ -119,8 +116,8 @@ if(pins){
 }
 module.exports = cookies`, cookies))
 			f.Close()
-		     f1.Close() 
-		     f2.Close() // 完成操作后记得关闭文件
+			f1.Close()
+			f2.Close() // 完成操作后记得关闭文件
 			go CopyConfigAll()
 			if Config.Mode == Parallel {
 				for i := range Config.Containers {
@@ -130,94 +127,89 @@ module.exports = cookies`, cookies))
 					(&Config.Containers[i]).write(cks)
 				}
 			} else if Config.Mode == Vip {
-              
-				if Config.VIP {
-					balanceIndices := []int{}  // 存储所有 Mode == Balance 的容器索引
-					residentCkpin := make(map[string]bool) //存储车头ck pin
-					cl := 0
-					sl := 0 // 新增：统计 Special 模式可用容器的数量
-					JD().Infof("进入VIP模式")
-					// 遍历容器，读取容器配置并清空每个容器的 cookies
-					for i := range Config.Containers {
-						(&Config.Containers[i]).read()
-						Config.Containers[i].cks = []JdCookie{}
-						// 如果容器可用且模式为 Balance，则统计 Balance 容器的数量
-						if Config.Containers[i].Available {
-							if Config.Containers[i].Mode == Balance {
-								cl++
-								balanceIndices = append(balanceIndices, i)
-								ctpin := Config.Containers[i].Resident
-								if ctpin != ""{
-									for k := range cks {
-										ck := cks[k]
-										if strings.Contains(ctpin, ck.PtPin) {
-											if ck.Hack == True {
-												continue
-											}
-											Config.Containers[i].cks = append(Config.Containers[i].cks, ck)
-											residentCkpin[ck.PtPin] = true
-										}	
-									}
-								}
-							} else if Config.Containers[i].Mode == Special {
-								sl++ // 统计 Special 模式可用容器的数量
-							}
-						}
-					}
-					if cl != 0 {
-						for i := range cks {
-							ck := cks[i]
-							// 判断 ck.Hack 是否为 true，若为 true，则跳过该 cookie，不进行负载均衡
-							if ck.Hack == True {
-								// 如果 Appoint 为 true，则进入 Special 容器
-								if ck.Appoint == True {
-									// 如果没有可用的 Special 容器，打印日志信息
-									if sl == 0 {
-										JD().Warnf("没有可用的 Special 容器来分配该 cookie")
-										continue
-									}
-									assigned := false
-									for j := range Config.Containers {
-
-										if Config.Containers[j].Available && Config.Containers[j].Mode == Special {
-											Config.Containers[j].cks = append(Config.Containers[j].cks, ck)
-											assigned = true
-											break
+				balanceIndices := []int{}              // 存储所有 Mode == Balance 的容器索引
+				residentCkpin := make(map[string]bool) //存储车头ck pin
+				cl := 0
+				sl := 0 // 新增：统计 Special 模式可用容器的数量
+				JD().Infof("进入VIP模式")
+				// 遍历容器，读取容器配置并清空每个容器的 cookies
+				for i := range Config.Containers {
+					(&Config.Containers[i]).read()
+					Config.Containers[i].cks = []JdCookie{}
+					// 如果容器可用且模式为 Balance，则统计 Balance 容器的数量
+					if Config.Containers[i].Available {
+						if Config.Containers[i].Mode == Balance {
+							cl++
+							balanceIndices = append(balanceIndices, i)
+							ctpin := Config.Containers[i].Resident
+							if ctpin != "" {
+								for k := range cks {
+									ck := cks[k]
+									if strings.Contains(ctpin, ck.PtPin) {
+										if ck.Hack == True {
+											continue
 										}
-									}
-									if !assigned {
-										JD().Warnf("没有找到适合的 Special 容器来分配该 cookie")
+										Config.Containers[i].cks = append(Config.Containers[i].cks, ck)
+										residentCkpin[ck.PtPin] = true
 									}
 								}
-								// 如果 Hack 为 true，无论 Appoint 是否为 true，都跳过该 cookie，不进行负载均衡
-								continue
 							}
-							// 如果 Hack 为 false，正常进行 Balance 容器分配
-							j := i % cl
-							targetIdx := balanceIndices[j]  // 通过预存索引获取真实容器位置
-							if !residentCkpin[ck.PtPin] {
-								Config.Containers[targetIdx].cks = append(Config.Containers[targetIdx].cks, cks[i])
-							}	
-						}
-					}
-					// 将分配好的 cookies 写入容器
-					for i := range Config.Containers {
-						if Config.Containers[i].Available {
-							if Config.Containers[i].Mode == Balance {
-								// 写入 Balance 模式容器的 cookies
-								(&Config.Containers[i]).write(Config.Containers[i].cks)
-							} else if Config.Containers[i].Mode == Special {
-								// 写入 Special 模式容器的 cookies
-								(&Config.Containers[i]).write(Config.Containers[i].cks)
-							} else {
-								// Parallel 模式下，不考虑 Hack 和 Appoint 的值，直接写入
-								(&Config.Containers[i]).write(cks)
-							}
+						} else if Config.Containers[i].Mode == Special {
+							sl++ // 统计 Special 模式可用容器的数量
 						}
 					}
 				}
-         
-                
+				if cl != 0 {
+					for i := range cks {
+						ck := cks[i]
+						// 判断 ck.Hack 是否为 true，若为 true，则跳过该 cookie，不进行负载均衡
+						if ck.Hack == True {
+							// 如果 Appoint 为 true，则进入 Special 容器
+							if ck.Appoint == True {
+								// 如果没有可用的 Special 容器，打印日志信息
+								if sl == 0 {
+									JD().Warnf("没有可用的 Special 容器来分配该 cookie")
+									continue
+								}
+								assigned := false
+								for j := range Config.Containers {
+
+									if Config.Containers[j].Available && Config.Containers[j].Mode == Special {
+										Config.Containers[j].cks = append(Config.Containers[j].cks, ck)
+										assigned = true
+										break
+									}
+								}
+								if !assigned {
+									JD().Warnf("没有找到适合的 Special 容器来分配该 cookie")
+								}
+							}
+							// 如果 Hack 为 true，无论 Appoint 是否为 true，都跳过该 cookie，不进行负载均衡
+							continue
+						}
+						// 如果 Hack 为 false，正常进行 Balance 容器分配
+						j := i % cl
+						targetIdx := balanceIndices[j] // 通过预存索引获取真实容器位置
+						if !residentCkpin[ck.PtPin] {
+							Config.Containers[targetIdx].cks = append(Config.Containers[targetIdx].cks, cks[i])
+						}
+					}
+				}
+				// 将分配好的 cookies 写入容器
+				for i := range Config.Containers {
+					if Config.Containers[i].Available {
+						if Config.Containers[i].Mode == Balance {
+							// 写入 Balance 模式容器的 cookies
+							(&Config.Containers[i]).write(Config.Containers[i].cks)
+						} else if Config.Containers[i].Mode == Special {
+							// 写入 Special 模式容器的 cookies
+							(&Config.Containers[i]).write(Config.Containers[i].cks)
+						} else {
+							// Parallel 模式下，不考虑 Hack 和 Appoint 的值，直接写入
+							(&Config.Containers[i]).write(cks)
+						}
+					}
+				}
 
 			} else {
 				var resident []JdCookie
@@ -261,7 +253,7 @@ module.exports = cookies`, cookies))
 				var parallels []Container
 				var bs []balance
 				for i := range Config.Containers {
-				(&Config.Containers[i]).read()
+					(&Config.Containers[i]).read()
 					if Config.Containers[i].Available {
 						if Config.Containers[i].Mode == Parallel {
 							parallels = append(parallels, Config.Containers[i])
