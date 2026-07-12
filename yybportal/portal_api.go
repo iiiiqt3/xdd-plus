@@ -85,12 +85,18 @@ func PortalCreateQR(userNumber int) (map[string]any, error) {
 		return nil, err
 	}
 	putPendingScan(userNumber, qr.SessionID, cost, cost > 0)
+	hint := "请使用微信扫码确认登录"
+	if cost > 0 {
+		hint = fmt.Sprintf("请使用微信扫码确认登录，本次将扣除 %d 积分", cost)
+	} else {
+		hint = "请使用微信扫码确认登录（本次免费）"
+	}
 	return map[string]any{
 		"sessionId":     qr.SessionID,
 		"status":        qr.Status,
 		"imageBase64":   qr.ImageB64,
 		"scanLoginCost": cost,
-		"scanCostHint":  "请使用微信扫码确认登录",
+		"scanCostHint":  hint,
 	}, nil
 }
 

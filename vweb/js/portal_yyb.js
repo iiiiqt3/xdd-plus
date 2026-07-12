@@ -386,6 +386,11 @@
     function closeQr() {
         const m = $('yyb-qrModal');
         if (m) m.classList.remove('show');
+        const costEl = $('yyb-qrCost');
+        if (costEl) {
+            costEl.style.display = 'none';
+            costEl.textContent = '';
+        }
         stopScanPoll();
     }
 
@@ -450,8 +455,24 @@
             state.scanSessionId = data.sessionId;
             const src = qrImgSrc(data.imageBase64);
             $('yyb-qrBox').innerHTML = src ? '<img src="' + src + '" alt="二维码" style="width:180px;height:180px;">' : '加载失败';
-            const cost = data.scanLoginCost ?? '-';
-            $('yyb-qrHint').textContent = data.scanCostHint || '请使用微信扫码确认登录';
+            $('yyb-qrHint').textContent = '请使用微信扫码确认登录';
+            const costEl = $('yyb-qrCost');
+            const cost = Number(data.scanLoginCost);
+            if (costEl) {
+                if (Number.isFinite(cost) && cost > 0) {
+                    costEl.style.display = 'block';
+                    costEl.textContent = '本次扫码将扣除 ' + cost + ' 积分（确认登录后扣除）';
+                } else if (Number.isFinite(cost) && cost === 0) {
+                    costEl.style.display = 'block';
+                    costEl.textContent = '本次扫码免费，不扣除积分';
+                } else if (data.scanCostHint) {
+                    costEl.style.display = 'block';
+                    costEl.textContent = data.scanCostHint;
+                } else {
+                    costEl.style.display = 'none';
+                    costEl.textContent = '';
+                }
+            }
             $('yyb-qrModal').classList.add('show');
             stopScanPoll();
             scheduleScanPoll(0);

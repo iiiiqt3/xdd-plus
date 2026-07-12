@@ -523,7 +523,15 @@ async function startScan() {
         state.scanSessionId = data.sessionId;
         const src = qrImgSrc(data.imageBase64);
         $('qrBox').innerHTML = src ? `<img src="${src}" alt="二维码">` : '加载失败';
-        $('qrHint').textContent = '本次消耗 ' + (data.scanLoginCost ?? '-') + ' 积分';
+        $('qrHint').textContent = '请使用微信扫码确认登录';
+        const cost = Number(data.scanLoginCost);
+        if (Number.isFinite(cost) && cost > 0) {
+            $('qrHint').textContent = '请使用微信扫码确认登录\n本次扫码将扣除 ' + cost + ' 积分（确认登录后扣除）';
+        } else if (Number.isFinite(cost) && cost === 0) {
+            $('qrHint').textContent = '请使用微信扫码确认登录（本次免费）';
+        } else if (data.scanCostHint) {
+            $('qrHint').textContent = data.scanCostHint;
+        }
         $('qrModal').classList.add('show');
         stopScanPoll();
         scheduleScanPoll(0);
