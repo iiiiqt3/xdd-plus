@@ -98,6 +98,7 @@ enum AppNotifications {
     static let sessionDidLogout = Notification.Name("PortalSessionDidLogout")
     static let sessionRequiresLogin = Notification.Name("PortalSessionRequiresLogin")
     static let jdAuthCallback = Notification.Name("JDAuthCallbackNotification")
+    static let yybStatusDidUpdate = Notification.Name("PortalYybStatusDidUpdate")
 }
 
 
@@ -198,6 +199,7 @@ struct PortalJdWxDevice: Decodable {
     let nickname: String?
     let device: String?
     let serverType: String?
+    let jdNickname: String?
 }
 
 
@@ -210,6 +212,62 @@ struct PortalJdWxRefreshResult: Decodable {
     let riskMsg: String?
 }
 
+struct PortalJdYybAccount: Decodable {
+    let index: Int
+    let openid: String?
+    let nickname: String?
+    let status: String?
+    let jdNickname: String?
+}
+
+struct PortalYybAccount: Decodable {
+    let bindingId: Int64?
+    let yybAccountId: Int64?
+    let openid: String?
+    let uin: Int64?
+    let nickname: String?
+    let avatarUrl: String?
+    let status: String?
+    let lastCheckedAt: Int64?
+    let createdAt: Int64?
+}
+
+struct PortalYybCheckSummary: Decodable {
+    let total: Int?
+    let alive: Int?
+    let dead: Int?
+    let failed: Int?
+}
+
+struct PortalYybStatus: Decodable {
+    let enabled: Bool?
+    let ready: Bool?
+    let message: String?
+    let coin: Int?
+    let scanLoginCost: Int?
+    let maxAccounts: Int?
+    let accounts: [PortalYybAccount]?
+    let checkSummary: PortalYybCheckSummary?
+}
+
+struct PortalYybQrCreateResult: Decodable {
+    let sessionId: String?
+    let status: String?
+    let imageBase64: String?
+    let scanLoginCost: Int?
+    let scanCostHint: String?
+}
+
+struct PortalYybQrPollResult: Decodable {
+    let status: String?
+    let message: String?
+}
+
+struct PortalYybConfirmResult: Decodable {
+    let account: PortalYybAccount?
+    let cost: Int?
+    let alreadyBound: Bool?
+}
 
 struct PortalJdTaskExecuteResult: Decodable {
     let taskId: String?
@@ -730,6 +788,7 @@ final class AppSessionStore {
                 self.snapshot = snapshot
                 CookieStorageManager.shared.persistCookies(for: AppEnvironment.baseURL.host ?? "")
                 NotificationCenter.default.post(name: AppNotifications.sessionDidChange, object: nil)
+                YybAccountStore.shared.prefetch(autoCheck: true)
                 completion?(true)
             case .failure(let error):
                 if error.isUnauthorized, allowAutoRelogin, let credentials = CredentialStore.shared.load() {
@@ -760,6 +819,7 @@ final class AppSessionStore {
         self.snapshot = snapshot
         CookieStorageManager.shared.persistCookies(for: AppEnvironment.baseURL.host ?? "")
         NotificationCenter.default.post(name: AppNotifications.sessionDidChange, object: nil)
+        YybAccountStore.shared.prefetch(autoCheck: true)
     }
 
     func update(snapshot: PortalHomeSnapshot, notify: Bool = true) {
@@ -774,6 +834,7 @@ final class AppSessionStore {
         guard isAuthenticated else { return }
         isAuthenticated = false
         snapshot = nil
+        YybAccountStore.shared.clear()
         CookieStorageManager.shared.clearCookies()
         if notify {
             NotificationCenter.default.post(name: AppNotifications.sessionDidLogout, object: nil)
@@ -781,6 +842,106 @@ final class AppSessionStore {
         }
         if requireLogin {
             NotificationCenter.default.post(name: AppNotifications.sessionRequiresLogin, object: nil)
+        }
+    }
+}
+
+
+/// 应用宝账号缓存：App 登录后后台预检，协议页直接复用，减少打开延迟
+final class YybAccountStore {
+    static let shared = YybAccountStore()
+
+    private(set) var status: PortalYybStatus?
+    private(set) var lastUpdatedAt: Date?
+    private(set) var isLoading = false
+    private var pendingAlertSummary: String?
+
+    private init() {}
+
+    var accounts: [PortalYybAccount] {
+        status?.accounts ?? []
+    }
+
+    var isServiceReady: Bool {
+        status?.enabled == true && status?.ready == true
+    }
+
+    var serviceTitle: String {
+        guard let st = status else { return "待机" }
+        if st.enabled != true || st.ready != true {
+            return st.message ?? "不可用"
+        }
+        return "正常"
+    }
+
+    func clear() {
+        status = nil
+        lastUpdatedAt = nil
+        pendingAlertSummary = nil
+        isLoading = false
+        NotificationCenter.default.post(name: AppNotifications.yybStatusDidUpdate, object: nil)
+    }
+
+    func consumePendingAlert() -> String? {
+        let text = pendingAlertSummary
+        pendingAlertSummary = nil
+        return text
+    }
+
+    func prefetch(autoCheck: Bool = true) {
+        guard AppSessionStore.shared.isAuthenticated else { return }
+        guard !isLoading else { return }
+        isLoading = true
+        PortalService.shared.fetchYybStatus(autoCheck: autoCheck) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isLoading = false
+                switch result {
+                case .success(let st):
+                    self.status = st
+                    self.lastUpdatedAt = Date()
+                    if autoCheck, let s = st.checkSummary, (s.total ?? 0) > 0 {
+                        var msg = "检测完成：共 \(s.total ?? 0) 个，可用 \(s.alive ?? 0) 个"
+                        if (s.dead ?? 0) > 0 { msg += "，失效 \(s.dead ?? 0) 个" }
+                        if (s.failed ?? 0) > 0 { msg += "，失败 \(s.failed ?? 0) 个" }
+                        self.pendingAlertSummary = msg
+                    }
+                case .failure:
+                    break
+                }
+                NotificationCenter.default.post(name: AppNotifications.yybStatusDidUpdate, object: nil)
+            }
+        }
+    }
+
+    func reload(autoCheck: Bool, showAlert: Bool, completion: ((Result<PortalYybStatus, APIError>) -> Void)? = nil) {
+        guard !isLoading else {
+            completion?(.failure(APIError(message: "正在刷新，请稍候", isUnauthorized: false)))
+            return
+        }
+        isLoading = true
+        NotificationCenter.default.post(name: AppNotifications.yybStatusDidUpdate, object: nil)
+        PortalService.shared.fetchYybStatus(autoCheck: autoCheck) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isLoading = false
+                switch result {
+                case .success(let st):
+                    self.status = st
+                    self.lastUpdatedAt = Date()
+                    if showAlert, autoCheck, let s = st.checkSummary {
+                        var msg = "检测完成：共 \(s.total ?? 0) 个，可用 \(s.alive ?? 0) 个"
+                        if (s.dead ?? 0) > 0 { msg += "，失效 \(s.dead ?? 0) 个" }
+                        if (s.failed ?? 0) > 0 { msg += "，失败 \(s.failed ?? 0) 个" }
+                        self.pendingAlertSummary = msg
+                    }
+                    NotificationCenter.default.post(name: AppNotifications.yybStatusDidUpdate, object: nil)
+                    completion?(.success(st))
+                case .failure(let error):
+                    NotificationCenter.default.post(name: AppNotifications.yybStatusDidUpdate, object: nil)
+                    completion?(.failure(error))
+                }
+            }
         }
     }
 }
@@ -1152,6 +1313,100 @@ final class PortalService {
 
     func continueJdWxRisk(completion: @escaping (Result<PortalJdWxRefreshResult, APIError>) -> Void) {
         APIClient.shared.requestData(path: "/api/portal/jd/wx/continue-risk", method: "POST", completion: completion)
+    }
+
+    func fetchYybStatus(autoCheck: Bool = false, completion: @escaping (Result<PortalYybStatus, APIError>) -> Void) {
+        let q = autoCheck ? "?check=1" : ""
+        APIClient.shared.requestData(path: "/api/portal/yyb/status\(q)", completion: completion)
+    }
+
+    func createYybQr(completion: @escaping (Result<PortalYybQrCreateResult, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/yyb/qr", method: "POST", completion: completion)
+    }
+
+    func pollYybQr(sessionId: String, completion: @escaping (Result<PortalYybQrPollResult, APIError>) -> Void) {
+        let encoded = sessionId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? sessionId
+        APIClient.shared.requestData(path: "/api/portal/yyb/qr/\(encoded)/poll", completion: completion)
+    }
+
+    func confirmYybQr(sessionId: String, completion: @escaping (Result<PortalYybConfirmResult, APIError>) -> Void) {
+        let encoded = sessionId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? sessionId
+        APIClient.shared.requestData(path: "/api/portal/yyb/qr/\(encoded)/confirm", method: "POST", completion: completion)
+    }
+
+    func refreshYybAccount(ref: String, completion: @escaping (Result<[String: Any], APIError>) -> Void) {
+        requestAnyJSON(path: "/api/portal/yyb/accounts/refresh", payload: ["ref": ref], completion: completion)
+    }
+
+    func resyncYybAccount(ref: String, completion: @escaping (Result<PortalYybAccount, APIError>) -> Void) {
+        let payload: [String: Any] = ["ref": ref]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: "/api/portal/yyb/accounts/resync", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func deleteYybAccount(ref: String, completion: @escaping (Result<String, APIError>) -> Void) {
+        requestMessageJSON(path: "/api/portal/yyb/accounts/delete", payload: ["ref": ref], completion: completion)
+    }
+
+    func yybWxappGetCode(ref: String, appId: String, completion: @escaping (Result<[String: Any], APIError>) -> Void) {
+        requestAnyJSON(path: "/api/portal/yyb/wxapp/getCode", payload: ["ref": ref, "appId": appId], completion: completion)
+    }
+
+    func yybWxappGetPhone(ref: String, appId: String, completion: @escaping (Result<[String: Any], APIError>) -> Void) {
+        requestAnyJSON(path: "/api/portal/yyb/wxapp/getPhoneNumber", payload: ["ref": ref, "appId": appId], completion: completion)
+    }
+
+    func yybWxappOperate(ref: String, appId: String, payload: [String: Any], completion: @escaping (Result<[String: Any], APIError>) -> Void) {
+        requestAnyJSON(path: "/api/portal/yyb/wxapp/operateWxData", payload: ["ref": ref, "appId": appId, "payload": payload], completion: completion)
+    }
+
+    func fetchJdYybAccounts(completion: @escaping (Result<[PortalJdYybAccount], APIError>) -> Void) {
+        APIClient.shared.requestList(path: "/api/portal/jd/yyb/accounts", completion: completion)
+    }
+
+    func refreshJdYyb(openid: String, riskConfirmed: Bool = false, completion: @escaping (Result<PortalJdWxRefreshResult, APIError>) -> Void) {
+        let payload: [String: Any] = ["openid": openid, "riskConfirmed": riskConfirmed]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: "/api/portal/jd/yyb/refresh", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func continueJdYybRisk(completion: @escaping (Result<PortalJdWxRefreshResult, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/jd/yyb/continue-risk", method: "POST", completion: completion)
+    }
+
+    private func requestAnyJSON(path: String, payload: [String: Any], completion: @escaping (Result<[String: Any], APIError>) -> Void) {
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestRaw(path: path, method: "POST", headers: ["Content-Type": "application/json"], body: body) { result in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let text):
+                guard let raw = text.data(using: .utf8),
+                      let obj = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
+                    completion(.failure(APIError(message: "数据解析失败", isUnauthorized: false)))
+                    return
+                }
+                let code = obj["code"] as? Int ?? -1
+                if code != 0 {
+                    completion(.failure(APIError(message: (obj["msg"] as? String) ?? "请求失败", isUnauthorized: code == 401 || code == 403)))
+                    return
+                }
+                if let dict = obj["data"] as? [String: Any] {
+                    completion(.success(dict))
+                } else {
+                    completion(.success([:]))
+                }
+            }
+        }
     }
 
     func executeJdTask(taskId: String, taskName: String, accountIndexes: [Int], completion: @escaping (Result<PortalJdTaskExecuteResult, APIError>) -> Void) {

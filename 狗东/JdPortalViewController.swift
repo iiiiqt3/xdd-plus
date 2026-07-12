@@ -5,7 +5,7 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     override var shouldEnableKeyboardDismissOnTap: Bool { false }
 
     private enum MainTab { case query, login, task }
-    private enum LoginTab { case sms, wx }
+    private enum LoginTab { case sms, yyb, wx }
 
     private struct TaskDef {
         let id: String
@@ -54,6 +54,12 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     private let wxRiskLabel = UILabel()
     private let wxRiskLink = UILabel()
     private let wxResultLabel = UILabel()
+    private let yybAccountGridStack = UIStackView()
+    private let yybRiskStack = UIStackView()
+    private let yybRiskLabel = UILabel()
+    private let yybRiskLink = UILabel()
+    private let yybResultLabel = UILabel()
+    private var yybRiskUrl: String?
 
     private let taskDefs: [TaskDef] = [
         TaskDef(id: "plantBean", name: "种豆得豆", icon: "🫘", desc: "种豆得豆任务"),
@@ -527,7 +533,12 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             self.loginTab = .sms
             self.renderLogin()
         })
-        loginTabRow.addArrangedSubview(segmentButton("协议刷新", active: loginTab == .wx) { [weak self] in
+        loginTabRow.addArrangedSubview(segmentButton("应用宝刷新", active: loginTab == .yyb) { [weak self] in
+            guard let self = self, self.loginTab != .yyb else { return }
+            self.loginTab = .yyb
+            self.renderLogin()
+        })
+        loginTabRow.addArrangedSubview(segmentButton("微信协议", active: loginTab == .wx) { [weak self] in
             guard let self = self, self.loginTab != .wx else { return }
             self.loginTab = .wx
             self.renderLogin()
@@ -543,6 +554,8 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         switch loginTab {
         case .sms:
             loginContentStack.addArrangedSubview(smsLoginCard)
+        case .yyb:
+            renderYyb()
         case .wx:
             renderWx()
         }
@@ -665,6 +678,295 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         }
     }
 
+    private func renderYyb() {
+        let tipCard = UIStackView()
+        tipCard.axis = .vertical
+        tipCard.spacing = 8
+        tipCard.isLayoutMarginsRelativeArrangement = true
+        tipCard.layoutMargins = UIEdgeInsets(top: 14, left: 14, bottom: 14, right: 14)
+        tipCard.applyCardStyle(cornerRadius: 14)
+        let tipTitle = UILabel()
+        tipTitle.text = "京东应用宝协议刷新"
+        tipTitle.font = .systemFont(ofSize: 16, weight: .bold)
+        let tip = UILabel()
+        tip.text = "请先在「项目 → 协议接入 → 应用宝协议」扫码绑定账号，再选择账号刷新京东 CK。"
+        tip.font = .systemFont(ofSize: 13)
+        tip.textColor = .secondaryLabel
+        tip.numberOfLines = 0
+        tipCard.addArrangedSubview(tipTitle)
+        tipCard.addArrangedSubview(tip)
+        loginContentStack.addArrangedSubview(tipCard)
+
+        let refreshBar = UIView()
+        refreshBar.translatesAutoresizingMaskIntoConstraints = false
+        var refreshAllBtn: UIButton!
+        refreshAllBtn = compactButton("刷新全部CK", color: .systemBlue) { [weak self] in
+            self?.refreshYybAll(button: refreshAllBtn)
+        }
+        var refreshBtn: UIButton!
+        refreshBtn = compactButton("刷新账号", color: .secondaryLabel, filled: false) { [weak self] in
+            self?.loadYybAccounts(refreshButton: refreshBtn)
+        }
+        let barStack = UIStackView(arrangedSubviews: [refreshAllBtn, refreshBtn])
+        barStack.axis = .horizontal
+        barStack.spacing = 8
+        barStack.translatesAutoresizingMaskIntoConstraints = false
+        refreshBar.addSubview(barStack)
+        NSLayoutConstraint.activate([
+            refreshBar.heightAnchor.constraint(equalToConstant: 36),
+            barStack.trailingAnchor.constraint(equalTo: refreshBar.trailingAnchor),
+            barStack.centerYAnchor.constraint(equalTo: refreshBar.centerYAnchor),
+        ])
+        loginContentStack.addArrangedSubview(refreshBar)
+
+        yybAccountGridStack.axis = .vertical
+        yybAccountGridStack.spacing = 10
+        yybAccountGridStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        yybAccountGridStack.addArrangedSubview(placeholderLabel("加载中..."))
+        loginContentStack.addArrangedSubview(yybAccountGridStack)
+
+        yybRiskStack.axis = .vertical
+        yybRiskStack.spacing = 8
+        yybRiskStack.isHidden = true
+        yybRiskStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        yybRiskLabel.numberOfLines = 0
+        yybRiskStack.addArrangedSubview(yybRiskLabel)
+        yybRiskLink.numberOfLines = 0
+        yybRiskLink.font = .systemFont(ofSize: 13)
+        yybRiskLink.textColor = .systemBlue
+        yybRiskLink.isUserInteractionEnabled = true
+        yybRiskLink.gestureRecognizers?.forEach { yybRiskLink.removeGestureRecognizer($0) }
+        yybRiskLink.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openYybRiskUrl)))
+        yybRiskStack.addArrangedSubview(yybRiskLink)
+        var riskBtn: UIButton!
+        riskBtn = compactButton("验证完成，继续刷新", color: .systemOrange) { [weak self] in
+            self?.continueYybRisk(button: riskBtn)
+        }
+        yybRiskStack.addArrangedSubview(riskBtn)
+        loginContentStack.addArrangedSubview(yybRiskStack)
+
+        yybResultLabel.numberOfLines = 0
+        yybResultLabel.font = .systemFont(ofSize: 13)
+        yybResultLabel.textColor = .secondaryLabel
+        yybResultLabel.isHidden = true
+        loginContentStack.addArrangedSubview(yybResultLabel)
+
+        loadYybAccounts()
+    }
+
+    private func loadYybAccounts(refreshButton: UIButton? = nil) {
+        setButtonLoading(refreshButton, loading: true, title: "刷新中...")
+        PortalService.shared.fetchJdYybAccounts { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                self.setButtonLoading(refreshButton, loading: false, title: "刷新账号")
+                guard self.mainTab == .login, self.loginTab == .yyb else { return }
+                self.yybAccountGridStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+                switch result {
+                case .failure(let error):
+                    self.handle(error)
+                    self.yybAccountGridStack.addArrangedSubview(self.placeholderLabel(error.message))
+                case .success(let list):
+                    if let btn = refreshButton {
+                        self.flashButtonSuccess(btn, message: "✅ 已刷新", restore: "刷新账号")
+                    }
+                    if list.isEmpty {
+                        self.yybAccountGridStack.addArrangedSubview(self.placeholderLabel("暂无可用应用宝账号"))
+                    } else {
+                        var idx = 0
+                        while idx < list.count {
+                            let row = UIStackView()
+                            row.axis = .horizontal
+                            row.spacing = 10
+                            row.distribution = .fillEqually
+                            row.addArrangedSubview(self.buildYybAccountCard(list[idx]))
+                            if idx + 1 < list.count {
+                                row.addArrangedSubview(self.buildYybAccountCard(list[idx + 1]))
+                            } else {
+                                row.addArrangedSubview(UIView())
+                            }
+                            self.yybAccountGridStack.addArrangedSubview(row)
+                            idx += 2
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func nonEmpty(_ value: String?) -> String? {
+        let text = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
+    private func buildYybAccountCard(_ account: PortalJdYybAccount) -> UIView {
+        let wrap = UIView()
+        wrap.applyCardStyle(cornerRadius: 14)
+        wrap.translatesAutoresizingMaskIntoConstraints = false
+
+        let st = (account.status ?? "").lowercased()
+        let alive = st == "alive" || st == "online" || st.isEmpty
+
+        let name = UILabel()
+        name.text = nonEmpty(account.nickname) ?? nonEmpty(account.openid) ?? "账号"
+        name.font = .systemFont(ofSize: 14, weight: .semibold)
+        name.numberOfLines = 1
+        name.lineBreakMode = .byTruncatingTail
+        name.translatesAutoresizingMaskIntoConstraints = false
+
+        let badge = UILabel()
+        badge.text = alive ? "可用" : "失效"
+        badge.font = .systemFont(ofSize: 10, weight: .bold)
+        badge.textColor = alive ? .systemGreen : .systemRed
+        badge.backgroundColor = (alive ? UIColor.systemGreen : UIColor.systemRed).withAlphaComponent(0.12)
+        badge.layer.cornerRadius = 6
+        badge.clipsToBounds = true
+        badge.textAlignment = .center
+        badge.translatesAutoresizingMaskIntoConstraints = false
+
+        let openid = UILabel()
+        openid.text = nonEmpty(account.openid) ?? ""
+        openid.font = .systemFont(ofSize: 11)
+        openid.textColor = .secondaryLabel
+        openid.numberOfLines = 2
+        openid.lineBreakMode = .byTruncatingMiddle
+        openid.translatesAutoresizingMaskIntoConstraints = false
+
+        let jdNick = UILabel()
+        if let jd = nonEmpty(account.jdNickname) {
+            jdNick.text = "京东 \(jd)"
+            jdNick.isHidden = false
+        } else {
+            jdNick.text = ""
+            jdNick.isHidden = true
+        }
+        jdNick.font = .systemFont(ofSize: 11, weight: .medium)
+        jdNick.textColor = .systemOrange
+        jdNick.numberOfLines = 1
+        jdNick.lineBreakMode = .byTruncatingTail
+        jdNick.translatesAutoresizingMaskIntoConstraints = false
+
+        var btn: UIButton!
+        btn = compactButton("刷新 CK", color: .systemTeal) { [weak self] in
+            self?.refreshYyb(account: account, button: btn)
+        }
+        btn.translatesAutoresizingMaskIntoConstraints = false
+
+        wrap.addSubview(name)
+        wrap.addSubview(badge)
+        wrap.addSubview(openid)
+        wrap.addSubview(jdNick)
+        wrap.addSubview(btn)
+        NSLayoutConstraint.activate([
+            wrap.heightAnchor.constraint(greaterThanOrEqualToConstant: 118),
+            name.topAnchor.constraint(equalTo: wrap.topAnchor, constant: 12),
+            name.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 12),
+            name.trailingAnchor.constraint(lessThanOrEqualTo: badge.leadingAnchor, constant: -6),
+            badge.centerYAnchor.constraint(equalTo: name.centerYAnchor),
+            badge.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -10),
+            badge.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
+            badge.heightAnchor.constraint(equalToConstant: 20),
+            openid.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 4),
+            openid.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            openid.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            jdNick.topAnchor.constraint(equalTo: openid.bottomAnchor, constant: 4),
+            jdNick.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            jdNick.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            btn.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 10),
+            btn.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -10),
+            btn.bottomAnchor.constraint(equalTo: wrap.bottomAnchor, constant: -10),
+            btn.heightAnchor.constraint(equalToConstant: 32),
+            btn.topAnchor.constraint(greaterThanOrEqualTo: jdNick.bottomAnchor, constant: 8),
+        ])
+        return wrap
+    }
+
+    private func showYybRefreshResult(_ data: PortalJdWxRefreshResult) {
+        if data.needRiskVerify == true {
+            yybRiskStack.isHidden = false
+            yybRiskLabel.text = data.riskMsg ?? "账号需要短信验证，请打开链接完成验证"
+            yybRiskUrl = data.riskUrl
+            yybRiskLink.text = data.riskUrl ?? "验证链接"
+            yybRiskLink.isHidden = (data.riskUrl ?? "").isEmpty
+            yybResultLabel.isHidden = true
+        } else {
+            yybRiskStack.isHidden = true
+            let details = data.details?.joined(separator: "\n") ?? ""
+            let summary = "成功 \(data.success ?? 0)，失败 \(data.fail ?? 0)"
+            yybResultLabel.text = details.isEmpty ? summary : "\(summary)\n\(details)"
+            yybResultLabel.isHidden = false
+        }
+    }
+
+    private func refreshYyb(account: PortalJdYybAccount, button: UIButton) {
+        guard let openid = account.openid, !openid.isEmpty else {
+            showMessage("账号 OpenID 无效")
+            return
+        }
+        setButtonLoading(button, loading: true, title: "刷新中...")
+        PortalService.shared.refreshJdYyb(openid: openid) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.setButtonLoading(button, loading: false, title: "刷新 CK")
+                switch result {
+                case .failure(let error):
+                    self.handle(error)
+                case .success(let data):
+                    self.showYybRefreshResult(data)
+                    if (data.success ?? 0) > 0 {
+                        self.flashButtonSuccess(button, message: "✅ 已刷新", restore: "刷新 CK")
+                        self.loadAccounts()
+                    }
+                }
+            }
+        }
+    }
+
+    private func refreshYybAll(button: UIButton) {
+        setButtonLoading(button, loading: true, title: "刷新中...")
+        PortalService.shared.refreshJdYyb(openid: "all") { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.setButtonLoading(button, loading: false, title: "刷新全部CK")
+                switch result {
+                case .failure(let error):
+                    self.handle(error)
+                case .success(let data):
+                    self.showYybRefreshResult(data)
+                    if (data.success ?? 0) > 0 {
+                        self.flashButtonSuccess(button, message: "✅ 完成", restore: "刷新全部CK")
+                        self.loadAccounts()
+                    }
+                }
+            }
+        }
+    }
+
+    private func continueYybRisk(button: UIButton) {
+        setButtonLoading(button, loading: true, title: "刷新中...")
+        PortalService.shared.continueJdYybRisk { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.setButtonLoading(button, loading: false, title: "验证完成，继续刷新")
+                switch result {
+                case .failure(let error):
+                    self.handle(error)
+                case .success(let data):
+                    self.showYybRefreshResult(data)
+                    if data.needRiskVerify != true {
+                        self.flashButtonSuccess(button, message: "✅ 刷新完成", restore: "验证完成，继续刷新")
+                        self.loadAccounts()
+                    }
+                }
+            }
+        }
+    }
+
+    @objc private func openYybRiskUrl() {
+        guard let raw = yybRiskUrl, let url = URL(string: raw) else { return }
+        UIApplication.shared.open(url)
+    }
+
     private func renderWx() {
         let tipCard = UIStackView()
         tipCard.axis = .vertical
@@ -676,7 +978,7 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         tipTitle.text = "京东微信协议刷新"
         tipTitle.font = .systemFont(ofSize: 16, weight: .bold)
         let tip = UILabel()
-        tip.text = "请先在「项目 → 微信协议」扫码绑定在线设备，再选择设备刷新京东 CK。"
+        tip.text = "请先在「项目 → 协议接入 → 微信协议」扫码绑定在线设备，再选择设备刷新京东 CK。"
         tip.font = .systemFont(ofSize: 13)
         tip.textColor = .secondaryLabel
         tip.numberOfLines = 0
@@ -779,20 +1081,34 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         wrap.translatesAutoresizingMaskIntoConstraints = false
 
         let name = UILabel()
-        name.text = device.nickname ?? device.wxid ?? "未知设备"
+        name.text = nonEmpty(device.nickname) ?? nonEmpty(device.wxid) ?? "未知设备"
         name.font = .systemFont(ofSize: 14, weight: .semibold)
         name.numberOfLines = 1
         name.translatesAutoresizingMaskIntoConstraints = false
 
         let wxid = UILabel()
-        wxid.text = device.wxid ?? ""
+        wxid.text = nonEmpty(device.wxid) ?? ""
         wxid.font = .systemFont(ofSize: 11)
         wxid.textColor = .secondaryLabel
         wxid.numberOfLines = 2
         wxid.translatesAutoresizingMaskIntoConstraints = false
 
+        let jdNick = UILabel()
+        if let jd = nonEmpty(device.jdNickname) {
+            jdNick.text = "京东 \(jd)"
+            jdNick.isHidden = false
+        } else {
+            jdNick.text = ""
+            jdNick.isHidden = true
+        }
+        jdNick.font = .systemFont(ofSize: 11, weight: .medium)
+        jdNick.textColor = .systemOrange
+        jdNick.numberOfLines = 1
+        jdNick.lineBreakMode = .byTruncatingTail
+        jdNick.translatesAutoresizingMaskIntoConstraints = false
+
         let online = UILabel()
-        online.text = device.device ?? device.serverType ?? "微信设备"
+        online.text = nonEmpty(device.device) ?? nonEmpty(device.serverType) ?? "微信设备"
         online.font = .systemFont(ofSize: 11)
         online.textColor = .secondaryLabel
         online.translatesAutoresizingMaskIntoConstraints = false
@@ -805,23 +1121,28 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
 
         wrap.addSubview(name)
         wrap.addSubview(wxid)
+        wrap.addSubview(jdNick)
         wrap.addSubview(online)
         wrap.addSubview(btn)
         NSLayoutConstraint.activate([
-            wrap.heightAnchor.constraint(greaterThanOrEqualToConstant: 108),
+            wrap.heightAnchor.constraint(greaterThanOrEqualToConstant: 118),
             name.topAnchor.constraint(equalTo: wrap.topAnchor, constant: 12),
             name.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 12),
             name.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
             wxid.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 4),
             wxid.leadingAnchor.constraint(equalTo: name.leadingAnchor),
             wxid.trailingAnchor.constraint(equalTo: name.trailingAnchor),
-            online.topAnchor.constraint(equalTo: wxid.bottomAnchor, constant: 6),
+            jdNick.topAnchor.constraint(equalTo: wxid.bottomAnchor, constant: 4),
+            jdNick.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            jdNick.trailingAnchor.constraint(equalTo: name.trailingAnchor),
+            online.topAnchor.constraint(equalTo: jdNick.bottomAnchor, constant: 4),
             online.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            online.trailingAnchor.constraint(equalTo: name.trailingAnchor),
             btn.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 10),
             btn.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -10),
             btn.bottomAnchor.constraint(equalTo: wrap.bottomAnchor, constant: -10),
             btn.heightAnchor.constraint(equalToConstant: 32),
-            btn.topAnchor.constraint(greaterThanOrEqualTo: online.bottomAnchor, constant: 10),
+            btn.topAnchor.constraint(greaterThanOrEqualTo: online.bottomAnchor, constant: 8),
         ])
         return wrap
     }

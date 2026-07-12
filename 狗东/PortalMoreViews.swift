@@ -513,7 +513,7 @@ final class AboutVersionViewController: UITableViewController {
             cell.detailTextLabel?.textColor = .secondaryLabel
             cell.detailTextLabel?.numberOfLines = 0
         } else {
-            cell.textLabel?.text = "• 新增消息通知中心\n• 新增投稿与反馈功能\n• 项目中心整合微信协议\n• 首页增加通知模块\n• 支持页面滑动切换\n• 液态玻璃视觉效果\n• 优化自动登录体验"
+            cell.textLabel?.text = "• 协议接入：微信协议 + 应用宝协议\n• 京东登录新增应用宝刷新 CK\n• 新增消息通知中心\n• 新增投稿与反馈功能\n• 首页增加通知模块\n• 支持页面滑动切换\n• 液态玻璃视觉效果"
             cell.textLabel?.numberOfLines = 0
             cell.textLabel?.font = .systemFont(ofSize: 14)
             cell.textLabel?.textColor = .secondaryLabel

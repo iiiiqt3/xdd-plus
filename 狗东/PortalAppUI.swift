@@ -1237,7 +1237,7 @@ final class HomeDashboardViewController: BaseNativeViewController {
 
 
 final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDelegate, InnerTabSwipeHandling {
-    private let segmented = UISegmentedControl(items: ["活动中心", "我的项目", "项目抢兑", "微信协议"])
+    private let segmented = UISegmentedControl(items: ["活动中心", "我的项目", "项目抢兑", "协议接入"])
     private let container = UIView()
     private let searchBar = UISearchBar()
     private let categoryFilterScroll = UIScrollView()
@@ -1250,7 +1250,7 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         nav.setNavigationBarHidden(true, animated: false)
         return nav
     }()
-    private let wechatVC = WechatProtocolViewController()
+    private let protocolVC = ProtocolAccessViewController()
     private var currentVC: UIViewController?
     private var containerTopToSearchBar: NSLayoutConstraint!
     private var containerTopToSegmented: NSLayoutConstraint!
@@ -1293,7 +1293,7 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         headerTitle.text = "项目"
         headerTitle.font = .systemFont(ofSize: 20, weight: .bold)
         let headerSubtitle = UILabel()
-        headerSubtitle.text = "活动中心 · 项目抢兑 · 微信协议"
+        headerSubtitle.text = "活动中心 · 项目抢兑 · 协议接入"
         headerSubtitle.font = .systemFont(ofSize: 12)
         headerSubtitle.textColor = .secondaryLabel
         headerRow.addSubview(headerIcon)
@@ -1420,7 +1420,7 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         case 0: vc = activitiesVC
         case 1: vc = myProjectsVC
         case 2: vc = projectRushNav
-        case 3: vc = wechatVC
+        case 3: vc = protocolVC
         default: vc = activitiesVC
         }
         searchBar.text = nil
@@ -2682,6 +2682,662 @@ final class ProjectEditCKViewController: BaseNativeViewController {
 }
 
 
+final class ProtocolAccessViewController: BaseNativeViewController {
+    private let subTabRow = UIStackView()
+    private let container = UIView()
+    private let wechatVC = WechatProtocolViewController()
+    private let yybVC = YybProtocolViewController()
+    private var currentVC: UIViewController?
+    private var selectedIndex = 0
+    private var subTabButtons: [UIButton] = []
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemGroupedBackground
+
+        subTabRow.axis = .horizontal
+        subTabRow.spacing = 8
+        subTabRow.distribution = .fillEqually
+        subTabRow.translatesAutoresizingMaskIntoConstraints = false
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        ["微信协议", "应用宝协议"].enumerated().forEach { index, title in
+            let btn = makeSubTabButton(title: title, index: index)
+            subTabButtons.append(btn)
+            subTabRow.addArrangedSubview(btn)
+        }
+        refreshSubTabs()
+
+        view.addSubview(subTabRow)
+        view.addSubview(container)
+        NSLayoutConstraint.activate([
+            subTabRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 6),
+            subTabRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            subTabRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            subTabRow.heightAnchor.constraint(equalToConstant: 36),
+            container.topAnchor.constraint(equalTo: subTabRow.bottomAnchor, constant: 8),
+            container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            container.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        switchTo(index: 0)
+    }
+
+    private func makeSubTabButton(title: String, index: Int) -> UIButton {
+        let btn = UIButton(type: .system)
+        btn.setTitle(title, for: .normal)
+        btn.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        btn.layer.cornerRadius = 8
+        btn.tag = index
+        btn.addTarget(self, action: #selector(subTabTapped(_:)), for: .touchUpInside)
+        return btn
+    }
+
+    private func refreshSubTabs() {
+        for (i, btn) in subTabButtons.enumerated() {
+            let active = i == selectedIndex
+            btn.setTitleColor(active ? .systemBlue : .tertiaryLabel, for: .normal)
+            btn.titleLabel?.font = .systemFont(ofSize: 13, weight: active ? .bold : .medium)
+            btn.backgroundColor = active ? UIColor.systemBlue.withAlphaComponent(0.10) : .clear
+        }
+    }
+
+    @objc private func subTabTapped(_ sender: UIButton) {
+        guard sender.tag != selectedIndex else { return }
+        selectedIndex = sender.tag
+        refreshSubTabs()
+        switchTo(index: selectedIndex)
+    }
+
+    private func switchTo(index: Int) {
+        currentVC?.willMove(toParent: nil)
+        currentVC?.view.removeFromSuperview()
+        currentVC?.removeFromParent()
+        let vc: UIViewController = index == 1 ? yybVC : wechatVC
+        addChild(vc)
+        vc.view.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(vc.view)
+        NSLayoutConstraint.activate([
+            vc.view.topAnchor.constraint(equalTo: container.topAnchor),
+            vc.view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            vc.view.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            vc.view.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        vc.didMove(toParent: self)
+        currentVC = vc
+    }
+}
+
+final class YybProtocolViewController: BaseNativeViewController {
+    private let scrollView = UIScrollView()
+    private let stack = UIStackView()
+    private let sectionTitleLabel = UILabel()
+    private let serviceDot = UIView()
+    private let serviceLabel = UILabel()
+    private let loadingIndicator = UIActivityIndicatorView(style: .medium)
+    private let accountStack = UIStackView()
+    private let accountActionsHost = UIStackView()
+    private var scanButton: UIButton!
+    private var reloadButton: UIButton!
+    private var accounts: [PortalYybAccount] = []
+    private var selectedKey = ""
+    private var pollTimer: Timer?
+    private var scanning = false
+    private var qrNav: UINavigationController?
+    private var actionLockedUntil: Date = .distantPast
+    private var didShowPendingAlert = false
+    private var scanBusy = false
+    private var checkBusy = false
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemGroupedBackground
+        setupUI()
+        NotificationCenter.default.addObserver(self, selector: #selector(onStoreUpdated), name: AppNotifications.yybStatusDidUpdate, object: nil)
+        applyStore(showPendingAlert: false)
+        if YybAccountStore.shared.status == nil, !YybAccountStore.shared.isLoading {
+            YybAccountStore.shared.prefetch(autoCheck: true)
+        }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        applyStore(showPendingAlert: true)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        pollTimer?.invalidate()
+        pollTimer = nil
+        scanning = false
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func setupUI() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.alwaysBounceVertical = true
+        stack.axis = .vertical
+        stack.spacing = 14
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        scrollView.addSubview(stack)
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 10),
+            stack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
+            stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -24),
+            stack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32),
+        ])
+
+        let actionRow = UIStackView()
+        actionRow.axis = .horizontal
+        actionRow.spacing = 10
+        actionRow.distribution = .fillEqually
+        scanButton = makeActionButton(title: "扫码添加", style: .primary) { [weak self] in
+            self?.startScan()
+        }
+        reloadButton = makeActionButton(title: "刷新检测", style: .secondary) { [weak self] in
+            self?.reloadWithCheck()
+        }
+        actionRow.addArrangedSubview(scanButton)
+        actionRow.addArrangedSubview(reloadButton)
+        stack.addArrangedSubview(actionRow)
+
+        sectionTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        sectionTitleLabel.textColor = .secondaryLabel
+        sectionTitleLabel.text = "账号列表 · 0"
+        sectionTitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        serviceDot.translatesAutoresizingMaskIntoConstraints = false
+        serviceDot.layer.cornerRadius = 3.5
+        serviceDot.backgroundColor = .systemGray3
+
+        serviceLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        serviceLabel.textColor = .tertiaryLabel
+        serviceLabel.text = "待机"
+        serviceLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.transform = CGAffineTransform(scaleX: 0.75, y: 0.75)
+
+        let status = UIStackView(arrangedSubviews: [loadingIndicator, serviceDot, serviceLabel])
+        status.axis = .horizontal
+        status.spacing = 6
+        status.alignment = .center
+        status.setContentHuggingPriority(.required, for: .horizontal)
+
+        let sectionRow = UIStackView(arrangedSubviews: [sectionTitleLabel, UIView(), status])
+        sectionRow.axis = .horizontal
+        sectionRow.alignment = .center
+        sectionRow.spacing = 8
+        stack.addArrangedSubview(sectionRow)
+
+        NSLayoutConstraint.activate([
+            serviceDot.widthAnchor.constraint(equalToConstant: 7),
+            serviceDot.heightAnchor.constraint(equalToConstant: 7),
+        ])
+
+        accountStack.axis = .vertical
+        accountStack.spacing = 10
+        stack.addArrangedSubview(accountStack)
+
+        accountActionsHost.axis = .horizontal
+        accountActionsHost.spacing = 8
+        accountActionsHost.distribution = .fillEqually
+        accountActionsHost.isHidden = true
+        stack.addArrangedSubview(accountActionsHost)
+    }
+
+    private enum ActionStyle { case primary, secondary, danger, plain }
+
+    private func makeActionButton(title: String, style: ActionStyle, action: @escaping () -> Void) -> UIButton {
+        let btn = UIButton(type: .system)
+        btn.setTitle(title, for: .normal)
+        btn.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+        btn.layer.cornerRadius = 12
+        btn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        switch style {
+        case .primary:
+            btn.backgroundColor = .systemBlue
+            btn.setTitleColor(.white, for: .normal)
+        case .secondary:
+            btn.backgroundColor = UIColor.secondarySystemGroupedBackground
+            btn.setTitleColor(.label, for: .normal)
+        case .danger:
+            btn.backgroundColor = UIColor.systemRed.withAlphaComponent(0.12)
+            btn.setTitleColor(.systemRed, for: .normal)
+            btn.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+            btn.contentEdgeInsets = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
+        case .plain:
+            btn.backgroundColor = UIColor.tertiarySystemFill
+            btn.setTitleColor(.label, for: .normal)
+            btn.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+            btn.contentEdgeInsets = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
+        }
+        btn.addAction(UIAction { [weak self, weak btn] _ in
+            guard let self = self, let btn = btn else { return }
+            self.animatePress(btn)
+            guard self.beginActionLock() else { return }
+            action()
+        }, for: .touchUpInside)
+        return btn
+    }
+
+    private func animatePress(_ button: UIButton) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        UIView.animate(withDuration: 0.08, animations: {
+            button.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
+            button.alpha = 0.85
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.12) {
+                button.transform = .identity
+                button.alpha = 1
+            }
+        })
+    }
+
+    @discardableResult
+    private func beginActionLock(seconds: TimeInterval = 1.2) -> Bool {
+        let now = Date()
+        if now < actionLockedUntil { return false }
+        actionLockedUntil = now.addingTimeInterval(seconds)
+        return true
+    }
+
+    @objc private func onStoreUpdated() {
+        applyStore(showPendingAlert: isViewLoaded && view.window != nil)
+    }
+
+    private func applyStore(showPendingAlert: Bool) {
+        let store = YybAccountStore.shared
+        let ready = store.isServiceReady
+        serviceDot.backgroundColor = ready ? .systemGreen : .systemOrange
+        serviceLabel.text = store.serviceTitle
+        serviceLabel.textColor = ready ? .tertiaryLabel : .systemOrange
+        sectionTitleLabel.text = "账号列表 · \(store.accounts.count)"
+        if store.isLoading {
+            loadingIndicator.startAnimating()
+        } else {
+            loadingIndicator.stopAnimating()
+        }
+        accounts = store.accounts
+        if !accounts.contains(where: { accountKey($0) == selectedKey }) {
+            selectedKey = accounts.first.map { accountKey($0) } ?? ""
+        }
+        renderAccounts()
+        updateActionButtonsEnabled()
+
+        if showPendingAlert, !didShowPendingAlert, let msg = store.consumePendingAlert() {
+            didShowPendingAlert = true
+            showMessage(msg, title: "检测完成")
+        }
+    }
+
+    private func updateActionButtonsEnabled() {
+        let ready = YybAccountStore.shared.isServiceReady || YybAccountStore.shared.status == nil
+        let busy = scanBusy || checkBusy
+        scanButton.isEnabled = ready && !busy
+        scanButton.alpha = scanButton.isEnabled ? 1 : 0.5
+        reloadButton.isEnabled = !busy
+        reloadButton.alpha = reloadButton.isEnabled ? 1 : 0.5
+        reloadButton.setTitle(checkBusy ? "检测中…" : "刷新检测", for: .normal)
+    }
+
+    private func reloadWithCheck() {
+        checkBusy = true
+        updateActionButtonsEnabled()
+        loadingIndicator.startAnimating()
+        YybAccountStore.shared.reload(autoCheck: true, showAlert: true) { [weak self] result in
+            guard let self = self else { return }
+            self.checkBusy = false
+            if !YybAccountStore.shared.isLoading {
+                self.loadingIndicator.stopAnimating()
+            }
+            self.updateActionButtonsEnabled()
+            self.didShowPendingAlert = false
+            switch result {
+            case .failure(let error):
+                self.handle(error)
+            case .success:
+                if let msg = YybAccountStore.shared.consumePendingAlert() {
+                    self.showMessage(msg, title: "检测完成")
+                }
+                self.applyStore(showPendingAlert: false)
+            }
+        }
+    }
+
+    private func accountKey(_ acc: PortalYybAccount) -> String {
+        if let id = acc.bindingId, id > 0 { return String(id) }
+        return acc.openid ?? ""
+    }
+
+    private func selectedAccount() -> PortalYybAccount? {
+        accounts.first { accountKey($0) == selectedKey }
+    }
+
+    private func renderAccounts() {
+        accountStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        accountActionsHost.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        accountActionsHost.isHidden = true
+
+        if accounts.isEmpty {
+            let empty = UILabel()
+            empty.text = YybAccountStore.shared.isLoading ? "正在同步账号…" : "暂无账号，点击上方「扫码添加」"
+            empty.font = .systemFont(ofSize: 14)
+            empty.textColor = .secondaryLabel
+            empty.textAlignment = .center
+            empty.numberOfLines = 0
+            accountStack.addArrangedSubview(empty)
+            return
+        }
+
+        var idx = 0
+        while idx < accounts.count {
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.spacing = 10
+            row.distribution = .fillEqually
+            row.addArrangedSubview(buildAccountCard(accounts[idx], index: idx))
+            if idx + 1 < accounts.count {
+                row.addArrangedSubview(buildAccountCard(accounts[idx + 1], index: idx + 1))
+            } else {
+                row.addArrangedSubview(UIView())
+            }
+            accountStack.addArrangedSubview(row)
+            idx += 2
+        }
+
+        if selectedAccount() != nil {
+            accountActionsHost.isHidden = false
+            accountActionsHost.addArrangedSubview(makeActionButton(title: "刷新", style: .plain) { [weak self] in self?.refreshSelected() })
+            accountActionsHost.addArrangedSubview(makeActionButton(title: "同步", style: .plain) { [weak self] in self?.resyncSelected() })
+            accountActionsHost.addArrangedSubview(makeActionButton(title: "删除", style: .danger) { [weak self] in self?.deleteSelected() })
+        }
+    }
+
+    private func displayAccountName(_ acc: PortalYybAccount) -> String {
+        let nick = (acc.nickname ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !nick.isEmpty { return nick }
+        let oid = (acc.openid ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return oid.isEmpty ? "未命名" : oid
+    }
+
+    private func buildAccountCard(_ acc: PortalYybAccount, index: Int) -> UIView {
+        let key = accountKey(acc)
+        let selected = key == selectedKey
+        let wrap = UIView()
+        wrap.applyCardStyle(cornerRadius: 14)
+        wrap.translatesAutoresizingMaskIntoConstraints = false
+        wrap.layer.borderWidth = selected ? 1.5 : 0
+        wrap.layer.borderColor = selected ? UIColor.systemBlue.cgColor : UIColor.clear.cgColor
+
+        let name = UILabel()
+        name.text = displayAccountName(acc)
+        name.font = .systemFont(ofSize: 14, weight: .semibold)
+        name.numberOfLines = 1
+        name.lineBreakMode = .byTruncatingTail
+        name.translatesAutoresizingMaskIntoConstraints = false
+
+        let st = (acc.status ?? "").lowercased()
+        let alive = st == "alive" || st == "online"
+        let badge = UILabel()
+        badge.text = alive ? "可用" : "失效"
+        badge.font = .systemFont(ofSize: 10, weight: .bold)
+        badge.textColor = alive ? .systemGreen : .systemRed
+        badge.backgroundColor = (alive ? UIColor.systemGreen : UIColor.systemRed).withAlphaComponent(0.12)
+        badge.layer.cornerRadius = 6
+        badge.clipsToBounds = true
+        badge.textAlignment = .center
+        badge.translatesAutoresizingMaskIntoConstraints = false
+
+        let meta = UILabel()
+        let uinValue = (acc.uin ?? 0) > 0 ? "\(acc.uin!)" : "-"
+        meta.text = "UIN \(uinValue)"
+        meta.font = .systemFont(ofSize: 11)
+        meta.textColor = .secondaryLabel
+        meta.translatesAutoresizingMaskIntoConstraints = false
+
+        let oid = UILabel()
+        oid.text = acc.openid ?? ""
+        oid.font = .systemFont(ofSize: 11)
+        oid.textColor = .tertiaryLabel
+        oid.numberOfLines = 2
+        oid.lineBreakMode = .byTruncatingMiddle
+        oid.translatesAutoresizingMaskIntoConstraints = false
+
+        wrap.addSubview(name)
+        wrap.addSubview(badge)
+        wrap.addSubview(meta)
+        wrap.addSubview(oid)
+        NSLayoutConstraint.activate([
+            wrap.heightAnchor.constraint(greaterThanOrEqualToConstant: 96),
+            name.topAnchor.constraint(equalTo: wrap.topAnchor, constant: 12),
+            name.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 12),
+            name.trailingAnchor.constraint(lessThanOrEqualTo: badge.leadingAnchor, constant: -6),
+            badge.centerYAnchor.constraint(equalTo: name.centerYAnchor),
+            badge.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -10),
+            badge.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
+            badge.heightAnchor.constraint(equalToConstant: 20),
+            meta.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 6),
+            meta.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            meta.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            oid.topAnchor.constraint(equalTo: meta.bottomAnchor, constant: 4),
+            oid.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            oid.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            oid.bottomAnchor.constraint(lessThanOrEqualTo: wrap.bottomAnchor, constant: -12),
+        ])
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(accountTapped(_:)))
+        tap.cancelsTouchesInView = false
+        wrap.isUserInteractionEnabled = true
+        wrap.tag = index
+        wrap.addGestureRecognizer(tap)
+        return wrap
+    }
+
+    @objc private func accountTapped(_ gesture: UITapGestureRecognizer) {
+        guard let view = gesture.view, accounts.indices.contains(view.tag) else { return }
+        selectedKey = accountKey(accounts[view.tag])
+        renderAccounts()
+    }
+
+    private static func yybScanCostNote(cost: Int?, hint: String?) -> String? {
+        if let cost, cost > 0 {
+            return "本次扫码将扣除 \(cost) 积分（确认登录后扣除）"
+        }
+        if let cost, cost == 0 {
+            return "本次扫码免费，不扣除积分"
+        }
+        let text = (hint ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
+    private func startScan() {
+        scanBusy = true
+        updateActionButtonsEnabled()
+        PortalService.shared.createYybQr { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.scanBusy = false
+                self.updateActionButtonsEnabled()
+                switch result {
+                case .failure(let error):
+                    self.handle(error)
+                case .success(let data):
+                    guard let sessionId = data.sessionId, let image = data.imageBase64, !image.isEmpty else {
+                        self.showMessage(data.scanCostHint ?? "二维码生成失败")
+                        return
+                    }
+                    let vc = WechatQRCodeViewController(
+                        base64String: image,
+                        message: "请使用微信扫码确认登录",
+                        costNote: Self.yybScanCostNote(cost: data.scanLoginCost, hint: data.scanCostHint)
+                    ) { [weak self] in
+                        self?.scanning = false
+                        self?.pollTimer?.invalidate()
+                        self?.pollTimer = nil
+                    }
+                    let nav = UINavigationController(rootViewController: vc)
+                    self.qrNav = nav
+                    self.present(nav, animated: true)
+                    self.scanning = true
+                    self.pollScan(sessionId: sessionId, qrVC: vc)
+                }
+            }
+        }
+    }
+
+    private func pollScan(sessionId: String, qrVC: WechatQRCodeViewController) {
+        pollTimer?.invalidate()
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
+            guard let self = self, self.scanning else { return }
+            PortalService.shared.pollYybQr(sessionId: sessionId) { [weak self] result in
+                DispatchQueue.main.async {
+                    guard let self = self, self.scanning else { return }
+                    switch result {
+                    case .failure(let error):
+                        let msg = error.message
+                        if msg.lowercased().contains("deadline") || msg.lowercased().contains("timeout") {
+                            qrVC.updateState("等待扫码中（网络较慢）…")
+                            return
+                        }
+                        self.scanning = false
+                        self.pollTimer?.invalidate()
+                        qrVC.updateState(msg)
+                    case .success(let data):
+                        let status = (data.status ?? "").lowercased()
+                        switch status {
+                        case "scanned":
+                            qrVC.updateState("已扫码，请在手机上点击「确认登录」")
+                        case "authorized", "confirmed":
+                            self.scanning = false
+                            self.pollTimer?.invalidate()
+                            qrVC.updateState("正在完成绑定…")
+                            PortalService.shared.confirmYybQr(sessionId: sessionId) { [weak self] confirmResult in
+                                DispatchQueue.main.async {
+                                    guard let self = self else { return }
+                                    self.qrNav?.dismiss(animated: true)
+                                    switch confirmResult {
+                                    case .failure(let error):
+                                        self.handle(error)
+                                    case .success(let conf):
+                                        let msg: String
+                                        if conf.alreadyBound == true {
+                                            msg = "扫码成功，账号已绑定"
+                                        } else if (conf.cost ?? 0) > 0 {
+                                            msg = "扫码成功，已扣除 \(conf.cost ?? 0) 积分"
+                                        } else {
+                                            msg = "扫码成功，账号已绑定"
+                                        }
+                                        self.showMessage(msg)
+                                        self.didShowPendingAlert = false
+                                        YybAccountStore.shared.reload(autoCheck: true, showAlert: true) { [weak self] _ in
+                                            self?.didShowPendingAlert = false
+                                            if let alert = YybAccountStore.shared.consumePendingAlert() {
+                                                self?.showMessage(alert, title: "检测完成")
+                                            }
+                                            self?.applyStore(showPendingAlert: false)
+                                        }
+                                    }
+                                }
+                            }
+                        case "expired", "cancelled", "unknown":
+                            self.scanning = false
+                            self.pollTimer?.invalidate()
+                            qrVC.updateState(status == "expired" ? "二维码已过期，请重新生成" : "扫码已取消")
+                        default:
+                            break
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func refreshSelected() {
+        guard let acc = selectedAccount() else {
+            showMessage("请先选择一个账号")
+            return
+        }
+        let ref = accountKey(acc)
+        PortalService.shared.refreshYybAccount(ref: ref) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                switch result {
+                case .failure(let error):
+                    self.handle(error)
+                case .success:
+                    self.showMessage("存活状态已刷新")
+                    YybAccountStore.shared.reload(autoCheck: false, showAlert: false) { [weak self] _ in
+                        self?.applyStore(showPendingAlert: false)
+                    }
+                }
+            }
+        }
+    }
+
+    private func resyncSelected() {
+        guard let acc = selectedAccount() else {
+            showMessage("请先选择一个账号")
+            return
+        }
+        PortalService.shared.resyncYybAccount(ref: accountKey(acc)) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                switch result {
+                case .failure(let error):
+                    self.handle(error)
+                case .success:
+                    self.showMessage("资料已同步")
+                    self.didShowPendingAlert = false
+                    YybAccountStore.shared.reload(autoCheck: true, showAlert: true) { [weak self] _ in
+                        if let alert = YybAccountStore.shared.consumePendingAlert() {
+                            self?.showMessage(alert, title: "检测完成")
+                        }
+                        self?.applyStore(showPendingAlert: false)
+                    }
+                }
+            }
+        }
+    }
+
+    private func deleteSelected() {
+        guard let acc = selectedAccount() else {
+            showMessage("请先选择一个账号")
+            return
+        }
+        let alert = UIAlertController(title: "删除账号", message: "确定删除该应用宝账号？", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+        alert.addAction(UIAlertAction(title: "删除", style: .destructive) { [weak self] _ in
+            guard let self = self else { return }
+            PortalService.shared.deleteYybAccount(ref: self.accountKey(acc)) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .failure(let error):
+                        self.handle(error)
+                    case .success(let msg):
+                        self.showMessage(msg)
+                        self.selectedKey = ""
+                        YybAccountStore.shared.reload(autoCheck: false, showAlert: false) { [weak self] _ in
+                            self?.applyStore(showPendingAlert: false)
+                        }
+                    }
+                }
+            }
+        })
+        present(alert, animated: true)
+    }
+}
+
+
 final class WechatProtocolViewController: BaseNativeViewController {
     private let statusLabel = UILabel()
     private let detailLabel = UILabel()
@@ -3180,13 +3836,16 @@ final class WechatProtocolViewController: BaseNativeViewController {
 final class WechatQRCodeViewController: BaseNativeViewController {
     private let base64String: String
     private let messageText: String
+    private let costNote: String?
     private let onDismiss: (() -> Void)?
     private let imageView = UIImageView()
     private let stateLabel = UILabel()
+    private let costLabel = UILabel()
 
-    init(base64String: String, message: String, onDismiss: (() -> Void)? = nil) {
+    init(base64String: String, message: String, costNote: String? = nil, onDismiss: (() -> Void)? = nil) {
         self.base64String = base64String
         self.messageText = message
+        self.costNote = costNote
         self.onDismiss = onDismiss
         super.init(nibName: nil, bundle: nil)
     }
@@ -3226,6 +3885,19 @@ final class WechatQRCodeViewController: BaseNativeViewController {
             imageView.tintColor = .systemGray3
         }
 
+        costLabel.translatesAutoresizingMaskIntoConstraints = false
+        if let note = costNote, !note.isEmpty {
+            costLabel.text = note
+            costLabel.isHidden = false
+        } else {
+            costLabel.text = nil
+            costLabel.isHidden = true
+        }
+        costLabel.numberOfLines = 0
+        costLabel.textAlignment = .center
+        costLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        costLabel.textColor = .systemOrange
+
         stateLabel.translatesAutoresizingMaskIntoConstraints = false
         stateLabel.text = messageText
         stateLabel.numberOfLines = 0
@@ -3247,7 +3919,7 @@ final class WechatQRCodeViewController: BaseNativeViewController {
         scrollView.alwaysBounceVertical = true
         view.addSubview(scrollView)
 
-        let contentStack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel, imageView, stateLabel, hintLabel])
+        let contentStack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel, imageView, costLabel, stateLabel, hintLabel])
         contentStack.axis = .vertical
         contentStack.alignment = .center
         contentStack.spacing = 0
@@ -3278,9 +3950,13 @@ final class WechatQRCodeViewController: BaseNativeViewController {
             imageView.widthAnchor.constraint(equalToConstant: qrSize),
             imageView.heightAnchor.constraint(equalToConstant: qrSize),
 
+            costLabel.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            costLabel.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
+            costLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: costLabel.isHidden ? 0 : 14),
+
             stateLabel.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
             stateLabel.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
-            stateLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 16),
+            stateLabel.topAnchor.constraint(equalTo: costLabel.bottomAnchor, constant: costLabel.isHidden ? 16 : 8),
 
             hintLabel.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 8),
             hintLabel.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -8),
@@ -3295,6 +3971,10 @@ final class WechatQRCodeViewController: BaseNativeViewController {
     @objc private func closeTapped() {
         onDismiss?()
         dismiss(animated: true)
+    }
+
+    func updateState(_ text: String) {
+        stateLabel.text = text
     }
 }
 
