@@ -33,6 +33,7 @@ type PortalJdWxDevice struct {
 	Nickname   string `json:"nickname"`
 	Device     string `json:"device"`
 	ServerType string `json:"serverType"`
+	JdNickname string `json:"jdNickname,omitempty"`
 }
 
 type PortalJdWxRefreshResult struct {
@@ -456,9 +457,54 @@ func GetPortalJdWxDevices(userNumber int) ([]PortalJdWxDevice, error) {
 			Nickname:   nick,
 			Device:     deviceInfo,
 			ServerType: serverType,
+			JdNickname: FindJdNicknameByWxid(userNumber, wxid),
 		})
 	}
 	return result, nil
+}
+
+// FindJdNicknameByWxid 查找已绑定该微信设备的京东昵称
+func FindJdNicknameByWxid(userNumber int, wxid string) string {
+	wxid = strings.TrimSpace(wxid)
+	if wxid == "" {
+		return ""
+	}
+	var cks []JdCookie
+	db.Where("QQ = ? AND (WeiXin = ? OR WxPid = ?)", userNumber, wxid, wxid).Order("ID desc").Find(&cks)
+	for _, ck := range cks {
+		if n := strings.TrimSpace(ck.Nickname); n != "" {
+			return n
+		}
+		if n := strings.TrimSpace(ck.Note); n != "" {
+			return n
+		}
+		if pin, err := url.QueryUnescape(ck.PtPin); err == nil && strings.TrimSpace(pin) != "" {
+			return pin
+		}
+	}
+	return ""
+}
+
+// FindJdNicknameByYybOpenID 查找已绑定该应用宝账号的京东昵称
+func FindJdNicknameByYybOpenID(userNumber int, openid string) string {
+	openid = strings.TrimSpace(openid)
+	if openid == "" {
+		return ""
+	}
+	var cks []JdCookie
+	db.Where("QQ = ? AND YybOpenID = ?", userNumber, openid).Order("ID desc").Find(&cks)
+	for _, ck := range cks {
+		if n := strings.TrimSpace(ck.Nickname); n != "" {
+			return n
+		}
+		if n := strings.TrimSpace(ck.Note); n != "" {
+			return n
+		}
+		if pin, err := url.QueryUnescape(ck.PtPin); err == nil && strings.TrimSpace(pin) != "" {
+			return pin
+		}
+	}
+	return ""
 }
 
 func PortalJdWxRefresh(userNumber int, wxid string, riskConfirmed bool) (*PortalJdWxRefreshResult, error) {

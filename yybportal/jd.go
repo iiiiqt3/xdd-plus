@@ -28,10 +28,11 @@ type portalYybRiskInfo struct {
 
 // PortalJdYybAccount 门户京东应用宝账号
 type PortalJdYybAccount struct {
-	Index    int    `json:"index"`
-	OpenID   string `json:"openid"`
-	Nickname string `json:"nickname"`
-	Status   string `json:"status"`
+	Index      int    `json:"index"`
+	OpenID     string `json:"openid"`
+	Nickname   string `json:"nickname"`
+	Status     string `json:"status"`
+	JdNickname string `json:"jdNickname,omitempty"`
 }
 
 // PortalJdYybRefreshResult 门户应用宝京东刷新结果
@@ -172,15 +173,20 @@ func GetPortalJdYybAccounts(userNumber int) ([]PortalJdYybAccount, error) {
 	}
 	result := make([]PortalJdYybAccount, 0, len(accounts))
 	for i, acc := range accounts {
-		nick := acc.Nickname
+		nick := strings.TrimSpace(acc.Nickname)
 		if nick == "" {
 			nick = acc.OpenID
 		}
+		st := strings.ToLower(strings.TrimSpace(acc.Status))
+		if st == "" {
+			st = "alive"
+		}
 		result = append(result, PortalJdYybAccount{
-			Index:    i + 1,
-			OpenID:   acc.OpenID,
-			Nickname: nick,
-			Status:   acc.Status,
+			Index:      i + 1,
+			OpenID:     acc.OpenID,
+			Nickname:   nick,
+			Status:     st,
+			JdNickname: models.FindJdNicknameByYybOpenID(userNumber, acc.OpenID),
 		})
 	}
 	return result, nil
