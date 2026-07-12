@@ -51,7 +51,7 @@ private data class JdTaskDef(val id: String, val name: String, val icon: String,
 class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     // 主Tab: 0=查询, 1=登录, 2=京东任务
     private var mainTabIndex = 0
-    // 登录子Tab: 0=短信登录, 1=协议刷新
+    // 登录子Tab: 0=短信登录, 1=应用宝刷新, 2=微信协议刷新
     private var loginSubIndex = 0
 
     private lateinit var mainTabs: TabLayout
@@ -79,6 +79,11 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private var wxRiskMsg: TextView? = null
     private var wxRiskLink: TextView? = null
     private var wxRiskUrl: String? = null
+    private var yybResultText: TextView? = null
+    private var yybRiskBox: LinearLayout? = null
+    private var yybRiskMsg: TextView? = null
+    private var yybRiskLink: TextView? = null
+    private var yybRiskUrl: String? = null
     private var logText: TextView? = null
 
     private val taskDefs = listOf(
@@ -325,10 +330,12 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     private fun renderLoginTab() {
         addPillTab("短信登录", loginSubIndex == 0) { loginSubIndex = 0; renderContent() }
-        addPillTab("协议刷新", loginSubIndex == 1) { loginSubIndex = 1; renderContent() }
+        addPillTab("应用宝刷新", loginSubIndex == 1) { loginSubIndex = 1; renderContent() }
+        addPillTab("微信协议", loginSubIndex == 2) { loginSubIndex = 2; renderContent() }
         when (loginSubIndex) {
             0 -> renderSmsPanel()
-            1 -> renderWxPanel()
+            1 -> renderYybPanel()
+            2 -> renderWxPanel()
         }
     }
 
@@ -390,9 +397,17 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         val ctx = requireContext()
         contentHost.addView(ctx.softCard(ContextCompat.getColor(ctx, R.color.brand_secondary)).apply {
             setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
-            addView(ctx.bodyText("💡 需先在「更多-微信协议」扫码绑定在线设备，再选择设备刷新京东 CK。").apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) })
+            addView(ctx.bodyText("💡 需先在「项目-协议接入-微信协议」扫码绑定在线设备，再选择设备刷新京东 CK。").apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) })
         })
-        toolbarRow.addView(makeSmallBtn("刷新设备") { loadWxDevices() })
+        contentHost.addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            setPadding(0, ctx.dp(8), 0, ctx.dp(4))
+            addView(makeSmallBtn("刷新设备") { loadWxDevices() }.apply {
+                tag = "刷新设备"
+                (layoutParams as LinearLayout.LayoutParams).marginStart = 0
+            })
+        })
         contentHost.addView(LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; tag = "wx_device_list" })
         // 风险验证区域
         wxRiskBox = LinearLayout(ctx).apply {
@@ -409,8 +424,303 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         loadWxDevices()
     }
 
+    private fun renderYybPanel() {
+        val ctx = requireContext()
+        contentHost.addView(ctx.softCard(ContextCompat.getColor(ctx, R.color.brand_secondary)).apply {
+            setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
+            addView(ctx.bodyText("💡 需先在「项目-协议接入-应用宝协议」扫码绑定账号，再选择账号刷新京东 CK。").apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) })
+        })
+        contentHost.addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            setPadding(0, ctx.dp(8), 0, ctx.dp(4))
+            addView(makeSmallBtn("刷新全部") { refreshYybAll() }.apply {
+                tag = "刷新全部"
+                (layoutParams as LinearLayout.LayoutParams).marginStart = 0
+            })
+            addView(makeSmallBtn("刷新账号") { loadYybAccounts() }.apply { tag = "刷新账号" })
+        })
+        contentHost.addView(LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; tag = "yyb_account_list" })
+        yybRiskBox = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#FEF3C7"))
+                cornerRadius = ctx.dp(10).toFloat()
+                setStroke(ctx.dp(1), Color.parseColor("#FDE68A"))
+            }
+            yybRiskMsg = TextView(ctx).apply {
+                setTextColor(Color.parseColor("#D97706"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                text = "账号需要短信验证"
+            }.also { addView(it) }
+            yybRiskLink = TextView(ctx).apply {
+                setTextColor(Color.parseColor("#2563EB"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                paint?.isUnderlineText = true
+                setPadding(0, ctx.dp(6), 0, 0)
+                setOnClickListener {
+                    yybRiskUrl?.let { url ->
+                        try {
+                            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+            }.also { addView(it) }
+            addView(TextView(ctx).apply {
+                text = "验证完成，继续刷新"
+                setTextColor(requireContext().themeColor(R.color.chip_active_text))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#F59E0B"))
+                    cornerRadius = ctx.dp(8).toFloat()
+                }
+                setPadding(ctx.dp(14), ctx.dp(8), ctx.dp(14), ctx.dp(8))
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = ctx.dp(10) }
+                setOnClickListener { continueYybRisk() }
+            })
+        }.also { contentHost.addView(it) }
+        yybResultText = ctx.bodyText("").apply {
+            visibility = View.GONE
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+        }.also { contentHost.addView(it) }
+        loadYybAccounts()
+    }
+
+    private fun loadYybAccounts() {
+        val btn = contentHost.findViewWithTag<TextView>("刷新账号")
+        btn?.let { showBtnLoading(it, "刷新账号") }
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.fetchJdYybAccounts() }
+                .onSuccess { renderYybAccounts(it) }
+                .onFailure { renderYybAccounts(emptyList(), it.message); handlePortalError(it) }
+            btn?.let { hideBtnLoading(it) }
+        }
+    }
+
+    private fun renderYybAccounts(list: List<com.goudong.jd.data.model.PortalJdYybAccount>, error: String? = null) {
+        val host = contentHost.findViewWithTag<LinearLayout>("yyb_account_list") ?: return
+        host.removeAllViews()
+        val ctx = requireContext()
+        when {
+            error != null -> host.addView(makeEmptyCard(error))
+            list.isEmpty() -> host.addView(makeEmptyCard("暂无可用应用宝账号，请先到「协议接入-应用宝协议」扫码绑定"))
+            else -> {
+                var idx = 0
+                while (idx < list.size) {
+                    val pair = LinearLayout(ctx).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { bottomMargin = ctx.dp(10) }
+                    }
+                    val left = buildJdYybCard(list[idx])
+                    left.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply {
+                        marginEnd = ctx.dp(5)
+                    }
+                    pair.addView(left)
+                    if (idx + 1 < list.size) {
+                        val right = buildJdYybCard(list[idx + 1])
+                        right.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply {
+                            marginStart = ctx.dp(5)
+                        }
+                        pair.addView(right)
+                    } else {
+                        pair.addView(View(ctx).apply {
+                            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply {
+                                marginStart = ctx.dp(5)
+                            }
+                        })
+                    }
+                    host.addView(pair)
+                    equalizeRowHeights(pair)
+                    idx += 2
+                }
+            }
+        }
+    }
+
+    private fun buildJdYybCard(acc: com.goudong.jd.data.model.PortalJdYybAccount): View {
+        val ctx = requireContext()
+        val st = (acc.status ?: "").lowercase()
+        val alive = st == "alive" || st == "online" || st.isEmpty()
+        val displayName = acc.nickname?.trim()?.takeIf { it.isNotEmpty() }
+            ?: acc.openid?.trim()?.takeIf { it.isNotEmpty() }
+            ?: "账号"
+        val jdNick = acc.jdNickname?.trim()?.takeIf { it.isNotEmpty() }
+        return ctx.cardView().apply {
+            setPadding(ctx.dp(12), ctx.dp(12), ctx.dp(12), ctx.dp(12))
+            addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(ctx).apply {
+                    text = displayName
+                    setTextColor(ctx.themeColor(R.color.text_primary))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    setTypeface(typeface, Typeface.BOLD)
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        marginEnd = ctx.dp(6)
+                    }
+                })
+                addView(TextView(ctx).apply {
+                    text = if (alive) "可用" else "失效"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(if (alive) Color.parseColor("#16A34A") else Color.parseColor("#DC2626"))
+                    background = GradientDrawable().apply {
+                        setColor(if (alive) Color.parseColor("#DCFCE7") else Color.parseColor("#FEE2E2"))
+                        cornerRadius = ctx.dp(6).toFloat()
+                    }
+                    setPadding(ctx.dp(8), ctx.dp(3), ctx.dp(8), ctx.dp(3))
+                })
+            })
+            addView(TextView(ctx).apply {
+                text = acc.openid ?: ""
+                setTextColor(ctx.themeColor(R.color.text_hint))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                maxLines = 2
+                minLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
+                setPadding(0, ctx.dp(4), 0, 0)
+            })
+            // 始终占位，保证左右卡片高度一致
+            addView(TextView(ctx).apply {
+                text = if (jdNick != null) "京东 $jdNick" else " "
+                visibility = if (jdNick != null) View.VISIBLE else View.INVISIBLE
+                setTextColor(Color.parseColor("#EA580C"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setTypeface(typeface, Typeface.BOLD)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding(0, ctx.dp(4), 0, 0)
+            })
+            addView(View(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f
+                )
+            })
+            addView(TextView(ctx).apply {
+                text = "刷新 CK"
+                setTextColor(Color.WHITE)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTypeface(typeface, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#14B8A6"))
+                    cornerRadius = ctx.dp(8).toFloat()
+                }
+                setPadding(ctx.dp(10), ctx.dp(8), ctx.dp(10), ctx.dp(8))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    ctx.dp(32)
+                ).apply { topMargin = ctx.dp(10) }
+                setOnClickListener { refreshYyb(acc, this) }
+            })
+        }
+    }
+
+    private fun equalizeRowHeights(row: LinearLayout) {
+        row.post {
+            var maxH = 0
+            for (i in 0 until row.childCount) {
+                val child = row.getChildAt(i)
+                if (child is LinearLayout) maxH = maxOf(maxH, child.height)
+            }
+            if (maxH <= 0) return@post
+            for (i in 0 until row.childCount) {
+                val child = row.getChildAt(i)
+                if (child is LinearLayout) {
+                    child.layoutParams = (child.layoutParams as LinearLayout.LayoutParams).apply {
+                        height = maxH
+                    }
+                    child.requestLayout()
+                }
+            }
+        }
+    }
+
+    private fun showYybRefreshResult(result: com.goudong.jd.data.model.PortalJdWxRefreshResult) {
+        if (result.needRiskVerify) {
+            yybRiskBox?.visibility = View.VISIBLE
+            yybRiskMsg?.text = result.riskMsg ?: "账号需要短信验证"
+            yybRiskUrl = result.riskUrl
+            yybRiskLink?.apply {
+                text = result.riskUrl ?: "验证链接"
+                visibility = if (result.riskUrl.isNullOrBlank()) View.GONE else View.VISIBLE
+            }
+            yybResultText?.visibility = View.GONE
+        } else {
+            yybRiskBox?.visibility = View.GONE
+            val details = result.details?.joinToString("\n").orEmpty()
+            val summary = "成功 ${result.success}，失败 ${result.fail}"
+            yybResultText?.apply {
+                text = if (details.isBlank()) summary else "$summary\n$details"
+                visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun refreshYyb(account: com.goudong.jd.data.model.PortalJdYybAccount, btn: View) {
+        val openid = account.openid ?: return alert("账号 OpenID 无效")
+        showBtnLoading(btn, "刷新CK")
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.refreshJdYyb(openid) }
+                .onSuccess {
+                    showYybRefreshResult(it)
+                    if (it.success > 0) {
+                        toast("京东 CK 刷新成功")
+                        loadAccounts()
+                    }
+                }
+                .onFailure { handlePortalError(it) }
+            hideBtnLoading(btn)
+        }
+    }
+
+    private fun refreshYybAll() {
+        val btn = contentHost.findViewWithTag<TextView>("刷新全部") ?: return
+        showBtnLoading(btn, "刷新全部")
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.refreshJdYyb("all") }
+                .onSuccess {
+                    showYybRefreshResult(it)
+                    if (it.success > 0) {
+                        toast("批量刷新完成")
+                        loadAccounts()
+                    }
+                }
+                .onFailure { handlePortalError(it) }
+            hideBtnLoading(btn)
+        }
+    }
+
+    private fun continueYybRisk() {
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.continueJdYybRisk() }
+                .onSuccess {
+                    showYybRefreshResult(it)
+                    if (!it.needRiskVerify) {
+                        toast("刷新完成")
+                        loadAccounts()
+                    }
+                }
+                .onFailure { handlePortalError(it) }
+        }
+    }
+
     private fun loadWxDevices() {
-        val btn = toolbarRow.findViewWithTag<TextView>("刷新设备")
+        val btn = contentHost.findViewWithTag<TextView>("刷新设备")
         btn?.let { showBtnLoading(it, "刷新设备") }
         lifecycleScope.launch {
             runCatching { AppServices.portalRepository.fetchJdWxDevices() }
@@ -428,22 +738,105 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             error != null -> host.addView(makeEmptyCard(error))
             list.isEmpty() -> host.addView(makeEmptyCard("暂无在线微信协议设备"))
             else -> {
-                val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-                val left = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f); setPadding(0, 0, ctx.dp(4), 0) }
-                val right = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f); setPadding(ctx.dp(4), 0, 0, 0) }
-                row.addView(left); row.addView(right)
-                list.forEachIndexed { i, d ->
-                    val card = ctx.cardView().apply {
-                        setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
-                        addView(TextView(ctx).apply { text = "🟢 在线"; setTextColor(requireContext().themeColor(R.color.positive)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f); setTypeface(typeface, Typeface.BOLD); background = GradientDrawable().apply { setColor(Color.parseColor("#DCFCE7")); cornerRadius = ctx.dp(4).toFloat() }; setPadding(ctx.dp(6), ctx.dp(2), ctx.dp(6), ctx.dp(2)) })
-                        addView(TextView(ctx).apply { text = d.nickname ?: d.wxid ?: "设备"; setTextColor(requireContext().themeColor(R.color.text_primary)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTypeface(typeface, Typeface.BOLD); setPadding(0, ctx.dp(6), 0, 0) })
-                        addView(TextView(ctx).apply { text = d.wxid ?: ""; setTextColor(requireContext().themeColor(R.color.text_hint)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) })
-                        addView(TextView(ctx).apply { text = "刷新CK"; setTextColor(Color.parseColor("#3B82F6")); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f); background = GradientDrawable().apply { setColor(Color.parseColor("#EFF6FF")); cornerRadius = ctx.dp(8).toFloat() }; setPadding(ctx.dp(10), ctx.dp(4), ctx.dp(10), ctx.dp(4)); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, ctx.dp(28)).apply { topMargin = ctx.dp(6) }; setOnClickListener { refreshWx(d, this) } })
+                var idx = 0
+                while (idx < list.size) {
+                    val pair = LinearLayout(ctx).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { bottomMargin = ctx.dp(10) }
                     }
-                    if (i % 2 == 0) left.addView(card) else right.addView(card)
+                    val left = buildJdWxCard(list[idx])
+                    left.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply {
+                        marginEnd = ctx.dp(5)
+                    }
+                    pair.addView(left)
+                    if (idx + 1 < list.size) {
+                        val right = buildJdWxCard(list[idx + 1])
+                        right.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply {
+                            marginStart = ctx.dp(5)
+                        }
+                        pair.addView(right)
+                    } else {
+                        pair.addView(View(ctx).apply {
+                            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply {
+                                marginStart = ctx.dp(5)
+                            }
+                        })
+                    }
+                    host.addView(pair)
+                    equalizeRowHeights(pair)
+                    idx += 2
                 }
-                host.addView(row)
             }
+        }
+    }
+
+    private fun buildJdWxCard(device: PortalJdWxDevice): View {
+        val ctx = requireContext()
+        val displayName = device.nickname?.trim()?.takeIf { it.isNotEmpty() }
+            ?: device.wxid?.trim()?.takeIf { it.isNotEmpty() }
+            ?: "未知设备"
+        val jdNick = device.jdNickname?.trim()?.takeIf { it.isNotEmpty() }
+        return ctx.cardView().apply {
+            setPadding(ctx.dp(12), ctx.dp(12), ctx.dp(12), ctx.dp(12))
+            addView(TextView(ctx).apply {
+                text = displayName
+                setTextColor(ctx.themeColor(R.color.text_primary))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                setTypeface(typeface, Typeface.BOLD)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+            addView(TextView(ctx).apply {
+                text = device.wxid ?: ""
+                setTextColor(ctx.themeColor(R.color.text_hint))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                maxLines = 2
+                minLines = 2
+                setPadding(0, ctx.dp(4), 0, 0)
+            })
+            addView(TextView(ctx).apply {
+                text = if (jdNick != null) "京东 $jdNick" else " "
+                visibility = if (jdNick != null) View.VISIBLE else View.INVISIBLE
+                setTextColor(Color.parseColor("#EA580C"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setTypeface(typeface, Typeface.BOLD)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding(0, ctx.dp(4), 0, 0)
+            })
+            addView(TextView(ctx).apply {
+                text = device.device?.takeIf { it.isNotBlank() } ?: device.serverType ?: "微信设备"
+                setTextColor(ctx.themeColor(R.color.text_muted))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setPadding(0, ctx.dp(4), 0, 0)
+            })
+            addView(View(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f
+                )
+            })
+            addView(TextView(ctx).apply {
+                text = "刷新 CK"
+                setTextColor(Color.WHITE)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTypeface(typeface, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#14B8A6"))
+                    cornerRadius = ctx.dp(8).toFloat()
+                }
+                setPadding(ctx.dp(10), ctx.dp(8), ctx.dp(10), ctx.dp(8))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    ctx.dp(32)
+                ).apply { topMargin = ctx.dp(10) }
+                setOnClickListener { refreshWx(device, this) }
+            })
         }
     }
 
@@ -657,11 +1050,24 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     private fun addPillTab(label: String, active: Boolean, onClick: () -> Unit) {
         subTabRow.addView(TextView(requireContext()).apply {
-            text = label; setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            text = label
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             setTypeface(typeface, if (active) Typeface.BOLD else Typeface.NORMAL)
-            setTextColor(if (active) ContextCompat.getColor(context, R.color.brand_primary) else requireContext().themeColor(R.color.text_muted))
-            setPadding(context.dp(12), context.dp(6), context.dp(12), context.dp(6))
-            background = GradientDrawable().apply { setColor(if (active) Color.parseColor("#EFF6FF") else Color.TRANSPARENT); cornerRadius = context.dp(8).toFloat() }
+            setTextColor(
+                if (active) ContextCompat.getColor(context, R.color.brand_primary)
+                else requireContext().themeColor(R.color.text_muted)
+            )
+            gravity = Gravity.CENTER
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(context.dp(8), context.dp(8), context.dp(8), context.dp(8))
+            background = GradientDrawable().apply {
+                setColor(if (active) Color.parseColor("#EFF6FF") else Color.TRANSPARENT)
+                cornerRadius = context.dp(8).toFloat()
+            }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = context.dp(4)
+            }
             setOnClickListener { onClick() }
         })
     }

@@ -366,6 +366,103 @@ class PortalRepository(
         return apiClient.requestData(path = "/api/portal/jd/wx/continue-risk", method = "POST")
     }
 
+    suspend fun fetchYybStatus(autoCheck: Boolean = false): com.goudong.jd.data.model.PortalYybStatus {
+        val q = if (autoCheck) "?check=1" else ""
+        return apiClient.requestData("/api/portal/yyb/status$q")
+    }
+
+    suspend fun fetchYybAccounts(): List<com.goudong.jd.data.model.PortalYybAccount> {
+        val text = apiClient.requestText(path = "/api/portal/yyb/accounts")
+        return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.PortalYybAccount::class.java)
+    }
+
+    suspend fun createYybQr(): com.goudong.jd.data.model.PortalYybQrCreateResult {
+        return apiClient.requestData(path = "/api/portal/yyb/qr", method = "POST")
+    }
+
+    suspend fun pollYybQr(sessionId: String): com.goudong.jd.data.model.PortalYybQrPollResult {
+        return apiClient.requestData("/api/portal/yyb/qr/${apiClient.urlEncode(sessionId)}/poll")
+    }
+
+    suspend fun confirmYybQr(sessionId: String): com.goudong.jd.data.model.PortalYybConfirmResult {
+        return apiClient.requestData(
+            path = "/api/portal/yyb/qr/${apiClient.urlEncode(sessionId)}/confirm",
+            method = "POST",
+        )
+    }
+
+    suspend fun refreshYybAccount(ref: String): com.google.gson.JsonObject {
+        return apiClient.requestData(
+            path = "/api/portal/yyb/accounts/refresh",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("ref" to ref)),
+        )
+    }
+
+    suspend fun resyncYybAccount(ref: String): com.goudong.jd.data.model.PortalYybAccount {
+        return apiClient.requestData(
+            path = "/api/portal/yyb/accounts/resync",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("ref" to ref)),
+        )
+    }
+
+    suspend fun deleteYybAccount(ref: String): String {
+        return apiClient.requestMessage(
+            path = "/api/portal/yyb/accounts/delete",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("ref" to ref)),
+        )
+    }
+
+    suspend fun yybWxappGetCode(ref: String, appId: String): com.google.gson.JsonObject {
+        return apiClient.requestData(
+            path = "/api/portal/yyb/wxapp/getCode",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("ref" to ref, "appId" to appId)),
+        )
+    }
+
+    suspend fun yybWxappGetPhone(ref: String, appId: String): com.google.gson.JsonObject {
+        return apiClient.requestData(
+            path = "/api/portal/yyb/wxapp/getPhoneNumber",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("ref" to ref, "appId" to appId)),
+        )
+    }
+
+    suspend fun yybWxappOperate(ref: String, appId: String, payload: Map<String, Any?>): com.google.gson.JsonObject {
+        return apiClient.requestData(
+            path = "/api/portal/yyb/wxapp/operateWxData",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("ref" to ref, "appId" to appId, "payload" to payload)),
+        )
+    }
+
+    suspend fun fetchJdYybAccounts(): List<com.goudong.jd.data.model.PortalJdYybAccount> {
+        val text = apiClient.requestText(path = "/api/portal/jd/yyb/accounts")
+        return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.PortalJdYybAccount::class.java)
+    }
+
+    suspend fun refreshJdYyb(openid: String, riskConfirmed: Boolean = false): com.goudong.jd.data.model.PortalJdWxRefreshResult {
+        return apiClient.requestData(
+            path = "/api/portal/jd/yyb/refresh",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("openid" to openid, "riskConfirmed" to riskConfirmed)),
+        )
+    }
+
+    suspend fun continueJdYybRisk(): com.goudong.jd.data.model.PortalJdWxRefreshResult {
+        return apiClient.requestData(path = "/api/portal/jd/yyb/continue-risk", method = "POST")
+    }
+
     suspend fun executeJdTask(taskId: String, taskName: String, accountIndexes: List<Int>): com.goudong.jd.data.model.PortalJdTaskExecuteResult {
         return apiClient.requestData(
             path = "/api/portal/jd/task/execute",

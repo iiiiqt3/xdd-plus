@@ -70,6 +70,20 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private var contentScroll: android.widget.ScrollView? = null
     private val rushFragment = ProjectRushFragment()
     private val categories = listOf("全部", "现金类", "积分换实物", "抽奖类", "其他类")
+    /** 协议接入子页：0=微信协议，1=应用宝协议 */
+    private var protocolSubIndex = 0
+    private var yybAccounts: List<com.goudong.jd.data.model.PortalYybAccount> = emptyList()
+    private var yybSelectedKey: String = ""
+    private var yybPolling = false
+    private var yybSectionTitle: TextView? = null
+    private var yybServiceDot: View? = null
+    private var yybServiceLabel: TextView? = null
+    private var yybLoadingBar: ProgressBar? = null
+    private var yybManageRow: LinearLayout? = null
+    private var yybReloadBtn: Button? = null
+    private var yybServiceReady = false
+    private var yybCheckBusy = false
+    private var yybScanBusy = false
 
     // 缓存
     private var cachedActivities: List<PortalActivity>? = null
@@ -99,7 +113,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             addTab(newTab().setText("活动中心"))
             addTab(newTab().setText("我的项目"))
             addTab(newTab().setText("项目抢兑"))
-            addTab(newTab().setText("微信协议"))
+            addTab(newTab().setText("协议接入"))
             applyCompactTabs()
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
@@ -142,19 +156,20 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }
         wrapper.addView(searchBox)
 
-        // 分类筛选栏（仅活动中心tab可见，横向滚动避免最后一项被裁切）
+        // 分类筛选栏：等分屏幕宽度，避免末尾「其他类」被遮挡
         categoryChipRow = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-        }
-        categoryContainer = HorizontalScrollView(requireContext()).apply {
-            isHorizontalScrollBarEnabled = false
             setPadding(requireContext().dp(14), 0, requireContext().dp(14), requireContext().dp(8))
             visibility = View.GONE
-            addView(categoryChipRow)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
         }
+        categoryContainer = null
         renderCategoryChips()
-        wrapper.addView(categoryContainer)
+        wrapper.addView(categoryChipRow)
 
         val contentLp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
         swipeRefreshLayout.layoutParams = contentLp
@@ -202,12 +217,12 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         } else {
             swipeRefreshLayout.isRefreshing = false
         }
-        categoryContainer?.visibility = if (currentTab == 0) View.VISIBLE else View.GONE
+        categoryChipRow?.visibility = if (currentTab == 0) View.VISIBLE else View.GONE
         when (currentTab) {
             0 -> loadActivities(forceRefresh)
             1 -> loadProjects(forceRefresh)
             2 -> renderProjectRush()
-            3 -> renderWxProtocol()
+            3 -> renderProtocolAccess(forceRefresh)
         }
     }
 
@@ -242,20 +257,24 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         val container = categoryChipRow ?: return
         container.removeAllViews()
         val brandBlue = ContextCompat.getColor(requireContext(), R.color.brand_primary)
-        for (cat in categories) {
+        val gap = requireContext().dp(6)
+        categories.forEachIndexed { index, cat ->
             val isSelected = (cat == "全部" && selectedCategory == "") || cat == selectedCategory
             val chip = TextView(requireContext()).apply {
                 text = cat
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 setTypeface(typeface, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
                 setTextColor(if (isSelected) requireContext().themeColor(R.color.chip_active_text) else requireContext().themeColor(R.color.text_secondary))
                 background = GradientDrawable().apply {
                     setColor(if (isSelected) brandBlue else requireContext().themeColor(R.color.chip_bg))
                     cornerRadius = requireContext().dp(16).toFloat()
                 }
-                setPadding(requireContext().dp(14), requireContext().dp(6), requireContext().dp(14), requireContext().dp(6))
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                    marginEnd = requireContext().dp(8)
+                setPadding(requireContext().dp(4), requireContext().dp(7), requireContext().dp(4), requireContext().dp(7))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    if (index < categories.lastIndex) marginEnd = gap
                 }
                 setOnClickListener {
                     selectedCategory = if (cat == "全部") "" else cat
@@ -841,9 +860,514 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private var wxDevices: List<com.goudong.jd.data.model.PortalWxDevice> = emptyList()
     private val projectActionBusyKeys = mutableSetOf<String>()
 
-    private fun renderWxProtocol() {
+    private fun renderProtocolAccess(forceRefresh: Boolean) {
         contentRoot.removeAllViews()
+        val ctx = requireContext()
+        val pillRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = ctx.dp(10) }
+        }
+        listOf("微信协议", "应用宝协议").forEachIndexed { index, label ->
+            val active = protocolSubIndex == index
+            pillRow.addView(TextView(ctx).apply {
+                text = label
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setTypeface(typeface, if (active) Typeface.BOLD else Typeface.NORMAL)
+                setTextColor(
+                    if (active) ContextCompat.getColor(ctx, R.color.brand_primary)
+                    else ctx.themeColor(R.color.text_muted)
+                )
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    setColor(if (active) Color.parseColor("#EFF6FF") else Color.TRANSPARENT)
+                    cornerRadius = ctx.dp(8).toFloat()
+                }
+                setPadding(ctx.dp(14), ctx.dp(8), ctx.dp(14), ctx.dp(8))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    if (index == 0) marginEnd = ctx.dp(6)
+                }
+                setOnClickListener {
+                    if (protocolSubIndex == index) return@setOnClickListener
+                    protocolSubIndex = index
+                    renderProtocolAccess(forceRefresh = true)
+                }
+            })
+        }
+        contentRoot.addView(pillRow)
+        if (protocolSubIndex == 0) {
+            renderWxProtocol()
+        } else {
+            renderYybProtocol(forceRefresh)
+        }
+    }
 
+    private fun yybAccountKey(acc: com.goudong.jd.data.model.PortalYybAccount): String {
+        return if (acc.bindingId > 0) acc.bindingId.toString() else (acc.openid ?: "")
+    }
+
+    private fun yybAccountRef(acc: com.goudong.jd.data.model.PortalYybAccount): String = yybAccountKey(acc)
+
+    private fun renderYybProtocol(forceRefresh: Boolean) {
+        val ctx = requireContext()
+
+        val actionRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, ctx.dp(10))
+        }
+        actionRow.addView(ctx.primaryButton("扫码添加").apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = ctx.dp(6)
+            }
+            setOnClickListener { startYybScan() }
+        })
+        yybReloadBtn = Button(ctx).apply {
+            text = "刷新检测"
+            setAllCaps(false)
+            setTextColor(ctx.themeColor(R.color.text_primary))
+            background = GradientDrawable().apply {
+                setColor(ctx.themeColor(R.color.chip_bg))
+                cornerRadius = ctx.dp(10).toFloat()
+            }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener { loadYybPanel(autoCheck = true, showAlert = true) }
+        }.also { actionRow.addView(it) }
+        contentRoot.addView(actionRow)
+
+        val sectionRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(ctx.dp(2), 0, ctx.dp(2), ctx.dp(8))
+        }
+        yybSectionTitle = TextView(ctx).apply {
+            text = "账号列表 · 0"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(ctx.themeColor(R.color.text_secondary))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }.also { sectionRow.addView(it) }
+        yybLoadingBar = ProgressBar(ctx).apply {
+            isIndeterminate = true
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(ctx.dp(14), ctx.dp(14)).apply {
+                marginEnd = ctx.dp(6)
+            }
+        }.also { sectionRow.addView(it) }
+        yybServiceDot = View(ctx).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#CBD5E1"))
+            }
+            layoutParams = LinearLayout.LayoutParams(ctx.dp(7), ctx.dp(7)).apply {
+                marginEnd = ctx.dp(6)
+            }
+        }.also { sectionRow.addView(it) }
+        yybServiceLabel = TextView(ctx).apply {
+            text = "待机"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setTextColor(ctx.themeColor(R.color.text_muted))
+        }.also { sectionRow.addView(it) }
+        contentRoot.addView(sectionRow)
+
+        contentRoot.addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            tag = "yyb_account_list"
+        })
+
+        yybManageRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+            setPadding(0, ctx.dp(10), 0, 0)
+        }.also { contentRoot.addView(it) }
+        fun manageBtn(label: String, danger: Boolean = false, onClick: () -> Unit): View {
+            return TextView(ctx).apply {
+                text = label
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(if (danger) Color.parseColor("#DC2626") else ctx.themeColor(R.color.text_primary))
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    setColor(
+                        if (danger) Color.parseColor("#FEE2E2")
+                        else ctx.themeColor(R.color.chip_bg)
+                    )
+                    cornerRadius = ctx.dp(8).toFloat()
+                }
+                setPadding(ctx.dp(10), ctx.dp(10), ctx.dp(10), ctx.dp(10))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginEnd = if (danger) 0 else ctx.dp(6)
+                }
+                setOnClickListener { onClick() }
+            }
+        }
+        yybManageRow?.addView(manageBtn("刷新") { refreshSelectedYyb() })
+        yybManageRow?.addView(manageBtn("同步") { resyncSelectedYyb() })
+        yybManageRow?.addView(manageBtn("删除", danger = true) { deleteSelectedYyb() })
+
+        updateYybActionEnabled()
+        if (forceRefresh || yybAccounts.isEmpty()) {
+            loadYybPanel(autoCheck = true, showAlert = false)
+        } else {
+            applyYybHeader(yybServiceReady, if (yybServiceReady) "正常" else "不可用", yybAccounts.size)
+            renderYybAccounts()
+        }
+    }
+
+    private fun selectedYybAccount(): com.goudong.jd.data.model.PortalYybAccount? {
+        return yybAccounts.firstOrNull { yybAccountKey(it) == yybSelectedKey }
+    }
+
+    private fun updateYybActionEnabled() {
+        val busy = yybCheckBusy || yybScanBusy
+        yybReloadBtn?.isEnabled = !busy
+        yybReloadBtn?.alpha = if (busy) 0.5f else 1f
+        yybReloadBtn?.text = if (yybCheckBusy) "检测中…" else "刷新检测"
+        yybLoadingBar?.visibility = if (yybCheckBusy) View.VISIBLE else View.GONE
+    }
+
+    private fun applyYybHeader(ready: Boolean, title: String, count: Int) {
+        yybServiceReady = ready
+        yybSectionTitle?.text = "账号列表 · $count"
+        (yybServiceDot?.background as? GradientDrawable)?.setColor(
+            if (ready) Color.parseColor("#22C55E") else Color.parseColor("#F59E0B")
+        )
+        yybServiceLabel?.apply {
+            text = title
+            setTextColor(
+                if (ready) requireContext().themeColor(R.color.text_muted)
+                else Color.parseColor("#F59E0B")
+            )
+        }
+    }
+
+    private fun loadYybPanel(autoCheck: Boolean, showAlert: Boolean = autoCheck) {
+        yybCheckBusy = true
+        updateYybActionEnabled()
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.fetchYybStatus(autoCheck) }
+                .onSuccess { st ->
+                    val ready = st.enabled && st.ready
+                    val title = when {
+                        !ready -> st.message?.takeIf { it.isNotBlank() } ?: "不可用"
+                        else -> "正常"
+                    }
+                    yybAccounts = if (ready) st.accounts.orEmpty() else emptyList()
+                    if (yybAccounts.none { yybAccountKey(it) == yybSelectedKey }) {
+                        yybSelectedKey = yybAccounts.firstOrNull()?.let { yybAccountKey(it) }.orEmpty()
+                    }
+                    applyYybHeader(ready, title, yybAccounts.size)
+                    renderYybAccounts()
+                    if (!ready) {
+                        if (showAlert) toast(st.message ?: "应用宝服务暂不可用")
+                    } else if (showAlert && autoCheck) {
+                        val summary = st.checkSummary
+                        if (summary != null && summary.total > 0) {
+                            var msg = "检测完成：共 ${summary.total} 个，可用 ${summary.alive} 个"
+                            if (summary.dead > 0) msg += "，失效 ${summary.dead} 个"
+                            if (summary.failed > 0) msg += "，失败 ${summary.failed} 个"
+                            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                                .setTitle("检测完成")
+                                .setMessage(msg)
+                                .setPositiveButton("好的", null)
+                                .show()
+                        }
+                    }
+                }
+                .onFailure {
+                    applyYybHeader(false, "加载失败", yybAccounts.size)
+                    handlePortalError(it)
+                    renderYybAccounts(it.message)
+                }
+            yybCheckBusy = false
+            updateYybActionEnabled()
+        }
+    }
+
+    private fun renderYybAccounts(error: String? = null) {
+        val host = contentRoot.findViewWithTag<LinearLayout>("yyb_account_list") ?: return
+        host.removeAllViews()
+        val ctx = requireContext()
+        yybManageRow?.visibility = if (selectedYybAccount() != null && error == null && yybAccounts.isNotEmpty()) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+        when {
+            error != null -> host.addView(emptyCard(error))
+            yybAccounts.isEmpty() -> host.addView(
+                emptyCard(if (yybCheckBusy) "正在同步账号…" else "暂无账号，点击上方「扫码添加」")
+            )
+            else -> {
+                val grid = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+                val left = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    setPadding(0, 0, ctx.dp(5), 0)
+                }
+                val right = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    setPadding(ctx.dp(5), 0, 0, 0)
+                }
+                grid.addView(left)
+                grid.addView(right)
+                yybAccounts.forEachIndexed { index, acc ->
+                    val card = buildYybProtocolCard(acc)
+                    if (index % 2 == 0) left.addView(card) else right.addView(card)
+                }
+                host.addView(grid)
+            }
+        }
+    }
+
+    private fun buildYybProtocolCard(acc: com.goudong.jd.data.model.PortalYybAccount): View {
+        val ctx = requireContext()
+        val key = yybAccountKey(acc)
+        val selected = key == yybSelectedKey
+        val st = (acc.status ?: "").lowercase()
+        val alive = st == "alive" || st == "online"
+        val name = acc.nickname?.trim()?.takeIf { it.isNotEmpty() }
+            ?: acc.openid?.trim()?.takeIf { it.isNotEmpty() }
+            ?: "未命名"
+        return ctx.cardView().apply {
+            setPadding(ctx.dp(12), ctx.dp(12), ctx.dp(12), ctx.dp(12))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = ctx.dp(10) }
+            if (selected) {
+                background = GradientDrawable().apply {
+                    setColor(ctx.themeColor(R.color.surface_card))
+                    cornerRadius = ctx.dp(14).toFloat()
+                    setStroke(ctx.dp(2), Color.parseColor("#3B82F6"))
+                }
+            }
+            addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(ctx).apply {
+                    text = name
+                    setTextColor(ctx.themeColor(R.color.text_primary))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    setTypeface(typeface, Typeface.BOLD)
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        marginEnd = ctx.dp(6)
+                    }
+                })
+                addView(TextView(ctx).apply {
+                    text = if (alive) "可用" else "失效"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(if (alive) Color.parseColor("#16A34A") else Color.parseColor("#DC2626"))
+                    background = GradientDrawable().apply {
+                        setColor(if (alive) Color.parseColor("#DCFCE7") else Color.parseColor("#FEE2E2"))
+                        cornerRadius = ctx.dp(6).toFloat()
+                    }
+                    setPadding(ctx.dp(8), ctx.dp(3), ctx.dp(8), ctx.dp(3))
+                })
+            })
+            val uinText = if ((acc.uin ?: 0L) > 0) acc.uin.toString() else "-"
+            addView(ctx.captionText("UIN $uinText").apply {
+                setPadding(0, ctx.dp(6), 0, 0)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            })
+            addView(ctx.captionText(acc.openid ?: "").apply {
+                setPadding(0, ctx.dp(2), 0, 0)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
+                setTextColor(ctx.themeColor(R.color.text_muted))
+            })
+            setOnClickListener {
+                yybSelectedKey = key
+                renderYybAccounts()
+            }
+        }
+    }
+
+    private fun startYybScan() {
+        if (yybScanBusy || yybCheckBusy) return
+        yybScanBusy = true
+        updateYybActionEnabled()
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.createYybQr() }
+                .onSuccess { data ->
+                    val sessionId = data.sessionId
+                    if (sessionId.isNullOrBlank() || data.imageBase64.isNullOrBlank()) {
+                        toast(data.scanCostHint ?: "二维码生成失败")
+                        return@onSuccess
+                    }
+                    showYybQrDialog(
+                        sessionId,
+                        data.imageBase64,
+                        cost = data.scanLoginCost,
+                        hint = data.scanCostHint
+                    )
+                }
+                .onFailure {
+                    toast(it.message ?: "扫码失败")
+                    handlePortalError(it)
+                }
+            yybScanBusy = false
+            updateYybActionEnabled()
+        }
+    }
+
+    private fun yybScanCostNote(cost: Int?, hint: String?): String? {
+        val c = cost ?: return hint?.trim()?.takeIf { it.isNotEmpty() }
+        return when {
+            c > 0 -> "本次扫码将扣除 $c 积分（确认登录后扣除）"
+            else -> "本次扫码免费，不扣除积分"
+        }
+    }
+
+    private fun showYybQrDialog(sessionId: String, base64: String, cost: Int?, hint: String?) {
+        yybPolling = true
+        val ctx = requireContext()
+        val dialogView = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(ctx.dp(24), ctx.dp(24), ctx.dp(24), ctx.dp(24))
+        }
+        val qrImage = android.widget.ImageView(ctx).apply {
+            layoutParams = LinearLayout.LayoutParams(ctx.dp(220), ctx.dp(220))
+            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+        }
+        decodeQrImage(base64)?.let { qrImage.setImageBitmap(it) }
+        dialogView.addView(qrImage)
+
+        yybScanCostNote(cost, hint)?.let { note ->
+            dialogView.addView(TextView(ctx).apply {
+                text = note
+                setTextColor(Color.parseColor("#D97706"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setTypeface(typeface, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(0, ctx.dp(12), 0, 0)
+            })
+        }
+
+        val stateText = ctx.captionText("请使用微信扫码确认登录").apply {
+            gravity = Gravity.CENTER
+            setPadding(0, ctx.dp(10), 0, 0)
+        }
+        dialogView.addView(stateText)
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(ctx)
+            .setTitle("应用宝扫码")
+            .setView(dialogView)
+            .setNegativeButton("关闭") { _, _ -> yybPolling = false }
+            .create()
+        dialog.setOnDismissListener { yybPolling = false }
+        dialog.show()
+        lifecycleScope.launch {
+            while (yybPolling) {
+                kotlinx.coroutines.delay(800)
+                if (!yybPolling) break
+                val poll = runCatching { AppServices.portalRepository.pollYybQr(sessionId) }
+                if (poll.isFailure) {
+                    val msg = poll.exceptionOrNull()?.message.orEmpty()
+                    if (msg.contains("deadline", true) || msg.contains("timeout", true)) {
+                        stateText.text = "等待扫码中（网络较慢）…"
+                        continue
+                    }
+                    yybPolling = false
+                    stateText.text = msg.ifBlank { "登录失败" }
+                    toast(msg.ifBlank { "扫码确认失败" })
+                    break
+                }
+                val status = (poll.getOrNull()?.status ?: "").lowercase()
+                when (status) {
+                    "scanned" -> stateText.text = "已扫码，请在手机上点击「确认登录」"
+                    "authorized", "confirmed" -> {
+                        yybPolling = false
+                        stateText.text = "正在完成绑定…"
+                        runCatching { AppServices.portalRepository.confirmYybQr(sessionId) }
+                            .onSuccess { result ->
+                                dialog.dismiss()
+                                val msg = when {
+                                    result.alreadyBound -> "扫码成功，账号已绑定"
+                                    result.cost > 0 -> "扫码成功，已扣除 ${result.cost} 积分"
+                                    else -> "扫码成功，账号已绑定"
+                                }
+                                toast(msg)
+                                loadYybPanel(autoCheck = true, showAlert = true)
+                            }
+                            .onFailure {
+                                dialog.dismiss()
+                                toast(it.message ?: "确认失败")
+                                handlePortalError(it)
+                            }
+                    }
+                    "expired", "cancelled", "unknown" -> {
+                        yybPolling = false
+                        stateText.text = if (status == "expired") "二维码已过期，请重新生成" else "扫码已取消"
+                    }
+                }
+            }
+        }
+    }
+
+    private fun refreshSelectedYyb() {
+        val acc = selectedYybAccount() ?: return toast("请先选择一个账号")
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.refreshYybAccount(yybAccountRef(acc)) }
+                .onSuccess {
+                    toast("存活状态已刷新")
+                    loadYybPanel(autoCheck = false, showAlert = false)
+                }
+                .onFailure {
+                    toast(it.message ?: "刷新失败")
+                    handlePortalError(it)
+                }
+        }
+    }
+
+    private fun resyncSelectedYyb() {
+        val acc = selectedYybAccount() ?: return toast("请先选择一个账号")
+        lifecycleScope.launch {
+            runCatching { AppServices.portalRepository.resyncYybAccount(yybAccountRef(acc)) }
+                .onSuccess {
+                    toast("同步完成：${it.nickname ?: it.openid ?: ""}")
+                    loadYybPanel(autoCheck = false, showAlert = false)
+                }
+                .onFailure {
+                    toast(it.message ?: "同步失败")
+                    handlePortalError(it)
+                }
+        }
+    }
+
+    private fun deleteSelectedYyb() {
+        val acc = selectedYybAccount() ?: return toast("请先选择一个账号")
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("删除账号")
+            .setMessage("确定删除该应用宝账号？")
+            .setNegativeButton("取消", null)
+            .setPositiveButton("删除") { _, _ ->
+                lifecycleScope.launch {
+                    runCatching { AppServices.portalRepository.deleteYybAccount(yybAccountRef(acc)) }
+                        .onSuccess {
+                            toast(it)
+                            yybSelectedKey = ""
+                            loadYybPanel(autoCheck = false, showAlert = false)
+                        }
+                        .onFailure {
+                            toast(it.message ?: "删除失败")
+                            handlePortalError(it)
+                        }
+                }
+            }
+            .show()
+    }
+
+    private fun renderWxProtocol() {
         contentRoot.addView(requireContext().cardView().apply {
             val titleRow = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL

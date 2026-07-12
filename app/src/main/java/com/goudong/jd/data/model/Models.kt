@@ -235,6 +235,7 @@ data class PortalJdWxDevice(
     val nickname: String? = null,
     val device: String? = null,
     val serverType: String? = null,
+    val jdNickname: String? = null,
 )
 
 data class PortalJdWxRefreshResult(
@@ -244,6 +245,63 @@ data class PortalJdWxRefreshResult(
     val needRiskVerify: Boolean = false,
     val riskUrl: String? = null,
     val riskMsg: String? = null,
+)
+
+data class PortalYybAccount(
+    val bindingId: Long = 0,
+    val yybAccountId: Long = 0,
+    val openid: String? = null,
+    val uin: Long? = null,
+    val nickname: String? = null,
+    val avatarUrl: String? = null,
+    val status: String? = null,
+    val lastCheckedAt: Long? = null,
+    val createdAt: Long = 0,
+)
+
+data class PortalYybCheckSummary(
+    val total: Int = 0,
+    val alive: Int = 0,
+    val dead: Int = 0,
+    val failed: Int = 0,
+)
+
+data class PortalYybStatus(
+    val enabled: Boolean = false,
+    val ready: Boolean = false,
+    val message: String? = null,
+    val coin: Int? = null,
+    val scanLoginCost: Int? = null,
+    val maxAccounts: Int? = null,
+    val accounts: List<PortalYybAccount>? = null,
+    val checkSummary: PortalYybCheckSummary? = null,
+)
+
+data class PortalYybQrCreateResult(
+    val sessionId: String? = null,
+    val status: String? = null,
+    val imageBase64: String? = null,
+    val scanLoginCost: Int? = null,
+    val scanCostHint: String? = null,
+)
+
+data class PortalYybQrPollResult(
+    val status: String? = null,
+    val message: String? = null,
+)
+
+data class PortalYybConfirmResult(
+    val account: PortalYybAccount? = null,
+    val cost: Int = 0,
+    val alreadyBound: Boolean = false,
+)
+
+data class PortalJdYybAccount(
+    val index: Int = 0,
+    val openid: String? = null,
+    val nickname: String? = null,
+    val status: String? = null,
+    val jdNickname: String? = null,
 )
 
 data class PortalJdTaskExecuteResult(
