@@ -27,8 +27,7 @@ func (c *AdminApiController) NextPrepare() {
 
 // GetJdManualTasks 获取手动京东任务配置
 func (c *AdminApiController) GetJdManualTasks() {
-	data := models.GetJdManualTasksAdmin()
-	c.Data["json"] = map[string]interface{}{"code": 0, "data": data}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": models.GetJdManualTasksAdminView()}
 	c.ServeJSON()
 }
 
@@ -49,7 +48,7 @@ func (c *AdminApiController) SaveJdManualTasks() {
 		return
 	}
 	models.Admin().Infof("手动京东任务配置已保存，共 %d 条", len(req.Tasks))
-	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "保存成功", "data": models.GetJdManualTasksAdmin()}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "保存成功", "data": models.GetJdManualTasksAdminView()}
 	c.ServeJSON()
 }
 
@@ -61,7 +60,11 @@ func (c *AdminApiController) ScanJdManualTasks() {
 		c.ServeJSON()
 		return
 	}
-	c.Data["json"] = map[string]interface{}{"code": 0, "msg": fmt.Sprintf("扫描完成，共 %d 个任务", len(data.Tasks)), "data": data}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  fmt.Sprintf("扫描完成，共 %d 个任务", len(data.Tasks)),
+		"data": models.GetJdManualTasksAdminView(),
+	}
 	c.ServeJSON()
 }
 

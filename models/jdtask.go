@@ -39,7 +39,7 @@ type JdManualTaskItem struct {
 	Enabled bool              `yaml:"enabled" json:"enabled"`
 	Order   int               `yaml:"order" json:"order"`
 	Coin    int               `yaml:"coin" json:"coin"`
-	Envs    map[string]string `yaml:"envs,omitempty" json:"envs,omitempty"`
+	Envs    map[string]string `yaml:"envs" json:"envs"`
 }
 
 // JdManualProxyConfig 手动京东任务专用代理
@@ -182,11 +182,16 @@ func (r *jdManualRegistry) rebuildIndexLocked() {
 
 func saveJdManualTasksFileUnlocked(f JdManualTasksFile) error {
 	_ = os.MkdirAll(filepath.Dir(jdManualConfigPath()), 0755)
+	for i := range f.Tasks {
+		if f.Tasks[i].Envs == nil {
+			f.Tasks[i].Envs = map[string]string{}
+		}
+	}
 	data, err := yaml.Marshal(&f)
 	if err != nil {
 		return err
 	}
-	header := []byte("# 手动京东任务配置（扫描自动维护 tasks，可在后台修改 name/enabled/order/coin/envs/proxy）\n")
+	header := []byte("# 手动京东任务配置（扫描自动维护 tasks，可在后台修改 name/enabled/order/coin/envs/proxy）\n# 文件路径: " + jdManualConfigPath() + "\n")
 	return ioutil.WriteFile(jdManualConfigPath(), append(header, data...), 0644)
 }
 
@@ -344,6 +349,19 @@ func GetJdManualTasksAdmin() JdManualTasksFile {
 	jdManualTasks.mu.RLock()
 	defer jdManualTasks.mu.RUnlock()
 	return cloneJdManualTasksFile(jdManualTasks.file)
+}
+
+// GetJdManualTasksAdminView 后台接口视图（含配置路径，便于核对 yaml）
+func GetJdManualTasksAdminView() map[string]interface{} {
+	f := GetJdManualTasksAdmin()
+	return map[string]interface{}{
+		"scan":       f.Scan,
+		"proxy":      f.Proxy,
+		"tasks":      f.Tasks,
+		"configPath": jdManualConfigPath(),
+		"scriptDir":  jdManualScriptDir(),
+		"logDir":     jdManualLogDir(),
+	}
 }
 
 func cloneJdManualTasksFile(src JdManualTasksFile) JdManualTasksFile {

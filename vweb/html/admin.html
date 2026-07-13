@@ -1777,39 +1777,77 @@
         <!-- ========= 手动京东任务 ========= -->
         <div id="page-jdmanualtasks" class="page-section">
             <div class="card" style="margin-bottom:16px;">
-                <div class="config-section-title"><i class="fas fa-network-wired"></i> 手动任务代理 <span class="tag tag-info" style="font-size:11px;">开且填写则优先用此处；否则用系统设置京东代理</span></div>
-                <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:8px 0 4px;">
-                    <div class="form-item"><label>启用代理</label>
-                        <select id="jdmt_proxyEnabled"><option value="false">关闭</option><option value="true">开启</option></select>
+                <div class="toolbar" style="margin-bottom:0;">
+                    <div style="font-size:13px;color:#606266;line-height:1.7;">
+                        <div><i class="fas fa-folder-open" style="color:#409eff;margin-right:4px;"></i>脚本目录：<code id="jdmt_scriptDir">scripts/自定义执行京东脚本/6dylan6_jdpro</code></div>
+                        <div style="margin-top:4px;"><i class="fas fa-file-alt" style="color:#409eff;margin-right:4px;"></i>配置文件：<code id="jdmt_configPath">conf/jd_manual_tasks.yaml</code>（运行目录下，不是 activities.yaml）</div>
                     </div>
-                    <div class="form-item full" style="grid-column:1/-1;"><label>代理 API 地址</label>
-                        <input type="text" id="jdmt_proxyUrl" placeholder="留空则回退系统京东代理">
-                    </div>
-                    <div class="form-item"><label>取 IP 失败重试</label><input type="number" id="jdmt_proxyRenum" value="10" min="1"></div>
-                    <div class="form-item"><label>重试间隔(秒)</label><input type="number" id="jdmt_proxyRedelay" value="2" min="1"></div>
-                </div>
-            </div>
-            <div class="card">
-                <div class="toolbar">
-                    <div style="font-size:13px;color:#666;">扫描目录：<code>scripts/自定义执行京东脚本/6dylan6_jdpro</code>（仅顶层 jd_*.js，新脚本默认禁用）</div>
                     <div class="toolbar-actions">
                         <button class="btn btn-info btn-sm" onclick="scanJdManualTasks()"><i class="fas fa-search"></i> 重新扫描</button>
-                        <button class="btn btn-primary btn-sm" onclick="saveJdManualTasks()"><i class="fas fa-save"></i> 保存</button>
+                        <button class="btn btn-primary btn-sm" onclick="saveJdManualTasks()"><i class="fas fa-save"></i> 保存全部</button>
                     </div>
                 </div>
+            </div>
+
+            <div class="card" style="margin-bottom:16px;">
+                <div class="config-section" style="margin-bottom:0;">
+                    <div class="config-section-title"><i class="fas fa-network-wired"></i> 手动任务代理 <span class="tag tag-info" style="font-size:11px;">开且填写 → 用此处；否则回退系统设置「京东代理」</span></div>
+                    <div class="form-grid">
+                        <div class="form-item"><label>启用代理</label>
+                            <select id="jdmt_proxyEnabled"><option value="false">关闭</option><option value="true">开启</option></select>
+                        </div>
+                        <div class="form-item"><label>取 IP 失败重试</label><input type="number" id="jdmt_proxyRenum" value="10" min="1"></div>
+                        <div class="form-item"><label>重试间隔 (秒)</label><input type="number" id="jdmt_proxyRedelay" value="2" min="1"></div>
+                        <div class="form-item full"><label>代理 API 地址 <span class="tip">留空则回退系统京东代理</span></label>
+                            <input type="text" id="jdmt_proxyUrl" placeholder="http://api.xiequ.cn/VAD/GetIp.aspx?...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="margin-bottom:12px;"><i class="fas fa-list"></i> 任务列表 <span style="font-size:12px;font-weight:400;color:#909399;margin-left:6px;">新脚本默认禁用；环境变量点「编辑」配置</span></div>
                 <div class="table-wrap">
                     <table class="data-table" id="jdManualTaskTable">
                         <thead><tr>
-                            <th style="min-width:50px;">排序</th>
-                            <th style="min-width:100px;">ID</th>
-                            <th style="min-width:160px;">脚本</th>
+                            <th style="min-width:70px;">排序</th>
+                            <th style="min-width:120px;">任务 ID</th>
+                            <th style="min-width:180px;">脚本</th>
                             <th style="min-width:140px;">显示名</th>
-                            <th style="min-width:70px;">启用</th>
-                            <th style="min-width:80px;">扣积分</th>
-                            <th style="min-width:200px;">环境变量</th>
+                            <th style="min-width:80px;">启用</th>
+                            <th style="min-width:90px;">扣积分/账号</th>
+                            <th style="min-width:100px;">环境变量</th>
+                            <th style="min-width:90px;" class="col-action-sticky">操作</th>
                         </tr></thead>
-                        <tbody id="jdManualTaskBody"><tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">加载中...</td></tr></tbody>
+                        <tbody id="jdManualTaskBody"><tr><td colspan="8" style="text-align:center;color:#999;padding:40px;">加载中...</td></tr></tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="jdManualTaskEditModal">
+            <div class="modal" style="max-width:640px;">
+                <div class="modal-header"><h3>编辑手动京东任务</h3><span class="modal-close" onclick="closeJdManualTaskEdit()">&times;</span></div>
+                <div style="margin-bottom:8px;">
+                    <input type="hidden" id="jdmtEditId">
+                    <input type="hidden" id="jdmtEditScript">
+                    <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+                        <div class="form-item"><label>任务 ID</label><input type="text" id="jdmtEditIdView" disabled></div>
+                        <div class="form-item"><label>脚本文件</label><input type="text" id="jdmtEditScriptView" disabled></div>
+                        <div class="form-item full"><label>显示名</label><input type="text" id="jdmtEditName" placeholder="前端展示名称"></div>
+                        <div class="form-item"><label>排序</label><input type="number" id="jdmtEditOrder" value="0"></div>
+                        <div class="form-item"><label>扣积分（每账号）</label><input type="number" id="jdmtEditCoin" min="0" value="0"></div>
+                        <div class="form-item"><label>启用状态</label>
+                            <select id="jdmtEditEnabled"><option value="true">启用</option><option value="false">禁用</option></select>
+                        </div>
+                        <div class="form-item full"><label>环境变量 <span class="tip">每行一个 KEY=VALUE，写入 conf/jd_manual_tasks.yaml 的 envs</span></label>
+                            <textarea id="jdmtEditEnvs" rows="8" placeholder="ONEVAL=true&#10;FRUIT_NEW_DELAY=8"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-info" onclick="closeJdManualTaskEdit()">取消</button>
+                    <button class="btn btn-primary" onclick="applyJdManualTaskEdit()"><i class="fas fa-check"></i> 应用并保存</button>
                 </div>
             </div>
         </div>
@@ -8428,13 +8466,40 @@ async function cleanupLogs() {
 }
 
 // ============ 手动京东任务 ============
-var _jdManualTasksCache = { proxy: {}, tasks: [] };
+var _jdManualTasksCache = { proxy: {}, tasks: [], configPath: '', scriptDir: '', logDir: '' };
+
+function parseJdmtEnvsText(text) {
+    var envs = {};
+    String(text || '').split(/\n+/).forEach(function(line) {
+        line = String(line || '').trim();
+        if (!line || line.indexOf('=') < 0) return;
+        var i = line.indexOf('=');
+        var k = line.slice(0, i).trim();
+        var v = line.slice(i + 1).trim();
+        if (k) envs[k] = v;
+    });
+    return envs;
+}
+
+function formatJdmtEnvsText(envs) {
+    if (!envs || typeof envs !== 'object') return '';
+    return Object.keys(envs).map(function(k) { return k + '=' + envs[k]; }).join('\n');
+}
+
+function countJdmtEnvs(envs) {
+    if (!envs || typeof envs !== 'object') return 0;
+    return Object.keys(envs).length;
+}
 
 async function loadJdManualTasks() {
     try {
         var res = await api.get('/api/admin/jd-manual-tasks');
         if (res.code !== 0) { toast(res.msg || '加载失败', 'error'); return; }
         _jdManualTasksCache = res.data || { proxy: {}, tasks: [] };
+        if (!_jdManualTasksCache.tasks) _jdManualTasksCache.tasks = [];
+        _jdManualTasksCache.tasks.forEach(function(t) {
+            if (!t.envs || typeof t.envs !== 'object') t.envs = {};
+        });
         renderJdManualTasks();
     } catch (e) {
         toast('加载失败: ' + e.message, 'error');
@@ -8452,76 +8517,109 @@ function renderJdManualTasks() {
     if (renum) renum.value = proxy.renum || '10';
     if (redelay) redelay.value = proxy.redelay || '2';
 
+    var pathEl = document.getElementById('jdmt_configPath');
+    var dirEl = document.getElementById('jdmt_scriptDir');
+    if (pathEl) pathEl.textContent = _jdManualTasksCache.configPath || 'conf/jd_manual_tasks.yaml';
+    if (dirEl) dirEl.textContent = _jdManualTasksCache.scriptDir || 'scripts/自定义执行京东脚本/6dylan6_jdpro';
+
     var tbody = document.getElementById('jdManualTaskBody');
     if (!tbody) return;
     var tasks = (_jdManualTasksCache.tasks || []).slice().sort(function(a, b) {
         return (a.order || 0) - (b.order || 0) || String(a.id).localeCompare(String(b.id));
     });
+    _jdManualTasksCache.tasks = tasks;
     if (!tasks.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">暂无任务，请放入脚本后点「重新扫描」</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:40px;">暂无任务，请将 jd_*.js 放入脚本目录后点「重新扫描」</td></tr>';
         return;
     }
     tbody.innerHTML = tasks.map(function(t, idx) {
-        var envsText = '';
-        if (t.envs && typeof t.envs === 'object') {
-            envsText = Object.keys(t.envs).map(function(k) { return k + '=' + t.envs[k]; }).join('\n');
-        }
+        var envCount = countJdmtEnvs(t.envs);
+        var enabledTag = t.enabled
+            ? '<span class="tag tag-success">启用</span>'
+            : '<span class="tag tag-info">禁用</span>';
         return '<tr data-idx="' + idx + '">' +
-            '<td><input type="number" class="jdmt-order" value="' + (t.order || 0) + '" style="width:70px;"></td>' +
-            '<td><code>' + escapeHtml(t.id || '') + '</code><input type="hidden" class="jdmt-id" value="' + escapeHtml(t.id || '') + '"><input type="hidden" class="jdmt-script" value="' + escapeHtml(t.script || '') + '"></td>' +
-            '<td style="font-size:12px;">' + escapeHtml(t.script || '') + '</td>' +
-            '<td><input type="text" class="jdmt-name" value="' + escapeHtml(t.name || '') + '" style="width:100%;min-width:120px;"></td>' +
-            '<td><select class="jdmt-enabled"><option value="true"' + (t.enabled ? ' selected' : '') + '>启用</option><option value="false"' + (!t.enabled ? ' selected' : '') + '>禁用</option></select></td>' +
-            '<td><input type="number" class="jdmt-coin" value="' + (t.coin || 0) + '" min="0" style="width:80px;"></td>' +
-            '<td><textarea class="jdmt-envs" rows="2" placeholder="KEY=VALUE 每行一个" style="width:100%;min-width:180px;font-size:12px;">' + escapeHtml(envsText) + '</textarea></td>' +
+            '<td>' + (t.order || 0) + '</td>' +
+            '<td><code>' + escapeHtml(t.id || '') + '</code></td>' +
+            '<td style="font-size:12px;color:#606266;">' + escapeHtml(t.script || '') + '</td>' +
+            '<td>' + escapeHtml(t.name || t.id || '') + '</td>' +
+            '<td>' + enabledTag + '</td>' +
+            '<td>' + (t.coin || 0) + '</td>' +
+            '<td>' + (envCount > 0 ? ('<span class="tag tag-info">' + envCount + ' 项</span>') : '<span style="color:#c0c4cc;">未配置</span>') + '</td>' +
+            '<td class="col-action-sticky"><button class="btn btn-primary btn-xs" onclick="openJdManualTaskEdit(' + idx + ')"><i class="fas fa-edit"></i> 编辑</button></td>' +
             '</tr>';
     }).join('');
 }
 
-function collectJdManualTasksFromTable() {
-    var rows = document.querySelectorAll('#jdManualTaskBody tr[data-idx]');
-    var tasks = [];
-    rows.forEach(function(row) {
-        var id = (row.querySelector('.jdmt-id') || {}).value || '';
-        var script = (row.querySelector('.jdmt-script') || {}).value || '';
-        if (!id || !script) return;
-        var envs = {};
-        var raw = ((row.querySelector('.jdmt-envs') || {}).value || '').split(/\n+/);
-        raw.forEach(function(line) {
-            line = line.trim();
-            if (!line || line.indexOf('=') < 0) return;
-            var i = line.indexOf('=');
-            var k = line.slice(0, i).trim();
-            var v = line.slice(i + 1).trim();
-            if (k) envs[k] = v;
-        });
-        tasks.push({
-            id: id,
-            script: script,
-            name: ((row.querySelector('.jdmt-name') || {}).value || '').trim() || id,
-            enabled: ((row.querySelector('.jdmt-enabled') || {}).value === 'true'),
-            order: parseInt(((row.querySelector('.jdmt-order') || {}).value || '0'), 10) || 0,
-            coin: parseInt(((row.querySelector('.jdmt-coin') || {}).value || '0'), 10) || 0,
-            envs: envs
-        });
-    });
-    return tasks;
-}
-
-async function saveJdManualTasks() {
-    var proxy = {
+function collectJdManualProxyFromForm() {
+    return {
         enabled: ((document.getElementById('jdmt_proxyEnabled') || {}).value === 'true'),
         url: ((document.getElementById('jdmt_proxyUrl') || {}).value || '').trim(),
         renum: String((document.getElementById('jdmt_proxyRenum') || {}).value || '10'),
         redelay: String((document.getElementById('jdmt_proxyRedelay') || {}).value || '2')
     };
-    var tasks = collectJdManualTasksFromTable();
+}
+
+function openJdManualTaskEdit(idx) {
+    var t = (_jdManualTasksCache.tasks || [])[idx];
+    if (!t) return;
+    document.getElementById('jdmtEditId').value = t.id || '';
+    document.getElementById('jdmtEditScript').value = t.script || '';
+    document.getElementById('jdmtEditIdView').value = t.id || '';
+    document.getElementById('jdmtEditScriptView').value = t.script || '';
+    document.getElementById('jdmtEditName').value = t.name || '';
+    document.getElementById('jdmtEditOrder').value = t.order || 0;
+    document.getElementById('jdmtEditCoin').value = t.coin || 0;
+    document.getElementById('jdmtEditEnabled').value = t.enabled ? 'true' : 'false';
+    document.getElementById('jdmtEditEnvs').value = formatJdmtEnvsText(t.envs);
+    document.getElementById('jdManualTaskEditModal').classList.remove('hidden');
+}
+
+function closeJdManualTaskEdit() {
+    var modal = document.getElementById('jdManualTaskEditModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function applyJdManualTaskEdit() {
+    var id = (document.getElementById('jdmtEditId') || {}).value || '';
+    if (!id) return;
+    var tasks = _jdManualTasksCache.tasks || [];
+    var hit = null;
+    for (var i = 0; i < tasks.length; i++) {
+        if (tasks[i].id === id) { hit = tasks[i]; break; }
+    }
+    if (!hit) { toast('任务不存在', 'error'); return; }
+    hit.name = ((document.getElementById('jdmtEditName') || {}).value || '').trim() || id;
+    hit.order = parseInt(((document.getElementById('jdmtEditOrder') || {}).value || '0'), 10) || 0;
+    hit.coin = parseInt(((document.getElementById('jdmtEditCoin') || {}).value || '0'), 10) || 0;
+    hit.enabled = ((document.getElementById('jdmtEditEnabled') || {}).value === 'true');
+    hit.envs = parseJdmtEnvsText((document.getElementById('jdmtEditEnvs') || {}).value || '');
+    closeJdManualTaskEdit();
+    await saveJdManualTasks();
+}
+
+async function saveJdManualTasks() {
+    var proxy = collectJdManualProxyFromForm();
+    var tasks = (_jdManualTasksCache.tasks || []).map(function(t) {
+        return {
+            id: t.id,
+            script: t.script,
+            name: t.name || t.id,
+            enabled: !!t.enabled,
+            order: parseInt(t.order, 10) || 0,
+            coin: parseInt(t.coin, 10) || 0,
+            envs: (t.envs && typeof t.envs === 'object') ? t.envs : {}
+        };
+    });
     try {
         var res = await api.post('/api/admin/jd-manual-tasks/save', { proxy: proxy, tasks: tasks });
         if (res.code !== 0) { toast(res.msg || '保存失败', 'error'); return; }
         _jdManualTasksCache = res.data || { proxy: proxy, tasks: tasks };
+        if (!_jdManualTasksCache.tasks) _jdManualTasksCache.tasks = tasks;
+        _jdManualTasksCache.tasks.forEach(function(t) {
+            if (!t.envs || typeof t.envs !== 'object') t.envs = {};
+        });
         renderJdManualTasks();
-        toast(res.msg || '保存成功', 'success');
+        toast(res.msg || '已写入 ' + (_jdManualTasksCache.configPath || 'jd_manual_tasks.yaml'), 'success');
     } catch (e) {
         toast('保存失败: ' + e.message, 'error');
     }
@@ -8532,6 +8630,10 @@ async function scanJdManualTasks() {
         var res = await api.post('/api/admin/jd-manual-tasks/scan', {});
         if (res.code !== 0) { toast(res.msg || '扫描失败', 'error'); return; }
         _jdManualTasksCache = res.data || _jdManualTasksCache;
+        if (!_jdManualTasksCache.tasks) _jdManualTasksCache.tasks = [];
+        _jdManualTasksCache.tasks.forEach(function(t) {
+            if (!t.envs || typeof t.envs !== 'object') t.envs = {};
+        });
         renderJdManualTasks();
         toast(res.msg || '扫描完成', 'success');
     } catch (e) {
