@@ -244,7 +244,7 @@ func adminWebAccountListItem(account WebUserAccount, user *User) AdminWebAccount
 }
 
 // ListWebUserAccountsForAdmin 分页列出全部网页注册账号
-func ListWebUserAccountsForAdmin(search string, page, limit int) ([]AdminWebAccountLookupItem, int, error) {
+func ListWebUserAccountsForAdmin(search string, page, limit int, sortField, sortOrder string) ([]AdminWebAccountLookupItem, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -252,6 +252,25 @@ func ListWebUserAccountsForAdmin(search string, page, limit int) ([]AdminWebAcco
 		limit = 20
 	}
 	search = strings.TrimSpace(search)
+	sortField = strings.TrimSpace(strings.ToLower(sortField))
+	sortOrder = strings.TrimSpace(strings.ToLower(sortOrder))
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
+	}
+	orderCol := "id"
+	switch sortField {
+	case "user_number", "number":
+		orderCol = "user_number"
+	case "bound_at", "bound", "created_at":
+		orderCol = "bound_at"
+	case "last_login_at", "login", "active_at":
+		orderCol = "last_login_at"
+	case "username":
+		orderCol = "username"
+	case "id":
+		orderCol = "id"
+	}
+	orderExpr := orderCol + " " + strings.ToUpper(sortOrder)
 
 	var accounts []WebUserAccount
 	var total int64
@@ -276,7 +295,7 @@ func ListWebUserAccountsForAdmin(search string, page, limit int) ([]AdminWebAcco
 		return nil, 0, err
 	}
 	offset := (page - 1) * limit
-	if err := tx.Order("id DESC").Offset(offset).Limit(limit).Find(&accounts).Error; err != nil {
+	if err := tx.Order(orderExpr).Offset(offset).Limit(limit).Find(&accounts).Error; err != nil {
 		return nil, 0, err
 	}
 

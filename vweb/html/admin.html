@@ -1101,10 +1101,10 @@
                 </div>
                 <p style="font-size:12px;color:#94a3b8;margin:0 0 12px;">列出所有门户/App 网页注册账号，可直接查看账号与密码；历史老账号无密码存档时需先重置。</p>
                 <div class="table-wrap">
-                    <table class="data-table">
+                    <table class="data-table" id="webAccountTable" data-server-sort="1">
                         <thead><tr>
-                            <th style="min-width:50px" data-col="id">ID</th>
-                            <th style="min-width:60px" data-col="number">用户编号</th>
+                            <th style="min-width:50px;cursor:pointer;" data-col="id" onclick="sortWebAccounts('id')">ID <span class="sort-arrow" id="webAccountSort-id"></span></th>
+                            <th style="min-width:60px;cursor:pointer;" data-col="number" onclick="sortWebAccounts('user_number')">用户编号 <span class="sort-arrow" id="webAccountSort-user_number"></span></th>
                             <th style="min-width:90px" data-col="nickname">昵称</th>
                             <th style="min-width:90px" data-col="qq">QQ</th>
                             <th style="min-width:130px" data-col="wxid">微信ID</th>
@@ -1112,8 +1112,8 @@
                             <th style="min-width:120px" data-col="username">网页账号</th>
                             <th style="min-width:140px" data-col="password">密码</th>
                             <th style="min-width:60px" data-col="status">状态</th>
-                            <th style="min-width:100px" data-col="bound">注册时间</th>
-                            <th style="min-width:100px" data-col="login">最后登录</th>
+                            <th style="min-width:100px;cursor:pointer;" data-col="bound" onclick="sortWebAccounts('bound_at')">注册时间 <span class="sort-arrow" id="webAccountSort-bound_at"></span></th>
+                            <th style="min-width:100px;cursor:pointer;" data-col="login" onclick="sortWebAccounts('last_login_at')">最后登录 <span class="sort-arrow" id="webAccountSort-last_login_at"></span></th>
                             <th style="min-width:110px" class="col-action-sticky" data-col="action">操作</th>
                         </tr></thead>
                         <tbody id="webAccountTableBody"></tbody>
@@ -4556,6 +4556,25 @@ async function saveCkEdit() {
 let webAccountPage = 1;
 let webPwdResetLoading = false;
 let webAccountCache = [];
+let webAccountSortField = 'id';
+let webAccountSortOrder = 'desc';
+
+function updateWebAccountSortArrows() {
+    document.querySelectorAll('#webAccountTable .sort-arrow').forEach(function(el) { el.textContent = ''; });
+    const arrow = document.getElementById('webAccountSort-' + webAccountSortField);
+    if (arrow) arrow.textContent = webAccountSortOrder === 'asc' ? ' ▲' : ' ▼';
+}
+
+function sortWebAccounts(field) {
+    if (webAccountSortField === field) {
+        webAccountSortOrder = webAccountSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        webAccountSortField = field;
+        webAccountSortOrder = (field === 'bound_at' || field === 'last_login_at') ? 'desc' : 'asc';
+    }
+    updateWebAccountSortArrows();
+    loadWebAccounts(1);
+}
 
 function toggleWebPwdResetManual() {
     const auto = document.getElementById('webPwdResetAutoGen').checked;
@@ -4636,7 +4655,7 @@ async function loadWebAccounts(page) {
     const prev = btn ? btn.innerHTML : '';
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 加载中'; }
     try {
-        const res = await api.get('/api/admin/users/web-accounts?page=' + webAccountPage + '&limit=' + getPageSize('webaccount') + '&search=' + encodeURIComponent(search.trim()));
+        const res = await api.get('/api/admin/users/web-accounts?page=' + webAccountPage + '&limit=' + getPageSize('webaccount') + '&search=' + encodeURIComponent(search.trim()) + '&sortField=' + encodeURIComponent(webAccountSortField) + '&sortOrder=' + encodeURIComponent(webAccountSortOrder));
         if (res.code !== 0) { toast(res.msg || '加载失败', 'error'); return; }
         const data = res.data || {};
         const list = data.list || [];
@@ -4644,6 +4663,7 @@ async function loadWebAccounts(page) {
         const totalEl = document.getElementById('webAccountTotal');
         if (totalEl) totalEl.textContent = String(data.total || 0);
         renderPagination('webAccountPagination', webAccountPage, data.total || 0, getPageSize('webaccount'), loadWebAccounts, 'webaccount');
+        updateWebAccountSortArrows();
     } catch (e) {
         toast('加载失败: ' + e.message, 'error');
     } finally {
@@ -7102,7 +7122,7 @@ function initResizableColumns() {
 
 // ============ 表格点击表头排序 ============
 function initTableSorting() {
-    document.querySelectorAll('.data-table thead th[data-col]').forEach(function(th) {
+    document.querySelectorAll('.data-table:not([data-server-sort]) thead th[data-col]').forEach(function(th) {
         // 跳过操作列等不适合排序的列
         if (th.dataset.col === 'action') return;
         

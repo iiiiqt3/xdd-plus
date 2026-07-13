@@ -1796,13 +1796,21 @@ func (c *AdminApiController) GetWebUserAccounts() {
 	search := strings.TrimSpace(c.GetString("search"))
 	page, _ := strconv.Atoi(c.GetString("page"))
 	limit, _ := strconv.Atoi(c.GetString("limit"))
+	sortField := strings.TrimSpace(c.GetString("sortField"))
+	if sortField == "" {
+		sortField = c.GetString("sort")
+	}
+	sortOrder := strings.TrimSpace(c.GetString("sortOrder"))
+	if sortOrder == "" {
+		sortOrder = c.GetString("order")
+	}
 	if page < 1 {
 		page = 1
 	}
 	if limit < 1 {
 		limit = 20
 	}
-	list, total, err := models.ListWebUserAccountsForAdmin(search, page, limit)
+	list, total, err := models.ListWebUserAccountsForAdmin(search, page, limit, sortField, sortOrder)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
