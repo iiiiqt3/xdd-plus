@@ -1791,6 +1791,53 @@ func (c *AdminApiController) BatchUpdateUserCoins() {
 	c.ServeJSON()
 }
 
+// LookupWebUserPassword 查询网页登录账号（密码已加密不可查看原值）
+func (c *AdminApiController) LookupWebUserPassword() {
+	keyword := strings.TrimSpace(c.GetString("keyword"))
+	if keyword == "" {
+		keyword = strings.TrimSpace(c.GetString("q"))
+	}
+	list, err := models.LookupWebUserAccountsForAdmin(keyword)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  "ok",
+		"data": map[string]interface{}{"list": list, "total": len(list)},
+	}
+	c.ServeJSON()
+}
+
+// ResetWebUserPassword 管理员重置网页账号密码
+func (c *AdminApiController) ResetWebUserPassword() {
+	var req struct {
+		Username     string `json:"username"`
+		UserNumber   int    `json:"userNumber"`
+		NewPassword  string `json:"newPassword"`
+		AutoGenerate bool   `json:"autoGenerate"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "参数错误"}
+		c.ServeJSON()
+		return
+	}
+	data, err := models.AdminResetWebUserPasswordForAdmin(req.Username, req.UserNumber, req.NewPassword, req.AutoGenerate)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  "密码重置成功",
+		"data": data,
+	}
+	c.ServeJSON()
+}
+
 // ===================== 批量操作 =====================
 
 // BatchDeleteJdCookies 批量删除京东CK

@@ -333,6 +333,8 @@ func main() {
 	web.Router("/api/admin/users/update", &controllers.AdminApiController{}, "post:UpdateUser")
 	web.Router("/api/admin/users/batch/delete", &controllers.AdminApiController{}, "post:BatchDeleteUsers")
 	web.Router("/api/admin/users/batch/update", &controllers.AdminApiController{}, "post:BatchUpdateUserCoins")
+	web.Router("/api/admin/users/web-account/lookup", &controllers.AdminApiController{}, "get:LookupWebUserPassword")
+	web.Router("/api/admin/users/web-account/reset-password", &controllers.AdminApiController{}, "post:ResetWebUserPassword")
 	web.Router("/api/admin/jdcookies/batch/delete", &controllers.AdminApiController{}, "post:BatchDeleteJdCookies")
 	web.Router("/api/admin/jdcookies/batch/update", &controllers.AdminApiController{}, "post:BatchUpdateJdCookies")
 	web.Router("/api/admin/jdtasks", &controllers.AdminApiController{}, "get:GetJdTaskQueue")

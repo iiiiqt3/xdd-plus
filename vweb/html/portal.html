@@ -2749,7 +2749,7 @@ function renderDetailActions(item) {
         actions.push(`<button class="btn small" onclick="renewProject('${escapeJs(item.activityId)}','${escapeJs(item.remark)}')">续费</button>`);
     }
     actions.push(`<button class="btn small accent" onclick="editProjectCk('${escapeJs(item.activityId)}','${escapeJs(item.remark)}','${escapeJs(item.displayName || item.activityName)}')">修改</button>`);
-    actions.push(`<button class="btn small danger" onclick="deleteProject('${escapeJs(item.activityId)}','${escapeJs(item.remark)}','${escapeJs(item.displayName || item.activityName)}')">删除</button>`);
+    actions.push(`<button class="btn small danger" data-delete-project="1" onclick="deleteProject('${escapeJs(item.activityId)}','${escapeJs(item.remark)}','${escapeJs(item.displayName || item.activityName)}', this)">删除</button>`);
     return `<div style="display:flex;gap:8px;flex-wrap:wrap;">${actions.join('')}</div>`;
 }
 
@@ -3116,7 +3116,7 @@ async function renewProject(activityId, remarks) {
     }, { duplicateMsg: '请勿重复提交，上一笔续费请求正在处理中' });
 }
 
-async function deleteProject(activityId, remarks, activityName) {
+async function deleteProject(activityId, remarks, activityName, btn) {
     const item = (state.projects || []).find(x => String(x.activityId) === String(activityId) && x.remark === remarks);
     let refundTip = '';
     const calcPaidDays = () => {
@@ -3161,7 +3161,11 @@ async function deleteProject(activityId, remarks, activityName) {
         } catch (err) {
             toast(err.message || '删除失败', 'error');
         }
-    }, { duplicateMsg: '请勿重复提交，上一笔删除请求正在处理中' });
+    }, {
+        button: btn,
+        loadingText: '删除中...',
+        duplicateMsg: '请勿重复提交，上一笔删除请求正在处理中'
+    });
 }
 
 state.editCkInfo = null;
