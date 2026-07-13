@@ -1,7 +1,7 @@
 import UIKit
 
 @available(iOS 13.0, *)
-final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegate, InnerTabSwipeHandling {
+final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegate, UISearchBarDelegate, InnerTabSwipeHandling {
     override var shouldEnableKeyboardDismissOnTap: Bool { false }
 
     private enum MainTab { case query, login, task }
@@ -61,13 +61,10 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     private let yybResultLabel = UILabel()
     private var yybRiskUrl: String?
 
-    private let taskDefs: [TaskDef] = [
-        TaskDef(id: "plantBean", name: "种豆得豆", icon: "🫘", desc: "种豆得豆任务"),
-        TaskDef(id: "dwapp", name: "话费积分", icon: "📱", desc: "话费积分签到"),
-        TaskDef(id: "price", name: "一键保价", icon: "💰", desc: "自动保价退款"),
-        TaskDef(id: "autoEval", name: "一键评价", icon: "⭐", desc: "自动评价订单"),
-        TaskDef(id: "insight", name: "问卷调查", icon: "📝", desc: "问卷调查得豆"),
-    ]
+    private var taskDefs: [TaskDef] = []
+    private var taskSearchQuery = ""
+    private let taskSearchBar = UISearchBar()
+    private let taskGridStack = UIStackView()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -1219,43 +1216,17 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         let hint = placeholderLabel("选择任务和账号，点击执行开始（每行 2 个任务）")
         taskContentStack.addArrangedSubview(hint)
 
-        let gridPlaceholder = UIStackView()
-        gridPlaceholder.axis = .vertical
-        gridPlaceholder.spacing = 10
-        gridPlaceholder.tag = 9001
-        taskContentStack.addArrangedSubview(gridPlaceholder)
+        taskSearchBar.delegate = self
+        taskSearchBar.placeholder = "搜索任务名称、ID…"
+        taskSearchBar.searchBarStyle = .minimal
+        taskSearchBar.text = taskSearchQuery.isEmpty ? nil : taskSearchQuery
+        taskContentStack.addArrangedSubview(taskSearchBar)
 
-        PortalService.shared.fetchJdAccounts { [weak self] result in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                guard self.mainTab == .task else { return }
-                if case .success(let list) = result {
-                    self.accounts = list
-                    // 默认勾选所有有效账号（有效账号内的 1-based 索引），无有效账号则不勾选
-                    let validCount = list.filter { $0.valid }.count
-                    let validIndices: Set<Int> = validCount > 0 ? Set(1...validCount) : []
-                    for task in self.taskDefs {
-                        self.taskSelections[task.id] = validIndices
-                    }
-                }
-                gridPlaceholder.arrangedSubviews.forEach { $0.removeFromSuperview() }
-                var idx = 0
-                while idx < self.taskDefs.count {
-                    let row = UIStackView()
-                    row.axis = .horizontal
-                    row.spacing = 10
-                    row.distribution = .fillEqually
-                    row.addArrangedSubview(self.buildTaskCard(self.taskDefs[idx]))
-                    if idx + 1 < self.taskDefs.count {
-                        row.addArrangedSubview(self.buildTaskCard(self.taskDefs[idx + 1]))
-                    } else {
-                        row.addArrangedSubview(UIView())
-                    }
-                    gridPlaceholder.addArrangedSubview(row)
-                    idx += 2
-                }
-            }
-        }
+        taskGridStack.axis = .vertical
+        taskGridStack.spacing = 10
+        taskContentStack.addArrangedSubview(taskGridStack)
+
+        loadTaskTabData()
 
         let logCard = UIStackView()
         logCard.axis = .vertical
@@ -1287,6 +1258,86 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         logCard.addArrangedSubview(logTextView)
         taskContentStack.addArrangedSubview(logCard)
         refreshLogs()
+    }
+
+    private func loadTaskTabData() {
+        PortalService.shared.fetchJdAccounts { [weak self] result in
+            guard let self = self else { return }
+            PortalService.shared.fetchJdTasks { [weak self] taskResult in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    guard self.mainTab == .task else { return }
+                    if case .success(let list) = result {
+                        self.accounts = list
+                    }
+                    if case .success(let items) = taskResult {
+                        self.taskDefs = items.compactMap { item in
+                            guard let id = item.id?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else { return nil }
+                            let name = (item.name?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? id
+                            let coin = item.coin ?? 0
+                            return TaskDef(id: id, name: name, icon: "⚡", desc: coin > 0 ? "每账号扣 \(coin) 积分" : "免费")
+                        }
+                    } else {
+                        self.taskDefs = []
+                    }
+                    let validCount = self.accounts.filter { $0.valid }.count
+                    let validIndices: Set<Int> = validCount > 0 ? Set(1...validCount) : []
+                    for task in self.taskDefs where self.taskSelections[task.id] == nil {
+                        self.taskSelections[task.id] = validIndices
+                    }
+                    self.renderTaskGrid()
+                }
+            }
+        }
+    }
+
+    private func filteredTaskDefs() -> [TaskDef] {
+        let q = taskSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return taskDefs }
+        return taskDefs.filter { task in
+            task.name.lowercased().contains(q)
+                || task.id.lowercased().contains(q)
+                || task.desc.lowercased().contains(q)
+        }
+    }
+
+    private func renderTaskGrid() {
+        taskGridStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        let tasks = filteredTaskDefs()
+        if tasks.isEmpty {
+            if !taskSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                taskGridStack.addArrangedSubview(placeholderLabel("未找到匹配「\(taskSearchQuery)」的任务"))
+            } else {
+                taskGridStack.addArrangedSubview(placeholderLabel("暂无可用任务，请联系管理员在后台启用"))
+            }
+            return
+        }
+        var idx = 0
+        while idx < tasks.count {
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.spacing = 10
+            row.distribution = .fillEqually
+            row.addArrangedSubview(buildTaskCard(tasks[idx]))
+            if idx + 1 < tasks.count {
+                row.addArrangedSubview(buildTaskCard(tasks[idx + 1]))
+            } else {
+                row.addArrangedSubview(UIView())
+            }
+            taskGridStack.addArrangedSubview(row)
+            idx += 2
+        }
+        runningTasks.keys.forEach { updateTaskButton($0) }
+    }
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        guard searchBar === taskSearchBar else { return }
+        taskSearchQuery = searchText
+        renderTaskGrid()
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
     }
 
     private func buildTaskCard(_ task: TaskDef) -> UIView {

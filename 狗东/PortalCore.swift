@@ -273,6 +273,13 @@ struct PortalJdTaskExecuteResult: Decodable {
     let taskId: String?
 }
 
+struct PortalJdTaskItem: Decodable {
+    let id: String?
+    let name: String?
+    let coin: Int?
+    let order: Int?
+}
+
 struct KuwoAccountInfo: Decodable {
     let phone: String?
     let password: String?
@@ -1416,6 +1423,10 @@ final class PortalService {
             return
         }
         APIClient.shared.requestData(path: "/api/portal/jd/task/execute", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func fetchJdTasks(completion: @escaping (Result<[PortalJdTaskItem], APIError>) -> Void) {
+        APIClient.shared.requestList(path: "/api/portal/jd/tasks", method: "GET", completion: completion)
     }
 
     func stopJdTask(taskId: String, completion: @escaping (Result<String, APIError>) -> Void) {
