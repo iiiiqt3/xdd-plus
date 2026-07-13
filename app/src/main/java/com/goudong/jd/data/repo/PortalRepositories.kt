@@ -478,6 +478,11 @@ class PortalRepository(
         )
     }
 
+    suspend fun fetchJdTasks(): List<com.goudong.jd.data.model.PortalJdTaskItem> {
+        val text = apiClient.requestText(path = "/api/portal/jd/tasks")
+        return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.PortalJdTaskItem::class.java)
+    }
+
     suspend fun stopJdTask(taskId: String) {
         apiClient.requestMessage(
             path = "/api/portal/jd/task/stop",

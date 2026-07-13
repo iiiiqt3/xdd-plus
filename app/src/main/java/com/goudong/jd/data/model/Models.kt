@@ -308,6 +308,13 @@ data class PortalJdTaskExecuteResult(
     val taskId: String? = null,
 )
 
+data class PortalJdTaskItem(
+    val id: String? = null,
+    val name: String? = null,
+    val coin: Int = 0,
+    val order: Int = 0,
+)
+
 data class KuwoAccountInfo(
     val phone: String? = null,
     val password: String? = null,

@@ -13,6 +13,8 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.text.Editable
+import android.text.TextWatcher
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -86,13 +88,10 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private var yybRiskUrl: String? = null
     private var logText: TextView? = null
 
-    private val taskDefs = listOf(
-        JdTaskDef("plantBean", "种豆得豆", "🫘", "种豆得豆任务"),
-        JdTaskDef("dwapp", "话费积分", "📱", "话费积分签到"),
-        JdTaskDef("price", "一键保价", "💰", "自动保价退款"),
-        JdTaskDef("autoEval", "一键评价", "⭐", "自动评价订单"),
-        JdTaskDef("insight", "问卷调查", "📝", "问卷调查得豆"),
-    )
+    private var taskDefs: List<JdTaskDef> = emptyList()
+    private var taskSearchQuery = ""
+    private var taskGridHost: LinearLayout? = null
+    private var taskSearchInput: EditText? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         try { return buildFullView() } catch (e: Exception) {
@@ -895,11 +894,52 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             setPadding(0, 0, 0, ctx.dp(8))
         })
-        val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        val left = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f); setPadding(0, 0, ctx.dp(4), 0) }
-        val right = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f); setPadding(ctx.dp(4), 0, 0, 0) }
-        row.addView(left); row.addView(right)
-        contentHost.addView(row)
+
+        val searchRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                setColor(requireContext().themeColor(R.color.input_bg))
+                cornerRadius = ctx.dp(10).toFloat()
+                setStroke(ctx.dp(1), requireContext().themeColor(R.color.border_default))
+            }
+            setPadding(ctx.dp(12), ctx.dp(4), ctx.dp(8), ctx.dp(4))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = ctx.dp(10)
+            }
+        }
+        taskSearchInput = ctx.inputField("搜索任务名称、ID…").apply {
+            background = null
+            setPadding(0, ctx.dp(8), 0, ctx.dp(8))
+            setText(taskSearchQuery)
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: Editable?) { onTaskSearch(s?.toString().orEmpty()) }
+            })
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        searchRow.addView(taskSearchInput)
+        val clearBtn = TextView(ctx).apply {
+            text = "✕"
+            visibility = if (taskSearchQuery.isNotBlank()) View.VISIBLE else View.GONE
+            setTextColor(requireContext().themeColor(R.color.text_muted))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setPadding(ctx.dp(8), ctx.dp(6), ctx.dp(4), ctx.dp(6))
+            setOnClickListener {
+                taskSearchInput?.setText("")
+                onTaskSearch("")
+            }
+            tag = "task_search_clear"
+        }
+        searchRow.addView(clearBtn)
+        contentHost.addView(searchRow)
+
+        taskGridHost = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            tag = "task_grid_host"
+        }
+        contentHost.addView(taskGridHost)
 
         // 日志
         contentHost.addView(ctx.cardView().apply {
@@ -911,15 +951,92 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             logText = ctx.bodyText("暂无日志").apply { setPadding(0, ctx.dp(4), 0, 0); setBackgroundColor(requireContext().themeColor(R.color.input_bg)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f) }.also { addView(it) }
         })
 
+        loadTaskTabData()
+    }
+
+    private fun onTaskSearch(value: String) {
+        taskSearchQuery = value.trim().lowercase()
+        contentHost.findViewWithTag<TextView>("task_search_clear")?.visibility =
+            if (taskSearchQuery.isNotBlank()) View.VISIBLE else View.GONE
+        renderTaskGrid()
+    }
+
+    private fun getFilteredTaskDefs(): List<JdTaskDef> {
+        if (taskSearchQuery.isBlank()) return taskDefs
+        return taskDefs.filter { task ->
+            task.name.lowercase().contains(taskSearchQuery)
+                || task.id.lowercase().contains(taskSearchQuery)
+                || task.desc.lowercase().contains(taskSearchQuery)
+        }
+    }
+
+    private fun loadTaskTabData() {
         lifecycleScope.launch {
             runCatching { AppServices.portalRepository.fetchJdAccounts() }
                 .onSuccess { accounts = it }
                 .onFailure { accounts = emptyList() }
+            runCatching { AppServices.portalRepository.fetchJdTasks() }
+                .onSuccess { list ->
+                    taskDefs = list.mapNotNull { item ->
+                        val id = item.id?.trim().orEmpty()
+                        if (id.isEmpty()) null
+                        else JdTaskDef(
+                            id = id,
+                            name = item.name?.ifBlank { id } ?: id,
+                            icon = "⚡",
+                            desc = if (item.coin > 0) "每账号扣 ${item.coin} 积分" else "免费",
+                        )
+                    }
+                }
+                .onFailure { taskDefs = emptyList() }
             applyDefaultTaskSelections()
-            taskDefs.forEachIndexed { i, task ->
-                val card = buildTaskCard(task)
-                if (i % 2 == 0) left.addView(card) else right.addView(card)
+            renderTaskGrid()
+        }
+    }
+
+    private fun renderTaskGrid() {
+        val host = taskGridHost ?: return
+        val ctx = requireContext()
+        host.removeAllViews()
+
+        val tasks = getFilteredTaskDefs()
+        when {
+            tasks.isEmpty() && taskSearchQuery.isNotBlank() -> {
+                host.addView(ctx.bodyText("未找到匹配「$taskSearchQuery」的任务").apply {
+                    setTextColor(requireContext().themeColor(R.color.text_muted))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    gravity = Gravity.CENTER
+                    setPadding(0, ctx.dp(16), 0, ctx.dp(16))
+                })
             }
+            tasks.isEmpty() -> {
+                host.addView(ctx.bodyText("暂无可用任务，请联系管理员在后台启用").apply {
+                    setTextColor(requireContext().themeColor(R.color.text_muted))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    setPadding(0, ctx.dp(8), 0, 0)
+                })
+            }
+            else -> {
+                val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+                val left = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f); setPadding(0, 0, ctx.dp(4), 0) }
+                val right = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f); setPadding(ctx.dp(4), 0, 0, 0) }
+                row.addView(left)
+                row.addView(right)
+                host.addView(row)
+                tasks.forEachIndexed { i, task ->
+                    val card = buildTaskCard(task)
+                    if (i % 2 == 0) left.addView(card) else right.addView(card)
+                }
+            }
+        }
+        restoreRunningTaskBtns()
+    }
+
+    private fun restoreRunningTaskBtns() {
+        runningTasks.keys.forEach { taskId ->
+            val btn = executeBtns[taskId] as? TextView ?: return@forEach
+            btn.text = "停止"
+            (btn.background as? GradientDrawable)?.setColor(requireContext().themeColor(R.color.brand_red))
         }
     }
 
