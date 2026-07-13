@@ -68,6 +68,31 @@ func (c *AdminApiController) ScanJdManualTasks() {
 	c.ServeJSON()
 }
 
+// DeleteJdManualTasks 删除手动京东任务（删配置 + 删脚本文件）
+func (c *AdminApiController) DeleteJdManualTasks() {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求格式错误"}
+		c.ServeJSON()
+		return
+	}
+	n, err := models.DeleteJdManualTasksAdmin(req.IDs)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	models.Admin().Infof("手动京东任务已删除 %d 条", n)
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  fmt.Sprintf("已删除 %d 个任务（含脚本文件）", n),
+		"data": models.GetJdManualTasksAdminView(),
+	}
+	c.ServeJSON()
+}
+
 // ===================== 活动配置管理 =====================
 
 // GetActivities 获取活动配置列表

@@ -429,6 +429,44 @@ func SaveJdManualTasksAdmin(proxy JdManualProxyConfig, tasks []JdManualTaskItem)
 	return saveJdManualTasksLocked()
 }
 
+// DeleteJdManualTasksAdmin 删除任务配置，并删除对应脚本文件
+func DeleteJdManualTasksAdmin(ids []string) (int, error) {
+	idSet := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id != "" {
+			idSet[id] = true
+		}
+	}
+	if len(idSet) == 0 {
+		return 0, fmt.Errorf("未指定要删除的任务")
+	}
+
+	jdManualTasks.mu.Lock()
+	defer jdManualTasks.mu.Unlock()
+
+	dir := jdManualScriptDir()
+	kept := make([]JdManualTaskItem, 0, len(jdManualTasks.file.Tasks))
+	removed := 0
+	for _, t := range jdManualTasks.file.Tasks {
+		if !idSet[t.ID] {
+			kept = append(kept, t)
+			continue
+		}
+		removed++
+		script := filepath.Base(strings.TrimSpace(t.Script))
+		if script != "" && script != "." && script != ".." {
+			_ = os.Remove(filepath.Join(dir, script))
+		}
+	}
+	jdManualTasks.file.Tasks = kept
+	jdManualTasks.rebuildIndexLocked()
+	if err := saveJdManualTasksLocked(); err != nil {
+		return removed, err
+	}
+	return removed, nil
+}
+
 // GetJdManualTaskList 任务列表；onlyEnabled=true 给门户
 func GetJdManualTaskList(onlyEnabled bool) []JdManualTaskItem {
 	jdManualTasks.mu.RLock()
