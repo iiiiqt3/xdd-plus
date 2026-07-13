@@ -795,6 +795,22 @@ func (c *PortalController) JdYybContinueRisk() {
 	c.ServeJSON()
 }
 
+// JdTaskList 门户可执行的手动京东任务列表
+func (c *PortalController) JdTaskList() {
+	tasks := models.GetJdManualTaskList(true)
+	items := make([]map[string]interface{}, 0, len(tasks))
+	for _, t := range tasks {
+		items = append(items, map[string]interface{}{
+			"id":    t.ID,
+			"name":  t.Name,
+			"coin":  t.Coin,
+			"order": t.Order,
+		})
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": items}
+	c.ServeJSON()
+}
+
 // JdTaskExecute 执行京东任务
 func (c *PortalController) JdTaskExecute() {
 	var req struct {
@@ -814,10 +830,9 @@ func (c *PortalController) JdTaskExecute() {
 		return
 	}
 
-	// 检查是否有同一任务的同一账号正在执行
-	conflictTask := models.GetRunningTask(c.PortalUserID, req.TaskId, req.AccountIndexes)
-	if conflictTask != "" {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": fmt.Sprintf("该任务的某些账号正在执行中：%s", conflictTask)}
+	// 检查是否有同一任务正在执行
+	if models.IsUserJdTaskRunning(c.PortalUserID, req.TaskId) {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "该任务正在执行中，请勿重复点击"}
 		c.ServeJSON()
 		return
 	}

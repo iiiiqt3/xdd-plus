@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -55,8 +56,14 @@ func initHandle() {
 			if err != nil {
 				JD().Warnf("创建jdCookie.js失败，", err)
 			}
+			manualCookieDir := filepath.Join(ExecPath, "scripts/自定义执行京东脚本/6dylan6_jdpro")
+			_ = os.MkdirAll(manualCookieDir, 0755)
+			f3, err := os.OpenFile(filepath.Join(manualCookieDir, "jdCookie.js"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+			if err != nil {
+				JD().Warnf("创建手动京东任务jdCookie.js失败，", err)
+			}
 
-			f2.WriteString(fmt.Sprintf(`
+			cookieJS := fmt.Sprintf(`
 var cookies = %s
 var pins = process.env.pins
 if(pins){
@@ -74,47 +81,17 @@ if(pins){
         }
     }
 }
-module.exports = cookies`, cookies))
+module.exports = cookies`, cookies)
 
-			f1.WriteString(fmt.Sprintf(`
-var cookies = %s
-var pins = process.env.pins
-if(pins){
-    pins = pins.split("&")
-    for (var key in cookies) {
-        c = false
-        for (var pin of pins) {
-            if (pin && cookies[key].indexOf(pin) != -1) {
-                c = true
-                break
-            }
-        }
-        if (!c) {
-            delete cookies[key]
-        }
-    }
-}
-module.exports = cookies`, cookies))
+			f2.WriteString(cookieJS)
 
-			f.WriteString(fmt.Sprintf(`
-var cookies = %s
-var pins = process.env.pins
-if(pins){
-	pins = pins.split("&")
-	for (var key in cookies) {
-	    c = false
-	    for (var pin of pins) {
-		   if (pin && cookies[key].indexOf(pin) != -1) {
-			  c = true
-			  break
-		   }
-	    }
-	    if (!c) {
-		   delete cookies[key]
-	    }
-	}
-}
-module.exports = cookies`, cookies))
+			f1.WriteString(cookieJS)
+
+			f.WriteString(cookieJS)
+			if f3 != nil {
+				f3.WriteString(cookieJS)
+				f3.Close()
+			}
 			f.Close()
 			f1.Close()
 			f2.Close() // 完成操作后记得关闭文件

@@ -32,6 +32,7 @@ func init() {
 	go initTgBot()
 	initTask()
 	InitJdTaskScheduler()
+	InitJdManualTasks()
 	initWX()
 	tempToken()
 	// InitActivityListWithHotReload() 会自动加载 YAML 配置并启动热加载监控

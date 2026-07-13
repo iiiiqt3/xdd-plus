@@ -1033,53 +1033,6 @@ var codeSignals = []CodeSignal{
 	// },
 
 	{
-		Command: []string{"任务菜单", "农场浇水", "新农场浇水", "一键保价", "自动挖宝", "一键评价", "话费签到", "调查问卷"},
-		Handle: func(sender *Sender) interface{} {
-			sender.Reply("任务菜单适用于任务漏跑的，自己可以手动执行任务补跑")
-			id := sender.UserID
-			var idType string
-			if sender.Type == "tg" {
-				idType = Telegram
-			} else {
-				idType = QQ
-			}
-			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
-				return sb.Where(fmt.Sprintf("%s = ? and %s = ?", idType, Available), id, True)
-			})
-
-			if len(cks) > 0 {
-				// 显示功能菜单
-				msgs := []string{
-					"请输入序号选择要执行的任务：",
-					//				"1. 农场浇水",
-					"1. 新农场浇水",
-					"2. 种豆得豆任务",
-					"3. 话费积分任务",
-					//		"5. 特价APP签到提现",
-					"4. 一键保价",
-					"5. 一键评价",
-					"6. 删除垃圾券（慎用，会误删，到已删除券恢复）",
-					"7. 问卷调查得豆",
-					//	"8. 京东外卖券",
-
-					//     "7. 自动挖宝",
-					"如需退出请回复'q'退出流程：",
-				}
-				sender.Reply(strings.Join(msgs, "\n\n"))
-
-				// 创建一个通道用于接收用户的选择
-				msg := make(chan string)
-				inputList[sender.UserID] = msg
-				go handleUserChoice(sender, msg, cks)
-			} else {
-				sender.Reply("在线账号已全部失效，请对机器人发送【登陆】")
-				return nil
-			}
-			return nil
-		},
-	},
-
-	{
 		Command: []string{"sign", "打卡", "签到"},
 		Handle: func(sender *Sender) interface{} {
 			sender.Reply("🔄 机器人端打卡功能升级中\n\n📱 请前往以下渠道完成打卡：\n\n💻 电脑网页用户\n请复制以下地址到浏览器打开：\nhttp://180.152.5.230:5701\n\n📲 手机用户\n⚠️ 请复制链接到浏览器打开，以免被腾讯拦截\n安卓版本下载地址：http://180.152.5.230:8888/down/wGNjub4ELqrJ.apk\niOS版本下载地址：http://180.152.5.230:8888/down/QaWi0JBZgb3t.ipa\n\n⏳ 升级完成后将第一时间通知大家，感谢理解！")

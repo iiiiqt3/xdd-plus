@@ -23,6 +23,48 @@ func (c *AdminApiController) NextPrepare() {
 	c.Logined()
 }
 
+// ===================== 手动京东任务 =====================
+
+// GetJdManualTasks 获取手动京东任务配置
+func (c *AdminApiController) GetJdManualTasks() {
+	data := models.GetJdManualTasksAdmin()
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data}
+	c.ServeJSON()
+}
+
+// SaveJdManualTasks 保存手动京东任务（名称/启用/排序/积分/环境变量/代理）
+func (c *AdminApiController) SaveJdManualTasks() {
+	var req struct {
+		Proxy models.JdManualProxyConfig `json:"proxy"`
+		Tasks []models.JdManualTaskItem  `json:"tasks"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求格式错误"}
+		c.ServeJSON()
+		return
+	}
+	if err := models.SaveJdManualTasksAdmin(req.Proxy, req.Tasks); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "保存失败: " + err.Error()}
+		c.ServeJSON()
+		return
+	}
+	models.Admin().Infof("手动京东任务配置已保存，共 %d 条", len(req.Tasks))
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "保存成功", "data": models.GetJdManualTasksAdmin()}
+	c.ServeJSON()
+}
+
+// ScanJdManualTasks 重新扫描脚本目录
+func (c *AdminApiController) ScanJdManualTasks() {
+	data, err := models.ScanAndSyncJdManualTasks()
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "扫描失败: " + err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": fmt.Sprintf("扫描完成，共 %d 个任务", len(data.Tasks)), "data": data}
+	c.ServeJSON()
+}
+
 // ===================== 活动配置管理 =====================
 
 // GetActivities 获取活动配置列表

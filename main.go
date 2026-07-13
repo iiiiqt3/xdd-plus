@@ -237,6 +237,7 @@ func main() {
 	web.Router("/api/portal/jd/task/execute", &controllers.PortalController{}, "post:JdTaskExecute")
 	web.Router("/api/portal/jd/task/logs", &controllers.PortalController{}, "get:JdTaskLogs")
 	web.Router("/api/portal/jd/task/stop", &controllers.PortalController{}, "post:JdTaskStop")
+	web.Router("/api/portal/jd/tasks", &controllers.PortalController{}, "get:JdTaskList")
 	// ===================== 酷我提现 API =====================
 	web.Router("/api/portal/kuwo/check-auth", &controllers.PortalController{}, "get:KuwoCheckAuth")
 	web.Router("/api/portal/kuwo/credentials", &controllers.PortalController{}, "get:KuwoGetCredentials")
@@ -276,6 +277,9 @@ func main() {
 	// ===================== 后台管理 API =====================
 	web.Router("/api/admin/activities", &controllers.AdminApiController{}, "get:GetActivities")
 	web.Router("/api/admin/activities/save", &controllers.AdminApiController{}, "post:SaveActivities")
+	web.Router("/api/admin/jd-manual-tasks", &controllers.AdminApiController{}, "get:GetJdManualTasks")
+	web.Router("/api/admin/jd-manual-tasks/save", &controllers.AdminApiController{}, "post:SaveJdManualTasks")
+	web.Router("/api/admin/jd-manual-tasks/scan", &controllers.AdminApiController{}, "post:ScanJdManualTasks")
 	web.Router("/api/admin/qlconfigs", &controllers.AdminApiController{}, "get:GetQingLongConfigs")
 	web.Router("/api/admin/qlconfigs/test", &controllers.AdminApiController{}, "post:TestQLConnection")
 	web.Router("/api/admin/jdcontainers", &controllers.AdminApiController{}, "get:GetJdContainers")

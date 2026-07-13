@@ -3923,18 +3923,27 @@ async function loadJdTasks() {
         jdTaskAccounts = [];
     }
     
-    // 任务定义
-    var tasks = [
-        // { id: 'newfruit_watering', name: '新农场浇水', icon: '🌱', desc: '自动浇水，收获水果' },
-        { id: 'plantBean', name: '种豆得豆', icon: '🫘', desc: '种豆得豆任务' },
-        { id: 'dwapp', name: '话费积分', icon: '📱', desc: '话费积分签到' },
-        { id: 'price', name: '一键保价', icon: '💰', desc: '自动保价退款' },
-        { id: 'autoEval', name: '一键评价', icon: '⭐', desc: '自动评价订单' },
-        { id: 'insight', name: '问卷调查', icon: '📝', desc: '问卷调查得豆' }
-    ];
+    // 从后端拉取已启用的手动任务
+    var tasks = [];
+    try {
+        var taskResp = await request('/api/portal/jd/tasks');
+        tasks = (taskResp.data || []).map(function(t) {
+            return {
+                id: t.id,
+                name: t.name || t.id,
+                icon: '⚡',
+                desc: (t.coin > 0 ? ('每账号扣 ' + t.coin + ' 积分') : '免费')
+            };
+        });
+    } catch (err) {
+        tasks = [];
+    }
     
     // 渲染任务卡片
     var html = '';
+    if (!tasks.length) {
+        html = '<div style="padding:24px;color:var(--text-muted);font-size:13px;">暂无可用任务，请联系管理员在后台启用</div>';
+    }
     tasks.forEach(function(task) {
         html += '<div class="jd-task-card">';
         html += '<div class="task-header">';

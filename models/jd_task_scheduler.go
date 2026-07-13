@@ -200,45 +200,29 @@ func jdSlotKey(userID int, taskType, ptPin string) string {
 }
 
 func normalizeJdTaskType(taskType string) string {
-	switch taskType {
-	case "Jd_newfruit_watering":
-		return "newfruit_watering"
-	case "jd_plantBean":
-		return "plantBean"
-	case "jd_dwapp":
-		return "dwapp"
-	case "Jd_price":
-		return "price"
-	case "Jd_AutoEval":
-		return "autoEval"
-	case "jd_delLjq":
-		return "delLjq"
-	case "jd_insight":
-		return "insight"
-	default:
-		return taskType
-	}
+	return strings.TrimSpace(taskType)
 }
 
 func jdTaskTypeFromScript(scriptPath string) string {
-	switch filepath.Base(scriptPath) {
-	case "jd_fruit_new.js":
-		return "newfruit_watering"
-	case "jd_plantBean.js":
-		return "plantBean"
-	case "jd_dwapp.js":
-		return "dwapp"
-	case "jd_OnceApply.js":
-		return "price"
-	case "jd_AutoEval.js":
-		return "autoEval"
-	case "jd_delLjq.js":
-		return "delLjq"
-	case "jd_insight.js":
-		return "insight"
-	default:
-		return scriptPath
+	base := strings.TrimSuffix(filepath.Base(scriptPath), ".js")
+	base = strings.TrimPrefix(base, "jd_")
+	if base == "" {
+		return filepath.Base(scriptPath)
 	}
+	return base
+}
+
+// HasUserTask 同一用户同一任务是否已有排队/执行中的 job
+func (s *JdTaskScheduler) HasUserTask(userID int, taskType string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	prefix := fmt.Sprintf("%d:%s:", userID, normalizeJdTaskType(taskType))
+	for slot := range s.slots {
+		if strings.HasPrefix(slot, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func jdPinFromEnvs(envs map[string]string) string {
@@ -294,6 +278,14 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 	if current+len(specs) > jdMaxUserJobs {
 		s.mu.Unlock()
 		return fmt.Errorf("同一用户同时最多 %d 个任务，当前已有 %d 个", jdMaxUserJobs, current)
+	}
+	taskType := normalizeJdTaskType(specs[0].TaskType)
+	userTaskPrefix := fmt.Sprintf("%d:%s:", userID, taskType)
+	for slot := range s.slots {
+		if strings.HasPrefix(slot, userTaskPrefix) {
+			s.mu.Unlock()
+			return fmt.Errorf("该任务正在执行中，请勿重复点击")
+		}
 	}
 	for _, spec := range specs {
 		slot := jdSlotKey(userID, spec.TaskType, spec.PtPin)
@@ -456,17 +448,24 @@ func (s *JdTaskScheduler) runNodeJob(job *JdJob) (string, error) {
 	}
 
 	envs := copyStringMap(job.Envs)
-	ApplyJdTaskProxyEnvs(envs)
+	ApplyManualJdTaskProxyEnvs(envs)
 
 	ctx, cancel := context.WithTimeout(context.Background(), jdJobTimeout)
 	job.cancel = cancel
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "node", job.ScriptPath)
+	cmd.Dir = filepath.Dir(job.ScriptPath)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Env = os.Environ()
 	for key, value := range envs {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	logFile := openJdManualTaskLogFile(job)
+	if logFile != nil {
+		defer logFile.Close()
+		_, _ = fmt.Fprintf(logFile, "==== %s | %s | %s ====\n", time.Now().Format("2006-01-02 15:04:05"), job.TaskName, job.PtPin)
 	}
 
 	stdout, err := cmd.StdoutPipe()
@@ -490,6 +489,9 @@ func (s *JdTaskScheduler) runNodeJob(job *JdJob) (string, error) {
 			if len(strings.TrimSpace(line)) > 0 {
 				trimmed := strings.TrimSpace(line)
 				JD().Infof("[%s] stderr: %s", job.TaskName, trimmed)
+				if logFile != nil {
+					_, _ = fmt.Fprintf(logFile, "[stderr] %s\n", trimmed)
+				}
 				if job.LogChan != nil {
 					safeLogSend(job.LogChan, fmt.Sprintf("[stderr] %s", trimmed))
 				}
@@ -512,6 +514,9 @@ func (s *JdTaskScheduler) runNodeJob(job *JdJob) (string, error) {
 			trimmed := strings.TrimSpace(line)
 			if trimmed != "" {
 				JD().Infof("[%s] %s", job.TaskName, trimmed)
+				if logFile != nil {
+					_, _ = fmt.Fprintf(logFile, "%s\n", trimmed)
+				}
 				if job.LogChan != nil {
 					safeLogSend(job.LogChan, trimmed)
 				}
@@ -545,10 +550,32 @@ func killProcessGroup(cmd *exec.Cmd) {
 	_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 }
 
-func cleanupOrphanJdNodeProcesses() {
-	out, err := exec.Command("pgrep", "-f", "6dylan6_jdpro").Output()
+func openJdManualTaskLogFile(job *JdJob) *os.File {
+	if job == nil {
+		return nil
+	}
+	dir := jdManualLogDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil
+	}
+	safePin := strings.ReplaceAll(job.PtPin, "/", "_")
+	safePin = strings.ReplaceAll(safePin, "\\", "_")
+	name := fmt.Sprintf("%s_%s_%d.log", normalizeJdTaskType(job.TaskType), safePin, time.Now().UnixNano())
+	f, err := os.OpenFile(filepath.Join(dir, name), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return
+		JD().Warnf("[手动京东任务] 创建日志文件失败: %v", err)
+		return nil
+	}
+	return f
+}
+
+func cleanupOrphanJdNodeProcesses() {
+	out, err := exec.Command("pgrep", "-f", "自定义执行京东脚本/6dylan6_jdpro").Output()
+	if err != nil {
+		out, err = exec.Command("pgrep", "-f", "6dylan6_jdpro").Output()
+		if err != nil {
+			return
+		}
 	}
 	pids := strings.Fields(string(out))
 	if len(pids) == 0 {

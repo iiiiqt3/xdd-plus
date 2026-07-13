@@ -807,6 +807,7 @@
             </div>
             <div class="nav-group-items" data-group="jd">
                 <div class="nav-sub-item" data-page="jdcookies" data-search="京东账号 ck cookie" onclick="switchPage('jdcookies')"><i class="fas fa-cookie"></i><span>京东账号</span></div>
+                <div class="nav-sub-item" data-page="jdmanualtasks" data-search="手动京东任务 扫描脚本" onclick="switchPage('jdmanualtasks')"><i class="fas fa-hand-pointer"></i><span>手动京东任务</span></div>
                 <div class="nav-sub-item" data-page="jdcrontasks" data-search="京东任务 cron 定时" onclick="switchPage('jdcrontasks')"><i class="fas fa-list-check"></i><span>京东任务列表</span></div>
                 <div class="nav-sub-item" data-page="jdtaskqueue" data-search="用户任务队列 排队" onclick="switchPage('jdtaskqueue')"><i class="fas fa-layer-group"></i><span>用户任务队列</span></div>
             </div>
@@ -1770,6 +1771,46 @@
                     </table>
                 </div>
                 <div style="padding:12px 0 4px;font-size:12px;color:#999;" id="jdTaskQueueHint">加载中...</div>
+            </div>
+        </div>
+
+        <!-- ========= 手动京东任务 ========= -->
+        <div id="page-jdmanualtasks" class="page-section">
+            <div class="card" style="margin-bottom:16px;">
+                <div class="config-section-title"><i class="fas fa-network-wired"></i> 手动任务代理 <span class="tag tag-info" style="font-size:11px;">开且填写则优先用此处；否则用系统设置京东代理</span></div>
+                <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:8px 0 4px;">
+                    <div class="form-item"><label>启用代理</label>
+                        <select id="jdmt_proxyEnabled"><option value="false">关闭</option><option value="true">开启</option></select>
+                    </div>
+                    <div class="form-item full" style="grid-column:1/-1;"><label>代理 API 地址</label>
+                        <input type="text" id="jdmt_proxyUrl" placeholder="留空则回退系统京东代理">
+                    </div>
+                    <div class="form-item"><label>取 IP 失败重试</label><input type="number" id="jdmt_proxyRenum" value="10" min="1"></div>
+                    <div class="form-item"><label>重试间隔(秒)</label><input type="number" id="jdmt_proxyRedelay" value="2" min="1"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="toolbar">
+                    <div style="font-size:13px;color:#666;">扫描目录：<code>scripts/自定义执行京东脚本/6dylan6_jdpro</code>（仅顶层 jd_*.js，新脚本默认禁用）</div>
+                    <div class="toolbar-actions">
+                        <button class="btn btn-info btn-sm" onclick="scanJdManualTasks()"><i class="fas fa-search"></i> 重新扫描</button>
+                        <button class="btn btn-primary btn-sm" onclick="saveJdManualTasks()"><i class="fas fa-save"></i> 保存</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table" id="jdManualTaskTable">
+                        <thead><tr>
+                            <th style="min-width:50px;">排序</th>
+                            <th style="min-width:100px;">ID</th>
+                            <th style="min-width:160px;">脚本</th>
+                            <th style="min-width:140px;">显示名</th>
+                            <th style="min-width:70px;">启用</th>
+                            <th style="min-width:80px;">扣积分</th>
+                            <th style="min-width:200px;">环境变量</th>
+                        </tr></thead>
+                        <tbody id="jdManualTaskBody"><tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">加载中...</td></tr></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -2857,7 +2898,7 @@ function switchContainerTab(tab) {
 
 // ============ 侧栏分组导航 ============
 var NAV_PAGE_GROUP = {
-    jdcookies: 'jd', jdcrontasks: 'jd', jdtaskqueue: 'jd',
+    jdcookies: 'jd', jdcrontasks: 'jd', jdtaskqueue: 'jd', jdmanualtasks: 'jd',
     users: 'user', coinlogs: 'user', notifications: 'user', feedbacks: 'user',
     activities: 'ql', actauth: 'ql', actstats: 'ql', qlcrontasks: 'ql', qlenvs: 'ql', containers: 'ql',
     wxdevices: 'proto', yyb: 'proto', envvars: 'proto',
@@ -2955,6 +2996,7 @@ function switchPage(page) {
         qlcontainers: ['青龙活动容器', '青龙与活动 / 青龙活动容器'],
         qlenvs: ['青龙活动变量', '青龙与活动 / 青龙活动变量'], jdcontainers: ['京东容器', '青龙与活动 / 京东容器'],
         jdcrontasks: ['京东任务列表', '京东业务 / 京东任务列表'],
+        jdmanualtasks: ['手动京东任务', '京东业务 / 手动京东任务'],
         jdtaskqueue: ['用户任务队列', '京东业务 / 用户任务队列'],
         qlcrontasks: ['青龙活动任务', '青龙与活动 / 青龙活动任务'],
         logmgmt: ['日志管理', '系统运维 / 日志管理'],
@@ -2974,6 +3016,7 @@ function switchPage(page) {
         containers: loadContainers,
         qlcontainers: loadQLContainers,
         qlenvs: loadQLEnvConfigs, jdcontainers: loadJdContainers, jdcrontasks: initJdCronTaskPage,
+        jdmanualtasks: loadJdManualTasks,
         jdtaskqueue: initJdTaskQueuePage,
         qlcrontasks: initQlCronTaskPage, logmgmt: initLogMgmtPage, sysconfig: function() { loadSysConfig(); }, gameconfig: loadGameConfig,
         apidocs: initApiDocsPage,
@@ -8382,6 +8425,118 @@ async function cleanupLogs() {
         loadLogStats();
         if (_logTab === 'files') loadLogFileList();
     } catch(e) { toast('清理失败: ' + e.message, 'error'); }
+}
+
+// ============ 手动京东任务 ============
+var _jdManualTasksCache = { proxy: {}, tasks: [] };
+
+async function loadJdManualTasks() {
+    try {
+        var res = await api.get('/api/admin/jd-manual-tasks');
+        if (res.code !== 0) { toast(res.msg || '加载失败', 'error'); return; }
+        _jdManualTasksCache = res.data || { proxy: {}, tasks: [] };
+        renderJdManualTasks();
+    } catch (e) {
+        toast('加载失败: ' + e.message, 'error');
+    }
+}
+
+function renderJdManualTasks() {
+    var proxy = _jdManualTasksCache.proxy || {};
+    var en = document.getElementById('jdmt_proxyEnabled');
+    var url = document.getElementById('jdmt_proxyUrl');
+    var renum = document.getElementById('jdmt_proxyRenum');
+    var redelay = document.getElementById('jdmt_proxyRedelay');
+    if (en) en.value = proxy.enabled ? 'true' : 'false';
+    if (url) url.value = proxy.url || '';
+    if (renum) renum.value = proxy.renum || '10';
+    if (redelay) redelay.value = proxy.redelay || '2';
+
+    var tbody = document.getElementById('jdManualTaskBody');
+    if (!tbody) return;
+    var tasks = (_jdManualTasksCache.tasks || []).slice().sort(function(a, b) {
+        return (a.order || 0) - (b.order || 0) || String(a.id).localeCompare(String(b.id));
+    });
+    if (!tasks.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">暂无任务，请放入脚本后点「重新扫描」</td></tr>';
+        return;
+    }
+    tbody.innerHTML = tasks.map(function(t, idx) {
+        var envsText = '';
+        if (t.envs && typeof t.envs === 'object') {
+            envsText = Object.keys(t.envs).map(function(k) { return k + '=' + t.envs[k]; }).join('\n');
+        }
+        return '<tr data-idx="' + idx + '">' +
+            '<td><input type="number" class="jdmt-order" value="' + (t.order || 0) + '" style="width:70px;"></td>' +
+            '<td><code>' + escapeHtml(t.id || '') + '</code><input type="hidden" class="jdmt-id" value="' + escapeHtml(t.id || '') + '"><input type="hidden" class="jdmt-script" value="' + escapeHtml(t.script || '') + '"></td>' +
+            '<td style="font-size:12px;">' + escapeHtml(t.script || '') + '</td>' +
+            '<td><input type="text" class="jdmt-name" value="' + escapeHtml(t.name || '') + '" style="width:100%;min-width:120px;"></td>' +
+            '<td><select class="jdmt-enabled"><option value="true"' + (t.enabled ? ' selected' : '') + '>启用</option><option value="false"' + (!t.enabled ? ' selected' : '') + '>禁用</option></select></td>' +
+            '<td><input type="number" class="jdmt-coin" value="' + (t.coin || 0) + '" min="0" style="width:80px;"></td>' +
+            '<td><textarea class="jdmt-envs" rows="2" placeholder="KEY=VALUE 每行一个" style="width:100%;min-width:180px;font-size:12px;">' + escapeHtml(envsText) + '</textarea></td>' +
+            '</tr>';
+    }).join('');
+}
+
+function collectJdManualTasksFromTable() {
+    var rows = document.querySelectorAll('#jdManualTaskBody tr[data-idx]');
+    var tasks = [];
+    rows.forEach(function(row) {
+        var id = (row.querySelector('.jdmt-id') || {}).value || '';
+        var script = (row.querySelector('.jdmt-script') || {}).value || '';
+        if (!id || !script) return;
+        var envs = {};
+        var raw = ((row.querySelector('.jdmt-envs') || {}).value || '').split(/\n+/);
+        raw.forEach(function(line) {
+            line = line.trim();
+            if (!line || line.indexOf('=') < 0) return;
+            var i = line.indexOf('=');
+            var k = line.slice(0, i).trim();
+            var v = line.slice(i + 1).trim();
+            if (k) envs[k] = v;
+        });
+        tasks.push({
+            id: id,
+            script: script,
+            name: ((row.querySelector('.jdmt-name') || {}).value || '').trim() || id,
+            enabled: ((row.querySelector('.jdmt-enabled') || {}).value === 'true'),
+            order: parseInt(((row.querySelector('.jdmt-order') || {}).value || '0'), 10) || 0,
+            coin: parseInt(((row.querySelector('.jdmt-coin') || {}).value || '0'), 10) || 0,
+            envs: envs
+        });
+    });
+    return tasks;
+}
+
+async function saveJdManualTasks() {
+    var proxy = {
+        enabled: ((document.getElementById('jdmt_proxyEnabled') || {}).value === 'true'),
+        url: ((document.getElementById('jdmt_proxyUrl') || {}).value || '').trim(),
+        renum: String((document.getElementById('jdmt_proxyRenum') || {}).value || '10'),
+        redelay: String((document.getElementById('jdmt_proxyRedelay') || {}).value || '2')
+    };
+    var tasks = collectJdManualTasksFromTable();
+    try {
+        var res = await api.post('/api/admin/jd-manual-tasks/save', { proxy: proxy, tasks: tasks });
+        if (res.code !== 0) { toast(res.msg || '保存失败', 'error'); return; }
+        _jdManualTasksCache = res.data || { proxy: proxy, tasks: tasks };
+        renderJdManualTasks();
+        toast(res.msg || '保存成功', 'success');
+    } catch (e) {
+        toast('保存失败: ' + e.message, 'error');
+    }
+}
+
+async function scanJdManualTasks() {
+    try {
+        var res = await api.post('/api/admin/jd-manual-tasks/scan', {});
+        if (res.code !== 0) { toast(res.msg || '扫描失败', 'error'); return; }
+        _jdManualTasksCache = res.data || _jdManualTasksCache;
+        renderJdManualTasks();
+        toast(res.msg || '扫描完成', 'success');
+    } catch (e) {
+        toast('扫描失败: ' + e.message, 'error');
+    }
 }
 
 // ============ 用户 JD 任务队列 ============

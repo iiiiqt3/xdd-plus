@@ -2,353 +2,526 @@ package models
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"regexp"
-	"strconv"
-	//	"bytes"
+	"gopkg.in/yaml.v2"
 	"gorm.io/gorm"
-	"os/exec"
 )
 
-func handleUserChoice(sender *Sender, msg chan string, cks []JdCookie) {
-	timeout := time.After(60 * time.Second)
-	var selectedTask string // 保存用户选择的任务
-	for {
-		select {
-		case n, ok := <-msg:
-			if !ok {
-				return
-			}
+const (
+	jdManualScriptRelDir   = "scripts/自定义执行京东脚本/6dylan6_jdpro"
+	jdManualLogRelDir      = "scripts/自定义执行京东脚本/logs"
+	jdManualTasksConfigRel = "conf/jd_manual_tasks.yaml"
+	jdManualLogRetainDays  = 7
+)
 
-			// 根据用户输入的数字选择任务
-			switch n {
+var (
+	jdEnvNameRe = regexp.MustCompile(`new\s+Env\s*\(\s*['"]([^'"]+)['"]`)
+	jdManualExcludeScripts = map[string]bool{
+		"jdCookie.js": true,
+	}
+)
 
-			case "1":
-				selectedTask = "Jd_newfruit_watering"
-			case "2":
-				selectedTask = "jd_plantBean"
-			case "3":
-				selectedTask = "jd_dwapp"
+// JdManualTaskItem 手动京东任务配置项
+type JdManualTaskItem struct {
+	ID      string            `yaml:"id" json:"id"`
+	Script  string            `yaml:"script" json:"script"`
+	Name    string            `yaml:"name" json:"name"`
+	Enabled bool              `yaml:"enabled" json:"enabled"`
+	Order   int               `yaml:"order" json:"order"`
+	Coin    int               `yaml:"coin" json:"coin"`
+	Envs    map[string]string `yaml:"envs,omitempty" json:"envs,omitempty"`
+}
 
-			case "4":
-				selectedTask = "Jd_price"
-			case "5":
-				selectedTask = "Jd_AutoEval"
-			case "6":
-				selectedTask = "jd_delLjq"
-			case "7":
-				selectedTask = "jd_insight"
+// JdManualProxyConfig 手动京东任务专用代理
+type JdManualProxyConfig struct {
+	Enabled bool   `yaml:"enabled" json:"enabled"`
+	URL     string `yaml:"url" json:"url"`
+	Renum   string `yaml:"renum" json:"renum"`
+	Redelay string `yaml:"redelay" json:"redelay"`
+}
 
-			case "q":
-				sender.Reply("退出流程")
-				inputList[sender.UserID] = nil
-				return
-			default:
-				sender.Reply("输入无效，请重新输入任务序号，或回复'q'退出流程。")
-				continue
-			}
+// JdManualScanConfig 扫描配置
+type JdManualScanConfig struct {
+	Dir            string   `yaml:"dir" json:"dir"`
+	Pattern        string   `yaml:"pattern" json:"pattern"`
+	Exclude        []string `yaml:"exclude" json:"exclude"`
+	DefaultEnabled bool     `yaml:"default_enabled" json:"default_enabled"`
+}
 
-			go handleAccountChoice(sender, msg, cks, selectedTask)
-			return
-		case <-timeout:
-			sender.Reply("操作超时，退出流程！")
-			inputList[sender.UserID] = nil
-			return
-		}
+// JdManualTasksFile yaml 根结构
+type JdManualTasksFile struct {
+	Scan  JdManualScanConfig  `yaml:"scan" json:"scan"`
+	Proxy JdManualProxyConfig `yaml:"proxy" json:"proxy"`
+	Tasks []JdManualTaskItem  `yaml:"tasks" json:"tasks"`
+}
+
+type jdManualRegistry struct {
+	mu    sync.RWMutex
+	file  JdManualTasksFile
+	byID  map[string]*JdManualTaskItem
+}
+
+var jdManualTasks = &jdManualRegistry{
+	byID: make(map[string]*JdManualTaskItem),
+}
+
+func jdManualScriptDir() string {
+	return filepath.Join(ExecPath, jdManualScriptRelDir)
+}
+
+func jdManualLogDir() string {
+	return filepath.Join(ExecPath, jdManualLogRelDir)
+}
+
+func jdManualConfigPath() string {
+	return filepath.Join(ExecPath, jdManualTasksConfigRel)
+}
+
+func defaultJdManualTasksFile() JdManualTasksFile {
+	return JdManualTasksFile{
+		Scan: JdManualScanConfig{
+			Dir:            jdManualScriptRelDir,
+			Pattern:        "jd_*.js",
+			Exclude:        []string{"jdCookie.js"},
+			DefaultEnabled: false,
+		},
+		Proxy: JdManualProxyConfig{
+			Enabled: false,
+			URL:     "",
+			Renum:   "10",
+			Redelay: "2",
+		},
+		Tasks: []JdManualTaskItem{},
 	}
 }
 
-func handleAccountChoice(sender *Sender, msg chan string, cks []JdCookie, selectedTask string) {
-
-	msgs := []string{
-		"请回复以下数字列号指定账号运行任务，如需退出请回复'q'退出任务流程：",
-		"0、所有账号", // 将“所有账号”放在最上面
+// InitJdManualTasks 启动时加载配置并扫描脚本目录
+func InitJdManualTasks() {
+	_ = os.MkdirAll(jdManualScriptDir(), 0755)
+	_ = os.MkdirAll(jdManualLogDir(), 0755)
+	if err := loadJdManualTasksFile(); err != nil {
+		JD().Warnf("[手动京东任务] 加载配置失败，使用默认: %v", err)
+		jdManualTasks.mu.Lock()
+		jdManualTasks.file = defaultJdManualTasksFile()
+		jdManualTasks.rebuildIndexLocked()
+		jdManualTasks.mu.Unlock()
 	}
-
-	// 添加所有具体账号，从1开始
-	for i, ck := range cks {
-		statusText, _ := GetAccountStatusText(&ck)
-		// 包装成和原格式一致的【状态】样式
-		status := fmt.Sprintf("【%s】", statusText)
-
-		// 添加状态到 msgs 中
-		msgs = append(msgs, fmt.Sprintf("%d、%s %s", i+1, ck.Nickname, status)) // 从1开始
-	}
-
-	// 回复消息
-	sender.Reply(strings.Join(msgs, "\n"))
-
-	timeout := time.After(60 * time.Second)
-	for {
-		select {
-		case n, ok := <-msg:
-			if !ok {
-				return
-			}
-
-			if strings.ToLower(n) == "q" {
-				sender.Reply("已退出流程！")
-				inputList[sender.UserID] = nil
-				return
-			}
-
-			num, err := strconv.Atoi(n)
-			if err != nil || num < 0 || num > len(cks) { // 修改这里以包括0到len(cks)的范围
-				sender.Reply("输入错误，请重新输入序列号，或回复'q'退出流程。")
-				continue
-			}
-
-			if num == 0 { // 用户选择“所有账号”
-				// 日志：记录用户选择了所有账号，并输出所有ck的关键信息（包含pt_key）
-				JD().Infof("[用户:%d] 选择了所有账号执行任务[%s]，共%d个账号，ck信息如下：",
-					sender.UserID, selectedTask, len(cks))
-				for i, ck := range cks {
-					JD().Infof("  账号%d: Nickname=%s, PtPin=%s, PtKey=%s", i+1, ck.Nickname, ck.PtPin, ck.PtKey)
-				}
-
-				// 循环执行所有账号
-				for _, ck := range cks {
-					envs := map[string]string{
-						"pins": "&" + ck.PtPin,
-					}
-
-					// 根据选择的任务执行不同的操作
-					switch selectedTask {
-					case "Jd_newfruit_watering":
-						if IsJdTaskProxyEnabled() {
-							envs["FRUIT_NEW_DELAY"] = "5"
-						} else {
-							envs["FRUIT_NEW_DELAY"] = "8"
-						}
-						go JdTaskHandler(
-							sender,
-							"新农场浇水",
-							"ncjs",
-							ExecPath+"/scripts/6dylan6_jdpro/jd_fruit_new.js",
-							envs,
-							replexQuan_newWatering,
-						)
-					case "jd_plantBean":
-						go JdTaskHandler(
-							sender,
-							"种豆得豆任务",
-							"zhongdoudedou",
-							ExecPath+"/scripts/6dylan6_jdpro/jd_plantBean.js",
-							envs,
-							replexQuan_jd_plantBean,
-						)
-					case "jd_dwapp":
-						envs["ONEVAL"] = "true" // 开启评价
-						go JdTaskHandler(
-							sender,
-							"话费积分任务",
-							"huafeijifen",
-							ExecPath+"/scripts/6dylan6_jdpro/jd_dwapp.js",
-							envs,
-							replexQuan_jd_dwapp,
-						)
-					case "Jd_price":
-						go JdTaskHandler(
-							sender,
-							"一键保价",
-							"baojia",
-							ExecPath+"/scripts/6dylan6_jdpro/jd_OnceApply.js",
-							envs,
-							replexQuan_Price,
-						)
-					case "Jd_AutoEval":
-						envs["ONEVAL"] = "true" // 开启评价
-						go JdTaskHandler(
-							sender,
-							"一键评价",
-							"pingjia",
-							ExecPath+"/scripts/6dylan6_jdpro/jd_AutoEval.js",
-							envs,
-							replexQuan_AutoEval,
-						)
-					case "jd_delLjq":
-						go JdTaskHandler(
-							sender,
-							"删除垃圾券",
-							"delljq",
-							ExecPath+"/scripts/6dylan6_jdpro/jd_delLjq.js",
-							envs,
-							replexQuan_jd_delLjq,
-						)
-					case "jd_insight":
-						go JdTaskHandler(
-							sender,
-							"问卷调查得豆",
-							"wjdc",
-							ExecPath+"/scripts/6dylan6_jdpro/jd_insight.js",
-							envs,
-							replexQuan_jd_insight,
-						)
-					}
-				}
-				// 所有账号任务已启动
-				sender.Reply("所有账号的任务已开始执行，请耐心等待回执。")
-			} else {
-				// 执行用户选择的单个账号任务
-				ck := cks[num-1] // 根据用户输入的序号获取账号，减去1以获得正确索引
-
-				// 日志：记录用户选择的单个账号及对应的ck关键信息（包含pt_key）
-				JD().Infof("[用户:%d] 选择了第%d个账号执行任务[%s]，ck信息：Nickname=%s, PtPin=%s, PtKey=%s",
-					sender.UserID, num, selectedTask, ck.Nickname, ck.PtPin, ck.PtKey)
-
-				envs := map[string]string{
-					"pins": "&" + ck.PtPin,
-				}
-
-				// 根据选择的任务执行不同的操作
-				switch selectedTask {
-				case "Jd_newfruit_watering":
-					if IsJdTaskProxyEnabled() {
-						envs["FRUIT_NEW_DELAY"] = "5"
-					} else {
-						envs["FRUIT_NEW_DELAY"] = "8"
-					}
-					go JdTaskHandler(
-						sender,
-						"新农场浇水",
-						"ncjs",
-						ExecPath+"/scripts/6dylan6_jdpro/jd_fruit_new.js",
-						envs,
-						replexQuan_newWatering,
-					)
-				case "Jd_price":
-					go JdTaskHandler(
-						sender,
-						"一键保价",
-						"baojia",
-						ExecPath+"/scripts/6dylan6_jdpro/jd_OnceApply.js",
-						envs,
-						replexQuan_Price,
-					)
-				case "jd_plantBean":
-					go JdTaskHandler(
-						sender,
-						"种豆得豆任务",
-						"zhongdoudedou",
-						ExecPath+"/scripts/6dylan6_jdpro/jd_plantBean.js",
-						envs,
-						replexQuan_jd_plantBean,
-					)
-				case "jd_dwapp":
-					envs["ONEVAL"] = "true" // 开启评价
-					go JdTaskHandler(
-						sender,
-						"话费积分任务",
-						"huafeijifen",
-						ExecPath+"/scripts/6dylan6_jdpro/jd_dwapp.js",
-						envs,
-						replexQuan_jd_dwapp,
-					)
-				case "Jd_AutoEval":
-					envs["ONEVAL"] = "true" // 开启评价
-					go JdTaskHandler(
-						sender,
-						"一键评价",
-						"pingjia",
-						ExecPath+"/scripts/6dylan6_jdpro/jd_AutoEval.js",
-						envs,
-						replexQuan_AutoEval,
-					)
-				case "jd_delLjq":
-					go JdTaskHandler(
-						sender,
-						"删除垃圾券",
-						"delljq",
-						ExecPath+"/scripts/6dylan6_jdpro/jd_delLjq.js",
-						envs,
-						replexQuan_jd_delLjq,
-					)
-				case "jd_insight":
-					go JdTaskHandler(
-						sender,
-						"问卷调查得豆",
-						"wjdc",
-						ExecPath+"/scripts/6dylan6_jdpro/jd_insight.js",
-						envs,
-						replexQuan_jd_insight,
-					)
-				}
-				sender.Reply(fmt.Sprintf("%s 的任务已开始执行，请耐心等待回执。", ck.Nickname))
-			}
-
-			inputList[sender.UserID] = nil
-			return
-		case <-timeout:
-			sender.Reply("操作超时，退出流程！")
-			inputList[sender.UserID] = nil
-			return
-		}
-	}
-}
-
-// 通用任务处理器
-func JdTaskHandler(sender *Sender, taskName string, envVar string, scriptPath string, envs map[string]string, outputParser func(string, *Sender) string) {
-	if sender.IsAdmin {
+	if _, err := ScanAndSyncJdManualTasks(); err != nil {
+		JD().Warnf("[手动京东任务] 首次扫描失败: %v", err)
 	} else {
-		value := GetEnv(envVar)
-		if value == "" {
-			sender.Reply(fmt.Sprintf("管理员未开启%s功能", taskName))
-			return
-		}
-
-		coin := GetCoin(sender.UserID)
-		jbcoin, _ := strconv.Atoi(value)
-		if coin < jbcoin {
-			return
-		}
-		RemCoin(sender.UserID, jbcoin)
-		RecordCoinForSender(sender, sender.UserID, -jbcoin, "任务扣费", fmt.Sprintf("执行任务: %s", taskName))
-	}
-
-	// 扣费后提交任务；入队失败则退费
-	if err := ExecuteTask(sender, taskName, scriptPath, envs, outputParser); err != nil {
-		if !sender.IsAdmin {
-			value := GetEnv(envVar)
-			jbcoin, _ := strconv.Atoi(value)
-			if jbcoin > 0 {
-				var u User
-				if db.Where("number = ?", sender.UserID).First(&u).Error == nil {
-					db.Model(u).Update("coin", gorm.Expr(fmt.Sprintf("coin+%d", jbcoin)))
-					RecordCoinForSender(sender, sender.UserID, jbcoin, "任务退费", fmt.Sprintf("入队失败: %s", taskName))
-				}
-			}
-		}
-		sender.Reply(fmt.Sprintf("%s任务失败：%v", taskName, err))
+		JD().Infof("[手动京东任务] 初始化完成，共 %d 个任务", len(GetJdManualTaskList(false)))
 	}
 }
 
-// 通用任务执行函数：提交到统一调度队列，脚本结束后仍用 outputParser 正则匹配并回复
-func ExecuteTask(sender *Sender, taskName string, scriptPath string, envs map[string]string, outputParser func(string, *Sender) string) error {
-	JD().Infof("提交运行%s", taskName)
-	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		Error("JavaScript 文件不存在: %v", err)
-		return fmt.Errorf("脚本不存在")
+func loadJdManualTasksFile() error {
+	path := jdManualConfigPath()
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			f := defaultJdManualTasksFile()
+			jdManualTasks.mu.Lock()
+			jdManualTasks.file = f
+			jdManualTasks.rebuildIndexLocked()
+			jdManualTasks.mu.Unlock()
+			return saveJdManualTasksFileUnlocked(f)
+		}
+		return err
+	}
+	var f JdManualTasksFile
+	if err := yaml.Unmarshal(data, &f); err != nil {
+		return err
+	}
+	if f.Scan.Dir == "" {
+		f.Scan = defaultJdManualTasksFile().Scan
+	}
+	if f.Scan.Pattern == "" {
+		f.Scan.Pattern = "jd_*.js"
+	}
+	if f.Proxy.Renum == "" {
+		f.Proxy.Renum = "10"
+	}
+	if f.Proxy.Redelay == "" {
+		f.Proxy.Redelay = "2"
+	}
+	if f.Tasks == nil {
+		f.Tasks = []JdManualTaskItem{}
+	}
+	for i := range f.Tasks {
+		if f.Tasks[i].Envs == nil {
+			f.Tasks[i].Envs = map[string]string{}
+		}
+	}
+	jdManualTasks.mu.Lock()
+	jdManualTasks.file = f
+	jdManualTasks.rebuildIndexLocked()
+	jdManualTasks.mu.Unlock()
+	return nil
+}
+
+func (r *jdManualRegistry) rebuildIndexLocked() {
+	r.byID = make(map[string]*JdManualTaskItem, len(r.file.Tasks))
+	for i := range r.file.Tasks {
+		id := strings.TrimSpace(r.file.Tasks[i].ID)
+		if id == "" {
+			continue
+		}
+		r.file.Tasks[i].ID = id
+		r.byID[id] = &r.file.Tasks[i]
+	}
+}
+
+func saveJdManualTasksFileUnlocked(f JdManualTasksFile) error {
+	_ = os.MkdirAll(filepath.Dir(jdManualConfigPath()), 0755)
+	data, err := yaml.Marshal(&f)
+	if err != nil {
+		return err
+	}
+	header := []byte("# 手动京东任务配置（扫描自动维护 tasks，可在后台修改 name/enabled/order/coin/envs/proxy）\n")
+	return ioutil.WriteFile(jdManualConfigPath(), append(header, data...), 0644)
+}
+
+func saveJdManualTasksLocked() error {
+	return saveJdManualTasksFileUnlocked(jdManualTasks.file)
+}
+
+func jdManualTaskIDFromScript(filename string) string {
+	base := strings.TrimSuffix(filepath.Base(filename), ".js")
+	base = strings.TrimPrefix(base, "jd_")
+	if base == "" {
+		return strings.TrimSuffix(filepath.Base(filename), ".js")
+	}
+	return base
+}
+
+func detectJdScriptDisplayName(scriptPath string) string {
+	data, err := ioutil.ReadFile(scriptPath)
+	if err != nil {
+		return ""
+	}
+	// 只扫前 8KB，足够覆盖文件头
+	chunk := data
+	if len(chunk) > 8192 {
+		chunk = chunk[:8192]
+	}
+	m := jdEnvNameRe.FindSubmatch(chunk)
+	if len(m) > 1 {
+		return strings.TrimSpace(string(m[1]))
+	}
+	return ""
+}
+
+func isExcludedJdManualScript(name string, exclude []string) bool {
+	lower := strings.ToLower(name)
+	if jdManualExcludeScripts[name] || jdManualExcludeScripts[lower] {
+		return true
+	}
+	for _, e := range exclude {
+		e = strings.TrimSpace(e)
+		if e == "" {
+			continue
+		}
+		if strings.EqualFold(e, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// ScanAndSyncJdManualTasks 扫描脚本目录并同步 yaml（新脚本默认禁用/coin=0；删文件则删配置）
+func ScanAndSyncJdManualTasks() (JdManualTasksFile, error) {
+	dir := jdManualScriptDir()
+	_ = os.MkdirAll(dir, 0755)
+
+	entries, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return JdManualTasksFile{}, err
 	}
 
-	ptPin := jdPinFromEnvs(envs)
-	if ptPin == "" {
-		return fmt.Errorf("缺少账号信息")
+	jdManualTasks.mu.Lock()
+	defer jdManualTasks.mu.Unlock()
+
+	f := jdManualTasks.file
+	if f.Scan.Dir == "" {
+		f.Scan = defaultJdManualTasksFile().Scan
+	}
+	exclude := f.Scan.Exclude
+	defaultEnabled := f.Scan.DefaultEnabled
+
+	existing := make(map[string]JdManualTaskItem, len(f.Tasks))
+	for _, t := range f.Tasks {
+		existing[t.ID] = t
 	}
 
-	spec := jdJobSpec{
-		TaskType:   jdTaskTypeFromScript(scriptPath),
-		TaskName:   taskName,
-		PtPin:      ptPin,
-		ScriptPath: scriptPath,
-		Envs:       envs,
-		Parser:     outputParser,
+	foundIDs := make(map[string]bool)
+	var next []JdManualTaskItem
+	maxOrder := 0
+	for _, t := range f.Tasks {
+		if t.Order > maxOrder {
+			maxOrder = t.Order
+		}
 	}
 
-	return GetJdTaskScheduler().submitSpecs(sender.UserID, "", nil, sender, []jdJobSpec{spec}, nil, BotContext())
+	for _, ent := range entries {
+		if ent.IsDir() {
+			continue
+		}
+		name := ent.Name()
+		matched, _ := filepath.Match("jd_*.js", name)
+		if !matched {
+			continue
+		}
+		if isExcludedJdManualScript(name, exclude) {
+			continue
+		}
+		id := jdManualTaskIDFromScript(name)
+		if id == "" || foundIDs[id] {
+			continue
+		}
+		foundIDs[id] = true
+		scriptPath := filepath.Join(dir, name)
+		detected := detectJdScriptDisplayName(scriptPath)
+
+		if old, ok := existing[id]; ok {
+			old.Script = name
+			if strings.TrimSpace(old.Name) == "" {
+				if detected != "" {
+					old.Name = detected
+				} else {
+					old.Name = id
+				}
+			}
+			if old.Envs == nil {
+				old.Envs = map[string]string{}
+			}
+			next = append(next, old)
+			continue
+		}
+
+		maxOrder += 10
+		display := detected
+		if display == "" {
+			display = id
+		}
+		next = append(next, JdManualTaskItem{
+			ID:      id,
+			Script:  name,
+			Name:    display,
+			Enabled: defaultEnabled,
+			Order:   maxOrder,
+			Coin:    0,
+			Envs:    map[string]string{},
+		})
+	}
+
+	sort.SliceStable(next, func(i, j int) bool {
+		if next[i].Order == next[j].Order {
+			return next[i].ID < next[j].ID
+		}
+		return next[i].Order < next[j].Order
+	})
+
+	f.Tasks = next
+	jdManualTasks.file = f
+	jdManualTasks.rebuildIndexLocked()
+	if err := saveJdManualTasksLocked(); err != nil {
+		return f, err
+	}
+	return f, nil
+}
+
+// GetJdManualTasksAdmin 后台完整配置
+func GetJdManualTasksAdmin() JdManualTasksFile {
+	jdManualTasks.mu.RLock()
+	defer jdManualTasks.mu.RUnlock()
+	return cloneJdManualTasksFile(jdManualTasks.file)
+}
+
+func cloneJdManualTasksFile(src JdManualTasksFile) JdManualTasksFile {
+	dst := src
+	dst.Scan.Exclude = append([]string{}, src.Scan.Exclude...)
+	dst.Tasks = make([]JdManualTaskItem, len(src.Tasks))
+	for i, t := range src.Tasks {
+		dst.Tasks[i] = t
+		if t.Envs != nil {
+			dst.Tasks[i].Envs = copyStringMap(t.Envs)
+		} else {
+			dst.Tasks[i].Envs = map[string]string{}
+		}
+	}
+	return dst
+}
+
+// SaveJdManualTasksAdmin 保存后台编辑（保留扫描到的 script，按 id 合并）
+func SaveJdManualTasksAdmin(proxy JdManualProxyConfig, tasks []JdManualTaskItem) error {
+	jdManualTasks.mu.Lock()
+	defer jdManualTasks.mu.Unlock()
+
+	byScript := make(map[string]bool)
+	uniq := make([]JdManualTaskItem, 0, len(tasks))
+	seen := make(map[string]bool)
+	for _, t := range tasks {
+		t.ID = strings.TrimSpace(t.ID)
+		t.Script = strings.TrimSpace(t.Script)
+		if t.ID == "" || t.Script == "" {
+			continue
+		}
+		if seen[t.ID] || byScript[t.Script] {
+			continue
+		}
+		seen[t.ID] = true
+		byScript[t.Script] = true
+		if t.Name == "" {
+			t.Name = t.ID
+		}
+		if t.Coin < 0 {
+			t.Coin = 0
+		}
+		if t.Envs == nil {
+			t.Envs = map[string]string{}
+		}
+		uniq = append(uniq, t)
+	}
+	sort.SliceStable(uniq, func(i, j int) bool {
+		if uniq[i].Order == uniq[j].Order {
+			return uniq[i].ID < uniq[j].ID
+		}
+		return uniq[i].Order < uniq[j].Order
+	})
+
+	if proxy.Renum == "" {
+		proxy.Renum = "10"
+	}
+	if proxy.Redelay == "" {
+		proxy.Redelay = "2"
+	}
+
+	jdManualTasks.file.Proxy = proxy
+	jdManualTasks.file.Tasks = uniq
+	jdManualTasks.rebuildIndexLocked()
+	return saveJdManualTasksLocked()
+}
+
+// GetJdManualTaskList 任务列表；onlyEnabled=true 给门户
+func GetJdManualTaskList(onlyEnabled bool) []JdManualTaskItem {
+	jdManualTasks.mu.RLock()
+	defer jdManualTasks.mu.RUnlock()
+	out := make([]JdManualTaskItem, 0, len(jdManualTasks.file.Tasks))
+	for _, t := range jdManualTasks.file.Tasks {
+		if onlyEnabled && !t.Enabled {
+			continue
+		}
+		item := t
+		if item.Envs != nil {
+			item.Envs = copyStringMap(item.Envs)
+		}
+		out = append(out, item)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Order == out[j].Order {
+			return out[i].ID < out[j].ID
+		}
+		return out[i].Order < out[j].Order
+	})
+	return out
+}
+
+func getJdManualTaskByID(taskID string) (*JdManualTaskItem, bool) {
+	jdManualTasks.mu.RLock()
+	defer jdManualTasks.mu.RUnlock()
+	t, ok := jdManualTasks.byID[taskID]
+	if !ok || t == nil {
+		return nil, false
+	}
+	cp := *t
+	if t.Envs != nil {
+		cp.Envs = copyStringMap(t.Envs)
+	}
+	return &cp, true
+}
+
+func getJdManualProxyConfig() JdManualProxyConfig {
+	jdManualTasks.mu.RLock()
+	defer jdManualTasks.mu.RUnlock()
+	return jdManualTasks.file.Proxy
+}
+
+// ResolveManualJdTaskProxy 手动任务代理：开且填写 → 用手动；否则用系统京东代理
+func ResolveManualJdTaskProxy() (enabled bool, url, renum, redelay string) {
+	p := getJdManualProxyConfig()
+	manualURL := strings.TrimSpace(p.URL)
+	if p.Enabled && manualURL != "" {
+		renum = strings.TrimSpace(p.Renum)
+		redelay = strings.TrimSpace(p.Redelay)
+		if renum == "" {
+			renum = "10"
+		}
+		if redelay == "" {
+			redelay = "2"
+		}
+		return true, manualURL, renum, redelay
+	}
+	if !IsJdTaskProxyEnabled() {
+		return false, "", "", ""
+	}
+	renum = strings.TrimSpace(sysConfig.JdTaskProxyRenum)
+	redelay = strings.TrimSpace(sysConfig.JdTaskProxyRedelay)
+	if renum == "" {
+		renum = "10"
+	}
+	if redelay == "" {
+		redelay = "2"
+	}
+	return true, strings.TrimSpace(sysConfig.JdTaskProxyUrl), renum, redelay
+}
+
+// ApplyManualJdTaskProxyEnvs 注入手动/系统代理环境变量
+func ApplyManualJdTaskProxyEnvs(envs map[string]string) {
+	if envs == nil {
+		return
+	}
+	ok, url, renum, redelay := ResolveManualJdTaskProxy()
+	if !ok || url == "" {
+		return
+	}
+	envs["DY_PROXY"] = url
+	envs["DY_PROXY_RENUM"] = renum
+	envs["DY_PROXY_REDELAY"] = redelay
+	envs["PRO_API_PROXY_URL"] = url
+	envs["PRO_PROXY_WHITELIST"] = "jd"
+}
+
+// CleanupJdManualTaskLogs 删除超过保留天数的任务日志
+func CleanupJdManualTaskLogs() {
+	dir := jdManualLogDir()
+	entries, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().AddDate(0, 0, -jdManualLogRetainDays)
+	removed := 0
+	for _, ent := range entries {
+		if ent.IsDir() {
+			continue
+		}
+		if ent.ModTime().Before(cutoff) {
+			if err := os.Remove(filepath.Join(dir, ent.Name())); err == nil {
+				removed++
+			}
+		}
+	}
+	if removed > 0 {
+		JD().Infof("[手动京东任务] 已清理 %d 个过期日志文件", removed)
+	}
 }
 
 // 任务日志通道管理
@@ -390,21 +563,15 @@ func safeLogSend(ch chan string, msg string) {
 	}
 }
 
+// IsUserJdTaskRunning 同一用户同一任务是否已有执行/排队
+func IsUserJdTaskRunning(userId int, taskId string) bool {
+	return GetJdTaskScheduler().HasUserTask(userId, taskId)
+}
+
 // GetRunningTask 检查是否有同一任务的同一账号正在执行或排队
 func GetRunningTask(userId int, taskId string, accountIndexes []int) string {
-	specs, err := buildPortalJdJobSpecs(userId, taskId, "", accountIndexes, nil)
-	if err != nil || len(specs) == 0 {
-		return ""
-	}
-	s := GetJdTaskScheduler()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	taskType := normalizeJdTaskType(taskId)
-	for _, spec := range specs {
-		slot := jdSlotKey(userId, taskType, spec.PtPin)
-		if jobID, ok := s.slots[slot]; ok {
-			return jobID
-		}
+	if IsUserJdTaskRunning(userId, taskId) {
+		return "running"
 	}
 	return ""
 }
@@ -414,16 +581,29 @@ func StopPortalJdTask(taskId string) {
 	GetJdTaskScheduler().StopTaskLog(taskId)
 }
 
-// SubmitPortalJdTask 提交网页端京东任务到调度队列
+// SubmitPortalJdTask 提交网页端京东任务到调度队列（按账号数扣 coin）
 func SubmitPortalJdTask(userId int, taskId string, taskName string, accountIndexes []int, taskLogId string, clientCtx ClientContext) error {
 	logChan := GetTaskLogChannel(taskLogId)
 	if logChan == nil {
 		return fmt.Errorf("日志通道不存在")
 	}
 
-	safeLogSend(logChan, fmt.Sprintf("开始执行任务: %s", taskName))
+	task, ok := getJdManualTaskByID(taskId)
+	if !ok || !task.Enabled {
+		return fmt.Errorf("任务不存在或未启用")
+	}
+	displayName := task.Name
+	if strings.TrimSpace(taskName) != "" {
+		displayName = taskName
+	}
 
-	specs, err := buildPortalJdJobSpecs(userId, taskId, taskName, accountIndexes, logChan)
+	if IsUserJdTaskRunning(userId, taskId) {
+		return fmt.Errorf("该任务正在执行中，请勿重复点击")
+	}
+
+	safeLogSend(logChan, fmt.Sprintf("开始执行任务: %s", displayName))
+
+	specs, err := buildPortalJdJobSpecs(userId, taskId, displayName, accountIndexes, logChan)
 	if err != nil {
 		return err
 	}
@@ -431,14 +611,52 @@ func SubmitPortalJdTask(userId int, taskId string, taskName string, accountIndex
 		return fmt.Errorf("没有可执行的任务")
 	}
 
+	coinPerAccount := task.Coin
+	if coinPerAccount < 0 {
+		coinPerAccount = 0
+	}
+	totalCoin := coinPerAccount * len(specs)
+	if totalCoin > 0 {
+		if err := DeductCoinChecked(userId, totalCoin); err != nil {
+			return err
+		}
+		RecordCoinLogEx(userId, -totalCoin, "任务扣费", fmt.Sprintf("执行任务: %s x%d账号", displayName, len(specs)), clientCtx)
+		safeLogSend(logChan, fmt.Sprintf("已扣除积分 %d（每账号 %d × %d）", totalCoin, coinPerAccount, len(specs)))
+	}
+
 	safeLogSend(logChan, fmt.Sprintf("已选择 %d 个账号", len(specs)))
-	return GetJdTaskScheduler().submitPortalBatch(userId, taskId, taskLogId, logChan, specs, clientCtx)
+	if err := GetJdTaskScheduler().submitPortalBatch(userId, taskId, taskLogId, logChan, specs, clientCtx); err != nil {
+		if totalCoin > 0 {
+			db.Model(&User{}).Where("number = ?", userId).Update("coin", gorm.Expr(fmt.Sprintf("coin+%d", totalCoin)))
+			RecordCoinLogEx(userId, totalCoin, "任务退费", fmt.Sprintf("入队失败: %s", displayName), clientCtx)
+		}
+		return err
+	}
+	return nil
 }
 
 func buildPortalJdJobSpecs(userId int, taskId string, taskName string, accountIndexes []int, logChan chan string) ([]jdJobSpec, error) {
+	task, ok := getJdManualTaskByID(taskId)
+	if !ok {
+		return nil, fmt.Errorf("未知的任务类型 %s", taskId)
+	}
+	if !task.Enabled {
+		return nil, fmt.Errorf("任务未启用")
+	}
+
+	scriptPath := filepath.Join(jdManualScriptDir(), task.Script)
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("脚本不存在: %s", task.Script)
+	}
+
 	selectedCks, err := resolveJdTaskAccountsByIndex(userId, accountIndexes, logChan)
 	if err != nil {
 		return nil, err
+	}
+
+	displayName := task.Name
+	if strings.TrimSpace(taskName) != "" {
+		displayName = taskName
 	}
 
 	specs := make([]jdJobSpec, 0, len(selectedCks))
@@ -446,439 +664,20 @@ func buildPortalJdJobSpecs(userId int, taskId string, taskName string, accountIn
 		envs := map[string]string{
 			"pins": "&" + ck.PtPin,
 		}
-
-		var scriptPath string
-		var parser func(string, *Sender) string
-
-		switch taskId {
-		case "newfruit_watering":
-			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_fruit_new.js"
-			parser = replexQuan_newWatering
-			if IsJdTaskProxyEnabled() {
-				envs["FRUIT_NEW_DELAY"] = "5"
-			} else {
-				envs["FRUIT_NEW_DELAY"] = "8"
-			}
-		case "plantBean":
-			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_plantBean.js"
-			parser = replexQuan_jd_plantBean
-		case "dwapp":
-			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_dwapp.js"
-			parser = replexQuan_jd_dwapp
-			envs["ONEVAL"] = "true"
-		case "price":
-			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_OnceApply.js"
-			parser = replexQuan_Price
-		case "autoEval":
-			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_AutoEval.js"
-			parser = replexQuan_AutoEval
-			envs["ONEVAL"] = "true"
-		case "delLjq":
-			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_delLjq.js"
-			parser = replexQuan_jd_delLjq
-		case "insight":
-			scriptPath = ExecPath + "/scripts/6dylan6_jdpro/jd_insight.js"
-			parser = replexQuan_jd_insight
-		default:
-			if logChan != nil {
-				safeLogSend(logChan, fmt.Sprintf("错误: 未知的任务类型 %s", taskId))
-			}
-			return nil, fmt.Errorf("未知的任务类型 %s", taskId)
+		for k, v := range task.Envs {
+			envs[k] = v
 		}
-
 		specs = append(specs, jdJobSpec{
-			TaskType:   taskId,
-			TaskName:   taskName,
+			TaskType:   task.ID,
+			TaskName:   displayName,
 			PtPin:      ck.PtPin,
 			Nickname:   ck.Nickname,
 			ScriptPath: scriptPath,
 			Envs:       envs,
-			Parser:     parser,
+			Parser:     nil,
 		})
 	}
 	return specs, nil
-}
-
-func replexQuan_Watering(info string, sender *Sender) string {
-	re1 := regexp.MustCompile(`(?m)^.*(【京东账号1🆔】.+?)$`)
-	re2 := regexp.MustCompile(`(?m)^.*(【水果名称】.+?)$`)
-	re3 := regexp.MustCompile(`(?m)^.*(【已兑换水果】.+?)$`)
-	re4 := regexp.MustCompile(`(?m)^.*(【今日共浇水】.+?)$`)
-	re5 := regexp.MustCompile(`(?m)^.*(【剩余水滴】.+?)$`)
-	re6 := regexp.MustCompile(`(?m)^.*(【水果进度】.+?)$`)
-	re7 := regexp.MustCompile(`(?m)^.*(【预测】.+?)$`)
-	re8 := regexp.MustCompile(`(?m)^.*(【数据异常】.+?)$`)
-
-	matches1 := re1.FindStringSubmatch(info)
-	matches2 := re2.FindStringSubmatch(info)
-	matches3 := re3.FindStringSubmatch(info)
-	matches4 := re4.FindStringSubmatch(info)
-	matches5 := re5.FindStringSubmatch(info)
-	matches6 := re6.FindStringSubmatch(info)
-	matches7 := re7.FindStringSubmatch(info)
-	matches8 := re8.FindStringSubmatch(info)
-
-	msgs := []string{
-		fmt.Sprintf("农场浇水任务已完成："),
-	}
-
-	if len(matches1) > 1 {
-		replaceText := strings.Replace(matches1[1], "【京东账号1🆔】", "【京东账号】", -1)
-		msgs = append(msgs, replaceText)
-	}
-	if len(matches2) > 1 {
-		msgs = append(msgs, matches2[1])
-	}
-	if len(matches3) > 1 {
-		msgs = append(msgs, matches3[1])
-	}
-	if len(matches4) > 1 {
-		msgs = append(msgs, matches4[1])
-	}
-	if len(matches5) > 1 {
-		if sender.Type == "wx" || sender.Type == "wxg" {
-			replaceText := strings.Replace(matches5[1], "💧", "💧", -1)
-			msgs = append(msgs, replaceText)
-		} else {
-			msgs = append(msgs, matches5[1])
-		}
-	}
-	if len(matches6) > 1 {
-		msgs = append(msgs, matches6[1])
-	}
-	if len(matches7) > 1 {
-		if (sender.Type == "wx" || sender.Type == "wxg") && strings.Contains(matches7[1], "🍉") {
-			replaceText := strings.Replace(matches7[1], "🍉", "[庆祝]", -1)
-			msgs = append(msgs, replaceText)
-		} else {
-			msgs = append(msgs, matches7[1])
-		}
-	}
-	if len(matches8) > 1 {
-		msgs = append(msgs, matches8[1])
-	}
-	msgs = append(msgs, "=================\n提示：农场兑红包，每月限兑4次数，次数可能变更，自测！\n=================")
-	return strings.Join(msgs, "\n")
-}
-
-func replexQuan_newWatering(info string, sender *Sender) string {
-	re1 := regexp.MustCompile(`(?m)^.*(【账号1】.+?)$`)
-	re2 := regexp.MustCompile(`(?m)^.*(【水果名称】.+?)$`)
-	re3 := regexp.MustCompile(`(?m)^.*(【已完成种植】.+?)$`)
-	re4 := regexp.MustCompile(`(?m)^.*(【额外奖励】.+?)$`)
-	re5 := regexp.MustCompile(`(?m)^.*(【种植进度】.+?)$`)
-	re6 := regexp.MustCompile(`(?m)^.*(【剩余水滴】.+?)$`)
-	//    re7 := regexp.MustCompile(`(?m)^.*(还未选择种植.+?)$`)
-
-	re8 := regexp.MustCompile(`(?m)^.*(【数据异常】请手动登录app查看此账号农场是否正常)`)
-	matches1 := re1.FindStringSubmatch(info)
-	matches2 := re2.FindStringSubmatch(info)
-	matches3 := re3.FindStringSubmatch(info)
-	matches4 := re4.FindStringSubmatch(info)
-	matches5 := re5.FindStringSubmatch(info)
-	matches6 := re6.FindStringSubmatch(info)
-	matches8 := re8.FindStringSubmatch(info)
-	msgs := []string{
-		fmt.Sprintf("新农场浇水任务已完成："),
-	}
-
-	if len(matches1) > 1 {
-		replaceText := strings.Replace(matches1[1], "【京东账号1】", "【京东账号】", -1)
-		msgs = append(msgs, replaceText)
-	}
-	if len(matches2) > 1 {
-		msgs = append(msgs, matches2[1])
-	}
-	if len(matches3) > 1 {
-		msgs = append(msgs, matches3[1])
-	}
-	if len(matches4) > 1 {
-		msgs = append(msgs, matches4[1])
-	}
-	if len(matches5) > 1 {
-		msgs = append(msgs, matches5[1])
-	}
-	if len(matches6) > 1 {
-		if sender.Type == "wx" || sender.Type == "wxg" {
-			replaceText := strings.Replace(matches6[1], "💧", "💧", -1)
-			msgs = append(msgs, replaceText)
-		} else {
-			msgs = append(msgs, matches6[1])
-		}
-	}
-	if len(matches8) > 1 {
-		// 如果匹配到“黑号”，返回相应信息
-		return "新农场都进不去了，浇什么水，，如果你京东APP能进入农场，说明IP黑了，请重新执行"
-	}
-	msgs = append(msgs, "新农场黑ip较为严重，如果失败请重新执行")
-	msgs = append(msgs, "========================================\n提示：新农场兑换，请注意有效期！\n========================================")
-
-	return strings.Join(msgs, "\n")
-
-}
-
-//## 种豆得豆匹配
-
-func replexQuan_jd_plantBean(info string, sender *Sender) string {
-	// 1. 匹配账号标识中的账号内容（【账号X】后的jd_xxx部分）
-	reAccount := regexp.MustCompile(`【账号\d+】(jd_[^\s-]+)`)
-	// 2. 匹配从“定时领取营养液”开始到结尾的所有内容
-	reCoreLog := regexp.MustCompile(`定时领取营养液：[\s\S]*`)
-	// 3. 匹配并移除结尾的结束提示（🔔种豆得豆任务, 结束! 及后续所有内容）
-	reEnd := regexp.MustCompile(`🔔种豆得豆任务, 结束! [\s\S]*`)
-	// 4. 匹配进入活动失败的关键字
-	reFailed := regexp.MustCompile(`进入活动失败`)
-
-	// 如果匹配到“进入活动失败”，直接返回提示
-	if reFailed.MatchString(info) {
-		return "账号黑了，无法执行种豆得豆任务"
-	}
-
-	// 提取账号信息并格式化
-	accountMatches := reAccount.FindStringSubmatch(info)
-	accountStr := ""
-	if len(accountMatches) > 1 {
-		accountStr = "====【京东账号】" + accountMatches[1] + "=====\n\n"
-	}
-
-	// 第一步：提取核心日志（定时领取营养液开始到结尾）
-	coreLog := reCoreLog.FindString(info)
-	// 第二步：移除结尾的结束提示内容
-	coreLog = reEnd.ReplaceAllString(coreLog, "")
-	// 第三步：清理核心日志首尾的空白字符，保证格式整洁
-	coreLog = strings.TrimSpace(coreLog)
-
-	// 拼接格式化账号和核心日志
-	result := accountStr + coreLog
-
-	return result
-}
-
-//##话费积分
-
-func replexQuan_jd_dwapp(info string, sender *Sender) string {
-	// 匹配账号信息（【京东账号\d+】及后续信息）
-	re1 := regexp.MustCompile(`【京东账号\d+】(.+?)\*\*\*\*`) // 匹配账号信息
-	// 匹配签到信息
-	re2 := regexp.MustCompile(`签到成功：获得积分(\d+\.\d+)，剩余积分：(\d+\.\d+)`) // 匹配签到成功的信息
-	re3 := regexp.MustCompile(`今日已签过！已连签(\d+)天，剩余积分：(\d+\.\d+)`)     // 匹配已经签过的信息
-	// 匹配"火爆"字样
-	re4 := regexp.MustCompile(`火爆`)
-
-	// 查找并提取账号信息部分
-	matches1 := re1.FindStringSubmatch(info)
-	// 查找签到成功的积分部分
-	matches2 := re2.FindStringSubmatch(info)
-	// 查找已经签到过的部分
-	matches3 := re3.FindStringSubmatch(info)
-	// 查找"火爆"字样
-	matches4 := re4.FindStringSubmatch(info)
-
-	// 输出结果字符串
-	var msgs []string
-
-	// 如果找到"火爆"，输出"账号黑了"
-	if len(matches4) > 0 {
-		msgs = append(msgs, "账号黑了，无法签到")
-		return strings.Join(msgs, "\n")
-	}
-
-	// 如果找到账号信息，则输出账号
-	if len(matches1) > 0 {
-		msgs = append(msgs, fmt.Sprintf("账号: %s", matches1[1]))
-	}
-
-	// 根据情况输出签到状态
-	if len(matches2) > 0 {
-		// 第一种情况：签到成功，输出积分信息
-		msgs = append(msgs, fmt.Sprintf("签到成功：获得积分%s，剩余积分：%s", matches2[1], matches2[2]))
-	} else if len(matches3) > 0 {
-		// 第二种情况：已签过，输出签到天数和剩余积分
-		msgs = append(msgs, fmt.Sprintf("今日已签过！已连签%s天，剩余积分：%s", matches3[1], matches3[2]))
-	}
-
-	// 返回连接的结果
-	return strings.Join(msgs, "\n")
-}
-
-func replexQuan_Price(info string, sender *Sender) string {
-
-	re1 := regexp.MustCompile(`保价失败：([^：]+)$`)
-	re2 := regexp.MustCompile(`价保成功：([^：]+)`)
-	re3 := regexp.MustCompile(`没有可保价的订单 😂`)
-
-	matches1 := re1.FindStringSubmatch(info)
-	matches2 := re2.FindStringSubmatch(info)
-	matches3 := re3.FindStringSubmatch(info)
-
-	msgs := []string{
-		fmt.Sprintf("保价任务已完成："),
-	}
-
-	if len(matches3) > 0 {
-		msgs = append(msgs, "没有可保价的订单 😂")
-	}
-	if len(matches1) > 1 {
-		msgs = append(msgs, "保价失败："+matches1[1])
-	}
-	if len(matches2) > 1 {
-		msgs = append(msgs, fmt.Sprintf("价保成功，回血%s元 🤑", matches2[1]))
-	}
-
-	return strings.Join(msgs, "\n")
-}
-
-func replexQuan_AutoEval(info string, sender *Sender) string {
-	re1 := regexp.MustCompile(`(?m)^.*(开始【京东账号1】.+?)$`)
-	re2 := regexp.MustCompile(`当前.*?个商品`)
-
-	matches1 := re1.FindStringSubmatch(info)
-	matches2 := re2.FindStringSubmatch(info)
-
-	msgs := []string{
-		"当前评价任务如下：",
-	}
-
-	if len(matches1) > 1 {
-		replaceText := strings.Replace(matches1[1], "开始【京东账号1】", "【京东账号】", -1)
-		msgs = append(msgs, replaceText)
-	}
-
-	if len(matches2) > 0 {
-		msgs = append(msgs, matches2[0])
-	}
-	msgs = append(msgs, "======评价任务已完成======")
-
-	return strings.Join(msgs, "\n")
-}
-
-func replexQuan_jd_delLjq(info string, sender *Sender) string {
-	re1 := regexp.MustCompile(`(?m)^.*(开始【京东账号1】.+?)$`)
-	re2 := regexp.MustCompile(`总计.*?个券`) //#总计2144个券
-	re3 := regexp.MustCompile(`完成，本次执行删除.*?个垃圾券`)
-
-	matches1 := re1.FindStringSubmatch(info)
-	matches2 := re2.FindStringSubmatch(info)
-	matches3 := re3.FindStringSubmatch(info)
-	msgs := []string{
-		"当前删除垃圾券任务如下：",
-	}
-
-	if len(matches1) > 1 {
-		replaceText := strings.Replace(matches1[1], "开始【京东账号1】", "【京东账号】", -1)
-		msgs = append(msgs, replaceText)
-	}
-
-	if len(matches2) > 0 {
-		msgs = append(msgs, matches2[0])
-	}
-
-	if len(matches3) > 0 {
-		msgs = append(msgs, matches3[0])
-	}
-	msgs = append(msgs, "======删除任务已完成，解决优惠券数量太多而不能使用新农场优惠券的问题，会误删，到已删除券恢复======")
-
-	return strings.Join(msgs, "\n\n")
-}
-
-func replexQuan_jd_quan_day(info string, sender *Sender) string {
-	// 匹配账号名称部分，忽略前后的星号
-	re1 := regexp.MustCompile(`(?m)^\*{0,}开始【([^】]+)】([^*]+)\*{0,}$`)
-	matches1 := re1.FindStringSubmatch(info)
-	if len(matches1) > 2 {
-		// 提取账号部分并添加分隔线
-		accountType := matches1[1]
-		account := strings.TrimSpace(matches1[2])
-		replacement := "---【" + accountType + "】" + account + "---\n\n"
-
-		// 匹配活动时间及后续所有内容
-		re2 := regexp.MustCompile(`(?s)活动时间:.*$`)
-		matches2 := re2.FindStringSubmatch(info)
-		if len(matches2) > 0 {
-			// 提取活动时间及后续内容
-			activityInfo := matches2[0]
-			return replacement + activityInfo
-		}
-	}
-	return "未知错误"
-}
-
-func replexQuan_jd_insight(info string, sender *Sender) string {
-	// 正则表达式，匹配京东账号信息
-	re1 := regexp.MustCompile(`(?m)^.*(开始【京东账号\d+】.+?)$`)
-
-	re2 := regexp.MustCompile(`(?m)^无任何信息$`)
-	// 正则表达式，匹配从"1、"到"运行完毕"之间的任务信息
-	re3 := regexp.MustCompile(`(?m)(1、[\s\S]+?运行完毕)`)
-
-	// 构建消息数组
-	msgs := []string{
-		"当前问卷调查任务如下：",
-	}
-
-	// 如果日志中包含“无任何信息”，直接返回对应的处理信息
-	if re2.MatchString(info) {
-		msgs = append(msgs, "你的账号暂时没有问卷调查")
-		return strings.Join(msgs, "\n\n")
-	}
-
-	// 处理第一个正则匹配，替换【京东账号1】为【京东账号】
-	matches1 := re1.FindStringSubmatch(info)
-	if len(matches1) > 1 {
-		replaceText := strings.Replace(matches1[1], "开始【京东账号1】", "【京东账号】", -1)
-		msgs = append(msgs, replaceText)
-	}
-
-	// 处理第三个正则匹配，匹配从"1、"到"运行完毕"之间的任务信息
-	matches3 := re3.FindStringSubmatch(info)
-	if len(matches3) > 0 {
-		// 去除任务信息中的“运行完毕”部分
-		taskInfo := strings.Replace(matches3[0], "运行完毕", "", -1)
-		// 如果匹配到1、到🔔之间的内容，直接返回该内容
-		msgs = append(msgs, taskInfo)
-	}
-
-	// 添加结束信息
-	msgs = append(msgs, "\n======请按机器人给出的提示回答问卷，即可获得京豆======")
-
-	// 返回拼接后的消息字符串
-	return strings.Join(msgs, "\n")
-}
-
-func replexQuan_fcwb_auto(info string, sender *Sender) string {
-	re1 := regexp.MustCompile(`(?m)^.*(开始【京东账号1】.+?)$`)
-	reNoBlood := regexp.MustCompile(`没血了，溜了溜了~`)
-	rePass := regexp.MustCompile(`当前难度关卡已通关`)
-
-	matches1 := re1.FindStringSubmatch(info)
-	noBloodMatch := reNoBlood.FindStringSubmatch(info)
-	passMatches := rePass.FindAllStringSubmatch(info, -1) // 匹配所有 "当前难度关卡已通关"
-
-	// 构建消息列表
-	msgs := []string{
-		"自动挖宝任务情况如下：",
-	}
-
-	if len(matches1) > 1 {
-		replaceText := strings.Replace(matches1[1], "开始【京东账号1】", "【京东账号】", -1)
-		msgs = append(msgs, replaceText)
-	}
-
-	if len(noBloodMatch) > 0 {
-		msgs = append(msgs, "未能全部通关，请到活动界面查看。")
-	}
-
-	if len(passMatches) >= 3 {
-		msgs = append(msgs, "游戏已通关。")
-	} else if len(passMatches) == 2 {
-		msgs = append(msgs, "已挖通2关。")
-	} else if len(passMatches) > 0 {
-		msgs = append(msgs, "部分关卡已通关。")
-	}
-
-	msgs = append(msgs, "===自动挖宝任务已完成===")
-
-	return strings.Join(msgs, "\n")
 }
 
 func run_fcwb_help_Task(sender *Sender, envVars map[string]string, FileName string) string {
