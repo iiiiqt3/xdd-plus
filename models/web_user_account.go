@@ -195,19 +195,107 @@ func AuthenticateWebUserAccount(username, password string) (*WebUserAccount, *Us
     return &account, &user, nil
 }
 
-// AdminWebAccountLookupItem 管理端网页账号查询结果
+// AdminWebAccountLookupItem 管理端网页账号查询/列表结果
 type AdminWebAccountLookupItem struct {
+	AccountID     int    `json:"accountId"`
 	UserID        int    `json:"userId"`
 	UserNumber    int    `json:"userNumber"`
 	Nickname      string `json:"nickname"`
 	QQ            string `json:"qq"`
 	Wxid          string `json:"wxid"`
+	Coin          int    `json:"coin"`
 	Username      string `json:"username"`
 	HasWebAccount bool   `json:"hasWebAccount"`
 	Password      string `json:"password"`
 	PasswordNote  string `json:"passwordNote"`
 	Status        string `json:"status"`
+	BoundAt       string `json:"boundAt,omitempty"`
 	LastLoginAt   string `json:"lastLoginAt,omitempty"`
+}
+
+func adminWebAccountListItem(account WebUserAccount, user *User) AdminWebAccountLookupItem {
+	item := AdminWebAccountLookupItem{
+		AccountID:     account.ID,
+		Username:      account.Username,
+		UserNumber:    account.UserNumber,
+		HasWebAccount: true,
+		Status:        account.Status,
+		PasswordNote:  "",
+	}
+	if strings.TrimSpace(account.PasswordPlain) != "" {
+		item.Password = account.PasswordPlain
+	} else {
+		item.PasswordNote = "历史账号无密码存档，请重置后可查看"
+	}
+	if !account.BoundAt.IsZero() {
+		item.BoundAt = account.BoundAt.Format("2006-01-02 15:04:05")
+	}
+	if !account.LastLoginAt.IsZero() {
+		item.LastLoginAt = account.LastLoginAt.Format("2006-01-02 15:04:05")
+	}
+	if user != nil {
+		item.UserID = user.ID
+		item.Nickname = user.Nickname
+		item.QQ = user.QQ
+		item.Wxid = user.Wxid
+		item.Coin = user.Coin
+	}
+	return item
+}
+
+// ListWebUserAccountsForAdmin 分页列出全部网页注册账号
+func ListWebUserAccountsForAdmin(search string, page, limit int) ([]AdminWebAccountLookupItem, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	search = strings.TrimSpace(search)
+
+	var accounts []WebUserAccount
+	var total int64
+	tx := db.Model(&WebUserAccount{})
+	if search != "" {
+		like := "%" + search + "%"
+		var userNumbers []int
+		db.Model(&User{}).Where(
+			"nickname LIKE ? OR wxid LIKE ? OR qq LIKE ? OR CAST(number AS CHAR) LIKE ?",
+			like, like, like, like,
+		).Pluck("number", &userNumbers)
+		if len(userNumbers) > 0 {
+			tx = tx.Where(
+				"username LIKE ? OR CAST(user_number AS CHAR) LIKE ? OR user_number IN ?",
+				like, like, userNumbers,
+			)
+		} else {
+			tx = tx.Where("username LIKE ? OR CAST(user_number AS CHAR) LIKE ?", like, like)
+		}
+	}
+	if err := tx.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * limit
+	if err := tx.Order("id DESC").Offset(offset).Limit(limit).Find(&accounts).Error; err != nil {
+		return nil, 0, err
+	}
+
+	out := make([]AdminWebAccountLookupItem, 0, len(accounts))
+	userCache := map[int]*User{}
+	for _, account := range accounts {
+		var user *User
+		if cached, ok := userCache[account.UserNumber]; ok {
+			user = cached
+		} else {
+			var row User
+			if db.Where("number = ?", account.UserNumber).First(&row).Error == nil {
+				user = &row
+				userCache[account.UserNumber] = user
+			}
+		}
+		out = append(out, adminWebAccountListItem(account, user))
+	}
+	return out, int(total), nil
 }
 
 func generateAdminWebPassword() (string, error) {
@@ -243,18 +331,23 @@ func LookupWebUserAccountsForAdmin(keyword string) ([]AdminWebAccountLookupItem,
 			Nickname:      user.Nickname,
 			QQ:            user.QQ,
 			Wxid:          user.Wxid,
+			Coin:          user.Coin,
 			HasWebAccount: account != nil,
 			Password:      "",
 			PasswordNote:  "",
 		}
 		if account != nil {
 			item.Username = account.Username
+			item.AccountID = account.ID
 			item.Status = account.Status
 			if strings.TrimSpace(account.PasswordPlain) != "" {
 				item.Password = account.PasswordPlain
 				item.PasswordNote = ""
 			} else {
 				item.PasswordNote = "历史账号无密码存档，请重置后可查看"
+			}
+			if !account.BoundAt.IsZero() {
+				item.BoundAt = account.BoundAt.Format("2006-01-02 15:04:05")
 			}
 			if !account.LastLoginAt.IsZero() {
 				item.LastLoginAt = account.LastLoginAt.Format("2006-01-02 15:04:05")

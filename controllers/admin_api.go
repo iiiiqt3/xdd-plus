@@ -1791,7 +1791,37 @@ func (c *AdminApiController) BatchUpdateUserCoins() {
 	c.ServeJSON()
 }
 
-// LookupWebUserPassword 查询网页登录账号（密码已加密不可查看原值）
+// GetWebUserAccounts 分页列出全部网页注册账号
+func (c *AdminApiController) GetWebUserAccounts() {
+	search := strings.TrimSpace(c.GetString("search"))
+	page, _ := strconv.Atoi(c.GetString("page"))
+	limit, _ := strconv.Atoi(c.GetString("limit"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	list, total, err := models.ListWebUserAccountsForAdmin(search, page, limit)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  "ok",
+		"data": map[string]interface{}{
+			"list":  list,
+			"total": total,
+			"page":  page,
+			"limit": limit,
+		},
+	}
+	c.ServeJSON()
+}
+
+// LookupWebUserPassword 查询网页登录账号
 func (c *AdminApiController) LookupWebUserPassword() {
 	keyword := strings.TrimSpace(c.GetString("keyword"))
 	if keyword == "" {
