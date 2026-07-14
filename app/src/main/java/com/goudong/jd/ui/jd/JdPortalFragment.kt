@@ -64,6 +64,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private lateinit var toolbarRow: LinearLayout
     private lateinit var contentHost: LinearLayout
     private lateinit var contentScroll: android.widget.ScrollView
+    private lateinit var taskStickyBar: LinearLayout
 
     private var accounts: List<PortalJdAccount> = emptyList()
     private val globalTaskAccountSelection = mutableSetOf<Int>()
@@ -159,6 +160,15 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         subToolbarRow.addView(toolbarRow)
         wrapper.addView(subToolbarRow)
 
+        taskStickyBar = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(dp14, requireContext().dp(6), dp14, requireContext().dp(6))
+            setBackgroundColor(requireContext().themeColor(R.color.surface_card))
+        }
+        setupTaskStickyBar()
+        wrapper.addView(taskStickyBar)
+
         // ====== 内容区 ======
         contentHost = root
         scroll.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
@@ -188,6 +198,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         subTabRow.removeAllViews()
         toolbarRow.removeAllViews()
         contentHost.removeAllViews()
+        taskStickyBar.visibility = if (mainTabIndex == 2) View.VISIBLE else View.GONE
         try {
             when (mainTabIndex) {
                 0 -> renderQueryTab()
@@ -903,8 +914,10 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     private fun renderTaskTab() {
         val ctx = requireContext()
-        contentHost.addView(buildTaskToolbarCard())
-        contentHost.addView(buildProxyCard())
+        if (mainTabIndex == 2) {
+            renderAccountChips()
+            renderProxyCard()
+        }
 
         val searchRow = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -964,84 +977,102 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         loadTaskTabData()
     }
 
-    private fun buildTaskToolbarCard(): View {
+    private fun setupTaskStickyBar() {
         val ctx = requireContext()
-        return ctx.cardView().apply {
-            setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = ctx.dp(10)
-            }
-            addView(TextView(ctx).apply {
-                text = "执行账号"
-                setTextColor(requireContext().themeColor(R.color.text_secondary))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                setTypeface(typeface, Typeface.BOLD)
-            })
-            addView(HorizontalScrollView(ctx).apply {
-                isHorizontalScrollBarEnabled = false
-                overScrollMode = View.OVER_SCROLL_NEVER
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                    topMargin = ctx.dp(8)
-                }
-                accountChipsHost = LinearLayout(ctx).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    tag = "account_chips_host"
-                }
-                addView(accountChipsHost)
-            })
-            addView(TextView(ctx).apply {
-                text = "可多选有效账号，未选时默认所有有效账号"
-                setTextColor(requireContext().themeColor(R.color.text_muted))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                setPadding(0, ctx.dp(6), 0, 0)
-            })
+        val accountRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
+        accountRow.addView(TextView(ctx).apply {
+            text = "执行账号"
+            setTextColor(requireContext().themeColor(R.color.text_secondary))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            setTypeface(typeface, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                marginEnd = ctx.dp(8)
+            }
+        })
+        accountRow.addView(HorizontalScrollView(ctx).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            accountChipsHost = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                tag = "account_chips_host"
+            }
+            addView(accountChipsHost)
+        })
+        accountRow.addView(TextView(ctx).apply {
+            text = "可多选"
+            setTextColor(requireContext().themeColor(R.color.text_muted))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = ctx.dp(6)
+            }
+        })
+        taskStickyBar.addView(accountRow)
+
+        val divider = View(ctx).apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, ctx.dp(1)).apply {
+                topMargin = ctx.dp(6)
+                bottomMargin = ctx.dp(6)
+            }
+            setBackgroundColor(requireContext().themeColor(R.color.border_default))
+        }
+        taskStickyBar.addView(divider)
+        taskStickyBar.addView(buildCompactProxyCard())
     }
 
-    private fun buildProxyCard(): View {
+    private fun buildCompactProxyCard(): View {
         val ctx = requireContext()
-        return ctx.cardView().apply {
+        return LinearLayout(ctx).apply {
             tag = "proxy_card"
-            setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = ctx.dp(10)
-            }
+            orientation = LinearLayout.VERTICAL
+
             val top = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
             top.addView(TextView(ctx).apply {
                 text = "任务代理"
                 setTextColor(requireContext().themeColor(R.color.text_primary))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 setTypeface(typeface, Typeface.BOLD)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             })
             proxyBadgeView = TextView(ctx).apply {
                 text = "未开通"
                 setTextColor(Color.parseColor("#6B7280"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                setPadding(ctx.dp(8), ctx.dp(3), ctx.dp(8), ctx.dp(3))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+                setPadding(ctx.dp(6), ctx.dp(2), ctx.dp(6), ctx.dp(2))
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor("#F3F4F6"))
-                    cornerRadius = ctx.dp(10).toFloat()
+                    cornerRadius = ctx.dp(8).toFloat()
+                }
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginStart = ctx.dp(6)
                 }
             }
             top.addView(proxyBadgeView)
-            addView(top)
 
             proxyStatsRow = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 visibility = View.GONE
-                setPadding(0, ctx.dp(8), 0, 0)
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginStart = ctx.dp(8)
+                }
             }
             proxyStatsRow?.addView(makeProxyStat(ctx, "到期", "-", "proxy_expire"))
             proxyStatsRow?.addView(makeProxyStat(ctx, "积分", "-", "proxy_coin"))
-            addView(proxyStatsRow)
+            top.addView(proxyStatsRow)
 
-            proxyMetaView = ctx.bodyText("加载中...").apply {
+            proxyMetaView = TextView(ctx).apply {
+                text = "加载中..."
                 setTextColor(requireContext().themeColor(R.color.text_muted))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                setPadding(0, ctx.dp(8), 0, ctx.dp(8))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginStart = ctx.dp(8)
+                }
             }
-            addView(proxyMetaView)
+            top.addView(proxyMetaView)
 
             val buyRow = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -1049,52 +1080,56 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 tag = "proxy_buy_row"
             }
             val months = Spinner(ctx).apply {
-                adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, listOf("1 个月", "3 个月", "6 个月", "12 个月"))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, listOf("1月", "3月", "6月", "12月"))
+                layoutParams = LinearLayout.LayoutParams(ctx.dp(72), LinearLayout.LayoutParams.WRAP_CONTENT)
                 tag = "proxy_months"
             }
             buyRow.addView(months)
             proxyBuyBtn = TextView(ctx).apply {
                 text = "购买"
                 setTextColor(Color.WHITE)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                 gravity = Gravity.CENTER
-                setPadding(ctx.dp(16), ctx.dp(8), ctx.dp(16), ctx.dp(8))
+                setPadding(ctx.dp(10), ctx.dp(5), ctx.dp(10), ctx.dp(5))
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor("#3B82F6"))
-                    cornerRadius = ctx.dp(8).toFloat()
+                    cornerRadius = ctx.dp(6).toFloat()
                 }
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                    marginStart = ctx.dp(8)
+                    marginStart = ctx.dp(4)
                 }
                 setOnClickListener { buyJdProxy(this) }
             }
             buyRow.addView(proxyBuyBtn)
-            addView(buyRow)
+            top.addView(buyRow)
+            addView(top)
         }
     }
 
     private fun makeProxyStat(ctx: android.content.Context, label: String, value: String, viewTag: String): View {
         return LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
+            orientation = LinearLayout.HORIZONTAL
             tag = viewTag
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                marginEnd = ctx.dp(8)
+            }
             addView(TextView(ctx).apply {
-                text = label
+                text = "$label "
                 setTextColor(requireContext().themeColor(R.color.text_muted))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             })
             addView(TextView(ctx).apply {
                 text = value
                 setTextColor(requireContext().themeColor(R.color.text_primary))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                 setTypeface(typeface, Typeface.BOLD)
             })
         }
     }
 
     private fun renderAccountChips() {
-        val host = accountChipsHost ?: contentHost.findViewWithTag("account_chips_host") as? LinearLayout ?: return
+        val host = accountChipsHost ?: taskStickyBar.findViewWithTag("account_chips_host") as? LinearLayout ?: return
         host.removeAllViews()
         val ctx = requireContext()
         val prev = globalTaskAccountSelection.toSet()
@@ -1138,7 +1173,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     private fun renderProxyCard() {
         val st = jdProxyStatus
-        val card = contentHost.findViewWithTag<View>("proxy_card")
+        val card = taskStickyBar.findViewWithTag<View>("proxy_card")
         val monthly = st?.monthlyCoin ?: 0
         val active = st?.active == true
         val ready = st?.proxyReady == true
@@ -1164,13 +1199,13 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             if (active) st?.expireAt ?: "-" else "未开通"
         (proxyStatsRow?.findViewWithTag<LinearLayout>("proxy_coin")?.getChildAt(1) as? TextView)?.text =
             (st?.userCoin ?: 0).toString()
-        proxyMetaView?.text = if (active) "执行任务将自动走代理线路" else "未购买时任务直连 · 月费 $monthly 积分"
+        proxyMetaView?.text = if (active) "走代理" else "直连 · $monthly 积分/月"
         card?.findViewWithTag<View>("proxy_buy_row")?.visibility = View.VISIBLE
         proxyBuyBtn?.text = if (active) "续费" else "购买"
     }
 
     private fun buyJdProxy(btn: View) {
-        val card = contentHost.findViewWithTag<View>("proxy_card") ?: return
+        val card = taskStickyBar.findViewWithTag<View>("proxy_card") ?: return
         val spinner = card.findViewWithTag<Spinner>("proxy_months") ?: return
         val months = when (spinner.selectedItemPosition) {
             1 -> 3

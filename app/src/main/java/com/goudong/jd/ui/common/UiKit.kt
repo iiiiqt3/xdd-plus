@@ -491,12 +491,25 @@ fun AppCompatActivity.toast(text: String) {
 
 fun sanitizeErrorMessage(message: String?): String {
     if (message.isNullOrBlank()) return "操作失败"
-    var msg = message
-    msg = Regex("https?://\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d+)?[^\\s]*").replace(msg!!, "服务器")
+    val raw = message
+    if (raw.contains("failed to connect", true)
+        || raw.contains("ConnectException", true)
+        || raw.contains("timeout", true)
+        || raw.contains("Unable to resolve host", true)
+        || raw.contains("ECONNREFUSED", true)
+        || raw.contains("ENETUNREACH", true)
+        || raw.contains("Network is unreachable", true)
+        || raw.contains("SocketTimeoutException", true)
+        || raw.contains("UnknownHostException", true)
+    ) {
+        return "连接服务器失败"
+    }
+    var msg = raw
+    msg = Regex("https?://\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d+)?[^\\s]*").replace(msg, "服务器")
     msg = Regex("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d+)?").replace(msg, "服务器")
     msg = Regex("https?://[^\\s]+").replace(msg, "服务器地址")
-    if (msg.contains("failed to connect") || msg.contains("ConnectException") || msg.contains("timeout") || msg.contains("Unable to resolve host") || msg.contains("ECONNREFUSED") || msg.contains("ENETUNREACH")) {
-        return "无法连接服务器，请检查网络或稍后重试"
+    if (msg.contains("failed to connect", true) || msg.contains("timeout", true) || msg.contains("Unable to resolve", true)) {
+        return "连接服务器失败"
     }
     return msg
 }
