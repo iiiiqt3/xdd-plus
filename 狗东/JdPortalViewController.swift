@@ -23,6 +23,9 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     private let queryContentStack = UIStackView()
     private let loginContentStack = UIStackView()
     private let taskContentStack = UIStackView()
+    private let taskStickyBar = UIStackView()
+    private var scrollTopToSegment: NSLayoutConstraint!
+    private var scrollTopToSticky: NSLayoutConstraint!
 
     private var mainTab: MainTab = .query
     private var loginTab: LoginTab = .sms
@@ -158,6 +161,7 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         view.addSubview(mainSegmented)
         view.addSubview(loginTabRow)
         view.addSubview(loginPanel)
+        view.addSubview(taskStickyBar)
         view.addSubview(scrollView)
         scrollView.addSubview(stack)
 
@@ -182,6 +186,12 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         loginPanel.addSubview(loginContentStack)
         stack.addArrangedSubview(queryContentStack)
         stack.addArrangedSubview(taskContentStack)
+
+        setupTaskStickyBar()
+
+        scrollTopToSegment = scrollView.topAnchor.constraint(equalTo: mainSegmented.bottomAnchor, constant: 10)
+        scrollTopToSticky = scrollView.topAnchor.constraint(equalTo: taskStickyBar.bottomAnchor, constant: 8)
+        scrollTopToSegment.isActive = true
 
         NSLayoutConstraint.activate([
             headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 2),
@@ -216,7 +226,10 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             loginContentStack.trailingAnchor.constraint(equalTo: loginPanel.trailingAnchor),
             loginContentStack.bottomAnchor.constraint(lessThanOrEqualTo: loginPanel.bottomAnchor),
 
-            scrollView.topAnchor.constraint(equalTo: mainSegmented.bottomAnchor, constant: 10),
+            taskStickyBar.topAnchor.constraint(equalTo: mainSegmented.bottomAnchor, constant: 8),
+            taskStickyBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            taskStickyBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
@@ -341,6 +354,9 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         loginTabRow.isHidden = !isLogin
         loginPanel.isHidden = !isLogin
         scrollView.isHidden = isLogin
+        taskStickyBar.isHidden = mainTab != .task
+        scrollTopToSegment.isActive = mainTab != .task
+        scrollTopToSticky.isActive = mainTab == .task
         queryContentStack.isHidden = mainTab != .query
         taskContentStack.isHidden = mainTab != .task
 
@@ -1226,9 +1242,6 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     // MARK: - 京东任务
 
     private func renderTasks() {
-        taskContentStack.addArrangedSubview(buildAccountChipsCard())
-        taskContentStack.addArrangedSubview(buildProxyCard())
-
         taskSearchBar.delegate = self
         taskSearchBar.placeholder = "搜索任务名称、ID…"
         taskSearchBar.searchBarStyle = .minimal
@@ -1316,24 +1329,31 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         return validCount > 0 ? [0] : []
     }
 
-    private func buildAccountChipsCard() -> UIView {
-        let card = UIStackView()
-        card.axis = .vertical
-        card.spacing = 8
-        card.isLayoutMarginsRelativeArrangement = true
-        card.layoutMargins = UIEdgeInsets(top: 14, left: 14, bottom: 14, right: 14)
-        card.applyCardStyle(cornerRadius: 14)
+    private func setupTaskStickyBar() {
+        taskStickyBar.axis = .vertical
+        taskStickyBar.spacing = 6
+        taskStickyBar.isLayoutMarginsRelativeArrangement = true
+        taskStickyBar.layoutMargins = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
+        taskStickyBar.applyCardStyle(cornerRadius: 12)
+        taskStickyBar.translatesAutoresizingMaskIntoConstraints = false
+        taskStickyBar.isHidden = true
 
-        let title = UILabel()
-        title.text = "执行账号"
-        title.font = .systemFont(ofSize: 13, weight: .bold)
-        card.addArrangedSubview(title)
+        let accountRow = UIStackView()
+        accountRow.axis = .horizontal
+        accountRow.spacing = 8
+        accountRow.alignment = .center
+
+        let accountTitle = UILabel()
+        accountTitle.text = "执行账号"
+        accountTitle.font = .systemFont(ofSize: 11, weight: .bold)
+        accountTitle.setContentHuggingPriority(.required, for: .horizontal)
 
         let scroll = UIScrollView()
         scroll.showsHorizontalScrollIndicator = false
+        scroll.translatesAutoresizingMaskIntoConstraints = false
         accountChipsStack = UIStackView()
         accountChipsStack?.axis = .horizontal
-        accountChipsStack?.spacing = 8
+        accountChipsStack?.spacing = 6
         accountChipsStack?.translatesAutoresizingMaskIntoConstraints = false
         scroll.addSubview(accountChipsStack!)
         NSLayoutConstraint.activate([
@@ -1342,16 +1362,94 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             accountChipsStack!.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
             accountChipsStack!.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
             accountChipsStack!.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor),
+            scroll.heightAnchor.constraint(equalToConstant: 30),
         ])
-        scroll.heightAnchor.constraint(equalToConstant: 36).isActive = true
-        card.addArrangedSubview(scroll)
 
-        let hint = UILabel()
-        hint.text = "可多选有效账号，未选时默认所有有效账号"
-        hint.font = .systemFont(ofSize: 11)
-        hint.textColor = .secondaryLabel
-        card.addArrangedSubview(hint)
-        return card
+        let accountHint = UILabel()
+        accountHint.text = "可多选"
+        accountHint.font = .systemFont(ofSize: 10)
+        accountHint.textColor = .secondaryLabel
+        accountHint.setContentHuggingPriority(.required, for: .horizontal)
+
+        accountRow.addArrangedSubview(accountTitle)
+        accountRow.addArrangedSubview(scroll)
+        accountRow.addArrangedSubview(accountHint)
+        taskStickyBar.addArrangedSubview(accountRow)
+        taskStickyBar.addArrangedSubview(buildCompactProxyCard())
+    }
+
+    private func buildCompactProxyCard() -> UIView {
+        let row = UIStackView()
+        row.axis = .horizontal
+        row.spacing = 6
+        row.alignment = .center
+
+        let title = UILabel()
+        title.text = "任务代理"
+        title.font = .systemFont(ofSize: 11, weight: .bold)
+        title.setContentHuggingPriority(.required, for: .horizontal)
+
+        proxyBadgeLabel = UILabel()
+        proxyBadgeLabel?.text = "未开通"
+        proxyBadgeLabel?.font = .systemFont(ofSize: 9, weight: .semibold)
+        proxyBadgeLabel?.textColor = .secondaryLabel
+        proxyBadgeLabel?.backgroundColor = UIColor.secondarySystemGroupedBackground
+        proxyBadgeLabel?.layer.cornerRadius = 8
+        proxyBadgeLabel?.clipsToBounds = true
+        proxyBadgeLabel?.textAlignment = .center
+        proxyBadgeLabel?.setContentHuggingPriority(.required, for: .horizontal)
+
+        proxyStatsStack = UIStackView()
+        proxyStatsStack?.axis = .horizontal
+        proxyStatsStack?.spacing = 8
+        proxyStatsStack?.isHidden = true
+        proxyStatsStack?.addArrangedSubview(proxyStatView(label: "到期", value: "-", tag: 100))
+        proxyStatsStack?.addArrangedSubview(proxyStatView(label: "积分", value: "-", tag: 101))
+
+        proxyMetaLabel = UILabel()
+        proxyMetaLabel?.font = .systemFont(ofSize: 10)
+        proxyMetaLabel?.textColor = .secondaryLabel
+        proxyMetaLabel?.numberOfLines = 1
+        proxyMetaLabel?.lineBreakMode = .byTruncatingTail
+        proxyMetaLabel?.text = "加载中..."
+        proxyMetaLabel?.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let months = UISegmentedControl(items: ["1", "3", "6", "12"])
+        months.selectedSegmentIndex = 0
+        months.tag = 200
+        months.setContentHuggingPriority(.required, for: .horizontal)
+
+        proxyBuyButton = compactButton("购买", color: .systemBlue) { [weak self] in
+            self?.buyJdProxy(monthsControl: months)
+        }
+        proxyBuyButton?.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
+        proxyBuyButton?.setContentHuggingPriority(.required, for: .horizontal)
+
+        row.addArrangedSubview(title)
+        row.addArrangedSubview(proxyBadgeLabel!)
+        row.addArrangedSubview(proxyStatsStack!)
+        row.addArrangedSubview(proxyMetaLabel!)
+        row.addArrangedSubview(months)
+        row.addArrangedSubview(proxyBuyButton!)
+        return row
+    }
+
+    private func proxyStatView(label: String, value: String, tag: Int) -> UIView {
+        let wrap = UIStackView()
+        wrap.axis = .horizontal
+        wrap.spacing = 2
+        wrap.tag = tag
+        let title = UILabel()
+        title.text = label
+        title.font = .systemFont(ofSize: 9)
+        title.textColor = .secondaryLabel
+        let val = UILabel()
+        val.text = value
+        val.font = .systemFont(ofSize: 10, weight: .bold)
+        val.tag = 1
+        wrap.addArrangedSubview(title)
+        wrap.addArrangedSubview(val)
+        return wrap
     }
 
     private func renderAccountChips() {
@@ -1365,11 +1463,11 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             let selected = globalTaskAccountSelection.contains(value)
             let btn = UIButton(type: .system)
             btn.setTitle(title, for: .normal)
-            btn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+            btn.titleLabel?.font = .systemFont(ofSize: 11, weight: .medium)
             btn.setTitleColor(selected ? .white : .secondaryLabel, for: .normal)
             btn.backgroundColor = selected ? .systemBlue : UIColor.secondarySystemGroupedBackground
-            btn.layer.cornerRadius = 14
-            btn.contentEdgeInsets = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
+            btn.layer.cornerRadius = 12
+            btn.contentEdgeInsets = UIEdgeInsets(top: 4, left: 10, bottom: 4, right: 10)
             btn.tag = value
             btn.addAction(UIAction { [weak self] _ in
                 guard let self = self else { return }
@@ -1393,81 +1491,6 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         }
     }
 
-    private func buildProxyCard() -> UIView {
-        let card = UIStackView()
-        card.axis = .vertical
-        card.spacing = 10
-        card.isLayoutMarginsRelativeArrangement = true
-        card.layoutMargins = UIEdgeInsets(top: 14, left: 14, bottom: 14, right: 14)
-        card.applyCardStyle(cornerRadius: 14)
-
-        let top = UIStackView()
-        top.axis = .horizontal
-        top.distribution = .equalSpacing
-        let title = UILabel()
-        title.text = "任务代理"
-        title.font = .systemFont(ofSize: 15, weight: .bold)
-        proxyBadgeLabel = UILabel()
-        proxyBadgeLabel?.text = "未开通"
-        proxyBadgeLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
-        proxyBadgeLabel?.textColor = .secondaryLabel
-        proxyBadgeLabel?.backgroundColor = UIColor.secondarySystemGroupedBackground
-        proxyBadgeLabel?.layer.cornerRadius = 10
-        proxyBadgeLabel?.clipsToBounds = true
-        proxyBadgeLabel?.textAlignment = .center
-        proxyBadgeLabel?.layoutMargins = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
-        top.addArrangedSubview(title)
-        top.addArrangedSubview(proxyBadgeLabel!)
-        card.addArrangedSubview(top)
-
-        proxyStatsStack = UIStackView()
-        proxyStatsStack?.axis = .horizontal
-        proxyStatsStack?.distribution = .fillEqually
-        proxyStatsStack?.isHidden = true
-        proxyStatsStack?.addArrangedSubview(proxyStatView(label: "到期", value: "-", tag: 100))
-        proxyStatsStack?.addArrangedSubview(proxyStatView(label: "积分", value: "-", tag: 101))
-        card.addArrangedSubview(proxyStatsStack!)
-
-        proxyMetaLabel = UILabel()
-        proxyMetaLabel?.font = .systemFont(ofSize: 12)
-        proxyMetaLabel?.textColor = .secondaryLabel
-        proxyMetaLabel?.numberOfLines = 0
-        proxyMetaLabel?.text = "加载中..."
-        card.addArrangedSubview(proxyMetaLabel!)
-
-        let buyRow = UIStackView()
-        buyRow.axis = .horizontal
-        buyRow.spacing = 8
-        let months = UISegmentedControl(items: ["1月", "3月", "6月", "12月"])
-        months.selectedSegmentIndex = 0
-        months.tag = 200
-        proxyBuyButton = compactButton("购买", color: .systemBlue) { [weak self] in
-            self?.buyJdProxy(monthsControl: months)
-        }
-        buyRow.addArrangedSubview(months)
-        buyRow.addArrangedSubview(proxyBuyButton!)
-        card.addArrangedSubview(buyRow)
-        return card
-    }
-
-    private func proxyStatView(label: String, value: String, tag: Int) -> UIView {
-        let wrap = UIStackView()
-        wrap.axis = .vertical
-        wrap.spacing = 2
-        wrap.tag = tag
-        let title = UILabel()
-        title.text = label
-        title.font = .systemFont(ofSize: 11)
-        title.textColor = .secondaryLabel
-        let val = UILabel()
-        val.text = value
-        val.font = .systemFont(ofSize: 13, weight: .bold)
-        val.tag = 1
-        wrap.addArrangedSubview(title)
-        wrap.addArrangedSubview(val)
-        return wrap
-    }
-
     private func updateProxyCard() {
         let st = jdProxyStatus
         let monthly = st?.monthlyCoin ?? 0
@@ -1488,7 +1511,7 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         proxyBuyButton?.isHidden = false
         (proxyStatsStack?.viewWithTag(100)?.viewWithTag(1) as? UILabel)?.text = active ? (st?.expireAt ?? "-") : "未开通"
         (proxyStatsStack?.viewWithTag(101)?.viewWithTag(1) as? UILabel)?.text = "\(st?.userCoin ?? 0)"
-        proxyMetaLabel?.text = active ? "执行任务将自动走代理线路" : "未购买时任务直连 · 月费 \(monthly) 积分"
+        proxyMetaLabel?.text = active ? "走代理" : "直连 · \(monthly)积分/月"
         proxyBuyButton?.setTitle(active ? "续费" : "购买", for: .normal)
     }
 

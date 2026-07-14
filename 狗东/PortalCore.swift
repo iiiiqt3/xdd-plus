@@ -107,6 +107,36 @@ struct APIError: Error {
     let isUnauthorized: Bool
 }
 
+func sanitizeErrorMessage(_ message: String?) -> String {
+    guard let raw = message?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+        return "操作失败"
+    }
+    let lower = raw.lowercased()
+    if lower.contains("failed to connect")
+        || lower.contains("could not connect")
+        || lower.contains("timed out")
+        || lower.contains("timeout")
+        || lower.contains("network connection was lost")
+        || lower.contains("not connected to internet")
+        || lower.contains("unable to resolve")
+        || lower.contains("econnrefused")
+        || lower.contains("enotfound")
+        || lower.contains("enetunreach")
+        || lower.contains("nsurlerror")
+        || lower.contains("failed to fetch")
+    {
+        return "连接服务器失败"
+    }
+    var msg = raw
+    let ipPattern = #"https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?[^\s]*"#
+    let hostPattern = #"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?"#
+    let urlPattern = #"https?://[^\s]+"#
+    msg = msg.replacingOccurrences(of: ipPattern, with: "服务器", options: .regularExpression)
+    msg = msg.replacingOccurrences(of: hostPattern, with: "服务器", options: .regularExpression)
+    msg = msg.replacingOccurrences(of: urlPattern, with: "服务器地址", options: .regularExpression)
+    return msg
+}
+
 
 struct EmptyPayload: Decodable {}
 
@@ -641,7 +671,7 @@ final class APIClient {
         session.dataTask(with: request) { data, response, error in
             if let error = error {
                 DispatchQueue.main.async {
-                    completion(.failure(APIError(message: error.localizedDescription, isUnauthorized: false)))
+                    completion(.failure(APIError(message: sanitizeErrorMessage(error.localizedDescription), isUnauthorized: false)))
                 }
                 return
             }
@@ -771,7 +801,7 @@ final class APIClient {
         session.dataTask(with: request) { data, _, error in
             if let error = error {
                 DispatchQueue.main.async {
-                    completion(.failure(APIError(message: error.localizedDescription, isUnauthorized: false)))
+                    completion(.failure(APIError(message: sanitizeErrorMessage(error.localizedDescription), isUnauthorized: false)))
                 }
                 return
             }
@@ -1470,7 +1500,7 @@ final class PortalService {
         PortalRequestMeta.defaultHeaders.forEach { request.setValue($1, forHTTPHeaderField: $0) }
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                DispatchQueue.main.async { completion(.failure(APIError(message: error.localizedDescription, isUnauthorized: false))) }
+                DispatchQueue.main.async { completion(.failure(APIError(message: sanitizeErrorMessage(error.localizedDescription), isUnauthorized: false))) }
                 return
             }
             guard let data = data else {
@@ -1601,7 +1631,7 @@ final class JdTaskLogStreamer: NSObject, URLSessionDataDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard !finished else { return }
         if let error = error as NSError?, error.code != NSURLErrorCancelled {
-            onError(APIError(message: error.localizedDescription, isUnauthorized: false))
+            onError(APIError(message: sanitizeErrorMessage(error.localizedDescription), isUnauthorized: false))
         } else if !finished {
             finish()
         }
@@ -1702,7 +1732,7 @@ class BaseNativeViewController: UIViewController, ResetableViewController, UIGes
             AppSessionStore.shared.clearSession(requireLogin: true)
             return
         }
-        showMessage(error.message)
+        showMessage(sanitizeErrorMessage(error.message))
     }
 
     func resetToInitialState() {}
