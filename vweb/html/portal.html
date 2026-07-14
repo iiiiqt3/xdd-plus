@@ -2443,11 +2443,29 @@ function toast(message, type = 'info', duration = 2600) {
 }
 
 async function request(url, options = {}) {
-    options.headers = { 'X-Request-Source': 'web', 'X-Client-Platform': 'web', ...(options.headers || {}) };
-    const resp = await fetch(url, options);
-    const data = await resp.json();
-    if (data.code !== 0) throw new Error(data.msg || '请求失败');
-    return data;
+    try {
+        options.headers = { 'X-Request-Source': 'web', 'X-Client-Platform': 'web', ...(options.headers || {}) };
+        const resp = await fetch(url, options);
+        const data = await resp.json();
+        if (data.code !== 0) throw new Error(data.msg || '请求失败');
+        return data;
+    } catch (err) {
+        throw new Error(sanitizeClientError(err && err.message ? err.message : String(err)));
+    }
+}
+
+function sanitizeClientError(message) {
+    if (!message) return '操作失败';
+    const msg = String(message);
+    const lower = msg.toLowerCase();
+    if (lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('timeout')
+        || lower.includes('econnrefused') || lower.includes('unable to resolve') || lower.includes('network request failed')) {
+        return '连接服务器失败';
+    }
+    return msg
+        .replace(/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?[^\s]*/g, '服务器')
+        .replace(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?/g, '服务器')
+        .replace(/https?:\/\/[^\s]+/g, '服务器地址');
 }
 
 async function loadDashboardData() {

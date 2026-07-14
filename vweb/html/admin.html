@@ -808,6 +808,7 @@
             <div class="nav-group-items" data-group="jd">
                 <div class="nav-sub-item" data-page="jdcookies" data-search="京东账号 ck cookie" onclick="switchPage('jdcookies')"><i class="fas fa-cookie"></i><span>京东账号</span></div>
                 <div class="nav-sub-item" data-page="jdmanualtasks" data-search="手动京东任务 扫描脚本" onclick="switchPage('jdmanualtasks')"><i class="fas fa-hand-pointer"></i><span>手动京东任务</span></div>
+                <div class="nav-sub-item" data-page="jdproxystats" data-search="任务代理 购买统计 门户代理" onclick="switchPage('jdproxystats')"><i class="fas fa-receipt"></i><span>任务代理统计</span></div>
                 <div class="nav-sub-item" data-page="jdcrontasks" data-search="京东任务 cron 定时" onclick="switchPage('jdcrontasks')"><i class="fas fa-list-check"></i><span>京东任务列表</span></div>
                 <div class="nav-sub-item" data-page="jdtaskqueue" data-search="用户任务队列 排队" onclick="switchPage('jdtaskqueue')"><i class="fas fa-layer-group"></i><span>用户任务队列</span></div>
             </div>
@@ -1806,7 +1807,43 @@
                 </div>
             </div>
 
-            <div class="card" style="margin-bottom:16px;">
+            <div class="card">
+                <div class="toolbar">
+                    <div class="search-box has-input-btn" style="max-width:320px;">
+                        <input type="text" id="jdmtSearch" placeholder="搜索任务 ID/脚本/名称/环境变量..." oninput="onJdManualTaskSearch()" onkeyup="if(event.key==='Enter')onJdManualTaskSearch()">
+                        <button class="btn-search" onclick="onJdManualTaskSearch()" title="搜索"><i class="fas fa-search"></i></button>
+                    </div>
+                    <div class="toolbar-actions">
+                        <button class="btn btn-success btn-sm" onclick="batchJdManualEnable(true)"><i class="fas fa-check-circle"></i> 批量启用</button>
+                        <button class="btn btn-warning btn-sm" onclick="batchJdManualEnable(false)"><i class="fas fa-ban"></i> 批量禁用</button>
+                        <button class="btn btn-primary btn-sm" onclick="batchJdManualSetCoin()"><i class="fas fa-coins"></i> 设定积分</button>
+                        <button class="btn btn-danger btn-sm" onclick="batchJdManualDelete()"><i class="fas fa-trash"></i> 批量删除</button>
+                        <button class="btn btn-info btn-sm" onclick="loadJdManualTasks()"><i class="fas fa-sync-alt"></i> 刷新</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table" id="jdManualTaskTable">
+                        <thead><tr>
+                            <th style="min-width:36px;width:36px;"><input type="checkbox" id="jdmtCheckAll" onchange="toggleAllJdManualCheck(this.checked)"></th>
+                            <th style="min-width:70px;">排序</th>
+                            <th style="min-width:120px;">任务 ID</th>
+                            <th style="min-width:180px;">脚本</th>
+                            <th style="min-width:140px;">显示名</th>
+                            <th style="min-width:80px;">启用</th>
+                            <th style="min-width:90px;">扣积分/账号</th>
+                            <th style="min-width:100px;">环境变量</th>
+                            <th style="min-width:90px;" class="col-action-sticky">操作</th>
+                        </tr></thead>
+                        <tbody id="jdManualTaskBody"><tr><td colspan="9" style="text-align:center;color:#999;padding:40px;">加载中...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="jdmtPagination"></div>
+            </div>
+        </div>
+
+        <!-- ========= 任务代理购买统计 ========= -->
+        <div id="page-jdproxystats" class="page-section">
+            <div class="card">
                 <div class="config-section" style="margin-bottom:12px;">
                     <div class="config-section-title"><i class="fas fa-receipt"></i> 门户任务代理购买统计</div>
                     <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px;" id="jdProxyPurchaseStats">
@@ -1850,39 +1887,6 @@
                     </table>
                 </div>
                 <div class="pagination" id="jdppPagination"></div>
-            </div>
-
-            <div class="card">
-                <div class="toolbar">
-                    <div class="search-box has-input-btn" style="max-width:320px;">
-                        <input type="text" id="jdmtSearch" placeholder="搜索任务 ID/脚本/名称/环境变量..." oninput="onJdManualTaskSearch()" onkeyup="if(event.key==='Enter')onJdManualTaskSearch()">
-                        <button class="btn-search" onclick="onJdManualTaskSearch()" title="搜索"><i class="fas fa-search"></i></button>
-                    </div>
-                    <div class="toolbar-actions">
-                        <button class="btn btn-success btn-sm" onclick="batchJdManualEnable(true)"><i class="fas fa-check-circle"></i> 批量启用</button>
-                        <button class="btn btn-warning btn-sm" onclick="batchJdManualEnable(false)"><i class="fas fa-ban"></i> 批量禁用</button>
-                        <button class="btn btn-primary btn-sm" onclick="batchJdManualSetCoin()"><i class="fas fa-coins"></i> 设定积分</button>
-                        <button class="btn btn-danger btn-sm" onclick="batchJdManualDelete()"><i class="fas fa-trash"></i> 批量删除</button>
-                        <button class="btn btn-info btn-sm" onclick="loadJdManualTasks()"><i class="fas fa-sync-alt"></i> 刷新</button>
-                    </div>
-                </div>
-                <div class="table-wrap">
-                    <table class="data-table" id="jdManualTaskTable">
-                        <thead><tr>
-                            <th style="min-width:36px;width:36px;"><input type="checkbox" id="jdmtCheckAll" onchange="toggleAllJdManualCheck(this.checked)"></th>
-                            <th style="min-width:70px;">排序</th>
-                            <th style="min-width:120px;">任务 ID</th>
-                            <th style="min-width:180px;">脚本</th>
-                            <th style="min-width:140px;">显示名</th>
-                            <th style="min-width:80px;">启用</th>
-                            <th style="min-width:90px;">扣积分/账号</th>
-                            <th style="min-width:100px;">环境变量</th>
-                            <th style="min-width:90px;" class="col-action-sticky">操作</th>
-                        </tr></thead>
-                        <tbody id="jdManualTaskBody"><tr><td colspan="9" style="text-align:center;color:#999;padding:40px;">加载中...</td></tr></tbody>
-                    </table>
-                </div>
-                <div class="pagination" id="jdmtPagination"></div>
             </div>
         </div>
 
@@ -2711,6 +2715,20 @@
 <script src="/vweb/js/api_docs_data.js?v=1"></script>
 <script>
 // ============ 通用工具 ============
+function sanitizeErrorMessage(message) {
+    if (!message) return '操作失败';
+    var msg = String(message);
+    var lower = msg.toLowerCase();
+    if (lower.indexOf('failed to connect') >= 0 || lower.indexOf('network error') >= 0 || lower.indexOf('failed to fetch') >= 0
+        || lower.indexOf('timeout') >= 0 || lower.indexOf('econnrefused') >= 0 || lower.indexOf('enotfound') >= 0
+        || lower.indexOf('unable to resolve') >= 0 || lower.indexOf('networkerror') >= 0) {
+        return '连接服务器失败';
+    }
+    msg = msg.replace(/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?[^\s]*/g, '服务器');
+    msg = msg.replace(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?/g, '服务器');
+    msg = msg.replace(/https?:\/\/[^\s]+/g, '服务器地址');
+    return msg;
+}
 function _fetchJson(method, url, data) {
     var opts = { method: method, credentials: 'same-origin' };
     if (data !== undefined) { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(data); }
@@ -2718,6 +2736,8 @@ function _fetchJson(method, url, data) {
         if (r.redirected) { window.location.href = r.url; throw new Error('redirected'); }
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
+    }).catch(function(err) {
+        throw new Error(sanitizeErrorMessage(err && err.message ? err.message : String(err)));
     });
 }
 var _hasAxios = typeof axios !== 'undefined';
@@ -2999,7 +3019,7 @@ function switchContainerTab(tab) {
 
 // ============ 侧栏分组导航 ============
 var NAV_PAGE_GROUP = {
-    jdcookies: 'jd', jdcrontasks: 'jd', jdtaskqueue: 'jd', jdmanualtasks: 'jd',
+    jdcookies: 'jd', jdcrontasks: 'jd', jdtaskqueue: 'jd', jdmanualtasks: 'jd', jdproxystats: 'jd',
     users: 'user', coinlogs: 'user', notifications: 'user', feedbacks: 'user',
     activities: 'ql', actauth: 'ql', actstats: 'ql', qlcrontasks: 'ql', qlenvs: 'ql', containers: 'ql',
     wxdevices: 'proto', yyb: 'proto', envvars: 'proto',
@@ -3098,6 +3118,7 @@ function switchPage(page) {
         qlenvs: ['青龙活动变量', '青龙与活动 / 青龙活动变量'], jdcontainers: ['京东容器', '青龙与活动 / 京东容器'],
         jdcrontasks: ['京东任务列表', '京东业务 / 京东任务列表'],
         jdmanualtasks: ['手动京东任务', '京东业务 / 手动京东任务'],
+        jdproxystats: ['任务代理统计', '京东业务 / 任务代理统计'],
         jdtaskqueue: ['用户任务队列', '京东业务 / 用户任务队列'],
         qlcrontasks: ['青龙活动任务', '青龙与活动 / 青龙活动任务'],
         logmgmt: ['日志管理', '系统运维 / 日志管理'],
@@ -3118,6 +3139,7 @@ function switchPage(page) {
         qlcontainers: loadQLContainers,
         qlenvs: loadQLEnvConfigs, jdcontainers: loadJdContainers, jdcrontasks: initJdCronTaskPage,
         jdmanualtasks: loadJdManualTasks,
+        jdproxystats: function() { loadJdProxyPurchases(1); },
         jdtaskqueue: initJdTaskQueuePage,
         qlcrontasks: initQlCronTaskPage, logmgmt: initLogMgmtPage, sysconfig: function() { loadSysConfig(); }, gameconfig: loadGameConfig,
         apidocs: initApiDocsPage,
@@ -8661,7 +8683,6 @@ async function loadJdManualTasks() {
         normalizeJdManualCache(res.data, []);
         _jdmtPage = 1;
         renderJdManualTasks();
-        loadJdProxyPurchases(1);
     } catch (e) {
         toast('加载失败: ' + e.message, 'error');
     }
