@@ -130,7 +130,7 @@ func (c *BaseController) PortalLogined() *BaseController {
 		return c
 	}
 
-	account, err := models.GetWebUserAccountByID(accountID)
+	account, err := models.GetWebUserAccountByIDCached(accountID)
 	if err != nil {
 		if vNum := c.GetSession("portal_user_number"); vNum != nil {
 			var userNumber int

@@ -196,6 +196,7 @@ func main() {
 	web.Router("/portal/login", &controllers.LoginController{}, "get:PortalLoginPage")
 	web.Router("/portal", &controllers.PortalController{}, "get:Index")
 	web.Router("/api/portal/dashboard", &controllers.PortalController{}, "get:Dashboard")
+	web.Router("/api/portal/home", &controllers.PortalController{}, "get:Home")
 	web.Router("/api/portal/profile", &controllers.PortalController{}, "get:Profile")
 	web.Router("/api/portal/activities", &controllers.PortalController{}, "get:Activities")
 	web.Router("/api/portal/projects", &controllers.PortalController{}, "get:Projects")

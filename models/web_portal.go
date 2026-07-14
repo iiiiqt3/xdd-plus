@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -119,8 +120,14 @@ type PortalProfile struct {
 	Account *WebUserAccount `json:"account"`
 }
 
+// PortalHomeResponse 门户首页聚合数据（网页/App 登录后一次拉取，避免 dashboard+profile 重复查库）
+type PortalHomeResponse struct {
+	Dashboard *PortalDashboard `json:"dashboard"`
+	Profile   *PortalProfile   `json:"profile"`
+}
+
 func GetPortalProfile(accountID int) (*PortalProfile, error) {
-	account, err := GetWebUserAccountByID(accountID)
+	account, err := GetWebUserAccountByIDCached(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("未找到登录账号，请重新登录；如果刚注册过，请确认注册时填写的是机器人【用户信息】里的 UserID")
 	}
@@ -131,19 +138,42 @@ func GetPortalProfile(accountID int) (*PortalProfile, error) {
 	return &PortalProfile{User: &user, Account: account}, nil
 }
 
+func GetPortalHome(accountID int) (*PortalHomeResponse, error) {
+	profile, err := GetPortalProfile(accountID)
+	if err != nil {
+		return nil, err
+	}
+	dashboard, err := buildPortalDashboard(profile)
+	if err != nil {
+		return nil, err
+	}
+	return &PortalHomeResponse{Dashboard: dashboard, Profile: profile}, nil
+}
+
 func GetPortalDashboard(accountID int) (*PortalDashboard, error) {
 	profile, err := GetPortalProfile(accountID)
 	if err != nil {
 		return nil, err
 	}
+	return buildPortalDashboard(profile)
+}
 
-	notificationTotal, notificationUnread := GetPortalNotificationCounts(profile.User.Number)
+func buildPortalDashboard(profile *PortalProfile) (*PortalDashboard, error) {
+	if profile == nil || profile.User == nil || profile.Account == nil {
+		return nil, fmt.Errorf("用户资料不完整")
+	}
+	userNumber := profile.User.Number
+
+	notificationTotal, notificationUnread := GetPortalNotificationCounts(userNumber)
 	availableCount := CountPortalAvailableActivities()
-	projectCount, joinedCount, activeCount, expiringCount, expiredCount := CountPortalProjectStats(profile.User.Number)
+
+	projects, _ := GetPortalProjects(userNumber)
+	projectCount, joinedCount, activeCount, expiringCount, expiredCount := countPortalProjectStatsFromList(projects)
+	canCheckIn, canCheckInMessage := canUserCheckInFromProjects(projects)
+
 	checkedInToday, continuousDays := getPortalCheckInStatus(profile.User)
 	nextBonus, daysUntilNextBonus := getNextCheckInBonus(continuousDays)
-	prayedToday := hasPrayedToday(profile.User.Number)
-	canCheckIn, canCheckInMessage := CanUserCheckIn(profile.User.Number)
+	prayedToday := hasPrayedToday(userNumber)
 	todayCheckInCount := countTodayCheckIns()
 
 	return &PortalDashboard{
@@ -176,6 +206,42 @@ func GetPortalDashboard(accountID int) (*PortalDashboard, error) {
 	}, nil
 }
 
+func countPortalProjectStatsFromList(projects []PortalProjectItem) (int, int, int, int, int) {
+	joined := map[string]bool{}
+	activeCount := 0
+	expiringCount := 0
+	expiredCount := 0
+	for _, project := range projects {
+		if project.ActivityID != "" && project.BizStatus != "expired" {
+			joined[project.ActivityID] = true
+		}
+		switch project.BizStatus {
+		case "expired":
+			expiredCount++
+		case "expiring":
+			expiringCount++
+		default:
+			activeCount++
+		}
+	}
+	return len(projects), len(joined), activeCount, expiringCount, expiredCount
+}
+
+func canUserCheckInFromProjects(projects []PortalProjectItem) (bool, string) {
+	if len(projects) == 0 {
+		return false, "您还没有挂上任何项目，请先前往「项目中心」上车活动"
+	}
+	for _, project := range projects {
+		if project.BizStatus == "expired" {
+			continue
+		}
+		if project.IsMonthlyDeduct || project.IsDailyDeduct {
+			return true, ""
+		}
+	}
+	return false, "您没有有效的按月/按天项目（可能已过期），打卡需要有效的按月或按天项目"
+}
+
 func isPortalActivityAvailable(cfg *ActivityConfig) bool {
 	if cfg == nil || !cfg.Enabled || strings.TrimSpace(cfg.EnvKey) == "" || strings.TrimSpace(cfg.CKTemplate) == "" || len(cfg.InputFields) == 0 {
 		return false
@@ -203,52 +269,17 @@ func CountPortalProjectStats(userNumber int) (int, int, int, int, int) {
 	if err != nil {
 		return 0, 0, 0, 0, 0
 	}
-	joined := map[string]bool{}
-	activeCount := 0
-	expiringCount := 0
-	expiredCount := 0
-	for _, project := range projects {
-		if project.ActivityID != "" && project.BizStatus != "expired" {
-			joined[project.ActivityID] = true
-		}
-		switch project.BizStatus {
-		case "expired":
-			expiredCount++
-		case "expiring":
-			expiringCount++
-		default:
-			activeCount++
-		}
-	}
-	return len(projects), len(joined), activeCount, expiringCount, expiredCount
+	return countPortalProjectStatsFromList(projects)
 }
 
 // CanUserCheckIn 检查用户是否可以打卡
 // 条件：有按月或按天的项目，且项目未过期
 func CanUserCheckIn(userNumber int) (bool, string) {
 	projects, err := GetPortalProjects(userNumber)
-	if err != nil || len(projects) == 0 {
+	if err != nil {
 		return false, "您还没有挂上任何项目，请先前往「项目中心」上车活动"
 	}
-	
-	hasValidMonthlyOrDaily := false
-	for _, project := range projects {
-		// 跳过已过期的项目
-		if project.BizStatus == "expired" {
-			continue
-		}
-		// 检查是否有按月或按天的项目
-		if project.IsMonthlyDeduct || project.IsDailyDeduct {
-			hasValidMonthlyOrDaily = true
-			break
-		}
-	}
-	
-	if !hasValidMonthlyOrDaily {
-		return false, "您没有有效的按月/按天项目（可能已过期），打卡需要有效的按月或按天项目"
-	}
-	
-	return true, ""
+	return canUserCheckInFromProjects(projects)
 }
 
 func getNextCheckInBonus(days int) (int, int) {
@@ -273,10 +304,31 @@ func getPortalCheckInStatus(user *User) (bool, int) {
 }
 
 func countTodayCheckIns() int {
+	today := time.Now().Local().Format("2006-01-02")
+	portalTodayCheckInCache.RLock()
+	if portalTodayCheckInCache.date == today {
+		count := portalTodayCheckInCache.count
+		portalTodayCheckInCache.RUnlock()
+		return count
+	}
+	portalTodayCheckInCache.RUnlock()
+
 	zero := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Local)
 	var count int64
 	db.Model(&User{}).Where("sign_in_date >= ?", zero).Count(&count)
-	return int(count)
+	n := int(count)
+
+	portalTodayCheckInCache.Lock()
+	portalTodayCheckInCache.date = today
+	portalTodayCheckInCache.count = n
+	portalTodayCheckInCache.Unlock()
+	return n
+}
+
+var portalTodayCheckInCache struct {
+	sync.RWMutex
+	date  string
+	count int
 }
 
 func hasPrayedToday(userNumber int) bool {

@@ -63,6 +63,23 @@ func (c *PortalController) Dashboard() {
 	c.ServeJSON()
 }
 
+// Home 登录后首页聚合接口（dashboard + profile 一次返回，供网页/App 减少重复请求）
+func (c *PortalController) Home() {
+	if c.PortalAccount == nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "登录状态失效，请重新登录"}
+		c.ServeJSON()
+		return
+	}
+	data, err := models.GetPortalHome(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data}
+	c.ServeJSON()
+}
+
 // Profile 获取用户个人资料信息
 func (c *PortalController) Profile() {
 	if c.PortalAccount == nil {

@@ -15,7 +15,7 @@ import (
 
 func initHandle() {
 	//获取路径
-	Save = make(chan *JdCookie)
+	Save = make(chan *JdCookie, 16)
 	go func() {
 		init := true
 		for {
@@ -23,6 +23,17 @@ func initHandle() {
 			if get.Pool == "s" {
 				continue
 			}
+			for {
+				select {
+				case more := <-Save:
+					if more != nil && more.Pool != "s" {
+						get = more
+					}
+				default:
+					goto flushJdCookies
+				}
+			}
+		flushJdCookies:
 			cks := GetJdCookies(func(sb *gorm.DB) *gorm.DB {
 				return sb.Where(fmt.Sprintf("%s >= ? and %s = ?", Priority, Available), 0, True)
 			})

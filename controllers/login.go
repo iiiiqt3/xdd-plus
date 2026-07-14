@@ -432,34 +432,46 @@ var (
 	loginFailMap sync.Map // key: IP, value: *loginFailRecord
 )
 
-const maxLoginFails = 5
-const loginLockMinutes = 10
+const maxLoginFails = 8
+const loginLockMinutes = 5
 
 type loginFailRecord struct {
+	mu        sync.Mutex
 	count     int
 	lockUntil time.Time
 }
 
-func checkLoginLocked(ip string) (locked bool, remainingSec int) {
-	v, ok := loginFailMap.Load(ip)
+func loginLockKey(loginType, account, ip string) string {
+	account = strings.ToLower(strings.TrimSpace(account))
+	if loginType == "user" && account != "" {
+		return "user:" + account + ":" + ip
+	}
+	return "admin:" + ip
+}
+
+func checkLoginLocked(key string) (locked bool, remainingSec int) {
+	v, ok := loginFailMap.Load(key)
 	if !ok {
 		return false, 0
 	}
 	r := v.(*loginFailRecord)
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if r.count >= maxLoginFails {
 		if time.Now().Before(r.lockUntil) {
 			return true, int(time.Until(r.lockUntil).Seconds())
 		}
-		// 锁定期过了，重置
-		loginFailMap.Delete(ip)
+		loginFailMap.Delete(key)
 		return false, 0
 	}
 	return false, 0
 }
 
-func recordLoginFail(ip string) int {
-	v, _ := loginFailMap.LoadOrStore(ip, &loginFailRecord{})
+func recordLoginFail(key string) int {
+	v, _ := loginFailMap.LoadOrStore(key, &loginFailRecord{})
 	r := v.(*loginFailRecord)
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.count++
 	if r.count >= maxLoginFails {
 		r.lockUntil = time.Now().Add(loginLockMinutes * time.Minute)
@@ -467,16 +479,22 @@ func recordLoginFail(ip string) int {
 	return r.count
 }
 
-func resetLoginFails(ip string) {
-	loginFailMap.Delete(ip)
+func resetLoginFails(key string) {
+	loginFailMap.Delete(key)
 }
 
 // ==================== 登录接口 ====================
 
-// GetLoginStatus 检查当前IP是否被登录锁定（供前端轮询）
+// GetLoginStatus 检查当前账号/IP是否被登录锁定（供前端轮询）
 func (c *LoginController) GetLoginStatus() {
 	ip := c.Ctx.Input.IP()
-	locked, remaining := checkLoginLocked(ip)
+	loginType := c.GetString("type")
+	if loginType == "" {
+		loginType = "admin"
+	}
+	account := c.GetString("account")
+	key := loginLockKey(loginType, account, ip)
+	locked, remaining := checkLoginLocked(key)
 	c.Data["json"] = map[string]interface{}{
 		"locked":    locked,
 		"remaining": remaining,
@@ -508,6 +526,7 @@ func (c *LoginController) RegisterUser() {
 	}
 	c.SetSession("portal_account_id", account.ID)
 	c.SetSession("portal_user_number", user.Number)
+	models.WarmWebUserAccountCache(account)
 	models.UpdateUserActiveAt(user.Number)
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
@@ -595,7 +614,9 @@ func (c *LoginController) IsAdmin() {
 	if loginType == "" {
 		loginType = "admin"
 	}
-	if locked, remaining := checkLoginLocked(ip); locked {
+	account := c.GetString("account")
+	lockKey := loginLockKey(loginType, account, ip)
+	if locked, remaining := checkLoginLocked(lockKey); locked {
 		c.Data["json"] = map[string]interface{}{
 			"code":      2,
 			"msg":       fmt.Sprintf("登录失败次数过多，请%d秒后再试", remaining),
@@ -605,7 +626,6 @@ func (c *LoginController) IsAdmin() {
 		return
 	}
 
-	account := c.GetString("account")
 	pin := c.GetString("pin")
 	if pin == "" {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请输入密码"}
@@ -616,15 +636,16 @@ func (c *LoginController) IsAdmin() {
 	if loginType == "user" {
 		webAccount, user, err := models.AuthenticateWebUserAccount(account, pin)
 		if err == nil {
-			resetLoginFails(ip)
+			resetLoginFails(lockKey)
 			c.SetSession("portal_account_id", webAccount.ID)
 			c.SetSession("portal_user_number", user.Number)
-			models.UpdateUserActiveAt(user.Number)
+			models.WarmWebUserAccountCache(webAccount)
+			go models.UpdateUserActiveAt(user.Number)
 			models.Portal().Infof("用户[%s]网页登录成功，绑定编号[%d]", webAccount.Username, user.Number)
 			c.Ctx.WriteString("登录")
 			return
 		}
-		fails := recordLoginFail(ip)
+		fails := recordLoginFail(lockKey)
 		c.Data["json"] = map[string]interface{}{
 			"code":  1,
 			"msg":   fmt.Sprintf("%s（%d/%d）", err.Error(), fails, maxLoginFails),
@@ -636,7 +657,7 @@ func (c *LoginController) IsAdmin() {
 
 	if models.Config.Account != "" && models.Config.Master != "" && models.Config.Master != "xxxx" {
 		if account == models.Config.Account && pin == models.Config.Master {
-			resetLoginFails(ip)
+			resetLoginFails(lockKey)
 			c.SetSession("token", pin)
 			models.Admin().Infof("管理员[%s]登录成功", account)
 			c.Ctx.WriteString("登录")
@@ -645,13 +666,13 @@ func (c *LoginController) IsAdmin() {
 	}
 	value := models.GetCache("AdminToken")
 	if value != "" && pin == value {
-		resetLoginFails(ip)
+		resetLoginFails(lockKey)
 		c.SetSession("token", value)
 		models.Admin().Infof("随机Token登录成功")
 		c.Ctx.WriteString("登录")
 		return
 	}
-	fails := recordLoginFail(ip)
+	fails := recordLoginFail(lockKey)
 	c.Data["json"] = map[string]interface{}{
 		"code":  1,
 		"msg":   fmt.Sprintf("用户名或密码错误（%d/%d）", fails, maxLoginFails),

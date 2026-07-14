@@ -7,6 +7,7 @@ import (
     "fmt"
     "strconv"
     "strings"
+    "sync"
     "time"
 )
 
@@ -126,6 +127,49 @@ func GetWebUserAccountByID(id int) (*WebUserAccount, error) {
     return &account, nil
 }
 
+type cachedWebUserAccount struct {
+    account *WebUserAccount
+    expire  time.Time
+}
+
+var webUserAccountCache sync.Map
+
+// GetWebUserAccountByIDCached 门户会话校验用，短缓存减轻每次请求查库
+func GetWebUserAccountByIDCached(id int) (*WebUserAccount, error) {
+    if id <= 0 {
+        return nil, fmt.Errorf("invalid account id")
+    }
+    if v, ok := webUserAccountCache.Load(id); ok {
+        c := v.(cachedWebUserAccount)
+        if time.Now().Before(c.expire) && c.account != nil {
+            acc := *c.account
+            return &acc, nil
+        }
+        webUserAccountCache.Delete(id)
+    }
+    account, err := GetWebUserAccountByID(id)
+    if err != nil {
+        return nil, err
+    }
+    webUserAccountCache.Store(id, cachedWebUserAccount{account: account, expire: time.Now().Add(45 * time.Second)})
+    return account, nil
+}
+
+func invalidateWebUserAccountCache(id int) {
+    if id > 0 {
+        webUserAccountCache.Delete(id)
+    }
+}
+
+// WarmWebUserAccountCache 登录成功后预热会话缓存，避免紧接着的首屏请求再查库
+func WarmWebUserAccountCache(account *WebUserAccount) {
+    if account == nil || account.ID <= 0 {
+        return
+    }
+    copy := *account
+    webUserAccountCache.Store(account.ID, cachedWebUserAccount{account: &copy, expire: time.Now().Add(45 * time.Second)})
+}
+
 func GetWebUserAccountByUserNumber(userNumber int) (*WebUserAccount, error) {
     var account WebUserAccount
     if err := db.Where("user_number = ?", userNumber).First(&account).Error; err != nil {
@@ -162,6 +206,7 @@ func ResetWebUserPassword(username, password string) (*WebUserAccount, error) {
     if err := db.Save(&account).Error; err != nil {
         return nil, fmt.Errorf("重置网页密码失败：%v", err)
     }
+    invalidateWebUserAccountCache(account.ID)
     return &account, nil
 }
 
@@ -190,7 +235,10 @@ func AuthenticateWebUserAccount(username, password string) (*WebUserAccount, *Us
     }
 
     now := time.Now()
-    db.Model(&account).Update("last_login_at", now)
+    accountID := account.ID
+    go func() {
+        db.Model(&WebUserAccount{}).Where("id = ?", accountID).Update("last_login_at", now)
+    }()
     account.LastLoginAt = now
     return &account, &user, nil
 }

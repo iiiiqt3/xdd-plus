@@ -511,33 +511,60 @@ func getJdManualProxyConfig() JdManualProxyConfig {
 	return jdManualTasks.file.Proxy
 }
 
-// ResolveManualJdTaskProxy 手动任务代理：开且填写 → 用手动；否则用系统京东代理
-func ResolveManualJdTaskProxy() (enabled bool, url, renum, redelay string) {
-	p := getJdManualProxyConfig()
-	manualURL := strings.TrimSpace(p.URL)
-	if p.Enabled && manualURL != "" {
-		renum = strings.TrimSpace(p.Renum)
-		redelay = strings.TrimSpace(p.Redelay)
-		if renum == "" {
-			renum = "10"
-		}
-		if redelay == "" {
-			redelay = "2"
-		}
-		return true, manualURL, renum, redelay
-	}
-	if !IsJdTaskProxyEnabled() {
-		return false, "", "", ""
-	}
-	renum = strings.TrimSpace(sysConfig.JdTaskProxyRenum)
-	redelay = strings.TrimSpace(sysConfig.JdTaskProxyRedelay)
+func normalizeJdProxyRenumRedelay(renum, redelay string) (string, string) {
+	renum = strings.TrimSpace(renum)
+	redelay = strings.TrimSpace(redelay)
 	if renum == "" {
 		renum = "10"
 	}
 	if redelay == "" {
 		redelay = "2"
 	}
+	return renum, redelay
+}
+
+// resolveManualOnlyJdTaskProxy 仅解析手动京东任务代理（开关开且 URL 已填）
+func resolveManualOnlyJdTaskProxy() (enabled bool, url, renum, redelay string) {
+	p := getJdManualProxyConfig()
+	manualURL := strings.TrimSpace(p.URL)
+	if !p.Enabled || manualURL == "" {
+		return false, "", "", ""
+	}
+	renum, redelay = normalizeJdProxyRenumRedelay(p.Renum, p.Redelay)
+	return true, manualURL, renum, redelay
+}
+
+// ResolveSystemJdTaskProxy 系统设置中的京东任务代理
+func ResolveSystemJdTaskProxy() (enabled bool, url, renum, redelay string) {
+	if !IsJdTaskProxyEnabled() {
+		return false, "", "", ""
+	}
+	renum, redelay = normalizeJdProxyRenumRedelay(sysConfig.JdTaskProxyRenum, sysConfig.JdTaskProxyRedelay)
 	return true, strings.TrimSpace(sysConfig.JdTaskProxyUrl), renum, redelay
+}
+
+// IsJdManualProxySwitchEnabled 手动京东任务代理开关是否打开
+func IsJdManualProxySwitchEnabled() bool {
+	return getJdManualProxyConfig().Enabled
+}
+
+// ResolveManualJdTaskProxy 后台手动任务：开且填写 → 用手动；否则回退系统京东代理
+func ResolveManualJdTaskProxy() (enabled bool, url, renum, redelay string) {
+	if ok, url, renum, redelay := resolveManualOnlyJdTaskProxy(); ok {
+		return ok, url, renum, redelay
+	}
+	return ResolveSystemJdTaskProxy()
+}
+
+func applyJdProxyEnvsFromConfig(envs map[string]string, url, renum, redelay string) {
+	if envs == nil || strings.TrimSpace(url) == "" {
+		return
+	}
+	envs["DY_PROXY"] = url
+	envs["DY_PROXY_RENUM"] = renum
+	envs["DY_PROXY_REDELAY"] = redelay
+	envs["PRO_API_PROXY_URL"] = url
+	envs["PRO_PROXY_WHITELIST"] = "jd"
 }
 
 // ApplyManualJdTaskProxyEnvs 注入手动/系统代理环境变量
@@ -549,11 +576,7 @@ func ApplyManualJdTaskProxyEnvs(envs map[string]string) {
 	if !ok || url == "" {
 		return
 	}
-	envs["DY_PROXY"] = url
-	envs["DY_PROXY_RENUM"] = renum
-	envs["DY_PROXY_REDELAY"] = redelay
-	envs["PRO_API_PROXY_URL"] = url
-	envs["PRO_PROXY_WHITELIST"] = "jd"
+	applyJdProxyEnvsFromConfig(envs, url, renum, redelay)
 }
 
 // CleanupJdManualTaskLogs 删除超过保留天数的任务日志

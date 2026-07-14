@@ -623,46 +623,44 @@
         }
         .jd-task-sticky-bar {
             position: sticky; top: 0; z-index: 12;
-            padding: 12px 16px;
+            padding: 8px 12px;
             background: var(--card);
             border-bottom: 1px solid var(--glass-border);
             box-shadow: 0 4px 16px rgba(15,23,42,0.04);
         }
         .jd-task-toolbar {
-            display: flex; align-items: stretch;
-            border: 1px solid var(--glass-border); border-radius: 12px;
+            display: flex; align-items: center;
+            border: 1px solid var(--glass-border); border-radius: 10px;
             background: linear-gradient(180deg, #fafbfc, var(--glass-bg));
             overflow: hidden;
         }
-        .jd-task-toolbar-section { min-width: 0; padding: 12px 14px; }
+        .jd-task-toolbar-section { min-width: 0; padding: 8px 12px; }
         .jd-task-accounts-section { flex: 1; }
         .jd-task-proxy-section {
-            flex: 0 0 320px; max-width: 38%;
+            flex: 0 0 min(520px, 50%);
             background: var(--card);
             border-left: 1px solid var(--glass-border);
-            display: flex; flex-direction: column; justify-content: center;
         }
-        .jd-task-toolbar-head {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 8px; margin-bottom: 8px;
+        .jd-task-accounts-row {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
         }
         .jd-task-toolbar-label {
-            font-size: 12px; font-weight: 700; color: var(--text);
+            font-size: 12px; font-weight: 700; color: var(--text); flex-shrink: 0;
         }
         .jd-task-toolbar-hint {
-            font-size: 11px; color: var(--text-muted);
+            font-size: 11px; color: var(--text-muted); flex-shrink: 0; margin-left: auto;
         }
         .jd-task-account-chips {
-            display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
-            min-height: 32px;
+            display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+            flex: 1; min-width: 120px;
         }
         .jd-account-chip {
             display: inline-flex; align-items: center; gap: 5px;
-            padding: 5px 12px; border-radius: 999px;
+            padding: 4px 10px; border-radius: 999px;
             border: 1px solid var(--glass-border); background: var(--card);
             font-size: 12px; font-weight: 500; color: var(--text-secondary);
             cursor: pointer; transition: border-color 0.15s, background 0.15s, color 0.15s;
-            line-height: 1.4; user-select: none;
+            line-height: 1.3; user-select: none;
         }
         .jd-account-chip:hover {
             border-color: #c7d2fe; color: var(--primary);
@@ -677,50 +675,42 @@
         .jd-task-proxy-card {
             padding: 0; border: none; border-radius: 0; background: transparent;
         }
-        .jd-task-proxy-card.active .jd-task-proxy-badge.on {
-            background: rgba(16,185,129,0.12); color: #059669;
+        .jd-task-proxy-row {
+            display: flex; align-items: center; gap: 10px;
+            flex-wrap: nowrap; min-height: 32px;
         }
-        .jd-task-proxy-card.inactive .jd-task-proxy-badge.off {
-            background: rgba(148,163,184,0.12); color: #64748b;
+        .jd-task-proxy-lead {
+            display: flex; align-items: center; gap: 8px; flex-shrink: 0;
         }
-        .jd-task-proxy-head {
-            display: flex; align-items: center; justify-content: space-between; gap: 8px;
-            margin-bottom: 8px;
-        }
-        .jd-task-proxy-title { font-size: 13px; font-weight: 700; color: var(--text); }
+        .jd-task-proxy-title { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; }
         .jd-task-proxy-badge {
-            font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+            font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
         }
         .jd-task-proxy-badge.on { background: rgba(16,185,129,0.15); color: #059669; }
         .jd-task-proxy-badge.off { background: rgba(148,163,184,0.15); color: #64748b; }
         .jd-task-proxy-stats {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-            margin-bottom: 8px;
+            display: flex; align-items: center; gap: 12px; flex-shrink: 0;
         }
         .jd-task-proxy-stat {
-            padding: 6px 8px; border-radius: 8px;
-            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            display: flex; align-items: baseline; gap: 4px; white-space: nowrap;
+            font-size: 11px;
         }
-        .jd-task-proxy-stat .label {
-            display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 2px;
-        }
-        .jd-task-proxy-stat .val {
-            display: block; font-size: 12px; font-weight: 600; color: var(--text);
+        .jd-task-proxy-stat .label { color: var(--text-muted); }
+        .jd-task-proxy-stat .val { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+        .jd-task-proxy-meta {
+            flex: 1; min-width: 0;
+            font-size: 11px; color: var(--text-muted); line-height: 1.3;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .jd-task-proxy-meta {
-            font-size: 11px; color: var(--text-muted); line-height: 1.5;
-            margin-bottom: 8px;
-        }
         .jd-task-proxy-buy {
-            display: flex; align-items: center; gap: 8px;
+            display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto;
         }
         .jd-task-proxy-buy select {
-            flex: 1; min-width: 0; padding: 6px 10px;
+            width: 84px; padding: 4px 8px;
             border: 1px solid var(--glass-border); border-radius: 8px;
             background: var(--card); font-size: 12px;
         }
-        .jd-task-proxy-buy .btn { font-size: 12px; padding: 6px 12px; white-space: nowrap; flex-shrink: 0; }
+        .jd-task-proxy-buy .btn { font-size: 12px; padding: 4px 12px; white-space: nowrap; }
         .jd-task-main {
             display: flex; flex-direction: row; align-items: flex-start;
             flex: 1; min-height: 0; gap: 0;
@@ -796,12 +786,15 @@
         .jd-task-log .log-task { color: #9ece6a; margin-right: 8px; }
         .jd-task-log .log-content { color: #a9b1d6; }
         .jd-task-log .log-error { color: #f7768e; }
-        @media (max-width: 800px) {
-            .jd-task-toolbar { flex-direction: column; }
+        @media (max-width: 1100px) {
+            .jd-task-toolbar { flex-direction: column; align-items: stretch; }
             .jd-task-proxy-section {
-                flex: none; max-width: none;
-                border-left: none; border-top: 1px solid var(--glass-border);
+                flex: none; border-left: none; border-top: 1px solid var(--glass-border);
             }
+            .jd-task-proxy-row { flex-wrap: wrap; row-gap: 6px; }
+            .jd-task-proxy-buy { margin-left: 0; }
+        }
+        @media (max-width: 800px) {
             .jd-task-shell { min-height: calc(100dvh - 180px); }
             .jd-task-main { flex-direction: column; }
             .jd-task-list-wrap {
@@ -2067,37 +2060,39 @@
                         <div class="jd-task-sticky-bar">
                             <div class="jd-task-toolbar">
                                 <div class="jd-task-toolbar-section jd-task-accounts-section">
-                                    <div class="jd-task-toolbar-head">
+                                    <div class="jd-task-accounts-row">
                                         <span class="jd-task-toolbar-label">执行账号</span>
-                                        <span class="jd-task-toolbar-hint">点击切换，可多选</span>
+                                        <div class="jd-task-account-chips" id="jdTaskAccountChips"></div>
+                                        <span class="jd-task-toolbar-hint">可多选</span>
                                     </div>
-                                    <div class="jd-task-account-chips" id="jdTaskAccountChips"></div>
                                 </div>
                                 <div class="jd-task-toolbar-section jd-task-proxy-section">
                                     <div class="jd-task-proxy-card inactive" id="jdProxyCard">
-                                        <div class="jd-task-proxy-head">
-                                            <span class="jd-task-proxy-title">任务代理</span>
-                                            <span class="jd-task-proxy-badge off" id="jdProxyBadge">未开通</span>
-                                        </div>
-                                        <div class="jd-task-proxy-stats" id="jdProxyStats" style="display:none;">
-                                            <div class="jd-task-proxy-stat">
-                                                <span class="label">到期时间</span>
-                                                <span class="val" id="jdProxyExpire">-</span>
+                                        <div class="jd-task-proxy-row">
+                                            <div class="jd-task-proxy-lead">
+                                                <span class="jd-task-proxy-title">任务代理</span>
+                                                <span class="jd-task-proxy-badge off" id="jdProxyBadge">未开通</span>
                                             </div>
-                                            <div class="jd-task-proxy-stat">
-                                                <span class="label">当前积分</span>
-                                                <span class="val" id="jdProxyCoin">-</span>
+                                            <div class="jd-task-proxy-stats" id="jdProxyStats" style="display:none;">
+                                                <div class="jd-task-proxy-stat">
+                                                    <span class="label">到期</span>
+                                                    <span class="val" id="jdProxyExpire">-</span>
+                                                </div>
+                                                <div class="jd-task-proxy-stat">
+                                                    <span class="label">积分</span>
+                                                    <span class="val" id="jdProxyCoin">-</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div class="jd-task-proxy-meta" id="jdProxyMeta">加载中...</div>
-                                        <div class="jd-task-proxy-buy" id="jdProxyBuyRow">
-                                            <select id="jdProxyMonths" aria-label="购买月数">
-                                                <option value="1">1 个月</option>
-                                                <option value="3">3 个月</option>
-                                                <option value="6">6 个月</option>
-                                                <option value="12">12 个月</option>
-                                            </select>
-                                            <button class="btn primary small" type="button" id="jdProxyBuyBtn" onclick="buyJdTaskProxy(this)">购买代理</button>
+                                            <div class="jd-task-proxy-meta" id="jdProxyMeta">加载中...</div>
+                                            <div class="jd-task-proxy-buy" id="jdProxyBuyRow">
+                                                <select id="jdProxyMonths" aria-label="购买月数">
+                                                    <option value="1">1 个月</option>
+                                                    <option value="3">3 个月</option>
+                                                    <option value="6">6 个月</option>
+                                                    <option value="12">12 个月</option>
+                                                </select>
+                                                <button class="btn primary small" type="button" id="jdProxyBuyBtn" onclick="buyJdTaskProxy(this)">购买</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -2456,12 +2451,9 @@ async function request(url, options = {}) {
 }
 
 async function loadDashboardData() {
-    const [dashboard, profile] = await Promise.all([
-        request('/api/portal/dashboard'),
-        request('/api/portal/profile')
-    ]);
-    state.dashboard = dashboard.data;
-    state.profile = profile.data;
+    const home = await request('/api/portal/home');
+    state.dashboard = home.data && home.data.dashboard;
+    state.profile = home.data && home.data.profile;
     renderDashboard();
     request('/api/portal/wx/status').then(function(wxStatus) {
         state.wxStatus = wxStatus.data;
@@ -2475,7 +2467,7 @@ async function loadDashboardData() {
 }
 
 async function loadProjectData() {
-    const projects = await request('/api/portal/projects');
+    const projects = await request('/api/portal/projects?_=' + Date.now());
     state.projects = projects.data || [];
     updateDashboardProjectStats();
     renderDashboard();
@@ -2483,7 +2475,7 @@ async function loadProjectData() {
 }
 
 async function loadActivitiesData() {
-    const activities = await request('/api/portal/activities');
+    const activities = await request('/api/portal/activities?_=' + Date.now());
     state.activities = activities.data || [];
     renderActivities();
 }
@@ -2692,8 +2684,6 @@ async function initialLoad() {
         state.dashboard = dashboard.data;
         state.profile = profile.data;
         renderDashboard();
-        loadProjectData().catch(err => toast(err.message || '加载项目失败', 'error'));
-        loadActivitiesData().catch(err => toast(err.message || '加载活动失败', 'error'));
         loadNotificationsData(1).catch(err => toast(err.message || '加载通知失败', 'error'));
         loadWxDevices().catch(function() {});
         if (window.YybPortal) YybPortal.loadDashboard().catch(function() {});
@@ -4278,7 +4268,7 @@ function renderJdProxyCard() {
         return;
     }
 
-    if (stats) stats.style.display = 'grid';
+    if (stats) stats.style.display = 'flex';
     if (expireEl) expireEl.textContent = active ? (st.expireAt || '-') : '未开通';
     if (coinEl) coinEl.textContent = String(userCoin);
 

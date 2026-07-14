@@ -304,6 +304,29 @@ async function submitResetPassword() {
     }
 }
 
+async function fetchWithTimeout(url, options, timeoutMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(function() { controller.abort(); }, timeoutMs || 15000);
+    try {
+        return await fetch(url, Object.assign({}, options || {}, { signal: controller.signal }));
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function checkPortalLoginLock(username) {
+    if (!username) return false;
+    try {
+        const resp = await fetchWithTimeout('/api/login/status?type=user&account=' + encodeURIComponent(username), { method: 'GET' }, 8000);
+        const data = await resp.json();
+        if (data.locked && data.remaining > 0) {
+            setMessage('loginMsg', '登录失败次数过多，请 ' + Math.ceil(data.remaining) + ' 秒后再试', 'error');
+            return true;
+        }
+    } catch (e) {}
+    return false;
+}
+
 async function submitLogin() {
     const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
@@ -316,23 +339,28 @@ async function submitLogin() {
     btn.textContent = '登录中...';
     setMessage('loginMsg', '');
     try {
+        if (await checkPortalLoginLock(username)) return;
         const body = 'type=user&account=' + encodeURIComponent(username) + '&pin=' + encodeURIComponent(password);
-        const resp = await fetch('/api/login/admin', {
+        const resp = await fetchWithTimeout('/api/login/admin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body
-        });
+        }, 15000);
         const text = (await resp.text()).trim();
         if (text === '登录') {
             setMessage('loginMsg', '登录成功，正在进入用户中心...', 'success');
-            setTimeout(() => { window.location.href = '/portal'; }, 500);
+            window.location.href = '/portal';
             return;
         }
         let data = {};
         try { data = JSON.parse(text); } catch (e) {}
+        if (data.code === 2) {
+            setMessage('loginMsg', data.msg || ('请 ' + (data.remaining || '') + ' 秒后再试'), 'error');
+            return;
+        }
         setMessage('loginMsg', data.msg || '登录失败', 'error');
     } catch (e) {
-        setMessage('loginMsg', '网络错误，请稍后重试', 'error');
+        setMessage('loginMsg', e && e.name === 'AbortError' ? '登录请求超时，请稍后重试' : '网络错误，请稍后重试', 'error');
     } finally {
         btn.disabled = false;
         btn.textContent = '登录';

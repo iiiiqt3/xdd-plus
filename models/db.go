@@ -3,6 +3,7 @@ package models
 import (
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/driver/mysql"
@@ -16,11 +17,12 @@ var db *gorm.DB
 
 var keys map[string]bool
 var pins map[string]bool
+var pinsKeysMu sync.RWMutex
 
 func initDB() {
 	var err error
 	var c = &gorm.Config{
-		Logger: gormlogger.Default.LogMode(gormlogger.Info),
+		Logger: gormlogger.Default.LogMode(gormlogger.Warn),
 	}
 
 	if strings.Contains(Config.Database, "@tcp(") {
@@ -32,6 +34,12 @@ func initDB() {
 	}
 	if err != nil {
 		panic(err)
+	}
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(80)
+		sqlDB.SetMaxIdleConns(20)
+		sqlDB.SetConnMaxLifetime(5 * time.Minute)
+		sqlDB.SetConnMaxIdleTime(2 * time.Minute)
 	}
 	// 仅对 GORM 规范新表 AutoMigrate；遗留表（jd_cookies/users/envs 等）只读写不迁移，避免启动慢查与反复 ALTER
 	if err := db.AutoMigrate(
@@ -57,8 +65,17 @@ func initDB() {
 
 	keys = make(map[string]bool)
 	pins = make(map[string]bool)
+	go loadJdCookiePinKeyCache()
+}
+
+func loadJdCookiePinKeyCache() {
 	var jps []JdCookie
-	db.Find(&jps)
+	if err := db.Find(&jps).Error; err != nil {
+		DB().Warnf("[jd_cookies] 预热 Pin/Key 缓存失败: %v", err)
+		return
+	}
+	pinsKeysMu.Lock()
+	defer pinsKeysMu.Unlock()
 	for _, jp := range jps {
 		keys[jp.PtKey] = true
 		pins[jp.PtPin] = true
@@ -71,6 +88,14 @@ func GormDB() *gorm.DB {
 }
 
 func HasPin(pin string) bool {
+	pinsKeysMu.RLock()
+	if _, ok := pins[pin]; ok {
+		pinsKeysMu.RUnlock()
+		return ok
+	}
+	pinsKeysMu.RUnlock()
+	pinsKeysMu.Lock()
+	defer pinsKeysMu.Unlock()
 	if _, ok := pins[pin]; ok {
 		return ok
 	}
@@ -79,6 +104,14 @@ func HasPin(pin string) bool {
 }
 
 func HasKey(key string) bool {
+	pinsKeysMu.RLock()
+	if _, ok := keys[key]; ok {
+		pinsKeysMu.RUnlock()
+		return ok
+	}
+	pinsKeysMu.RUnlock()
+	pinsKeysMu.Lock()
+	defer pinsKeysMu.Unlock()
 	if _, ok := keys[key]; ok {
 		return ok
 	}
@@ -87,11 +120,7 @@ func HasKey(key string) bool {
 }
 
 func HasWsKey(key string) bool {
-	if _, ok := keys[key]; ok {
-		return ok
-	}
-	keys[key] = true
-	return false
+	return HasKey(key)
 }
 
 type Wish struct {

@@ -1808,7 +1808,10 @@
 
             <div class="card">
                 <div class="toolbar">
-                    <div class="card-title" style="margin:0;"><i class="fas fa-list"></i> 任务列表</div>
+                    <div class="search-box has-input-btn" style="max-width:320px;">
+                        <input type="text" id="jdmtSearch" placeholder="搜索任务 ID/脚本/名称/环境变量..." oninput="onJdManualTaskSearch()" onkeyup="if(event.key==='Enter')onJdManualTaskSearch()">
+                        <button class="btn-search" onclick="onJdManualTaskSearch()" title="搜索"><i class="fas fa-search"></i></button>
+                    </div>
                     <div class="toolbar-actions">
                         <button class="btn btn-success btn-sm" onclick="batchJdManualEnable(true)"><i class="fas fa-check-circle"></i> 批量启用</button>
                         <button class="btn btn-warning btn-sm" onclick="batchJdManualEnable(false)"><i class="fas fa-ban"></i> 批量禁用</button>
@@ -8485,6 +8488,27 @@ async function cleanupLogs() {
 var _jdManualTasksCache = { proxy: {}, tasks: [], configPath: '', scriptDir: '', logDir: '' };
 var _jdmtPage = 1;
 
+function onJdManualTaskSearch() {
+    _jdmtPage = 1;
+    renderJdManualTasks();
+}
+
+function getFilteredJdManualTasks() {
+    var search = ((document.getElementById('jdmtSearch') || {}).value || '').trim().toLowerCase();
+    var tasks = _jdManualTasksCache.tasks || [];
+    if (!search) return tasks;
+    return tasks.filter(function(t) {
+        if ((t.id || '').toLowerCase().indexOf(search) >= 0) return true;
+        if ((t.script || '').toLowerCase().indexOf(search) >= 0) return true;
+        if ((t.name || '').toLowerCase().indexOf(search) >= 0) return true;
+        if (String(t.coin != null ? t.coin : '').indexOf(search) >= 0) return true;
+        if (t.enabled && (search === '启用' || search === 'enabled')) return true;
+        if (!t.enabled && (search === '禁用' || search === 'disabled')) return true;
+        var envText = formatJdmtEnvsText(t.envs).toLowerCase();
+        return envText.indexOf(search) >= 0;
+    });
+}
+
 function parseJdmtEnvsText(text) {
     var envs = {};
     String(text || '').split(/\n+/).forEach(function(line) {
@@ -8554,7 +8578,8 @@ function renderJdManualTasks(page) {
 
     var tbody = document.getElementById('jdManualTaskBody');
     if (!tbody) return;
-    var tasks = _jdManualTasksCache.tasks || [];
+    var allTasks = _jdManualTasksCache.tasks || [];
+    var tasks = getFilteredJdManualTasks();
     var limit = getPageSize('jdManual');
     var total = tasks.length;
     var totalPages = Math.max(1, Math.ceil(total / limit) || 1);
@@ -8563,7 +8588,10 @@ function renderJdManualTasks(page) {
     var pageTasks = tasks.slice(start, start + limit);
 
     if (!tasks.length) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:40px;">暂无任务，请将 jd_*.js 放入脚本目录后点「重新扫描」</td></tr>';
+        var emptyMsg = allTasks.length
+            ? '没有匹配的任务，请调整搜索条件'
+            : '暂无任务，请将 jd_*.js 放入脚本目录后点「重新扫描」';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:40px;">' + emptyMsg + '</td></tr>';
         renderPagination('jdmtPagination', 1, 0, limit, renderJdManualTasks, 'jdManual');
         var checkAllEmpty = document.getElementById('jdmtCheckAll');
         if (checkAllEmpty) checkAllEmpty.checked = false;

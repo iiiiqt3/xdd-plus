@@ -48,12 +48,26 @@ type PortalJdProxyStatus struct {
 	ProxyReady  bool   `json:"proxyReady"`
 }
 
+// ResolvePortalJdTaskProxy 门户订阅用户：手动代理开关开 → 用手动配置；关 → 用系统设置代理
+func ResolvePortalJdTaskProxy() (enabled bool, url, renum, redelay string) {
+	if IsJdManualProxySwitchEnabled() {
+		return resolveManualOnlyJdTaskProxy()
+	}
+	return ResolveSystemJdTaskProxy()
+}
+
+// ResolvePortalJdTaskProxyReady 门户是否可购买/使用代理（按当前代理来源判断配置是否齐全）
+func ResolvePortalJdTaskProxyReady() bool {
+	ok, url, _, _ := ResolvePortalJdTaskProxy()
+	return ok && url != ""
+}
+
 // GetPortalJdProxyStatus 查询用户代理订阅状态
 func GetPortalJdProxyStatus(userNumber int) PortalJdProxyStatus {
 	st := PortalJdProxyStatus{
 		MonthlyCoin: GetJdTaskProxyMonthlyCoin(),
 		UserCoin:    GetCoin(userNumber),
-		ProxyReady:  ResolveManualJdTaskProxyReady(),
+		ProxyReady:  ResolvePortalJdTaskProxyReady(),
 	}
 	var sub PortalJdProxySubscription
 	if err := db.Where("user_number = ?", userNumber).First(&sub).Error; err == nil {
@@ -65,7 +79,7 @@ func GetPortalJdProxyStatus(userNumber int) PortalJdProxyStatus {
 	return st
 }
 
-// ResolveManualJdTaskProxyReady 后台是否已配置可用的手动京东任务代理
+// ResolveManualJdTaskProxyReady 后台手动任务是否已配置可用代理（含回退系统代理）
 func ResolveManualJdTaskProxyReady() bool {
 	ok, url, _, _ := ResolveManualJdTaskProxy()
 	return ok && url != ""
@@ -80,7 +94,7 @@ func PurchasePortalJdProxy(userNumber int, months int, clientCtx ClientContext) 
 	if monthly <= 0 {
 		return PortalJdProxyStatus{}, fmt.Errorf("代理订阅暂未开放，请联系管理员")
 	}
-	if !ResolveManualJdTaskProxyReady() {
+	if !ResolvePortalJdTaskProxyReady() {
 		return PortalJdProxyStatus{}, fmt.Errorf("管理员尚未配置任务代理，暂不可购买")
 	}
 	total := monthly * months
@@ -122,10 +136,14 @@ func PurchasePortalJdProxy(userNumber int, months int, clientCtx ClientContext) 
 	return GetPortalJdProxyStatus(userNumber), nil
 }
 
-// ApplyPortalJdTaskProxyEnvs 门户任务：仅订阅有效时注入代理
+// ApplyPortalJdTaskProxyEnvs 门户任务：订阅有效时按手动/系统代理来源注入
 func ApplyPortalJdTaskProxyEnvs(userNumber int, envs map[string]string) {
 	if envs == nil || !IsPortalJdProxyActive(userNumber) {
 		return
 	}
-	ApplyManualJdTaskProxyEnvs(envs)
+	ok, url, renum, redelay := ResolvePortalJdTaskProxy()
+	if !ok || url == "" {
+		return
+	}
+	applyJdProxyEnvsFromConfig(envs, url, renum, redelay)
 }

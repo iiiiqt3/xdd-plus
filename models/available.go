@@ -354,6 +354,7 @@ func CookieOK(ck *JdCookie) bool {
 		return true
 	}
 	req := httplib.Get("https://me-api.jd.com/user_new/info/GetJDUserInfoUnion")
+	req.SetTimeout(5*time.Second, 8*time.Second)
 	req.Header("Cookie", cookie)
 	req.Header("Accept", "*/*")
 	req.Header("Accept-Language", "zh-cn,")
