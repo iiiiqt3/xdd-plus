@@ -35,6 +35,8 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     private var proxyMetaLabel: UILabel?
     private var proxyBadgeLabel: UILabel?
     private var proxyBuyButton: UIButton?
+    private var proxyMonthsButton: UIButton?
+    private var proxyPurchaseMonths = 1
     private var proxyStatsStack: UIStackView?
     private var accountChipsStack: UIStackView?
     private var runningTasks: [String: String] = [:]
@@ -1414,13 +1416,10 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         proxyMetaLabel?.text = "加载中..."
         proxyMetaLabel?.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        let months = UISegmentedControl(items: ["1", "3", "6", "12"])
-        months.selectedSegmentIndex = 0
-        months.tag = 200
-        months.setContentHuggingPriority(.required, for: .horizontal)
+        let months = makeProxyMonthsButton()
 
         proxyBuyButton = compactButton("购买", color: .systemBlue) { [weak self] in
-            self?.buyJdProxy(monthsControl: months)
+            self?.buyJdProxy()
         }
         proxyBuyButton?.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
         proxyBuyButton?.setContentHuggingPriority(.required, for: .horizontal)
@@ -1432,6 +1431,63 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         row.addArrangedSubview(months)
         row.addArrangedSubview(proxyBuyButton!)
         return row
+    }
+
+    private func makeProxyMonthsButton() -> UIButton {
+        let btn = UIButton(type: .system)
+        btn.tag = 200
+        btn.titleLabel?.font = .systemFont(ofSize: 11, weight: .medium)
+        btn.setTitleColor(.label, for: .normal)
+        btn.backgroundColor = UIColor.secondarySystemGroupedBackground
+        btn.layer.cornerRadius = 8
+        btn.layer.borderWidth = 1
+        btn.layer.borderColor = UIColor.systemGray4.cgColor
+        btn.contentEdgeInsets = UIEdgeInsets(top: 5, left: 10, bottom: 5, right: 10)
+        btn.setContentHuggingPriority(.required, for: .horizontal)
+        proxyMonthsButton = btn
+        updateProxyMonthsButtonTitle()
+        if #available(iOS 14.0, *) {
+            btn.showsMenuAsPrimaryAction = true
+            btn.menu = makeProxyMonthsMenu()
+        } else {
+            btn.addAction(UIAction { [weak self] _ in self?.presentProxyMonthsPicker(from: btn) }, for: .touchUpInside)
+        }
+        return btn
+    }
+
+    @available(iOS 14.0, *)
+    private func makeProxyMonthsMenu() -> UIMenu {
+        UIMenu(children: [1, 3, 6, 12].map { month in
+            UIAction(
+                title: "\(month)个月",
+                state: proxyPurchaseMonths == month ? .on : .off
+            ) { [weak self] _ in
+                self?.proxyPurchaseMonths = month
+                self?.updateProxyMonthsButtonTitle()
+                self?.proxyMonthsButton?.menu = self?.makeProxyMonthsMenu()
+            }
+        })
+    }
+
+    private func updateProxyMonthsButtonTitle() {
+        proxyMonthsButton?.setTitle("\(proxyPurchaseMonths)个月 ▾", for: .normal)
+    }
+
+    private func presentProxyMonthsPicker(from source: UIButton) {
+        let sheet = UIAlertController(title: "选择购买月数", message: nil, preferredStyle: .actionSheet)
+        [1, 3, 6, 12].forEach { month in
+            let mark = month == proxyPurchaseMonths ? " ✓" : ""
+            sheet.addAction(UIAlertAction(title: "\(month)个月\(mark)", style: .default) { [weak self] _ in
+                self?.proxyPurchaseMonths = month
+                self?.updateProxyMonthsButtonTitle()
+            })
+        }
+        sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
+        if let pop = sheet.popoverPresentationController {
+            pop.sourceView = source
+            pop.sourceRect = source.bounds
+        }
+        present(sheet, animated: true)
     }
 
     private func proxyStatView(label: String, value: String, tag: Int) -> UIView {
@@ -1515,14 +1571,8 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         proxyBuyButton?.setTitle(active ? "续费" : "购买", for: .normal)
     }
 
-    private func buyJdProxy(monthsControl: UISegmentedControl) {
-        let months: Int
-        switch monthsControl.selectedSegmentIndex {
-        case 1: months = 3
-        case 2: months = 6
-        case 3: months = 12
-        default: months = 1
-        }
+    private func buyJdProxy() {
+        let months = proxyPurchaseMonths
         let monthly = jdProxyStatus?.monthlyCoin ?? 0
         let need = monthly * months
         guard monthly > 0 else { showMessage("代理订阅暂未开放"); return }
@@ -1530,8 +1580,9 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             showMessage("积分不足，需要 \(need) 积分")
             return
         }
+        let isRenew = jdProxyStatus?.active == true
         let alert = UIAlertController(
-            title: jdProxyStatus?.active == true ? "续费任务代理" : "购买任务代理",
+            title: isRenew ? "续费任务代理" : "购买任务代理",
             message: "确认购买 \(months) 个月任务代理？将扣除 \(need) 积分。",
             preferredStyle: .alert
         )
@@ -1547,7 +1598,12 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
                     case .success(let status):
                         self.jdProxyStatus = status
                         self.updateProxyCard()
-                        self.showMessage("购买成功")
+                        let expire = (status.expireAt ?? "-").prefix(10)
+                        let action = isRenew ? "续费" : "购买"
+                        self.showMessage(
+                            "已扣除 \(need) 积分，\(action) \(months) 个月任务代理。\n到期时间：\(expire)\n执行任务将自动使用代理线路。",
+                            title: "购买成功"
+                        )
                     }
                 }
             }
