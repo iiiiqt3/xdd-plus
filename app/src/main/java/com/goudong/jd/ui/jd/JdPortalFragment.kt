@@ -15,6 +15,9 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.text.Editable
 import android.text.TextWatcher
+import android.widget.HorizontalScrollView
+import android.widget.Spinner
+import android.widget.ArrayAdapter
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -63,12 +66,17 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private lateinit var contentScroll: android.widget.ScrollView
 
     private var accounts: List<PortalJdAccount> = emptyList()
-    private val taskSelections = mutableMapOf<String, MutableSet<Int>>()
+    private val globalTaskAccountSelection = mutableSetOf<Int>()
+    private var jdProxyStatus: com.goudong.jd.data.model.PortalJdProxyStatus? = null
+    private var proxyMetaView: TextView? = null
+    private var proxyBadgeView: TextView? = null
+    private var proxyBuyBtn: TextView? = null
+    private var proxyStatsRow: LinearLayout? = null
+    private var accountChipsHost: LinearLayout? = null
     private val runningTasks = mutableMapOf<String, String>()
     private val logLines = mutableListOf<String>()
     private var logJob: Job? = null
     private var initError: String? = null
-    private val selectedLabels = mutableMapOf<String, TextView>()
     private val executeBtns = mutableMapOf<String, View>()
 
     private var smsPhoneInput: EditText? = null
@@ -124,9 +132,13 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     if (mainTabIndex == tab.position) return
                     mainTabIndex = tab.position
                     renderContent()
+                    if (mainTabIndex == 2) loadTaskTabData()
                 }
                 override fun onTabUnselected(tab: TabLayout.Tab) = Unit
-                override fun onTabReselected(tab: TabLayout.Tab) { renderContent() }
+                override fun onTabReselected(tab: TabLayout.Tab) {
+                    renderContent()
+                    if (mainTabIndex == 2) loadTaskTabData()
+                }
             })
         }
         wrapper.addView(mainTabs)
@@ -163,7 +175,10 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     override fun onResume() {
         super.onResume()
         if (initError != null) return
-        try { if (mainTabIndex == 0) loadAccounts() } catch (e: Exception) { android.util.Log.e("JdPortal", "onResume", e) }
+        try {
+            if (mainTabIndex == 0) loadAccounts()
+            else if (mainTabIndex == 2) loadTaskTabData()
+        } catch (e: Exception) { android.util.Log.e("JdPortal", "onResume", e) }
     }
 
     // ==================== 内容渲染 ====================
@@ -197,20 +212,19 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private fun defaultValidTaskSelection(): MutableSet<Int> {
         val validCount = accounts.count { it.valid }
         if (validCount == 0) return mutableSetOf()
-        return (1..validCount).toMutableSet()
+        return mutableSetOf(0)
     }
 
-    private fun applyDefaultTaskSelections() {
-        val selection = defaultValidTaskSelection()
-        taskDefs.forEach { task ->
-            taskSelections[task.id] = selection.toMutableSet()
+    private fun ensureDefaultAccountSelection() {
+        if (globalTaskAccountSelection.isEmpty()) {
+            globalTaskAccountSelection.addAll(defaultValidTaskSelection())
         }
-        taskDefs.forEach { updateSelectedLabel(it) }
     }
 
     private fun renderAccountList(list: List<PortalJdAccount>, error: String? = null) {
         accounts = list
-        applyDefaultTaskSelections()
+        ensureDefaultAccountSelection()
+        renderAccountChips()
         val host = contentHost.findViewWithTag<LinearLayout>("account_list") ?: return
         host.removeAllViews()
         val ctx = requireContext()
@@ -889,11 +903,8 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     private fun renderTaskTab() {
         val ctx = requireContext()
-        contentHost.addView(ctx.bodyText("选择任务和账号，点击执行开始").apply {
-            setTextColor(requireContext().themeColor(R.color.text_muted))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            setPadding(0, 0, 0, ctx.dp(8))
-        })
+        contentHost.addView(buildTaskToolbarCard())
+        contentHost.addView(buildProxyCard())
 
         val searchRow = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -941,7 +952,6 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }
         contentHost.addView(taskGridHost)
 
-        // 日志
         contentHost.addView(ctx.cardView().apply {
             setPadding(ctx.dp(10), ctx.dp(8), ctx.dp(10), ctx.dp(8))
             val hdr = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
@@ -952,6 +962,245 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         })
 
         loadTaskTabData()
+    }
+
+    private fun buildTaskToolbarCard(): View {
+        val ctx = requireContext()
+        return ctx.cardView().apply {
+            setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = ctx.dp(10)
+            }
+            addView(TextView(ctx).apply {
+                text = "执行账号"
+                setTextColor(requireContext().themeColor(R.color.text_secondary))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setTypeface(typeface, Typeface.BOLD)
+            })
+            addView(HorizontalScrollView(ctx).apply {
+                isHorizontalScrollBarEnabled = false
+                overScrollMode = View.OVER_SCROLL_NEVER
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = ctx.dp(8)
+                }
+                accountChipsHost = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    tag = "account_chips_host"
+                }
+                addView(accountChipsHost)
+            })
+            addView(TextView(ctx).apply {
+                text = "可多选有效账号，未选时默认所有有效账号"
+                setTextColor(requireContext().themeColor(R.color.text_muted))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                setPadding(0, ctx.dp(6), 0, 0)
+            })
+        }
+    }
+
+    private fun buildProxyCard(): View {
+        val ctx = requireContext()
+        return ctx.cardView().apply {
+            tag = "proxy_card"
+            setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = ctx.dp(10)
+            }
+            val top = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            top.addView(TextView(ctx).apply {
+                text = "任务代理"
+                setTextColor(requireContext().themeColor(R.color.text_primary))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setTypeface(typeface, Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            proxyBadgeView = TextView(ctx).apply {
+                text = "未开通"
+                setTextColor(Color.parseColor("#6B7280"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                setPadding(ctx.dp(8), ctx.dp(3), ctx.dp(8), ctx.dp(3))
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#F3F4F6"))
+                    cornerRadius = ctx.dp(10).toFloat()
+                }
+            }
+            top.addView(proxyBadgeView)
+            addView(top)
+
+            proxyStatsRow = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                visibility = View.GONE
+                setPadding(0, ctx.dp(8), 0, 0)
+            }
+            proxyStatsRow?.addView(makeProxyStat(ctx, "到期", "-", "proxy_expire"))
+            proxyStatsRow?.addView(makeProxyStat(ctx, "积分", "-", "proxy_coin"))
+            addView(proxyStatsRow)
+
+            proxyMetaView = ctx.bodyText("加载中...").apply {
+                setTextColor(requireContext().themeColor(R.color.text_muted))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setPadding(0, ctx.dp(8), 0, ctx.dp(8))
+            }
+            addView(proxyMetaView)
+
+            val buyRow = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                tag = "proxy_buy_row"
+            }
+            val months = Spinner(ctx).apply {
+                adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, listOf("1 个月", "3 个月", "6 个月", "12 个月"))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                tag = "proxy_months"
+            }
+            buyRow.addView(months)
+            proxyBuyBtn = TextView(ctx).apply {
+                text = "购买"
+                setTextColor(Color.WHITE)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                gravity = Gravity.CENTER
+                setPadding(ctx.dp(16), ctx.dp(8), ctx.dp(16), ctx.dp(8))
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#3B82F6"))
+                    cornerRadius = ctx.dp(8).toFloat()
+                }
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginStart = ctx.dp(8)
+                }
+                setOnClickListener { buyJdProxy(this) }
+            }
+            buyRow.addView(proxyBuyBtn)
+            addView(buyRow)
+        }
+    }
+
+    private fun makeProxyStat(ctx: android.content.Context, label: String, value: String, viewTag: String): View {
+        return LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            tag = viewTag
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            addView(TextView(ctx).apply {
+                text = label
+                setTextColor(requireContext().themeColor(R.color.text_muted))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            })
+            addView(TextView(ctx).apply {
+                text = value
+                setTextColor(requireContext().themeColor(R.color.text_primary))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTypeface(typeface, Typeface.BOLD)
+            })
+        }
+    }
+
+    private fun renderAccountChips() {
+        val host = accountChipsHost ?: contentHost.findViewWithTag("account_chips_host") as? LinearLayout ?: return
+        host.removeAllViews()
+        val ctx = requireContext()
+        val prev = globalTaskAccountSelection.toSet()
+        if (prev.isEmpty()) globalTaskAccountSelection.add(0)
+
+        fun addChip(label: String, value: Int) {
+            val selected = globalTaskAccountSelection.contains(value)
+            host.addView(TextView(ctx).apply {
+                text = label
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setTextColor(if (selected) Color.WHITE else requireContext().themeColor(R.color.text_secondary))
+                setPadding(ctx.dp(10), ctx.dp(6), ctx.dp(10), ctx.dp(6))
+                background = GradientDrawable().apply {
+                    setColor(if (selected) Color.parseColor("#3B82F6") else Color.parseColor("#F3F4F6"))
+                    cornerRadius = ctx.dp(14).toFloat()
+                }
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginEnd = ctx.dp(6)
+                }
+                setOnClickListener {
+                    if (value == 0) {
+                        globalTaskAccountSelection.clear()
+                        if (!selected) globalTaskAccountSelection.add(0)
+                    } else {
+                        globalTaskAccountSelection.remove(0)
+                        if (selected) globalTaskAccountSelection.remove(value) else globalTaskAccountSelection.add(value)
+                        if (globalTaskAccountSelection.isEmpty()) globalTaskAccountSelection.add(0)
+                    }
+                    renderAccountChips()
+                }
+            })
+        }
+
+        addChip("所有有效账号", 0)
+        var validIdx = 1
+        accounts.filter { it.valid }.forEach { acc ->
+            addChip(acc.nickname ?: acc.pin ?: "账号$validIdx", validIdx)
+            validIdx++
+        }
+    }
+
+    private fun renderProxyCard() {
+        val st = jdProxyStatus
+        val card = contentHost.findViewWithTag<View>("proxy_card")
+        val monthly = st?.monthlyCoin ?: 0
+        val active = st?.active == true
+        val ready = st?.proxyReady == true
+
+        proxyBadgeView?.apply {
+            text = if (active) "已开通" else "未开通"
+            setTextColor(if (active) Color.parseColor("#047857") else Color.parseColor("#6B7280"))
+            background = GradientDrawable().apply {
+                setColor(if (active) Color.parseColor("#D1FAE5") else Color.parseColor("#F3F4F6"))
+                cornerRadius = requireContext().dp(10).toFloat()
+            }
+        }
+
+        if (!ready || monthly <= 0) {
+            proxyStatsRow?.visibility = View.GONE
+            proxyMetaView?.text = if (monthly <= 0) "管理员尚未开放代理购买" else "管理员尚未配置任务代理，暂不可购买"
+            card?.findViewWithTag<View>("proxy_buy_row")?.visibility = View.GONE
+            return
+        }
+
+        proxyStatsRow?.visibility = View.VISIBLE
+        (proxyStatsRow?.findViewWithTag<LinearLayout>("proxy_expire")?.getChildAt(1) as? TextView)?.text =
+            if (active) st?.expireAt ?: "-" else "未开通"
+        (proxyStatsRow?.findViewWithTag<LinearLayout>("proxy_coin")?.getChildAt(1) as? TextView)?.text =
+            (st?.userCoin ?: 0).toString()
+        proxyMetaView?.text = if (active) "执行任务将自动走代理线路" else "未购买时任务直连 · 月费 $monthly 积分"
+        card?.findViewWithTag<View>("proxy_buy_row")?.visibility = View.VISIBLE
+        proxyBuyBtn?.text = if (active) "续费" else "购买"
+    }
+
+    private fun buyJdProxy(btn: View) {
+        val card = contentHost.findViewWithTag<View>("proxy_card") ?: return
+        val spinner = card.findViewWithTag<Spinner>("proxy_months") ?: return
+        val months = when (spinner.selectedItemPosition) {
+            1 -> 3
+            2 -> 6
+            3 -> 12
+            else -> 1
+        }
+        val st = jdProxyStatus
+        val monthly = st?.monthlyCoin ?: 0
+        val need = monthly * months
+        if (monthly <= 0) return toast("代理订阅暂未开放")
+        if ((st?.userCoin ?: 0) < need) return toast("积分不足，需要 $need 积分")
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(if (st?.active == true) "续费任务代理" else "购买任务代理")
+            .setMessage("确认购买 $months 个月任务代理？将扣除 $need 积分。")
+            .setPositiveButton("确认") { _, _ ->
+                showBtnLoading(btn, proxyBuyBtn?.text?.toString() ?: "购买")
+                lifecycleScope.launch {
+                    runCatching { AppServices.portalRepository.buyJdProxy(months) }
+                        .onSuccess {
+                            jdProxyStatus = it
+                            renderProxyCard()
+                            toast("购买成功")
+                        }
+                        .onFailure { handlePortalError(it) }
+                    hideBtnLoading(btn)
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun onTaskSearch(value: String) {
@@ -973,7 +1222,11 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private fun loadTaskTabData() {
         lifecycleScope.launch {
             runCatching { AppServices.portalRepository.fetchJdAccounts() }
-                .onSuccess { accounts = it }
+                .onSuccess {
+                    accounts = it
+                    ensureDefaultAccountSelection()
+                    renderAccountChips()
+                }
                 .onFailure { accounts = emptyList() }
             runCatching { AppServices.portalRepository.fetchJdTasks() }
                 .onSuccess { list ->
@@ -989,7 +1242,15 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     }
                 }
                 .onFailure { taskDefs = emptyList() }
-            applyDefaultTaskSelections()
+            runCatching { AppServices.portalRepository.fetchJdProxyStatus() }
+                .onSuccess {
+                    jdProxyStatus = it
+                    renderProxyCard()
+                }
+                .onFailure {
+                    jdProxyStatus = null
+                    renderProxyCard()
+                }
             renderTaskGrid()
         }
     }
@@ -1042,89 +1303,41 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     private fun buildTaskCard(task: JdTaskDef): View {
         val ctx = requireContext()
-        val selection = taskSelections.getOrPut(task.id) { mutableSetOf() }
         val isRunning = runningTasks.containsKey(task.id)
         return ctx.cardView().apply {
             setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
-            // 任务名
             addView(TextView(ctx).apply { text = "${task.icon} ${task.name}"; setTextColor(requireContext().themeColor(R.color.text_primary)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTypeface(typeface, Typeface.BOLD) })
-            addView(ctx.captionText(task.desc).apply { setPadding(0, ctx.dp(2), 0, ctx.dp(4)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f) })
-            // 已选账号（动态更新）
-            val label = TextView(ctx).apply { setTextColor(requireContext().themeColor(R.color.text_muted)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f); setPadding(0, 0, 0, ctx.dp(6)) }
-            selectedLabels[task.id] = label
-            updateSelectedLabel(task)
-            addView(label)
-            // 选账号按钮（紧凑）
+            addView(ctx.captionText(task.desc).apply { setPadding(0, ctx.dp(2), 0, ctx.dp(8)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f) })
             addView(TextView(ctx).apply {
-                text = "选账号"; setTextColor(requireContext().themeColor(R.color.text_secondary)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                background = GradientDrawable().apply { setColor(Color.parseColor("#F3F4F6")); cornerRadius = ctx.dp(6).toFloat(); setStroke(ctx.dp(1), requireContext().themeColor(R.color.border_default)) }
-                gravity = Gravity.CENTER; setPadding(0, ctx.dp(4), 0, ctx.dp(4))
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, ctx.dp(28)).apply { bottomMargin = ctx.dp(6) }
-                setOnClickListener { showAccountPicker(task, selection, this) }
+                text = "ID: ${task.id}"
+                setTextColor(requireContext().themeColor(R.color.text_muted))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                setPadding(0, 0, 0, ctx.dp(8))
             })
-            // 执行按钮
             val btnColor = if (isRunning) requireContext().themeColor(R.color.brand_red) else Color.parseColor("#3B82F6")
             val execBtn = TextView(ctx).apply {
                 text = if (isRunning) "停止" else "执行"; setTextColor(requireContext().themeColor(R.color.chip_active_text)); setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 background = GradientDrawable().apply { setColor(btnColor); cornerRadius = ctx.dp(8).toFloat() }
                 gravity = Gravity.CENTER; setPadding(0, ctx.dp(6), 0, ctx.dp(6))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, ctx.dp(32))
-                setOnClickListener { if (isRunning) stopTask(task) else executeTask(task, selection) }
+                setOnClickListener { if (isRunning) stopTask(task) else executeTask(task) }
             }
             executeBtns[task.id] = execBtn
             addView(execBtn)
         }
     }
 
-    private fun showAccountPicker(task: JdTaskDef, selection: MutableSet<Int>, btn: View) {
-        val validAccounts = accounts.filter { it.valid }
-        if (validAccounts.isEmpty()) return alert("暂无有效账号")
-        val names = mutableListOf("所有账号")
-        validAccounts.forEach { names.add(it.nickname ?: it.pin ?: "账号") }
-        // selection 存储的是1-based位置（和portal.html一致），-1表示所有
-        val checked = BooleanArray(names.size) { i ->
-            if (i == 0) selection.contains(-1)
-            else selection.contains(i)
-        }
-        android.app.AlertDialog.Builder(requireContext())
-            .setTitle("选择账号")
-            .setMultiChoiceItems(names.toTypedArray(), checked) { _, which, isChecked ->
-                if (which == 0) {
-                    if (isChecked) { selection.clear(); selection.add(-1) }
-                    else selection.remove(-1)
-                } else {
-                    // which 就是1-based位置
-                    if (isChecked) { selection.remove(-1); selection.add(which) }
-                    else selection.remove(which)
-                }
-            }
-            .setPositiveButton("确定") { _, _ -> updateSelectedLabel(task) }
-            .show()
+    private fun globalAccountIndexes(): List<Int> {
+        val selection = globalTaskAccountSelection.toSet()
+        if (selection.isEmpty() || selection.contains(0)) return listOf(0)
+        return selection.sorted()
     }
 
-    private fun updateSelectedLabel(task: JdTaskDef) {
-        val label = selectedLabels[task.id] ?: return
-        val sel = taskSelections[task.id]
-        val validAccounts = accounts.filter { it.valid }
-        label.text = when {
-            sel == null || sel.isEmpty() -> "已选：未选择账号"
-            sel.contains(-1) -> "已选：所有有效账号"
-            else -> {
-                val names = sel.mapNotNull { pos -> validAccounts.getOrNull(pos - 1)?.nickname ?: validAccounts.getOrNull(pos - 1)?.pin }
-                "已选：${names.joinToString(", ")}"
-            }
-        }
-    }
-
-    // ==================== 任务执行 ====================
-
-    private fun executeTask(task: JdTaskDef, selection: Set<Int>) {
-        if (selection.isEmpty()) return alert("请至少选择一个账号")
-        // selection 存储1-based位置，-1表示所有账号（和portal.html一致）
-        val indices = if (selection.contains(-1)) {
-            listOf(0)  // 后端0=所有账号
-        } else {
-            selection.sorted().toList()  // 直接传1-based位置
+    private fun executeTask(task: JdTaskDef) {
+        val indices = globalAccountIndexes()
+        if (indices.isEmpty()) return alert("请至少选择一个账号")
+        if (jdProxyStatus?.active == true) {
+            appendLog("[${task.name}] 已开通任务代理，本次执行将使用代理")
         }
         appendLog("[${task.name}] 开始执行...")
         val btn = executeBtns[task.id]
@@ -1136,15 +1349,26 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     if (logId == null) { appendLog("[${task.name}] 启动失败"); btn?.let { hideBtnLoading(it) }; return@onSuccess }
                     appendLog("[${task.name}] 已启动，连接日志流...")
                     runningTasks[task.id] = logId
-                    // 启动成功，不显示loading了（任务正在运行中，按钮应显示"停止"）
                     btn?.let { hideBtnLoading(it) }
+                    (btn as? TextView)?.text = "停止"
+                    (btn?.background as? GradientDrawable)?.setColor(requireContext().themeColor(R.color.brand_red))
                     logJob?.cancel()
                     logJob = lifecycleScope.launch {
                         AppServices.portalRepository.streamJdTaskLogs(
                             taskId = logId,
                             onLine = { line -> appendLog("[${task.name}] $line") },
-                            onDone = { appendLog("[${task.name}] ✅ 完成"); runningTasks.remove(task.id) },
-                            onError = { err -> appendLog("[${task.name}] 错误: ${err.message}", true); runningTasks.remove(task.id) },
+                            onDone = {
+                                appendLog("[${task.name}] ✅ 完成")
+                                runningTasks.remove(task.id)
+                                (executeBtns[task.id] as? TextView)?.text = "执行"
+                                (executeBtns[task.id]?.background as? GradientDrawable)?.setColor(Color.parseColor("#3B82F6"))
+                            },
+                            onError = { err ->
+                                appendLog("[${task.name}] 错误: ${err.message}", true)
+                                runningTasks.remove(task.id)
+                                (executeBtns[task.id] as? TextView)?.text = "执行"
+                                (executeBtns[task.id]?.background as? GradientDrawable)?.setColor(Color.parseColor("#3B82F6"))
+                            },
                         )
                     }
                 }

@@ -6,6 +6,7 @@ import com.goudong.jd.data.model.KuwoCredentials
 import com.goudong.jd.data.model.KuwoScheduleResult
 import com.goudong.jd.data.model.KuwoWithdrawTask
 import com.goudong.jd.data.model.PortalDashboard
+import com.goudong.jd.data.model.PortalHomePayload
 import com.goudong.jd.data.model.PortalHomeSnapshot
 import com.goudong.jd.data.model.PortalNotificationPage
 import com.goudong.jd.data.model.PortalWechatActionResult
@@ -120,11 +121,7 @@ class PortalRepository(
     private val sessionManager: SessionManager,
 ) {
     suspend fun verifySession() {
-        val envelope = apiClient.requestEnvelope<Any>("/api/portal/dashboard")
-        if (envelope.code != 0) {
-            val message = envelope.msg ?: "登录状态失效，请重新登录"
-            throw ApiError(message, true)
-        }
+        apiClient.requestData<PortalHomePayload>("/api/portal/home")
         sessionManager.setAuthenticated(true)
     }
 
@@ -133,13 +130,13 @@ class PortalRepository(
     }
 
     suspend fun fetchHomeSnapshot(): PortalHomeSnapshot = coroutineScope {
-        val dashboardDeferred = async { apiClient.requestData<com.goudong.jd.data.model.PortalDashboard>("/api/portal/dashboard") }
-        val profileDeferred = async { apiClient.requestData<com.goudong.jd.data.model.PortalProfile>("/api/portal/profile") }
+        val homeDeferred = async { apiClient.requestData<PortalHomePayload>("/api/portal/home") }
         val wechatDeferred = async { runCatching { apiClient.requestData<com.goudong.jd.data.model.PortalWechatStatus>("/api/portal/wx/status") }.getOrNull() }
         val notificationsDeferred = async { runCatching { fetchNotifications(includeContent = true).list.filter { it.isTop == true }.take(3) }.getOrDefault(emptyList()) }
+        val home = homeDeferred.await()
         val snapshot = PortalHomeSnapshot(
-            dashboard = dashboardDeferred.await(),
-            profile = profileDeferred.await(),
+            dashboard = home.dashboard,
+            profile = home.profile,
             wechatStatus = wechatDeferred.await(),
             topNotifications = notificationsDeferred.await(),
         )
@@ -481,6 +478,19 @@ class PortalRepository(
     suspend fun fetchJdTasks(): List<com.goudong.jd.data.model.PortalJdTaskItem> {
         val text = apiClient.requestText(path = "/api/portal/jd/tasks")
         return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.PortalJdTaskItem::class.java)
+    }
+
+    suspend fun fetchJdProxyStatus(): com.goudong.jd.data.model.PortalJdProxyStatus {
+        return apiClient.requestData(path = "/api/portal/jd/proxy/status")
+    }
+
+    suspend fun buyJdProxy(months: Int): com.goudong.jd.data.model.PortalJdProxyStatus {
+        return apiClient.requestData(
+            path = "/api/portal/jd/proxy/buy",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("months" to months)),
+        )
     }
 
     suspend fun stopJdTask(taskId: String) {

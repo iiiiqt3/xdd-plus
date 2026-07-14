@@ -178,6 +178,11 @@ data class ResetInfoPayload(
     val username: String? = null,
 )
 
+data class PortalHomePayload(
+    val dashboard: PortalDashboard,
+    val profile: PortalProfile,
+)
+
 data class PortalHomeSnapshot(
     val dashboard: PortalDashboard,
     val profile: PortalProfile,
@@ -313,6 +318,14 @@ data class PortalJdTaskItem(
     val name: String? = null,
     val coin: Int = 0,
     val order: Int = 0,
+)
+
+data class PortalJdProxyStatus(
+    val active: Boolean = false,
+    val expireAt: String? = null,
+    val monthlyCoin: Int = 0,
+    val userCoin: Int = 0,
+    val proxyReady: Boolean = false,
 )
 
 data class KuwoAccountInfo(

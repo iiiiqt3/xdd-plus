@@ -118,7 +118,9 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
                     currentTab = tab.position
-                    renderCurrentTab(forceRefresh = false)
+                    if (tab.position == 0) cachedActivities = null
+                    if (tab.position == 1) cachedProjects = null
+                    renderCurrentTab(forceRefresh = true)
                 }
                 override fun onTabUnselected(tab: TabLayout.Tab) = Unit
                 override fun onTabReselected(tab: TabLayout.Tab) {
@@ -186,7 +188,14 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     override fun onResume() {
         super.onResume()
-        if (!loadedOnce) {
+        when (currentTab) {
+            0 -> cachedActivities = null
+            1 -> cachedProjects = null
+        }
+        if (currentTab == 0 || currentTab == 1) {
+            renderCurrentTab(forceRefresh = true)
+            loadedOnce = true
+        } else if (!loadedOnce) {
             renderCurrentTab(forceRefresh = false)
             loadedOnce = true
         }
