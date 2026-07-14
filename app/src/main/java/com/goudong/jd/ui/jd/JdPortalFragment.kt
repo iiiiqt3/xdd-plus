@@ -9,6 +9,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
+import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -31,6 +32,7 @@ import com.goudong.jd.ui.common.alert
 import com.goudong.jd.ui.common.bodyText
 import com.goudong.jd.ui.common.captionText
 import com.goudong.jd.ui.common.cardView
+import com.goudong.jd.ui.common.disallowAncestorsIntercept
 import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.common.inputField
@@ -993,21 +995,36 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             }
         })
         accountRow.addView(HorizontalScrollView(ctx).apply {
+            tag = "account_chips_scroll"
             isHorizontalScrollBarEnabled = false
-            overScrollMode = View.OVER_SCROLL_NEVER
+            overScrollMode = View.OVER_SCROLL_ALWAYS
+            isFillViewport = false
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             accountChipsHost = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 tag = "account_chips_host"
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
             }
             addView(accountChipsHost)
+            setOnTouchListener { v, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE ->
+                        v.disallowAncestorsIntercept(true)
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                        v.disallowAncestorsIntercept(false)
+                }
+                false
+            }
         })
         accountRow.addView(TextView(ctx).apply {
-            text = "可多选"
+            text = "滑动"
             setTextColor(requireContext().themeColor(R.color.text_muted))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                marginStart = ctx.dp(6)
+                marginStart = ctx.dp(4)
             }
         })
         taskStickyBar.addView(accountRow)
@@ -1029,8 +1046,11 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             tag = "proxy_card"
             orientation = LinearLayout.VERTICAL
 
-            val top = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-            top.addView(TextView(ctx).apply {
+            val infoRow = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            infoRow.addView(TextView(ctx).apply {
                 text = "任务代理"
                 setTextColor(requireContext().themeColor(R.color.text_primary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
@@ -1049,7 +1069,7 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     marginStart = ctx.dp(6)
                 }
             }
-            top.addView(proxyBadgeView)
+            infoRow.addView(proxyBadgeView)
 
             proxyStatsRow = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -1060,49 +1080,57 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             }
             proxyStatsRow?.addView(makeProxyStat(ctx, "到期", "-", "proxy_expire"))
             proxyStatsRow?.addView(makeProxyStat(ctx, "积分", "-", "proxy_coin"))
-            top.addView(proxyStatsRow)
+            infoRow.addView(proxyStatsRow)
+            addView(infoRow)
 
+            val actionRow = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, ctx.dp(6), 0, 0)
+            }
             proxyMetaView = TextView(ctx).apply {
                 text = "加载中..."
                 setTextColor(requireContext().themeColor(R.color.text_muted))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    marginStart = ctx.dp(8)
-                }
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
-            top.addView(proxyMetaView)
+            actionRow.addView(proxyMetaView)
 
             val buyRow = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 tag = "proxy_buy_row"
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginStart = ctx.dp(8)
+                }
             }
             val months = Spinner(ctx).apply {
                 adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, listOf("1月", "3月", "6月", "12月"))
-                layoutParams = LinearLayout.LayoutParams(ctx.dp(72), LinearLayout.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(ctx.dp(76), LinearLayout.LayoutParams.WRAP_CONTENT)
                 tag = "proxy_months"
             }
             buyRow.addView(months)
             proxyBuyBtn = TextView(ctx).apply {
                 text = "购买"
                 setTextColor(Color.WHITE)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 gravity = Gravity.CENTER
-                setPadding(ctx.dp(10), ctx.dp(5), ctx.dp(10), ctx.dp(5))
+                minWidth = ctx.dp(52)
+                setPadding(ctx.dp(12), ctx.dp(7), ctx.dp(12), ctx.dp(7))
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor("#3B82F6"))
                     cornerRadius = ctx.dp(6).toFloat()
                 }
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                    marginStart = ctx.dp(4)
+                    marginStart = ctx.dp(6)
                 }
                 setOnClickListener { buyJdProxy(this) }
             }
             buyRow.addView(proxyBuyBtn)
-            top.addView(buyRow)
-            addView(top)
+            actionRow.addView(buyRow)
+            addView(actionRow)
         }
     }
 
@@ -1169,6 +1197,8 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             addChip(acc.nickname ?: acc.pin ?: "账号$validIdx", validIdx)
             validIdx++
         }
+        val accountScroll = taskStickyBar.findViewWithTag<HorizontalScrollView>("account_chips_scroll")
+        accountScroll?.post { accountScroll.scrollTo(0, 0) }
     }
 
     private fun renderProxyCard() {

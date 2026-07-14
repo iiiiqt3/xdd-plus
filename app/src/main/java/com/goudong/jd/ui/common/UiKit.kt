@@ -485,6 +485,14 @@ fun Fragment.toast(text: String) {
     Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show()
 }
 
+fun View.disallowAncestorsIntercept(disallow: Boolean) {
+    var parentView = parent
+    while (parentView != null) {
+        parentView.requestDisallowInterceptTouchEvent(disallow)
+        parentView = parentView.parent
+    }
+}
+
 fun AppCompatActivity.toast(text: String) {
     Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
 }

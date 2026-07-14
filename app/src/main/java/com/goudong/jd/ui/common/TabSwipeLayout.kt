@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import androidx.fragment.app.Fragment
 import com.goudong.jd.MainActivity
 import kotlin.math.abs
@@ -30,9 +31,11 @@ class TabSwipeLayout @JvmOverloads constructor(
                 downX = ev.x
                 downY = ev.y
                 tracking = true
+                if (isInsideHorizontalScroller(ev.x, ev.y)) return false
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!tracking) return false
+                if (isInsideHorizontalScroller(downX, downY)) return false
                 val dx = ev.x - downX
                 val dy = ev.y - downY
                 if (abs(dx) > touchSlop && abs(dx) > abs(dy) * 1.25f) {
@@ -43,6 +46,27 @@ class TabSwipeLayout @JvmOverloads constructor(
             MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_UP -> tracking = false
         }
         return false
+    }
+
+    private fun isInsideHorizontalScroller(x: Float, y: Float): Boolean {
+        var view: View? = findViewAt(this, x, y)
+        while (view != null && view !== this) {
+            if (view is HorizontalScrollView) return true
+            if (view.canScrollHorizontally(1) || view.canScrollHorizontally(-1)) return true
+            view = view.parent as? View
+        }
+        return false
+    }
+
+    private fun findViewAt(parent: View, x: Float, y: Float): View? {
+        if (x < 0 || y < 0 || x > parent.width || y > parent.height) return null
+        if (parent !is ViewGroup) return parent
+        for (i in parent.childCount - 1 downTo 0) {
+            val child = parent.getChildAt(i)
+            val hit = findViewAt(child, x - child.left, y - child.top)
+            if (hit != null) return hit
+        }
+        return parent
     }
 
     override fun onTouchEvent(ev: MotionEvent): Boolean {
