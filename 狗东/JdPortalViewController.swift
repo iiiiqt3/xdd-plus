@@ -27,7 +27,13 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     private var mainTab: MainTab = .query
     private var loginTab: LoginTab = .sms
     private var accounts: [PortalJdAccount] = []
-    private var taskSelections: [String: Set<Int>] = [:]
+    private var globalTaskAccountSelection: Set<Int> = [0]
+    private var jdProxyStatus: PortalJdProxyStatus?
+    private var proxyMetaLabel: UILabel?
+    private var proxyBadgeLabel: UILabel?
+    private var proxyBuyButton: UIButton?
+    private var proxyStatsStack: UIStackView?
+    private var accountChipsStack: UIStackView?
     private var runningTasks: [String: String] = [:]
     private var logStreamers: [String: JdTaskLogStreamer] = [:]
     private var taskButtonRefs: [String: UIButton] = [:]
@@ -94,6 +100,9 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
         if mainTab == .query { loadAccounts() }
+        if mainTab == .task && !taskContentStack.arrangedSubviews.isEmpty {
+            loadTaskTabData()
+        }
     }
 
     @objc private func keyboardWillChangeFrame(_ notification: Notification) {
@@ -316,6 +325,10 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             lastRenderedLoginTab = nil
         }
         if mainTab == .query { loadAccounts() }
+        if mainTab == .task {
+            clearContentStack(taskContentStack)
+            renderTasks()
+        }
     }
 
     private func renderAll() {
@@ -1213,8 +1226,8 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     // MARK: - 京东任务
 
     private func renderTasks() {
-        let hint = placeholderLabel("选择任务和账号，点击执行开始（每行 2 个任务）")
-        taskContentStack.addArrangedSubview(hint)
+        taskContentStack.addArrangedSubview(buildAccountChipsCard())
+        taskContentStack.addArrangedSubview(buildProxyCard())
 
         taskSearchBar.delegate = self
         taskSearchBar.placeholder = "搜索任务名称、ID…"
@@ -1265,30 +1278,265 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             guard let self = self else { return }
             PortalService.shared.fetchJdTasks { [weak self] taskResult in
                 guard let self = self else { return }
-                DispatchQueue.main.async {
-                    guard self.mainTab == .task else { return }
-                    if case .success(let list) = result {
-                        self.accounts = list
-                    }
-                    if case .success(let items) = taskResult {
-                        self.taskDefs = items.compactMap { item in
-                            guard let id = item.id?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else { return nil }
-                            let name = (item.name?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? id
-                            let coin = item.coin ?? 0
-                            return TaskDef(id: id, name: name, icon: "⚡", desc: coin > 0 ? "每账号扣 \(coin) 积分" : "免费")
+                PortalService.shared.fetchJdProxyStatus { [weak self] proxyResult in
+                    DispatchQueue.main.async {
+                        guard let self = self, self.mainTab == .task else { return }
+                        if case .success(let list) = result {
+                            self.accounts = list
+                            if self.globalTaskAccountSelection.isEmpty {
+                                self.globalTaskAccountSelection = self.defaultAccountSelection()
+                            }
+                            self.renderAccountChips()
                         }
-                    } else {
-                        self.taskDefs = []
+                        if case .success(let items) = taskResult {
+                            self.taskDefs = items.compactMap { item in
+                                guard let id = item.id?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else { return nil }
+                                let name = (item.name?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? id
+                                let coin = item.coin ?? 0
+                                return TaskDef(id: id, name: name, icon: "⚡", desc: coin > 0 ? "每账号扣 \(coin) 积分" : "免费")
+                            }
+                        } else {
+                            self.taskDefs = []
+                        }
+                        if case .success(let status) = proxyResult {
+                            self.jdProxyStatus = status
+                        } else {
+                            self.jdProxyStatus = nil
+                        }
+                        self.updateProxyCard()
+                        self.renderTaskGrid()
                     }
-                    let validCount = self.accounts.filter { $0.valid }.count
-                    let validIndices: Set<Int> = validCount > 0 ? Set(1...validCount) : []
-                    for task in self.taskDefs where self.taskSelections[task.id] == nil {
-                        self.taskSelections[task.id] = validIndices
-                    }
-                    self.renderTaskGrid()
                 }
             }
         }
+    }
+
+    private func defaultAccountSelection() -> Set<Int> {
+        let validCount = accounts.filter { $0.valid }.count
+        return validCount > 0 ? [0] : []
+    }
+
+    private func buildAccountChipsCard() -> UIView {
+        let card = UIStackView()
+        card.axis = .vertical
+        card.spacing = 8
+        card.isLayoutMarginsRelativeArrangement = true
+        card.layoutMargins = UIEdgeInsets(top: 14, left: 14, bottom: 14, right: 14)
+        card.applyCardStyle(cornerRadius: 14)
+
+        let title = UILabel()
+        title.text = "执行账号"
+        title.font = .systemFont(ofSize: 13, weight: .bold)
+        card.addArrangedSubview(title)
+
+        let scroll = UIScrollView()
+        scroll.showsHorizontalScrollIndicator = false
+        accountChipsStack = UIStackView()
+        accountChipsStack?.axis = .horizontal
+        accountChipsStack?.spacing = 8
+        accountChipsStack?.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(accountChipsStack!)
+        NSLayoutConstraint.activate([
+            accountChipsStack!.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
+            accountChipsStack!.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
+            accountChipsStack!.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
+            accountChipsStack!.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
+            accountChipsStack!.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor),
+        ])
+        scroll.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        card.addArrangedSubview(scroll)
+
+        let hint = UILabel()
+        hint.text = "可多选有效账号，未选时默认所有有效账号"
+        hint.font = .systemFont(ofSize: 11)
+        hint.textColor = .secondaryLabel
+        card.addArrangedSubview(hint)
+        return card
+    }
+
+    private func renderAccountChips() {
+        guard let stack = accountChipsStack else { return }
+        stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if globalTaskAccountSelection.isEmpty {
+            globalTaskAccountSelection = defaultAccountSelection()
+        }
+
+        func addChip(title: String, value: Int) {
+            let selected = globalTaskAccountSelection.contains(value)
+            let btn = UIButton(type: .system)
+            btn.setTitle(title, for: .normal)
+            btn.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+            btn.setTitleColor(selected ? .white : .secondaryLabel, for: .normal)
+            btn.backgroundColor = selected ? .systemBlue : UIColor.secondarySystemGroupedBackground
+            btn.layer.cornerRadius = 14
+            btn.contentEdgeInsets = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
+            btn.tag = value
+            btn.addAction(UIAction { [weak self] _ in
+                guard let self = self else { return }
+                if value == 0 {
+                    self.globalTaskAccountSelection = selected ? [] : [0]
+                } else {
+                    self.globalTaskAccountSelection.remove(0)
+                    if selected { self.globalTaskAccountSelection.remove(value) } else { self.globalTaskAccountSelection.insert(value) }
+                    if self.globalTaskAccountSelection.isEmpty { self.globalTaskAccountSelection = [0] }
+                }
+                self.renderAccountChips()
+            }, for: .touchUpInside)
+            stack.addArrangedSubview(btn)
+        }
+
+        addChip(title: "所有有效账号", value: 0)
+        var validIdx = 1
+        accounts.filter { $0.valid }.forEach { acc in
+            addChip(title: acc.nickname ?? acc.pin ?? "账号\(validIdx)", value: validIdx)
+            validIdx += 1
+        }
+    }
+
+    private func buildProxyCard() -> UIView {
+        let card = UIStackView()
+        card.axis = .vertical
+        card.spacing = 10
+        card.isLayoutMarginsRelativeArrangement = true
+        card.layoutMargins = UIEdgeInsets(top: 14, left: 14, bottom: 14, right: 14)
+        card.applyCardStyle(cornerRadius: 14)
+
+        let top = UIStackView()
+        top.axis = .horizontal
+        top.distribution = .equalSpacing
+        let title = UILabel()
+        title.text = "任务代理"
+        title.font = .systemFont(ofSize: 15, weight: .bold)
+        proxyBadgeLabel = UILabel()
+        proxyBadgeLabel?.text = "未开通"
+        proxyBadgeLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
+        proxyBadgeLabel?.textColor = .secondaryLabel
+        proxyBadgeLabel?.backgroundColor = UIColor.secondarySystemGroupedBackground
+        proxyBadgeLabel?.layer.cornerRadius = 10
+        proxyBadgeLabel?.clipsToBounds = true
+        proxyBadgeLabel?.textAlignment = .center
+        proxyBadgeLabel?.layoutMargins = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+        top.addArrangedSubview(title)
+        top.addArrangedSubview(proxyBadgeLabel!)
+        card.addArrangedSubview(top)
+
+        proxyStatsStack = UIStackView()
+        proxyStatsStack?.axis = .horizontal
+        proxyStatsStack?.distribution = .fillEqually
+        proxyStatsStack?.isHidden = true
+        proxyStatsStack?.addArrangedSubview(proxyStatView(label: "到期", value: "-", tag: 100))
+        proxyStatsStack?.addArrangedSubview(proxyStatView(label: "积分", value: "-", tag: 101))
+        card.addArrangedSubview(proxyStatsStack!)
+
+        proxyMetaLabel = UILabel()
+        proxyMetaLabel?.font = .systemFont(ofSize: 12)
+        proxyMetaLabel?.textColor = .secondaryLabel
+        proxyMetaLabel?.numberOfLines = 0
+        proxyMetaLabel?.text = "加载中..."
+        card.addArrangedSubview(proxyMetaLabel!)
+
+        let buyRow = UIStackView()
+        buyRow.axis = .horizontal
+        buyRow.spacing = 8
+        let months = UISegmentedControl(items: ["1月", "3月", "6月", "12月"])
+        months.selectedSegmentIndex = 0
+        months.tag = 200
+        proxyBuyButton = compactButton("购买", color: .systemBlue) { [weak self] in
+            self?.buyJdProxy(monthsControl: months)
+        }
+        buyRow.addArrangedSubview(months)
+        buyRow.addArrangedSubview(proxyBuyButton!)
+        card.addArrangedSubview(buyRow)
+        return card
+    }
+
+    private func proxyStatView(label: String, value: String, tag: Int) -> UIView {
+        let wrap = UIStackView()
+        wrap.axis = .vertical
+        wrap.spacing = 2
+        wrap.tag = tag
+        let title = UILabel()
+        title.text = label
+        title.font = .systemFont(ofSize: 11)
+        title.textColor = .secondaryLabel
+        let val = UILabel()
+        val.text = value
+        val.font = .systemFont(ofSize: 13, weight: .bold)
+        val.tag = 1
+        wrap.addArrangedSubview(title)
+        wrap.addArrangedSubview(val)
+        return wrap
+    }
+
+    private func updateProxyCard() {
+        let st = jdProxyStatus
+        let monthly = st?.monthlyCoin ?? 0
+        let active = st?.active == true
+        let ready = st?.proxyReady == true
+        proxyBadgeLabel?.text = active ? "已开通" : "未开通"
+        proxyBadgeLabel?.textColor = active ? UIColor.systemGreen : .secondaryLabel
+        proxyBadgeLabel?.backgroundColor = active ? UIColor.systemGreen.withAlphaComponent(0.15) : UIColor.secondarySystemGroupedBackground
+
+        guard ready, monthly > 0 else {
+            proxyStatsStack?.isHidden = true
+            proxyMetaLabel?.text = monthly <= 0 ? "管理员尚未开放代理购买" : "管理员尚未配置任务代理，暂不可购买"
+            proxyBuyButton?.isHidden = true
+            return
+        }
+
+        proxyStatsStack?.isHidden = false
+        proxyBuyButton?.isHidden = false
+        (proxyStatsStack?.viewWithTag(100)?.viewWithTag(1) as? UILabel)?.text = active ? (st?.expireAt ?? "-") : "未开通"
+        (proxyStatsStack?.viewWithTag(101)?.viewWithTag(1) as? UILabel)?.text = "\(st?.userCoin ?? 0)"
+        proxyMetaLabel?.text = active ? "执行任务将自动走代理线路" : "未购买时任务直连 · 月费 \(monthly) 积分"
+        proxyBuyButton?.setTitle(active ? "续费" : "购买", for: .normal)
+    }
+
+    private func buyJdProxy(monthsControl: UISegmentedControl) {
+        let months: Int
+        switch monthsControl.selectedSegmentIndex {
+        case 1: months = 3
+        case 2: months = 6
+        case 3: months = 12
+        default: months = 1
+        }
+        let monthly = jdProxyStatus?.monthlyCoin ?? 0
+        let need = monthly * months
+        guard monthly > 0 else { showMessage("代理订阅暂未开放"); return }
+        guard (jdProxyStatus?.userCoin ?? 0) >= need else {
+            showMessage("积分不足，需要 \(need) 积分")
+            return
+        }
+        let alert = UIAlertController(
+            title: jdProxyStatus?.active == true ? "续费任务代理" : "购买任务代理",
+            message: "确认购买 \(months) 个月任务代理？将扣除 \(need) 积分。",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+        alert.addAction(UIAlertAction(title: "确认", style: .default) { [weak self] _ in
+            guard let self = self, let btn = self.proxyBuyButton else { return }
+            self.setButtonLoading(btn, loading: true, title: "购买中...")
+            PortalService.shared.buyJdProxy(months: months) { result in
+                DispatchQueue.main.async {
+                    self.setButtonLoading(btn, loading: false, title: self.jdProxyStatus?.active == true ? "续费" : "购买")
+                    switch result {
+                    case .failure(let error): self.handle(error)
+                    case .success(let status):
+                        self.jdProxyStatus = status
+                        self.updateProxyCard()
+                        self.showMessage("购买成功")
+                    }
+                }
+            }
+        })
+        present(alert, animated: true)
+    }
+
+    private func globalAccountIndexes() -> [Int] {
+        if globalTaskAccountSelection.isEmpty || globalTaskAccountSelection.contains(0) {
+            return [0]
+        }
+        return Array(globalTaskAccountSelection).sorted()
     }
 
     private func filteredTaskDefs() -> [TaskDef] {
@@ -1360,18 +1608,11 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         desc.numberOfLines = 2
         wrap.addArrangedSubview(desc)
 
-        let selection = taskSelections[task.id] ?? []
-        let label = UILabel()
-        label.text = accountSelectionLabel(selection)
-        label.font = .systemFont(ofSize: 11)
-        label.textColor = .secondaryLabel
-        label.numberOfLines = 2
-        wrap.addArrangedSubview(label)
-
-        let pickBtn = compactButton("选账号", color: .secondaryLabel, filled: false) { [weak self] in
-            self?.pickAccounts(taskId: task.id, label: label)
-        }
-        wrap.addArrangedSubview(pickBtn)
+        let idLabel = UILabel()
+        idLabel.text = "ID: \(task.id)"
+        idLabel.font = .systemFont(ofSize: 11)
+        idLabel.textColor = .secondaryLabel
+        wrap.addArrangedSubview(idLabel)
 
         let running = runningTasks[task.id] != nil
         var execBtn: UIButton!
@@ -1399,10 +1640,13 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     }
 
     private func executeTask(_ task: TaskDef, button: UIButton) {
-        let selection = Array(taskSelections[task.id] ?? [])
+        let selection = globalAccountIndexes()
         guard !selection.isEmpty else { showMessage("请至少选择一个账号"); return }
         guard button.isEnabled else { return }
         setButtonLoading(button, loading: true, title: "启动中...")
+        if jdProxyStatus?.active == true {
+            appendLog("[\(task.name)] 已开通任务代理，本次执行将使用代理")
+        }
         appendLog("[\(task.name)] 开始执行任务...")
         PortalService.shared.executeJdTask(taskId: task.id, taskName: task.name, accountIndexes: selection) { [weak self] result in
             DispatchQueue.main.async {
@@ -1458,46 +1702,6 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
                 self.appendLog("[\(task.name)] ⚠️ 任务已手动停止")
             }
         }
-    }
-
-    private func pickAccounts(taskId: String, label: UILabel) {
-        let options = buildAccountOptions()
-        let alert = UIAlertController(title: "选择账号", message: nil, preferredStyle: .actionSheet)
-        var selection = taskSelections[taskId] ?? []
-        options.forEach { idx, name in
-            let selected = selection.contains(idx)
-            alert.addAction(UIAlertAction(title: (selected ? "✓ " : "") + name, style: .default) { [weak self] _ in
-                if idx == 0 { selection = [0] }
-                else {
-                    selection.remove(0)
-                    if selection.contains(idx) { selection.remove(idx) } else { selection.insert(idx) }
-                }
-                self?.taskSelections[taskId] = selection
-                label.text = self?.accountSelectionLabel(selection)
-            })
-        }
-        alert.addAction(UIAlertAction(title: "完成", style: .cancel))
-        if let pop = alert.popoverPresentationController {
-            pop.sourceView = view
-            pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
-        }
-        present(alert, animated: true)
-    }
-
-    private func buildAccountOptions() -> [(Int, String)] {
-        var options: [(Int, String)] = [(0, "所有有效账号")]
-        var validIdx = 1
-        accounts.filter { $0.valid }.forEach { acc in
-            options.append((validIdx, acc.nickname ?? acc.pin ?? "账号\(validIdx)"))
-            validIdx += 1
-        }
-        return options
-    }
-
-    private func accountSelectionLabel(_ selection: Set<Int>) -> String {
-        if selection.contains(0) { return "已选：所有有效账号" }
-        let names = buildAccountOptions().filter { selection.contains($0.0) }.map { $0.1 }
-        return names.isEmpty ? "未选择账号" : "已选：" + names.joined(separator: "、")
     }
 
     private func appendLog(_ line: String) {

@@ -280,6 +280,14 @@ struct PortalJdTaskItem: Decodable {
     let order: Int?
 }
 
+struct PortalJdProxyStatus: Decodable {
+    let active: Bool?
+    let expireAt: String?
+    let monthlyCoin: Int?
+    let userCoin: Int?
+    let proxyReady: Bool?
+}
+
 struct KuwoAccountInfo: Decodable {
     let phone: String?
     let password: String?
@@ -448,6 +456,12 @@ struct PortalWechatActionResult: Decodable {
         case cost
         case needPoll = "needPoll"
     }
+}
+
+
+struct PortalHomePayload: Decodable {
+    let dashboard: PortalDashboard
+    let profile: PortalProfile
 }
 
 
@@ -1052,26 +1066,15 @@ final class PortalService {
     private init() {}
 
     func fetchHomeSnapshot(completion: @escaping (Result<PortalHomeSnapshot, APIError>) -> Void) {
-        var dashboard: PortalDashboard?
-        var profile: PortalProfile?
+        var homePayload: PortalHomePayload?
         var wxStatus: PortalWechatStatus?
         var capturedUnauthorized: APIError?
         var capturedError: APIError?
         let group = DispatchGroup()
 
         group.enter()
-        APIClient.shared.requestData(path: "/api/portal/dashboard") { (result: Result<PortalDashboard, APIError>) in
-            if case .success(let value) = result { dashboard = value }
-            if case .failure(let error) = result {
-                if error.isUnauthorized { capturedUnauthorized = error }
-                else { capturedError = error }
-            }
-            group.leave()
-        }
-
-        group.enter()
-        APIClient.shared.requestData(path: "/api/portal/profile") { (result: Result<PortalProfile, APIError>) in
-            if case .success(let value) = result { profile = value }
+        APIClient.shared.requestData(path: "/api/portal/home") { (result: Result<PortalHomePayload, APIError>) in
+            if case .success(let value) = result { homePayload = value }
             if case .failure(let error) = result {
                 if error.isUnauthorized { capturedUnauthorized = error }
                 else { capturedError = error }
@@ -1082,21 +1085,19 @@ final class PortalService {
         group.enter()
         APIClient.shared.requestData(path: "/api/portal/wx/status") { (result: Result<PortalWechatStatus, APIError>) in
             if case .success(let value) = result { wxStatus = value }
-            // wx/status 失败不视为致命错误，不阻止首页加载
             group.leave()
         }
 
         group.notify(queue: .main) {
-            // 认证错误优先
             if let authError = capturedUnauthorized {
                 completion(.failure(authError))
                 return
             }
-            guard let dashboard = dashboard, let profile = profile else {
+            guard let payload = homePayload else {
                 completion(.failure(capturedError ?? APIError(message: "首页数据不完整", isUnauthorized: false)))
                 return
             }
-            completion(.success(PortalHomeSnapshot(dashboard: dashboard, profile: profile, wechatStatus: wxStatus)))
+            completion(.success(PortalHomeSnapshot(dashboard: payload.dashboard, profile: payload.profile, wechatStatus: wxStatus)))
         }
     }
 
@@ -1427,6 +1428,19 @@ final class PortalService {
 
     func fetchJdTasks(completion: @escaping (Result<[PortalJdTaskItem], APIError>) -> Void) {
         APIClient.shared.requestList(path: "/api/portal/jd/tasks", method: "GET", completion: completion)
+    }
+
+    func fetchJdProxyStatus(completion: @escaping (Result<PortalJdProxyStatus, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/jd/proxy/status", completion: completion)
+    }
+
+    func buyJdProxy(months: Int, completion: @escaping (Result<PortalJdProxyStatus, APIError>) -> Void) {
+        let payload: [String: Any] = ["months": months]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: "/api/portal/jd/proxy/buy", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
     }
 
     func stopJdTask(taskId: String, completion: @escaping (Result<String, APIError>) -> Void) {

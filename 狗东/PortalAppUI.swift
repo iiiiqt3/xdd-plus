@@ -1269,6 +1269,15 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
+        refreshVisibleList()
+    }
+
+    private func refreshVisibleList() {
+        switch segmented.selectedSegmentIndex {
+        case 0: activitiesVC.reloadFromServer()
+        case 1: myProjectsVC.reloadFromServer()
+        default: break
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -1451,6 +1460,8 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         ])
         vc.didMove(toParent: self)
         currentVC = vc
+        if index == 0 { activitiesVC.reloadFromServer() }
+        if index == 1 { myProjectsVC.reloadFromServer() }
     }
 
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
@@ -1526,11 +1537,21 @@ final class ActivitiesListViewController: UITableViewController {
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "activity")
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 132
+        refreshControl = UIRefreshControl()
+        refreshControl?.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
+    }
+
+    func reloadFromServer() {
+        loadData()
+    }
+
+    @objc private func handleRefresh() {
+        loadData()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadData()
+        reloadFromServer()
     }
 
     func applySearch(_ text: String) {
@@ -1549,12 +1570,16 @@ final class ActivitiesListViewController: UITableViewController {
 
     private func loadData() {
         PortalService.shared.fetchActivities { result in
+            DispatchQueue.main.async {
+                self.refreshControl?.endRefreshing()
+            }
             switch result {
             case .failure(let error):
                 (self.parent as? BaseNativeViewController)?.handle(error)
             case .success(let activities):
                 self.activities = activities
                 self.tableView.reloadData()
+                self.refreshControl?.endRefreshing()
             }
         }
     }
@@ -1853,15 +1878,28 @@ final class MyProjectsListViewController: UITableViewController {
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 132
         tableView.separatorStyle = .none
+        refreshControl = UIRefreshControl()
+        refreshControl?.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
+    }
+
+    func reloadFromServer() {
+        loadData()
+    }
+
+    @objc private func handleRefresh() {
+        loadData()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadData()
+        reloadFromServer()
     }
 
     private func loadData() {
         PortalService.shared.fetchProjects { result in
+            DispatchQueue.main.async {
+                self.refreshControl?.endRefreshing()
+            }
             switch result {
             case .failure(let error):
                 (self.parent as? BaseNativeViewController)?.handle(error)
