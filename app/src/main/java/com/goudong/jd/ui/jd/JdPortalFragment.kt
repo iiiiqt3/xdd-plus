@@ -1114,10 +1114,19 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     monthLabels,
                 ) {
                     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                        val view = super.getView(position, convertView, parent) as TextView
+                        val view = (convertView as? TextView) ?: TextView(ctx)
+                        view.text = monthLabels[position]
                         view.setTextColor(requireContext().themeColor(R.color.text_primary))
                         view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                        view.includeFontPadding = false
+                        view.setPadding(0, 0, 0, 0)
                         view.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                        view.maxLines = 1
+                        view.ellipsize = null
+                        view.layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        )
                         return view
                     }
 
@@ -1129,7 +1138,9 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                         return view
                     }
                 }
-                layoutParams = LinearLayout.LayoutParams(ctx.dp(88), LinearLayout.LayoutParams.WRAP_CONTENT)
+                setPadding(0, 0, 0, 0)
+                minimumHeight = ctx.dp(32)
+                layoutParams = LinearLayout.LayoutParams(ctx.dp(74), LinearLayout.LayoutParams.WRAP_CONTENT)
                 tag = "proxy_months"
             }
             buyRow.addView(months)
