@@ -33,20 +33,11 @@ func initDB() {
 	if err != nil {
 		panic(err)
 	}
+	// 仅对 GORM 规范新表 AutoMigrate；遗留表（jd_cookies/users/envs 等）只读写不迁移，避免启动慢查与反复 ALTER
 	if err := db.AutoMigrate(
-		&JdCookie{},
-		&User{},
 		&WebUserAccount{},
 		&RegisterBindCode{},
 		&PasswordResetCode{},
-		&Env{},
-		&Token{},
-		&UserAdmin{},
-		&Cache{},
-		&Key{},
-		&Auth{},
-		&Limit{},
-		&Wish{},
 		&WebNotification{},
 		&WebNotificationRead{},
 		&PortalPrayRecord{},
@@ -58,7 +49,6 @@ func initDB() {
 		&WxProtocolMigration{},
 		&CoinLog{},
 		&PortalJdProxySubscription{},
-		//&LoginSelectType{},
 	); err != nil {
 		DB().Infof("[数据库迁移] AutoMigrate 失败: %v", err)
 	}
@@ -113,9 +103,11 @@ type Wish struct {
 	Status     int // 1 2
 }
 
+// JdCookie 对应遗留表 jd_cookies（大写列名、历史结构）。
+// 该表不参与 AutoMigrate，模型字段类型须与线上一致，避免 GORM 误判为 bigint 而反复 ALTER。
 type JdCookie struct {
-	ID              int    `gorm:"column:ID;primaryKey"`
-	Priority        int    `gorm:"column:Priority;default:1"`
+	ID              int    `gorm:"column:ID;primaryKey;type:int"`
+	Priority        int    `gorm:"column:Priority;type:int;default:1"`
 	CreateAt        string `gorm:"column:CreateAt"`
 	LoseAt          string `gorm:"column:LoseAt"`
 	UpdateAt        string `gorm:"column:UpdateAt"`
@@ -127,7 +119,7 @@ type JdCookie struct {
 	Available       string `gorm:"column:Available;default:true" validate:"oneof=true false"`
 	Nickname        string `gorm:"column:Nickname"`
 	BeanNum         string `gorm:"column:BeanNum"`
-	QQ              int    `gorm:"column:QQ"`
+	QQ              int    `gorm:"column:QQ;type:int"`
 	WeiXin          string `gorm:"column:WeiXin"`
 	WxPid           string `gorm:"column:WxPid"`
 	YybOpenID       string `gorm:"column:YybOpenID;size:128"`
@@ -135,20 +127,24 @@ type JdCookie struct {
 	Appoint         string `gorm:"column:Appoint"` //指定
 	PushPlus        string `gorm:"column:PushPlus"`
 	WxPush          string `gorm:"column:WxPush"`
-	Telegram        int    `gorm:"column:Telegram"`
+	Telegram        int    `gorm:"column:Telegram;type:int"`
 	Pool            string `gorm:"-"`
-	UserID          int    `gorm:"column:UserId"`
+	UserID          int    `gorm:"column:UserId;type:int"`
 	UserLevel       string `gorm:"column:UserLevel"`
 	LevelName       string `gorm:"column:LevelName"`
 	Account         string `gorm:"column:Account"`
 	Password        string `gorm:"column:Password"`
 	Smsverify       string `gorm:"column:Smsverify;default:false" validate:"oneof=true false"`
 	IsApp           string `gorm:"column:IsApp"`
-	NoticeNum       int    `gorm:"column:NoticeNum;default:4"`
+	NoticeNum       int    `gorm:"column:NoticeNum;type:int;default:4"`
 	Socks5_Ip       string `gorm:"column:Socks5_Ip"`
 	Socks5_Port     string `gorm:"column:Socks5_Port"`
 	Socks5_Account  string `gorm:"column:Socks5_Account"`
 	Socks5_Password string `gorm:"column:Socks5_Password"`
+}
+
+func (JdCookie) TableName() string {
+	return "jd_cookies"
 }
 
 var UserLevel = "UserLevel"
