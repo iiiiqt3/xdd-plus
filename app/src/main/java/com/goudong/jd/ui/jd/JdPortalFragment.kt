@@ -1106,9 +1106,30 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     marginStart = ctx.dp(8)
                 }
             }
+            val monthLabels = listOf("1个月", "3个月", "6个月", "12个月")
             val months = Spinner(ctx).apply {
-                adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, listOf("1月", "3月", "6月", "12月"))
-                layoutParams = LinearLayout.LayoutParams(ctx.dp(76), LinearLayout.LayoutParams.WRAP_CONTENT)
+                adapter = object : ArrayAdapter<String>(
+                    ctx,
+                    android.R.layout.simple_spinner_item,
+                    monthLabels,
+                ) {
+                    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                        val view = super.getView(position, convertView, parent) as TextView
+                        view.setTextColor(requireContext().themeColor(R.color.text_primary))
+                        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                        view.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                        return view
+                    }
+
+                    override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+                        val view = super.getDropDownView(position, convertView, parent) as TextView
+                        view.setTextColor(requireContext().themeColor(R.color.text_primary))
+                        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                        view.setPadding(ctx.dp(12), ctx.dp(10), ctx.dp(12), ctx.dp(10))
+                        return view
+                    }
+                }
+                layoutParams = LinearLayout.LayoutParams(ctx.dp(88), LinearLayout.LayoutParams.WRAP_CONTENT)
                 tag = "proxy_months"
             }
             buyRow.addView(months)
@@ -1252,13 +1273,14 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             .setTitle(if (st?.active == true) "续费任务代理" else "购买任务代理")
             .setMessage("确认购买 $months 个月任务代理？将扣除 $need 积分。")
             .setPositiveButton("确认") { _, _ ->
+                val isRenew = st?.active == true
                 showBtnLoading(btn, proxyBuyBtn?.text?.toString() ?: "购买")
                 lifecycleScope.launch {
                     runCatching { AppServices.portalRepository.buyJdProxy(months) }
-                        .onSuccess {
-                            jdProxyStatus = it
+                        .onSuccess { status ->
+                            jdProxyStatus = status
                             renderProxyCard()
-                            toast("购买成功")
+                            showProxyPurchaseSuccess(status, months, need, isRenew)
                         }
                         .onFailure { handlePortalError(it) }
                     hideBtnLoading(btn)
@@ -1266,6 +1288,20 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             }
             .setNegativeButton("取消", null)
             .show()
+    }
+
+    private fun showProxyPurchaseSuccess(
+        status: com.goudong.jd.data.model.PortalJdProxyStatus,
+        months: Int,
+        coinSpent: Int,
+        isRenew: Boolean,
+    ) {
+        val expire = status.expireAt?.take(10) ?: "-"
+        val action = if (isRenew) "续费" else "购买"
+        alert(
+            "已扣除 $coinSpent 积分，${action} $months 个月任务代理。\n到期时间：$expire\n执行任务将自动使用代理线路。",
+            "购买成功",
+        )
     }
 
     private fun onTaskSearch(value: String) {
