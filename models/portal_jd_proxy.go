@@ -2,10 +2,15 @@ package models
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+var jdProxyPurchaseDetailRe = regexp.MustCompile(`京东任务代理\s*(\d+)\s*个月.*?到期\s*([0-9:\-\s]+)`)
 
 // PortalJdProxySubscription 网页端京东任务代理订阅（按用户）
 type PortalJdProxySubscription struct {
@@ -146,4 +151,173 @@ func ApplyPortalJdTaskProxyEnvs(userNumber int, envs map[string]string) {
 		return
 	}
 	applyJdProxyEnvsFromConfig(envs, url, renum, redelay)
+}
+
+// AdminJdProxyPurchaseStats 门户任务代理购买汇总
+type AdminJdProxyPurchaseStats struct {
+	TotalPurchases int   `json:"totalPurchases"`
+	TotalCoin      int   `json:"totalCoin"`
+	UniqueUsers    int   `json:"uniqueUsers"`
+	ActiveCount    int   `json:"activeCount"`
+}
+
+// AdminJdProxyPurchaseItem 单次代理购买记录（来自 coin_log）
+type AdminJdProxyPurchaseItem struct {
+	ID              int    `json:"id"`
+	UserNumber      int    `json:"userNumber"`
+	Username        string `json:"username"`
+	Nickname        string `json:"nickname"`
+	QQ              string `json:"qq"`
+	Coin            int    `json:"coin"`
+	Months          int    `json:"months"`
+	ExpireAt        string `json:"expireAt"`
+	CurrentExpireAt string `json:"currentExpireAt"`
+	CurrentlyActive bool   `json:"currentlyActive"`
+	ClientSource    string `json:"clientSource"`
+	ClientPlatform  string `json:"clientPlatform"`
+	SourceLabel     string `json:"sourceLabel"`
+	Detail          string `json:"detail"`
+	PurchasedAt     string `json:"purchasedAt"`
+}
+
+func parseJdProxyPurchaseDetail(detail string) (months int, expireAt string) {
+	m := jdProxyPurchaseDetailRe.FindStringSubmatch(strings.TrimSpace(detail))
+	if len(m) < 3 {
+		return 0, ""
+	}
+	months, _ = strconv.Atoi(m[1])
+	expireAt = strings.TrimSpace(m[2])
+	if len(expireAt) > 10 {
+		expireAt = expireAt[:10]
+	}
+	return months, expireAt
+}
+
+func buildAdminJdProxyPurchaseQuery(userNumber int, days int) *gorm.DB {
+	query := db.Model(&CoinLog{}).Where("type = ?", "代理订阅")
+	if userNumber > 0 {
+		query = query.Where("user_number = ?", userNumber)
+	}
+	if days > 0 {
+		since := time.Now().AddDate(0, 0, -days)
+		query = query.Where("created_at >= ?", since)
+	}
+	return query
+}
+
+// GetAdminJdProxyPurchaseStats 代理购买汇总（可按用户/天数筛选）
+func GetAdminJdProxyPurchaseStats(userNumber int, days int) AdminJdProxyPurchaseStats {
+	stats := AdminJdProxyPurchaseStats{}
+	base := buildAdminJdProxyPurchaseQuery(userNumber, days)
+	var total int64
+	base.Count(&total)
+	stats.TotalPurchases = int(total)
+
+	var sumCoin int64
+	buildAdminJdProxyPurchaseQuery(userNumber, days).Select("COALESCE(SUM(ABS(amount)),0)").Scan(&sumCoin)
+	stats.TotalCoin = int(sumCoin)
+
+	var unique int64
+	buildAdminJdProxyPurchaseQuery(userNumber, days).Distinct("user_number").Count(&unique)
+	stats.UniqueUsers = int(unique)
+
+	now := time.Now()
+	subQuery := db.Model(&PortalJdProxySubscription{}).Where("expire_at > ?", now)
+	if userNumber > 0 {
+		subQuery = subQuery.Where("user_number = ?", userNumber)
+	}
+	var active int64
+	subQuery.Count(&active)
+	stats.ActiveCount = int(active)
+	return stats
+}
+
+// GetAdminJdProxyPurchases 代理购买记录列表
+func GetAdminJdProxyPurchases(userNumber int, days int, page int, limit int) ([]AdminJdProxyPurchaseItem, int64, AdminJdProxyPurchaseStats) {
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	stats := GetAdminJdProxyPurchaseStats(userNumber, days)
+
+	var total int64
+	buildAdminJdProxyPurchaseQuery(userNumber, days).Count(&total)
+	if total == 0 {
+		return []AdminJdProxyPurchaseItem{}, 0, stats
+	}
+
+	var logs []CoinLog
+	buildAdminJdProxyPurchaseQuery(userNumber, days).
+		Order("id desc").
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&logs)
+
+	userNumbers := make([]int, 0, len(logs))
+	seen := map[int]bool{}
+	for _, log := range logs {
+		if log.UserNumber > 0 && !seen[log.UserNumber] {
+			seen[log.UserNumber] = true
+			userNumbers = append(userNumbers, log.UserNumber)
+		}
+	}
+
+	usernameMap := map[int]string{}
+	if len(userNumbers) > 0 {
+		var accounts []WebUserAccount
+		db.Where("user_number IN ?", userNumbers).Find(&accounts)
+		for _, acc := range accounts {
+			usernameMap[acc.UserNumber] = acc.Username
+		}
+	}
+
+	userMap := map[int]*User{}
+	if len(userNumbers) > 0 {
+		var users []User
+		db.Where("number IN ?", userNumbers).Find(&users)
+		for i := range users {
+			userMap[users[i].Number] = &users[i]
+		}
+	}
+
+	subMap := map[int]PortalJdProxySubscription{}
+	if len(userNumbers) > 0 {
+		var subs []PortalJdProxySubscription
+		db.Where("user_number IN ?", userNumbers).Find(&subs)
+		for _, sub := range subs {
+			subMap[sub.UserNumber] = sub
+		}
+	}
+
+	now := time.Now()
+	items := make([]AdminJdProxyPurchaseItem, 0, len(logs))
+	for _, log := range logs {
+		ctx, detail := ResolveCoinLogContext(log)
+		months, expireAt := parseJdProxyPurchaseDetail(detail)
+		item := AdminJdProxyPurchaseItem{
+			ID:             log.ID,
+			UserNumber:     log.UserNumber,
+			Username:       usernameMap[log.UserNumber],
+			Coin:           -log.Amount,
+			Months:         months,
+			ExpireAt:       expireAt,
+			Detail:         detail,
+			ClientSource:   ctx.Source,
+			ClientPlatform: ctx.Platform,
+			SourceLabel:    ctx.AdminLabel(),
+			PurchasedAt:    log.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+		if u := userMap[log.UserNumber]; u != nil {
+			item.Nickname = u.Nickname
+			item.QQ = u.QQ
+		}
+		if sub, ok := subMap[log.UserNumber]; ok {
+			item.CurrentExpireAt = sub.ExpireAt.Format("2006-01-02 15:04:05")
+			item.CurrentlyActive = sub.ExpireAt.After(now)
+		}
+		items = append(items, item)
+	}
+	return items, total, stats
 }

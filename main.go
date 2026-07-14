@@ -284,6 +284,7 @@ func main() {
 	web.Router("/api/admin/jd-manual-tasks/save", &controllers.AdminApiController{}, "post:SaveJdManualTasks")
 	web.Router("/api/admin/jd-manual-tasks/scan", &controllers.AdminApiController{}, "post:ScanJdManualTasks")
 	web.Router("/api/admin/jd-manual-tasks/delete", &controllers.AdminApiController{}, "post:DeleteJdManualTasks")
+	web.Router("/api/admin/jd-proxy/purchases", &controllers.AdminApiController{}, "get:GetJdProxyPurchases")
 	web.Router("/api/admin/qlconfigs", &controllers.AdminApiController{}, "get:GetQingLongConfigs")
 	web.Router("/api/admin/qlconfigs/test", &controllers.AdminApiController{}, "post:TestQLConnection")
 	web.Router("/api/admin/jdcontainers", &controllers.AdminApiController{}, "get:GetJdContainers")

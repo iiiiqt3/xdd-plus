@@ -52,6 +52,26 @@ func (c *AdminApiController) SaveJdManualTasks() {
 	c.ServeJSON()
 }
 
+// GetJdProxyPurchases 门户任务代理购买记录
+func (c *AdminApiController) GetJdProxyPurchases() {
+	userNumber, _ := strconv.Atoi(c.GetString("userNumber"))
+	days, _ := strconv.Atoi(c.GetString("days"))
+	page, _ := strconv.Atoi(c.GetString("page"))
+	limit, _ := strconv.Atoi(c.GetString("limit"))
+	list, total, stats := models.GetAdminJdProxyPurchases(userNumber, days, page, limit)
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"list":  list,
+			"total": total,
+			"stats": stats,
+			"page":  page,
+			"limit": limit,
+		},
+	}
+	c.ServeJSON()
+}
+
 // ScanJdManualTasks 重新扫描脚本目录
 func (c *AdminApiController) ScanJdManualTasks() {
 	data, err := models.ScanAndSyncJdManualTasks()

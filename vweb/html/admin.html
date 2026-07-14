@@ -1806,6 +1806,52 @@
                 </div>
             </div>
 
+            <div class="card" style="margin-bottom:16px;">
+                <div class="config-section" style="margin-bottom:12px;">
+                    <div class="config-section-title"><i class="fas fa-receipt"></i> 门户任务代理购买统计</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px;" id="jdProxyPurchaseStats">
+                        <span class="tag tag-info">购买次数 <strong id="jdpp_total">0</strong></span>
+                        <span class="tag tag-warning">累计积分 <strong id="jdpp_coin">0</strong></span>
+                        <span class="tag tag-success">购买用户 <strong id="jdpp_users">0</strong></span>
+                        <span class="tag tag-primary">当前有效 <strong id="jdpp_active">0</strong></span>
+                    </div>
+                    <div class="toolbar" style="margin-bottom:12px;">
+                        <div class="search-box" style="max-width:180px;">
+                            <input type="number" id="jdpp_userNumber" placeholder="用户编号" min="1" onkeyup="if(event.key==='Enter')loadJdProxyPurchases(1)">
+                        </div>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <button class="btn btn-sm coinlog-day-btn jdpp-day-btn active" data-days="0" onclick="setJdProxyPurchaseDays(0)">全部</button>
+                            <button class="btn btn-sm coinlog-day-btn jdpp-day-btn" data-days="7" onclick="setJdProxyPurchaseDays(7)">7天</button>
+                            <button class="btn btn-sm coinlog-day-btn jdpp-day-btn" data-days="30" onclick="setJdProxyPurchaseDays(30)">30天</button>
+                            <button class="btn btn-sm coinlog-day-btn jdpp-day-btn" data-days="90" onclick="setJdProxyPurchaseDays(90)">90天</button>
+                        </div>
+                        <div class="toolbar-actions">
+                            <button class="btn btn-success btn-sm" onclick="loadJdProxyPurchases(1)"><i class="fas fa-search"></i> 查询</button>
+                            <button class="btn btn-info btn-sm" onclick="loadJdProxyPurchases()"><i class="fas fa-sync-alt"></i> 刷新</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table" id="jdProxyPurchaseTable">
+                        <thead><tr>
+                            <th style="min-width:150px;">购买时间</th>
+                            <th style="min-width:90px;">用户编号</th>
+                            <th style="min-width:120px;">网页账号</th>
+                            <th style="min-width:120px;">昵称/QQ</th>
+                            <th style="min-width:80px;">月数</th>
+                            <th style="min-width:90px;">扣除积分</th>
+                            <th style="min-width:130px;">购买后到期</th>
+                            <th style="min-width:130px;">当前到期</th>
+                            <th style="min-width:90px;">当前状态</th>
+                            <th style="min-width:100px;">来源</th>
+                            <th style="min-width:180px;">备注</th>
+                        </tr></thead>
+                        <tbody id="jdProxyPurchaseBody"><tr><td colspan="11" style="text-align:center;color:#999;padding:32px;">加载中...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="jdppPagination"></div>
+            </div>
+
             <div class="card">
                 <div class="toolbar">
                     <div class="search-box has-input-btn" style="max-width:320px;">
@@ -7131,7 +7177,7 @@ function renderPageSizeSelector(pageSizeKey, loadFn, currentLimit) {
 window._pageSizeChange = function(key, size) {
     pageSizes[key] = size;
     savePageSizesToCache();
-    const reloadMap = { ck: () => loadJdCookies(1), user: () => loadUsers(1), webaccount: () => loadWebAccounts(1), env: () => loadEnvVars(1), qlEnv: () => loadQLEnvs(1), jdCron: () => { _jdCronPage = 1; renderJdCronTaskTable(); }, qlCron: () => { _qlCronPage = 1; renderQlCronTaskTable(); }, act: () => { _actPage = 1; renderActivityCards(activitiesCache); }, wx: () => { wxPage = 1; renderWxTable(); }, actAuth: () => { _aaPage = 1; renderActAuthTable(getFilteredActAuthData()); }, jdManual: () => { _jdmtPage = 1; renderJdManualTasks(); } };
+    const reloadMap = { ck: () => loadJdCookies(1), user: () => loadUsers(1), webaccount: () => loadWebAccounts(1), env: () => loadEnvVars(1), qlEnv: () => loadQLEnvs(1), jdCron: () => { _jdCronPage = 1; renderJdCronTaskTable(); }, qlCron: () => { _qlCronPage = 1; renderQlCronTaskTable(); }, act: () => { _actPage = 1; renderActivityCards(activitiesCache); }, wx: () => { wxPage = 1; renderWxTable(); }, actAuth: () => { _aaPage = 1; renderActAuthTable(getFilteredActAuthData()); }, jdManual: () => { _jdmtPage = 1; renderJdManualTasks(); loadJdProxyPurchases(1); } };
     if (reloadMap[key]) reloadMap[key]();
 };
 
@@ -8486,6 +8532,71 @@ async function cleanupLogs() {
 
 // ============ 手动京东任务 ============
 var _jdManualTasksCache = { proxy: {}, tasks: [], configPath: '', scriptDir: '', logDir: '' };
+var _jdppPage = 1;
+var _jdppDays = 0;
+
+function setJdProxyPurchaseDays(days) {
+    _jdppDays = days;
+    document.querySelectorAll('.jdpp-day-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.getAttribute('data-days'), 10) === days);
+    });
+}
+
+function renderJdProxyPurchaseStats(stats) {
+    stats = stats || {};
+    var set = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = String(val == null ? 0 : val); };
+    set('jdpp_total', stats.totalPurchases || 0);
+    set('jdpp_coin', stats.totalCoin || 0);
+    set('jdpp_users', stats.uniqueUsers || 0);
+    set('jdpp_active', stats.activeCount || 0);
+}
+
+async function loadJdProxyPurchases(page) {
+    if (typeof page === 'number' && page > 0) _jdppPage = page;
+    var tbody = document.getElementById('jdProxyPurchaseBody');
+    if (!tbody) return;
+    var userNumber = parseInt((document.getElementById('jdpp_userNumber') || {}).value, 10) || 0;
+    try {
+        var qs = '?page=' + _jdppPage + '&limit=20&days=' + (_jdppDays || 0);
+        if (userNumber > 0) qs += '&userNumber=' + userNumber;
+        var res = await api.get('/api/admin/jd-proxy/purchases' + qs);
+        if (res.code !== 0) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#c00;padding:32px;">' + escapeHtml(res.msg || '加载失败') + '</td></tr>';
+            return;
+        }
+        var data = res.data || {};
+        renderJdProxyPurchaseStats(data.stats);
+        var list = data.list || [];
+        var total = data.total || 0;
+        if (!list.length) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:32px;">暂无购买记录</td></tr>';
+        } else {
+            tbody.innerHTML = list.map(function(row) {
+                var who = [row.nickname, row.qq].filter(Boolean).join(' / ') || '-';
+                var status = row.currentlyActive
+                    ? '<span class="tag tag-success">有效</span>'
+                    : '<span class="tag tag-info">已过期</span>';
+                return '<tr>' +
+                    '<td>' + escapeHtml(row.purchasedAt || '-') + '</td>' +
+                    '<td><strong>' + escapeHtml(String(row.userNumber || '-')) + '</strong></td>' +
+                    '<td>' + escapeHtml(row.username || '-') + '</td>' +
+                    '<td>' + escapeHtml(who) + '</td>' +
+                    '<td>' + escapeHtml(String(row.months || '-')) + '</td>' +
+                    '<td><span style="color:#e6a23c;font-weight:600;">-' + escapeHtml(String(row.coin || 0)) + '</span></td>' +
+                    '<td>' + escapeHtml(row.expireAt || '-') + '</td>' +
+                    '<td>' + escapeHtml(row.currentExpireAt || '-') + '</td>' +
+                    '<td>' + status + '</td>' +
+                    '<td>' + escapeHtml(row.sourceLabel || row.clientSource || '-') + '</td>' +
+                    '<td title="' + escapeAttr(row.detail || '') + '">' + escapeHtml(row.detail || '-') + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+        renderPagination('jdppPagination', _jdppPage, total, 20, loadJdProxyPurchases, 'jdpp');
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#c00;padding:32px;">' + escapeHtml(e.message || '加载失败') + '</td></tr>';
+    }
+}
+
 var _jdmtPage = 1;
 
 function onJdManualTaskSearch() {
@@ -8550,6 +8661,7 @@ async function loadJdManualTasks() {
         normalizeJdManualCache(res.data, []);
         _jdmtPage = 1;
         renderJdManualTasks();
+        loadJdProxyPurchases(1);
     } catch (e) {
         toast('加载失败: ' + e.message, 'error');
     }
