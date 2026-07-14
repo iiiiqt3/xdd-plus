@@ -623,19 +623,34 @@
         }
         .jd-task-sticky-bar {
             position: sticky; top: 0; z-index: 12;
-            display: grid; grid-template-columns: 1fr minmax(260px, 340px);
-            gap: 14px; align-items: start;
-            padding: 14px 16px;
+            padding: 12px 16px;
             background: var(--card);
             border-bottom: 1px solid var(--glass-border);
             box-shadow: 0 4px 16px rgba(15,23,42,0.04);
         }
+        .jd-task-setup-tabs {
+            display: flex; gap: 0; background: var(--glass-bg);
+            border-radius: 10px; padding: 4px; border: 1px solid var(--glass-border);
+            max-width: 360px;
+        }
+        .jd-task-setup-tabs button {
+            flex: 1; font-size: 13px; font-weight: 600; padding: 8px 16px;
+            border-radius: 8px; border: none; background: transparent;
+            color: var(--text-muted); cursor: pointer; transition: all 0.15s ease;
+        }
+        .jd-task-setup-tabs button:hover { color: var(--text); background: rgba(255,255,255,0.5); }
+        .jd-task-setup-tabs button.active {
+            background: var(--card); color: var(--primary);
+            box-shadow: 0 1px 4px rgba(15,23,42,0.08);
+        }
+        .jd-task-setup-panel { display: none; padding-top: 10px; }
+        .jd-task-setup-panel.active { display: block; }
         .jd-task-sticky-block label {
             display: block; font-size: 12px; font-weight: 700;
             color: var(--text-muted); margin-bottom: 6px;
         }
         .jd-task-account-select {
-            width: 100%; min-height: 72px; max-height: 120px;
+            width: 100%; min-height: 96px; max-height: 140px;
             padding: 8px 12px; border: 1px solid var(--glass-border); border-radius: 8px;
             background: var(--glass-bg); font-size: 13px; outline: none;
         }
@@ -713,7 +728,7 @@
             border-color: transparent !important; color: #fff !important;
         }
         .jd-task-log-aside {
-            width: 360px; min-width: 300px; max-width: 38%;
+            width: 720px; min-width: 600px; max-width: 56%;
             flex-shrink: 0;
             position: sticky;
             top: 16px;
@@ -748,7 +763,6 @@
         .jd-task-log .log-content { color: #a9b1d6; }
         .jd-task-log .log-error { color: #f7768e; }
         @media (max-width: 800px) {
-            .jd-task-sticky-bar { grid-template-columns: 1fr; }
             .jd-task-shell { min-height: calc(100dvh - 180px); }
             .jd-task-main { flex-direction: column; }
             .jd-task-list-wrap {
@@ -1998,25 +2012,31 @@
                 <div class="jd-tab-panel" id="jdPanel-task">
                     <div class="jd-task-shell">
                         <div class="jd-task-sticky-bar">
-                            <div class="jd-task-sticky-block">
-                                <label for="jdTaskGlobalAccounts">执行账号（Ctrl 多选）</label>
-                                <select class="jd-task-account-select" id="jdTaskGlobalAccounts" multiple></select>
-                            </div>
-                            <div class="jd-task-sticky-block">
-                                <div class="jd-task-proxy-card inactive" id="jdProxyCard">
-                                    <div class="jd-task-proxy-head">
-                                        <span class="jd-task-proxy-title">任务代理</span>
-                                        <span class="jd-task-proxy-badge off" id="jdProxyBadge">未开通</span>
-                                    </div>
-                                    <div class="jd-task-proxy-meta" id="jdProxyMeta">加载中...</div>
-                                    <div class="jd-task-proxy-buy" id="jdProxyBuyRow">
-                                        <select id="jdProxyMonths" aria-label="购买月数">
-                                            <option value="1">1 个月</option>
-                                            <option value="3">3 个月</option>
-                                            <option value="6">6 个月</option>
-                                            <option value="12">12 个月</option>
-                                        </select>
-                                        <button class="btn primary small" type="button" id="jdProxyBuyBtn" onclick="buyJdTaskProxy()">购买代理</button>
+                            <div class="jd-task-setup">
+                                <div class="jd-task-setup-tabs">
+                                    <button type="button" class="active" id="jdTaskSetupTab-accounts" onclick="switchJdTaskSetupTab('accounts')">执行账号</button>
+                                    <button type="button" id="jdTaskSetupTab-proxy" onclick="switchJdTaskSetupTab('proxy')">任务代理</button>
+                                </div>
+                                <div class="jd-task-setup-panel active" id="jdTaskSetupPanel-accounts">
+                                    <label for="jdTaskGlobalAccounts">选择账号（Ctrl 多选）</label>
+                                    <select class="jd-task-account-select" id="jdTaskGlobalAccounts" multiple></select>
+                                </div>
+                                <div class="jd-task-setup-panel" id="jdTaskSetupPanel-proxy">
+                                    <div class="jd-task-proxy-card inactive" id="jdProxyCard">
+                                        <div class="jd-task-proxy-head">
+                                            <span class="jd-task-proxy-title">任务代理</span>
+                                            <span class="jd-task-proxy-badge off" id="jdProxyBadge">未开通</span>
+                                        </div>
+                                        <div class="jd-task-proxy-meta" id="jdProxyMeta">加载中...</div>
+                                        <div class="jd-task-proxy-buy" id="jdProxyBuyRow">
+                                            <select id="jdProxyMonths" aria-label="购买月数">
+                                                <option value="1">1 个月</option>
+                                                <option value="3">3 个月</option>
+                                                <option value="6">6 个月</option>
+                                                <option value="12">12 个月</option>
+                                            </select>
+                                            <button class="btn primary small" type="button" id="jdProxyBuyBtn" onclick="buyJdTaskProxy()">购买代理</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -4069,6 +4089,15 @@ var jdTasksCache = [];
 var jdTaskSearchQuery = '';
 var jdProxyStatus = null;
 var jdProxyBuying = false;
+
+function switchJdTaskSetupTab(tab) {
+    ['accounts', 'proxy'].forEach(function(name) {
+        var btn = document.getElementById('jdTaskSetupTab-' + name);
+        var panel = document.getElementById('jdTaskSetupPanel-' + name);
+        if (btn) btn.classList.toggle('active', name === tab);
+        if (panel) panel.classList.toggle('active', name === tab);
+    });
+}
 
 async function loadJdTasks() {
     var listBody = document.getElementById('jdTaskListBody');
