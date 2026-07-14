@@ -623,28 +623,13 @@
         }
         .jd-task-sticky-bar {
             position: sticky; top: 0; z-index: 12;
+            display: grid; grid-template-columns: 1fr minmax(280px, 380px);
+            gap: 14px; align-items: start;
             padding: 12px 16px;
             background: var(--card);
             border-bottom: 1px solid var(--glass-border);
             box-shadow: 0 4px 16px rgba(15,23,42,0.04);
         }
-        .jd-task-setup-tabs {
-            display: flex; gap: 0; background: var(--glass-bg);
-            border-radius: 10px; padding: 4px; border: 1px solid var(--glass-border);
-            max-width: 360px;
-        }
-        .jd-task-setup-tabs button {
-            flex: 1; font-size: 13px; font-weight: 600; padding: 8px 16px;
-            border-radius: 8px; border: none; background: transparent;
-            color: var(--text-muted); cursor: pointer; transition: all 0.15s ease;
-        }
-        .jd-task-setup-tabs button:hover { color: var(--text); background: rgba(255,255,255,0.5); }
-        .jd-task-setup-tabs button.active {
-            background: var(--card); color: var(--primary);
-            box-shadow: 0 1px 4px rgba(15,23,42,0.08);
-        }
-        .jd-task-setup-panel { display: none; padding-top: 10px; }
-        .jd-task-setup-panel.active { display: block; }
         .jd-task-sticky-block label {
             display: block; font-size: 12px; font-weight: 700;
             color: var(--text-muted); margin-bottom: 6px;
@@ -763,6 +748,7 @@
         .jd-task-log .log-content { color: #a9b1d6; }
         .jd-task-log .log-error { color: #f7768e; }
         @media (max-width: 800px) {
+            .jd-task-sticky-bar { grid-template-columns: 1fr; }
             .jd-task-shell { min-height: calc(100dvh - 180px); }
             .jd-task-main { flex-direction: column; }
             .jd-task-list-wrap {
@@ -1381,6 +1367,20 @@
         <div id="jdQueryModalBody" style="flex:1;overflow-y:auto;padding:4px 0;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word;"></div>
         <div class="actions">
             <button class="btn secondary" onclick="closeJdQueryModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 京东任务代理购买成功 -->
+<div class="modal-mask" id="jdProxyBuyModalMask">
+    <div class="modal" style="max-width:440px;width:min(440px,94vw);">
+        <div class="modal-header">
+            <h3>购买成功</h3>
+            <button class="modal-close" type="button" onclick="closeJdProxyBuySuccessModal()">×</button>
+        </div>
+        <div id="jdProxyBuyModalBody" style="font-size:14px;line-height:1.8;color:var(--text);"></div>
+        <div class="actions">
+            <button class="btn primary" type="button" onclick="closeJdProxyBuySuccessModal()">知道了</button>
         </div>
     </div>
 </div>
@@ -2012,31 +2012,25 @@
                 <div class="jd-tab-panel" id="jdPanel-task">
                     <div class="jd-task-shell">
                         <div class="jd-task-sticky-bar">
-                            <div class="jd-task-setup">
-                                <div class="jd-task-setup-tabs">
-                                    <button type="button" class="active" id="jdTaskSetupTab-accounts" onclick="switchJdTaskSetupTab('accounts')">执行账号</button>
-                                    <button type="button" id="jdTaskSetupTab-proxy" onclick="switchJdTaskSetupTab('proxy')">任务代理</button>
-                                </div>
-                                <div class="jd-task-setup-panel active" id="jdTaskSetupPanel-accounts">
-                                    <label for="jdTaskGlobalAccounts">选择账号（Ctrl 多选）</label>
-                                    <select class="jd-task-account-select" id="jdTaskGlobalAccounts" multiple></select>
-                                </div>
-                                <div class="jd-task-setup-panel" id="jdTaskSetupPanel-proxy">
-                                    <div class="jd-task-proxy-card inactive" id="jdProxyCard">
-                                        <div class="jd-task-proxy-head">
-                                            <span class="jd-task-proxy-title">任务代理</span>
-                                            <span class="jd-task-proxy-badge off" id="jdProxyBadge">未开通</span>
-                                        </div>
-                                        <div class="jd-task-proxy-meta" id="jdProxyMeta">加载中...</div>
-                                        <div class="jd-task-proxy-buy" id="jdProxyBuyRow">
-                                            <select id="jdProxyMonths" aria-label="购买月数">
-                                                <option value="1">1 个月</option>
-                                                <option value="3">3 个月</option>
-                                                <option value="6">6 个月</option>
-                                                <option value="12">12 个月</option>
-                                            </select>
-                                            <button class="btn primary small" type="button" id="jdProxyBuyBtn" onclick="buyJdTaskProxy()">购买代理</button>
-                                        </div>
+                            <div class="jd-task-sticky-block">
+                                <label for="jdTaskGlobalAccounts">执行账号（Ctrl 多选）</label>
+                                <select class="jd-task-account-select" id="jdTaskGlobalAccounts" multiple></select>
+                            </div>
+                            <div class="jd-task-sticky-block">
+                                <div class="jd-task-proxy-card inactive" id="jdProxyCard">
+                                    <div class="jd-task-proxy-head">
+                                        <span class="jd-task-proxy-title">任务代理</span>
+                                        <span class="jd-task-proxy-badge off" id="jdProxyBadge">未开通</span>
+                                    </div>
+                                    <div class="jd-task-proxy-meta" id="jdProxyMeta">加载中...</div>
+                                    <div class="jd-task-proxy-buy" id="jdProxyBuyRow">
+                                        <select id="jdProxyMonths" aria-label="购买月数">
+                                            <option value="1">1 个月</option>
+                                            <option value="3">3 个月</option>
+                                            <option value="6">6 个月</option>
+                                            <option value="12">12 个月</option>
+                                        </select>
+                                        <button class="btn primary small" type="button" id="jdProxyBuyBtn" onclick="buyJdTaskProxy(this)">购买代理</button>
                                     </div>
                                 </div>
                             </div>
@@ -4088,16 +4082,6 @@ var jdTaskAccounts = [];
 var jdTasksCache = [];
 var jdTaskSearchQuery = '';
 var jdProxyStatus = null;
-var jdProxyBuying = false;
-
-function switchJdTaskSetupTab(tab) {
-    ['accounts', 'proxy'].forEach(function(name) {
-        var btn = document.getElementById('jdTaskSetupTab-' + name);
-        var panel = document.getElementById('jdTaskSetupPanel-' + name);
-        if (btn) btn.classList.toggle('active', name === tab);
-        if (panel) panel.classList.toggle('active', name === tab);
-    });
-}
 
 async function loadJdTasks() {
     var listBody = document.getElementById('jdTaskListBody');
@@ -4193,7 +4177,6 @@ function renderJdProxyCard() {
 
     if (buyRow) buyRow.style.display = 'flex';
     if (buyBtn) {
-        buyBtn.disabled = jdProxyBuying;
         buyBtn.textContent = active ? '续费代理' : '购买代理';
     }
     if (monthsSel) {
@@ -4203,26 +4186,23 @@ function renderJdProxyCard() {
     }
 }
 
-async function buyJdTaskProxy() {
-    if (jdProxyBuying) return;
+async function buyJdTaskProxy(btn) {
     var monthsSel = document.getElementById('jdProxyMonths');
     var months = parseInt(monthsSel && monthsSel.value, 10) || 1;
     var st = jdProxyStatus || {};
     var monthly = st.monthlyCoin || 0;
     var need = monthly * months;
     if (monthly <= 0) {
-        showToast('代理订阅暂未开放', 'warning');
+        toast('代理订阅暂未开放', 'warning');
         return;
     }
     if ((st.userCoin || 0) < need) {
-        showToast('积分不足，需要 ' + need + ' 积分，当前 ' + (st.userCoin || 0), 'warning');
+        toast('积分不足，需要 ' + need + ' 积分，当前 ' + (st.userCoin || 0), 'warning');
         return;
     }
     if (!confirm('确认购买 ' + months + ' 个月任务代理？将扣除 ' + need + ' 积分。')) return;
 
-    jdProxyBuying = true;
-    renderJdProxyCard();
-    try {
+    await runPortalActionGuard('jd-proxy-buy', async function() {
         var resp = await request('/api/portal/jd/proxy/buy', {
             method: 'POST',
             body: JSON.stringify({ months: months })
@@ -4230,17 +4210,35 @@ async function buyJdTaskProxy() {
         if (resp.code === 0) {
             jdProxyStatus = resp.data || jdProxyStatus;
             renderJdProxyCard();
-            showToast(resp.msg || '购买成功', 'success');
+            showJdProxyBuySuccessModal(months, need, jdProxyStatus);
             if (typeof loadDashboardData === 'function') loadDashboardData().catch(function() {});
         } else {
-            showToast(resp.msg || '购买失败', 'error');
+            toast(resp.msg || '购买失败', 'error');
+            await loadJdProxyStatus();
         }
-    } catch (err) {
-        showToast('购买失败: ' + err.message, 'error');
-    } finally {
-        jdProxyBuying = false;
-        await loadJdProxyStatus();
-    }
+    }, {
+        button: btn,
+        loadingText: '购买中...',
+        duplicateMsg: '正在购买中，请勿重复点击'
+    });
+}
+
+function showJdProxyBuySuccessModal(months, coinCost, status) {
+    var mask = document.getElementById('jdProxyBuyModalMask');
+    var body = document.getElementById('jdProxyBuyModalBody');
+    if (!mask || !body) return;
+    var expireAt = (status && status.expireAt) ? status.expireAt : '-';
+    var remainCoin = (status && status.userCoin != null) ? status.userCoin : '-';
+    body.innerHTML =
+        '<p style="margin:0 0 12px;">已成功购买 <strong>' + escapeHtml(String(months)) + '</strong> 个月任务代理，扣除 <strong>' + escapeHtml(String(coinCost)) + '</strong> 积分。</p>' +
+        '<p style="margin:0 0 12px;">到期时间：<strong>' + escapeHtml(expireAt) + '</strong></p>' +
+        '<p style="margin:0;color:var(--text-muted);font-size:13px;">执行任务时将自动使用代理。当前剩余积分：' + escapeHtml(String(remainCoin)) + '</p>';
+    mask.classList.add('show');
+}
+
+function closeJdProxyBuySuccessModal() {
+    var mask = document.getElementById('jdProxyBuyModalMask');
+    if (mask) mask.classList.remove('show');
 }
 
 function onJdTaskSearch(value) {
