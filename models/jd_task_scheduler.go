@@ -448,7 +448,11 @@ func (s *JdTaskScheduler) runNodeJob(job *JdJob) (string, error) {
 	}
 
 	envs := copyStringMap(job.Envs)
-	ApplyManualJdTaskProxyEnvs(envs)
+	if job.TaskLogID != "" && job.Sender == nil {
+		ApplyPortalJdTaskProxyEnvs(job.UserID, envs)
+	} else {
+		ApplyManualJdTaskProxyEnvs(envs)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), jdJobTimeout)
 	job.cancel = cancel

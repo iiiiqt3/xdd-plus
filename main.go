@@ -238,6 +238,8 @@ func main() {
 	web.Router("/api/portal/jd/task/logs", &controllers.PortalController{}, "get:JdTaskLogs")
 	web.Router("/api/portal/jd/task/stop", &controllers.PortalController{}, "post:JdTaskStop")
 	web.Router("/api/portal/jd/tasks", &controllers.PortalController{}, "get:JdTaskList")
+	web.Router("/api/portal/jd/proxy/status", &controllers.PortalController{}, "get:JdProxyStatus")
+	web.Router("/api/portal/jd/proxy/buy", &controllers.PortalController{}, "post:JdProxyBuy")
 	// ===================== 酷我提现 API =====================
 	web.Router("/api/portal/kuwo/check-auth", &controllers.PortalController{}, "get:KuwoCheckAuth")
 	web.Router("/api/portal/kuwo/credentials", &controllers.PortalController{}, "get:KuwoGetCredentials")

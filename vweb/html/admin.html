@@ -6984,6 +6984,7 @@ async function loadSysConfig() {
                     <div class="form-item full"><label>动态 IP API 地址</label><input type="text" id="sys_JdTaskProxyUrl" value="${v(sys.JdTaskProxyUrl)}" placeholder="http://api.xiequ.cn/VAD/GetIp.aspx?act=get&uid=...&vkey=..."></div>
                     <div class="form-item"><label>取 IP 失败重试次数</label><input type="number" id="sys_JdTaskProxyRenum" value="${v(sys.JdTaskProxyRenum)||'10'}" min="1"></div>
                     <div class="form-item"><label>重试间隔 (秒)</label><input type="number" id="sys_JdTaskProxyRedelay" value="${v(sys.JdTaskProxyRedelay)||'2'}" min="1"></div>
+                    <div class="form-item"><label>门户代理月费 (积分)</label><input type="number" id="sys_JdTaskProxyMonthlyCoin" value="${v(sys.JdTaskProxyMonthlyCoin)||'0'}" min="0" placeholder="0 表示不可购买"></div>
                 </div>
             </div>
         `;
@@ -7079,6 +7080,7 @@ async function saveSysConfig() {
             JdTaskProxyUrl: (document.getElementById('sys_JdTaskProxyUrl')||{}).value,
             JdTaskProxyRenum: String((document.getElementById('sys_JdTaskProxyRenum')||{}).value || '10'),
             JdTaskProxyRedelay: String((document.getElementById('sys_JdTaskProxyRedelay')||{}).value || '2'),
+            JdTaskProxyMonthlyCoin: parseInt((document.getElementById('sys_JdTaskProxyMonthlyCoin')||{}).value, 10) || 0,
         };
         const sysRes = await api.post('/api/admin/sysconfig/save', sysData);
         toast(sysRes.msg || '保存成功', sysRes.code === 0 ? 'success' : 'error');

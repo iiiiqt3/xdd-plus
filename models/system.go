@@ -48,8 +48,9 @@ type SystemConfig struct {
 	ProxyUrl           string `json:"ProxyUrl"`
 	JdTaskProxyEnabled bool   `json:"JdTaskProxyEnabled"`
 	JdTaskProxyUrl     string `json:"JdTaskProxyUrl"`
-	JdTaskProxyRenum   string `json:"JdTaskProxyRenum"`
-	JdTaskProxyRedelay string `json:"JdTaskProxyRedelay"`
+	JdTaskProxyRenum        string `json:"JdTaskProxyRenum"`
+	JdTaskProxyRedelay       string `json:"JdTaskProxyRedelay"`
+	JdTaskProxyMonthlyCoin   int    `json:"JdTaskProxyMonthlyCoin"`
 }
 
 func initSysConfig() {

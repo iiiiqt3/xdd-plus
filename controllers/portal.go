@@ -937,6 +937,42 @@ func (c *PortalController) JdTaskStop() {
 	c.ServeJSON()
 }
 
+// JdProxyStatus 京东任务代理订阅状态
+func (c *PortalController) JdProxyStatus() {
+	st := models.GetPortalJdProxyStatus(c.PortalUserID)
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": st}
+	c.ServeJSON()
+}
+
+// JdProxyBuy 购买京东任务代理订阅
+func (c *PortalController) JdProxyBuy() {
+	var req struct {
+		Months int `json:"months"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	if req.Months < 1 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请选择购买月数"}
+		c.ServeJSON()
+		return
+	}
+	st, err := models.PurchasePortalJdProxy(c.PortalUserID, req.Months, c.ClientCtx)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  fmt.Sprintf("购买成功，代理有效期至 %s", st.ExpireAt),
+		"data": st,
+	}
+	c.ServeJSON()
+}
+
 // KuwoGetCredentials 读取用户挂活动提交的酷我账号密码
 func (c *PortalController) KuwoGetCredentials() {
 	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
