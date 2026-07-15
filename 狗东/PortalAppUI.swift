@@ -2806,6 +2806,274 @@ final class ProtocolAccessViewController: BaseNativeViewController {
     }
 }
 
+final class ProtocolBindViewController: BaseNativeViewController, UITableViewDataSource, UITableViewDelegate {
+    private let tableView = UITableView(frame: .zero, style: .insetGrouped)
+    private var bindings: [PortalProtocolBinding] = []
+    private var quota: PortalProtocolBindQuota?
+    private var wxDevices: [PortalWxDevice] = []
+    private var yybAccounts: [PortalYybAccount] = []
+    private var selectedWx: PortalWxDevice?
+    private var selectedYyb: PortalYybAccount?
+    private var loading = false
+
+    private enum Section: Int, CaseIterable { case header = 0, form, bound }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = "协议双绑"
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "关闭", style: .plain, target: self, action: #selector(closeTapped))
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(tableView)
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        loadAll()
+    }
+
+    @objc private func closeTapped() {
+        if let nav = navigationController, nav.viewControllers.first === self, nav.presentingViewController != nil {
+            dismiss(animated: true)
+        } else {
+            navigationController?.popViewController(animated: true)
+        }
+    }
+
+    private func loadAll() {
+        loading = true
+        tableView.reloadData()
+        let group = DispatchGroup()
+
+        group.enter()
+        PortalService.shared.fetchProtocolBindings { [weak self] result in
+            if case .success(let rows) = result { self?.bindings = rows }
+            group.leave()
+        }
+        group.enter()
+        PortalService.shared.fetchProtocolBindQuota { [weak self] result in
+            if case .success(let q) = result { self?.quota = q }
+            group.leave()
+        }
+        group.enter()
+        PortalService.shared.fetchWxDevices { [weak self] result in
+            if case .success(let rows) = result { self?.wxDevices = rows }
+            group.leave()
+        }
+        group.enter()
+        let cached = YybAccountStore.shared.accounts
+        if !cached.isEmpty {
+            yybAccounts = cached
+            group.leave()
+        } else {
+            PortalService.shared.fetchYybStatus(autoCheck: false) { [weak self] result in
+                if case .success(let st) = result { self?.yybAccounts = st.accounts ?? [] }
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) { [weak self] in
+            self?.loading = false
+            self?.tableView.reloadData()
+        }
+    }
+
+    func numberOfSections(in tableView: UITableView) -> Int { Section.allCases.count }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        switch Section(rawValue: section) {
+        case .header: return 1
+        case .form: return loading ? 0 : 4
+        case .bound: return loading ? 0 : max(bindings.count, 1)
+        default: return 0
+        }
+    }
+
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        switch Section(rawValue: section) {
+        case .form: return "新建双绑"
+        case .bound: return "已绑定配对"
+        default: return nil
+        }
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        switch Section(rawValue: indexPath.section) {
+        case .header:
+            let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
+            cell.selectionStyle = .none
+            cell.textLabel?.text = "🔗 微信 wxid ↔ 应用宝 openid"
+            cell.textLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+            cell.detailTextLabel?.text = "绑定后青龙脚本仍填原微信 wxid，网关将自动路由到应用宝获取 code。"
+            cell.detailTextLabel?.numberOfLines = 0
+            let q = quota
+            let quotaText = "在线微信 \(q?.onlineWxSlots ?? 0) · 已绑 \(q?.boundPairs ?? 0) · 免费名额 \(q?.freeSlots ?? 0)"
+            let extra = UILabel()
+            extra.text = quotaText
+            extra.font = .systemFont(ofSize: 12)
+            extra.textColor = .secondaryLabel
+            extra.translatesAutoresizingMaskIntoConstraints = false
+            cell.contentView.addSubview(extra)
+            NSLayoutConstraint.activate([
+                extra.topAnchor.constraint(equalTo: cell.detailTextLabel!.bottomAnchor, constant: 8),
+                extra.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 20),
+                extra.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                extra.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -10),
+            ])
+            return cell
+        case .form:
+            let cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
+            switch indexPath.row {
+            case 0:
+                cell.textLabel?.text = "微信 wxid"
+                cell.detailTextLabel?.text = selectedWx == nil ? "请选择" : (selectedWx?.nickname ?? shortenProtocolId(selectedWx?.wxid))
+                cell.accessoryType = .disclosureIndicator
+            case 1:
+                cell.textLabel?.text = "应用宝 openid"
+                cell.detailTextLabel?.text = selectedYyb == nil ? "请选择" : displayYybName(selectedYyb!)
+                cell.accessoryType = .disclosureIndicator
+            case 2:
+                cell.textLabel?.text = "建立双绑"
+                cell.textLabel?.textColor = .systemBlue
+                cell.textLabel?.textAlignment = .center
+            default:
+                break
+            }
+            return cell
+        case .bound:
+            if bindings.isEmpty {
+                let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
+                cell.selectionStyle = .none
+                cell.textLabel?.text = "暂无绑定"
+                cell.detailTextLabel?.text = "可在上方选择微信与应用宝账号建立双绑。"
+                cell.detailTextLabel?.numberOfLines = 0
+                return cell
+            }
+            let b = bindings[indexPath.row]
+            let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
+            let wx = wxDevices.first { $0.wxid == b.wxWxid }
+            let yyb = yybAccounts.first { $0.openid == b.yybOpenId }
+            cell.textLabel?.text = "\(wx?.nickname ?? "微信") ↔ \(yyb?.nickname ?? "应用宝")"
+            cell.detailTextLabel?.text = "\(shortenProtocolId(b.wxWxid))  ·  \(shortenProtocolId(b.yybOpenId))"
+            cell.detailTextLabel?.numberOfLines = 0
+            cell.accessoryType = .none
+            let unbind = UIButton(type: .system)
+            unbind.setTitle("解绑", for: .normal)
+            unbind.setTitleColor(.systemRed, for: .normal)
+            unbind.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+            unbind.tag = indexPath.row
+            unbind.addTarget(self, action: #selector(unbindTapped(_:)), for: .touchUpInside)
+            unbind.sizeToFit()
+            cell.accessoryView = unbind
+            return cell
+        default:
+            return UITableViewCell()
+        }
+    }
+
+    private func displayYybName(_ acc: PortalYybAccount) -> String {
+        let nick = (acc.nickname ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !nick.isEmpty { return nick }
+        return shortenProtocolId(acc.openid)
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        guard Section(rawValue: indexPath.section) == .form else { return }
+        switch indexPath.row {
+        case 0: showWxPicker()
+        case 1: showYybPicker()
+        case 2: submitBind()
+        default: break
+        }
+    }
+
+    private func boundWxSet() -> Set<String> { Set(bindings.compactMap { $0.wxWxid }.filter { !$0.isEmpty }) }
+    private func boundOpenIdSet() -> Set<String> { Set(bindings.compactMap { $0.yybOpenId }.filter { !$0.isEmpty }) }
+
+    private func showWxPicker() {
+        let items = wxDevices.filter { let wx = $0.wxid ?? ""; return !wx.isEmpty && !boundWxSet().contains(wx) }
+        guard !items.isEmpty else { showMessage("暂无可绑定的微信设备"); return }
+        let sheet = UIAlertController(title: "选择微信", message: nil, preferredStyle: .actionSheet)
+        for dev in items {
+            let offline = dev.online == true ? "" : "（离线）"
+            let title = "\(dev.nickname ?? "微信设备") · \(shortenProtocolId(dev.wxid))\(offline)"
+            sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                self?.selectedWx = dev
+                self?.tableView.reloadSections(IndexSet(integer: Section.form.rawValue), with: .none)
+            })
+        }
+        sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
+        present(sheet, animated: true)
+    }
+
+    private func showYybPicker() {
+        let items = yybAccounts.filter { let oid = $0.openid ?? ""; return !oid.isEmpty && !boundOpenIdSet().contains(oid) }
+        guard !items.isEmpty else { showMessage("暂无可绑定的应用宝账号"); return }
+        let sheet = UIAlertController(title: "选择应用宝", message: nil, preferredStyle: .actionSheet)
+        for acc in items {
+            let alive = ((acc.status ?? "").lowercased() == "alive" || (acc.status ?? "").lowercased() == "online")
+            let title = "\(displayYybName(acc)) · \(shortenProtocolId(acc.openid))\(alive ? "" : "（失效）")"
+            sheet.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                self?.selectedYyb = acc
+                self?.tableView.reloadSections(IndexSet(integer: Section.form.rawValue), with: .none)
+            })
+        }
+        sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
+        present(sheet, animated: true)
+    }
+
+    private func submitBind() {
+        guard let wx = selectedWx, let yyb = selectedYyb else {
+            showMessage("请先选择微信和应用宝账号")
+            return
+        }
+        PortalService.shared.protocolBind(
+            wxWxid: wx.wxid ?? "",
+            yybOpenId: yyb.openid ?? "",
+            nickname: yyb.nickname ?? ""
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .failure(let error):
+                    self?.handle(error)
+                case .success:
+                    self?.showMessage("绑定成功")
+                    self?.selectedWx = nil
+                    self?.selectedYyb = nil
+                    ProtocolBindStore.shared.reload()
+                    self?.loadAll()
+                }
+            }
+        }
+    }
+
+    @objc private func unbindTapped(_ sender: UIButton) {
+        guard bindings.indices.contains(sender.tag) else { return }
+        let b = bindings[sender.tag]
+        let alert = UIAlertController(title: "解除双绑", message: "确定解除该配对？", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+        alert.addAction(UIAlertAction(title: "解绑", style: .destructive) { [weak self] _ in
+            PortalService.shared.protocolUnbind(wxWxid: b.wxWxid ?? "", yybOpenId: b.yybOpenId ?? "") { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .failure(let error):
+                        self?.handle(error)
+                    case .success(let msg):
+                        self?.showMessage(msg)
+                        ProtocolBindStore.shared.reload()
+                        self?.loadAll()
+                    }
+                }
+            }
+        })
+        present(alert, animated: true)
+    }
+}
+
+
 final class YybProtocolViewController: BaseNativeViewController {
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
@@ -2815,7 +3083,8 @@ final class YybProtocolViewController: BaseNativeViewController {
     private let loadingIndicator = UIActivityIndicatorView(style: .medium)
     private let accountStack = UIStackView()
     private let accountActionsHost = UIStackView()
-    private let bindCardStack = UIStackView()
+    private var introBody = UILabel()
+    private var introExpanded = false
     private var scanButton: UIButton!
     private var reloadButton: UIButton!
     private var accounts: [PortalYybAccount] = []
@@ -2835,15 +3104,17 @@ final class YybProtocolViewController: BaseNativeViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(onStoreUpdated), name: AppNotifications.yybStatusDidUpdate, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onProtocolBindUpdated), name: AppNotifications.protocolBindDidUpdate, object: nil)
         applyStore(showPendingAlert: false)
-        if YybAccountStore.shared.status == nil, !YybAccountStore.shared.isLoading {
-            YybAccountStore.shared.prefetch(autoCheck: true)
+        if YybAccountStore.shared.status == nil, !YybAccountStore.shared.isLoading, !YybAccountStore.shared.sessionAutoChecked {
+            YybAccountStore.shared.prefetchIfNeeded(autoCheck: true)
         }
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        applyStore(showPendingAlert: true)
-        ProtocolBindStore.shared.reload(yybAccounts: accounts)
+        applyStore(showPendingAlert: false)
+        if !YybAccountStore.shared.sessionAutoChecked {
+            YybAccountStore.shared.prefetchIfNeeded(autoCheck: true)
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -2876,6 +3147,9 @@ final class YybProtocolViewController: BaseNativeViewController {
             stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -24),
             stack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32),
         ])
+
+        stack.addArrangedSubview(buildIntroCard())
+        stack.addArrangedSubview(buildProtocolBindEntry())
 
         let actionRow = UIStackView()
         actionRow.axis = .horizontal
@@ -2929,11 +3203,6 @@ final class YybProtocolViewController: BaseNativeViewController {
         accountStack.spacing = 10
         stack.addArrangedSubview(accountStack)
 
-        bindCardStack.axis = .vertical
-        bindCardStack.spacing = 8
-        bindCardStack.isHidden = true
-        stack.addArrangedSubview(bindCardStack)
-
         accountActionsHost.axis = .horizontal
         accountActionsHost.spacing = 8
         accountActionsHost.distribution = .fillEqually
@@ -2976,6 +3245,114 @@ final class YybProtocolViewController: BaseNativeViewController {
         return btn
     }
 
+    private func buildIntroCard() -> UIView {
+        let card = UIView()
+        card.applyCardStyle()
+        let titleRow = UIStackView()
+        titleRow.axis = .horizontal
+        titleRow.spacing = 8
+        let icon = UILabel()
+        icon.text = "📖"
+        let title = UILabel()
+        title.text = "什么是应用宝协议？"
+        title.font = .systemFont(ofSize: 15, weight: .bold)
+        let expand = UILabel()
+        expand.text = introExpanded ? "▼" : "▶"
+        expand.textColor = .secondaryLabel
+        titleRow.addArrangedSubview(icon)
+        titleRow.addArrangedSubview(title)
+        titleRow.addArrangedSubview(UIView())
+        titleRow.addArrangedSubview(expand)
+        introBody.text = """
+        应用宝协议通过提交应用宝 openid（owNAX 开头），向协议网关请求小程序登录凭证（CK）。无需保持微信长期在线，也没有封号风险。
+
+        【主要作用】
+        • 提交 openid 即可获取小程序 CK，适合青龙等自动化脚本
+        • 扫码登录后有效期 30 天，到期前重新扫码可延期
+        • 可单独使用应用宝协议，不必依赖微信协议
+
+        【从微信协议迁移】
+        若你此前使用微信协议，青龙脚本里提交的是微信 wxid 作为 CK：
+        • 需先将 wxid 与对应的应用宝 openid 双绑
+        • 绑定后脚本里仍填原 wxid，网关会自动路由到应用宝获取 code
+        • 之后即使退出或删除微信协议设备，只要双绑关系保留，wxid 依然能路由到应用宝
+        • 也可完全切换到应用宝，直接提交 openid 作为 CK
+        """
+        introBody.font = .systemFont(ofSize: 13)
+        introBody.textColor = .secondaryLabel
+        introBody.numberOfLines = 0
+        introBody.isHidden = !introExpanded
+        let stack = UIStackView(arrangedSubviews: [titleRow, introBody])
+        stack.axis = .vertical
+        stack.spacing = 6
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+        ])
+        card.translatesAutoresizingMaskIntoConstraints = false
+        let tap = UITapGestureRecognizer(target: self, action: #selector(toggleIntro))
+        card.addGestureRecognizer(tap)
+        card.isUserInteractionEnabled = true
+        return card
+    }
+
+    @objc private func toggleIntro() {
+        introExpanded.toggle()
+        if let card = stack.arrangedSubviews.first {
+            card.removeFromSuperview()
+            stack.insertArrangedSubview(buildIntroCard(), at: 0)
+        }
+    }
+
+    private func buildProtocolBindEntry() -> UIView {
+        let card = UIView()
+        card.applyCardStyle(cornerRadius: 14)
+        card.translatesAutoresizingMaskIntoConstraints = false
+        let icon = UILabel()
+        icon.text = "🔗"
+        icon.font = .systemFont(ofSize: 22)
+        let title = UILabel()
+        title.text = "协议双绑"
+        title.font = .systemFont(ofSize: 15, weight: .semibold)
+        let sub = UILabel()
+        sub.text = "微信 wxid ↔ 应用宝 openid，点击进入管理"
+        sub.font = .systemFont(ofSize: 12)
+        sub.textColor = .secondaryLabel
+        sub.numberOfLines = 2
+        let chevron = UILabel()
+        chevron.text = "›"
+        chevron.font = .systemFont(ofSize: 22)
+        chevron.textColor = .tertiaryLabel
+        let textStack = UIStackView(arrangedSubviews: [title, sub])
+        textStack.axis = .vertical
+        textStack.spacing = 4
+        let row = UIStackView(arrangedSubviews: [icon, textStack, chevron])
+        row.axis = .horizontal
+        row.spacing = 12
+        row.alignment = .center
+        row.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(row)
+        NSLayoutConstraint.activate([
+            row.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            row.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
+            row.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
+            row.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
+        ])
+        card.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openProtocolBindPage)))
+        return card
+    }
+
+    @objc private func openProtocolBindPage() {
+        let vc = ProtocolBindViewController()
+        let nav = UINavigationController(rootViewController: vc)
+        nav.modalPresentationStyle = .pageSheet
+        present(nav, animated: true)
+    }
+
     private func animatePress(_ button: UIButton) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         UIView.animate(withDuration: 0.08, animations: {
@@ -2999,7 +3376,6 @@ final class YybProtocolViewController: BaseNativeViewController {
 
     @objc private func onProtocolBindUpdated() {
         renderAccounts()
-        renderBindCard()
     }
 
     @objc private func onStoreUpdated() {
@@ -3013,7 +3389,7 @@ final class YybProtocolViewController: BaseNativeViewController {
         serviceLabel.text = store.serviceTitle
         serviceLabel.textColor = ready ? .tertiaryLabel : .systemOrange
         sectionTitleLabel.text = "账号列表 · \(store.accounts.count)"
-        if store.isLoading {
+        if checkBusy {
             loadingIndicator.startAnimating()
         } else {
             loadingIndicator.stopAnimating()
@@ -3023,7 +3399,6 @@ final class YybProtocolViewController: BaseNativeViewController {
             selectedKey = accounts.first.map { accountKey($0) } ?? ""
         }
         renderAccounts()
-        renderBindCard()
         updateActionButtonsEnabled()
 
         if showPendingAlert, !didShowPendingAlert, let msg = store.consumePendingAlert() {
@@ -3082,7 +3457,9 @@ final class YybProtocolViewController: BaseNativeViewController {
 
         if accounts.isEmpty {
             let empty = UILabel()
-            empty.text = YybAccountStore.shared.isLoading ? "正在同步账号…" : "暂无账号，点击上方「扫码添加」"
+            empty.text = (YybAccountStore.shared.isLoading && !YybAccountStore.shared.sessionAutoChecked)
+                ? "正在同步账号…"
+                : "暂无账号，点击上方「扫码添加」"
             empty.font = .systemFont(ofSize: 14)
             empty.textColor = .secondaryLabel
             empty.textAlignment = .center
@@ -3091,20 +3468,8 @@ final class YybProtocolViewController: BaseNativeViewController {
             return
         }
 
-        var idx = 0
-        while idx < accounts.count {
-            let row = UIStackView()
-            row.axis = .horizontal
-            row.spacing = 10
-            row.distribution = .fillEqually
-            row.addArrangedSubview(buildAccountCard(accounts[idx], index: idx))
-            if idx + 1 < accounts.count {
-                row.addArrangedSubview(buildAccountCard(accounts[idx + 1], index: idx + 1))
-            } else {
-                row.addArrangedSubview(UIView())
-            }
-            accountStack.addArrangedSubview(row)
-            idx += 2
+        for (index, acc) in accounts.enumerated() {
+            accountStack.addArrangedSubview(buildAccountCard(acc, index: index))
         }
 
         if selectedAccount() != nil {
@@ -3156,20 +3521,40 @@ final class YybProtocolViewController: BaseNativeViewController {
         meta.textColor = .secondaryLabel
         meta.translatesAutoresizingMaskIntoConstraints = false
 
+        let oidRow = UIStackView()
+        oidRow.axis = .horizontal
+        oidRow.spacing = 8
+        oidRow.alignment = .center
+        oidRow.translatesAutoresizingMaskIntoConstraints = false
+        let oidLabel = UILabel()
+        oidLabel.text = "OpenID"
+        oidLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        oidLabel.textColor = .secondaryLabel
         let oid = UILabel()
-        oid.text = acc.openid ?? ""
+        oid.text = acc.openid ?? "-"
         oid.font = .systemFont(ofSize: 11)
         oid.textColor = .tertiaryLabel
         oid.numberOfLines = 2
         oid.lineBreakMode = .byTruncatingMiddle
-        oid.translatesAutoresizingMaskIntoConstraints = false
+        let copyBtn = UIButton(type: .system)
+        copyBtn.setTitle("复制", for: .normal)
+        copyBtn.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
+        copyBtn.addAction(UIAction { _ in
+            let text = (acc.openid ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return }
+            UIPasteboard.general.string = text
+            self.showMessage("已复制 OpenID")
+        }, for: .touchUpInside)
+        oidRow.addArrangedSubview(oidLabel)
+        oidRow.addArrangedSubview(oid)
+        oidRow.addArrangedSubview(copyBtn)
 
-        var bottomAnchor = oid.bottomAnchor
+        var bottomAnchor: NSLayoutYAxisAnchor = oidRow.bottomAnchor
         var bottomConstant: CGFloat = -12
         wrap.addSubview(name)
         wrap.addSubview(badge)
         wrap.addSubview(meta)
-        wrap.addSubview(oid)
+        wrap.addSubview(oidRow)
 
         if let binding = ProtocolBindStore.shared.binding(forOpenId: acc.openid) {
             let wxDev = ProtocolBindStore.shared.wxDevices.first { $0.wxid == binding.wxWxid }
@@ -3194,7 +3579,7 @@ final class YybProtocolViewController: BaseNativeViewController {
             boundRow.addArrangedSubview(unbindBtn)
             wrap.addSubview(boundRow)
             NSLayoutConstraint.activate([
-                boundRow.topAnchor.constraint(equalTo: oid.bottomAnchor, constant: 6),
+                boundRow.topAnchor.constraint(equalTo: oidRow.bottomAnchor, constant: 6),
                 boundRow.leadingAnchor.constraint(equalTo: name.leadingAnchor),
                 boundRow.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
             ])
@@ -3238,9 +3623,9 @@ final class YybProtocolViewController: BaseNativeViewController {
             meta.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 6),
             meta.leadingAnchor.constraint(equalTo: name.leadingAnchor),
             meta.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
-            oid.topAnchor.constraint(equalTo: meta.bottomAnchor, constant: 4),
-            oid.leadingAnchor.constraint(equalTo: name.leadingAnchor),
-            oid.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            oidRow.topAnchor.constraint(equalTo: meta.bottomAnchor, constant: 4),
+            oidRow.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            oidRow.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
             bottomAnchor.constraint(lessThanOrEqualTo: wrap.bottomAnchor, constant: bottomConstant),
         ])
 
@@ -3256,116 +3641,6 @@ final class YybProtocolViewController: BaseNativeViewController {
         guard let view = gesture.view, accounts.indices.contains(view.tag) else { return }
         selectedKey = accountKey(accounts[view.tag])
         renderAccounts()
-    }
-
-    private func renderBindCard() {
-        bindCardStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        guard ProtocolBindStore.shared.shouldShowBindUI(yybAccounts: accounts) else {
-            bindCardStack.isHidden = true
-            return
-        }
-        bindCardStack.isHidden = false
-        let store = ProtocolBindStore.shared
-        let quota = store.quota
-        let card = UIView()
-        card.applyCardStyle(cornerRadius: 14)
-        let title = UILabel()
-        title.text = "协议双绑"
-        title.font = .systemFont(ofSize: 15, weight: .semibold)
-        let quotaLabel = UILabel()
-        quotaLabel.text = "在线微信 \(quota?.onlineWxSlots ?? 0) · 已绑 \(quota?.boundPairs ?? 0) · 免费名额 \(quota?.freeSlots ?? 0)"
-        quotaLabel.font = .systemFont(ofSize: 12)
-        quotaLabel.textColor = .secondaryLabel
-        let hint = UILabel()
-        hint.text = "将微信协议 wxid 与应用宝 openid 配对后，系统会优先走应用宝路由获取小程序凭证。"
-        hint.font = .systemFont(ofSize: 12)
-        hint.textColor = .secondaryLabel
-        hint.numberOfLines = 0
-        let wxPicker = UIButton(type: .system)
-        wxPicker.contentHorizontalAlignment = .left
-        wxPicker.setTitle("选择微信 wxid", for: .normal)
-        wxPicker.titleLabel?.font = .systemFont(ofSize: 14)
-        wxPicker.backgroundColor = .secondarySystemGroupedBackground
-        wxPicker.layer.cornerRadius = 8
-        wxPicker.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
-        let yybPicker = UIButton(type: .system)
-        yybPicker.contentHorizontalAlignment = .left
-        yybPicker.setTitle("选择应用宝 openid", for: .normal)
-        yybPicker.titleLabel?.font = .systemFont(ofSize: 14)
-        yybPicker.backgroundColor = .secondarySystemGroupedBackground
-        yybPicker.layer.cornerRadius = 8
-        yybPicker.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
-        var selectedWx: PortalWxDevice?
-        var selectedYyb: PortalYybAccount?
-        let unboundWx = store.unboundWxDevices()
-        let unboundYyb = store.unboundYybAccounts(accounts)
-        wxPicker.addAction(UIAction { [weak self] _ in
-            guard let self = self else { return }
-            let sheet = UIAlertController(title: "选择微信", message: nil, preferredStyle: .actionSheet)
-            for dev in unboundWx {
-                let label = "\(dev.nickname ?? "微信设备") · \(shortenProtocolId(dev.wxid))\(dev.online == true ? "" : "（离线）")"
-                sheet.addAction(UIAlertAction(title: label, style: .default) { _ in
-                    selectedWx = dev
-                    wxPicker.setTitle(label, for: .normal)
-                })
-            }
-            sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
-            self.present(sheet, animated: true)
-        }, for: .touchUpInside)
-        yybPicker.addAction(UIAction { [weak self] _ in
-            guard let self = self else { return }
-            let sheet = UIAlertController(title: "选择应用宝", message: nil, preferredStyle: .actionSheet)
-            for acc in unboundYyb {
-                let alive = ((acc.status ?? "").lowercased() == "alive" || (acc.status ?? "").lowercased() == "online")
-                let label = "\(self.displayAccountName(acc)) · \(shortenProtocolId(acc.openid))\(alive ? "" : "（失效）")"
-                sheet.addAction(UIAlertAction(title: label, style: .default) { _ in
-                    selectedYyb = acc
-                    yybPicker.setTitle(label, for: .normal)
-                })
-            }
-            sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
-            self.present(sheet, animated: true)
-        }, for: .touchUpInside)
-        let bindBtn = UIButton(type: .system)
-        bindBtn.setTitle("建立双绑", for: .normal)
-        bindBtn.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
-        bindBtn.backgroundColor = .systemBlue
-        bindBtn.setTitleColor(.white, for: .normal)
-        bindBtn.layer.cornerRadius = 10
-        bindBtn.heightAnchor.constraint(equalToConstant: 42).isActive = true
-        bindBtn.addAction(UIAction { [weak self] _ in
-            guard let self = self, let wx = selectedWx, let yyb = selectedYyb else {
-                self?.showMessage("请从列表选择微信和应用宝账号")
-                return
-            }
-            PortalService.shared.protocolBind(
-                wxWxid: wx.wxid ?? "",
-                yybOpenId: yyb.openid ?? "",
-                nickname: yyb.nickname ?? ""
-            ) { result in
-                DispatchQueue.main.async {
-                    switch result {
-                    case .failure(let error):
-                        self.handle(error)
-                    case .success:
-                        self.showMessage("绑定成功")
-                        ProtocolBindStore.shared.reload(yybAccounts: self.accounts)
-                    }
-                }
-            }
-        }, for: .touchUpInside)
-        let vstack = UIStackView(arrangedSubviews: [title, quotaLabel, hint, wxPicker, yybPicker, bindBtn])
-        vstack.axis = .vertical
-        vstack.spacing = 10
-        vstack.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(vstack)
-        NSLayoutConstraint.activate([
-            vstack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-            vstack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
-            vstack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
-            vstack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
-        ])
-        bindCardStack.addArrangedSubview(card)
     }
 
     private func confirmProtocolUnbind(wxWxid: String, yybOpenId: String) {

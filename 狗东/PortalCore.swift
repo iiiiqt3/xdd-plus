@@ -931,6 +931,7 @@ final class YybAccountStore {
     private(set) var status: PortalYybStatus?
     private(set) var lastUpdatedAt: Date?
     private(set) var isLoading = false
+    private(set) var sessionAutoChecked = false
     private var pendingAlertSummary: String?
 
     private init() {}
@@ -956,6 +957,7 @@ final class YybAccountStore {
         lastUpdatedAt = nil
         pendingAlertSummary = nil
         isLoading = false
+        sessionAutoChecked = false
         NotificationCenter.default.post(name: AppNotifications.yybStatusDidUpdate, object: nil)
     }
 
@@ -963,6 +965,12 @@ final class YybAccountStore {
         let text = pendingAlertSummary
         pendingAlertSummary = nil
         return text
+    }
+
+    func prefetchIfNeeded(autoCheck: Bool = true) {
+        guard AppSessionStore.shared.isAuthenticated else { return }
+        if sessionAutoChecked, status != nil { return }
+        prefetch(autoCheck: autoCheck)
     }
 
     func prefetch(autoCheck: Bool = true) {
@@ -977,6 +985,7 @@ final class YybAccountStore {
                 case .success(let st):
                     self.status = st
                     self.lastUpdatedAt = Date()
+                    self.sessionAutoChecked = true
                     if autoCheck, let s = st.checkSummary, (s.total ?? 0) > 0 {
                         var msg = "检测完成：共 \(s.total ?? 0) 个，可用 \(s.alive ?? 0) 个"
                         if (s.dead ?? 0) > 0 { msg += "，失效 \(s.dead ?? 0) 个" }
@@ -1006,6 +1015,7 @@ final class YybAccountStore {
                 case .success(let st):
                     self.status = st
                     self.lastUpdatedAt = Date()
+                    self.sessionAutoChecked = true
                     if showAlert, autoCheck, let s = st.checkSummary {
                         var msg = "检测完成：共 \(s.total ?? 0) 个，可用 \(s.alive ?? 0) 个"
                         if (s.dead ?? 0) > 0 { msg += "，失效 \(s.dead ?? 0) 个" }
