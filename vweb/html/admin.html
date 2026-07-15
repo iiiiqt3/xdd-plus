@@ -7002,12 +7002,12 @@ async function loadSysConfig() {
                     <div class="form-item full"><label>TCP 代理</label><input type="text" id="cfg_yybTCPProxy" value="${v(cfg.yybTCPProxy)}" placeholder="socks5://127.0.0.1:1080"></div>
                     <div class="form-item"><label>启用 51 代理</label><select id="cfg_yybProxy51Enabled">${sel(cfg.yybProxy51Enabled)}</select></div>
                     <div class="form-item"><label>51 套餐</label><select id="cfg_yybProxy51Plan"><option value="count" ${(cfg.yybProxy51Plan||'count')==='count'?'selected':''}>按量 packid=2</option><option value="traffic" ${cfg.yybProxy51Plan==='traffic'?'selected':''}>流量 packid=12</option></select></div>
-                    <div class="form-item full"><label>51 API 地址</label><input type="text" id="cfg_yybProxy51APIBase" value="${v(cfg.yybProxy51APIBase)}" placeholder="http://bapi.51daili.com/getapi2"></div>
-                    <div class="form-item"><label>51 账号</label><input type="text" id="cfg_yybProxy51AccessName" value="${v(cfg.yybProxy51AccessName)}"></div>
-                    <div class="form-item"><label>51 密码</label><input type="password" id="cfg_yybProxy51AccessPassword" value="${v(cfg.yybProxy51AccessPassword)}" autocomplete="off" placeholder="留空表示不修改已保存的密码"></div>
-                    <div class="form-item"><label>51 UID</label><input type="text" id="cfg_yybProxy51UID" value="${v(cfg.yybProxy51UID)}"></div>
-                    <div class="form-item"><label>默认 PackID</label><input type="text" id="cfg_yybProxy51DefaultPackID" value="${v(cfg.yybProxy51DefaultPackID)}" placeholder="2 或 12"></div>
-                    <div class="form-item"><label>线路池 Index</label><input type="text" id="cfg_yybProxy51LinePoolIndex" value="${v(cfg.yybProxy51LinePoolIndex)||'-1'}" placeholder="-1"></div>
+                    <div class="form-item full"><label>51 API 地址</label><input type="text" id="cfg_yybProxy51APIBase" value="${v(cfg.yybProxy51APIBase)}" placeholder="流量: http://capi.51daili.com/traffic/getip；按量: http://bapi.51daili.com/getapi2"></div>
+                    <div class="form-item"><label>51 账号</label><input type="text" id="cfg_yybProxy51AccessName" value="${v(cfg.yybProxy51AccessName)}" placeholder="IP 白名单模式留空；账号密码模式必填"></div>
+                    <div class="form-item"><label>51 密码</label><input type="password" id="cfg_yybProxy51AccessPassword" value="${v(cfg.yybProxy51AccessPassword)}" autocomplete="off" placeholder="白名单留空；账号模式留空表示不修改"></div>
+                    <div class="form-item"><label>51 UID</label><input type="text" id="cfg_yybProxy51UID" value="${v(cfg.yybProxy51UID)}" placeholder="流量白名单必填，如 73932"></div>
+                    <div class="form-item"><label>默认 PackID</label><input type="text" id="cfg_yybProxy51DefaultPackID" value="${v(cfg.yybProxy51DefaultPackID)}" placeholder="流量 12 / 按量 2"></div>
+                    <div class="form-item"><label>线路池 Index</label><input type="text" id="cfg_yybProxy51LinePoolIndex" value="${v(cfg.yybProxy51LinePoolIndex)}" placeholder="流量 1 / 按量 -1（留空自动）"></div>
                     <div class="form-item"><label>运营商 ISP</label><input type="text" id="cfg_yybProxy51ISP" value="${v(cfg.yybProxy51ISP)||'1'}" placeholder="1=电信"></div>
                     <div class="form-item"><label>免代理地区码</label><input type="text" id="cfg_yybProxy51BypassRegionCode" value="${v(cfg.yybProxy51BypassRegionCode)||'310100'}" placeholder="上海 310100"></div>
                     <div class="form-item"><label>免代理地区名</label><input type="text" id="cfg_yybProxy51BypassRegionName" value="${v(cfg.yybProxy51BypassRegionName)||'上海'}"></div>

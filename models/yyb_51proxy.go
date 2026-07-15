@@ -16,10 +16,12 @@ import (
 )
 
 const (
-	Yyb51FailClosedProxy           = "socks5://127.0.0.1:9"
-	yyb51ShortLivedProxyExtractTime = 3
-	yyb51ShortLivedProxyTTL        = 5 * time.Minute
-	yyb51DefaultAPIBase            = "http://bapi.51daili.com/getapi2"
+	Yyb51FailClosedProxy            = "socks5://127.0.0.1:9"
+	yyb51ShortLivedProxyExtractTime  = 3
+	yyb51TrafficProxyExtractTime     = 2
+	yyb51ShortLivedProxyTTL         = 5 * time.Minute
+	yyb51CountAPIBase                = "http://bapi.51daili.com/getapi2"
+	yyb51TrafficAPIBase              = "http://capi.51daili.com/traffic/getip"
 )
 
 // YybProxyAreaRequest 门户/后台加载 51 代理省市区
@@ -61,23 +63,29 @@ type yyb51ProxyResponse struct {
 
 func yyb51ConfigValues() (enabled bool, apiBase, accessName, accessPassword, uid, defaultPack, linePool, isp, bypassCode, bypassName string) {
 	c := Config.Yyb
+	plan := strings.TrimSpace(c.Proxy51Plan)
 	enabled = c.Proxy51Enabled
-	apiBase = strings.TrimSpace(c.Proxy51APIBase)
-	if apiBase == "" {
-		apiBase = yyb51DefaultAPIBase
-	}
-	accessName = strings.TrimSpace(c.Proxy51AccessName)
-	accessPassword = strings.TrimSpace(c.Proxy51AccessPassword)
-	uid = strings.TrimSpace(c.Proxy51UID)
 	defaultPack = strings.TrimSpace(c.Proxy51DefaultPackID)
 	if defaultPack == "" {
-		if strings.EqualFold(strings.TrimSpace(c.Proxy51Plan), "traffic") {
+		if strings.EqualFold(plan, "traffic") {
 			defaultPack = "12"
 		} else {
 			defaultPack = "2"
 		}
 	}
-	linePool = firstNonEmptyYyb(c.Proxy51LinePoolIndex, "-1")
+	apiBase = yyb51ResolveAPIBase(strings.TrimSpace(c.Proxy51APIBase), plan, defaultPack)
+	accessName = strings.TrimSpace(c.Proxy51AccessName)
+	accessPassword = strings.TrimSpace(c.Proxy51AccessPassword)
+	accessName, accessPassword = yyb51MergeCredentials(apiBase, accessName, accessPassword)
+	uid = yyb51MergeUID(apiBase, strings.TrimSpace(c.Proxy51UID))
+	linePool = strings.TrimSpace(c.Proxy51LinePoolIndex)
+	if linePool == "" {
+		if yyb51IsTrafficPlan(plan, apiBase, defaultPack) {
+			linePool = "1"
+		} else {
+			linePool = "-1"
+		}
+	}
 	isp = strings.TrimSpace(c.Proxy51ISP)
 	if isp == "" {
 		isp = "1"
@@ -91,6 +99,53 @@ func yyb51ConfigValues() (enabled bool, apiBase, accessName, accessPassword, uid
 		bypassName = "上海"
 	}
 	return
+}
+
+func yyb51IsTrafficPlan(plan, apiBase, packID string) bool {
+	api := strings.ToLower(strings.TrimSpace(apiBase))
+	if strings.Contains(api, "traffic/getip") || strings.Contains(api, "capi.51daili.com/traffic") {
+		return true
+	}
+	if strings.EqualFold(strings.TrimSpace(plan), "traffic") {
+		return true
+	}
+	return strings.TrimSpace(packID) == "12"
+}
+
+func yyb51ResolveAPIBase(apiBase, plan, packID string) string {
+	if apiBase = strings.TrimSpace(apiBase); apiBase != "" {
+		return apiBase
+	}
+	if yyb51IsTrafficPlan(plan, "", packID) {
+		return yyb51TrafficAPIBase
+	}
+	return yyb51CountAPIBase
+}
+
+func yyb51ParseAPIEndpoint(apiBase string) (*url.URL, error) {
+	u, err := url.Parse(strings.TrimSpace(apiBase))
+	if err != nil {
+		return nil, err
+	}
+	u.RawQuery = ""
+	u.Fragment = ""
+	return u, nil
+}
+
+func yyb51MaskExtractURL(u *url.URL, accountAuth bool) string {
+	if u == nil {
+		return ""
+	}
+	if !accountAuth {
+		return u.String()
+	}
+	clone := *u
+	q := clone.Query()
+	if q.Get("accessPassword") != "" {
+		q.Set("accessPassword", "****")
+	}
+	clone.RawQuery = q.Encode()
+	return clone.String()
 }
 
 func YybProxyShouldBypass(regionCode, regionName string) bool {
@@ -220,12 +275,17 @@ func yybFallbackAreaList(parent string) map[string]interface{} {
 
 // YybBuildProxyForLogin 为应用宝扫码提取/复用 51 SOCKS5
 func YybBuildProxyForLogin(opt YybProxyLoginOption) (string, map[string]interface{}, error) {
-	enabled, _, accessName, _, uid, defaultPack, _, _, bypassCode, bypassName := yyb51ConfigValues()
+	enabled, apiBase, accessName, accessPassword, uid, defaultPack, _, _, bypassCode, bypassName := yyb51ConfigValues()
+	accountAuth := yyb51UsesAccountAuth(accessName, accessPassword)
 	packID := firstNonEmptyYyb(opt.PackID, defaultPack)
 	regionCode := strings.TrimSpace(opt.RegionCode)
 	regionName := strings.TrimSpace(opt.RegionName)
-	Yyb().Infof("[51代理/扫码] 开始 enabled=%v opt.enabled=%v pack=%s region=%s(%s) account=%s uid=%s",
-		enabled, opt.Enabled, packID, regionName, regionCode, yyb51MaskAccount(accessName), yyb51MaskUID(uid))
+	authMode := "IP白名单"
+	if accountAuth {
+		authMode = "账号密码"
+	}
+	Yyb().Infof("[51代理/扫码] 开始 enabled=%v opt.enabled=%v pack=%s region=%s(%s) auth=%s api=%s account=%s uid=%s",
+		enabled, opt.Enabled, packID, regionName, regionCode, authMode, apiBase, yyb51MaskAccount(accessName), yyb51MaskUID(uid))
 	if !enabled || !opt.Enabled {
 		Yyb().Infof("[51代理/扫码] 跳过提取（51代理未启用或本次未走代理）")
 		return "", nil, nil
@@ -298,9 +358,57 @@ func yyb51MaskProxyHost(proxyURL string) string {
 	return u.Host
 }
 
-func yyb51ProxyAccountConfigured() bool {
-	_, _, accessName, accessPassword, _, _, _, _, _, _ := yyb51ConfigValues()
+// yyb51MergeCredentials 从独立配置或 API 地址 URL 查询参数合并 51 账号密码
+func yyb51MergeCredentials(apiBase, cfgName, cfgPass string) (accessName, accessPassword string) {
+	accessName = strings.TrimSpace(cfgName)
+	accessPassword = strings.TrimSpace(cfgPass)
+	if u, err := url.Parse(strings.TrimSpace(apiBase)); err == nil && u != nil {
+		q := u.Query()
+		if accessName == "" {
+			accessName = strings.TrimSpace(q.Get("accessName"))
+		}
+		if accessPassword == "" {
+			accessPassword = strings.TrimSpace(q.Get("accessPassword"))
+		}
+	}
+	return
+}
+
+func yyb51MergeUID(apiBase, cfgUID string) string {
+	uid := strings.TrimSpace(cfgUID)
+	if u, err := url.Parse(strings.TrimSpace(apiBase)); err == nil && u != nil {
+		if uid == "" {
+			uid = strings.TrimSpace(u.Query().Get("uid"))
+		}
+	}
+	return uid
+}
+
+func yyb51UsesAccountAuth(accessName, accessPassword string) bool {
 	return strings.TrimSpace(accessName) != "" && strings.TrimSpace(accessPassword) != ""
+}
+
+// yyb51ProxyExtractionReady 账号密码或 IP 白名单模式均可提取
+func yyb51ProxyExtractionReady() bool {
+	enabled, apiBase, accessName, accessPassword, uid, defaultPack, _, _, _, _ := yyb51ConfigValues()
+	if !enabled {
+		return false
+	}
+	if strings.TrimSpace(defaultPack) == "" {
+		return false
+	}
+	if yyb51UsesAccountAuth(accessName, accessPassword) {
+		return true
+	}
+	plan := strings.TrimSpace(Config.Yyb.Proxy51Plan)
+	if yyb51IsTrafficPlan(plan, apiBase, defaultPack) {
+		return strings.TrimSpace(uid) != ""
+	}
+	return true
+}
+
+func yyb51ProxyAccountConfigured() bool {
+	return yyb51ProxyExtractionReady()
 }
 
 // YybProxyTCPForCredentials 按账号已保存的代理地区续提 SOCKS5（getCode 等调用）
@@ -350,35 +458,57 @@ func yybProxyStillUsable(proxyURL string) bool {
 
 func yybExtract51Proxy(packID, regionCode, regionName string) (string, map[string]interface{}, error) {
 	_, apiBase, accessName, accessPassword, uid, _, linePool, isp, _, _ := yyb51ConfigValues()
+	plan := strings.TrimSpace(Config.Yyb.Proxy51Plan)
+	accountAuth := yyb51UsesAccountAuth(accessName, accessPassword)
 	packID = strings.TrimSpace(packID)
 	if packID == "" {
 		return "", nil, fmt.Errorf("51 代理 packid 为空")
 	}
-	if accessName == "" || accessPassword == "" {
-		Yyb().Warnf("[51代理] 提取失败：后台未配置账号 accessName=%s uid=%s（保存配置时密码留空会保留旧值；首次配置请填写 51 密码）",
-			yyb51MaskAccount(accessName), yyb51MaskUID(uid))
-		return "", nil, fmt.Errorf("请先在后台配置 51 代理账号（51 账号/密码为空，请填写后保存配置）")
+	isTraffic := yyb51IsTrafficPlan(plan, apiBase, packID)
+	extractTime := yyb51ShortLivedProxyExtractTime
+	if isTraffic {
+		extractTime = yyb51TrafficProxyExtractTime
 	}
-	Yyb().Infof("[51代理] 请求提取 pack=%s region=%s(%s) linePool=%s isp=%s api=%s",
-		packID, regionName, regionCode, linePool, isp, firstNonEmptyYyb(apiBase, yyb51DefaultAPIBase))
-	u, err := url.Parse(firstNonEmptyYyb(apiBase, yyb51DefaultAPIBase))
+	if accountAuth {
+		Yyb().Infof("[51代理] 账号密码模式 pack=%s region=%s(%s) account=%s uid=%s api=%s",
+			packID, regionName, regionCode, yyb51MaskAccount(accessName), yyb51MaskUID(uid), apiBase)
+	} else if isTraffic {
+		if strings.TrimSpace(uid) == "" {
+			Yyb().Warnf("[51代理] 流量套餐白名单模式需要 UID，请在后台填写 51 UID（如 73932）")
+			return "", nil, fmt.Errorf("流量套餐白名单模式需要配置 51 UID")
+		}
+		Yyb().Infof("[51代理] IP白名单模式 pack=%s region=%s(%s) uid=%s api=%s（请确认服务器 IP 已在 51 后台加白）",
+			packID, regionName, regionCode, yyb51MaskUID(uid), apiBase)
+	} else {
+		Yyb().Infof("[51代理] IP白名单模式 pack=%s region=%s(%s) uid=%s api=%s",
+			packID, regionName, regionCode, yyb51MaskUID(uid), apiBase)
+	}
+	u, err := yyb51ParseAPIEndpoint(apiBase)
 	if err != nil {
 		return "", nil, err
 	}
 	q := u.Query()
 	q.Set("linePoolIndex", linePool)
 	q.Set("packid", packID)
-	q.Set("time", fmt.Sprintf("%d", yyb51ShortLivedProxyExtractTime))
+	q.Set("time", fmt.Sprintf("%d", extractTime))
 	q.Set("qty", "1")
 	q.Set("port", "2")
 	q.Set("format", "json")
-	q.Set("field", "ipport,regioncode")
-	q.Set("ct", "1")
-	if isp != "" {
-		q.Set("isp", isp)
+	if isTraffic {
+		q.Set("field", "ipport")
+	} else {
+		q.Set("field", "ipport,regioncode")
+		if isp != "" {
+			q.Set("isp", isp)
+		}
 	}
-	q.Set("accessName", accessName)
-	q.Set("accessPassword", accessPassword)
+	if accountAuth {
+		q.Set("ct", "1")
+		q.Set("accessName", accessName)
+		q.Set("accessPassword", accessPassword)
+	} else if !isTraffic {
+		q.Set("ct", "0")
+	}
 	q.Set("rid", yybRandID())
 	if uid != "" {
 		q.Set("uid", uid)
@@ -387,6 +517,7 @@ func yybExtract51Proxy(packID, regionCode, regionName string) (string, map[strin
 		q.Set("regionCode", regionCode)
 	}
 	u.RawQuery = q.Encode()
+	Yyb().Infof("[51代理] 请求 %s", yyb51MaskExtractURL(u, accountAuth))
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
@@ -441,7 +572,12 @@ func yybBuildProxyMetaFromIPPort(accessName, accessPassword, packID, regionCode,
 	if ipport == "" {
 		return "", nil, fmt.Errorf("51 代理未返回 ipport")
 	}
-	proxyURL := "socks5://" + url.UserPassword(accessName, accessPassword).String() + "@" + ipport
+	var proxyURL string
+	if yyb51UsesAccountAuth(accessName, accessPassword) {
+		proxyURL = "socks5://" + url.UserPassword(accessName, accessPassword).String() + "@" + ipport
+	} else {
+		proxyURL = "socks5://" + ipport
+	}
 	expireAt := time.Now().Add(yyb51ShortLivedProxyTTL).Unix()
 	if expireText != "" {
 		if t, err := time.ParseInLocation("2006-01-02 15:04:05", expireText, time.Local); err == nil {
@@ -593,13 +729,19 @@ func copyMapAny(in map[string]any) map[string]any {
 
 // PortalYybProxyConfig 门户展示 51 代理配置
 func PortalYybProxyConfig() map[string]interface{} {
-	enabled, _, accessName, _, _, defaultPack, linePool, _, bypassCode, bypassName := yyb51ConfigValues()
+	enabled, apiBase, accessName, accessPassword, _, defaultPack, linePool, _, bypassCode, bypassName := yyb51ConfigValues()
+	authMode := "whitelist"
+	if yyb51UsesAccountAuth(accessName, accessPassword) {
+		authMode = "account"
+	}
 	return map[string]interface{}{
-		"proxyEnabled":            enabled,
-		"proxyAccountConfigured":  strings.TrimSpace(accessName) != "" && yyb51ProxyAccountConfigured(),
-		"proxyDefaultPackid":      defaultPack,
-		"proxyLinePoolIndex":      linePool,
-		"proxyBypassRegionCode":   bypassCode,
-		"proxyBypassRegionName":   bypassName,
+		"proxyEnabled":           enabled,
+		"proxyAccountConfigured": yyb51ProxyExtractionReady(),
+		"proxyAuthMode":          authMode,
+		"proxyDefaultPackid":     defaultPack,
+		"proxyLinePoolIndex":     linePool,
+		"proxyAPIBase":           apiBase,
+		"proxyBypassRegionCode":  bypassCode,
+		"proxyBypassRegionName":  bypassName,
 	}
 }
