@@ -85,9 +85,17 @@
             state.proxyPackId = cfg.proxyDefaultPackid || '';
             const row = $('yyb-proxyRegionRow');
             const hint = $('yyb-proxyHint');
+            const warn = $('yyb-proxyConfigWarn');
             if (row) row.style.display = state.proxyEnabled ? 'grid' : 'none';
-            if (hint && cfg.proxyBypassRegionName) {
-                hint.textContent = '选择登录地区后生成二维码；「' + cfg.proxyBypassRegionName + '」等地区免代理直连。';
+            if (hint) {
+                hint.style.display = state.proxyEnabled ? 'block' : 'none';
+                if (cfg.proxyBypassRegionName) {
+                    hint.textContent = '请先选择省/市，再点击「扫码添加」；「' + cfg.proxyBypassRegionName + '」等地区免代理直连。';
+                }
+            }
+            if (warn) {
+                const ok = cfg.proxyAccountConfigured !== false;
+                warn.style.display = state.proxyEnabled && !ok ? 'block' : 'none';
             }
             if (state.proxyEnabled) await loadProxyProvinces();
         } catch (e) {
@@ -536,16 +544,17 @@
     }
 
     async function startScan() {
+        const region = selectedProxyRegion();
+        if (state.proxyEnabled && !region.regionCode) {
+            if (typeof global.toast === 'function') global.toast('请先选择登录省/市', 'warning');
+            return;
+        }
+        const scanBtn = $('yyb-scanBtn');
+        setBtnLoading(scanBtn, true, '生成中…');
+        $('yyb-qrModal').classList.add('show');
+        $('yyb-qrBox').innerHTML = '<span class="muted">正在' + (state.proxyEnabled && region.regionCode ? '提取「' + esc(region.regionName) + '」代理并' : '') + '生成二维码…</span>';
+        $('yyb-qrHint').textContent = '请稍候';
         try {
-            if (state.proxyEnabled) {
-                const region = selectedProxyRegion();
-                if (!region.regionCode) {
-                    if (typeof global.toast === 'function') global.toast('请先选择登录城市', 'warning');
-                    $('yyb-qrModal').classList.add('show');
-                    return;
-                }
-            }
-            const region = selectedProxyRegion();
             const payload = {
                 useProxy: state.proxyEnabled,
                 regionCode: region.regionCode,
@@ -584,7 +593,13 @@
             $('yyb-qrModal').classList.add('show');
             stopScanPoll();
             scheduleScanPoll(0);
-        } catch (e) { setResult(e.message, true); }
+        } catch (e) {
+            $('yyb-qrBox').innerHTML = '<span style="color:#f56c6c;font-size:13px;line-height:1.6;">' + esc(e.message || '生成失败') + '</span>';
+            $('yyb-qrHint').textContent = '生成失败，请查看提示或换地区重试';
+            if (typeof global.toast === 'function') global.toast(e.message || '生成失败', 'error');
+        } finally {
+            setBtnLoading(scanBtn, false);
+        }
     }
 
     function bindEvents() {

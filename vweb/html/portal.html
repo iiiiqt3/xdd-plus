@@ -1461,20 +1461,9 @@
             <h3>微信扫码 <span class="yyb-test-tag">测试</span></h3>
             <button class="modal-close" id="yyb-qrCloseBtn" type="button">×</button>
         </div>
-        <div id="yyb-proxyRegionRow" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-            <div>
-                <label class="muted" style="font-size:12px;display:block;margin-bottom:4px;">省份</label>
-                <select id="yyb-proxyProvince" style="width:100%;padding:8px 10px;border:1px solid var(--glass-border);border-radius:8px;"></select>
-            </div>
-            <div>
-                <label class="muted" style="font-size:12px;display:block;margin-bottom:4px;">城市</label>
-                <select id="yyb-proxyCity" style="width:100%;padding:8px 10px;border:1px solid var(--glass-border);border-radius:8px;"></select>
-            </div>
-        </div>
-        <p class="muted" id="yyb-proxyHint" style="font-size:12px;margin:0 0 10px;line-height:1.6;">选择登录地区后生成二维码；免代理地区将直连登录。</p>
-        <p class="muted" id="yyb-qrHint" style="margin-bottom:8px;line-height:1.7;">请先选择地区，再点击「扫码添加」</p>
+        <p class="muted" id="yyb-qrHint" style="margin-bottom:8px;line-height:1.7;">请使用微信扫码确认登录</p>
         <p id="yyb-qrCost" style="display:none;margin:0 0 14px;padding:8px 12px;border-radius:8px;background:rgba(245,158,11,.12);color:#d97706;font-size:13px;font-weight:600;line-height:1.5;"></p>
-        <div style="min-height:200px;display:grid;place-items:center;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:10px;margin-bottom:14px;" id="yyb-qrBox">生成中…</div>
+        <div style="min-height:200px;display:grid;place-items:center;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:10px;margin-bottom:14px;" id="yyb-qrBox">等待生成…</div>
     </div>
 </div>
 
@@ -2174,6 +2163,18 @@
                     <span class="yyb-spin" id="yyb-statusSpin" style="display:inline-block;"></span>
                     <span id="yyb-statusText">进入页面后将自动检测账号状态</span>
                 </div>
+                <div id="yyb-proxyRegionRow" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                    <div>
+                        <label class="muted" style="font-size:12px;display:block;margin-bottom:4px;">登录省份</label>
+                        <select id="yyb-proxyProvince" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;background:var(--glass-bg);color:var(--text);"></select>
+                    </div>
+                    <div>
+                        <label class="muted" style="font-size:12px;display:block;margin-bottom:4px;">登录城市</label>
+                        <select id="yyb-proxyCity" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;background:var(--glass-bg);color:var(--text);"></select>
+                    </div>
+                </div>
+                <p class="muted" id="yyb-proxyHint" style="font-size:12px;margin:0 0 12px;line-height:1.6;display:none;">请先选择省/市，再点击「扫码添加」；免代理地区将直连登录。</p>
+                <p class="muted" id="yyb-proxyConfigWarn" style="display:none;font-size:12px;margin:0 0 12px;line-height:1.6;color:#d97706;">后台 51 代理账号未配置完整，请联系管理员在后台填写 51 账号与密码后保存。</p>
                 <div class="yyb-toolbar" style="margin-bottom:14px;">
                     <button class="btn accent" id="yyb-scanBtn" type="button">扫码添加</button>
                     <button class="btn secondary" id="yyb-reloadBtn" type="button">刷新并检测</button>

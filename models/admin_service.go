@@ -150,7 +150,8 @@ func GetJdConfigForAdmin() map[string]interface{} {
 		"yybProxy51Plan":        Config.Yyb.Proxy51Plan,
 		"yybProxy51APIBase":     Config.Yyb.Proxy51APIBase,
 		"yybProxy51AccessName":  Config.Yyb.Proxy51AccessName,
-		"yybProxy51AccessPassword": Config.Yyb.Proxy51AccessPassword,
+		"yybProxy51AccessPassword": "",
+		"yybProxy51HasPassword": strings.TrimSpace(Config.Yyb.Proxy51AccessPassword) != "",
 		"yybProxy51UID":         Config.Yyb.Proxy51UID,
 		"yybProxy51DefaultPackID": Config.Yyb.Proxy51DefaultPackID,
 		"yybProxy51LinePoolIndex": Config.Yyb.Proxy51LinePoolIndex,
@@ -402,7 +403,7 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	if v, ok := req["yybProxy51AccessName"].(string); ok {
 		configMap["yyb_proxy_51_access_name"] = fmt.Sprintf("%q", v)
 	}
-	if v, ok := req["yybProxy51AccessPassword"].(string); ok {
+	if v, ok := req["yybProxy51AccessPassword"].(string); ok && strings.TrimSpace(v) != "" {
 		configMap["yyb_proxy_51_access_password"] = fmt.Sprintf("%q", v)
 	}
 	if v, ok := req["yybProxy51UID"].(string); ok {

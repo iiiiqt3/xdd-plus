@@ -220,18 +220,22 @@ func yybFallbackAreaList(parent string) map[string]interface{} {
 
 // YybBuildProxyForLogin 为应用宝扫码提取/复用 51 SOCKS5
 func YybBuildProxyForLogin(opt YybProxyLoginOption) (string, map[string]interface{}, error) {
-	enabled, _, _, _, _, defaultPack, _, _, bypassCode, bypassName := yyb51ConfigValues()
-	if !enabled || !opt.Enabled {
-		return "", nil, nil
-	}
+	enabled, _, accessName, accessPassword, uid, defaultPack, _, _, bypassCode, bypassName := yyb51ConfigValues()
 	packID := firstNonEmptyYyb(opt.PackID, defaultPack)
 	regionCode := strings.TrimSpace(opt.RegionCode)
 	regionName := strings.TrimSpace(opt.RegionName)
+	Yyb().Infof("[51代理/扫码] 开始 enabled=%v opt.enabled=%v pack=%s region=%s(%s) account=%s uid=%s",
+		enabled, opt.Enabled, packID, regionName, regionCode, yyb51MaskAccount(accessName), yyb51MaskUID(uid))
+	if !enabled || !opt.Enabled {
+		Yyb().Infof("[51代理/扫码] 跳过提取（51代理未启用或本次未走代理）")
+		return "", nil, nil
+	}
 	if regionCode == "" && regionName == "" {
 		regionCode = bypassCode
 		regionName = bypassName
 	}
 	if YybProxyShouldBypass(regionCode, regionName) {
+		Yyb().Infof("[51代理/扫码] 免代理直连 region=%s(%s)", regionName, regionCode)
 		return "", map[string]interface{}{
 			"yyb_proxy_enabled":     false,
 			"yyb_proxy_bypass":      true,
@@ -243,6 +247,7 @@ func YybBuildProxyForLogin(opt YybProxyLoginOption) (string, map[string]interfac
 	}
 	if strings.TrimSpace(opt.ExistingProxyURL) != "" && yybProxyStillUsable(opt.ExistingProxyURL) {
 		now := time.Now().Unix()
+		Yyb().Infof("[51代理/扫码] 复用已有代理 ipport=%s", yyb51MaskProxyHost(opt.ExistingProxyURL))
 		return strings.TrimSpace(opt.ExistingProxyURL), map[string]interface{}{
 			"yyb_proxy_enabled":       true,
 			"yyb_proxy_packid":        packID,
@@ -257,6 +262,45 @@ func YybBuildProxyForLogin(opt YybProxyLoginOption) (string, map[string]interfac
 		}, nil
 	}
 	return yybExtract51Proxy(packID, regionCode, regionName)
+}
+
+func yyb51MaskAccount(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "(空)"
+	}
+	if len(name) <= 2 {
+		return name[:1] + "*"
+	}
+	return name[:2] + "***"
+}
+
+func yyb51MaskUID(uid string) string {
+	uid = strings.TrimSpace(uid)
+	if uid == "" {
+		return "(空)"
+	}
+	if len(uid) <= 4 {
+		return "****"
+	}
+	return uid[:2] + "****" + uid[len(uid)-2:]
+}
+
+func yyb51MaskProxyHost(proxyURL string) string {
+	proxyURL = strings.TrimSpace(proxyURL)
+	if proxyURL == "" {
+		return "(直连)"
+	}
+	u, err := url.Parse(proxyURL)
+	if err != nil || u.Host == "" {
+		return "(代理)"
+	}
+	return u.Host
+}
+
+func yyb51ProxyAccountConfigured() bool {
+	_, _, accessName, accessPassword, _, _, _, _, _, _ := yyb51ConfigValues()
+	return strings.TrimSpace(accessName) != "" && strings.TrimSpace(accessPassword) != ""
 }
 
 // YybProxyTCPForCredentials 按账号已保存的代理地区续提 SOCKS5（getCode 等调用）
@@ -311,8 +355,12 @@ func yybExtract51Proxy(packID, regionCode, regionName string) (string, map[strin
 		return "", nil, fmt.Errorf("51 代理 packid 为空")
 	}
 	if accessName == "" || accessPassword == "" {
-		return "", nil, fmt.Errorf("请先在后台配置 51 代理账号")
+		Yyb().Warnf("[51代理] 提取失败：后台未配置账号 accessName=%s uid=%s（保存配置时密码留空会保留旧值；首次配置请填写 51 密码）",
+			yyb51MaskAccount(accessName), yyb51MaskUID(uid))
+		return "", nil, fmt.Errorf("请先在后台配置 51 代理账号（51 账号/密码为空，请填写后保存配置）")
 	}
+	Yyb().Infof("[51代理] 请求提取 pack=%s region=%s(%s) linePool=%s isp=%s api=%s",
+		packID, regionName, regionCode, linePool, isp, firstNonEmptyYyb(apiBase, yyb51DefaultAPIBase))
 	u, err := url.Parse(firstNonEmptyYyb(apiBase, yyb51DefaultAPIBase))
 	if err != nil {
 		return "", nil, err
@@ -367,6 +415,7 @@ func yybExtract51Proxy(packID, regionCode, regionName string) (string, map[strin
 		if msg == "" {
 			msg = truncateStrYyb(string(body), 200)
 		}
+		Yyb().Warnf("[51代理] 提取失败 region=%s(%s): %s", regionName, regionCode, msg)
 		return "", nil, fmt.Errorf("51 代理提取失败: %s", msg)
 	}
 	item := parsed.Data[0]
@@ -409,6 +458,7 @@ func yybBuildProxyMetaFromIPPort(accessName, accessPassword, packID, regionCode,
 		"yyb_proxy_expire_at":   expireAt,
 		"yyb_proxy_last_at":     time.Now().Unix(),
 	}
+	Yyb().Infof("[51代理] 提取成功 region=%s(%s) ipport=%s proxy=%s", regionName, regionCode, ipport, yyb51MaskProxyHost(proxyURL))
 	return proxyURL, meta, nil
 }
 
@@ -543,12 +593,13 @@ func copyMapAny(in map[string]any) map[string]any {
 
 // PortalYybProxyConfig 门户展示 51 代理配置
 func PortalYybProxyConfig() map[string]interface{} {
-	enabled, _, _, _, _, defaultPack, linePool, _, bypassCode, bypassName := yyb51ConfigValues()
+	enabled, _, accessName, _, _, defaultPack, linePool, _, bypassCode, bypassName := yyb51ConfigValues()
 	return map[string]interface{}{
-		"proxyEnabled":          enabled,
-		"proxyDefaultPackid":    defaultPack,
-		"proxyLinePoolIndex":    linePool,
-		"proxyBypassRegionCode": bypassCode,
-		"proxyBypassRegionName": bypassName,
+		"proxyEnabled":            enabled,
+		"proxyAccountConfigured":  strings.TrimSpace(accessName) != "" && yyb51ProxyAccountConfigured(),
+		"proxyDefaultPackid":      defaultPack,
+		"proxyLinePoolIndex":      linePool,
+		"proxyBypassRegionCode":   bypassCode,
+		"proxyBypassRegionName":   bypassName,
 	}
 }
