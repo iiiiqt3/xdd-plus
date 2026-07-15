@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -82,6 +83,10 @@ func NewPool(cfg Config, db *store.DB) *Pool {
 		loginSem:     make(chan struct{}, cfg.MaxLoginConcurrency),
 		shortlinkSem: make(chan struct{}, cfg.MaxShortlinkConcurrency),
 	}
+}
+
+func (p *Pool) SetTCPProxy(proxy string) {
+	p.cfg.TCPProxy = strings.TrimSpace(proxy)
 }
 
 func (p *Pool) GetCode(ctx context.Context, loginBuffer, appID string, accountID int64, tcpProxy string) (map[string]any, error) {

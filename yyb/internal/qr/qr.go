@@ -71,6 +71,8 @@ type PollResult struct {
 type Client struct {
 	timeout      time.Duration
 	loginBuffers *protocol.LoginBufferClient
+	tcpProxy     string
+	fallback     bool
 }
 
 func NewClient(timeout time.Duration) *Client {
@@ -80,7 +82,29 @@ func NewClient(timeout time.Duration) *Client {
 	}
 }
 
+func NewClientWithProxy(timeout time.Duration, tcpProxy string, fallbackDirect bool) *Client {
+	return &Client{
+		timeout:      timeout,
+		loginBuffers: protocol.NewLoginBufferClientWithProxy(timeout, tcpProxy, fallbackDirect),
+		tcpProxy:     tcpProxy,
+		fallback:     fallbackDirect,
+	}
+}
+
 func (c *Client) LoginBuffers() *protocol.LoginBufferClient { return c.loginBuffers }
+
+func (c *Client) ReplaceProxyForSession(sess *Session, tcpProxy string, fallbackDirect bool) {
+	c.tcpProxy = tcpProxy
+	c.fallback = fallbackDirect
+	c.loginBuffers = protocol.NewLoginBufferClientWithProxy(c.timeout, tcpProxy, fallbackDirect)
+	if sess != nil {
+		sess.mu.Lock()
+		defer sess.mu.Unlock()
+		hc := protocol.NewHTTPClientWithTCPProxy(c.timeout, tcpProxy, fallbackDirect)
+		hc.Jar = sess.Jar
+		sess.HTTPClient = hc
+	}
+}
 
 func (c *Client) GetQRCodeImage(ctx context.Context) (ImageResult, error) {
 	sess, err := c.CreateSession(ctx)
@@ -99,7 +123,8 @@ func (c *Client) CreateSession(ctx context.Context) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	hc := &http.Client{Timeout: c.timeout, Jar: jar}
+	hc := protocol.NewHTTPClientWithTCPProxy(c.timeout, c.tcpProxy, c.fallback)
+	hc.Jar = jar
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, oauthURL, nil)
 	if err != nil {
 		return nil, err
@@ -168,9 +193,7 @@ func (c *Client) PollQRCode(ctx context.Context, sess *Session) (PollResult, err
 		return PollResult{}, err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0")
-	// 长轮询不能用创建会话时的短超时 Client（默认 8s），否则会在微信返回前断开。
-	pollClient := &http.Client{Timeout: longPollHTTPWait, Jar: sess.Jar}
-	resp, err := pollClient.Do(req)
+	resp, err := sess.HTTPClient.Do(req)
 	if err != nil {
 		if isPollTransientErr(err) {
 			sess.Status = "pending"

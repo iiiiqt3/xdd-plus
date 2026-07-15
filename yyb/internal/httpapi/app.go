@@ -28,6 +28,7 @@ type Config struct {
 	DBFilename     string
 	GormDB         *gorm.DB
 	TCPProxy       string
+	Proxy51Enabled bool
 	SessionTTL     time.Duration
 	RequestTimeout time.Duration
 	AvatarTimeout  time.Duration
@@ -42,9 +43,14 @@ type App struct {
 	pool      *protocol.Pool
 	qr        *qr.Client
 
+	accountTCPProxy AccountTCPProxyResolver
+
 	mu         sync.Mutex
 	qrSessions map[string]*qr.Session
 }
+
+// AccountTCPProxyResolver 按账号 credentials 解析 SOCKS5（51 代理账号级续提）
+type AccountTCPProxyResolver func(ctx context.Context, acc *store.WechatAccount) (proxy string, updateCred bool, cred map[string]any)
 
 var swaggerDocsHandler = httpSwagger.Handler(
 	httpSwagger.URL("/openapi.json"),
@@ -93,6 +99,10 @@ func NewApp(cfg Config) (*App, error) {
 	poolCfg.SessionTTL = cfg.SessionTTL
 	poolCfg.ShortlinkTimeout = cfg.RequestTimeout
 	poolCfg.TCPProxy = cfg.TCPProxy
+	if cfg.Proxy51Enabled {
+		poolCfg.TCPProxy = ""
+		poolCfg.TCPProxyFallbackDirect = false
+	}
 	pool := protocol.NewPool(poolCfg, db)
 	return &App{
 		cfg:        cfg,
@@ -109,6 +119,16 @@ func (a *App) Close() error {
 		return a.db.Close()
 	}
 	return nil
+}
+
+// SetTCPProxy 运行时切换默认 TCP 代理（51 代理扫码等）
+func (a *App) SetTCPProxy(proxy string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.cfg.TCPProxy = strings.TrimSpace(proxy)
+	if a.pool != nil {
+		a.pool.SetTCPProxy(proxy)
+	}
 }
 
 func (a *App) Handler() http.Handler {
@@ -566,12 +586,65 @@ func (a *App) serveAvatar(w http.ResponseWriter, r *http.Request, acc *store.Wec
 	writeError(w, http.StatusNotFound, "no avatar")
 }
 
-func (a *App) storeFromScan(ctx context.Context, loginBuffer string, creds protocol.LoginBufferCredentials, userInfo map[string]any) (*store.WechatAccount, error) {
+func (a *App) SetAccountTCPProxyResolver(r AccountTCPProxyResolver) {
+	a.accountTCPProxy = r
+}
+
+func (a *App) tcpProxyForAccount(ctx context.Context, acc *store.WechatAccount) string {
+	if a.accountTCPProxy != nil && acc != nil {
+		proxy, update, cred := a.accountTCPProxy(ctx, acc)
+		if update && cred != nil {
+			_ = a.db.SetAccountCredential(ctx, acc.ID, acc.LoginBuffer, cred)
+			acc.Credentials = cred
+			if strings.TrimSpace(proxy) != "" {
+				_ = a.db.InvalidateSession(ctx, acc.ID, proxy)
+			}
+		}
+		if a.cfg.Proxy51Enabled {
+			return strings.TrimSpace(proxy)
+		}
+	}
+	return a.cfg.TCPProxy
+}
+
+func (a *App) StoreScanAccount(ctx context.Context, loginBuffer string, creds protocol.LoginBufferCredentials, proxyMeta map[string]interface{}) (*store.AccountPublic, error) {
+	var userInfo map[string]any
+	if ui, err := a.qr.LoginBuffers().FetchUserInfo(ctx, creds); err == nil {
+		userInfo = ui
+	}
+	acc, err := a.storeFromScanWithMeta(ctx, loginBuffer, creds, userInfo, proxyMeta)
+	if err != nil {
+		return nil, err
+	}
+	a.ensureAccountUIN(ctx, acc)
+	if updated, err := a.db.GetAccount(ctx, acc.ID); err == nil {
+		acc = updated
+	}
+	pub := acc.Public()
+	return &pub, nil
+}
+
+func (a *App) storeFromScanWithMeta(ctx context.Context, loginBuffer string, creds protocol.LoginBufferCredentials, userInfo map[string]any, proxyMeta map[string]interface{}) (*store.WechatAccount, error) {
 	openid := creds.OpenID
 	nick := pickNickname(userInfo, creds.Nickname)
 	avatar := a.resolveAvatar(ctx, openid, userInfo)
 	status := "alive"
-	return a.db.UpsertAccount(ctx, openid, loginBuffer, stringPtrMaybe(nick), stringPtrMaybe(nick), stringPtrMaybe(avatar), userInfo, creds.ToMap(), &status)
+	credMap := creds.ToMap()
+	applyProxyMeta(credMap, proxyMeta)
+	return a.db.UpsertAccount(ctx, openid, loginBuffer, stringPtrMaybe(nick), stringPtrMaybe(nick), stringPtrMaybe(avatar), userInfo, credMap, &status)
+}
+
+func applyProxyMeta(dst map[string]any, meta map[string]interface{}) {
+	if dst == nil || meta == nil {
+		return
+	}
+	for k, v := range meta {
+		dst[k] = v
+	}
+}
+
+func (a *App) storeFromScan(ctx context.Context, loginBuffer string, creds protocol.LoginBufferCredentials, userInfo map[string]any) (*store.WechatAccount, error) {
+	return a.storeFromScanWithMeta(ctx, loginBuffer, creds, userInfo, nil)
 }
 
 func (a *App) ensureAccountUIN(ctx context.Context, acc *store.WechatAccount) {
@@ -622,7 +695,7 @@ type accountExpiredError struct{ openid string }
 func (e accountExpiredError) Error() string { return "account expired: " + e.openid }
 
 func (a *App) invokeWXApp(ctx context.Context, acc *store.WechatAccount, appID string, payload map[string]any, call wxappCall) (map[string]any, error) {
-	proxy := a.cfg.TCPProxy
+	proxy := a.tcpProxyForAccount(ctx, acc)
 	if _, err := a.db.GetSession(ctx, acc.ID, proxy); err == nil {
 		result, err := call(ctx, acc, appID, payload)
 		if err == nil {
@@ -642,15 +715,15 @@ func (a *App) invokeWXApp(ctx context.Context, acc *store.WechatAccount, appID s
 }
 
 func (a *App) invokeGetCode(ctx context.Context, acc *store.WechatAccount, appID string, _ map[string]any) (map[string]any, error) {
-	return a.pool.GetCode(ctx, acc.LoginBuffer, appID, acc.ID, a.cfg.TCPProxy)
+	return a.pool.GetCode(ctx, acc.LoginBuffer, appID, acc.ID, a.tcpProxyForAccount(ctx, acc))
 }
 
 func (a *App) invokeGetPhoneNumber(ctx context.Context, acc *store.WechatAccount, appID string, _ map[string]any) (map[string]any, error) {
-	return a.pool.GetPhoneNumber(ctx, acc.LoginBuffer, appID, acc.ID, a.cfg.TCPProxy)
+	return a.pool.GetPhoneNumber(ctx, acc.LoginBuffer, appID, acc.ID, a.tcpProxyForAccount(ctx, acc))
 }
 
 func (a *App) invokeOperateWXData(ctx context.Context, acc *store.WechatAccount, appID string, payload map[string]any) (map[string]any, error) {
-	return a.pool.OperateWXData(ctx, acc.LoginBuffer, appID, payload, acc.ID, a.cfg.TCPProxy)
+	return a.pool.OperateWXData(ctx, acc.LoginBuffer, appID, payload, acc.ID, a.tcpProxyForAccount(ctx, acc))
 }
 
 func refreshOut(acc *store.WechatAccount, status string) map[string]any {

@@ -1456,12 +1456,23 @@
 
 <!-- 应用宝扫码模态框 -->
 <div class="modal-mask" id="yyb-qrModal">
-    <div class="modal" style="max-width:380px;">
+    <div class="modal" style="max-width:420px;">
         <div class="modal-header">
             <h3>微信扫码 <span class="yyb-test-tag">测试</span></h3>
             <button class="modal-close" id="yyb-qrCloseBtn" type="button">×</button>
         </div>
-        <p class="muted" id="yyb-qrHint" style="margin-bottom:8px;line-height:1.7;">请使用微信扫描二维码</p>
+        <div id="yyb-proxyRegionRow" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+            <div>
+                <label class="muted" style="font-size:12px;display:block;margin-bottom:4px;">省份</label>
+                <select id="yyb-proxyProvince" style="width:100%;padding:8px 10px;border:1px solid var(--glass-border);border-radius:8px;"></select>
+            </div>
+            <div>
+                <label class="muted" style="font-size:12px;display:block;margin-bottom:4px;">城市</label>
+                <select id="yyb-proxyCity" style="width:100%;padding:8px 10px;border:1px solid var(--glass-border);border-radius:8px;"></select>
+            </div>
+        </div>
+        <p class="muted" id="yyb-proxyHint" style="font-size:12px;margin:0 0 10px;line-height:1.6;">选择登录地区后生成二维码；免代理地区将直连登录。</p>
+        <p class="muted" id="yyb-qrHint" style="margin-bottom:8px;line-height:1.7;">请先选择地区，再点击「扫码添加」</p>
         <p id="yyb-qrCost" style="display:none;margin:0 0 14px;padding:8px 12px;border-radius:8px;background:rgba(245,158,11,.12);color:#d97706;font-size:13px;font-weight:600;line-height:1.5;"></p>
         <div style="min-height:200px;display:grid;place-items:center;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:10px;margin-bottom:14px;" id="yyb-qrBox">生成中…</div>
     </div>
@@ -2167,6 +2178,7 @@
                     <button class="btn accent" id="yyb-scanBtn" type="button">扫码添加</button>
                     <button class="btn secondary" id="yyb-reloadBtn" type="button">刷新并检测</button>
                 </div>
+                <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 14px;">扫码前请选择登录省/市；上海等免代理地区直连，其他地区自动提取 51 短效 SOCKS5（与 xdd-g 相同）。</p>
 
                 <div class="card" style="margin-bottom:16px;padding:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
@@ -2251,6 +2263,20 @@
                     💡 <strong>操作提示：</strong>点击设备卡片上的按钮可直接操作｜设备离线时可点击「唤醒」或「重登」恢复｜首次挂主设备请使用下方「📱 微信扫码登录」
                 </div>
 
+                <div class="card" id="protoBindCard" style="margin-bottom:16px;padding:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                        <h4 style="font-size:14px;margin:0;">🔗 协议双绑（微信 wxid ↔ 应用宝 openid）</h4>
+                        <span class="muted" style="font-size:12px;" id="protoBindQuota">加载名额…</span>
+                    </div>
+                    <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;line-height:1.7;">绑定后青龙脚本仍填微信 wxid，网关自动走应用宝；解绑后 wxid 失效，应用宝 openid（owNAX 开头）仍可用。</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:12px;">
+                        <input id="protoBindWx" placeholder="微信 wxid" style="padding:8px 10px;border:1px solid var(--glass-border);border-radius:8px;">
+                        <input id="protoBindOpenID" placeholder="应用宝 openid（owNAX…）" style="padding:8px 10px;border:1px solid var(--glass-border);border-radius:8px;">
+                        <button class="btn accent" type="button" onclick="bindProtocolPair()">绑定</button>
+                    </div>
+                    <div id="protoBindList" style="font-size:12px;color:var(--text-muted);">加载中…</div>
+                </div>
+
                 <div class="wx-device-grid" id="wxDeviceGrid">
                     <div class="wx-empty-state"><div class="empty-icon">📱</div><p>暂无微信协议设备</p><p style="font-size:11px;">首次使用请点击下方「微信扫码登录」添加主设备</p></div>
                 </div>
@@ -2288,7 +2314,7 @@
 </div>
 
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/portal_yyb.js?v=7"></script>
+<script src="/vweb/js/portal_yyb.js?v=8"></script>
 <script>
 async function getSignatureHeaders(path) {
     try {
@@ -3750,12 +3776,72 @@ function closeWxModal() {
     document.getElementById('wxModalMask').classList.remove('show');
 }
 
+async function loadProtocolBindings() {
+    const listEl = document.getElementById('protoBindList');
+    const quotaEl = document.getElementById('protoBindQuota');
+    if (!listEl) return;
+    try {
+        const [quotaResp, bindResp] = await Promise.all([
+            request('/api/portal/protocol/bind/quota'),
+            request('/api/portal/protocol/bindings')
+        ]);
+        const q = quotaResp.data || {};
+        if (quotaEl) {
+            quotaEl.textContent = '在线微信 ' + (q.onlineWxSlots || 0) + ' · 已绑 ' + (q.boundPairs || 0) + ' · 免费名额 ' + (q.freeSlots || 0);
+        }
+        const rows = bindResp.data || [];
+        if (!rows.length) {
+            listEl.innerHTML = '<div style="padding:8px 0;">暂无双绑记录</div>';
+            return;
+        }
+        listEl.innerHTML = rows.map(function (r) {
+            var wx = (r.wxWxid || '').replace(/</g, '&lt;');
+            var oid = (r.yybOpenId || '').replace(/</g, '&lt;');
+            return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--glass-border);">' +
+                '<span><code style="font-size:11px;">' + wx + '</code> ↔ <code style="font-size:11px;">' + oid + '</code></span>' +
+                '<button class="btn small secondary" type="button" onclick="unbindProtocolPair(\'' + wx.replace(/'/g, "\\'") + '\',\'' + oid.replace(/'/g, "\\'") + '\')">解绑</button></div>';
+        }).join('');
+    } catch (e) {
+        listEl.textContent = e.message || '加载失败';
+    }
+}
+
+async function bindProtocolPair() {
+    var wx = (document.getElementById('protoBindWx') || {}).value || '';
+    var oid = (document.getElementById('protoBindOpenID') || {}).value || '';
+    wx = wx.trim(); oid = oid.trim();
+    if (!wx || !oid) { toast('请填写微信 wxid 和应用宝 openid', 'warning'); return; }
+    try {
+        await request('/api/portal/protocol/bind', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wxWxid: wx, yybOpenId: oid })
+        });
+        toast('绑定成功', 'success');
+        await loadProtocolBindings();
+    } catch (e) { toast(e.message || '绑定失败', 'error'); }
+}
+
+async function unbindProtocolPair(wx, oid) {
+    if (!confirm('确认解除该双绑？解绑后青龙中的 wxid 将走微信协议（若仍在线）。')) return;
+    try {
+        await request('/api/portal/protocol/unbind', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wxWxid: wx, yybOpenId: oid })
+        });
+        toast('已解绑', 'success');
+        await loadProtocolBindings();
+    } catch (e) { toast(e.message || '解绑失败', 'error'); }
+}
+
 async function loadWxDevices() {
     try {
         const resp = await request('/api/portal/wx/devices');
         state.wxDevices = resp.data || [];
         renderWxDevices();
         renderDashboard();
+        loadProtocolBindings();
     } catch (err) {
         state.wxDevices = [];
         renderWxDevices();

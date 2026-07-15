@@ -431,18 +431,7 @@ func executeScript(sender *Sender, cmdPath string, args ...string) (string, erro
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	// 自动传递微信协议服务器地址环境变量
-	// 优先使用旧地址（LoginBaseURL），因为大部分账号还在旧地址
-	wxServerURL := Config.WxProtocol.LoginBaseURL
-	if wxServerURL == "" {
-		wxServerURL = "http://180.152.5.230:8011"
-	}
-	cmd.Env = append(os.Environ(), "WECHAT_SERVER="+wxServerURL)
-
-	// 如果有新地址，也传递给脚本
-	if Config.WxProtocol.NewLoginBaseURL != "" {
-		cmd.Env = append(cmd.Env, "WECHAT_SERVER_NEW="+Config.WxProtocol.NewLoginBaseURL)
-	}
+	// WECHAT_SERVER 由用户在青龙自行配置为 xdd 地址，任务脚本不再写死 wechat08
 
 	err := cmd.Run()
 	if err != nil {

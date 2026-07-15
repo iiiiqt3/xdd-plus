@@ -18,6 +18,7 @@ type Config struct {
 	AvatarTimeout      time.Duration
 	ScanTimeout        time.Duration
 	QRSessionTTL       time.Duration
+	Proxy51Enabled     bool
 	ExposeInternalAPI  bool
 	InternalPathPrefix string
 }

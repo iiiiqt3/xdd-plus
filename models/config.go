@@ -37,6 +37,19 @@ type YybConfig struct {
 	MaxAccountsPerUser int    `yaml:"max_accounts_per_user"`
 	APIToken           string `yaml:"api_token"`
 	ExposeInternalAPI  bool   `yaml:"expose_internal_api"`
+	// 51 代理（应用宝扫码/业务）
+	Proxy51Enabled           bool   `yaml:"proxy_51_enabled"`
+	Proxy51Plan              string `yaml:"proxy_51_plan"` // count | traffic
+	Proxy51APIBase           string `yaml:"proxy_51_api_base"`
+	Proxy51AccessName        string `yaml:"proxy_51_access_name"`
+	Proxy51AccessPassword    string `yaml:"proxy_51_access_password"`
+	Proxy51UID               string `yaml:"proxy_51_uid"`
+	Proxy51UserInfoURL       string `yaml:"proxy_51_userinfo_url"`
+	Proxy51DefaultPackID     string `yaml:"proxy_51_default_packid"`
+	Proxy51LinePoolIndex     string `yaml:"proxy_51_line_pool_index"`
+	Proxy51ISP               string `yaml:"proxy_51_isp"`
+	Proxy51BypassRegionCode  string `yaml:"proxy_51_bypass_region_code"`
+	Proxy51BypassRegionName  string `yaml:"proxy_51_bypass_region_name"`
 }
 
 // GameConfig 游戏配置（支持热更新）

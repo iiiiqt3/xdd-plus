@@ -53,28 +53,18 @@ func findUserYybAccounts(userNumber int) ([]PortalAccountView, error) {
 }
 
 func yybJdGetCode(openid string) (string, error) {
-	data, err := InternalWxappGetCode(openid, models.WxJdAppID)
+	code, err := models.ProtocolGetWxAppCode(openid, models.WxJdAppID)
 	if err != nil {
 		return "", err
 	}
-	code, _ := data["code"].(string)
 	if code == "" {
-		return "", fmt.Errorf("获取应用宝 code 失败: %v", truncateMap(data, 300))
+		return "", fmt.Errorf("获取应用宝 code 失败")
 	}
 	return code, nil
 }
 
 func yybJdGetEidToken(openid string) string {
-	payload := map[string]any{
-		"api_name":         "webapi_getuserinfo",
-		"data":             map[string]string{"lang": "zh_CN"},
-		"with_credentials": true,
-	}
-	data, err := InternalWxappOperate(openid, models.WxJdAppID, payload)
-	if err != nil {
-		return ""
-	}
-	return parseYybEidToken(data)
+	return models.ProtocolGetEidTokenForRef(openid)
 }
 
 func parseYybEidToken(data map[string]any) string {

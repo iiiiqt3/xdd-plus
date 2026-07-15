@@ -69,53 +69,48 @@ func PortalListAccounts(userNumber int) ([]PortalAccountView, error) {
 	return out, nil
 }
 
-// PortalCreateQR 创建扫码
-func PortalCreateQR(userNumber int) (map[string]any, error) {
+// PortalCreateQR 创建扫码（用户选择 51 代理省市区）
+func PortalCreateQR(userNumber int, proxyOpt models.YybProxyLoginOption) (map[string]any, error) {
 	if !Ready() {
 		return nil, fmt.Errorf("应用宝服务不可用")
 	}
-	cost := getScanLoginCost()
-	a, err := svc()
-	if err != nil {
-		return nil, err
-	}
-	ctx := context.Background()
-	qr, err := a.CreateQR(ctx, true)
-	if err != nil {
-		return nil, err
-	}
-	putPendingScan(userNumber, qr.SessionID, cost, cost > 0)
-	hint := "请使用微信扫码确认登录"
-	if cost > 0 {
-		hint = fmt.Sprintf("请使用微信扫码确认登录，本次将扣除 %d 积分", cost)
+	cost, _, hint := models.CalcYybScanLoginCost(userNumber)
+	if models.Config.Yyb.Proxy51Enabled {
+		proxyOpt.Enabled = true
+		if strings.TrimSpace(proxyOpt.RegionCode) == "" {
+			return nil, fmt.Errorf("请选择登录地区（省/市）")
+		}
 	} else {
-		hint = "请使用微信扫码确认登录（本次免费）"
+		proxyOpt.Enabled = false
 	}
-	return map[string]any{
-		"sessionId":     qr.SessionID,
-		"status":        qr.Status,
-		"imageBase64":   qr.ImageB64,
+	imageB64, sessionID, meta, err := portalStartScanLogin(userNumber, cost, cost > 0, proxyOpt)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]any{
+		"sessionId":     sessionID,
+		"status":        "pending",
+		"imageBase64":   strings.TrimPrefix(imageB64, "data:image/jpeg;base64,"),
 		"scanLoginCost": cost,
 		"scanCostHint":  hint,
-	}, nil
+	}
+	if meta != nil {
+		out["proxyMeta"] = meta
+		if models.YybProxyShouldBypass(proxyOpt.RegionCode, proxyOpt.RegionName) {
+			out["proxyBypass"] = true
+		}
+		out["proxyRegionCode"] = proxyOpt.RegionCode
+		out["proxyRegionName"] = proxyOpt.RegionName
+	}
+	return out, nil
 }
 
-// PortalPollQR 轮询扫码
+// PortalPollQR 轮询扫码（含代理异常自动换 IP）
 func PortalPollQR(userNumber int, sessionID string) (map[string]any, error) {
 	if !Ready() {
 		return nil, fmt.Errorf("应用宝服务不可用")
 	}
-	scanMu.Lock()
-	p, ok := scanStore[sessionID]
-	scanMu.Unlock()
-	if !ok || p.UserNumber != userNumber {
-		return nil, fmt.Errorf("扫码会话无效或已过期")
-	}
-	a, err := svc()
-	if err != nil {
-		return nil, err
-	}
-	return a.PollQR(context.Background(), sessionID)
+	return portalPollScanLogin(sessionID, userNumber)
 }
 
 // PortalConfirmQR 确认扫码并绑定
@@ -123,42 +118,7 @@ func PortalConfirmQR(userNumber int, sessionID string, clientCtx models.ClientCo
 	if !Ready() {
 		return nil, fmt.Errorf("应用宝服务不可用")
 	}
-	p, err := popPendingScan(sessionID, userNumber)
-	if err != nil {
-		return nil, err
-	}
-	a, err := svc()
-	if err != nil {
-		return nil, err
-	}
-	ctx := context.Background()
-	acc, err := a.ConfirmQR(ctx, sessionID)
-	if err != nil {
-		return nil, err
-	}
-	everBound := hasEverBoundOpenID(userNumber, acc.OpenID)
-	costCharged := 0
-	if p.DeductCoin && !everBound {
-		nick := ""
-		if acc.Nickname != nil {
-			nick = *acc.Nickname
-		}
-		if err := deductCoin(userNumber, p.Cost, clientCtx, fmt.Sprintf("应用宝扫码登录 %s", nick)); err != nil {
-			return nil, err
-		}
-		models.RecordClientSourceEvent(userNumber, "yyb_scan_login", clientCtx)
-		costCharged = p.Cost
-	}
-	binding, err := bindAccount(userNumber, acc, "alive")
-	if err != nil {
-		return nil, err
-	}
-	view := toPortalView(ctx, *binding, a)
-	return map[string]any{
-		"account":      view,
-		"cost":         costCharged,
-		"alreadyBound": everBound,
-	}, nil
+	return portalConfirmScanLogin(sessionID, userNumber, clientCtx)
 }
 
 // PortalDeleteAccount 删除绑定与本地账号

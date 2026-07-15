@@ -2,6 +2,7 @@ package yyb
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/cdle/xdd/yyb/internal/httpapi"
@@ -44,6 +45,7 @@ func Start(cfg Config) (*Service, error) {
 		DBFilename:     cfg.DBFilename,
 		GormDB:         cfg.GormDB,
 		TCPProxy:       cfg.TCPProxy,
+		Proxy51Enabled: cfg.Proxy51Enabled,
 		SessionTTL:     cfg.SessionTTL,
 		RequestTimeout: cfg.RequestTimeout,
 		AvatarTimeout:  cfg.AvatarTimeout,
@@ -100,4 +102,13 @@ func (s *Service) Close() error {
 // Ready 模块是否可用
 func (s *Service) Ready() bool {
 	return s != nil && s.app != nil
+}
+
+// SetTCPProxy 运行时切换默认 TCP 代理
+func (s *Service) SetTCPProxy(proxy string) {
+	if s == nil || s.app == nil {
+		return
+	}
+	s.app.SetTCPProxy(proxy)
+	s.cfg.TCPProxy = strings.TrimSpace(proxy)
 }

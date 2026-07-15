@@ -56,6 +56,7 @@ func Init(c ModuleConfig) error {
 		DBFilename:        c.DBFilename,
 		GormDB:            models.GormDB(),
 		TCPProxy:          c.TCPProxy,
+		Proxy51Enabled:    models.Config.Yyb.Proxy51Enabled,
 		ExposeInternalAPI: c.ExposeInternalAPI,
 	})
 	if err != nil {
@@ -67,6 +68,8 @@ func Init(c ModuleConfig) error {
 	yybSvc = s
 	ready = true
 	initErr = nil
+	RegisterAccountProxyResolver()
+	RegisterProtocolGatewayHandlers()
 	startJdCron()
 	return nil
 }

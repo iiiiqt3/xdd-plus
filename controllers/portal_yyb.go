@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -65,7 +66,24 @@ func (c *PortalYybController) Accounts() {
 
 // CreateQR 创建扫码
 func (c *PortalYybController) CreateQR() {
-	data, err := yybportal.PortalCreateQR(c.PortalUserID)
+	var req struct {
+		RegionCode string `json:"regionCode"`
+		RegionName string `json:"regionName"`
+		PackID     string `json:"packId"`
+		UseProxy   bool   `json:"useProxy"`
+	}
+	_ = json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	opt := models.YybProxyLoginOption{
+		Enabled:    req.UseProxy || models.Config.Yyb.Proxy51Enabled,
+		PackID:     strings.TrimSpace(req.PackID),
+		RegionCode: strings.TrimSpace(req.RegionCode),
+		RegionName: strings.TrimSpace(req.RegionName),
+	}
+	if opt.Enabled && opt.RegionCode == "" {
+		c.jsonErr(fmt.Errorf("请选择登录地区（省/市）"))
+		return
+	}
+	data, err := yybportal.PortalCreateQR(c.PortalUserID, opt)
 	if err != nil {
 		c.jsonErr(err)
 		return

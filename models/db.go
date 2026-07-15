@@ -55,6 +55,7 @@ func initDB() {
 		&UserPushDevice{},
 		&PortalWxDevice{},
 		&WxProtocolMigration{},
+		&PortalProtocolBinding{},
 		&CoinLog{},
 		&PortalJdProxySubscription{},
 	); err != nil {

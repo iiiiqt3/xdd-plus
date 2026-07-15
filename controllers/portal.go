@@ -1412,3 +1412,99 @@ func (c *PortalController) logPortalError(format string, args ...interface{}) {
 	}
 	models.Logf(c.portalCategory(), models.LevelError, "%s", msg)
 }
+
+// ProtocolBindings 协议双绑列表
+func (c *PortalController) ProtocolBindings() {
+	rows, err := models.ListProtocolBindings(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": rows}
+	c.ServeJSON()
+}
+
+// ProtocolBindQuota 双绑免费名额
+func (c *PortalController) ProtocolBindQuota() {
+	online := models.CountOnlineWxProtocolSlots(c.PortalUserID)
+	bound, _ := models.CountProtocolBindings(c.PortalUserID)
+	free := online - int(bound)
+	if free < 0 {
+		free = 0
+	}
+	cost, _, hint := models.CalcYybScanLoginCost(c.PortalUserID)
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"onlineWxSlots": online,
+			"boundPairs":    bound,
+			"freeSlots":     free,
+			"scanLoginCost": cost,
+			"scanCostHint":  hint,
+		},
+	}
+	c.ServeJSON()
+}
+
+// ProtocolBind 建立微信 wxid ↔ 应用宝 openid 双绑
+func (c *PortalController) ProtocolBind() {
+	var req struct {
+		WxWxid    string `json:"wxWxid"`
+		YybOpenID string `json:"yybOpenId"`
+		Nickname  string `json:"nickname"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	row, err := models.BindProtocolPair(c.PortalUserID, strings.TrimSpace(req.WxWxid), strings.TrimSpace(req.YybOpenID), strings.TrimSpace(req.Nickname))
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": row, "msg": "绑定成功"}
+	c.ServeJSON()
+}
+
+// ProtocolUnbind 解除双绑
+func (c *PortalController) ProtocolUnbind() {
+	var req struct {
+		WxWxid    string `json:"wxWxid"`
+		YybOpenID string `json:"yybOpenId"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	if err := models.UnbindProtocolPair(c.PortalUserID, strings.TrimSpace(req.WxWxid), strings.TrimSpace(req.YybOpenID)); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "已解除绑定"}
+	c.ServeJSON()
+}
+
+// ProtocolProxyAreas 51 代理地区列表（POST，与 xdd-g 一致）
+func (c *PortalController) ProtocolProxyAreas() {
+	var req models.YybProxyAreaRequest
+	_ = json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	data, err := models.YybProxyAreaList(req)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data}
+	c.ServeJSON()
+}
+
+// ProtocolProxyConfig 门户 51 代理配置摘要
+func (c *PortalController) ProtocolProxyConfig() {
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": models.PortalYybProxyConfig()}
+	c.ServeJSON()
+}

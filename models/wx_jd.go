@@ -18,14 +18,14 @@ import (
 )
 
 const (
-	wxJdAppID     = "wx73247c7819d61796"
+	WxJdAppID     = "wx73247c7819d61796"
 	wxJdClientVer = "2.0.2"
 	wxJdJDAppID   = "599"
 	wxJdSignGSALT = "sb2cwlYyaCSN1KUv5RHG3tmqxfEb8NKN"
 	wxJdBizKey    = "bce044c839bb9eb811aad5af18a629e199da4e13"
 	wxJdFingerTk  = "L64RTJ562VJEYNEQN67XMUWSR4UFLOIQHJYZ3MWERRIKJGP24SDSBDS4I4AMVU24Y3Y7A4UPDICN2"
 	wxJdAlpha     = "23IL<N01c7KvwZO56RSTAfghiFyzWJqVabGH4PQdopUrsCuX*xeBjkltDEmn89.-/"
-	wxJdReferer   = "https://servicewechat.com/" + wxJdAppID + "/864/page-frame.html"
+	wxJdReferer   = "https://servicewechat.com/" + WxJdAppID + "/864/page-frame.html"
 	wxJdUA        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf254186b) XWEB/19481"
 )
 
@@ -127,7 +127,7 @@ func wxJdGetWxCodeFromURL(baseURL string, wxid string) (string, error) {
 	data, err := wxJdPostToURL(
 		baseURL,
 		[]string{"/api/v1/wx/app/get/code", "/wx/app/get/code"},
-		map[string]string{"wxid": wxid, "appid": wxJdAppID},
+		map[string]string{"wxid": wxid, "appid": WxJdAppID},
 		15,
 	)
 	if err != nil {
@@ -162,7 +162,7 @@ func wxJdGetEidTokenFromURL(baseURL string, wxid string) string {
 	data, err := wxJdPostToURL(
 		baseURL,
 		[]string{"/api/v1/wx/app/call/function", "/wx/app/call/function"},
-		map[string]interface{}{"wxid": wxid, "appid": wxJdAppID, "data": mustJSON(payload)},
+		map[string]interface{}{"wxid": wxid, "appid": WxJdAppID, "data": mustJSON(payload)},
 		15,
 	)
 	if err != nil {
@@ -203,7 +203,7 @@ func wxJdGetFingerTk() (string, error) {
 		"fs": -1, "la": "zh_CN", "br": "microsoft", "mo": "microsoft",
 		"pr": 1, "pl": "windows", "sh": 780, "sw": 414, "sbh": "",
 		"sy": "Windows 10", "wh": 780, "ww": 414, "bl": "", "nt": "wifi",
-		"vid": wxJdAppID, "bk": wxJdBizKey, "cliet": now, "fp": randHex(16),
+		"vid": WxJdAppID, "bk": wxJdBizKey, "cliet": now, "fp": randHex(16),
 	}
 	encoded := wxJdFingerEncode(env)
 	client := &http.Client{Timeout: 15 * time.Second}
@@ -266,7 +266,7 @@ func wxJdSilentAuthLogin(code string, eidToken string) (string, string, error) {
 		"eid_token":         eidToken,
 		"goToLogin":         "true",
 		"returnurl":         "/pages/login/web-view/web-view",
-		"wxappid":           wxJdAppID,
+		"wxappid":           WxJdAppID,
 		"appid":             wxJdJDAppID,
 		"client_ver":        wxJdClientVer,
 		"ts":                ts,
@@ -314,9 +314,6 @@ func wxJdSilentAuthLogin(code string, eidToken string) (string, string, error) {
 	return ptKey, ptPin, nil
 }
 
-// WxJdAppID 京东小程序 AppID（供应用宝京东刷新复用）
-const WxJdAppID = wxJdAppID
-
 // WxJdSilentAuthLogin 京东静默登录（供应用宝京东刷新复用）
 func WxJdSilentAuthLogin(code, eidToken string) (string, string, error) {
 	return wxJdSilentAuthLogin(code, eidToken)
@@ -328,11 +325,11 @@ func WxJdGetFingerTk() (string, error) {
 }
 
 func wxJdRefreshCK(wxid string) (string, string, error) {
-	code, err := wxJdGetWxCode(wxid)
+	code, err := ProtocolGetWxAppCode(wxid, WxJdAppID)
 	if err != nil {
 		return "", "", fmt.Errorf("获取wx code失败: %v", err)
 	}
-	eidToken := wxJdGetEidToken(wxid)
+	eidToken := ProtocolGetEidTokenForRef(wxid)
 	if eidToken == "" {
 		Info("eid_token为空，尝试finger_tk")
 		tk, err := wxJdGetFingerTk()

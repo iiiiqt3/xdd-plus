@@ -79,6 +79,13 @@ func NewLoginBufferClient(timeout time.Duration) *LoginBufferClient {
 	}
 }
 
+func NewLoginBufferClientWithProxy(timeout time.Duration, tcpProxy string, fallbackDirect bool) *LoginBufferClient {
+	return &LoginBufferClient{
+		httpClient: NewHTTPClientWithTCPProxy(timeout, tcpProxy, fallbackDirect),
+		timeout:    timeout,
+	}
+}
+
 func (c *LoginBufferClient) FetchLoginBuffer(ctx context.Context, creds LoginBufferCredentials) (string, error) {
 	body, err := json.Marshal(loginBufferRequest{
 		ExtInfo: loginExtInfo{

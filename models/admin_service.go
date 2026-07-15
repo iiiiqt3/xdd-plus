@@ -146,6 +146,17 @@ func GetJdConfigForAdmin() map[string]interface{} {
 		"yybMaxAccountsPerUser": Config.Yyb.MaxAccountsPerUser,
 		"yybAPIToken":           Config.Yyb.APIToken,
 		"yybExposeInternalAPI":  Config.Yyb.ExposeInternalAPI,
+		"yybProxy51Enabled":     Config.Yyb.Proxy51Enabled,
+		"yybProxy51Plan":        Config.Yyb.Proxy51Plan,
+		"yybProxy51APIBase":     Config.Yyb.Proxy51APIBase,
+		"yybProxy51AccessName":  Config.Yyb.Proxy51AccessName,
+		"yybProxy51AccessPassword": Config.Yyb.Proxy51AccessPassword,
+		"yybProxy51UID":         Config.Yyb.Proxy51UID,
+		"yybProxy51DefaultPackID": Config.Yyb.Proxy51DefaultPackID,
+		"yybProxy51LinePoolIndex": Config.Yyb.Proxy51LinePoolIndex,
+		"yybProxy51ISP":         Config.Yyb.Proxy51ISP,
+		"yybProxy51BypassRegionCode": Config.Yyb.Proxy51BypassRegionCode,
+		"yybProxy51BypassRegionName": Config.Yyb.Proxy51BypassRegionName,
 		// 极光推送
 		"jpushEnabled":      Config.Jpush.Enabled,
 		"jpushAppKey":       Config.Jpush.AppKey,
@@ -379,6 +390,39 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	if v, ok := req["yybExposeInternalAPI"].(bool); ok {
 		configMap["yyb_expose_internal_api"] = fmt.Sprintf("%v", v)
 	}
+	if v, ok := req["yybProxy51Enabled"].(bool); ok {
+		configMap["yyb_proxy_51_enabled"] = fmt.Sprintf("%v", v)
+	}
+	if v, ok := req["yybProxy51Plan"].(string); ok {
+		configMap["yyb_proxy_51_plan"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybProxy51APIBase"].(string); ok {
+		configMap["yyb_proxy_51_api_base"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybProxy51AccessName"].(string); ok {
+		configMap["yyb_proxy_51_access_name"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybProxy51AccessPassword"].(string); ok {
+		configMap["yyb_proxy_51_access_password"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybProxy51UID"].(string); ok {
+		configMap["yyb_proxy_51_uid"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybProxy51DefaultPackID"].(string); ok {
+		configMap["yyb_proxy_51_default_packid"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybProxy51LinePoolIndex"].(string); ok {
+		configMap["yyb_proxy_51_line_pool_index"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybProxy51ISP"].(string); ok {
+		configMap["yyb_proxy_51_isp"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybProxy51BypassRegionCode"].(string); ok {
+		configMap["yyb_proxy_51_bypass_region_code"] = fmt.Sprintf("%q", v)
+	}
+	if v, ok := req["yybProxy51BypassRegionName"].(string); ok {
+		configMap["yyb_proxy_51_bypass_region_name"] = fmt.Sprintf("%q", v)
+	}
 
 	// 极光推送
 	if v, ok := req["jpushEnabled"].(bool); ok {
@@ -481,6 +525,17 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		"yyb_max_accounts_per_user": "max_accounts_per_user",
 		"yyb_api_token":             "api_token",
 		"yyb_expose_internal_api":   "expose_internal_api",
+		"yyb_proxy_51_enabled":           "proxy_51_enabled",
+		"yyb_proxy_51_plan":              "proxy_51_plan",
+		"yyb_proxy_51_api_base":          "proxy_51_api_base",
+		"yyb_proxy_51_access_name":       "proxy_51_access_name",
+		"yyb_proxy_51_access_password":    "proxy_51_access_password",
+		"yyb_proxy_51_uid":               "proxy_51_uid",
+		"yyb_proxy_51_default_packid":    "proxy_51_default_packid",
+		"yyb_proxy_51_line_pool_index":   "proxy_51_line_pool_index",
+		"yyb_proxy_51_isp":               "proxy_51_isp",
+		"yyb_proxy_51_bypass_region_code": "proxy_51_bypass_region_code",
+		"yyb_proxy_51_bypass_region_name": "proxy_51_bypass_region_name",
 	}
 	jpushYamlKeys := map[string]string{
 		"jpush_enabled":       "enabled",

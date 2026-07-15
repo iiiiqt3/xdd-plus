@@ -241,6 +241,13 @@ func main() {
 	web.Router("/api/portal/jd/tasks", &controllers.PortalController{}, "get:JdTaskList")
 	web.Router("/api/portal/jd/proxy/status", &controllers.PortalController{}, "get:JdProxyStatus")
 	web.Router("/api/portal/jd/proxy/buy", &controllers.PortalController{}, "post:JdProxyBuy")
+	// 协议双绑（微信 wxid ↔ 应用宝 openid）
+	web.Router("/api/portal/protocol/bindings", &controllers.PortalController{}, "get:ProtocolBindings")
+	web.Router("/api/portal/protocol/bind/quota", &controllers.PortalController{}, "get:ProtocolBindQuota")
+	web.Router("/api/portal/protocol/bind", &controllers.PortalController{}, "post:ProtocolBind")
+	web.Router("/api/portal/protocol/unbind", &controllers.PortalController{}, "post:ProtocolUnbind")
+	web.Router("/api/portal/protocol/proxy/areas", &controllers.PortalController{}, "post:ProtocolProxyAreas")
+	web.Router("/api/portal/protocol/proxy/config", &controllers.PortalController{}, "get:ProtocolProxyConfig")
 	// ===================== 酷我提现 API =====================
 	web.Router("/api/portal/kuwo/check-auth", &controllers.PortalController{}, "get:KuwoCheckAuth")
 	web.Router("/api/portal/kuwo/credentials", &controllers.PortalController{}, "get:KuwoGetCredentials")
@@ -397,7 +404,25 @@ func main() {
 	web.Router("/api/admin/yyb/wxapp/getCode", &controllers.AdminYybController{}, "post:WxappGetCode")
 	web.Router("/api/admin/yyb/wxapp/getPhoneNumber", &controllers.AdminYybController{}, "post:WxappGetPhone")
 	web.Router("/api/admin/yyb/wxapp/operateWxData", &controllers.AdminYybController{}, "post:WxappOperate")
-	// ===================== 应用宝脚本 API（青龙等） =====================
+
+	// ===================== 青龙脚本兼容网关（WECHAT_SERVER 指向 xdd） =====================
+	wxCompat := &controllers.WxCompatProxyController{}
+	for _, p := range []string{
+		"/api/v1/wx/app/get/code",
+		"/api/wx/app/get/code",
+		"/wx/app/get/code",
+		"/api/v1/wx/app/call/function",
+		"/api/wx/app/call/function",
+		"/wx/app/call/function",
+		"/api/v1/wx/app/operate/wxdata",
+		"/api/wx/app/operate/wxdata",
+		"/api/v1/wx/user/status",
+		"/api/wx/user/status",
+	} {
+		web.Router(p, wxCompat, "*:Any")
+	}
+
+	// ===================== 应用宝脚本 API（已废弃，请改用 /api/v1/wx/*） =====================
 	web.Router("/api/yyb/accounts", &controllers.YybScriptController{}, "get:Accounts")
 	web.Router("/api/yyb/accounts/refresh", &controllers.YybScriptController{}, "post:RefreshAccount")
 	web.Router("/api/yyb/wxapp/getCode", &controllers.YybScriptController{}, "post:WxappGetCode")

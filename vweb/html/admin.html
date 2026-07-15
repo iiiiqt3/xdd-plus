@@ -7000,6 +7000,17 @@ async function loadSysConfig() {
                     <div class="form-item full"><label>资源目录</label><input type="text" id="cfg_yybResourceRoot" value="${v(cfg.yybResourceRoot)}" placeholder="默认 yyb/resource"></div>
                     <div class="form-item full"><label>数据库路径</label><input type="text" id="cfg_yybDBFilename" value="${v(cfg.yybDBFilename)}" placeholder="默认 yyb/resource/yyb.db"></div>
                     <div class="form-item full"><label>TCP 代理</label><input type="text" id="cfg_yybTCPProxy" value="${v(cfg.yybTCPProxy)}" placeholder="socks5://127.0.0.1:1080"></div>
+                    <div class="form-item"><label>启用 51 代理</label><select id="cfg_yybProxy51Enabled">${sel(cfg.yybProxy51Enabled)}</select></div>
+                    <div class="form-item"><label>51 套餐</label><select id="cfg_yybProxy51Plan"><option value="count" ${(cfg.yybProxy51Plan||'count')==='count'?'selected':''}>按量 packid=2</option><option value="traffic" ${cfg.yybProxy51Plan==='traffic'?'selected':''}>流量 packid=12</option></select></div>
+                    <div class="form-item full"><label>51 API 地址</label><input type="text" id="cfg_yybProxy51APIBase" value="${v(cfg.yybProxy51APIBase)}" placeholder="http://bapi.51daili.com/getapi2"></div>
+                    <div class="form-item"><label>51 账号</label><input type="text" id="cfg_yybProxy51AccessName" value="${v(cfg.yybProxy51AccessName)}"></div>
+                    <div class="form-item"><label>51 密码</label><input type="password" id="cfg_yybProxy51AccessPassword" value="${v(cfg.yybProxy51AccessPassword)}" autocomplete="off"></div>
+                    <div class="form-item"><label>51 UID</label><input type="text" id="cfg_yybProxy51UID" value="${v(cfg.yybProxy51UID)}"></div>
+                    <div class="form-item"><label>默认 PackID</label><input type="text" id="cfg_yybProxy51DefaultPackID" value="${v(cfg.yybProxy51DefaultPackID)}" placeholder="2 或 12"></div>
+                    <div class="form-item"><label>线路池 Index</label><input type="text" id="cfg_yybProxy51LinePoolIndex" value="${v(cfg.yybProxy51LinePoolIndex)||'-1'}" placeholder="-1"></div>
+                    <div class="form-item"><label>运营商 ISP</label><input type="text" id="cfg_yybProxy51ISP" value="${v(cfg.yybProxy51ISP)||'1'}" placeholder="1=电信"></div>
+                    <div class="form-item"><label>免代理地区码</label><input type="text" id="cfg_yybProxy51BypassRegionCode" value="${v(cfg.yybProxy51BypassRegionCode)||'310100'}" placeholder="上海 310100"></div>
+                    <div class="form-item"><label>免代理地区名</label><input type="text" id="cfg_yybProxy51BypassRegionName" value="${v(cfg.yybProxy51BypassRegionName)||'上海'}"></div>
                     <div class="form-item full"><label>API Token <span class="tip">脚本/内部接口鉴权</span></label>
                         <div style="display:flex;gap:6px;position:relative;">
                             <input type="password" id="cfg_yybAPIToken" value="${v(cfg.yybAPIToken)}" style="flex:1;" autocomplete="off">
@@ -7123,6 +7134,17 @@ async function saveSysConfig() {
             yybMaxAccountsPerUser: parseInt((document.getElementById('cfg_yybMaxAccountsPerUser')||{}).value) || 5,
             yybAPIToken: (document.getElementById('cfg_yybAPIToken')||{}).value || '',
             yybExposeInternalAPI: (document.getElementById('cfg_yybExposeInternalAPI')||{}).value === 'true',
+            yybProxy51Enabled: (document.getElementById('cfg_yybProxy51Enabled')||{}).value === 'true',
+            yybProxy51Plan: (document.getElementById('cfg_yybProxy51Plan')||{}).value || 'count',
+            yybProxy51APIBase: (document.getElementById('cfg_yybProxy51APIBase')||{}).value || '',
+            yybProxy51AccessName: (document.getElementById('cfg_yybProxy51AccessName')||{}).value || '',
+            yybProxy51AccessPassword: (document.getElementById('cfg_yybProxy51AccessPassword')||{}).value || '',
+            yybProxy51UID: (document.getElementById('cfg_yybProxy51UID')||{}).value || '',
+            yybProxy51DefaultPackID: (document.getElementById('cfg_yybProxy51DefaultPackID')||{}).value || '',
+            yybProxy51LinePoolIndex: (document.getElementById('cfg_yybProxy51LinePoolIndex')||{}).value || '-1',
+            yybProxy51ISP: (document.getElementById('cfg_yybProxy51ISP')||{}).value || '1',
+            yybProxy51BypassRegionCode: (document.getElementById('cfg_yybProxy51BypassRegionCode')||{}).value || '310100',
+            yybProxy51BypassRegionName: (document.getElementById('cfg_yybProxy51BypassRegionName')||{}).value || '上海',
             jpushEnabled: (document.getElementById('cfg_jpushEnabled')||{}).value === 'true',
             jpushAppKey: (document.getElementById('cfg_jpushAppKey')||{}).value || '',
             jpushMasterSecret: (document.getElementById('cfg_jpushMasterSecret')||{}).value || '',

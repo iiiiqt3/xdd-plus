@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -14,9 +15,11 @@ import (
 )
 
 type tcpProxy struct {
-	Scheme string
-	Host   string
-	Port   string
+	Scheme   string
+	Host     string
+	Port     string
+	Username string
+	Password string
 }
 
 func parseTCPProxy(value string) (*tcpProxy, error) {
@@ -33,7 +36,12 @@ func parseTCPProxy(value string) (*tcpProxy, error) {
 	if u.Hostname() == "" || u.Port() == "" {
 		return nil, fmt.Errorf("tcp_proxy must include host and port")
 	}
-	return &tcpProxy{Scheme: u.Scheme, Host: u.Hostname(), Port: u.Port()}, nil
+	username, password := "", ""
+	if u.User != nil {
+		username = u.User.Username()
+		password, _ = u.User.Password()
+	}
+	return &tcpProxy{Scheme: u.Scheme, Host: u.Hostname(), Port: u.Port(), Username: username, Password: password}, nil
 }
 
 func dialTCP(ctx context.Context, host string, port int, timeout time.Duration, proxyValue string, fallbackDirect bool) (net.Conn, error) {
@@ -72,7 +80,13 @@ func dialViaProxy(ctx context.Context, proxy *tcpProxy, targetHost string, targe
 		defer conn.SetDeadline(time.Time{})
 	}
 	if proxy.Scheme == "socks5" {
-		err = socks5Connect(conn, targetHost, targetPort)
+		targetForProxy := targetHost
+		if net.ParseIP(targetHost) == nil {
+			if ipHost := resolveProxyTargetIP(ctx, targetHost); ipHost != "" {
+				targetForProxy = ipHost
+			}
+		}
+		err = socks5ConnectAuth(conn, targetForProxy, targetPort, proxy.Username, proxy.Password)
 	} else {
 		err = httpConnect(conn, targetHost, targetPort)
 	}
@@ -83,23 +97,83 @@ func dialViaProxy(ctx context.Context, proxy *tcpProxy, targetHost string, targe
 	return conn, nil
 }
 
+func resolveProxyTargetIP(ctx context.Context, host string) string {
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return ""
+	}
+	for _, a := range addrs {
+		if ip4 := a.IP.To4(); ip4 != nil {
+			return ip4.String()
+		}
+	}
+	for _, a := range addrs {
+		if a.IP != nil {
+			return a.IP.String()
+		}
+	}
+	return ""
+}
+
 func socks5Connect(conn net.Conn, targetHost string, targetPort int) error {
-	if _, err := conn.Write([]byte{0x05, 0x01, 0x00}); err != nil {
+	return socks5ConnectAuth(conn, targetHost, targetPort, "", "")
+}
+
+func socks5ConnectAuth(conn net.Conn, targetHost string, targetPort int, username, password string) error {
+	methods := []byte{0x00}
+	if username != "" || password != "" {
+		methods = []byte{0x02}
+	}
+	hello := []byte{0x05, byte(len(methods))}
+	hello = append(hello, methods...)
+	if _, err := conn.Write(hello); err != nil {
 		return err
 	}
 	buf := make([]byte, 2)
 	if _, err := io.ReadFull(conn, buf); err != nil {
 		return err
 	}
-	if buf[0] != 0x05 || buf[1] != 0x00 {
-		return fmt.Errorf("SOCKS5 no-auth negotiation failed: %x", buf)
+	if buf[0] != 0x05 {
+		return fmt.Errorf("SOCKS5 negotiation failed: %x", buf)
 	}
-	hostBytes := []byte(targetHost)
-	if len(hostBytes) > 255 {
-		return fmt.Errorf("SOCKS5 target host too long")
+	if buf[1] == 0x02 {
+		if len(username) > 255 || len(password) > 255 {
+			return fmt.Errorf("SOCKS5 username/password too long")
+		}
+		auth := []byte{0x01, byte(len(username))}
+		auth = append(auth, []byte(username)...)
+		auth = append(auth, byte(len(password)))
+		auth = append(auth, []byte(password)...)
+		if _, err := conn.Write(auth); err != nil {
+			return err
+		}
+		resp := make([]byte, 2)
+		if _, err := io.ReadFull(conn, resp); err != nil {
+			return err
+		}
+		if resp[1] != 0x00 {
+			return fmt.Errorf("SOCKS5 username/password auth failed: %x", resp)
+		}
+	} else if buf[1] != 0x00 {
+		return fmt.Errorf("SOCKS5 unsupported auth method: %x", buf)
 	}
-	req := []byte{0x05, 0x01, 0x00, 0x03, byte(len(hostBytes))}
-	req = append(req, hostBytes...)
+	req := []byte{0x05, 0x01, 0x00}
+	if ip := net.ParseIP(targetHost); ip != nil {
+		if ip4 := ip.To4(); ip4 != nil {
+			req = append(req, 0x01)
+			req = append(req, ip4...)
+		} else {
+			req = append(req, 0x04)
+			req = append(req, ip.To16()...)
+		}
+	} else {
+		hostBytes := []byte(targetHost)
+		if len(hostBytes) > 255 {
+			return fmt.Errorf("SOCKS5 target host too long")
+		}
+		req = append(req, 0x03, byte(len(hostBytes)))
+		req = append(req, hostBytes...)
+	}
 	var p [2]byte
 	binary.BigEndian.PutUint16(p[:], uint16(targetPort))
 	req = append(req, p[:]...)

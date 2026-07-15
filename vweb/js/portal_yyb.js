@@ -2,7 +2,8 @@
     'use strict';
 
     const API = '/api/portal/yyb';
-    const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, panelLoading: false };
+    const PROTOCOL_API = '/api/portal/protocol';
+    const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, panelLoading: false, proxyEnabled: false, proxyPackId: '' };
 
     function $(id) { return document.getElementById(id); }
 
@@ -38,7 +39,91 @@
         return String(acc.openid || '').trim();
     }
 
-    function accountRef(acc) { return accountKey(acc); }
+    async function protocolRequest(path, options = {}) {
+        const res = await fetch(PROTOCOL_API + path, {
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-Request-Source': 'web', ...(options.headers || {}) },
+            ...options,
+        });
+        if (res.redirected && res.url.includes('/portal/login')) {
+            location.href = '/portal/login';
+            throw new Error('未登录');
+        }
+        const data = await res.json();
+        if (data.code !== 0) throw new Error(data.msg || '请求失败');
+        return data.data;
+    }
+
+    function areaRows(data) {
+        if (!data) return [];
+        if (Array.isArray(data.list)) return data.list;
+        if (Array.isArray(data.provinceList)) return data.provinceList;
+        if (Array.isArray(data.city)) return data.city;
+        if (Array.isArray(data.cityList)) return data.cityList;
+        return [];
+    }
+
+    function fillSelect(sel, rows, placeholder) {
+        if (!sel) return;
+        sel.innerHTML = '';
+        const ph = document.createElement('option');
+        ph.value = '';
+        ph.textContent = placeholder || '请选择';
+        sel.appendChild(ph);
+        rows.forEach(function (row) {
+            const opt = document.createElement('option');
+            opt.value = String(row.regionCode || row.region_code || '');
+            opt.textContent = row.regionName || row.region_name || opt.value;
+            sel.appendChild(opt);
+        });
+    }
+
+    async function loadProxyConfig() {
+        try {
+            const cfg = await protocolRequest('/proxy/config');
+            state.proxyEnabled = !!cfg.proxyEnabled;
+            state.proxyPackId = cfg.proxyDefaultPackid || '';
+            const row = $('yyb-proxyRegionRow');
+            const hint = $('yyb-proxyHint');
+            if (row) row.style.display = state.proxyEnabled ? 'grid' : 'none';
+            if (hint && cfg.proxyBypassRegionName) {
+                hint.textContent = '选择登录地区后生成二维码；「' + cfg.proxyBypassRegionName + '」等地区免代理直连。';
+            }
+            if (state.proxyEnabled) await loadProxyProvinces();
+        } catch (e) {
+            console.warn('loadProxyConfig', e);
+        }
+    }
+
+    async function loadProxyProvinces() {
+        const data = await protocolRequest('/proxy/areas', {
+            method: 'POST',
+            body: JSON.stringify({ packid: state.proxyPackId || '' }),
+        });
+        fillSelect($('yyb-proxyProvince'), areaRows(data), '请选择省份');
+        fillSelect($('yyb-proxyCity'), [], '请先选择省份');
+    }
+
+    async function loadProxyCities() {
+        const prov = $('yyb-proxyProvince');
+        const code = prov ? prov.value : '';
+        if (!code) {
+            fillSelect($('yyb-proxyCity'), [], '请先选择省份');
+            return;
+        }
+        const data = await protocolRequest('/proxy/areas', {
+            method: 'POST',
+            body: JSON.stringify({ parent_code: code, packid: state.proxyPackId || '' }),
+        });
+        fillSelect($('yyb-proxyCity'), areaRows(data), '请选择城市');
+    }
+
+    function selectedProxyRegion() {
+        const citySel = $('yyb-proxyCity');
+        if (!citySel || citySel.selectedIndex <= 0) return { regionCode: '', regionName: '' };
+        const opt = citySel.options[citySel.selectedIndex];
+        return { regionCode: opt.value || '', regionName: (opt.textContent || '').trim() };
+    }
 
     function setResult(val, err) {
         const box = $('yyb-resultBox');
@@ -285,6 +370,7 @@
             state.accounts = st.accounts || [];
             renderAccounts();
             loadDashboard();
+            void loadProxyConfig();
         } catch (e) {
             setHealthStatus('加载失败', 'bad');
             setStatusBar(e.message || '加载失败，请稍后重试', 'error', false);
@@ -451,11 +537,33 @@
 
     async function startScan() {
         try {
-            const data = await request('/qr', { method: 'POST' });
+            if (state.proxyEnabled) {
+                const region = selectedProxyRegion();
+                if (!region.regionCode) {
+                    if (typeof global.toast === 'function') global.toast('请先选择登录城市', 'warning');
+                    $('yyb-qrModal').classList.add('show');
+                    return;
+                }
+            }
+            const region = selectedProxyRegion();
+            const payload = {
+                useProxy: state.proxyEnabled,
+                regionCode: region.regionCode,
+                regionName: region.regionName,
+                packId: state.proxyPackId || '',
+            };
+            const data = await request('/qr', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
             state.scanSessionId = data.sessionId;
             const src = qrImgSrc(data.imageBase64);
             $('yyb-qrBox').innerHTML = src ? '<img src="' + src + '" alt="二维码" style="width:180px;height:180px;">' : '加载失败';
             $('yyb-qrHint').textContent = '请使用微信扫码确认登录';
+            if (data.proxyBypass) {
+                const ph = $('yyb-proxyHint');
+                if (ph) ph.textContent = '当前地区免代理，已直连生成二维码。';
+            }
             const costEl = $('yyb-qrCost');
             const cost = Number(data.scanLoginCost);
             if (costEl) {
@@ -498,7 +606,9 @@
         if ($('yyb-resyncBtn')) $('yyb-resyncBtn').onclick = resyncSelected;
         if ($('yyb-deleteBtn')) $('yyb-deleteBtn').onclick = deleteSelected;
         if ($('yyb-scanBtn')) $('yyb-scanBtn').onclick = startScan;
+        if ($('yyb-proxyProvince')) $('yyb-proxyProvince').onchange = () => { void loadProxyCities(); };
         if ($('yyb-qrCloseBtn')) $('yyb-qrCloseBtn').onclick = closeQr;
+        void loadProxyConfig();
         togglePayload();
     }
 
