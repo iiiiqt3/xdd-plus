@@ -62,6 +62,21 @@ func svc() (*yyb.Service, error) {
 	return s, nil
 }
 
+const portalYybLoginValidDays = 30
+
+func portalYybLoginTimes(b PortalYybBinding) (loginAt, expiresAt int64) {
+	t := b.LoginAt
+	if t.IsZero() {
+		t = b.CreatedAt
+	}
+	if t.IsZero() {
+		return 0, 0
+	}
+	loginAt = t.Unix()
+	expiresAt = t.Add(portalYybLoginValidDays * 24 * time.Hour).Unix()
+	return loginAt, expiresAt
+}
+
 func bindAccount(userNumber int, acc *yyb.AccountPublic, status string) (*PortalYybBinding, error) {
 	if acc == nil {
 		return nil, fmt.Errorf("账号数据为空")
@@ -103,6 +118,7 @@ func bindAccount(userNumber int, acc *yyb.AccountPublic, status string) (*Portal
 		OpenID:       openid,
 		Nickname:     nick,
 		Status:       st,
+		LoginAt:      time.Now(),
 	}
 	err := db().Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "user_number"}, {Name: "open_id"}},
@@ -110,6 +126,7 @@ func bindAccount(userNumber int, acc *yyb.AccountPublic, status string) (*Portal
 			"yyb_account_id": acc.ID,
 			"nickname":       nick,
 			"status":         st,
+			"login_at":       time.Now(),
 			"deleted_at":     nil,
 			"updated_at":     time.Now(),
 		}),
@@ -136,6 +153,7 @@ func saveBinding(b *PortalYybBinding, userNumber int, yybAccountID int64, openid
 	b.OpenID = openid
 	b.Nickname = nick
 	b.Status = status
+	b.LoginAt = time.Now()
 	b.DeletedAt = gorm.DeletedAt{}
 	if err := db().Unscoped().Save(b).Error; err != nil {
 		return nil, err
@@ -288,6 +306,7 @@ func toPortalView(ctx context.Context, b PortalYybBinding, s *yyb.Service) Porta
 		AvatarURL:    fmt.Sprintf("/api/portal/yyb/avatar?ref=%s", b.OpenID),
 		CreatedAt:    b.CreatedAt.Unix(),
 	}
+	view.LoginAt, view.ExpiresAt = portalYybLoginTimes(b)
 	if s == nil {
 		return view
 	}

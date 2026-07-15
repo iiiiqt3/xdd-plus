@@ -3,7 +3,8 @@
 
     const API = '/api/portal/yyb';
     const PROTOCOL_API = '/api/portal/protocol';
-    const state = { accounts: [], selectedKey: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, panelLoading: false, proxyEnabled: false, proxyPackId: '', sessionAliveChecked: false };
+    const state = { accounts: [], selectedKey: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, panelLoading: false, proxyEnabled: false, proxyPackId: '', sessionAliveChecked: false, expiryTimer: null };
+    const YYB_LOGIN_VALID_MS = 30 * 24 * 60 * 60 * 1000;
 
     function $(id) { return document.getElementById(id); }
 
@@ -184,6 +185,29 @@
         </div>`;
     }
 
+    function renderExpiryLine(acc) {
+        const loginSec = Number(acc.loginAt || acc.createdAt || 0);
+        if (!loginSec) return '';
+        const expireMs = (Number(acc.expiresAt) || (loginSec + YYB_LOGIN_VALID_MS / 1000)) * 1000;
+        const remain = expireMs - Date.now();
+        if (remain <= 0) {
+            return '<div class="yyb-acc-expiry expired">登录已过期，请重新扫码登录延期</div>';
+        }
+        const days = Math.floor(remain / 86400000);
+        const hours = Math.floor((remain % 86400000) / 3600000);
+        const cls = remain < 3 * 86400000 ? ' warn' : '';
+        const expireText = new Date(expireMs).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        return '<div class="yyb-acc-expiry' + cls + '">剩余有效期 <strong>' + days + '</strong> 天 <strong>' + hours + '</strong> 小时<span style="opacity:.75;">（至 ' + esc(expireText) + '）</span></div>';
+    }
+
+    function updateExpiryLines() {
+        state.accounts.forEach(function (acc) {
+            const key = accountKey(acc);
+            const el = document.querySelector('.yyb-acc-card[data-key="' + CSS.escape(key) + '"] .yyb-acc-expiry-slot');
+            if (el) el.innerHTML = renderExpiryLine(acc);
+        });
+    }
+
     function renderAccountCard(acc) {
         const rawOpenid = String(acc.openid || '');
         const openid = esc(rawOpenid);
@@ -203,7 +227,13 @@
                 <code class="yyb-openid-text" title="${attrEsc(rawOpenid)}">${openid || '-'}</code>
                 <button type="button" class="yyb-copy-btn" data-yyb-copy="${attrEsc(rawOpenid)}">复制</button>
             </div>
+            <div class="yyb-acc-expiry-slot">${renderExpiryLine(acc)}</div>
         </div>`;
+    }
+
+    function startExpiryTicker() {
+        if (state.expiryTimer) clearInterval(state.expiryTimer);
+        state.expiryTimer = setInterval(updateExpiryLines, 60000);
     }
 
     function renderAccounts() {
@@ -221,6 +251,7 @@
             state.selectedKey = accountKey(state.accounts[0]);
         }
         grid.innerHTML = state.accounts.map(renderAccountCard).join('');
+        startExpiryTicker();
         grid.querySelectorAll('.yyb-acc-card').forEach(card => {
             card.onclick = (e) => {
                 if (e.target.closest('.yyb-copy-btn')) return;

@@ -14,6 +14,7 @@ type PortalYybBinding struct {
 	OpenID       string         `gorm:"column:open_id;size:128;not null;uniqueIndex:idx_portal_yyb_user_openid" json:"openid"`
 	Nickname     string         `gorm:"column:nickname;size:128" json:"nickname"`
 	Status       string         `gorm:"column:status;size:32" json:"status"`
+	LoginAt      time.Time      `gorm:"column:login_at" json:"loginAt"`
 	CreatedAt    time.Time      `gorm:"column:created_at" json:"createdAt"`
 	UpdatedAt    time.Time      `gorm:"column:updated_at" json:"updatedAt"`
 	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;index" json:"-"`
@@ -30,6 +31,8 @@ type PortalAccountView struct {
 	Nickname     string `json:"nickname"`
 	AvatarURL    string `json:"avatarUrl"`
 	Status       string `json:"status"`
+	LoginAt      int64  `json:"loginAt"`
+	ExpiresAt    int64  `json:"expiresAt"`
 	LastChecked  *int64 `json:"lastCheckedAt,omitempty"`
 	CreatedAt    int64  `json:"createdAt"`
 }

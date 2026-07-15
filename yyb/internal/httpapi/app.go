@@ -666,25 +666,16 @@ func (a *App) refreshLiveness(ctx context.Context, acc *store.WechatAccount) str
 	}
 	savedProxyMeta := proxyMetaFromCredentials(acc.Credentials)
 	creds := protocol.CredentialsFromMap(acc.Credentials)
-	tcpProxy := a.tcpProxyForAccount(ctx, acc)
-	maxAttempts := 1
-	if a.cfg.Proxy51Enabled && accountUsesSavedProxy(acc.Credentials) {
-		maxAttempts = accountProxyRotateLimit
+	// 刷新存活暂不走 51 账号级代理
+	tcpProxy := a.cfg.TCPProxy
+	fallbackDirect := true
+	if a.cfg.Proxy51Enabled {
+		tcpProxy = ""
+	} else if strings.TrimSpace(tcpProxy) != "" {
+		fallbackDirect = false
 	}
-	var result protocol.LoginBufferResult
-	var err error
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		fallbackDirect := strings.TrimSpace(tcpProxy) == "" && !a.cfg.Proxy51Enabled
-		client := protocol.NewLoginBufferClientWithProxy(a.cfg.RequestTimeout+25*time.Second, tcpProxy, fallbackDirect)
-		result, err = client.RefreshLoginBuffer(ctx, creds)
-		if err == nil {
-			break
-		}
-		if !isProxyOrNetworkError(err) || attempt >= maxAttempts {
-			break
-		}
-		tcpProxy = a.tcpProxyForAccount(ctx, acc)
-	}
+	client := protocol.NewLoginBufferClientWithProxy(a.cfg.RequestTimeout+25*time.Second, tcpProxy, fallbackDirect)
+	result, err := client.RefreshLoginBuffer(ctx, creds)
 	if err != nil {
 		if isProxyOrNetworkError(err) {
 			_ = a.db.SetAccountStatus(ctx, acc.ID, "unknown")
