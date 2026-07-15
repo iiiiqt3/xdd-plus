@@ -39,6 +39,9 @@ import com.goudong.jd.ui.common.bodyText
 import com.goudong.jd.ui.common.cardView
 import com.goudong.jd.ui.common.captionText
 import com.goudong.jd.ui.common.dp
+import com.goudong.jd.ui.common.formatScanCostPreview
+import com.goudong.jd.ui.common.formatYybConfirmMessage
+import com.goudong.jd.ui.common.formatYybScanCostNote
 import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.common.heroCard
 import com.goudong.jd.ui.common.inputField
@@ -1585,26 +1588,15 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }
     }
 
-    private fun yybScanCostNote(cost: Int?, hint: String?): String? {
-        val text = formatScanCostPreview(cost, hint)
-        return text.ifBlank { null }
-    }
-
-    private fun formatScanCostPreview(cost: Int?, hint: String?): String {
-        if (cost != null && cost > 0) return "本次扫码将扣除 $cost 积分"
-        if (cost != null && cost == 0) return "本次扫码免费，不扣除积分"
-        return hint?.trim().orEmpty()
-    }
-
     private fun applyScanCostLabel(label: TextView, cost: Int?, hint: String?) {
-        val text = formatScanCostPreview(cost, hint)
-        if (text.isBlank()) {
+        val preview = formatScanCostPreview(cost, hint)
+        if (preview.text.isBlank()) {
             label.visibility = View.GONE
             return
         }
         label.visibility = View.VISIBLE
-        label.text = text
-        val isFree = cost == 0 || text.contains("免费")
+        label.text = preview.text
+        val isFree = preview.isFree
         label.setTextColor(if (isFree) Color.parseColor("#16A34A") else Color.parseColor("#D97706"))
         label.setTypeface(label.typeface, Typeface.BOLD)
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -1632,10 +1624,11 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         decodeQrImage(base64)?.let { qrImage.setImageBitmap(it) }
         dialogView.addView(qrImage)
 
-        yybScanCostNote(cost, hint)?.let { note ->
+        formatYybScanCostNote(cost, hint)?.let { note ->
+            val preview = formatScanCostPreview(cost, hint)
             dialogView.addView(TextView(ctx).apply {
                 text = note
-                setTextColor(Color.parseColor("#D97706"))
+                setTextColor(Color.parseColor(if (preview.isFree) "#16A34A" else "#D97706"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setTypeface(typeface, Typeface.BOLD)
                 gravity = Gravity.CENTER
@@ -1680,11 +1673,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                         runCatching { AppServices.portalRepository.confirmYybQr(sessionId) }
                             .onSuccess { result ->
                                 dialog.dismiss()
-                                val msg = when {
-                                    result.alreadyBound -> "扫码成功，账号已绑定"
-                                    result.cost > 0 -> "扫码成功，已扣除 ${result.cost} 积分"
-                                    else -> "扫码成功，账号已绑定"
-                                }
+                                val msg = formatYybConfirmMessage(result.alreadyBound, result.cost)
                                 toast(msg)
                                 loadYybPanel(autoCheck = true, showAlert = true)
                             }

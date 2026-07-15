@@ -276,6 +276,7 @@ data class PortalProtocolBinding(
 
 data class PortalProtocolBindQuota(
     val onlineWxSlots: Int = 0,
+    val yybAccounts: Int = 0,
     val boundPairs: Int = 0,
     val freeSlots: Int = 0,
     val scanLoginCost: Int? = null,
