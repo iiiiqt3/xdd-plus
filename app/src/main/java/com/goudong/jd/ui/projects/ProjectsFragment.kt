@@ -75,7 +75,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private var contentScroll: android.widget.ScrollView? = null
     private val rushFragment = ProjectRushFragment()
     private val categories = listOf("全部", "现金类", "积分换实物", "抽奖类", "其他类")
-    /** 协议接入子页：0=微信协议，1=应用宝协议 */
+    /** 协议接入子页：0=应用宝协议，1=微信协议，2=协议双绑 */
     private var protocolSubIndex = 0
     private var yybAccounts: List<com.goudong.jd.data.model.PortalYybAccount> = emptyList()
     private var yybSelectedKey: String = ""
@@ -85,10 +85,19 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private var yybServiceLabel: TextView? = null
     private var yybLoadingBar: ProgressBar? = null
     private var yybManageRow: LinearLayout? = null
+    private var yybRefreshAccountBtn: TextView? = null
+    private var yybDeleteAccountBtn: TextView? = null
     private var yybReloadBtn: Button? = null
+    private var protocolBindWxPickBtn: TextView? = null
+    private var protocolBindYybPickBtn: TextView? = null
+    private var protocolBindQuotaLabel: TextView? = null
+    private var protocolBindListHost: LinearLayout? = null
+    private var protocolBindSelectedWx: com.goudong.jd.data.model.PortalWxDevice? = null
+    private var protocolBindSelectedYyb: com.goudong.jd.data.model.PortalYybAccount? = null
     private var yybServiceReady = false
     private var yybScanBusy = false
     private var yybManualRefreshing = false
+    private var yybAccountActionBusy = false
     private val yybStoreListener = { applyYybFromStore() }
     private var protocolBindings: List<com.goudong.jd.data.model.PortalProtocolBinding> = emptyList()
     private var protocolBindQuota: com.goudong.jd.data.model.PortalProtocolBindQuota? = null
@@ -107,12 +116,20 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         swipeRefreshLayout = SwipeRefreshLayout(requireContext()).apply {
             setColorSchemeColors(ContextCompat.getColor(requireContext(), R.color.brand_primary))
             setOnRefreshListener {
-                if (currentTab == 0) {
-                    cachedActivities = null
-                } else {
-                    cachedProjects = null
+                when (currentTab) {
+                    0 -> cachedActivities = null
+                    1 -> cachedProjects = null
+                    3 -> when (protocolSubIndex) {
+                        0 -> loadYybPanel(autoCheck = true, showAlert = false, manual = true)
+                        1 -> loadWxDevices()
+                        2 -> loadProtocolBindings()
+                    }
                 }
-                renderCurrentTab(forceRefresh = true)
+                if (currentTab == 3) {
+                    swipeRefreshLayout.isRefreshing = false
+                } else {
+                    renderCurrentTab(forceRefresh = true)
+                }
             }
             addView(scroll)
         }
@@ -236,10 +253,11 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         swipeRefreshLayout.visibility = if (isRushTab) View.GONE else View.VISIBLE
         rushHost?.visibility = if (isRushTab) View.VISIBLE else View.GONE
 
+        val isProtocolTab = currentTab == 3
         if (!isRushTab) {
             if (rushFragment.isAdded) rushFragment.popToList()
             contentRoot.removeAllViews()
-            if (!swipeRefreshLayout.isRefreshing && forceRefresh) {
+            if (!swipeRefreshLayout.isRefreshing && forceRefresh && !isProtocolTab) {
                 swipeRefreshLayout.isRefreshing = true
             }
         } else {
@@ -888,7 +906,10 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private var wxDevices: List<com.goudong.jd.data.model.PortalWxDevice> = emptyList()
     private val projectActionBusyKeys = mutableSetOf<String>()
 
+    private fun isYybProtocolTabActive(): Boolean = currentTab == 3 && protocolSubIndex == 0
+
     private fun renderProtocolAccess(forceRefresh: Boolean) {
+        swipeRefreshLayout.isRefreshing = false
         contentRoot.removeAllViews()
         val ctx = requireContext()
         val pillRow = LinearLayout(ctx).apply {
@@ -899,11 +920,11 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { bottomMargin = ctx.dp(10) }
         }
-        listOf("微信协议", "应用宝协议").forEachIndexed { index, label ->
+        listOf("应用宝协议", "微信协议", "协议双绑").forEachIndexed { index, label ->
             val active = protocolSubIndex == index
             pillRow.addView(TextView(ctx).apply {
                 text = label
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 setTypeface(typeface, if (active) Typeface.BOLD else Typeface.NORMAL)
                 setTextColor(
                     if (active) ContextCompat.getColor(ctx, R.color.brand_primary)
@@ -914,9 +935,9 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     setColor(if (active) Color.parseColor("#EFF6FF") else Color.TRANSPARENT)
                     cornerRadius = ctx.dp(8).toFloat()
                 }
-                setPadding(ctx.dp(14), ctx.dp(8), ctx.dp(14), ctx.dp(8))
+                setPadding(ctx.dp(8), ctx.dp(8), ctx.dp(8), ctx.dp(8))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    if (index == 0) marginEnd = ctx.dp(6)
+                    if (index < 2) marginEnd = ctx.dp(4)
                 }
                 setOnClickListener {
                     if (protocolSubIndex == index) return@setOnClickListener
@@ -926,10 +947,10 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             })
         }
         contentRoot.addView(pillRow)
-        if (protocolSubIndex == 0) {
-            renderWxProtocol()
-        } else {
-            renderYybProtocol(forceRefresh)
+        when (protocolSubIndex) {
+            0 -> renderYybProtocol(forceRefresh)
+            1 -> renderWxProtocol()
+            2 -> renderProtocolBindTab()
         }
         loadProtocolBindings()
     }
@@ -942,11 +963,19 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 if (wxDevices.isEmpty()) {
                     wxDevices = AppServices.portalRepository.fetchWxDevices()
                 }
+                if (yybAccounts.isEmpty()) {
+                    yybAccounts = YybAccountStore.accounts.ifEmpty {
+                        AppServices.portalRepository.fetchYybStatus(false).accounts.orEmpty()
+                    }
+                }
             }
-            if (protocolSubIndex == 0) {
-                renderWxDeviceList(wxDevices)
-            } else {
-                renderYybAccounts()
+            when (protocolSubIndex) {
+                1 -> if (currentTab == 3) renderWxDeviceList(wxDevices)
+                0 -> if (isYybProtocolTabActive()) renderYybAccounts()
+                2 -> if (currentTab == 3) {
+                    renderProtocolBindQuota()
+                    renderProtocolBindList()
+                }
             }
         }
     }
@@ -1022,45 +1051,6 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             """.trimIndent(),
         ))
 
-        contentRoot.addView(ctx.cardView().apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(ctx.dp(14), ctx.dp(12), ctx.dp(14), ctx.dp(12))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = ctx.dp(10) }
-            gravity = Gravity.CENTER_VERTICAL
-            setOnClickListener {
-                startActivity(Intent(ctx, ProtocolBindActivity::class.java))
-            }
-            addView(TextView(ctx).apply {
-                text = "🔗"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { marginEnd = ctx.dp(10) }
-            })
-            addView(LinearLayout(ctx).apply {
-                orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                addView(TextView(ctx).apply {
-                    text = "协议双绑"
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                    setTypeface(typeface, Typeface.BOLD)
-                    setTextColor(ctx.themeColor(R.color.text_primary))
-                })
-                addView(ctx.captionText("微信 wxid ↔ 应用宝 openid，点击进入管理").apply {
-                    setPadding(0, ctx.dp(4), 0, 0)
-                })
-            })
-            addView(TextView(ctx).apply {
-                text = "›"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
-                setTextColor(ctx.themeColor(R.color.text_hint))
-            })
-        })
-
         val actionRow = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -1085,10 +1075,35 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }.also { actionRow.addView(it) }
         contentRoot.addView(actionRow)
 
+        fun manageBtn(label: String, danger: Boolean = false, onClick: () -> Unit): TextView {
+            return TextView(ctx).apply {
+                text = label
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(if (danger) Color.parseColor("#DC2626") else ctx.themeColor(R.color.text_primary))
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    setColor(
+                        if (danger) Color.parseColor("#FEE2E2")
+                        else ctx.themeColor(R.color.chip_bg)
+                    )
+                    cornerRadius = ctx.dp(8).toFloat()
+                }
+                setPadding(ctx.dp(8), ctx.dp(6), ctx.dp(8), ctx.dp(6))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { marginStart = ctx.dp(4) }
+                minWidth = ctx.dp(40)
+                setOnClickListener { onClick() }
+            }
+        }
+
         val sectionRow = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(ctx.dp(2), 0, ctx.dp(2), ctx.dp(8))
+            setPadding(ctx.dp(2), ctx.dp(6), ctx.dp(2), ctx.dp(8))
+            setBackgroundColor(ctx.themeColor(R.color.surface_soft))
         }
         yybSectionTitle = TextView(ctx).apply {
             text = "账号列表 · 0"
@@ -1097,11 +1112,23 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             setTextColor(ctx.themeColor(R.color.text_secondary))
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }.also { sectionRow.addView(it) }
+        yybRefreshAccountBtn = manageBtn("刷新") {
+            if (yybAccountActionBusy) return@manageBtn
+            yybRefreshAccountBtn?.let { animateAccountActionBtn(it) }
+            refreshSelectedYyb()
+        }.also {
+            it.visibility = View.GONE
+            sectionRow.addView(it)
+        }
+        yybDeleteAccountBtn = manageBtn("删除", danger = true) { deleteSelectedYyb() }.also {
+            it.visibility = View.GONE
+            sectionRow.addView(it)
+        }
         yybLoadingBar = ProgressBar(ctx).apply {
             isIndeterminate = true
             visibility = View.GONE
             layoutParams = LinearLayout.LayoutParams(ctx.dp(14), ctx.dp(14)).apply {
-                marginEnd = ctx.dp(6)
+                marginStart = ctx.dp(4)
             }
         }.also { sectionRow.addView(it) }
         yybServiceDot = View(ctx).apply {
@@ -1110,6 +1137,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 setColor(Color.parseColor("#CBD5E1"))
             }
             layoutParams = LinearLayout.LayoutParams(ctx.dp(7), ctx.dp(7)).apply {
+                marginStart = ctx.dp(6)
                 marginEnd = ctx.dp(6)
             }
         }.also { sectionRow.addView(it) }
@@ -1125,35 +1153,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             tag = "yyb_account_list"
         })
 
-        yybManageRow = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            visibility = View.GONE
-            setPadding(0, ctx.dp(10), 0, 0)
-        }.also { contentRoot.addView(it) }
-        fun manageBtn(label: String, danger: Boolean = false, onClick: () -> Unit): View {
-            return TextView(ctx).apply {
-                text = label
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(if (danger) Color.parseColor("#DC2626") else ctx.themeColor(R.color.text_primary))
-                gravity = Gravity.CENTER
-                background = GradientDrawable().apply {
-                    setColor(
-                        if (danger) Color.parseColor("#FEE2E2")
-                        else ctx.themeColor(R.color.chip_bg)
-                    )
-                    cornerRadius = ctx.dp(8).toFloat()
-                }
-                setPadding(ctx.dp(10), ctx.dp(10), ctx.dp(10), ctx.dp(10))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    marginEnd = if (danger) 0 else ctx.dp(6)
-                }
-                setOnClickListener { onClick() }
-            }
-        }
-        yybManageRow?.addView(manageBtn("刷新") { refreshSelectedYyb() })
-        yybManageRow?.addView(manageBtn("删除", danger = true) { deleteSelectedYyb() })
+        yybManageRow = null
 
         updateYybActionEnabled()
         applyYybFromStore()
@@ -1206,7 +1206,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     private fun applyYybFromStore() {
-        if (protocolSubIndex != 1) return
+        if (!isYybProtocolTabActive()) return
         val ready = YybAccountStore.isServiceReady
         val title = if (ready) "已启动" else "未启动"
         yybAccounts = YybAccountStore.accounts
@@ -1262,7 +1262,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             }
             result.onFailure {
                 if (showAlert) handlePortalError(it)
-                renderYybAccounts(it.message)
+                if (isYybProtocolTabActive()) renderYybAccounts(it.message)
             }
             result.onSuccess { st ->
                 if (!st.enabled || !st.ready) {
@@ -1282,14 +1282,12 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     private fun renderYybAccounts(error: String? = null) {
+        if (!isYybProtocolTabActive()) return
         val host = contentRoot.findViewWithTag<LinearLayout>("yyb_account_list") ?: return
         host.removeAllViews()
-        val ctx = requireContext()
-        yybManageRow?.visibility = if (selectedYybAccount() != null && error == null && yybAccounts.isNotEmpty()) {
-            View.VISIBLE
-        } else {
-            View.GONE
-        }
+        val showActions = selectedYybAccount() != null && error == null && yybAccounts.isNotEmpty()
+        yybRefreshAccountBtn?.visibility = if (showActions) View.VISIBLE else View.GONE
+        yybDeleteAccountBtn?.visibility = if (showActions) View.VISIBLE else View.GONE
         when {
             error != null -> host.addView(emptyCard(error))
             yybAccounts.isEmpty() -> host.addView(
@@ -1350,11 +1348,14 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(if (alive) Color.parseColor("#16A34A") else Color.parseColor("#DC2626"))
+                    gravity = Gravity.CENTER
                     background = GradientDrawable().apply {
                         setColor(if (alive) Color.parseColor("#DCFCE7") else Color.parseColor("#FEE2E2"))
                         cornerRadius = ctx.dp(6).toFloat()
                     }
-                    setPadding(ctx.dp(8), ctx.dp(3), ctx.dp(8), ctx.dp(3))
+                    setPadding(ctx.dp(8), ctx.dp(4), ctx.dp(8), ctx.dp(4))
+                    minWidth = ctx.dp(36)
+                    minHeight = ctx.dp(20)
                 })
             })
             val uinText = if ((acc.uin ?: 0L) > 0) acc.uin.toString() else "-"
@@ -1380,42 +1381,12 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 })
-                addView(TextView(ctx).apply {
-                    text = "复制"
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                    setTypeface(typeface, Typeface.BOLD)
-                    setTextColor(Color.parseColor("#2563EB"))
-                    setPadding(ctx.dp(8), ctx.dp(4), ctx.dp(4), ctx.dp(4))
-                    setOnClickListener {
-                        val oid = acc.openid?.trim().orEmpty()
-                        if (oid.isEmpty()) {
-                            toast("无可复制的 OpenID")
-                            return@setOnClickListener
-                        }
-                        val clip = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clip.setPrimaryClip(ClipData.newPlainText("openid", oid))
-                        toast("已复制 OpenID")
-                    }
-                })
             })
             bindingByOpenId(acc.openid)?.let { binding ->
                 val wxDev = wxDevices.firstOrNull { it.wxid == binding.wxWxid }
                 val peerName = wxDev?.nickname?.takeIf { it.isNotBlank() } ?: binding.nickname ?: "微信设备"
-                addView(LinearLayout(ctx).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(0, ctx.dp(8), 0, 0)
-                    addView(ctx.captionText("已绑定微信 · $peerName · ${shortenProtocolId(binding.wxWxid)}").apply {
-                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    })
-                    addView(TextView(ctx).apply {
-                        text = "解绑"
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                        setTextColor(Color.parseColor("#DC2626"))
-                        setOnClickListener {
-                            confirmProtocolUnbind(binding.wxWxid.orEmpty(), binding.yybOpenId.orEmpty())
-                        }
-                    })
+                addView(ctx.captionText("已绑定微信 · $peerName · ${shortenProtocolId(binding.wxWxid)}").apply {
+                    setPadding(0, ctx.dp(6), 0, 0)
                 })
             }
             val (expiryText, expired) = formatYybExpiry(acc)
@@ -1433,6 +1404,47 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     setPadding(0, ctx.dp(6), 0, 0)
                 })
             }
+            fun cardActionBtn(label: String, color: Int, onClick: () -> Unit): TextView {
+                return TextView(ctx).apply {
+                    text = label
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(color)
+                    gravity = Gravity.CENTER
+                    background = GradientDrawable().apply {
+                        setColor(Color.argb(26, Color.red(color), Color.green(color), Color.blue(color)))
+                        cornerRadius = ctx.dp(8).toFloat()
+                    }
+                    setPadding(ctx.dp(10), ctx.dp(8), ctx.dp(10), ctx.dp(8))
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        marginEnd = ctx.dp(5)
+                    }
+                    setOnClickListener { onClick() }
+                }
+            }
+            addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(0, ctx.dp(10), 0, 0)
+                addView(cardActionBtn("复制 OpenID", Color.parseColor("#2563EB")) {
+                    val oid = acc.openid?.trim().orEmpty()
+                    if (oid.isEmpty()) {
+                        toast("无可复制的 OpenID")
+                    } else {
+                        val clip = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clip.setPrimaryClip(ClipData.newPlainText("openid", oid))
+                        toast("已复制 OpenID")
+                    }
+                }.apply {
+                    (layoutParams as LinearLayout.LayoutParams).marginEnd = ctx.dp(5)
+                })
+                bindingByOpenId(acc.openid)?.let { binding ->
+                    addView(cardActionBtn("解除双绑", Color.parseColor("#DC2626")) {
+                        confirmProtocolUnbind(binding.wxWxid.orEmpty(), binding.yybOpenId.orEmpty())
+                    }.apply {
+                        (layoutParams as LinearLayout.LayoutParams).marginEnd = 0
+                    })
+                }
+            })
             setOnClickListener {
                 yybSelectedKey = key
                 renderYybAccounts()
@@ -1474,6 +1486,10 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         val citySpinner = android.widget.Spinner(ctx)
         dialogView.addView(provinceSpinner)
         dialogView.addView(citySpinner.apply { setPadding(0, ctx.dp(8), 0, 0) })
+        val scanCostLabel = TextView(ctx).apply {
+            visibility = View.GONE
+        }
+        dialogView.addView(scanCostLabel)
         val dialog = androidx.appcompat.app.AlertDialog.Builder(ctx)
             .setTitle("选择登录地区")
             .setView(dialogView)
@@ -1484,6 +1500,8 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         var provinces = emptyList<Pair<String, String>>()
         var cities = emptyList<Pair<String, String>>()
         lifecycleScope.launch {
+            val quota = runCatching { AppServices.portalRepository.fetchProtocolBindQuota() }.getOrNull()
+            applyScanCostLabel(scanCostLabel, quota?.scanLoginCost, quota?.scanCostHint)
             val packId = cfg.proxyDefaultPackid.orEmpty()
             provinces = parseProxyAreaList(
                 runCatching { AppServices.portalRepository.fetchProtocolProxyAreas(packId = packId) }.getOrNull()
@@ -1570,11 +1588,35 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     private fun yybScanCostNote(cost: Int?, hint: String?): String? {
-        val c = cost ?: return hint?.trim()?.takeIf { it.isNotEmpty() }
-        return when {
-            c > 0 -> "本次扫码将扣除 $c 积分（确认登录后扣除）"
-            else -> "本次扫码免费，不扣除积分"
+        val text = formatScanCostPreview(cost, hint)
+        return text.ifBlank { null }
+    }
+
+    private fun formatScanCostPreview(cost: Int?, hint: String?): String {
+        if (cost != null && cost > 0) return "本次扫码将扣除 $cost 积分"
+        if (cost != null && cost == 0) return "本次扫码免费，不扣除积分"
+        return hint?.trim().orEmpty()
+    }
+
+    private fun applyScanCostLabel(label: TextView, cost: Int?, hint: String?) {
+        val text = formatScanCostPreview(cost, hint)
+        if (text.isBlank()) {
+            label.visibility = View.GONE
+            return
         }
+        label.visibility = View.VISIBLE
+        label.text = text
+        val isFree = cost == 0 || text.contains("免费")
+        label.setTextColor(if (isFree) Color.parseColor("#16A34A") else Color.parseColor("#D97706"))
+        label.setTypeface(label.typeface, Typeface.BOLD)
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+        label.setPadding(requireContext().dp(10), requireContext().dp(8), requireContext().dp(10), requireContext().dp(4))
+    }
+
+    private fun animateAccountActionBtn(view: View) {
+        view.animate().scaleX(0.94f).scaleY(0.94f).setDuration(80).withEndAction {
+            view.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+        }.start()
     }
 
     private fun showYybQrDialog(sessionId: String, base64: String, cost: Int?, hint: String?) {
@@ -1665,6 +1707,9 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     private fun refreshSelectedYyb() {
         val acc = selectedYybAccount() ?: return toast("请先选择一个账号")
+        if (yybAccountActionBusy) return
+        yybAccountActionBusy = true
+        yybRefreshAccountBtn?.isEnabled = false
         lifecycleScope.launch {
             runCatching { AppServices.portalRepository.refreshYybAccount(yybAccountRef(acc)) }
                 .onSuccess {
@@ -1675,6 +1720,8 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     toast(it.message ?: "刷新失败")
                     handlePortalError(it)
                 }
+            yybAccountActionBusy = false
+            yybRefreshAccountBtn?.isEnabled = true
         }
     }
 
@@ -1720,6 +1767,225 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 }
             }
             .show()
+    }
+
+    private fun renderProtocolBindTab() {
+        val ctx = requireContext()
+        val scroll = android.widget.ScrollView(ctx).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        val host = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        scroll.addView(host)
+        contentRoot.addView(scroll)
+
+        host.addView(ctx.cardView().apply {
+            setPadding(ctx.dp(16), ctx.dp(14), ctx.dp(16), ctx.dp(14))
+            addView(TextView(context).apply {
+                text = "🔗 微信 wxid ↔ 应用宝 openid"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(ctx.themeColor(R.color.text_primary))
+            })
+            addView(ctx.bodyText(
+                "绑定后青龙脚本原提交 CK 的微信 wxid，网关将自动路由微信协议 wxid 至应用宝请求协议 code；如果你之前没使用微信协议仅使用应用宝时可忽略本功能。绑定关系显示在下方账号卡片内。"
+            ).apply {
+                setPadding(0, ctx.dp(8), 0, 0)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setLineSpacing(0f, 1.5f)
+            })
+        })
+
+        host.addView(ctx.cardView().apply {
+            setPadding(ctx.dp(16), ctx.dp(14), ctx.dp(16), ctx.dp(14))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = ctx.dp(12) }
+            addView(ctx.captionText("新建双绑").apply {
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                setTypeface(typeface, Typeface.BOLD)
+            })
+            fun pickField(placeholder: String): TextView {
+                return TextView(context).apply {
+                    text = placeholder
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    setTextColor(ctx.themeColor(R.color.text_primary))
+                    setPadding(ctx.dp(12), ctx.dp(12), ctx.dp(12), ctx.dp(12))
+                    background = GradientDrawable().apply {
+                        setColor(ctx.themeColor(R.color.chip_bg))
+                        cornerRadius = ctx.dp(10).toFloat()
+                    }
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply { topMargin = ctx.dp(10) }
+                }
+            }
+            protocolBindWxPickBtn = pickField("选择微信 wxid").also {
+                it.setOnClickListener { showProtocolBindWxPicker() }
+                addView(it)
+            }
+            protocolBindYybPickBtn = pickField("选择应用宝 openid").also {
+                it.setOnClickListener { showProtocolBindYybPicker() }
+                addView(it)
+            }
+            addView(ctx.primaryButton("建立双绑").apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = ctx.dp(14) }
+                setOnClickListener { submitProtocolBind() }
+            })
+        })
+
+        host.addView(ctx.captionText("已绑定配对").apply {
+            setPadding(ctx.dp(4), ctx.dp(16), 0, ctx.dp(8))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(ctx.themeColor(R.color.text_secondary))
+        })
+        protocolBindListHost = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            tag = "protocol_bind_list"
+        }
+        host.addView(protocolBindListHost)
+        renderProtocolBindList()
+    }
+
+    private fun renderProtocolBindQuota() {
+        // 名额信息改在扫码时展示，此处不再显示
+    }
+
+    private fun renderProtocolBindList() {
+        val host = protocolBindListHost ?: contentRoot.findViewWithTag("protocol_bind_list") as? LinearLayout ?: return
+        host.removeAllViews()
+        val ctx = requireContext()
+        if (protocolBindings.isEmpty()) {
+            host.addView(ctx.cardView().apply {
+                addView(ctx.bodyText("暂无绑定，可在上方选择微信与应用宝账号建立双绑。").apply {
+                    gravity = Gravity.CENTER
+                    setTextColor(ctx.themeColor(R.color.text_muted))
+                })
+            })
+            return
+        }
+        protocolBindings.forEach { b ->
+            val wx = wxDevices.firstOrNull { it.wxid == b.wxWxid }
+            val yyb = yybAccounts.firstOrNull { it.openid == b.yybOpenId }
+            host.addView(ctx.cardView().apply {
+                setPadding(ctx.dp(14), ctx.dp(12), ctx.dp(14), ctx.dp(12))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { bottomMargin = ctx.dp(8) }
+                addView(TextView(context).apply {
+                    text = "微信 · ${wx?.nickname ?: b.nickname ?: "设备"}"
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                })
+                addView(ctx.captionText(shortenProtocolId(b.wxWxid)).apply {
+                    setPadding(0, ctx.dp(4), 0, 0)
+                })
+                addView(TextView(context).apply {
+                    text = "↕"
+                    gravity = Gravity.CENTER
+                    setTextColor(ctx.themeColor(R.color.text_muted))
+                    setPadding(0, ctx.dp(4), 0, ctx.dp(4))
+                })
+                addView(TextView(context).apply {
+                    text = "应用宝 · ${yyb?.nickname ?: "账号"}"
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                })
+                addView(ctx.captionText(shortenProtocolId(b.yybOpenId)).apply {
+                    setPadding(0, ctx.dp(4), 0, ctx.dp(8))
+                })
+                addView(TextView(context).apply {
+                    text = "解除绑定"
+                    setTextColor(Color.parseColor("#DC2626"))
+                    setTypeface(typeface, Typeface.BOLD)
+                    gravity = Gravity.CENTER
+                    setOnClickListener {
+                        confirmProtocolUnbind(b.wxWxid.orEmpty(), b.yybOpenId.orEmpty())
+                    }
+                })
+            })
+        }
+    }
+
+    private fun unboundWxForBind() = wxDevices.filter { !boundWxSet().contains(it.wxid) }
+    private fun unboundYybForBind() = yybAccounts.filter { !boundOpenIdSet().contains(it.openid) }
+
+    private fun showProtocolBindWxPicker() {
+        val items = unboundWxForBind()
+        if (items.isEmpty()) {
+            toast("暂无可绑定的微信设备")
+            return
+        }
+        val labels = items.map {
+            val offline = if (it.online == true) "" else "（离线）"
+            "${it.nickname ?: "微信设备"} · ${shortenProtocolId(it.wxid)}$offline"
+        }.toTypedArray()
+        AlertDialog.Builder(requireContext())
+            .setTitle("选择微信 wxid")
+            .setItems(labels) { _, which ->
+                protocolBindSelectedWx = items[which]
+                protocolBindWxPickBtn?.text = labels[which]
+            }
+            .show()
+    }
+
+    private fun showProtocolBindYybPicker() {
+        val items = unboundYybForBind()
+        if (items.isEmpty()) {
+            toast("暂无可绑定的应用宝账号")
+            return
+        }
+        val labels = items.map { acc ->
+            val alive = (acc.status ?: "").lowercase() in listOf("alive", "online")
+            val name = acc.nickname?.takeIf { it.isNotBlank() } ?: "应用宝账号"
+            "$name · ${shortenProtocolId(acc.openid)}${if (alive) "" else "（失效）"}"
+        }.toTypedArray()
+        AlertDialog.Builder(requireContext())
+            .setTitle("选择应用宝 openid")
+            .setItems(labels) { _, which ->
+                protocolBindSelectedYyb = items[which]
+                protocolBindYybPickBtn?.text = labels[which]
+            }
+            .show()
+    }
+
+    private fun submitProtocolBind() {
+        val wx = protocolBindSelectedWx
+        val yyb = protocolBindSelectedYyb
+        if (wx == null || yyb == null) {
+            toast("请先选择微信和应用宝账号")
+            return
+        }
+        lifecycleScope.launch {
+            runCatching {
+                AppServices.portalRepository.protocolBind(
+                    wxWxid = wx.wxid.orEmpty(),
+                    yybOpenId = yyb.openid.orEmpty(),
+                    nickname = yyb.nickname.orEmpty(),
+                )
+            }.onSuccess {
+                toast("绑定成功")
+                protocolBindSelectedWx = null
+                protocolBindSelectedYyb = null
+                protocolBindWxPickBtn?.text = "选择微信 wxid"
+                protocolBindYybPickBtn?.text = "选择应用宝 openid"
+                loadProtocolBindings()
+            }.onFailure {
+                toast(it.message ?: "绑定失败")
+                handlePortalError(it)
+            }
+        }
     }
 
     private fun renderWxProtocol() {

@@ -54,7 +54,6 @@ class ProtocolBindActivity : AppCompatActivity() {
 
     private lateinit var wxPickBtn: TextView
     private lateinit var yybPickBtn: TextView
-    private lateinit var quotaLabel: TextView
     private lateinit var boundListHost: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,17 +88,12 @@ class ProtocolBindActivity : AppCompatActivity() {
                 setTextColor(themeColor(R.color.text_primary))
             })
             addView(bodyText(
-                "绑定后青龙脚本仍填原微信 wxid，网关将自动路由到应用宝获取 code；仅使用应用宝时可忽略本功能。"
+                "绑定后青龙脚本原提交 CK 的微信 wxid，网关将自动路由微信协议 wxid 至应用宝请求协议 code；如果你之前没使用微信协议仅使用应用宝时可忽略本功能。绑定关系显示在下方账号卡片内。"
             ).apply {
                 setPadding(0, dp(8), 0, 0)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 setLineSpacing(0f, 1.5f)
             })
-            quotaLabel = captionText("加载名额…").apply {
-                setPadding(0, dp(10), 0, 0)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            }
-            addView(quotaLabel)
         })
     }
 
@@ -179,8 +173,7 @@ class ProtocolBindActivity : AppCompatActivity() {
     }
 
     private fun renderQuota() {
-        val q = quota
-        quotaLabel.text = "在线微信 ${q?.onlineWxSlots ?: 0} · 已绑 ${q?.boundPairs ?: 0} · 免费名额 ${q?.freeSlots ?: 0}"
+        // 名额信息改在扫码时展示
     }
 
     private fun boundWxSet() = bindings.mapNotNull { it.wxWxid }.toSet()
