@@ -1278,6 +1278,16 @@
             margin-bottom: 14px; padding: 11px 14px; border-radius: 10px; font-size: 12px; line-height: 1.75;
             background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.22); color: #92400e;
         }
+        .yyb-scan-region-hint {
+            margin-bottom: 14px; padding: 11px 14px; border-radius: 10px; font-size: 12px; line-height: 1.75;
+            background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.18); color: #4338ca;
+        }
+        .yyb-scan-region-hint strong { color: #312e81; }
+        .yyb-scan-region-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+        .yyb-qr-region-tag {
+            margin: 0 0 10px; padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 1.5;
+            background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.14); color: #4f46e5;
+        }
         .yyb-acc-expiry {
             margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.5;
             background: #f8fafc; border: 1px solid #e2e8f0; color: #475569;
@@ -1511,12 +1521,38 @@
 <div class="modal-mask" id="yyb-qrModal">
     <div class="modal" style="max-width:420px;">
         <div class="modal-header">
-            <h3>微信扫码 <span class="yyb-test-tag">测试</span></h3>
+            <h3 id="yyb-qrModalTitle">扫码添加账号</h3>
             <button class="modal-close" id="yyb-qrCloseBtn" type="button">×</button>
         </div>
-        <p class="muted" id="yyb-qrHint" style="margin-bottom:8px;line-height:1.7;">请使用微信扫码确认登录</p>
-        <p id="yyb-qrCost" style="display:none;margin:0 0 14px;padding:8px 12px;border-radius:8px;background:rgba(245,158,11,.12);color:#d97706;font-size:13px;font-weight:600;line-height:1.5;"></p>
-        <div style="min-height:200px;display:grid;place-items:center;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:10px;margin-bottom:14px;" id="yyb-qrBox">等待生成…</div>
+
+        <div id="yyb-scanRegionStep">
+            <div class="yyb-scan-region-hint">
+                请选择你<strong>当前所在地</strong>进行登录，避免异地登录触发风控。选择与所在地一致的地区，扫码成功后有效期为 <strong>30 天</strong>；若归属地与实际位置不一致，有效期可能缩短至 <strong>1 天</strong>。
+            </div>
+            <div id="yyb-proxyRegionRow" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                <div>
+                    <label class="muted" style="font-size:12px;display:block;margin-bottom:4px;">所在省份</label>
+                    <select id="yyb-proxyProvince" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;background:var(--glass-bg);color:var(--text);"></select>
+                </div>
+                <div>
+                    <label class="muted" style="font-size:12px;display:block;margin-bottom:4px;">所在城市</label>
+                    <select id="yyb-proxyCity" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;background:var(--glass-bg);color:var(--text);"></select>
+                </div>
+            </div>
+            <p class="muted" id="yyb-proxyHint" style="font-size:12px;margin:0 0 10px;line-height:1.65;">请选择与你当前所在地一致的省/市。</p>
+            <p class="muted" id="yyb-proxyConfigWarn" style="display:none;font-size:12px;margin:0 0 10px;line-height:1.6;color:#d97706;">后台 51 代理未就绪：流量白名单需填写 UID + packid=12；账号密码模式需填写账号与密码；并确认服务器 IP 已在 51 后台加白。</p>
+            <div class="yyb-scan-region-actions">
+                <button class="btn secondary" id="yyb-regionCancelBtn" type="button">取消</button>
+                <button class="btn accent" id="yyb-regionConfirmBtn" type="button">确定</button>
+            </div>
+        </div>
+
+        <div id="yyb-scanQrStep" style="display:none;">
+            <p class="yyb-qr-region-tag" id="yyb-qrRegionTag" style="display:none;"></p>
+            <p class="muted" id="yyb-qrHint" style="margin-bottom:8px;line-height:1.7;">请使用微信扫码确认登录</p>
+            <p id="yyb-qrCost" style="display:none;margin:0 0 14px;padding:8px 12px;border-radius:8px;background:rgba(245,158,11,.12);color:#d97706;font-size:13px;font-weight:600;line-height:1.5;"></p>
+            <div style="min-height:200px;display:grid;place-items:center;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:10px;margin-bottom:14px;" id="yyb-qrBox">等待生成…</div>
+        </div>
     </div>
 </div>
 
@@ -2216,23 +2252,10 @@
                     <span class="yyb-spin" id="yyb-statusSpin" style="display:inline-block;"></span>
                     <span id="yyb-statusText">登录后将静默检测账号状态（仅一次）</span>
                 </div>
-                <div id="yyb-proxyRegionRow" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-                    <div>
-                        <label class="muted" style="font-size:12px;display:block;margin-bottom:4px;">登录省份</label>
-                        <select id="yyb-proxyProvince" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;background:var(--glass-bg);color:var(--text);"></select>
-                    </div>
-                    <div>
-                        <label class="muted" style="font-size:12px;display:block;margin-bottom:4px;">登录城市</label>
-                        <select id="yyb-proxyCity" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;background:var(--glass-bg);color:var(--text);"></select>
-                    </div>
-                </div>
-                <p class="muted" id="yyb-proxyHint" style="font-size:12px;margin:0 0 12px;line-height:1.6;display:none;">请先选择省/市，再点击「扫码添加」；免代理地区将直连登录。</p>
-                <p class="muted" id="yyb-proxyConfigWarn" style="display:none;font-size:12px;margin:0 0 12px;line-height:1.6;color:#d97706;">后台 51 代理未就绪：流量白名单需填写 UID + packid=12；账号密码模式需填写账号与密码；并确认服务器 IP 已在 51 后台加白。</p>
                 <div class="yyb-toolbar" style="margin-bottom:14px;">
                     <button class="btn accent" id="yyb-scanBtn" type="button">扫码添加</button>
                     <button class="btn secondary" id="yyb-reloadBtn" type="button">刷新并检测</button>
                 </div>
-                <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 14px;">扫码前请选择登录省/市；上海等免代理地区直连，其他地区自动提取 51 短效 SOCKS5（与 xdd-g 相同）。</p>
 
                 <div class="card proto-bind-card hidden" id="protoBindCardYyb">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
@@ -2342,7 +2365,7 @@
 
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_bind.js?v=3"></script>
-<script src="/vweb/js/portal_yyb.js?v=14"></script>
+<script src="/vweb/js/portal_yyb.js?v=15"></script>
 <script>
 async function getSignatureHeaders(path) {
     try {
