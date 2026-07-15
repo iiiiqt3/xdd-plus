@@ -52,14 +52,14 @@ func protocolYybGetCodeWithRetry(route ProtocolRoute, appID string) (map[string]
 	if err == nil {
 		return data, nil
 	}
-	if !route.FromBind || strings.TrimSpace(route.WxWxid) == "" {
-		return nil, err
-	}
 	if protocolYybRefresh != nil {
 		_, _ = protocolYybRefresh(openid)
 		if data2, err2 := protocolYybGetCode(openid, appID); err2 == nil {
 			return data2, nil
 		}
+	}
+	if !route.FromBind || strings.TrimSpace(route.WxWxid) == "" {
+		return nil, err
 	}
 	return nil, err
 }

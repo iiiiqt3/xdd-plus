@@ -128,16 +128,29 @@ def get_wx_code(wxid: str) -> str:
         raise RuntimeError("未配置微信协议服务器地址")
     url = f"{server_url.rstrip('/')}/api/v1/wx/app/get/code"
     try:
-        resp = requests.post(url, json={"wxid": wxid, "appid": WX_APPID}, timeout=BRIDGE_TIMEOUT)
+        resp = requests.post(
+            url,
+            json={"wxid": wxid, "openid": wxid, "appid": WX_APPID},
+            timeout=BRIDGE_TIMEOUT,
+        )
         resp.raise_for_status()
         data = resp.json()
+        if not isinstance(data, dict):
+            raise RuntimeError(f"响应格式异常: {data!r}")
         code = (
             (data.get("data") or {}).get("code")
             or (data.get("Data") or {}).get("code")
-            or data.get("Data")
+            or data.get("code")
         )
-        if code:
-            return str(code)
+        if code and isinstance(code, str):
+            return code.strip()
+        if code and not isinstance(code, dict):
+            return str(code).strip()
+        msg = data.get("Message") or data.get("message") or data.get("msg") or ""
+        if msg:
+            raise RuntimeError(str(msg))
+    except RuntimeError:
+        raise
     except Exception as e:
         raise RuntimeError(f"获取 code 失败: {e}")
     raise RuntimeError("获取 code 失败")
