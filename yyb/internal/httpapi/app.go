@@ -664,17 +664,10 @@ func (a *App) refreshLiveness(ctx context.Context, acc *store.WechatAccount) str
 		_ = a.db.SetAccountStatus(ctx, acc.ID, "unknown")
 		return "unknown"
 	}
-	savedProxyMeta := proxyMetaFromCredentials(acc.Credentials)
 	creds := protocol.CredentialsFromMap(acc.Credentials)
-	// 刷新存活暂不走 51 账号级代理
-	tcpProxy := a.cfg.TCPProxy
-	fallbackDirect := true
-	if a.cfg.Proxy51Enabled {
-		tcpProxy = ""
-	} else if strings.TrimSpace(tcpProxy) != "" {
-		fallbackDirect = false
-	}
-	client := protocol.NewLoginBufferClientWithProxy(a.cfg.RequestTimeout+25*time.Second, tcpProxy, fallbackDirect)
+	proxy := a.tcpProxyForAccount(ctx, acc)
+	fallbackDirect := strings.TrimSpace(proxy) == "" && !a.cfg.Proxy51Enabled
+	client := protocol.NewLoginBufferClientWithProxy(a.cfg.RequestTimeout+25*time.Second, proxy, fallbackDirect)
 	result, err := client.RefreshLoginBuffer(ctx, creds)
 	if err != nil {
 		if isProxyOrNetworkError(err) {
@@ -685,7 +678,7 @@ func (a *App) refreshLiveness(ctx context.Context, acc *store.WechatAccount) str
 		return "expired"
 	}
 	credMap := result.Credentials.ToMap()
-	applyProxyMeta(credMap, savedProxyMeta)
+	applyProxyMeta(credMap, proxyMetaFromCredentials(acc.Credentials))
 	_ = a.db.SetAccountCredential(ctx, acc.ID, result.LoginBuffer, credMap)
 	_ = a.db.SetAccountStatus(ctx, acc.ID, "alive")
 	if avatar := a.resolveAvatar(ctx, acc.OpenID, acc.UserInfo); avatar != "" {
