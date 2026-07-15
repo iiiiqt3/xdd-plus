@@ -137,16 +137,6 @@ func protocolCallFunctionViaWechat(wxid, appID string, payload map[string]interf
 	return data, nil
 }
 
-func checkWxDeviceOnline(wxid string) (bool, error) {
-	if online, err := checkWxDeviceOnlineFromURL(getWxLoginBaseURL(), wxid); err == nil && online {
-		return true, nil
-	}
-	if isNewProtocolEnabled() && getNewWxLoginBaseURL() != getOldWxLoginBaseURL() {
-		return checkWxDeviceOnlineFromURL(getOldWxLoginBaseURL(), wxid)
-	}
-	return false, nil
-}
-
 // LocalGatewayBaseURL 内置调用本机兼容网关
 func LocalGatewayBaseURL() string {
 	port := strings.TrimSpace(webHTTPPort())

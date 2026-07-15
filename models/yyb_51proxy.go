@@ -94,7 +94,7 @@ func yyb51ConfigValues() (enabled bool, apiBase, accessName, accessPassword, uid
 }
 
 func YybProxyShouldBypass(regionCode, regionName string) bool {
-	_, _, _, _, _, _, _, bypassCode, bypassName := yyb51ConfigValues()
+	_, _, _, _, _, _, _, _, bypassCode, bypassName := yyb51ConfigValues()
 	code := strings.TrimSpace(regionCode)
 	name := strings.TrimSpace(regionName)
 	if bypassCode != "" && code == bypassCode {
