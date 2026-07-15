@@ -49,7 +49,6 @@ func main() {
 			return
 		}
 		if models.Config.Yyb.Enabled {
-			models.Yyb().Infof("应用宝模块已加载 ready=%v", yybportal.Ready())
 			models.SetYybJdLoginHandler(yybportal.HandleBotJdLogin)
 		}
 	}()

@@ -17,8 +17,10 @@ func OpenGORM(orm *gorm.DB) (*DB, error) {
 	if orm == nil {
 		return nil, fmt.Errorf("gorm db is nil")
 	}
+	// 避免 AutoMigrate 长时间等待 metadata lock 导致应用宝模块初始化卡死
+	_ = orm.Exec("SET SESSION lock_wait_timeout = 30").Error
 	if err := orm.AutoMigrate(&GormWechatAccount{}, &GormSession{}, &GormFeature{}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("yyb AutoMigrate: %w", err)
 	}
 	if err := normalizeYybGormColumns(orm); err != nil {
 		return nil, fmt.Errorf("normalize yyb columns: %w", err)

@@ -13,10 +13,23 @@ func migrate() error {
 	if err := gdb.AutoMigrate(&PortalYybBinding{}); err != nil {
 		return err
 	}
-	if err := dedupePortalBindings(gdb); err != nil {
-		return fmt.Errorf("清理门户绑定重复数据: %w", err)
+	// 仅在有重复数据时清理，避免每次启动全表扫描
+	var dupCount int64
+	if err := gdb.Raw(`
+		SELECT COUNT(*) FROM (
+			SELECT user_number, LOWER(TRIM(open_id)) k
+			FROM portal_yyb_bindings
+			WHERE TRIM(open_id) <> ''
+			GROUP BY user_number, k
+			HAVING COUNT(*) > 1
+		) t`).Scan(&dupCount).Error; err != nil {
+		return err
 	}
-	return nil
+	if dupCount == 0 {
+		return nil
+	}
+	models.Yyb().Infof("应用宝绑定表发现 %d 组重复，开始清理", dupCount)
+	return dedupePortalBindings(gdb)
 }
 
 // dedupePortalBindings 删除同一用户+open_id 的重复绑定（优先保留未删除、id 最大的一条）
