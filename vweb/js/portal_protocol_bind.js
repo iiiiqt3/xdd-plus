@@ -145,46 +145,38 @@
         });
     }
 
-    function renderBindPairList() {
-        document.querySelectorAll('[data-proto-bind-list]').forEach(function (listEl) {
-            if (!listEl) return;
-            if (!state.bindings.length) {
-                listEl.innerHTML = '<div class="proto-bind-empty">暂无双绑记录，请在上方下拉框选择后绑定</div>';
-                return;
-            }
-            listEl.innerHTML = state.bindings.map(function (r) {
-                var wx = wxDeviceByWxid(r.wxWxid);
-                var yyb = yybAccountByOpenID(r.yybOpenId);
-                var wxName = esc((wx && wx.nickname) || r.nickname || '微信设备');
-                var yybName = esc((yyb && yyb.nickname) || '应用宝账号');
-                var wxid = esc(r.wxWxid || '');
-                var oid = esc(r.yybOpenId || '');
-                return '<div class="proto-bind-pair-card">' +
-                    '<div class="proto-bind-pair-main">' +
-                    '<div class="proto-bind-side wx">' +
-                    '<span class="proto-bind-side-tag">微信</span>' +
-                    '<strong class="proto-bind-side-name" title="' + wxName + '">' + wxName + '</strong>' +
-                    '<code class="proto-bind-side-id" title="' + wxid + '">' + wxid + '</code>' +
-                    '</div>' +
-                    '<div class="proto-bind-connector" aria-hidden="true"><span>⇄</span></div>' +
-                    '<div class="proto-bind-side yyb">' +
-                    '<span class="proto-bind-side-tag">应用宝</span>' +
-                    '<strong class="proto-bind-side-name" title="' + yybName + '">' + yybName + '</strong>' +
-                    '<code class="proto-bind-side-id" title="' + oid + '">' + oid + '</code>' +
-                    '</div>' +
-                    '</div>' +
-                    '<button class="btn small secondary proto-bind-unbind-btn" type="button" data-wx="' + attrEsc(r.wxWxid) + '" data-oid="' + attrEsc(r.yybOpenId) + '">解绑</button>' +
-                    '</div>';
-            }).join('');
-        });
-    }
-
     function renderQuota() {
         var q = state.quota || {};
         var text = '在线微信 ' + (q.onlineWxSlots || 0) + ' · 已绑 ' + (q.boundPairs || 0) + ' · 免费名额 ' + (q.freeSlots || 0);
         document.querySelectorAll('[data-proto-bind-quota]').forEach(function (el) {
             el.textContent = text;
         });
+    }
+
+    function renderWxBoundBlock(wxid) {
+        var binding = bindingByWx(wxid);
+        if (!binding) return '';
+        var yyb = yybAccountByOpenID(binding.yybOpenId);
+        var yybName = esc((yyb && yyb.nickname) || '应用宝账号');
+        var oid = esc(binding.yybOpenId || '');
+        return '<div class="proto-bound-line wx">' +
+            '<span class="proto-bound-line-label">已绑定应用宝</span>' +
+            '<span class="proto-bound-line-peer" title="' + oid + '">' + yybName + ' · ' + esc(shorten(binding.yybOpenId)) + '</span>' +
+            '<button type="button" class="proto-card-unbind-btn" data-wx="' + attrEsc(binding.wxWxid) + '" data-oid="' + attrEsc(binding.yybOpenId) + '">解绑</button>' +
+            '</div>';
+    }
+
+    function renderYybBoundBlock(openid) {
+        var binding = bindingByOpenID(openid);
+        if (!binding) return '';
+        var wx = wxDeviceByWxid(binding.wxWxid);
+        var wxName = esc((wx && wx.nickname) || binding.nickname || '微信设备');
+        var wxid = esc(binding.wxWxid || '');
+        return '<div class="proto-bound-line yyb">' +
+            '<span class="proto-bound-line-label">已绑定微信</span>' +
+            '<span class="proto-bound-line-peer" title="' + wxid + '">' + wxName + ' · ' + esc(shorten(binding.wxWxid)) + '</span>' +
+            '<button type="button" class="proto-card-unbind-btn" data-wx="' + attrEsc(binding.wxWxid) + '" data-oid="' + attrEsc(binding.yybOpenId) + '">解绑</button>' +
+            '</div>';
     }
 
     function renderWxBoundChip(wxid) {
@@ -234,11 +226,10 @@
             state.quota = results[0].data || {};
             state.bindings = results[1].data || [];
             renderQuota();
-            renderBindPairList();
             syncBindDropdowns();
             updateVisibility();
         } catch (e) {
-            document.querySelectorAll('[data-proto-bind-list]').forEach(function (el) {
+            document.querySelectorAll('[data-proto-bind-quota]').forEach(function (el) {
                 el.textContent = e.message || '加载失败';
             });
         } finally {
@@ -305,14 +296,12 @@
         state.wxDevices = devices || [];
         updateVisibility();
         syncBindDropdowns();
-        renderBindPairList();
     }
 
     function setYybAccounts(accounts) {
         state.yybAccounts = accounts || [];
         updateVisibility();
         syncBindDropdowns();
-        renderBindPairList();
     }
 
     function init() {
@@ -323,7 +312,7 @@
                 bindFromCard(bindBtn.closest('.proto-bind-card'));
                 return;
             }
-            var unbindBtn = e.target.closest('.proto-bind-unbind-btn');
+            var unbindBtn = e.target.closest('.proto-card-unbind-btn');
             if (unbindBtn) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -340,6 +329,8 @@
         setYybAccounts: setYybAccounts,
         renderWxBoundChip: renderWxBoundChip,
         renderYybBoundChip: renderYybBoundChip,
+        renderWxBoundBlock: renderWxBoundBlock,
+        renderYybBoundBlock: renderYybBoundBlock,
         hasWxBinding: hasWxBinding,
         hasYybBinding: hasYybBinding,
         shouldShowBindUI: shouldShowBindUI,

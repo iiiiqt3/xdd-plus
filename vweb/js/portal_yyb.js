@@ -212,12 +212,11 @@
         const rawOpenid = String(acc.openid || '');
         const openid = esc(rawOpenid);
         const isBound = global.PortalProtocolBind && global.PortalProtocolBind.hasYybBinding(rawOpenid);
-        const boundChip = global.PortalProtocolBind ? global.PortalProtocolBind.renderYybBoundChip(rawOpenid) : '';
+        const boundBlock = global.PortalProtocolBind ? global.PortalProtocolBind.renderYybBoundBlock(rawOpenid) : '';
         return `<div class="yyb-acc-card${isBound ? ' proto-bound' : ''}" data-key="${attrEsc(accountKey(acc))}" role="button" tabindex="0">
             <div class="yyb-acc-head">
                 <div class="yyb-acc-name-wrap">
                     <div class="yyb-acc-name">${esc(accountName(acc))}</div>
-                    ${boundChip}
                 </div>
                 ${statusTag(acc.status)}
             </div>
@@ -227,6 +226,7 @@
                 <code class="yyb-openid-text" title="${attrEsc(rawOpenid)}">${openid || '-'}</code>
                 <button type="button" class="yyb-copy-btn" data-yyb-copy="${attrEsc(rawOpenid)}">复制</button>
             </div>
+            ${boundBlock}
             <div class="yyb-acc-expiry-slot">${renderExpiryLine(acc)}</div>
         </div>`;
     }
@@ -254,7 +254,7 @@
         startExpiryTicker();
         grid.querySelectorAll('.yyb-acc-card').forEach(card => {
             card.onclick = (e) => {
-                if (e.target.closest('.yyb-copy-btn')) return;
+                if (e.target.closest('.yyb-copy-btn') || e.target.closest('.proto-card-unbind-btn')) return;
                 state.selectedKey = card.dataset.key;
                 syncSelected();
             };
