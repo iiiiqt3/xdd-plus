@@ -363,7 +363,7 @@
                 $('ayyb-qrHint').textContent = '正在入库…';
                 const result = await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/confirm', { method: 'POST' });
                 closeQr();
-                setResult('测试账号已入库', false);
+                setResult('账号已入库', false);
                 if (result && result.account && result.account.openid && $('ayyb-refInput')) {
                     $('ayyb-refInput').value = result.account.openid;
                 }

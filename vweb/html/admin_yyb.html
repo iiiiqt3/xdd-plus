@@ -111,7 +111,7 @@
                 <div class="card-title">
                     <span><i class="fas fa-users"></i>选择账号</span>
                     <div class="toolbar" style="margin:0;">
-                        <button class="btn btn-primary" id="scanBtn" type="button"><i class="fas fa-qrcode"></i> 测试扫码</button>
+                        <button class="btn btn-primary" id="scanBtn" type="button"><i class="fas fa-qrcode"></i> 扫码添加</button>
                         <button class="btn btn-default btn-sm" id="refreshBtn" type="button">刷新存活</button>
                         <button class="btn btn-default btn-sm" id="resyncBtn" type="button">同步资料</button>
                         <button class="btn btn-danger btn-sm" id="deleteBtn" type="button">删除</button>
@@ -167,7 +167,7 @@
 
 <div class="modal-mask" id="qrModal">
     <div class="modal">
-        <h3 style="margin-bottom:8px;">测试扫码</h3>
+        <h3 style="margin-bottom:8px;">扫码添加账号</h3>
         <p style="font-size:13px;color:#999;margin-bottom:10px;" id="qrHint">不扣积分，仅写入协议库</p>
         <div class="qr-box" id="qrBox">生成中…</div>
         <button class="btn btn-default" style="width:100%;" id="qrCloseBtn" type="button">关闭</button>
@@ -273,7 +273,7 @@ function renderAccounts() {
     }).length;
     if ($('stAlive')) $('stAlive').textContent = alive;
     if (!state.accounts.length) {
-        box.innerHTML = '<div class="empty-tip">暂无协议账号，可点击「测试扫码」添加</div>';
+        box.innerHTML = '<div class="empty-tip">暂无协议账号，可点击「扫码添加」</div>';
         state.selectedOpenID = '';
         return;
     }
@@ -454,7 +454,7 @@ async function pollScan() {
             $('qrHint').textContent = '正在入库…';
             await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/confirm', { method: 'POST' });
             closeQr();
-            setResult('测试账号已入库', false);
+            setResult('账号已入库', false);
             await loadAll();
             return;
         }

@@ -2286,14 +2286,14 @@
                 </details>
 
                 <div class="yyb-chips" style="margin-bottom:14px;">
-                    <span class="yyb-chip checking" id="yyb-healthChip">服务 <strong id="yyb-healthText">待机</strong></span>
+                    <span class="yyb-chip checking" id="yyb-healthChip">应用宝服务 <strong id="yyb-healthText">检测中…</strong></span>
                     <span class="yyb-chip">积分 <strong id="yyb-coinVal">-</strong></span>
                     <span class="yyb-chip">扫码 <strong id="yyb-scanCostVal">-</strong> 积分</span>
                     <span class="yyb-chip">账号 <strong id="yyb-accountCount">0</strong></span>
                 </div>
-                <div class="yyb-status-bar loading" id="yyb-statusBar" aria-live="polite">
-                    <span class="yyb-spin" id="yyb-statusSpin" style="display:inline-block;"></span>
-                    <span id="yyb-statusText">登录后将静默检测账号状态（仅一次）</span>
+                <div class="yyb-status-bar hidden" id="yyb-statusBar" aria-live="polite">
+                    <span class="yyb-spin" id="yyb-statusSpin" style="display:none;"></span>
+                    <span id="yyb-statusText"></span>
                 </div>
                 <div class="yyb-toolbar" style="margin-bottom:14px;">
                     <button class="btn accent" id="yyb-scanBtn" type="button">扫码添加</button>
@@ -2407,7 +2407,7 @@
 
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_bind.js?v=3"></script>
-<script src="/vweb/js/portal_yyb.js?v=16"></script>
+<script src="/vweb/js/portal_yyb.js?v=17"></script>
 <script>
 async function getSignatureHeaders(path) {
     try {

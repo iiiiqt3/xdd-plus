@@ -723,11 +723,6 @@
 
         /* ===== 应用宝协议 ===== */
         .hidden { display: none !important; }
-        .yyb-test-tag {
-            display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
-            font-size: 11px; font-weight: 700; vertical-align: middle;
-            background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35);
-        }
         .yyb-account-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
         .yyb-acc-card {
             border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; background: #fff;
@@ -847,7 +842,7 @@
             </div>
             <div class="nav-group-items" data-group="proto">
                 <div class="nav-sub-item" data-page="wxdevices" data-search="微信协议 设备 wx" onclick="switchPage('wxdevices')"><i class="fab fa-weixin"></i><span>微信协议管理</span></div>
-                <div class="nav-sub-item" data-page="yyb" data-search="应用宝协议 测试" onclick="switchPage('yyb')"><i class="fas fa-mobile-alt"></i><span>应用宝协议<span class="yyb-test-tag" style="margin-left:4px;">测试</span></span></div>
+                <div class="nav-sub-item" data-page="yyb" data-search="应用宝协议" onclick="switchPage('yyb')"><i class="fas fa-mobile-alt"></i><span>应用宝协议</span></div>
                 <div class="nav-sub-item" data-page="envvars" data-search="系统变量 xdd环境变量 env" onclick="switchPage('envvars')"><i class="fas fa-database"></i><span>系统变量</span></div>
             </div>
         </div>
@@ -948,7 +943,7 @@
                 <div class="card" style="margin-bottom:0;padding:14px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                         <div style="font-size:14px;font-weight:600;color:#1a1a2e;display:flex;align-items:center;gap:8px;">
-                            <i class="fas fa-mobile-alt" style="color:#722ed1;"></i> 应用宝协议<span class="yyb-test-tag">测试</span>
+                            <i class="fas fa-mobile-alt" style="color:#722ed1;"></i> 应用宝协议
                         </div>
                         <div style="display:flex;gap:6px;">
                             <button class="btn btn-info btn-xs" onclick="loadDashYybStats()"><i class="fas fa-sync-alt"></i></button>
@@ -1994,7 +1989,7 @@
                     <div class="card-title">
                         <span><i class="fas fa-code"></i> API 调试</span>
                         <div class="toolbar" style="margin:0;">
-                            <button class="btn btn-primary" id="ayyb-scanBtn" type="button"><i class="fas fa-qrcode"></i> 测试扫码</button>
+                            <button class="btn btn-primary" id="ayyb-scanBtn" type="button"><i class="fas fa-qrcode"></i> 扫码添加</button>
                         </div>
                     </div>
                     <div class="form-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
@@ -2698,10 +2693,10 @@
     </div>
 </div>
 
-<!-- 应用宝测试扫码 -->
+<!-- 应用宝扫码 -->
 <div class="modal-mask" id="ayyb-qrModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:200;">
     <div class="modal" style="background:#fff;border-radius:10px;padding:20px;width:360px;max-width:92vw;">
-        <h3 style="margin-bottom:8px;">测试扫码 <span class="yyb-test-tag">测试</span></h3>
+        <h3 style="margin-bottom:8px;">扫码添加账号</h3>
         <p style="font-size:13px;color:#999;margin-bottom:10px;" id="ayyb-qrHint">不扣积分，仅写入协议库</p>
         <div class="qr-box" id="ayyb-qrBox" style="min-height:200px;display:flex;align-items:center;justify-content:center;background:#fafafa;border:1px solid #eee;border-radius:8px;margin:12px 0;">生成中…</div>
         <button class="btn btn-default" style="width:100%;" id="ayyb-qrCloseBtn" type="button">关闭</button>
@@ -2711,7 +2706,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/admin_yyb.js?v=8"></script>
+<script src="/vweb/js/admin_yyb.js?v=9"></script>
 <script src="/vweb/js/api_docs_data.js?v=1"></script>
 <script>
 // ============ 通用工具 ============

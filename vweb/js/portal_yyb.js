@@ -324,11 +324,18 @@
         if (spin) spin.style.display = loading ? 'inline-block' : 'none';
     }
 
-    function setHealthStatus(text, chipClass) {
+    function hideStatusBar() {
+        const bar = $('yyb-statusBar');
+        if (bar) bar.classList.add('hidden');
+    }
+
+    function setServiceHealth(st) {
         const chip = $('yyb-healthChip');
         const healthText = $('yyb-healthText');
-        if (healthText) healthText.textContent = text || '-';
-        if (chip) chip.className = 'yyb-chip' + (chipClass ? (' ' + chipClass) : '');
+        if (!healthText) return;
+        const started = !!(st && st.enabled && st.ready);
+        healthText.textContent = started ? '已启动' : '未启动';
+        if (chip) chip.className = 'yyb-chip ' + (started ? 'ok' : 'bad');
     }
 
     function setGridLoading(loading) {
@@ -372,7 +379,6 @@
         const triggerBtn = options.triggerBtn || null;
         if (state.panelLoading) {
             const busyMsg = autoCheck ? '正在检测中，请稍候…' : '正在刷新中，请稍候…';
-            setStatusBar(busyMsg, 'loading', true);
             if (!silent && typeof global.toast === 'function') global.toast(busyMsg, 'info');
             return;
         }
@@ -380,41 +386,30 @@
         if (autoCheck && !silent && typeof global.toast === 'function') {
             global.toast('开始检测应用宝账号状态…', 'info');
         }
+        hideStatusBar();
         setGridLoading(true);
         setBtnLoading(triggerBtn || $('yyb-reloadBtn'), true, autoCheck ? '检测中…' : '刷新中…');
-        if (autoCheck) {
-            setHealthStatus(silent ? '检测中…' : '检测中…', 'checking');
-            setStatusBar(silent ? '正在后台检测账号状态…' : '正在检测全部账号存活状态，请稍候…', 'loading', true);
-        } else {
-            setHealthStatus('刷新中…', 'checking');
-            setStatusBar('正在刷新账号列表…', 'loading', true);
-        }
         try {
             const st = await request('/status' + (autoCheck ? '?check=1' : ''));
             if ($('yyb-coinVal')) $('yyb-coinVal').textContent = st.coin ?? '-';
             if ($('yyb-scanCostVal')) $('yyb-scanCostVal').textContent = st.scanLoginCost ?? '-';
+            setServiceHealth(st);
             if (!st.enabled || !st.ready) {
-                setHealthStatus(st.message || '不可用', 'bad');
                 if ($('yyb-scanBtn')) $('yyb-scanBtn').disabled = true;
                 setStatusBar(st.message || '应用宝服务暂不可用', 'error', false);
             } else {
                 if ($('yyb-scanBtn')) $('yyb-scanBtn').disabled = false;
+                hideStatusBar();
                 if (autoCheck) {
                     const summaryText = st.checkSummary ? formatCheckSummary(st.checkSummary) : '检测完成';
                     const dead = Number((st.checkSummary && st.checkSummary.dead) || 0);
                     const failed = Number((st.checkSummary && st.checkSummary.failed) || 0);
-                    setHealthStatus('检测完成', 'ok');
-                    setStatusBar(summaryText, (dead > 0 || failed > 0) ? 'warn' : 'ok', false);
                     if (!silent && typeof global.toast === 'function') {
                         const toastType = dead > 0 ? 'error' : (failed > 0 ? 'warn' : 'success');
                         global.toast(summaryText, toastType);
                     }
-                } else {
-                    setHealthStatus('已刷新', 'ok');
-                    setStatusBar('账号列表已刷新', 'ok', false);
-                    if (!silent && typeof global.toast === 'function') {
-                        global.toast('刷新完成', 'success');
-                    }
+                } else if (!silent && typeof global.toast === 'function') {
+                    global.toast('刷新完成', 'success');
                 }
             }
             state.accounts = st.accounts || [];
@@ -426,7 +421,7 @@
             loadDashboard();
             void loadProxyConfig();
         } catch (e) {
-            setHealthStatus('加载失败', 'bad');
+            setServiceHealth(null);
             setStatusBar(e.message || '加载失败，请稍后重试', 'error', false);
             if (!silent && typeof global.toast === 'function') global.toast(e.message || '加载失败', 'error');
         } finally {
@@ -461,7 +456,6 @@
         if (!acc) { notify('请先点击选择一个账号', 'warning'); return; }
         try {
             await withAccountAction($('yyb-refreshBtn'), '刷新中…', async () => {
-                setStatusBar('正在刷新选中账号存活状态…', 'loading', true);
                 await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) });
                 await loadPanel({ autoCheck: false, silent: true, triggerBtn: $('yyb-refreshBtn') });
                 notify('账号存活状态已刷新', 'success');
