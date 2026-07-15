@@ -26,4 +26,8 @@ func RegisterProtocolGatewayHandlers() {
 			return RefreshYybAccountLiveness(openid)
 		},
 	)
+	models.SetProtocolYybAccountExists(func(ref string) bool {
+		_, err := AccountPublic(ref)
+		return err == nil
+	})
 }

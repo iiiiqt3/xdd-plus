@@ -1232,6 +1232,12 @@ for index, project := range projects {
         continue
     }
 
+    if err := EnsureQueryProtocolRef(ckValue); err != nil {
+        sender.Reply(fmt.Sprintf("第%d个账号查询失败：%v", accountNo, err))
+        UserLog().Infof("%s第%d个账号协议校验失败：%v", logPrefix, accountNo, err)
+        continue
+    }
+
     UserLog().Infof("%s执行第%d个账号脚本：%s %s", logPrefix, accountNo, execCmd, scriptPath)
 
     output, err := executeScript(sender, execCmd, scriptPath, ckValue)

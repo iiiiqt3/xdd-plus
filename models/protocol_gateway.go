@@ -1,8 +1,10 @@
 package models
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,10 +17,11 @@ import (
 
 // 由 yybportal 在启动时注入，避免 models ↔ yybportal 循环依赖
 var (
-	protocolYybGetCode    func(openid, appID string) (map[string]interface{}, error)
-	protocolYybOperate    func(openid, appID string, payload map[string]interface{}) (map[string]interface{}, error)
-	protocolYybIsAlive    func(openid string) bool
-	protocolYybRefresh    func(openid string) (string, error)
+	protocolYybGetCode         func(openid, appID string) (map[string]interface{}, error)
+	protocolYybOperate       func(openid, appID string, payload map[string]interface{}) (map[string]interface{}, error)
+	protocolYybIsAlive       func(openid string) bool
+	protocolYybRefresh         func(openid string) (string, error)
+	protocolYybAccountExistsFn func(ref string) bool
 )
 
 func SetProtocolYybHandlers(
@@ -31,6 +34,49 @@ func SetProtocolYybHandlers(
 	protocolYybOperate = operate
 	protocolYybIsAlive = isAlive
 	protocolYybRefresh = refresh
+}
+
+// SetProtocolYybAccountExists 注册应用宝账号是否存在检查
+func SetProtocolYybAccountExists(fn func(ref string) bool) {
+	protocolYybAccountExistsFn = fn
+}
+
+func friendlyProtocolErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := strings.TrimSpace(err.Error())
+	lower := strings.ToLower(msg)
+	if errors.Is(err, sql.ErrNoRows) || strings.Contains(lower, "no rows") {
+		return fmt.Errorf("应用宝账号不存在（库中无此 openid），请重新扫码登录后发送【记录授权】更新账号")
+	}
+	if strings.Contains(lower, "account expired") || strings.Contains(msg, "账号已失效") {
+		return fmt.Errorf("应用宝账号已失效，请重新扫码登录")
+	}
+	if strings.Contains(lower, "account not found") {
+		return fmt.Errorf("应用宝账号不存在，请重新扫码登录后发送【记录授权】更新账号")
+	}
+	return err
+}
+
+// EnsureQueryProtocolRef 查询脚本执行前校验应用宝账号是否在库
+func EnsureQueryProtocolRef(ref string) error {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return fmt.Errorf("账号标识为空")
+	}
+	route := ResolveProtocolRoute(ref)
+	if route.Backend != "yyb" {
+		return nil
+	}
+	openid := strings.TrimSpace(route.OpenID)
+	if openid == "" {
+		openid = ref
+	}
+	if protocolYybAccountExistsFn != nil && !protocolYybAccountExistsFn(openid) {
+		return fmt.Errorf("应用宝账号不存在（库中无此 openid），请重新扫码登录后发送【记录授权】更新账号")
+	}
+	return nil
 }
 
 func ProtocolYybAccountAlive(openid string) bool {
@@ -97,7 +143,7 @@ func ProtocolGetWxAppCode(ref, appID string) (code string, err error) {
 			}
 		}
 		Yyb().Warnf("[协议路由] getCode → 应用宝 失败 %s appid=%s err=%v", route.LogSummary(), appID, yybErr)
-		return "", yybErr
+		return "", friendlyProtocolErr(yybErr)
 	}
 	Yyb().Infof("[协议路由] getCode → wechat08 %s appid=%s", route.LogSummary(), appID)
 	return protocolGetWxCodeViaWechat(ref, appID)

@@ -832,6 +832,9 @@ func PortalQueryProjectIncome(userNumber int, activityID, remarks string) (strin
 	if ckValue == "" {
 		return "", fmt.Errorf("CK数据为空（可能同步异常），请联系管理员")
 	}
+	if err := EnsureQueryProtocolRef(ckValue); err != nil {
+		return "", err
+	}
 
 	scriptPath := cfg.ScriptPaths.Query
 	scriptExt := strings.ToLower(filepath.Ext(scriptPath))
