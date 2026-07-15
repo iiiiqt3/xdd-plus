@@ -656,7 +656,7 @@ func (a *App) ensureAccountUIN(ctx context.Context, acc *store.WechatAccount) {
 	}
 	loginCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	_ = a.pool.EnsureSession(loginCtx, acc.LoginBuffer, acc.ID, a.cfg.TCPProxy)
+	_ = a.pool.EnsureSession(loginCtx, acc.LoginBuffer, acc.ID, a.tcpProxyForAccount(ctx, acc))
 }
 
 func (a *App) refreshLiveness(ctx context.Context, acc *store.WechatAccount) string {
@@ -664,13 +664,38 @@ func (a *App) refreshLiveness(ctx context.Context, acc *store.WechatAccount) str
 		_ = a.db.SetAccountStatus(ctx, acc.ID, "unknown")
 		return "unknown"
 	}
+	savedProxyMeta := proxyMetaFromCredentials(acc.Credentials)
 	creds := protocol.CredentialsFromMap(acc.Credentials)
-	result, err := a.qr.RefreshLoginBuffer(ctx, creds)
+	tcpProxy := a.tcpProxyForAccount(ctx, acc)
+	maxAttempts := 1
+	if a.cfg.Proxy51Enabled && accountUsesSavedProxy(acc.Credentials) {
+		maxAttempts = accountProxyRotateLimit
+	}
+	var result protocol.LoginBufferResult
+	var err error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		fallbackDirect := strings.TrimSpace(tcpProxy) == "" && !a.cfg.Proxy51Enabled
+		client := protocol.NewLoginBufferClientWithProxy(a.cfg.RequestTimeout+25*time.Second, tcpProxy, fallbackDirect)
+		result, err = client.RefreshLoginBuffer(ctx, creds)
+		if err == nil {
+			break
+		}
+		if !isProxyOrNetworkError(err) || attempt >= maxAttempts {
+			break
+		}
+		tcpProxy = a.tcpProxyForAccount(ctx, acc)
+	}
 	if err != nil {
+		if isProxyOrNetworkError(err) {
+			_ = a.db.SetAccountStatus(ctx, acc.ID, "unknown")
+			return "unknown"
+		}
 		_ = a.db.SetAccountStatus(ctx, acc.ID, "expired")
 		return "expired"
 	}
-	_ = a.db.SetAccountCredential(ctx, acc.ID, result.LoginBuffer, result.Credentials.ToMap())
+	credMap := result.Credentials.ToMap()
+	applyProxyMeta(credMap, savedProxyMeta)
+	_ = a.db.SetAccountCredential(ctx, acc.ID, result.LoginBuffer, credMap)
 	_ = a.db.SetAccountStatus(ctx, acc.ID, "alive")
 	if avatar := a.resolveAvatar(ctx, acc.OpenID, acc.UserInfo); avatar != "" {
 		_ = a.db.SetAccountProfile(ctx, acc.ID, acc.Nickname, &avatar, acc.UserInfo)
@@ -679,6 +704,15 @@ func (a *App) refreshLiveness(ctx context.Context, acc *store.WechatAccount) str
 }
 
 func (a *App) resyncProfile(ctx context.Context, acc *store.WechatAccount) (*store.WechatAccount, error) {
+	if acc.Credentials != nil {
+		proxy := a.tcpProxyForAccount(ctx, acc)
+		fallbackDirect := strings.TrimSpace(proxy) == "" && !a.cfg.Proxy51Enabled
+		client := protocol.NewLoginBufferClientWithProxy(a.cfg.RequestTimeout+25*time.Second, proxy, fallbackDirect)
+		creds := protocol.CredentialsFromMap(acc.Credentials)
+		if ui, err := client.FetchUserInfo(ctx, creds); err == nil && ui != nil {
+			acc.UserInfo = ui
+		}
+	}
 	nick := pickNickname(acc.UserInfo, deref(acc.Nickname))
 	avatar := a.resolveAvatar(ctx, acc.OpenID, acc.UserInfo)
 	if avatar == "" {
@@ -910,6 +944,64 @@ func safeName(s string) string {
 		}
 	}
 	return b.String()
+}
+
+const accountProxyRotateLimit = 5
+
+func accountUsesSavedProxy(cred map[string]any) bool {
+	if cred == nil {
+		return false
+	}
+	if v, ok := cred["yyb_proxy_bypass"].(bool); ok && v {
+		return false
+	}
+	switch v := cred["yyb_proxy_enabled"].(type) {
+	case bool:
+		return v
+	case string:
+		return strings.EqualFold(strings.TrimSpace(v), "true") || strings.TrimSpace(v) == "1"
+	default:
+		return false
+	}
+}
+
+func proxyMetaFromCredentials(cred map[string]any) map[string]interface{} {
+	if cred == nil {
+		return nil
+	}
+	keys := []string{
+		"yyb_proxy_enabled", "yyb_proxy_bypass", "yyb_proxy_packid",
+		"yyb_proxy_region_code", "yyb_proxy_region_name",
+		"yyb_proxy_url", "yyb_proxy_ipport", "yyb_proxy_expire_at", "yyb_proxy_last_at",
+	}
+	out := map[string]interface{}{}
+	for _, k := range keys {
+		if v, ok := cred[k]; ok {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+func isProxyOrNetworkError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	needles := []string{
+		"socks5", "05020001", "proxy", "proxyconnect",
+		"i/o timeout", "timeout", "deadline exceeded",
+		"connection refused", "connection reset", "connection timed out",
+		"no such host", "tls handshake timeout", "eof",
+		"51代理", "未提取到代理", "dial tcp",
+		"http 500", "http 502", "http 503", "http 504",
+	}
+	for _, n := range needles {
+		if strings.Contains(msg, n) {
+			return true
+		}
+	}
+	return false
 }
 
 func sortedKeys[M ~map[string]V, V any](m M) []string {

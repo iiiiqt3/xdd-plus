@@ -1250,7 +1250,8 @@
         .yyb-acc-card:hover { border-color: #c7d2fe; box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08); }
         .yyb-acc-card.selected { border-color: #6366f1; background: rgba(99, 102, 241, 0.06); box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25); }
         .yyb-acc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; min-width: 0; }
-        .yyb-acc-name { font-size: 14px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+        .yyb-acc-name-wrap { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+        .yyb-acc-name { font-size: 14px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
         .yyb-acc-uin-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
         .yyb-acc-openid-line { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 8px; }
         .yyb-meta-label { font-size: 10px; font-weight: 700; color: var(--text-muted); flex-shrink: 0; width: 42px; letter-spacing: 0.02em; }
@@ -1318,62 +1319,55 @@
         .proto-bind-empty { padding: 10px 0; font-size: 12px; color: var(--text-muted); }
         .proto-bind-pairs { display: grid; gap: 10px; }
         .proto-bind-pair-card {
-            display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; gap: 10px; align-items: center;
-            padding: 12px 14px; border-radius: 12px; border: 1px solid var(--glass-border);
-            background: linear-gradient(135deg, rgba(8,145,178,0.04), rgba(99,102,241,0.05));
+            display: flex; align-items: stretch; gap: 12px;
+            padding: 14px 16px; border-radius: 12px; border: 1px solid var(--glass-border);
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
-        .proto-bind-side { min-width: 0; }
+        .proto-bind-pair-main {
+            flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); gap: 10px; align-items: center;
+        }
+        .proto-bind-side {
+            min-width: 0; padding: 10px 12px; border-radius: 10px; background: #f8fafc; border: 1px solid #eef2f7;
+        }
+        .proto-bind-side.wx { border-color: rgba(8,145,178,0.18); background: rgba(8,145,178,0.04); }
+        .proto-bind-side.yyb { border-color: rgba(99,102,241,0.18); background: rgba(99,102,241,0.04); }
         .proto-bind-side-tag {
             display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.04em;
-            padding: 2px 8px; border-radius: 999px; margin-bottom: 6px;
+            padding: 2px 8px; border-radius: 999px; margin-bottom: 8px;
         }
-        .proto-bind-side.wx .proto-bind-side-tag { background: rgba(8,145,178,0.12); color: #0891b2; }
-        .proto-bind-side.yyb .proto-bind-side-tag { background: rgba(99,102,241,0.12); color: #6366f1; }
+        .proto-bind-side.wx .proto-bind-side-tag { background: rgba(8,145,178,0.14); color: #0e7490; }
+        .proto-bind-side.yyb .proto-bind-side-tag { background: rgba(99,102,241,0.14); color: #4f46e5; }
         .proto-bind-side-name {
-            display: block; font-size: 13px; font-weight: 800; color: var(--text);
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px;
+            display: block; font-size: 14px; font-weight: 800; color: var(--text);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6px;
         }
         .proto-bind-side-id {
             display: block; font-family: Consolas, monospace; font-size: 11px; color: var(--text-muted);
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .proto-bind-connector {
-            width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            background: #fff; border: 1px dashed #c7d2fe; color: #6366f1; font-size: 14px; font-weight: 800;
+            width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            background: #fff; border: 1px solid #dbeafe; color: #6366f1; font-size: 15px; font-weight: 800; flex-shrink: 0;
+            box-shadow: inset 0 0 0 1px rgba(99,102,241,0.06);
         }
-        .proto-peer-strip {
-            margin-bottom: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid transparent;
+        .proto-bind-unbind-btn {
+            align-self: center; white-space: nowrap;
         }
-        .proto-peer-on-wx {
-            background: linear-gradient(135deg, rgba(8,145,178,0.08), rgba(6,182,212,0.04));
-            border-color: rgba(8,145,178,0.18);
+        .proto-bound-chip {
+            display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+            font-size: 10px; font-weight: 800; letter-spacing: 0.02em; flex-shrink: 0;
         }
-        .proto-peer-on-yyb {
-            background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(129,140,248,0.04));
-            border-color: rgba(99,102,241,0.18);
-        }
-        .proto-peer-strip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-        .proto-peer-strip-badge { font-size: 11px; font-weight: 800; color: var(--text-secondary); }
-        .proto-peer-on-wx .proto-peer-strip-badge { color: #0e7490; }
-        .proto-peer-on-yyb .proto-peer-strip-badge { color: #4f46e5; }
-        .proto-peer-strip-body { display: flex; align-items: center; gap: 8px; min-width: 0; }
-        .proto-peer-strip-body strong {
-            font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .proto-peer-strip-body code {
-            font-family: Consolas, monospace; font-size: 11px; color: var(--text-muted);
-            background: rgba(255,255,255,0.65); padding: 2px 8px; border-radius: 6px; flex-shrink: 0;
-        }
-        .proto-peer-unbind-btn, .proto-bind-unbind-btn {
-            border: none; background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 2px 6px;
-        }
-        .proto-peer-unbind-btn:hover, .proto-bind-unbind-btn:hover { color: var(--danger); }
-        .wx-device-card.proto-bound { border-color: rgba(8,145,178,0.35); box-shadow: 0 0 0 1px rgba(8,145,178,0.08); }
-        .yyb-acc-card.proto-bound { border-color: rgba(99,102,241,0.45); box-shadow: 0 0 0 1px rgba(99,102,241,0.12); }
+        .proto-bound-chip.wx { background: rgba(8,145,178,0.1); color: #0e7490; }
+        .proto-bound-chip.yyb { background: rgba(99,102,241,0.1); color: #4f46e5; }
+        .wx-device-card.proto-bound { border-color: rgba(8,145,178,0.28); }
+        .yyb-acc-card.proto-bound { border-color: rgba(99,102,241,0.35); }
         @media (max-width: 720px) {
             .proto-bind-form { grid-template-columns: 1fr; }
-            .proto-bind-pair-card { grid-template-columns: 1fr; }
+            .proto-bind-pair-card { flex-direction: column; }
+            .proto-bind-pair-main { grid-template-columns: 1fr; }
             .proto-bind-connector { justify-self: center; transform: rotate(90deg); }
+            .proto-bind-unbind-btn { align-self: flex-end; }
         }
         .btn.is-loading { opacity: 0.72; pointer-events: none; }
         .yyb-result-panel { margin-top: 14px; }
@@ -2279,7 +2273,6 @@
                         <h4 style="font-size:14px;margin:0;">我的账号</h4>
                         <div class="yyb-toolbar">
                             <button class="btn small secondary" id="yyb-refreshBtn" type="button">刷新存活</button>
-                            <button class="btn small secondary" id="yyb-resyncBtn" type="button">同步资料</button>
                             <button class="btn small danger" id="yyb-deleteBtn" type="button">删除</button>
                         </div>
                     </div>
@@ -2380,8 +2373,8 @@
 </div>
 
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/portal_protocol_bind.js?v=1"></script>
-<script src="/vweb/js/portal_yyb.js?v=10"></script>
+<script src="/vweb/js/portal_protocol_bind.js?v=2"></script>
+<script src="/vweb/js/portal_yyb.js?v=12"></script>
 <script>
 async function getSignatureHeaders(path) {
     try {
@@ -3881,6 +3874,9 @@ function renderWxDevices() {
             badgeHtml = '<span class="wx-device-badge secondary-badge">📋 监控</span>';
         }
         badgeHtml += '<span class="wx-device-badge ' + (isOnline ? 'online-badge' : 'offline-badge') + '">' + (isOnline ? '🟢 在线' : '🔴 离线') + '</span>';
+        if (window.PortalProtocolBind) {
+            badgeHtml += PortalProtocolBind.renderWxBoundChip(d.wxid);
+        }
         var removeBtn = '';
         if (!d.isPrimary) {
             removeBtn = '<button class="wx-device-remove" onclick="removeWxDevice(' + d.id + ')" title="移除监控">✕</button>';
@@ -3906,9 +3902,8 @@ function renderWxDevices() {
             var tipLabel = d.isPrimary ? '主设备' : '监控设备';
             tipHtml = '<div style="margin-top:8px;padding:6px 10px;border-radius:8px;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.15);font-size:11px;color:var(--amber);line-height:1.6;">⚠️ ' + tipLabel + '已离线，可点击「唤醒」或「重登」尝试恢复</div>';
         }
-        var peerStrip = window.PortalProtocolBind ? PortalProtocolBind.renderWxPeerStrip(d.wxid) : '';
+        var peerStrip = '';
         return '<div class="' + cardClass + '">' +
-            peerStrip +
             '<div class="wx-device-header">' + badgeHtml + '<span class="wx-device-nickname" title="' + escapeAttr(d.wxid) + '">' + escapeHtml(d.nickname || d.wxid) + '</span>' + removeBtn + '</div>' +
             '<div class="wx-device-detail"><span>微信ID</span><strong>' + escapeHtml(d.wxid) + '</strong></div>' +
             '<div class="wx-device-detail"><span>设备</span><strong>' + escapeHtml(d.device || '-') + '</strong></div>' +

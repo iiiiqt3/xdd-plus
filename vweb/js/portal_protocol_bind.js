@@ -160,16 +160,18 @@
                 var wxid = esc(r.wxWxid || '');
                 var oid = esc(r.yybOpenId || '');
                 return '<div class="proto-bind-pair-card">' +
+                    '<div class="proto-bind-pair-main">' +
                     '<div class="proto-bind-side wx">' +
                     '<span class="proto-bind-side-tag">微信</span>' +
-                    '<strong class="proto-bind-side-name">' + wxName + '</strong>' +
-                    '<code class="proto-bind-side-id">' + wxid + '</code>' +
+                    '<strong class="proto-bind-side-name" title="' + wxName + '">' + wxName + '</strong>' +
+                    '<code class="proto-bind-side-id" title="' + wxid + '">' + wxid + '</code>' +
                     '</div>' +
-                    '<div class="proto-bind-connector" aria-hidden="true"><span>↔</span></div>' +
+                    '<div class="proto-bind-connector" aria-hidden="true"><span>⇄</span></div>' +
                     '<div class="proto-bind-side yyb">' +
                     '<span class="proto-bind-side-tag">应用宝</span>' +
-                    '<strong class="proto-bind-side-name">' + yybName + '</strong>' +
-                    '<code class="proto-bind-side-id">' + oid + '</code>' +
+                    '<strong class="proto-bind-side-name" title="' + yybName + '">' + yybName + '</strong>' +
+                    '<code class="proto-bind-side-id" title="' + oid + '">' + oid + '</code>' +
+                    '</div>' +
                     '</div>' +
                     '<button class="btn small secondary proto-bind-unbind-btn" type="button" data-wx="' + attrEsc(r.wxWxid) + '" data-oid="' + attrEsc(r.yybOpenId) + '">解绑</button>' +
                     '</div>';
@@ -185,40 +187,14 @@
         });
     }
 
-    function renderWxPeerStrip(wxid) {
-        var binding = bindingByWx(wxid);
-        if (!binding) return '';
-        var yyb = yybAccountByOpenID(binding.yybOpenId);
-        var name = esc((yyb && yyb.nickname) || binding.nickname || '应用宝账号');
-        var oid = esc(binding.yybOpenId || '');
-        return '<div class="proto-peer-strip proto-peer-on-wx">' +
-            '<div class="proto-peer-strip-head">' +
-            '<span class="proto-peer-strip-badge">🔗 已绑定应用宝</span>' +
-            '<button type="button" class="proto-peer-unbind-btn" data-wx="' + attrEsc(binding.wxWxid) + '" data-oid="' + attrEsc(binding.yybOpenId) + '">解绑</button>' +
-            '</div>' +
-            '<div class="proto-peer-strip-body">' +
-            '<strong>' + name + '</strong>' +
-            '<code title="' + oid + '">' + esc(shorten(binding.yybOpenId, 10, 8)) + '</code>' +
-            '</div>' +
-            '</div>';
+    function renderWxBoundChip(wxid) {
+        if (!bindingByWx(wxid)) return '';
+        return '<span class="proto-bound-chip wx">已双绑</span>';
     }
 
-    function renderYybPeerStrip(openid) {
-        var binding = bindingByOpenID(openid);
-        if (!binding) return '';
-        var wx = wxDeviceByWxid(binding.wxWxid);
-        var name = esc((wx && wx.nickname) || binding.nickname || '微信设备');
-        var wxid = esc(binding.wxWxid || '');
-        return '<div class="proto-peer-strip proto-peer-on-yyb">' +
-            '<div class="proto-peer-strip-head">' +
-            '<span class="proto-peer-strip-badge">🔗 已绑定微信</span>' +
-            '<button type="button" class="proto-peer-unbind-btn" data-wx="' + attrEsc(binding.wxWxid) + '" data-oid="' + attrEsc(binding.yybOpenId) + '">解绑</button>' +
-            '</div>' +
-            '<div class="proto-peer-strip-body">' +
-            '<strong>' + name + '</strong>' +
-            '<code title="' + wxid + '">' + esc(shorten(binding.wxWxid, 10, 8)) + '</code>' +
-            '</div>' +
-            '</div>';
+    function renderYybBoundChip(openid) {
+        if (!bindingByOpenID(openid)) return '';
+        return '<span class="proto-bound-chip yyb">已双绑</span>';
     }
 
     function hasWxBinding(wxid) {
@@ -347,7 +323,7 @@
                 bindFromCard(bindBtn.closest('.proto-bind-card'));
                 return;
             }
-            var unbindBtn = e.target.closest('.proto-bind-unbind-btn, .proto-peer-unbind-btn');
+            var unbindBtn = e.target.closest('.proto-bind-unbind-btn');
             if (unbindBtn) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -362,8 +338,8 @@
         refresh: reloadBindings,
         setWxDevices: setWxDevices,
         setYybAccounts: setYybAccounts,
-        renderWxPeerStrip: renderWxPeerStrip,
-        renderYybPeerStrip: renderYybPeerStrip,
+        renderWxBoundChip: renderWxBoundChip,
+        renderYybBoundChip: renderYybBoundChip,
         hasWxBinding: hasWxBinding,
         hasYybBinding: hasYybBinding,
         shouldShowBindUI: shouldShowBindUI,

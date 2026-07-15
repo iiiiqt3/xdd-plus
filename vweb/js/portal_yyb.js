@@ -188,11 +188,13 @@
         const rawOpenid = String(acc.openid || '');
         const openid = esc(rawOpenid);
         const isBound = global.PortalProtocolBind && global.PortalProtocolBind.hasYybBinding(rawOpenid);
-        const peerStrip = global.PortalProtocolBind ? global.PortalProtocolBind.renderYybPeerStrip(rawOpenid) : '';
+        const boundChip = global.PortalProtocolBind ? global.PortalProtocolBind.renderYybBoundChip(rawOpenid) : '';
         return `<div class="yyb-acc-card${isBound ? ' proto-bound' : ''}" data-key="${attrEsc(accountKey(acc))}" role="button" tabindex="0">
-            ${peerStrip}
             <div class="yyb-acc-head">
-                <div class="yyb-acc-name">${esc(accountName(acc))}</div>
+                <div class="yyb-acc-name-wrap">
+                    <div class="yyb-acc-name">${esc(accountName(acc))}</div>
+                    ${boundChip}
+                </div>
                 ${statusTag(acc.status)}
             </div>
             ${renderUinLine(acc)}
@@ -221,7 +223,7 @@
         grid.innerHTML = state.accounts.map(renderAccountCard).join('');
         grid.querySelectorAll('.yyb-acc-card').forEach(card => {
             card.onclick = (e) => {
-                if (e.target.closest('.yyb-copy-btn') || e.target.closest('.proto-peer-unbind-btn')) return;
+                if (e.target.closest('.yyb-copy-btn')) return;
                 state.selectedKey = card.dataset.key;
                 syncSelected();
             };
@@ -407,7 +409,7 @@
     async function withAccountAction(btn, loadingLabel, action) {
         if (!btn || btn.disabled) return;
         const prev = btn.textContent;
-        const peer = [$('yyb-refreshBtn'), $('yyb-resyncBtn')].filter(b => b && b !== btn);
+        const peer = [$('yyb-refreshBtn')].filter(b => b && b !== btn);
         btn.disabled = true;
         peer.forEach(b => { b.disabled = true; });
         btn.textContent = loadingLabel;
@@ -429,18 +431,6 @@
                 notify('账号存活状态已刷新', 'success');
             });
         } catch (e) { notify(e.message || '刷新失败', 'error'); }
-    }
-
-    async function resyncSelected() {
-        const acc = selectedAccount();
-        if (!acc) { notify('请先点击选择一个账号', 'warning'); return; }
-        try {
-            await withAccountAction($('yyb-resyncBtn'), '同步中…', async () => {
-                await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) });
-                await loadPanel({ autoCheck: false, silent: true });
-                notify('账号资料已同步', 'success');
-            });
-        } catch (e) { notify(e.message || '同步失败', 'error'); }
     }
 
     async function deleteSelected() {
@@ -596,7 +586,6 @@
             loadPanel({ autoCheck: true, triggerBtn: $('yyb-reloadBtn') });
         };
         if ($('yyb-refreshBtn')) $('yyb-refreshBtn').onclick = refreshSelected;
-        if ($('yyb-resyncBtn')) $('yyb-resyncBtn').onclick = resyncSelected;
         if ($('yyb-deleteBtn')) $('yyb-deleteBtn').onclick = deleteSelected;
         if ($('yyb-scanBtn')) $('yyb-scanBtn').onclick = startScan;
         if ($('yyb-proxyProvince')) $('yyb-proxyProvince').onchange = () => { void loadProxyCities(); };
