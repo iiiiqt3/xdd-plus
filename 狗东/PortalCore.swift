@@ -1040,6 +1040,22 @@ func shortenProtocolId(_ id: String?, head: Int = 8, tail: Int = 6) -> String {
     return String(s.prefix(head)) + "…" + String(s.suffix(tail))
 }
 
+func jsonValueAsString(_ value: Any?) -> String {
+    if let text = value as? String {
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    if let number = value as? NSNumber {
+        return number.stringValue
+    }
+    if let number = value as? Int {
+        return String(number)
+    }
+    if let number = value as? Double, number.rounded() == number {
+        return String(Int(number))
+    }
+    return ""
+}
+
 func parseProxyAreaRows(_ data: [String: Any]?) -> [(code: String, name: String)] {
     guard let data else { return [] }
     let keys = ["list", "provinceList", "city", "cityList"]
@@ -1059,9 +1075,14 @@ func parseProxyAreaRows(_ data: [String: Any]?) -> [(code: String, name: String)
         } else {
             return nil
         }
-        let code = (row["regionCode"] as? String) ?? (row["region_code"] as? String) ?? ""
-        let name = (row["regionName"] as? String) ?? (row["region_name"] as? String) ?? code
-        return code.isEmpty ? nil : (code, name)
+        let code = jsonValueAsString(row["regionCode"]).isEmpty
+            ? jsonValueAsString(row["region_code"])
+            : jsonValueAsString(row["regionCode"])
+        let name = jsonValueAsString(row["regionName"]).isEmpty
+            ? jsonValueAsString(row["region_name"])
+            : jsonValueAsString(row["regionName"])
+        let displayName = name.isEmpty ? code : name
+        return code.isEmpty ? nil : (code, displayName)
     }
 }
 

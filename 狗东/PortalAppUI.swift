@@ -3630,10 +3630,11 @@ final class YybProtocolViewController: BaseNativeViewController {
             expiryLabel.numberOfLines = 0
             if expiry.expired {
                 expiryLabel.textColor = .systemRed
-            } else if expiry.warn {
-                expiryLabel.textColor = .systemOrange
             } else {
-                expiryLabel.textColor = .tertiaryLabel
+                expiryLabel.textColor = UIColor(red: 37 / 255, green: 99 / 255, blue: 235 / 255, alpha: 1)
+                if expiry.warn {
+                    expiryLabel.font = .boldSystemFont(ofSize: 11)
+                }
             }
             expiryLabel.translatesAutoresizingMaskIntoConstraints = false
             wrap.addSubview(expiryLabel)
@@ -3758,11 +3759,16 @@ final class YybProtocolViewController: BaseNativeViewController {
             PortalService.shared.fetchProtocolProxyAreas(packId: packId) { [weak self] result in
                 DispatchQueue.main.async {
                     guard let self = self else { return }
-                    let provinces = parseProxyAreaRows(try? result.get())
-                    guard !provinces.isEmpty else {
-                        self.showMessage("地区列表加载失败，请检查网络后重试")
+                    switch result {
+                    case .failure(let error):
+                        self.showMessage(error.message)
                         return
-                    }
+                    case .success(let data):
+                        let provinces = parseProxyAreaRows(data)
+                        guard !provinces.isEmpty else {
+                            self.showMessage("地区列表为空，请稍后重试")
+                            return
+                        }
                     let quota = try? quotaResult.get()
                     let costPreview = formatScanCostPreview(cost: quota?.scanLoginCost, hint: quota?.scanCostHint)
                     var message = {
@@ -3782,6 +3788,7 @@ final class YybProtocolViewController: BaseNativeViewController {
                 }
                 sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
                 self.present(sheet, animated: true)
+                    }
                 }
             }
         }
@@ -3791,11 +3798,15 @@ final class YybProtocolViewController: BaseNativeViewController {
         PortalService.shared.fetchProtocolProxyAreas(parentCode: province.code, packId: packId) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self = self else { return }
-                let cities = parseProxyAreaRows(try? result.get())
-                guard !cities.isEmpty else {
-                    self.showMessage("城市列表加载失败")
-                    return
-                }
+                switch result {
+                case .failure(let error):
+                    self.showMessage(error.message)
+                case .success(let data):
+                    let cities = parseProxyAreaRows(data)
+                    guard !cities.isEmpty else {
+                        self.showMessage("城市列表为空，请稍后重试")
+                        return
+                    }
                 let sheet = UIAlertController(title: "选择城市", message: province.name, preferredStyle: .actionSheet)
                 for city in cities.prefix(30) {
                     sheet.addAction(UIAlertAction(title: city.name, style: .default) { _ in
@@ -3804,6 +3815,7 @@ final class YybProtocolViewController: BaseNativeViewController {
                 }
                 sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
                 self.present(sheet, animated: true)
+                }
             }
         }
     }
