@@ -1,6 +1,10 @@
 package com.goudong.jd.ui.projects
 
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -24,6 +28,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.goudong.jd.AppServices
 import com.goudong.jd.R
+import com.goudong.jd.data.session.YybAccountStore
 import com.goudong.jd.data.model.PortalActivity
 import com.goudong.jd.data.model.PortalProject
 import com.goudong.jd.ui.common.ResultTextActivity
@@ -82,8 +87,12 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private var yybManageRow: LinearLayout? = null
     private var yybReloadBtn: Button? = null
     private var yybServiceReady = false
-    private var yybCheckBusy = false
     private var yybScanBusy = false
+    private var yybManualRefreshing = false
+    private val yybStoreListener = { applyYybFromStore() }
+    private var protocolBindings: List<com.goudong.jd.data.model.PortalProtocolBinding> = emptyList()
+    private var protocolBindQuota: com.goudong.jd.data.model.PortalProtocolBindQuota? = null
+    private var protocolProxyConfig: com.goudong.jd.data.model.PortalProxyConfig? = null
 
     // 缓存
     private var cachedActivities: List<PortalActivity>? = null
@@ -184,6 +193,16 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }
         wrapper.addView(rushHost)
         return wrapMainTabSwipe(wrapper)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        YybAccountStore.addListener(yybStoreListener)
+    }
+
+    override fun onStop() {
+        YybAccountStore.removeListener(yybStoreListener)
+        super.onStop()
     }
 
     override fun onResume() {
@@ -902,7 +921,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 setOnClickListener {
                     if (protocolSubIndex == index) return@setOnClickListener
                     protocolSubIndex = index
-                    renderProtocolAccess(forceRefresh = true)
+                    renderProtocolAccess(forceRefresh = false)
                 }
             })
         }
@@ -912,7 +931,68 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         } else {
             renderYybProtocol(forceRefresh)
         }
+        loadProtocolBindings()
     }
+
+    private fun loadProtocolBindings() {
+        lifecycleScope.launch {
+            runCatching {
+                protocolBindings = AppServices.portalRepository.fetchProtocolBindings()
+                protocolBindQuota = AppServices.portalRepository.fetchProtocolBindQuota()
+                if (wxDevices.isEmpty()) {
+                    wxDevices = AppServices.portalRepository.fetchWxDevices()
+                }
+            }
+            if (protocolSubIndex == 0) {
+                renderWxDeviceList(wxDevices)
+            } else {
+                renderYybAccounts()
+            }
+        }
+    }
+
+    private fun bindingByWx(wxid: String?) =
+        protocolBindings.firstOrNull { it.wxWxid == wxid?.trim() }
+
+    private fun bindingByOpenId(openid: String?) =
+        protocolBindings.firstOrNull { it.yybOpenId == openid?.trim() }
+
+    private fun shortenProtocolId(id: String?, head: Int = 8, tail: Int = 6): String {
+        val s = id?.trim().orEmpty()
+        if (s.length <= head + tail + 3) return s
+        return s.take(head) + "…" + s.takeLast(tail)
+    }
+
+    private fun formatYybExpiry(acc: com.goudong.jd.data.model.PortalYybAccount): Pair<String, Boolean> {
+        val loginSec = acc.loginAt ?: acc.createdAt
+        if (loginSec <= 0L) return "" to false
+        val expireMs = (acc.expiresAt ?: (loginSec + 30L * 24 * 3600)) * 1000
+        val remain = expireMs - System.currentTimeMillis()
+        if (remain <= 0L) return "登录已过期，请重新扫码登录延期" to true
+        val days = remain / 86400000
+        val hours = (remain % 86400000) / 3600000
+        val warn = remain < 3 * 86400000
+        val expireText = java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.CHINA)
+            .format(java.util.Date(expireMs))
+        return "剩余有效期 $days 天 $hours 小时（至 $expireText）" to warn
+    }
+
+    private fun parseProxyAreaList(data: com.google.gson.JsonObject?): List<Pair<String, String>> {
+        if (data == null) return emptyList()
+        val arr = data.get("list")?.asJsonArray
+            ?: data.get("provinceList")?.asJsonArray
+            ?: data.get("city")?.asJsonArray
+            ?: return emptyList()
+        return arr.mapNotNull { el ->
+            val obj = el.asJsonObject
+            val code = obj.get("regionCode")?.asString ?: obj.get("region_code")?.asString ?: return@mapNotNull null
+            val name = obj.get("regionName")?.asString ?: obj.get("region_name")?.asString ?: code
+            code to name
+        }
+    }
+
+    private fun boundWxSet() = protocolBindings.mapNotNull { it.wxWxid }.toSet()
+    private fun boundOpenIdSet() = protocolBindings.mapNotNull { it.yybOpenId }.toSet()
 
     private fun yybAccountKey(acc: com.goudong.jd.data.model.PortalYybAccount): String {
         return if (acc.bindingId > 0) acc.bindingId.toString() else (acc.openid ?: "")
@@ -922,6 +1002,64 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     private fun renderYybProtocol(forceRefresh: Boolean) {
         val ctx = requireContext()
+
+        contentRoot.addView(buildCollapsibleIntroCard(
+            title = "📖 什么是应用宝协议？",
+            content = """
+                应用宝协议通过提交应用宝 openid（owNAX 开头），向协议网关请求小程序登录凭证（CK）。无需保持微信长期在线，也没有封号风险。
+
+                【主要作用】
+                • 提交 openid 即可获取小程序 CK，适合青龙等自动化脚本
+                • 扫码登录后有效期 30 天，到期前重新扫码可延期
+                • 可单独使用应用宝协议，不必依赖微信协议
+
+                【从微信协议迁移】
+                若你此前使用微信协议，青龙脚本里提交的是微信 wxid 作为 CK：
+                • 需先将 wxid 与对应的应用宝 openid 双绑
+                • 绑定后脚本里仍填原 wxid，网关会自动路由到应用宝获取 code
+                • 之后即使退出或删除微信协议设备，只要双绑关系保留，wxid 依然能路由到应用宝
+                • 也可完全切换到应用宝，直接提交 openid 作为 CK
+            """.trimIndent(),
+        ))
+
+        contentRoot.addView(ctx.cardView().apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(ctx.dp(14), ctx.dp(12), ctx.dp(14), ctx.dp(12))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = ctx.dp(10) }
+            gravity = Gravity.CENTER_VERTICAL
+            setOnClickListener {
+                startActivity(Intent(ctx, ProtocolBindActivity::class.java))
+            }
+            addView(TextView(ctx).apply {
+                text = "🔗"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { marginEnd = ctx.dp(10) }
+            })
+            addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                addView(TextView(ctx).apply {
+                    text = "协议双绑"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(ctx.themeColor(R.color.text_primary))
+                })
+                addView(ctx.captionText("微信 wxid ↔ 应用宝 openid，点击进入管理").apply {
+                    setPadding(0, ctx.dp(4), 0, 0)
+                })
+            })
+            addView(TextView(ctx).apply {
+                text = "›"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+                setTextColor(ctx.themeColor(R.color.text_hint))
+            })
+        })
 
         val actionRow = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -943,7 +1081,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 cornerRadius = ctx.dp(10).toFloat()
             }
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            setOnClickListener { loadYybPanel(autoCheck = true, showAlert = true) }
+            setOnClickListener { loadYybPanel(autoCheck = true, showAlert = true, manual = true) }
         }.also { actionRow.addView(it) }
         contentRoot.addView(actionRow)
 
@@ -1015,16 +1153,69 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             }
         }
         yybManageRow?.addView(manageBtn("刷新") { refreshSelectedYyb() })
-        yybManageRow?.addView(manageBtn("同步") { resyncSelectedYyb() })
         yybManageRow?.addView(manageBtn("删除", danger = true) { deleteSelectedYyb() })
 
         updateYybActionEnabled()
-        if (forceRefresh || yybAccounts.isEmpty()) {
-            loadYybPanel(autoCheck = true, showAlert = false)
-        } else {
-            applyYybHeader(yybServiceReady, if (yybServiceReady) "正常" else "不可用", yybAccounts.size)
-            renderYybAccounts()
+        applyYybFromStore()
+        if (!YybAccountStore.sessionAutoChecked) {
+            YybAccountStore.prefetchIfNeeded(lifecycleScope, autoCheck = true)
         }
+    }
+
+    private fun buildCollapsibleIntroCard(title: String, content: String): View {
+        return requireContext().cardView().apply {
+            val titleRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            val titleText = TextView(context).apply {
+                text = title
+                setTextColor(requireContext().themeColor(R.color.text_muted))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                setTypeface(typeface, Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            val toggleIcon = TextView(context).apply {
+                text = "▶"
+                setTextColor(requireContext().themeColor(R.color.text_hint))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            }
+            titleRow.addView(titleText)
+            titleRow.addView(toggleIcon)
+            addView(titleRow)
+            val detailContent = requireContext().bodyText(content).apply {
+                setLineSpacing(0f, 1.5f)
+                setPadding(0, requireContext().dp(6), 0, 0)
+                visibility = View.GONE
+            }
+            addView(detailContent)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = requireContext().dp(10) }
+            titleRow.setOnClickListener {
+                if (detailContent.visibility == View.GONE) {
+                    detailContent.visibility = View.VISIBLE
+                    toggleIcon.text = "▼"
+                } else {
+                    detailContent.visibility = View.GONE
+                    toggleIcon.text = "▶"
+                }
+            }
+        }
+    }
+
+    private fun applyYybFromStore() {
+        if (protocolSubIndex != 1) return
+        val ready = YybAccountStore.isServiceReady
+        val title = if (ready) "已启动" else "未启动"
+        yybAccounts = YybAccountStore.accounts
+        if (yybAccounts.none { yybAccountKey(it) == yybSelectedKey }) {
+            yybSelectedKey = yybAccounts.firstOrNull()?.let { yybAccountKey(it) }.orEmpty()
+        }
+        applyYybHeader(ready, title, yybAccounts.size)
+        renderYybAccounts()
+        updateYybActionEnabled()
     }
 
     private fun selectedYybAccount(): com.goudong.jd.data.model.PortalYybAccount? {
@@ -1032,11 +1223,11 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     private fun updateYybActionEnabled() {
-        val busy = yybCheckBusy || yybScanBusy
+        val busy = yybManualRefreshing || yybScanBusy
         yybReloadBtn?.isEnabled = !busy
         yybReloadBtn?.alpha = if (busy) 0.5f else 1f
-        yybReloadBtn?.text = if (yybCheckBusy) "检测中…" else "刷新检测"
-        yybLoadingBar?.visibility = if (yybCheckBusy) View.VISIBLE else View.GONE
+        yybReloadBtn?.text = if (yybManualRefreshing) "检测中…" else "刷新检测"
+        yybLoadingBar?.visibility = if (yybManualRefreshing) View.VISIBLE else View.GONE
     }
 
     private fun applyYybHeader(ready: Boolean, title: String, count: Int) {
@@ -1054,46 +1245,39 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }
     }
 
-    private fun loadYybPanel(autoCheck: Boolean, showAlert: Boolean = autoCheck) {
-        yybCheckBusy = true
-        updateYybActionEnabled()
-        lifecycleScope.launch {
-            runCatching { AppServices.portalRepository.fetchYybStatus(autoCheck) }
-                .onSuccess { st ->
-                    val ready = st.enabled && st.ready
-                    val title = when {
-                        !ready -> st.message?.takeIf { it.isNotBlank() } ?: "不可用"
-                        else -> "正常"
-                    }
-                    yybAccounts = if (ready) st.accounts.orEmpty() else emptyList()
-                    if (yybAccounts.none { yybAccountKey(it) == yybSelectedKey }) {
-                        yybSelectedKey = yybAccounts.firstOrNull()?.let { yybAccountKey(it) }.orEmpty()
-                    }
-                    applyYybHeader(ready, title, yybAccounts.size)
-                    renderYybAccounts()
-                    if (!ready) {
-                        if (showAlert) toast(st.message ?: "应用宝服务暂不可用")
-                    } else if (showAlert && autoCheck) {
-                        val summary = st.checkSummary
-                        if (summary != null && summary.total > 0) {
-                            var msg = "检测完成：共 ${summary.total} 个，可用 ${summary.alive} 个"
-                            if (summary.dead > 0) msg += "，失效 ${summary.dead} 个"
-                            if (summary.failed > 0) msg += "，失败 ${summary.failed} 个"
-                            androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                                .setTitle("检测完成")
-                                .setMessage(msg)
-                                .setPositiveButton("好的", null)
-                                .show()
-                        }
-                    }
-                }
-                .onFailure {
-                    applyYybHeader(false, "加载失败", yybAccounts.size)
-                    handlePortalError(it)
-                    renderYybAccounts(it.message)
-                }
-            yybCheckBusy = false
+    private fun loadYybPanel(autoCheck: Boolean, showAlert: Boolean = autoCheck, manual: Boolean = false) {
+        if (manual) {
+            yybManualRefreshing = true
             updateYybActionEnabled()
+        }
+        YybAccountStore.reload(
+            scope = lifecycleScope,
+            autoCheck = autoCheck,
+            showAlert = showAlert,
+            force = true,
+        ) { result ->
+            if (manual) {
+                yybManualRefreshing = false
+                updateYybActionEnabled()
+            }
+            result.onFailure {
+                if (showAlert) handlePortalError(it)
+                renderYybAccounts(it.message)
+            }
+            result.onSuccess { st ->
+                if (!st.enabled || !st.ready) {
+                    if (showAlert) toast(st.message ?: "应用宝服务暂不可用")
+                } else if (showAlert && autoCheck) {
+                    YybAccountStore.consumePendingAlert()?.let { msg ->
+                        AlertDialog.Builder(requireContext())
+                            .setTitle("检测完成")
+                            .setMessage(msg)
+                            .setPositiveButton("好的", null)
+                            .show()
+                    }
+                }
+                applyYybFromStore()
+            }
         }
     }
 
@@ -1109,27 +1293,18 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         when {
             error != null -> host.addView(emptyCard(error))
             yybAccounts.isEmpty() -> host.addView(
-                emptyCard(if (yybCheckBusy) "正在同步账号…" else "暂无账号，点击上方「扫码添加」")
+                emptyCard(
+                    if (YybAccountStore.isLoading && !YybAccountStore.sessionAutoChecked) {
+                        "正在同步账号…"
+                    } else {
+                        "暂无账号，点击上方「扫码添加」"
+                    }
+                )
             )
             else -> {
-                val grid = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-                val left = LinearLayout(ctx).apply {
-                    orientation = LinearLayout.VERTICAL
-                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    setPadding(0, 0, ctx.dp(5), 0)
+                yybAccounts.forEach { acc ->
+                    host.addView(buildYybProtocolCard(acc))
                 }
-                val right = LinearLayout(ctx).apply {
-                    orientation = LinearLayout.VERTICAL
-                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    setPadding(ctx.dp(5), 0, 0, 0)
-                }
-                grid.addView(left)
-                grid.addView(right)
-                yybAccounts.forEachIndexed { index, acc ->
-                    val card = buildYybProtocolCard(acc)
-                    if (index % 2 == 0) left.addView(card) else right.addView(card)
-                }
-                host.addView(grid)
             }
         }
     }
@@ -1187,13 +1362,77 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 setPadding(0, ctx.dp(6), 0, 0)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             })
-            addView(ctx.captionText(acc.openid ?: "").apply {
+            addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
                 setPadding(0, ctx.dp(2), 0, 0)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                maxLines = 2
-                ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
-                setTextColor(ctx.themeColor(R.color.text_muted))
+                addView(ctx.captionText("OpenID").apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply { marginEnd = ctx.dp(8) }
+                })
+                addView(TextView(ctx).apply {
+                    text = acc.openid ?: "-"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                    setTextColor(ctx.themeColor(R.color.text_muted))
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                })
+                addView(TextView(ctx).apply {
+                    text = "复制"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.parseColor("#2563EB"))
+                    setPadding(ctx.dp(8), ctx.dp(4), ctx.dp(4), ctx.dp(4))
+                    setOnClickListener {
+                        val oid = acc.openid?.trim().orEmpty()
+                        if (oid.isEmpty()) {
+                            toast("无可复制的 OpenID")
+                            return@setOnClickListener
+                        }
+                        val clip = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clip.setPrimaryClip(ClipData.newPlainText("openid", oid))
+                        toast("已复制 OpenID")
+                    }
+                })
             })
+            bindingByOpenId(acc.openid)?.let { binding ->
+                val wxDev = wxDevices.firstOrNull { it.wxid == binding.wxWxid }
+                val peerName = wxDev?.nickname?.takeIf { it.isNotBlank() } ?: binding.nickname ?: "微信设备"
+                addView(LinearLayout(ctx).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, ctx.dp(8), 0, 0)
+                    addView(ctx.captionText("已绑定微信 · $peerName · ${shortenProtocolId(binding.wxWxid)}").apply {
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    })
+                    addView(TextView(ctx).apply {
+                        text = "解绑"
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                        setTextColor(Color.parseColor("#DC2626"))
+                        setOnClickListener {
+                            confirmProtocolUnbind(binding.wxWxid.orEmpty(), binding.yybOpenId.orEmpty())
+                        }
+                    })
+                })
+            }
+            val (expiryText, expired) = formatYybExpiry(acc)
+            if (expiryText.isNotBlank()) {
+                addView(TextView(ctx).apply {
+                    text = expiryText
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                    setTextColor(
+                        when {
+                            expiryText.startsWith("登录已过期") -> Color.parseColor("#DC2626")
+                            expired -> Color.parseColor("#D97706")
+                            else -> ctx.themeColor(R.color.text_muted)
+                        }
+                    )
+                    setPadding(0, ctx.dp(6), 0, 0)
+                })
+            }
             setOnClickListener {
                 yybSelectedKey = key
                 renderYybAccounts()
@@ -1202,11 +1441,112 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     private fun startYybScan() {
-        if (yybScanBusy || yybCheckBusy) return
+        if (yybScanBusy || yybManualRefreshing) return
         yybScanBusy = true
         updateYybActionEnabled()
         lifecycleScope.launch {
-            runCatching { AppServices.portalRepository.createYybQr() }
+            val cfg = runCatching { AppServices.portalRepository.fetchProtocolProxyConfig() }.getOrNull()
+            protocolProxyConfig = cfg
+            yybScanBusy = false
+            updateYybActionEnabled()
+            if (cfg?.proxyEnabled == true) {
+                showYybRegionDialog(cfg)
+            } else {
+                beginYybQrScan("", "", useProxy = false, packId = cfg?.proxyDefaultPackid.orEmpty())
+            }
+        }
+    }
+
+    private fun showYybRegionDialog(cfg: com.goudong.jd.data.model.PortalProxyConfig) {
+        val ctx = requireContext()
+        val dialogView = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(ctx.dp(8), ctx.dp(4), ctx.dp(8), 0)
+        }
+        val hint = cfg.proxyBypassRegionName?.takeIf { it.isNotBlank() }?.let {
+            "「$it」等地区免代理直连；其他地区请选择与你所在地一致的省/市。异地登录可能只有1天有效期。"
+        } ?: "请选择与你当前所在地一致的省/市。异地登录可能只有1天有效期。"
+        dialogView.addView(ctx.bodyText(hint).apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setPadding(0, 0, 0, ctx.dp(10))
+        })
+        val provinceSpinner = android.widget.Spinner(ctx)
+        val citySpinner = android.widget.Spinner(ctx)
+        dialogView.addView(provinceSpinner)
+        dialogView.addView(citySpinner.apply { setPadding(0, ctx.dp(8), 0, 0) })
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(ctx)
+            .setTitle("选择登录地区")
+            .setView(dialogView)
+            .setNegativeButton("取消", null)
+            .setPositiveButton("生成二维码", null)
+            .create()
+        dialog.show()
+        var provinces = emptyList<Pair<String, String>>()
+        var cities = emptyList<Pair<String, String>>()
+        lifecycleScope.launch {
+            val packId = cfg.proxyDefaultPackid.orEmpty()
+            provinces = parseProxyAreaList(
+                runCatching { AppServices.portalRepository.fetchProtocolProxyAreas(packId = packId) }.getOrNull()
+            )
+            provinceSpinner.adapter = android.widget.ArrayAdapter(
+                ctx,
+                android.R.layout.simple_spinner_dropdown_item,
+                listOf("请选择省份") + provinces.map { it.second },
+            )
+        }
+        provinceSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (position <= 0) {
+                    cities = emptyList()
+                    citySpinner.adapter = android.widget.ArrayAdapter(
+                        ctx, android.R.layout.simple_spinner_dropdown_item, listOf("请选择城市")
+                    )
+                    return
+                }
+                val code = provinces[position - 1].first
+                lifecycleScope.launch {
+                    cities = parseProxyAreaList(
+                        runCatching {
+                            AppServices.portalRepository.fetchProtocolProxyAreas(
+                                parentCode = code,
+                                packId = cfg.proxyDefaultPackid.orEmpty(),
+                            )
+                        }.getOrNull()
+                    )
+                    citySpinner.adapter = android.widget.ArrayAdapter(
+                        ctx,
+                        android.R.layout.simple_spinner_dropdown_item,
+                        listOf("请选择城市") + cities.map { it.second },
+                    )
+                }
+            }
+        }
+        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val cityPos = citySpinner.selectedItemPosition
+            if (cityPos <= 0) {
+                toast("请选择城市")
+                return@setOnClickListener
+            }
+            val region = cities[cityPos - 1]
+            dialog.dismiss()
+            beginYybQrScan(region.first, region.second, useProxy = true, packId = cfg.proxyDefaultPackid.orEmpty())
+        }
+    }
+
+    private fun beginYybQrScan(regionCode: String, regionName: String, useProxy: Boolean, packId: String) {
+        if (yybScanBusy || yybManualRefreshing) return
+        yybScanBusy = true
+        updateYybActionEnabled()
+        lifecycleScope.launch {
+            runCatching {
+                AppServices.portalRepository.createYybQr(
+                    regionCode = regionCode,
+                    regionName = regionName,
+                    useProxy = useProxy,
+                    packId = packId,
+                )
+            }
                 .onSuccess { data ->
                     val sessionId = data.sessionId
                     if (sessionId.isNullOrBlank() || data.imageBase64.isNullOrBlank()) {
@@ -1338,19 +1678,25 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }
     }
 
-    private fun resyncSelectedYyb() {
-        val acc = selectedYybAccount() ?: return toast("请先选择一个账号")
-        lifecycleScope.launch {
-            runCatching { AppServices.portalRepository.resyncYybAccount(yybAccountRef(acc)) }
-                .onSuccess {
-                    toast("同步完成：${it.nickname ?: it.openid ?: ""}")
-                    loadYybPanel(autoCheck = false, showAlert = false)
+    private fun confirmProtocolUnbind(wxWxid: String, yybOpenId: String) {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("解除双绑")
+            .setMessage("确定解除该微信与应用宝账号的双绑关系？")
+            .setNegativeButton("取消", null)
+            .setPositiveButton("解绑") { _, _ ->
+                lifecycleScope.launch {
+                    runCatching { AppServices.portalRepository.protocolUnbind(wxWxid, yybOpenId) }
+                        .onSuccess {
+                            toast(it)
+                            loadProtocolBindings()
+                        }
+                        .onFailure {
+                            toast(it.message ?: "解绑失败")
+                            handlePortalError(it)
+                        }
                 }
-                .onFailure {
-                    toast(it.message ?: "同步失败")
-                    handlePortalError(it)
-                }
-        }
+            }
+            .show()
     }
 
     private fun deleteSelectedYyb() {
@@ -1672,6 +2018,27 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 setPadding(0, context.dp(8), 0, context.dp(4))
                 setTextIsSelectable(true)
             })
+
+            bindingByWx(device.wxid)?.let { binding ->
+                val yybAcc = yybAccounts.firstOrNull { it.openid == binding.yybOpenId }
+                val peerName = yybAcc?.nickname?.takeIf { it.isNotBlank() } ?: "应用宝账号"
+                addView(LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, context.dp(4), 0, 0)
+                    addView(requireContext().captionText("已绑定应用宝 · $peerName · ${shortenProtocolId(binding.yybOpenId)}").apply {
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    })
+                    addView(TextView(context).apply {
+                        text = "解绑"
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                        setTextColor(Color.parseColor("#DC2626"))
+                        setOnClickListener {
+                            confirmProtocolUnbind(binding.wxWxid.orEmpty(), binding.yybOpenId.orEmpty())
+                        }
+                    })
+                })
+            }
 
             if (!isOnline) {
                 val tipLabel = if (isPrimary) "主设备" else "监控设备"

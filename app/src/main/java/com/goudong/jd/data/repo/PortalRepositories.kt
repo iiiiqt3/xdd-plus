@@ -1,5 +1,6 @@
 package com.goudong.jd.data.repo
 
+import com.goudong.jd.data.session.YybAccountStore
 import com.goudong.jd.data.model.ApiEnvelope
 import com.goudong.jd.data.model.ApiError
 import com.goudong.jd.data.model.KuwoCredentials
@@ -111,6 +112,7 @@ class AuthRepository(
         val message = apiClient.requestMessage(path = "/api/login/logout")
         sessionManager.clearCredentials()
         sessionManager.setAuthenticated(false)
+        YybAccountStore.clear()
         apiClient.clearCookies()
         return message
     }
@@ -373,8 +375,82 @@ class PortalRepository(
         return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.PortalYybAccount::class.java)
     }
 
-    suspend fun createYybQr(): com.goudong.jd.data.model.PortalYybQrCreateResult {
-        return apiClient.requestData(path = "/api/portal/yyb/qr", method = "POST")
+
+    suspend fun fetchProtocolBindings(): List<com.goudong.jd.data.model.PortalProtocolBinding> {
+        val text = apiClient.requestText(path = "/api/portal/protocol/bindings")
+        return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.PortalProtocolBinding::class.java)
+    }
+
+    suspend fun fetchProtocolBindQuota(): com.goudong.jd.data.model.PortalProtocolBindQuota {
+        return apiClient.requestData("/api/portal/protocol/bind/quota")
+    }
+
+    suspend fun protocolBind(wxWxid: String, yybOpenId: String, nickname: String = ""): com.goudong.jd.data.model.PortalProtocolBinding {
+        return apiClient.requestData(
+            path = "/api/portal/protocol/bind",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(
+                mapOf(
+                    "wxWxid" to wxWxid,
+                    "yybOpenId" to yybOpenId,
+                    "nickname" to nickname,
+                )
+            ),
+        )
+    }
+
+    suspend fun protocolUnbind(wxWxid: String, yybOpenId: String): String {
+        return apiClient.requestMessage(
+            path = "/api/portal/protocol/unbind",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(
+                mapOf(
+                    "wxWxid" to wxWxid,
+                    "yybOpenId" to yybOpenId,
+                )
+            ),
+        )
+    }
+
+    suspend fun fetchProtocolProxyConfig(): com.goudong.jd.data.model.PortalProxyConfig {
+        return apiClient.requestData("/api/portal/protocol/proxy/config")
+    }
+
+    suspend fun fetchProtocolProxyAreas(parentCode: String = "", packId: String = ""): com.google.gson.JsonObject {
+        return apiClient.requestData(
+            path = "/api/portal/protocol/proxy/areas",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(
+                mapOf(
+                    "parent_code" to parentCode,
+                    "packid" to packId,
+                )
+            ),
+        )
+    }
+
+    suspend fun createYybQr(
+        regionCode: String = "",
+        regionName: String = "",
+        useProxy: Boolean = false,
+        packId: String = "",
+    ): com.goudong.jd.data.model.PortalYybQrCreateResult {
+        return apiClient.requestData(
+            path = "/api/portal/yyb/qr",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(
+                mapOf(
+                    "regionCode" to regionCode,
+                    "regionName" to regionName,
+                    "useProxy" to useProxy,
+                    "packId" to packId,
+                )
+            ),
+        )
     }
 
     suspend fun pollYybQr(sessionId: String): com.goudong.jd.data.model.PortalYybQrPollResult {

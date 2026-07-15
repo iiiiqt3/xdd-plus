@@ -46,6 +46,10 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
         <activity
+            android:name=".ui.projects.ProtocolBindActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+        <activity
             android:name=".ui.projects.CkEditActivity"
             android:exported="false"
             android:parentActivityName=".MainActivity" />

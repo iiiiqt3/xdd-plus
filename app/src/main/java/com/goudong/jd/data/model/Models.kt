@@ -262,6 +262,31 @@ data class PortalYybAccount(
     val status: String? = null,
     val lastCheckedAt: Long? = null,
     val createdAt: Long = 0,
+    val loginAt: Long? = null,
+    val expiresAt: Long? = null,
+)
+
+data class PortalProtocolBinding(
+    val id: Long = 0,
+    val userNumber: Int = 0,
+    val wxWxid: String? = null,
+    val yybOpenId: String? = null,
+    val nickname: String? = null,
+)
+
+data class PortalProtocolBindQuota(
+    val onlineWxSlots: Int = 0,
+    val boundPairs: Int = 0,
+    val freeSlots: Int = 0,
+    val scanLoginCost: Int? = null,
+    val scanCostHint: String? = null,
+)
+
+data class PortalProxyConfig(
+    val proxyEnabled: Boolean = false,
+    val proxyAccountConfigured: Boolean = true,
+    val proxyDefaultPackid: String? = null,
+    val proxyBypassRegionName: String? = null,
 )
 
 data class PortalYybCheckSummary(
