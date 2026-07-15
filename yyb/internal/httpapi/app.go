@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -43,7 +44,8 @@ type App struct {
 	pool      *protocol.Pool
 	qr        *qr.Client
 
-	accountTCPProxy AccountTCPProxyResolver
+	accountTCPProxy        AccountTCPProxyResolver
+	accountProxyForceRefresh AccountProxyForceRefresher
 
 	mu         sync.Mutex
 	qrSessions map[string]*qr.Session
@@ -51,6 +53,9 @@ type App struct {
 
 // AccountTCPProxyResolver 按账号 credentials 解析 SOCKS5（51 代理账号级续提）
 type AccountTCPProxyResolver func(ctx context.Context, acc *store.WechatAccount) (proxy string, updateCred bool, cred map[string]any)
+
+// AccountProxyForceRefresher 强制重提账号同地区短效代理
+type AccountProxyForceRefresher func(credentials map[string]any) (proxy string, updated map[string]any, err error)
 
 var swaggerDocsHandler = httpSwagger.Handler(
 	httpSwagger.URL("/openapi.json"),
@@ -467,7 +472,7 @@ type wxappRequest struct {
 	Payload map[string]any `json:"payload"`
 }
 
-type wxappCall func(ctx context.Context, acc *store.WechatAccount, appID string, payload map[string]any) (map[string]any, error)
+type wxappCall func(ctx context.Context, acc *store.WechatAccount, appID string, payload map[string]any, tcpProxy string) (map[string]any, error)
 
 func (a *App) callWXApp(w http.ResponseWriter, r *http.Request, requirePayload bool, call wxappCall) {
 	var body wxappRequest
@@ -590,6 +595,10 @@ func (a *App) SetAccountTCPProxyResolver(r AccountTCPProxyResolver) {
 	a.accountTCPProxy = r
 }
 
+func (a *App) SetAccountProxyForceRefresher(r AccountProxyForceRefresher) {
+	a.accountProxyForceRefresh = r
+}
+
 func (a *App) tcpProxyForAccount(ctx context.Context, acc *store.WechatAccount) string {
 	if a.accountTCPProxy != nil && acc != nil {
 		proxy, update, cred := a.accountTCPProxy(ctx, acc)
@@ -659,30 +668,116 @@ func (a *App) ensureAccountUIN(ctx context.Context, acc *store.WechatAccount) {
 	_ = a.pool.EnsureSession(loginCtx, acc.LoginBuffer, acc.ID, a.tcpProxyForAccount(ctx, acc))
 }
 
-func (a *App) refreshLiveness(ctx context.Context, acc *store.WechatAccount) string {
+func (a *App) forceRefreshAccountProxy(ctx context.Context, acc *store.WechatAccount) (string, error) {
+	if acc == nil || acc.Credentials == nil {
+		return "", fmt.Errorf("应用宝账号代理信息为空")
+	}
+	if !a.cfg.Proxy51Enabled || !accountUsesSavedProxy(acc.Credentials) {
+		return a.tcpProxyForAccount(ctx, acc), nil
+	}
+	if a.accountProxyForceRefresh == nil {
+		return a.tcpProxyForAccount(ctx, acc), nil
+	}
+	oldProxy := strings.TrimSpace(stringFromAny(acc.Credentials["yyb_proxy_url"]))
+	proxy, cred, err := a.accountProxyForceRefresh(acc.Credentials)
+	if err != nil {
+		return "", err
+	}
+	if cred != nil {
+		_ = a.db.SetAccountCredential(ctx, acc.ID, acc.LoginBuffer, cred)
+		acc.Credentials = cred
+	}
+	if oldProxy != "" {
+		_ = a.db.InvalidateSession(ctx, acc.ID, oldProxy)
+	}
+	if strings.TrimSpace(proxy) != "" {
+		_ = a.db.InvalidateSession(ctx, acc.ID, proxy)
+	}
+	return strings.TrimSpace(proxy), nil
+}
+
+func (a *App) recordLivenessCheck(ctx context.Context, acc *store.WechatAccount, kind, reason string) {
+	if acc == nil {
+		return
+	}
+	if acc.Credentials == nil {
+		acc.Credentials = map[string]any{}
+	}
+	acc.Credentials["yyb_last_check_at"] = time.Now().Unix()
+	acc.Credentials["yyb_last_check_type"] = strings.TrimSpace(kind)
+	acc.Credentials["yyb_last_check_reason"] = truncateString(strings.TrimSpace(reason), 500)
+	_ = a.db.SetAccountCredential(ctx, acc.ID, acc.LoginBuffer, acc.Credentials)
+}
+
+func (a *App) refreshLivenessCore(ctx context.Context, acc *store.WechatAccount) (*store.WechatAccount, error) {
+	if acc == nil {
+		return nil, fmt.Errorf("nil YYB account")
+	}
 	if acc.Credentials == nil {
 		_ = a.db.SetAccountStatus(ctx, acc.ID, "unknown")
-		return "unknown"
+		a.recordLivenessCheck(ctx, acc, "unknown", "应用宝账号 credentials 缺失")
+		return nil, fmt.Errorf("YYB account credentials missing")
 	}
 	creds := protocol.CredentialsFromMap(acc.Credentials)
+	maxAttempts := 1
+	if a.cfg.Proxy51Enabled && accountUsesSavedProxy(acc.Credentials) {
+		maxAttempts = accountProxyRotateLimit
+	}
+	var result protocol.LoginBufferResult
+	var err error
 	proxy := a.tcpProxyForAccount(ctx, acc)
 	fallbackDirect := strings.TrimSpace(proxy) == "" && !a.cfg.Proxy51Enabled
-	client := protocol.NewLoginBufferClientWithProxy(a.cfg.RequestTimeout+25*time.Second, proxy, fallbackDirect)
-	result, err := client.RefreshLoginBuffer(ctx, creds)
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		client := protocol.NewLoginBufferClientWithProxy(a.cfg.RequestTimeout+25*time.Second, proxy, fallbackDirect)
+		result, err = client.RefreshLoginBuffer(ctx, creds)
+		if err == nil {
+			break
+		}
+		if !isProxyOrNetworkError(err) || attempt >= maxAttempts {
+			break
+		}
+		if freshProxy, proxyErr := a.forceRefreshAccountProxy(ctx, acc); proxyErr == nil && strings.TrimSpace(freshProxy) != "" {
+			proxy = freshProxy
+		} else if proxyErr != nil {
+			err = fmt.Errorf("%v；重新提取代理失败：%v", err, proxyErr)
+		}
+	}
 	if err != nil {
 		if isProxyOrNetworkError(err) {
+			a.recordLivenessCheck(ctx, acc, "proxy_error", fmt.Sprintf("代理/网络异常，已重试 %d 次：%v", maxAttempts, err))
 			_ = a.db.SetAccountStatus(ctx, acc.ID, "unknown")
-			return "unknown"
+			return nil, fmt.Errorf("应用宝检测代理/网络异常，已重试 %d 次：%w", maxAttempts, err)
 		}
+		a.recordLivenessCheck(ctx, acc, "expired", fmt.Sprintf("登录态刷新失败：%v", err))
 		_ = a.db.SetAccountStatus(ctx, acc.ID, "expired")
-		return "expired"
+		return nil, err
 	}
 	credMap := result.Credentials.ToMap()
 	applyProxyMeta(credMap, proxyMetaFromCredentials(acc.Credentials))
-	_ = a.db.SetAccountCredential(ctx, acc.ID, result.LoginBuffer, credMap)
+	credMap["yyb_last_check_at"] = time.Now().Unix()
+	credMap["yyb_last_check_type"] = "success"
+	credMap["yyb_last_check_reason"] = "刷新成功"
+	if err := a.db.SetAccountCredential(ctx, acc.ID, result.LoginBuffer, credMap); err != nil {
+		return nil, err
+	}
 	_ = a.db.SetAccountStatus(ctx, acc.ID, "alive")
 	if avatar := a.resolveAvatar(ctx, acc.OpenID, acc.UserInfo); avatar != "" {
 		_ = a.db.SetAccountProfile(ctx, acc.ID, acc.Nickname, &avatar, acc.UserInfo)
+	}
+	fresh, err := a.db.GetAccount(ctx, acc.ID)
+	if err != nil {
+		return nil, err
+	}
+	return fresh, nil
+}
+
+func (a *App) refreshLiveness(ctx context.Context, acc *store.WechatAccount) string {
+	_, err := a.refreshLivenessCore(ctx, acc)
+	if err != nil {
+		if isProxyOrNetworkError(err) {
+			return "unknown"
+		}
+		return "expired"
 	}
 	return "alive"
 }
@@ -712,36 +807,104 @@ type accountExpiredError struct{ openid string }
 
 func (e accountExpiredError) Error() string { return "account expired: " + e.openid }
 
-func (a *App) invokeWXApp(ctx context.Context, acc *store.WechatAccount, appID string, payload map[string]any, call wxappCall) (map[string]any, error) {
-	proxy := a.tcpProxyForAccount(ctx, acc)
-	if _, err := a.db.GetSession(ctx, acc.ID, proxy); err == nil {
-		result, err := call(ctx, acc, appID, payload)
+func (a *App) businessUsesProxy(acc *store.WechatAccount) bool {
+	return a.cfg.Proxy51Enabled && accountUsesSavedProxy(acc.Credentials)
+}
+
+func (a *App) businessProxyForAccount(ctx context.Context, acc *store.WechatAccount) string {
+	if !a.businessUsesProxy(acc) {
+		return ""
+	}
+	return a.tcpProxyForAccount(ctx, acc)
+}
+
+func (a *App) runBusinessWithProxyRetry(ctx context.Context, acc *store.WechatAccount, op func(*store.WechatAccount, string) (map[string]any, error)) (map[string]any, *store.WechatAccount, error) {
+	if acc == nil {
+		return nil, acc, fmt.Errorf("应用宝账号为空")
+	}
+	current := acc
+	maxAttempts := 1
+	if a.businessUsesProxy(current) {
+		maxAttempts = accountProxyRotateLimit
+	}
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		tcpProxy := a.businessProxyForAccount(ctx, current)
+		result, err := op(current, tcpProxy)
 		if err == nil {
-			return result, nil
+			return result, current, nil
 		}
-		_ = a.db.InvalidateSession(ctx, acc.ID, proxy)
+		lastErr = err
+		if isProxyOrNetworkError(err) && a.businessUsesProxy(current) {
+			if attempt < maxAttempts {
+				if _, proxyErr := a.forceRefreshAccountProxy(ctx, current); proxyErr != nil {
+					lastErr = fmt.Errorf("%v；重新提取代理失败：%v", err, proxyErr)
+				}
+				continue
+			}
+			break
+		}
+		fresh, refreshErr := a.refreshLivenessCore(ctx, current)
+		if refreshErr != nil {
+			lastErr = refreshErr
+			if isProxyOrNetworkError(refreshErr) && a.businessUsesProxy(current) && attempt < maxAttempts {
+				if _, proxyErr := a.forceRefreshAccountProxy(ctx, current); proxyErr != nil {
+					lastErr = fmt.Errorf("%v；重新提取代理失败：%v", refreshErr, proxyErr)
+				}
+				continue
+			}
+			if !isProxyOrNetworkError(refreshErr) {
+				return nil, current, accountExpiredError{openid: current.OpenID}
+			}
+			return nil, current, refreshErr
+		}
+		current = fresh
+		tcpProxy = a.businessProxyForAccount(ctx, current)
+		result, err = op(current, tcpProxy)
+		if err == nil {
+			return result, current, nil
+		}
+		lastErr = err
+		if isProxyOrNetworkError(err) && a.businessUsesProxy(current) {
+			if attempt < maxAttempts {
+				if _, proxyErr := a.forceRefreshAccountProxy(ctx, current); proxyErr != nil {
+					lastErr = fmt.Errorf("%v；重新提取代理失败：%v", err, proxyErr)
+				}
+				continue
+			}
+			break
+		}
+		return nil, current, lastErr
 	}
-	status := a.refreshLiveness(ctx, acc)
-	if status != "alive" {
-		return nil, accountExpiredError{openid: acc.OpenID}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("应用宝业务请求失败")
 	}
-	fresh, err := a.db.GetAccount(ctx, acc.ID)
-	if err == nil && fresh != nil {
-		acc = fresh
+	if isProxyOrNetworkError(lastErr) && a.businessUsesProxy(current) {
+		return nil, current, fmt.Errorf("应用宝业务请求代理/网络异常，已重试 %d 次：%w", maxAttempts, lastErr)
 	}
-	return call(ctx, acc, appID, payload)
+	return nil, current, lastErr
 }
 
-func (a *App) invokeGetCode(ctx context.Context, acc *store.WechatAccount, appID string, _ map[string]any) (map[string]any, error) {
-	return a.pool.GetCode(ctx, acc.LoginBuffer, appID, acc.ID, a.tcpProxyForAccount(ctx, acc))
+func (a *App) invokeWXApp(ctx context.Context, acc *store.WechatAccount, appID string, payload map[string]any, call wxappCall) (map[string]any, error) {
+	result, _, err := a.runBusinessWithProxyRetry(ctx, acc, func(current *store.WechatAccount, tcpProxy string) (map[string]any, error) {
+		return call(ctx, current, appID, payload, tcpProxy)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func (a *App) invokeGetPhoneNumber(ctx context.Context, acc *store.WechatAccount, appID string, _ map[string]any) (map[string]any, error) {
-	return a.pool.GetPhoneNumber(ctx, acc.LoginBuffer, appID, acc.ID, a.tcpProxyForAccount(ctx, acc))
+func (a *App) invokeGetCode(ctx context.Context, acc *store.WechatAccount, appID string, _ map[string]any, tcpProxy string) (map[string]any, error) {
+	return a.pool.GetCode(ctx, acc.LoginBuffer, appID, acc.ID, tcpProxy)
 }
 
-func (a *App) invokeOperateWXData(ctx context.Context, acc *store.WechatAccount, appID string, payload map[string]any) (map[string]any, error) {
-	return a.pool.OperateWXData(ctx, acc.LoginBuffer, appID, payload, acc.ID, a.tcpProxyForAccount(ctx, acc))
+func (a *App) invokeGetPhoneNumber(ctx context.Context, acc *store.WechatAccount, appID string, _ map[string]any, tcpProxy string) (map[string]any, error) {
+	return a.pool.GetPhoneNumber(ctx, acc.LoginBuffer, appID, acc.ID, tcpProxy)
+}
+
+func (a *App) invokeOperateWXData(ctx context.Context, acc *store.WechatAccount, appID string, payload map[string]any, tcpProxy string) (map[string]any, error) {
+	return a.pool.OperateWXData(ctx, acc.LoginBuffer, appID, payload, acc.ID, tcpProxy)
 }
 
 func refreshOut(acc *store.WechatAccount, status string) map[string]any {
@@ -928,6 +1091,13 @@ func safeName(s string) string {
 		}
 	}
 	return b.String()
+}
+
+func truncateString(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
 }
 
 const accountProxyRotateLimit = 5

@@ -448,6 +448,31 @@ func YybProxyTCPForCredentials(credentials map[string]any) (proxyURL string, upd
 	return freshProxy, cred, true
 }
 
+// YybForceRefreshAccountProxy 强制按账号已保存地区重新提取短效 SOCKS5（refresh/getCode 代理重试用）
+func YybForceRefreshAccountProxy(credentials map[string]any) (proxyURL string, updated map[string]any, err error) {
+	enabled, _, _, _, _, defaultPack, _, _, _, _ := yyb51ConfigValues()
+	if !enabled || credentials == nil {
+		return "", nil, fmt.Errorf("应用宝账号代理信息为空")
+	}
+	cred := copyMapAny(credentials)
+	if boolFromYybAny(cred["yyb_proxy_bypass"]) || !boolFromYybAny(cred["yyb_proxy_enabled"]) {
+		return "", nil, fmt.Errorf("账号未启用代理")
+	}
+	packID := firstNonEmptyYyb(stringFromYybAny(cred["yyb_proxy_packid"]), defaultPack)
+	regionCode := stringFromYybAny(cred["yyb_proxy_region_code"])
+	regionName := stringFromYybAny(cred["yyb_proxy_region_name"])
+	freshProxy, meta, extractErr := yybExtract51Proxy(packID, regionCode, regionName)
+	if extractErr != nil {
+		return "", cred, extractErr
+	}
+	if strings.TrimSpace(freshProxy) == "" {
+		return "", cred, fmt.Errorf("未提取到新的代理")
+	}
+	yybApplyProxyMeta(cred, meta)
+	cred["yyb_proxy_liveness_retry_at"] = time.Now().Unix()
+	return freshProxy, cred, nil
+}
+
 func yybProxyStillUsable(proxyURL string) bool {
 	proxyURL = strings.TrimSpace(proxyURL)
 	if proxyURL == "" || proxyURL == Yyb51FailClosedProxy {
