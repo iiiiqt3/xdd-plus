@@ -220,7 +220,7 @@ func yybFallbackAreaList(parent string) map[string]interface{} {
 
 // YybBuildProxyForLogin 为应用宝扫码提取/复用 51 SOCKS5
 func YybBuildProxyForLogin(opt YybProxyLoginOption) (string, map[string]interface{}, error) {
-	enabled, _, accessName, accessPassword, uid, defaultPack, _, _, bypassCode, bypassName := yyb51ConfigValues()
+	enabled, _, accessName, _, uid, defaultPack, _, _, bypassCode, bypassName := yyb51ConfigValues()
 	packID := firstNonEmptyYyb(opt.PackID, defaultPack)
 	regionCode := strings.TrimSpace(opt.RegionCode)
 	regionName := strings.TrimSpace(opt.RegionName)
