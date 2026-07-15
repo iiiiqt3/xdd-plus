@@ -405,24 +405,39 @@ func SyncActivityProjectNames(configs []*ActivityConfig) int {
 	if db == nil || len(configs) == 0 {
 		return 0
 	}
-	updated := 0
-	now := time.Now()
+	ids := make([]string, 0, len(configs))
+	var caseSQL strings.Builder
+	caseSQL.WriteString("CASE activity_id ")
+	args := make([]interface{}, 0, len(configs)*2+1+len(configs))
 	for _, cfg := range configs {
 		if cfg == nil || cfg.ID == "" || cfg.Name == "" {
 			continue
 		}
-		result := db.Model(&ActivityProject{}).
-			Where("activity_id = ? AND activity_name <> ? AND deleted_at IS NULL", cfg.ID, cfg.Name).
-			Updates(map[string]interface{}{
-				"activity_name": cfg.Name,
-				"updated_at":    now,
-			})
-		if result.Error != nil {
-			System().Infof("[活动名称同步] activity_id=%s 失败: %v", cfg.ID, result.Error)
-			continue
-		}
-		updated += int(result.RowsAffected)
+		ids = append(ids, cfg.ID)
+		caseSQL.WriteString("WHEN ? THEN ? ")
+		args = append(args, cfg.ID, cfg.Name)
 	}
+	if len(ids) == 0 {
+		return 0
+	}
+	caseSQL.WriteString("ELSE activity_name END")
+	inPlaceholders := strings.Repeat("?,", len(ids))
+	inPlaceholders = inPlaceholders[:len(inPlaceholders)-1]
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	now := time.Now()
+	args = append(args, now)
+	sql := fmt.Sprintf(
+		"UPDATE activity_project SET activity_name = %s, updated_at = ? WHERE activity_id IN (%s) AND deleted_at IS NULL",
+		caseSQL.String(), inPlaceholders,
+	)
+	result := db.Exec(sql, args...)
+	if result.Error != nil {
+		System().Infof("[活动名称同步] 批量更新失败: %v", result.Error)
+		return 0
+	}
+	updated := int(result.RowsAffected)
 	if updated > 0 {
 		System().Infof("[活动名称同步] 已更新 %d 条上车记录", updated)
 	}

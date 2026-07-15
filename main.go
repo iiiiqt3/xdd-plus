@@ -41,13 +41,18 @@ func main() {
 
 	models.System().Infof("XDD 服务启动")
 
-	// 应用宝模块（失败不影响主服务）
-	if err := yybportal.Init(yybportal.ModuleConfigFromModels()); err != nil {
-		models.Yyb().Errorf("应用宝启动失败(主服务不受影响): %v", err)
-	} else if models.Config.Yyb.Enabled {
-		models.Yyb().Infof("应用宝模块已加载 ready=%v", yybportal.Ready())
-		models.SetYybJdLoginHandler(yybportal.HandleBotJdLogin)
-	}
+	// 应用宝模块后台初始化，避免阻塞 HTTP / 机器人 WS（失败不影响主服务）
+	go func() {
+		models.Yyb().Infof("应用宝模块后台初始化中...")
+		if err := yybportal.Init(yybportal.ModuleConfigFromModels()); err != nil {
+			models.Yyb().Errorf("应用宝启动失败(主服务不受影响): %v", err)
+			return
+		}
+		if models.Config.Yyb.Enabled {
+			models.Yyb().Infof("应用宝模块已加载 ready=%v", yybportal.Ready())
+			models.SetYybJdLoginHandler(yybportal.HandleBotJdLogin)
+		}
+	}()
 
 	// 启动定时保存任务
 	go func() {
