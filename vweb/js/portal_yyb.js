@@ -3,7 +3,7 @@
 
     const API = '/api/portal/yyb';
     const PROTOCOL_API = '/api/portal/protocol';
-    const state = { accounts: [], selectedKey: '', lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, panelLoading: false, proxyEnabled: false, proxyPackId: '' };
+    const state = { accounts: [], selectedKey: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, panelLoading: false, proxyEnabled: false, proxyPackId: '', sessionAliveChecked: false };
 
     function $(id) { return document.getElementById(id); }
 
@@ -126,20 +126,17 @@
         fillSelect($('yyb-proxyCity'), areaRows(data), '请选择城市');
     }
 
+    function accountRef(acc) { return accountKey(acc); }
+
+    function notify(msg, type) {
+        if (typeof global.toast === 'function') global.toast(msg, type || 'info');
+    }
+
     function selectedProxyRegion() {
         const citySel = $('yyb-proxyCity');
         if (!citySel || citySel.selectedIndex <= 0) return { regionCode: '', regionName: '' };
         const opt = citySel.options[citySel.selectedIndex];
         return { regionCode: opt.value || '', regionName: (opt.textContent || '').trim() };
-    }
-
-    function setResult(val, err) {
-        const box = $('yyb-resultBox');
-        if (!box) return;
-        const text = typeof val === 'string' ? val : JSON.stringify(val, null, 2);
-        state.lastResult = text;
-        box.textContent = text;
-        box.classList.toggle('error', !!err);
     }
 
     function copyFail(msg) {
@@ -162,9 +159,6 @@
     function selectedAccount() { return state.accounts.find(a => accountKey(a) === state.selectedKey); }
 
     function syncSelected() {
-        const label = $('yyb-selectedLabel');
-        const a = selectedAccount();
-        if (label) label.textContent = a ? ('当前：' + accountName(a)) : '未选择账号（请先点击上方账号卡片）';
         document.querySelectorAll('.yyb-acc-card').forEach(el => {
             el.classList.toggle('selected', el.dataset.key === state.selectedKey);
         });
@@ -193,7 +187,10 @@
     function renderAccountCard(acc) {
         const rawOpenid = String(acc.openid || '');
         const openid = esc(rawOpenid);
-        return `<div class="yyb-acc-card" data-key="${attrEsc(accountKey(acc))}" role="button" tabindex="0">
+        const isBound = global.PortalProtocolBind && global.PortalProtocolBind.hasYybBinding(rawOpenid);
+        const peerStrip = global.PortalProtocolBind ? global.PortalProtocolBind.renderYybPeerStrip(rawOpenid) : '';
+        return `<div class="yyb-acc-card${isBound ? ' proto-bound' : ''}" data-key="${attrEsc(accountKey(acc))}" role="button" tabindex="0">
+            ${peerStrip}
             <div class="yyb-acc-head">
                 <div class="yyb-acc-name">${esc(accountName(acc))}</div>
                 ${statusTag(acc.status)}
@@ -224,7 +221,7 @@
         grid.innerHTML = state.accounts.map(renderAccountCard).join('');
         grid.querySelectorAll('.yyb-acc-card').forEach(card => {
             card.onclick = (e) => {
-                if (e.target.closest('.yyb-copy-btn')) return;
+                if (e.target.closest('.yyb-copy-btn') || e.target.closest('.proto-peer-unbind-btn')) return;
                 state.selectedKey = card.dataset.key;
                 syncSelected();
             };
@@ -333,21 +330,27 @@
 
     async function loadPanel(options = {}) {
         const autoCheck = !!options.autoCheck;
+        const silent = !!options.silent;
         const triggerBtn = options.triggerBtn || null;
         if (state.panelLoading) {
             const busyMsg = autoCheck ? '正在检测中，请稍候…' : '正在刷新中，请稍候…';
             setStatusBar(busyMsg, 'loading', true);
-            if (typeof global.toast === 'function') global.toast(busyMsg, 'info');
+            if (!silent && typeof global.toast === 'function') global.toast(busyMsg, 'info');
             return;
         }
         state.panelLoading = true;
-        if (autoCheck && typeof global.toast === 'function') {
+        if (autoCheck && !silent && typeof global.toast === 'function') {
             global.toast('开始检测应用宝账号状态…', 'info');
         }
         setGridLoading(true);
         setBtnLoading(triggerBtn || $('yyb-reloadBtn'), true, autoCheck ? '检测中…' : '刷新中…');
-        setHealthStatus(autoCheck ? '检测中…' : '刷新中…', 'checking');
-        setStatusBar(autoCheck ? '正在检测全部账号存活状态，请稍候…' : '正在刷新账号列表…', 'loading', true);
+        if (autoCheck) {
+            setHealthStatus(silent ? '检测中…' : '检测中…', 'checking');
+            setStatusBar(silent ? '正在后台检测账号状态…' : '正在检测全部账号存活状态，请稍候…', 'loading', true);
+        } else {
+            setHealthStatus('刷新中…', 'checking');
+            setStatusBar('正在刷新账号列表…', 'loading', true);
+        }
         try {
             const st = await request('/status' + (autoCheck ? '?check=1' : ''));
             if ($('yyb-coinVal')) $('yyb-coinVal').textContent = st.coin ?? '-';
@@ -357,32 +360,37 @@
                 if ($('yyb-scanBtn')) $('yyb-scanBtn').disabled = true;
                 setStatusBar(st.message || '应用宝服务暂不可用', 'error', false);
             } else {
-                setHealthStatus(autoCheck ? '检测完成' : '已刷新', 'ok');
                 if ($('yyb-scanBtn')) $('yyb-scanBtn').disabled = false;
                 if (autoCheck) {
                     const summaryText = st.checkSummary ? formatCheckSummary(st.checkSummary) : '检测完成';
                     const dead = Number((st.checkSummary && st.checkSummary.dead) || 0);
                     const failed = Number((st.checkSummary && st.checkSummary.failed) || 0);
+                    setHealthStatus('检测完成', 'ok');
                     setStatusBar(summaryText, (dead > 0 || failed > 0) ? 'warn' : 'ok', false);
-                    if (typeof global.toast === 'function') {
+                    if (!silent && typeof global.toast === 'function') {
                         const toastType = dead > 0 ? 'error' : (failed > 0 ? 'warn' : 'success');
                         global.toast(summaryText, toastType);
                     }
                 } else {
+                    setHealthStatus('已刷新', 'ok');
                     setStatusBar('账号列表已刷新', 'ok', false);
-                    if (!autoCheck && typeof global.toast === 'function') {
+                    if (!silent && typeof global.toast === 'function') {
                         global.toast('刷新完成', 'success');
                     }
                 }
             }
             state.accounts = st.accounts || [];
+            if (global.PortalProtocolBind) {
+                global.PortalProtocolBind.setYybAccounts(state.accounts);
+                void global.PortalProtocolBind.refresh();
+            }
             renderAccounts();
             loadDashboard();
             void loadProxyConfig();
         } catch (e) {
             setHealthStatus('加载失败', 'bad');
             setStatusBar(e.message || '加载失败，请稍后重试', 'error', false);
-            if (typeof global.toast === 'function') global.toast(e.message || '加载失败', 'error');
+            if (!silent && typeof global.toast === 'function') global.toast(e.message || '加载失败', 'error');
         } finally {
             state.panelLoading = false;
             setGridLoading(false);
@@ -390,14 +398,19 @@
         }
     }
 
-    async function withAccountAction(btn, loadingLabel, resultHint, action) {
+    async function runInitialSessionCheck() {
+        if (state.sessionAliveChecked) return;
+        state.sessionAliveChecked = true;
+        await loadPanel({ autoCheck: true, silent: true });
+    }
+
+    async function withAccountAction(btn, loadingLabel, action) {
         if (!btn || btn.disabled) return;
         const prev = btn.textContent;
         const peer = [$('yyb-refreshBtn'), $('yyb-resyncBtn')].filter(b => b && b !== btn);
         btn.disabled = true;
         peer.forEach(b => { b.disabled = true; });
         btn.textContent = loadingLabel;
-        setResult(resultHint, false);
         try { await action(); } finally {
             btn.disabled = false;
             btn.textContent = prev;
@@ -405,57 +418,29 @@
         }
     }
 
-    function togglePayload() {
-        const g = $('yyb-payloadGroup');
-        const sel = $('yyb-featureSel');
-        if (g && sel) g.classList.toggle('hidden', sel.value.toLowerCase() !== 'operatewxdata');
-    }
-
-    async function callFeature() {
-        const acc = selectedAccount();
-        if (!acc) { setResult('请先选择一个账号', true); return; }
-        const feature = $('yyb-featureSel').value;
-        const appId = $('yyb-appidInput').value.trim();
-        if (!appId) { setResult('请输入 AppID', true); return; }
-        const body = { ref: accountRef(acc), appId };
-        let path = '/wxapp/getCode';
-        if (feature === 'getPhoneNumber') path = '/wxapp/getPhoneNumber';
-        if (feature === 'operateWxData') {
-            path = '/wxapp/operateWxData';
-            try { body.payload = JSON.parse($('yyb-payloadInput').value || '{}'); }
-            catch { setResult('JSON 格式错误', true); return; }
-        }
-        $('yyb-callBtn').disabled = true;
-        setResult('调用中…', false);
-        try {
-            setResult(await request(path, { method: 'POST', body: JSON.stringify(body) }), false);
-            await loadPanel({ autoCheck: false });
-        } catch (e) { setResult(e.message, true); }
-        finally { $('yyb-callBtn').disabled = false; }
-    }
-
     async function refreshSelected() {
         const acc = selectedAccount();
-        if (!acc) { setResult('请先选择一个账号', true); return; }
+        if (!acc) { notify('请先点击选择一个账号', 'warning'); return; }
         try {
-            await withAccountAction($('yyb-refreshBtn'), '刷新中…', '正在刷新存活状态，请稍候…', async () => {
+            await withAccountAction($('yyb-refreshBtn'), '刷新中…', async () => {
                 setStatusBar('正在刷新选中账号存活状态…', 'loading', true);
-                setResult(await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) }), false);
-                await loadPanel({ autoCheck: false, triggerBtn: $('yyb-refreshBtn') });
-                if (typeof global.toast === 'function') global.toast('账号存活状态已刷新', 'success');
+                await request('/accounts/refresh', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) });
+                await loadPanel({ autoCheck: false, silent: true, triggerBtn: $('yyb-refreshBtn') });
+                notify('账号存活状态已刷新', 'success');
             });
-        } catch (e) { setResult(e.message, true); }
+        } catch (e) { notify(e.message || '刷新失败', 'error'); }
     }
 
     async function resyncSelected() {
         const acc = selectedAccount();
-        if (!acc) { setResult('请先选择一个账号', true); return; }
+        if (!acc) { notify('请先点击选择一个账号', 'warning'); return; }
         try {
-            await withAccountAction($('yyb-resyncBtn'), '同步中…', '正在同步账号资料，请稍候…', async () => {
-                setResult(await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) }), false);
-                await loadPanel({ autoCheck: true });
+            await withAccountAction($('yyb-resyncBtn'), '同步中…', async () => {
+                await request('/accounts/resync', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) });
+                await loadPanel({ autoCheck: false, silent: true });
+                notify('账号资料已同步', 'success');
             });
-        } catch (e) { setResult(e.message, true); }
+        } catch (e) { notify(e.message || '同步失败', 'error'); }
     }
 
     async function deleteSelected() {
@@ -463,8 +448,9 @@
         if (!acc || !confirm('确定删除该账号？')) return;
         try {
             await request('/accounts/delete', { method: 'POST', body: JSON.stringify({ ref: accountRef(acc) }) });
-            await loadPanel({ autoCheck: false });
-        } catch (e) { setResult(e.message, true); }
+            notify('账号已删除', 'success');
+            await loadPanel({ autoCheck: false, silent: true });
+        } catch (e) { notify(e.message || '删除失败', 'error'); }
     }
 
     function stopScanPoll() {
@@ -512,13 +498,13 @@
                 const result = await request('/qr/' + encodeURIComponent(state.scanSessionId) + '/confirm', { method: 'POST' });
                 closeQr();
                 if (result.alreadyBound) {
-                    setResult('扫码成功，账号已绑定。', false);
+                    notify('扫码成功，账号已绑定。', 'success');
                 } else if (result.cost > 0) {
-                    setResult('扫码登录成功，已扣除 ' + result.cost + ' 积分。', false);
+                    notify('扫码登录成功，已扣除 ' + result.cost + ' 积分。', 'success');
                 } else {
-                    setResult('扫码登录成功，账号已绑定。', false);
+                    notify('扫码登录成功，账号已绑定。', 'success');
                 }
-                await loadPanel({ autoCheck: true });
+                await loadPanel({ autoCheck: false, silent: true });
                 return;
             }
             if (['expired', 'cancelled', 'unknown'].includes(status)) {
@@ -536,7 +522,7 @@
             }
             stopScanPoll();
             $('yyb-qrHint').textContent = msg || '登录失败';
-            setResult(msg || '扫码确认失败', true);
+            notify(msg || '扫码确认失败', 'error');
         } finally {
             state.scanPolling = false;
             if (keepPolling && state.scanSessionId) scheduleScanPoll(800);
@@ -606,15 +592,7 @@
         if (state.inited) return;
         state.inited = true;
         setupCopy();
-        if ($('yyb-featureSel')) $('yyb-featureSel').onchange = togglePayload;
-        if ($('yyb-callBtn')) $('yyb-callBtn').onclick = callFeature;
-        if ($('yyb-clearBtn')) $('yyb-clearBtn').onclick = () => setResult('结果已清空', false);
-        if ($('yyb-copyBtn')) $('yyb-copyBtn').onclick = () => {
-            const text = state.lastResult || ($('yyb-resultBox') && $('yyb-resultBox').textContent) || '';
-            copyText(text, $('yyb-copyBtn'));
-        };
         if ($('yyb-reloadBtn')) $('yyb-reloadBtn').onclick = () => {
-            if (typeof global.toast === 'function') global.toast('开始检测应用宝账号状态…', 'info');
             loadPanel({ autoCheck: true, triggerBtn: $('yyb-reloadBtn') });
         };
         if ($('yyb-refreshBtn')) $('yyb-refreshBtn').onclick = refreshSelected;
@@ -624,7 +602,6 @@
         if ($('yyb-proxyProvince')) $('yyb-proxyProvince').onchange = () => { void loadProxyCities(); };
         if ($('yyb-qrCloseBtn')) $('yyb-qrCloseBtn').onclick = closeQr;
         void loadProxyConfig();
-        togglePayload();
     }
 
     function init() {
@@ -635,5 +612,6 @@
         init,
         loadPanel,
         loadDashboard,
+        runInitialSessionCheck,
     };
 })(window);

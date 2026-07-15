@@ -1302,6 +1302,79 @@
             content: '正在更新账号状态…'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
             font-size: 13px; font-weight: 600; color: #4f46e5; background: rgba(255,255,255,0.72); border-radius: 10px;
         }
+
+        /* ===== 协议双绑 ===== */
+        .proto-bind-card { margin-bottom: 16px; padding: 16px; }
+        .proto-bind-form {
+            display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 14px;
+        }
+        .proto-bind-field label {
+            display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 5px;
+        }
+        .proto-bind-select {
+            width: 100%; padding: 9px 12px; border: 1px solid var(--glass-border); border-radius: 8px;
+            background: var(--glass-bg); color: var(--text); font-size: 13px;
+        }
+        .proto-bind-empty { padding: 10px 0; font-size: 12px; color: var(--text-muted); }
+        .proto-bind-pairs { display: grid; gap: 10px; }
+        .proto-bind-pair-card {
+            display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; gap: 10px; align-items: center;
+            padding: 12px 14px; border-radius: 12px; border: 1px solid var(--glass-border);
+            background: linear-gradient(135deg, rgba(8,145,178,0.04), rgba(99,102,241,0.05));
+        }
+        .proto-bind-side { min-width: 0; }
+        .proto-bind-side-tag {
+            display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.04em;
+            padding: 2px 8px; border-radius: 999px; margin-bottom: 6px;
+        }
+        .proto-bind-side.wx .proto-bind-side-tag { background: rgba(8,145,178,0.12); color: #0891b2; }
+        .proto-bind-side.yyb .proto-bind-side-tag { background: rgba(99,102,241,0.12); color: #6366f1; }
+        .proto-bind-side-name {
+            display: block; font-size: 13px; font-weight: 800; color: var(--text);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px;
+        }
+        .proto-bind-side-id {
+            display: block; font-family: Consolas, monospace; font-size: 11px; color: var(--text-muted);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .proto-bind-connector {
+            width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            background: #fff; border: 1px dashed #c7d2fe; color: #6366f1; font-size: 14px; font-weight: 800;
+        }
+        .proto-peer-strip {
+            margin-bottom: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid transparent;
+        }
+        .proto-peer-on-wx {
+            background: linear-gradient(135deg, rgba(8,145,178,0.08), rgba(6,182,212,0.04));
+            border-color: rgba(8,145,178,0.18);
+        }
+        .proto-peer-on-yyb {
+            background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(129,140,248,0.04));
+            border-color: rgba(99,102,241,0.18);
+        }
+        .proto-peer-strip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+        .proto-peer-strip-badge { font-size: 11px; font-weight: 800; color: var(--text-secondary); }
+        .proto-peer-on-wx .proto-peer-strip-badge { color: #0e7490; }
+        .proto-peer-on-yyb .proto-peer-strip-badge { color: #4f46e5; }
+        .proto-peer-strip-body { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .proto-peer-strip-body strong {
+            font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .proto-peer-strip-body code {
+            font-family: Consolas, monospace; font-size: 11px; color: var(--text-muted);
+            background: rgba(255,255,255,0.65); padding: 2px 8px; border-radius: 6px; flex-shrink: 0;
+        }
+        .proto-peer-unbind-btn, .proto-bind-unbind-btn {
+            border: none; background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 2px 6px;
+        }
+        .proto-peer-unbind-btn:hover, .proto-bind-unbind-btn:hover { color: var(--danger); }
+        .wx-device-card.proto-bound { border-color: rgba(8,145,178,0.35); box-shadow: 0 0 0 1px rgba(8,145,178,0.08); }
+        .yyb-acc-card.proto-bound { border-color: rgba(99,102,241,0.45); box-shadow: 0 0 0 1px rgba(99,102,241,0.12); }
+        @media (max-width: 720px) {
+            .proto-bind-form { grid-template-columns: 1fr; }
+            .proto-bind-pair-card { grid-template-columns: 1fr; }
+            .proto-bind-connector { justify-self: center; transform: rotate(90deg); }
+        }
         .btn.is-loading { opacity: 0.72; pointer-events: none; }
         .yyb-result-panel { margin-top: 14px; }
         .yyb-result-title { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
@@ -2151,7 +2224,7 @@
             <div class="section">
                 <div class="section-header panel-duplicate-title">
                     <h3>📲 应用宝协议 <span class="yyb-test-tag">测试</span></h3>
-                    <span class="muted">管理绑定账号与小程序 API 调用</span>
+                    <span class="muted">管理绑定账号</span>
                 </div>
                 <div class="yyb-chips" style="margin-bottom:14px;">
                     <span class="yyb-chip checking" id="yyb-healthChip">服务 <strong id="yyb-healthText">待机</strong></span>
@@ -2161,7 +2234,7 @@
                 </div>
                 <div class="yyb-status-bar loading" id="yyb-statusBar" aria-live="polite">
                     <span class="yyb-spin" id="yyb-statusSpin" style="display:inline-block;"></span>
-                    <span id="yyb-statusText">进入页面后将自动检测账号状态</span>
+                    <span id="yyb-statusText">登录后将静默检测账号状态（仅一次）</span>
                 </div>
                 <div id="yyb-proxyRegionRow" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
                     <div>
@@ -2181,6 +2254,26 @@
                 </div>
                 <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 14px;">扫码前请选择登录省/市；上海等免代理地区直连，其他地区自动提取 51 短效 SOCKS5（与 xdd-g 相同）。</p>
 
+                <div class="card proto-bind-card hidden" id="protoBindCardYyb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                        <h4 style="font-size:14px;margin:0;">🔗 协议双绑（微信 wxid ↔ 应用宝 openid）</h4>
+                        <span class="muted" style="font-size:12px;" data-proto-bind-quota>加载名额…</span>
+                    </div>
+                    <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;line-height:1.7;">绑定后青龙脚本仍填微信 wxid，网关自动走应用宝；仅使用应用宝时可忽略本功能。</p>
+                    <div class="proto-bind-form">
+                        <div class="proto-bind-field">
+                            <label for="protoBindWxYyb">微信 wxid</label>
+                            <select id="protoBindWxYyb" class="proto-bind-select" data-proto-bind-wx><option value="">选择微信 wxid</option></select>
+                        </div>
+                        <div class="proto-bind-field">
+                            <label for="protoBindOpenIDYyb">应用宝 openid</label>
+                            <select id="protoBindOpenIDYyb" class="proto-bind-select" data-proto-bind-yyb><option value="">选择应用宝 openid</option></select>
+                        </div>
+                        <button class="btn accent" type="button" data-proto-bind-submit>绑定</button>
+                    </div>
+                    <div data-proto-bind-list style="font-size:12px;color:var(--text-muted);">加载中…</div>
+                </div>
+
                 <div class="card" style="margin-bottom:16px;padding:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
                         <h4 style="font-size:14px;margin:0;">我的账号</h4>
@@ -2191,40 +2284,6 @@
                         </div>
                     </div>
                     <div class="yyb-account-grid" id="yyb-accountGrid"><div class="yyb-empty">加载中…</div></div>
-                </div>
-
-                <div class="card" style="padding:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
-                        <h4 style="font-size:14px;margin:0;">API 调用</h4>
-                        <span class="muted" style="font-size:12px;" id="yyb-selectedLabel">未选择账号</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:14px;">
-                        <div class="form-item">
-                            <label style="font-size:12px;font-weight:700;color:var(--text-muted);">能力</label>
-                            <select id="yyb-featureSel" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;">
-                                <option value="getCode">getCode</option>
-                                <option value="getPhoneNumber">getPhoneNumber</option>
-                                <option value="operateWxData">operateWxData</option>
-                            </select>
-                        </div>
-                        <div class="form-item">
-                            <label style="font-size:12px;font-weight:700;color:var(--text-muted);">AppID</label>
-                            <input id="yyb-appidInput" value="wx91d27dbf599dff74" autocomplete="off" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;">
-                        </div>
-                        <div class="form-item hidden" id="yyb-payloadGroup" style="grid-column:1/-1;">
-                            <label style="font-size:12px;font-weight:700;color:var(--text-muted);">请求 JSON</label>
-                            <textarea id="yyb-payloadInput" spellcheck="false" style="width:100%;min-height:120px;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;font-family:Consolas,monospace;">{"api_name":"getUserInfo","data":{},"env":1}</textarea>
-                        </div>
-                    </div>
-                    <div class="yyb-toolbar">
-                        <button class="btn accent" id="yyb-callBtn" type="button">执行调用</button>
-                        <button class="btn secondary" id="yyb-clearBtn" type="button">清空结果</button>
-                        <button class="btn secondary" id="yyb-copyBtn" type="button">复制结果</button>
-                    </div>
-                    <div class="yyb-result-panel">
-                        <div class="yyb-result-title">调用结果</div>
-                        <pre class="yyb-result-box" id="yyb-resultBox">选择账号后执行调用，结果将显示在这里。</pre>
-                    </div>
                 </div>
             </div>
         </section>
@@ -2264,18 +2323,24 @@
                     💡 <strong>操作提示：</strong>点击设备卡片上的按钮可直接操作｜设备离线时可点击「唤醒」或「重登」恢复｜首次挂主设备请使用下方「📱 微信扫码登录」
                 </div>
 
-                <div class="card" id="protoBindCard" style="margin-bottom:16px;padding:16px;">
+                <div class="card proto-bind-card hidden" id="protoBindCardWx">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
                         <h4 style="font-size:14px;margin:0;">🔗 协议双绑（微信 wxid ↔ 应用宝 openid）</h4>
-                        <span class="muted" style="font-size:12px;" id="protoBindQuota">加载名额…</span>
+                        <span class="muted" style="font-size:12px;" data-proto-bind-quota>加载名额…</span>
                     </div>
                     <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;line-height:1.7;">绑定后青龙脚本仍填微信 wxid，网关自动走应用宝；解绑后 wxid 失效，应用宝 openid（owNAX 开头）仍可用。</p>
-                    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:12px;">
-                        <input id="protoBindWx" placeholder="微信 wxid" style="padding:8px 10px;border:1px solid var(--glass-border);border-radius:8px;">
-                        <input id="protoBindOpenID" placeholder="应用宝 openid（owNAX…）" style="padding:8px 10px;border:1px solid var(--glass-border);border-radius:8px;">
-                        <button class="btn accent" type="button" onclick="bindProtocolPair()">绑定</button>
+                    <div class="proto-bind-form">
+                        <div class="proto-bind-field">
+                            <label for="protoBindWx">微信 wxid</label>
+                            <select id="protoBindWx" class="proto-bind-select" data-proto-bind-wx><option value="">选择微信 wxid</option></select>
+                        </div>
+                        <div class="proto-bind-field">
+                            <label for="protoBindOpenID">应用宝 openid</label>
+                            <select id="protoBindOpenID" class="proto-bind-select" data-proto-bind-yyb><option value="">选择应用宝 openid</option></select>
+                        </div>
+                        <button class="btn accent" type="button" data-proto-bind-submit>绑定</button>
                     </div>
-                    <div id="protoBindList" style="font-size:12px;color:var(--text-muted);">加载中…</div>
+                    <div data-proto-bind-list style="font-size:12px;color:var(--text-muted);">加载中…</div>
                 </div>
 
                 <div class="wx-device-grid" id="wxDeviceGrid">
@@ -2315,7 +2380,8 @@
 </div>
 
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/portal_yyb.js?v=8"></script>
+<script src="/vweb/js/portal_protocol_bind.js?v=1"></script>
+<script src="/vweb/js/portal_yyb.js?v=10"></script>
 <script>
 async function getSignatureHeaders(path) {
     try {
@@ -2716,7 +2782,7 @@ async function refreshCurrentPanel(showToast = true) {
             case 'tasks':      await loadDashboardData(); break;
             case 'wx':         await loadWxDevices(); break;
             case 'yyb':
-                if (window.YybPortal) await YybPortal.loadPanel({ autoCheck: true });
+                if (window.YybPortal) await YybPortal.loadPanel({ autoCheck: false });
                 break;
             case 'kuwo':       await checkKuwoAuth(); break;
             case 'dashboard':
@@ -2739,7 +2805,10 @@ async function initialLoad() {
         renderDashboard();
         loadNotificationsData(1).catch(err => toast(err.message || '加载通知失败', 'error'));
         loadWxDevices().catch(function() {});
-        if (window.YybPortal) YybPortal.loadDashboard().catch(function() {});
+        if (window.YybPortal) {
+            YybPortal.loadDashboard().catch(function() {});
+            YybPortal.runInitialSessionCheck().catch(function() {});
+        }
         request('/api/portal/wx/status').then(function(wxStatus) {
             state.wxStatus = wxStatus.data;
             renderDashboard();
@@ -3777,74 +3846,19 @@ function closeWxModal() {
     document.getElementById('wxModalMask').classList.remove('show');
 }
 
-async function loadProtocolBindings() {
-    const listEl = document.getElementById('protoBindList');
-    const quotaEl = document.getElementById('protoBindQuota');
-    if (!listEl) return;
-    try {
-        const [quotaResp, bindResp] = await Promise.all([
-            request('/api/portal/protocol/bind/quota'),
-            request('/api/portal/protocol/bindings')
-        ]);
-        const q = quotaResp.data || {};
-        if (quotaEl) {
-            quotaEl.textContent = '在线微信 ' + (q.onlineWxSlots || 0) + ' · 已绑 ' + (q.boundPairs || 0) + ' · 免费名额 ' + (q.freeSlots || 0);
-        }
-        const rows = bindResp.data || [];
-        if (!rows.length) {
-            listEl.innerHTML = '<div style="padding:8px 0;">暂无双绑记录</div>';
-            return;
-        }
-        listEl.innerHTML = rows.map(function (r) {
-            var wx = (r.wxWxid || '').replace(/</g, '&lt;');
-            var oid = (r.yybOpenId || '').replace(/</g, '&lt;');
-            return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--glass-border);">' +
-                '<span><code style="font-size:11px;">' + wx + '</code> ↔ <code style="font-size:11px;">' + oid + '</code></span>' +
-                '<button class="btn small secondary" type="button" onclick="unbindProtocolPair(\'' + wx.replace(/'/g, "\\'") + '\',\'' + oid.replace(/'/g, "\\'") + '\')">解绑</button></div>';
-        }).join('');
-    } catch (e) {
-        listEl.textContent = e.message || '加载失败';
-    }
-}
-
-async function bindProtocolPair() {
-    var wx = (document.getElementById('protoBindWx') || {}).value || '';
-    var oid = (document.getElementById('protoBindOpenID') || {}).value || '';
-    wx = wx.trim(); oid = oid.trim();
-    if (!wx || !oid) { toast('请填写微信 wxid 和应用宝 openid', 'warning'); return; }
-    try {
-        await request('/api/portal/protocol/bind', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ wxWxid: wx, yybOpenId: oid })
-        });
-        toast('绑定成功', 'success');
-        await loadProtocolBindings();
-    } catch (e) { toast(e.message || '绑定失败', 'error'); }
-}
-
-async function unbindProtocolPair(wx, oid) {
-    if (!confirm('确认解除该双绑？解绑后青龙中的 wxid 将走微信协议（若仍在线）。')) return;
-    try {
-        await request('/api/portal/protocol/unbind', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ wxWxid: wx, yybOpenId: oid })
-        });
-        toast('已解绑', 'success');
-        await loadProtocolBindings();
-    } catch (e) { toast(e.message || '解绑失败', 'error'); }
-}
-
 async function loadWxDevices() {
     try {
         const resp = await request('/api/portal/wx/devices');
         state.wxDevices = resp.data || [];
+        if (window.PortalProtocolBind) {
+            PortalProtocolBind.setWxDevices(state.wxDevices);
+            await PortalProtocolBind.refresh();
+        }
         renderWxDevices();
         renderDashboard();
-        loadProtocolBindings();
     } catch (err) {
         state.wxDevices = [];
+        if (window.PortalProtocolBind) PortalProtocolBind.setWxDevices([]);
         renderWxDevices();
     }
 }
@@ -3858,7 +3872,8 @@ function renderWxDevices() {
     }
     grid.innerHTML = devices.map(function(d) {
         var isOnline = d.online;
-        var cardClass = 'wx-device-card' + (d.isPrimary ? ' primary' : '') + (isOnline ? '' : ' offline-card');
+        var isBound = window.PortalProtocolBind && PortalProtocolBind.hasWxBinding(d.wxid);
+        var cardClass = 'wx-device-card' + (d.isPrimary ? ' primary' : '') + (isOnline ? '' : ' offline-card') + (isBound ? ' proto-bound' : '');
         var badgeHtml = '';
         if (d.isPrimary) {
             badgeHtml = '<span class="wx-device-badge primary-badge">⭐ 主设备</span>';
@@ -3891,7 +3906,9 @@ function renderWxDevices() {
             var tipLabel = d.isPrimary ? '主设备' : '监控设备';
             tipHtml = '<div style="margin-top:8px;padding:6px 10px;border-radius:8px;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.15);font-size:11px;color:var(--amber);line-height:1.6;">⚠️ ' + tipLabel + '已离线，可点击「唤醒」或「重登」尝试恢复</div>';
         }
+        var peerStrip = window.PortalProtocolBind ? PortalProtocolBind.renderWxPeerStrip(d.wxid) : '';
         return '<div class="' + cardClass + '">' +
+            peerStrip +
             '<div class="wx-device-header">' + badgeHtml + '<span class="wx-device-nickname" title="' + escapeAttr(d.wxid) + '">' + escapeHtml(d.nickname || d.wxid) + '</span>' + removeBtn + '</div>' +
             '<div class="wx-device-detail"><span>微信ID</span><strong>' + escapeHtml(d.wxid) + '</strong></div>' +
             '<div class="wx-device-detail"><span>设备</span><strong>' + escapeHtml(d.device || '-') + '</strong></div>' +
