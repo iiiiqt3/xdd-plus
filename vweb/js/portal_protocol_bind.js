@@ -146,10 +146,9 @@
     }
 
     function renderQuota() {
-        var q = state.quota || {};
-        var text = '在线微信 ' + (q.onlineWxSlots || 0) + ' · 已绑 ' + (q.boundPairs || 0) + ' · 免费名额 ' + (q.freeSlots || 0);
         document.querySelectorAll('[data-proto-bind-quota]').forEach(function (el) {
-            el.textContent = text;
+            el.textContent = '';
+            el.style.display = 'none';
         });
     }
 

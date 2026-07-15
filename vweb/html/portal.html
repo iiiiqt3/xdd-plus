@@ -437,6 +437,15 @@
         }
         .wx-intro-box summary::after { content: "▾"; margin-left: auto; font-size: 12px; transition: transform 0.2s; color: var(--text-muted); }
         .wx-intro-box[open] summary::after { transform: rotate(180deg); }
+        .wx-intro-box summary .intro-expand-hint {
+            margin-left: 8px; font-size: 11px; font-weight: 500; color: var(--text-muted);
+        }
+        .wx-intro-box[open] summary .intro-expand-hint { display: none; }
+        .yyb-region-scan-cost {
+            margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; line-height: 1.5;
+        }
+        .yyb-region-scan-cost.free { background: rgba(34,197,94,.12); color: #16a34a; }
+        .yyb-region-scan-cost.paid { background: rgba(245,158,11,.12); color: #d97706; }
         .wx-intro-content { margin-top: 14px; font-size: 13px; color: var(--text-secondary); line-height: 1.9; }
         .wx-intro-content h5 { font-size: 13.5px; font-weight: 800; color: var(--text); margin: 14px 0 6px; }
         .wx-intro-content h5:first-child { margin-top: 0; }
@@ -1553,6 +1562,7 @@
             </div>
             <p class="muted" id="yyb-proxyHint" style="font-size:12px;margin:0 0 10px;line-height:1.65;">请选择与你当前所在地一致的省/市。</p>
             <p class="muted" id="yyb-proxyConfigWarn" style="display:none;font-size:12px;margin:0 0 10px;line-height:1.6;color:#d97706;">后台 51 代理未就绪：流量白名单需填写 UID + packid=12；账号密码模式需填写账号与密码；并确认服务器 IP 已在 51 后台加白。</p>
+            <p id="yyb-regionScanCost" class="yyb-region-scan-cost" style="display:none;"></p>
             <div class="yyb-scan-region-actions">
                 <button class="btn secondary" id="yyb-regionCancelBtn" type="button">取消</button>
                 <button class="btn accent" id="yyb-regionConfirmBtn" type="button">确定</button>
@@ -2264,8 +2274,8 @@
                     <span class="muted">管理绑定账号</span>
                 </div>
 
-                <details class="wx-intro-box" id="yybIntroBox" open>
-                    <summary>📖 什么是应用宝协议？</summary>
+                <details class="wx-intro-box" id="yybIntroBox">
+                    <summary>📖 什么是应用宝协议？<span class="intro-expand-hint">点击展开查看详情</span></summary>
                     <div class="wx-intro-content">
                         <p>应用宝协议通过提交<strong>应用宝 openid</strong>（owNAX 开头），向协议网关请求小程序登录凭证（CK）。无需保持微信长期在线，也<strong>没有封号风险</strong>。</p>
                         <h5>【主要作用】</h5>
@@ -2303,9 +2313,8 @@
                 <div class="card proto-bind-card hidden" id="protoBindCardYyb">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
                         <h4 style="font-size:14px;margin:0;">🔗 协议双绑（微信 wxid ↔ 应用宝 openid）</h4>
-                        <span class="muted" style="font-size:12px;" data-proto-bind-quota>加载名额…</span>
                     </div>
-                    <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;line-height:1.7;">绑定后青龙脚本原提交 CK 的微信 wxid，网关将自动路由至应用宝请求协议 code；仅使用应用宝时可忽略本功能。绑定关系显示在下方账号卡片内。</p>
+                    <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;line-height:1.7;">绑定后青龙脚本原提交 CK 的微信 wxid，网关将自动路由微信协议 wxid 至应用宝请求协议 code；如果你之前没使用微信协议仅使用应用宝时可忽略本功能。绑定关系显示在下方账号卡片内。</p>
                     <div class="proto-bind-form">
                         <div class="proto-bind-field">
                             <label for="protoBindWxYyb">微信 wxid</label>

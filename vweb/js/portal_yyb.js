@@ -500,6 +500,13 @@
         if (costEl) {
             costEl.style.display = 'none';
             costEl.textContent = '';
+            costEl.className = '';
+        }
+        const regionCost = $('yyb-regionScanCost');
+        if (regionCost) {
+            regionCost.style.display = 'none';
+            regionCost.textContent = '';
+            regionCost.className = 'yyb-region-scan-cost';
         }
         const box = $('yyb-qrBox');
         if (box) box.innerHTML = '等待生成…';
@@ -512,6 +519,35 @@
         setBtnLoading($('yyb-regionConfirmBtn'), false);
     }
 
+    function formatRegionScanCost(quota) {
+        if (!quota) return null;
+        const cost = Number(quota.scanLoginCost);
+        if (Number.isFinite(cost) && cost > 0) return { text: '本次扫码将扣除 ' + cost + ' 积分', free: false };
+        if (Number.isFinite(cost) && cost === 0) return { text: '本次扫码免费，不扣除积分', free: true };
+        const hint = (quota.scanCostHint || '').trim();
+        if (!hint) return null;
+        return { text: hint, free: /免费|0\s*积分/.test(hint) };
+    }
+
+    async function updateRegionScanCostPreview() {
+        const el = $('yyb-regionScanCost');
+        if (!el) return;
+        try {
+            const data = await protocolRequest('/bind/quota');
+            const preview = formatRegionScanCost(data);
+            if (!preview || !preview.text) {
+                el.style.display = 'none';
+                el.textContent = '';
+                return;
+            }
+            el.style.display = 'block';
+            el.textContent = preview.text;
+            el.className = 'yyb-region-scan-cost ' + (preview.free ? 'free' : 'paid');
+        } catch (_) {
+            el.style.display = 'none';
+        }
+    }
+
     function showRegionStep() {
         const regionStep = $('yyb-scanRegionStep');
         const qrStep = $('yyb-scanQrStep');
@@ -519,6 +555,7 @@
         if (regionStep) regionStep.style.display = '';
         if (qrStep) qrStep.style.display = 'none';
         if (title) title.textContent = '选择登录地区';
+        void updateRegionScanCostPreview();
     }
 
     function showQrStep(region) {
@@ -635,16 +672,20 @@
             if (costEl) {
                 if (Number.isFinite(cost) && cost > 0) {
                     costEl.style.display = 'block';
+                    costEl.className = 'yyb-region-scan-cost paid';
                     costEl.textContent = '本次扫码将扣除 ' + cost + ' 积分（确认登录后扣除）';
                 } else if (Number.isFinite(cost) && cost === 0) {
                     costEl.style.display = 'block';
+                    costEl.className = 'yyb-region-scan-cost free';
                     costEl.textContent = '本次扫码免费，不扣除积分';
                 } else if (data.scanCostHint) {
                     costEl.style.display = 'block';
+                    costEl.className = 'yyb-region-scan-cost paid';
                     costEl.textContent = data.scanCostHint;
                 } else {
                     costEl.style.display = 'none';
                     costEl.textContent = '';
+                    costEl.className = '';
                 }
             }
             stopScanPoll();
