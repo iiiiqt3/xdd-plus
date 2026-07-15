@@ -423,11 +423,11 @@ func SyncActivityProjectNames(configs []*ActivityConfig) int {
 	caseSQL.WriteString("ELSE activity_name END")
 	inPlaceholders := strings.Repeat("?,", len(ids))
 	inPlaceholders = inPlaceholders[:len(inPlaceholders)-1]
+	now := time.Now()
+	args = append(args, now)
 	for _, id := range ids {
 		args = append(args, id)
 	}
-	now := time.Now()
-	args = append(args, now)
 	sql := fmt.Sprintf(
 		"UPDATE activity_project SET activity_name = %s, updated_at = ? WHERE activity_id IN (%s) AND deleted_at IS NULL",
 		caseSQL.String(), inPlaceholders,
