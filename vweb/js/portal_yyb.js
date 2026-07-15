@@ -279,7 +279,7 @@
         }
         const accounts = st.accounts || [];
         if (!accounts.length) {
-            container.innerHTML = '<div class="yyb-empty">暂无绑定账号，<a href="#" onclick="document.querySelector(\'button[data-panel=yyb]\')?.click();return false;" style="color:var(--cyan);">去添加</a></div>';
+            container.innerHTML = '<div class="yyb-empty">暂无绑定账号，<a href="#" onclick="openProtocolPanel(\'yyb\');return false;" style="color:var(--cyan);">去添加</a></div>';
             return;
         }
         const alive = accounts.filter(a => a.status === 'alive' || a.status === 'online').length;

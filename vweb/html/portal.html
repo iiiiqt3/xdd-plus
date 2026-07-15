@@ -1230,13 +1230,25 @@
             .iframe-modal .modal-header h3 { font-size: 15px; }
         }
 
+        /* ===== 协议登录 ===== */
+        .protocol-subtabs {
+            display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+            padding: 4px; border-radius: 12px; background: rgba(128,128,128,0.06); border: 1px solid var(--glass-border);
+        }
+        .protocol-subtab {
+            flex: 1; min-width: 140px; padding: 10px 16px; border: none; border-radius: 9px;
+            background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 700; cursor: pointer;
+            transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+        }
+        .protocol-subtab:hover { color: var(--text); background: rgba(255,255,255,0.5); }
+        .protocol-subtab.active {
+            background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(15,23,42,0.08);
+        }
+        .protocol-pane { display: none; }
+        .protocol-pane.active { display: block; }
+
         /* ===== 应用宝协议 ===== */
         .hidden { display: none !important; }
-        .yyb-test-tag {
-            display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
-            font-size: 11px; font-weight: 700; vertical-align: middle;
-            background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35);
-        }
         .yyb-hint-box {
             margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; font-size: 12px; line-height: 1.7;
             background: rgba(79, 70, 229, 0.06); border: 1px solid rgba(79, 70, 229, 0.12); color: var(--text-muted);
@@ -1601,7 +1613,7 @@
     <aside class="sidebar">
         <div class="brand">
             <h1>用户中心</h1>
-            <p id="sidebarDesc">授权管理 · 微信协议 · 积分任务</p>
+            <p id="sidebarDesc">授权管理 · 协议登录 · 积分任务</p>
         </div>
         <div class="menu-group">
             <div class="menu-group-title">主菜单</div>
@@ -1624,8 +1636,7 @@
         <div class="menu-group">
             <div class="menu-group-title">工具</div>
             <div class="menu">
-                <button data-panel="wx">💬 微信协议</button>
-                <button data-panel="yyb">📲 应用宝协议<span class="yyb-test-tag" style="margin-left:6px;">测试</span></button>
+                <button data-panel="protocol">🔐 协议登录</button>
                 <button data-panel="feedback">📝 投稿反馈</button>
             </div>
         </div>
@@ -1727,9 +1738,9 @@
                     <div class="card-title" style="justify-content:space-between;">
                         <span style="display:flex;align-items:center;gap:8px;">
                             <span class="title-icon" style="background:var(--purple-dim);color:var(--purple);">📲</span>
-                            应用宝协议<span class="yyb-test-tag">测试</span>
+                            应用宝协议
                         </span>
-                        <button class="btn small secondary" type="button" onclick="document.querySelector('button[data-panel=yyb]')?.click()">管理</button>
+                        <button class="btn small secondary" type="button" onclick="openProtocolPanel('yyb')">管理</button>
                     </div>
                     <div id="yybDashAccounts">
                         <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0;">加载中…</div>
@@ -2077,7 +2088,7 @@
                     <div class="jd-section-card jd-login-layout">
                         <div class="jd-toolbar">
                             <div class="jd-sub-tabs">
-                                <button class="active" id="jdLoginTab-yyb" onclick="switchJdLoginTab('yyb')">📲 应用宝登录<span class="yyb-test-tag">测试</span></button>
+                                <button class="active" id="jdLoginTab-yyb" onclick="switchJdLoginTab('yyb')">📲 应用宝登录</button>
                                 <button id="jdLoginTab-wx" onclick="switchJdLoginTab('wx')">💬 微信协议登录</button>
                                 <button id="jdLoginTab-sms" onclick="switchJdLoginTab('sms')">📱 短信登录</button>
                             </div>
@@ -2235,13 +2246,45 @@
             </div>
         </section>
 
-        <!-- ===== 应用宝协议 ===== -->
-        <section class="panel" id="panel-yyb">
+        <!-- ===== 协议登录 ===== -->
+        <section class="panel" id="panel-protocol">
             <div class="section">
                 <div class="section-header panel-duplicate-title">
-                    <h3>📲 应用宝协议 <span class="yyb-test-tag">测试</span></h3>
+                    <h3>🔐 协议登录</h3>
+                    <span class="muted">管理微信协议与应用宝协议，获取小程序 CK</span>
+                </div>
+                <div class="protocol-subtabs" role="tablist">
+                    <button type="button" class="protocol-subtab active" data-protocol-tab="yyb" onclick="switchProtocolTab('yyb')">📲 应用宝协议</button>
+                    <button type="button" class="protocol-subtab" data-protocol-tab="wx" onclick="switchProtocolTab('wx')">💬 微信协议</button>
+                </div>
+
+                <div id="protocol-pane-yyb" class="protocol-pane active">
+                <div class="section-header" style="margin-bottom:12px;">
+                    <h3 style="font-size:15px;margin:0;">📲 应用宝协议</h3>
                     <span class="muted">管理绑定账号</span>
                 </div>
+
+                <details class="wx-intro-box" id="yybIntroBox" open>
+                    <summary>📖 什么是应用宝协议？</summary>
+                    <div class="wx-intro-content">
+                        <p>应用宝协议通过提交<strong>应用宝 openid</strong>（owNAX 开头），向协议网关请求小程序登录凭证（CK）。无需保持微信长期在线，也<strong>没有封号风险</strong>。</p>
+                        <h5>【主要作用】</h5>
+                        <ul>
+                            <li>提交 openid 即可获取小程序 CK，适合青龙等自动化脚本</li>
+                            <li>扫码登录后有效期 30 天，到期前重新扫码可延期</li>
+                            <li>可单独使用应用宝协议，不必依赖微信协议</li>
+                        </ul>
+                        <h5>【从微信协议迁移】</h5>
+                        <p>若你此前使用<strong>微信协议</strong>，青龙脚本里提交的是微信 wxid 作为 CK：</p>
+                        <ul>
+                            <li>需先将 wxid 与对应的应用宝 openid <strong>双绑</strong></li>
+                            <li>绑定后脚本里<strong>仍填原 wxid</strong>，网关会自动路由到应用宝获取 code</li>
+                            <li>之后即使<strong>退出或删除微信协议设备</strong>，只要双绑关系保留，wxid 依然能路由到应用宝</li>
+                            <li>也可完全切换到应用宝，直接提交 openid 作为 CK</li>
+                        </ul>
+                    </div>
+                </details>
+
                 <div class="yyb-chips" style="margin-bottom:14px;">
                     <span class="yyb-chip checking" id="yyb-healthChip">服务 <strong id="yyb-healthText">待机</strong></span>
                     <span class="yyb-chip">积分 <strong id="yyb-coinVal">-</strong></span>
@@ -2262,7 +2305,7 @@
                         <h4 style="font-size:14px;margin:0;">🔗 协议双绑（微信 wxid ↔ 应用宝 openid）</h4>
                         <span class="muted" style="font-size:12px;" data-proto-bind-quota>加载名额…</span>
                     </div>
-                    <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;line-height:1.7;">绑定后青龙脚本仍填微信 wxid，网关自动走应用宝；仅使用应用宝时可忽略本功能。绑定关系显示在下方账号卡片内。</p>
+                    <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;line-height:1.7;">绑定后青龙脚本原提交 CK 的微信 wxid，网关将自动路由至应用宝请求协议 code；仅使用应用宝时可忽略本功能。绑定关系显示在下方账号卡片内。</p>
                     <div class="proto-bind-form">
                         <div class="proto-bind-field">
                             <label for="protoBindWxYyb">微信 wxid</label>
@@ -2289,42 +2332,40 @@
                     </div>
                     <div class="yyb-account-grid" id="yyb-accountGrid"><div class="yyb-empty">加载中…</div></div>
                 </div>
-            </div>
-        </section>
+                </div>
 
-        <!-- ===== 微信协议 ===== -->
-        <section class="panel" id="panel-wx">
-            <div class="section">
-                <div class="section-header panel-duplicate-title"><h3>💬 微信协议</h3><span class="muted">管理微信协议设备，查看在线状态</span></div>
+                <div id="protocol-pane-wx" class="protocol-pane">
+                <div class="section-header" style="margin-bottom:12px;">
+                    <h3 style="font-size:15px;margin:0;">💬 微信协议</h3>
+                    <span class="muted">管理微信协议设备，查看在线状态</span>
+                </div>
 
                 <details class="wx-intro-box" id="wxIntroBox">
                     <summary>📖 什么是微信协议？</summary>
                     <div class="wx-intro-content">
-                        <p>微信协议是一种自动化工具，主要用于获取微信小程序的登录凭证（CK）。</p>
+                        <p>微信协议是一种自动化工具，通过绑定微信设备获取微信小程序的登录凭证（CK）。脚本提交<strong>微信 wxid</strong> 即可向协议网关换取 code。</p>
                         <h5>【主要作用】</h5>
                         <ul>
                             <li>自动获取小程序 CK，无需手动抓包</li>
-                            <li>CK 通常有有效期，但配合微信协议可保持永不过期</li>
+                            <li>设备在线时可长期维持登录态，适合习惯用 wxid 作为 CK 的脚本</li>
                             <li>支持微信协议的项目，只需提交微信 ID 即可自动上车</li>
                         </ul>
-                        <h5>【使用场景】</h5>
-                        <p>如果某个项目标注 "支持微信协议"，你只需要：</p>
+                        <h5>【与应用宝协议的关系】</h5>
                         <ul>
-                            <li>在此页面扫码或提交微信 ID 绑定设备</li>
-                            <li>在项目中心选择支持微信协议的项目上车</li>
-                            <li>系统会自动通过你的微信协议获取 CK</li>
+                            <li>微信协议需要保持设备在线，存在封号风险；应用宝协议更稳定、无封号风险</li>
+                            <li>若已迁移到应用宝，可在「应用宝协议」页双绑 wxid 与 openid，脚本仍填 wxid 即可自动路由</li>
+                            <li>双绑后即使删除微信协议设备，wxid 仍可继续路由到应用宝（绑定关系独立保存）</li>
                         </ul>
                         <h5>【注意事项】</h5>
                         <ul>
-                            <li>需要保持微信在线状态</li>
-                            <li>定期检查设备是否掉线</li>
-                            <li>掉线后需要重新扫码登录</li>
+                            <li>需要保持微信在线状态，定期检查设备是否掉线</li>
+                            <li>掉线后需要重新扫码登录；纯应用宝用户可不再维护微信协议</li>
                         </ul>
                     </div>
                 </details>
 
                 <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(8,145,178,0.06);border:1px solid rgba(8,145,178,0.12);font-size:12px;color:var(--cyan);line-height:1.8;">
-                    💡 <strong>操作提示：</strong>点击设备卡片上的按钮可直接操作｜设备离线时可点击「唤醒」或「重登」恢复｜首次挂主设备请使用下方「📱 微信扫码登录」｜双绑请在「应用宝」页操作，绑定关系会显示在设备卡片内
+                    💡 <strong>操作提示：</strong>点击设备卡片上的按钮可直接操作｜设备离线时可点击「唤醒」或「重登」恢复｜首次挂主设备请使用下方「📱 微信扫码登录」｜双绑请在「应用宝协议」子页操作，绑定关系会显示在设备卡片内
                 </div>
 
                 <div class="wx-device-grid" id="wxDeviceGrid">
@@ -2358,6 +2399,7 @@
                         <span>删除微信协议主设备数据，再次上线需重新扫码并扣除积分。</span>
                     </div>
                 </div>
+                </div>
             </div>
         </section>
     </main>
@@ -2365,7 +2407,7 @@
 
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_bind.js?v=3"></script>
-<script src="/vweb/js/portal_yyb.js?v=15"></script>
+<script src="/vweb/js/portal_yyb.js?v=16"></script>
 <script>
 async function getSignatureHeaders(path) {
     try {
@@ -2408,6 +2450,7 @@ var state = {
     currentActivity: null,
     currentIncomeProject: null,
     currentPanel: 'dashboard',
+    protocolTab: 'yyb',
     wxPollTimer: null,
     wxPollingUuid: '',
     wxPollingDeduct: false,
@@ -2494,9 +2537,35 @@ document.querySelectorAll('.menu button[data-panel]').forEach(btn => {
         state.currentPanel = panel;
         document.getElementById('panel-' + panel).classList.add('active');
         syncPanelTitle(panel);
+        if (panel === 'protocol') switchProtocolTab(state.protocolTab || 'yyb', false);
         refreshCurrentPanel(false);
     });
 });
+
+function switchProtocolTab(tab, reload) {
+    if (reload === undefined) reload = true;
+    tab = tab === 'wx' ? 'wx' : 'yyb';
+    state.protocolTab = tab;
+    document.querySelectorAll('.protocol-subtab').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.protocolTab === tab);
+    });
+    var yybPane = document.getElementById('protocol-pane-yyb');
+    var wxPane = document.getElementById('protocol-pane-wx');
+    if (yybPane) yybPane.classList.toggle('active', tab === 'yyb');
+    if (wxPane) wxPane.classList.toggle('active', tab === 'wx');
+    if (!reload) return;
+    if (tab === 'wx') {
+        loadWxDevices().catch(function() {});
+    } else if (window.YybPortal) {
+        YybPortal.loadPanel({ autoCheck: false }).catch(function() {});
+    }
+}
+
+function openProtocolPanel(tab) {
+    var btn = document.querySelector('button[data-panel="protocol"]');
+    if (btn) btn.click();
+    if (tab) switchProtocolTab(tab);
+}
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'wxAddInput') {
@@ -2512,8 +2581,9 @@ function syncPanelTitle(panel) {
         jd: '🛒 京东菜单',
         notifications: '🔔 通知中心',
         tasks: '⭐ 积分相关',
-        wx: '💬 微信协议',
-        yyb: '📲 应用宝协议',
+        protocol: '🔐 协议登录',
+        wx: '🔐 协议登录',
+        yyb: '🔐 协议登录',
         feedback: '📝 投稿与反馈'
     };
     document.getElementById('pageTitle').textContent = titleMap[panel] || '用户中心';
@@ -2764,9 +2834,11 @@ async function refreshCurrentPanel(showToast = true) {
             case 'jd':         await loadJdPanelData(); break;
             case 'notifications': await loadNotificationsData(); break;
             case 'tasks':      await loadDashboardData(); break;
-            case 'wx':         await loadWxDevices(); break;
+            case 'protocol':
+            case 'wx':
             case 'yyb':
-                if (window.YybPortal) await YybPortal.loadPanel({ autoCheck: false });
+                if ((state.protocolTab || 'yyb') === 'wx') await loadWxDevices();
+                else if (window.YybPortal) await YybPortal.loadPanel({ autoCheck: false });
                 break;
             case 'kuwo':       await checkKuwoAuth(); break;
             case 'dashboard':
@@ -5904,7 +5976,14 @@ bindNotificationFilters();
 if (window.YybPortal) {
     YybPortal.init();
     var panelQ = new URLSearchParams(location.search).get('panel');
-    if (panelQ) document.querySelector('button[data-panel="' + panelQ + '"]')?.click();
+    var tabQ = new URLSearchParams(location.search).get('tab');
+    if (panelQ === 'yyb' || panelQ === 'wx') {
+        document.querySelector('button[data-panel="protocol"]')?.click();
+        switchProtocolTab(panelQ);
+    } else if (panelQ) {
+        document.querySelector('button[data-panel="' + panelQ + '"]')?.click();
+        if (panelQ === 'protocol' && tabQ) switchProtocolTab(tabQ);
+    }
 }
 </script>
 </body>
