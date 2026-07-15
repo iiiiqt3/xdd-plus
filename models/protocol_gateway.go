@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/beego/beego/v2/server/web"
 )
 
 // 由 yybportal 在启动时注入，避免 models ↔ yybportal 循环依赖
@@ -166,10 +169,29 @@ func LocalGatewayBaseURL() string {
 	return "http://127.0.0.1:" + port
 }
 
+// ScriptWechatGatewayURL 查询/记录等脚本应请求的协议网关（xdd 本机，自动分流应用宝/wechat08）
+func ScriptWechatGatewayURL() string {
+	if u := strings.TrimRight(strings.TrimSpace(LocalGatewayBaseURL()), "/"); u != "" {
+		return u
+	}
+	return "http://127.0.0.1:8080"
+}
+
+// ScriptWechatGatewayEnvs 注入 WECHAT_SERVER，供 scripts/query 下脚本取 code
+func ScriptWechatGatewayEnvs() []string {
+	u := ScriptWechatGatewayURL()
+	return []string{
+		"WECHAT_SERVER=" + u,
+		"WECHAT_SERVER_NEW=" + u,
+	}
+}
+
 func webHTTPPort() string {
-	// beego 默认 HTTPPort，运行时可从环境变量覆盖
 	if p := strings.TrimSpace(GetEnv("xdd_http_port")); p != "" {
 		return p
+	}
+	if web.BConfig.Listen.HTTPPort > 0 {
+		return strconv.Itoa(web.BConfig.Listen.HTTPPort)
 	}
 	return "8080"
 }

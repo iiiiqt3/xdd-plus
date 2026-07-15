@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -430,7 +431,7 @@ func executeScript(sender *Sender, cmdPath string, args ...string) (string, erro
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	// WECHAT_SERVER 由用户在青龙自行配置为 xdd 地址，任务脚本不再写死 wechat08
+	cmd.Env = append(os.Environ(), ScriptWechatGatewayEnvs()...)
 
 	err := cmd.Run()
 	if err != nil {
