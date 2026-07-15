@@ -19,10 +19,16 @@ func (c *WxCompatProxyController) Any() {
 	body := c.Ctx.Input.RequestBody
 	rawQuery := c.Ctx.Request.URL.RawQuery
 	ref := models.ExtractCompatRef(rawQuery, body)
+	route := models.ResolveProtocolRoute(ref)
+	action := compatGatewayAction(path)
+	method := c.Ctx.Request.Method
+	models.Yyb().Infof("[协议网关] 入站 %s %s action=%s ref=%s %s", method, path, action, ref, route.LogSummary())
 
 	if !models.ShouldRouteToYyb(ref) {
-		respBody, status, contentType, err := models.ForwardWxProtoRequest(c.Ctx.Request.Method, path, rawQuery, body)
+		models.Yyb().Infof("[协议网关] 转发 → wechat08 %s %s ref=%s", method, path, ref)
+		respBody, status, contentType, err := models.ForwardWxProtoRequest(method, path, rawQuery, body)
 		if err != nil {
+			models.Yyb().Warnf("[协议网关] wechat08 转发失败 %s %s ref=%s err=%v", method, path, ref, err)
 			c.Ctx.Output.SetStatus(502)
 			c.Ctx.Output.Body(models.BuildCompatErrorResponse("连接微信协议服务失败"))
 			return
@@ -36,10 +42,26 @@ func (c *WxCompatProxyController) Any() {
 		return
 	}
 
+	models.Yyb().Infof("[协议网关] 处理 → 应用宝 %s %s action=%s ref=%s", method, path, action, ref)
 	resp, status := handleYybCompat(path, rawQuery, body, ref)
 	c.Ctx.Output.Header("Content-Type", "application/json; charset=utf-8")
 	c.Ctx.Output.SetStatus(status)
 	c.Ctx.Output.Body(resp)
+}
+
+func compatGatewayAction(path string) string {
+	switch {
+	case strings.Contains(path, "/get/code") || strings.Contains(path, "GetCode") || strings.Contains(path, "JSLogin"):
+		return "getCode"
+	case strings.Contains(path, "/call/function") || strings.Contains(path, "CallFunction"):
+		return "callFunction"
+	case strings.Contains(path, "/operate/wxdata") || strings.Contains(path, "OperateWxData"):
+		return "operateWxData"
+	case strings.Contains(path, "/user/status") || strings.Contains(path, "UserStatus"):
+		return "userStatus"
+	default:
+		return "other"
+	}
 }
 
 func handleYybCompat(path, rawQuery string, body []byte, ref string) ([]byte, int) {
@@ -53,6 +75,7 @@ func handleYybCompat(path, rawQuery string, body []byte, ref string) ([]byte, in
 	case strings.Contains(path, "/user/status") || strings.Contains(path, "UserStatus"):
 		return handleCompatStatus()
 	default:
+		models.Yyb().Infof("[协议网关] 应用宝未实现的路径，回退 wechat08 转发 path=%s ref=%s", path, ref)
 		respBody, status, _, err := models.ForwardWxProtoRequest("POST", path, rawQuery, body)
 		if err != nil {
 			return models.BuildCompatErrorResponse("协议转发失败"), 502

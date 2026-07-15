@@ -76,17 +76,27 @@ func ProtocolGetWxAppCode(ref, appID string) (code string, err error) {
 		data, yybErr := protocolYybGetCodeWithRetry(route, appID)
 		if yybErr == nil {
 			if c := extractCompatCode(data); c != "" {
+				Yyb().Infof("[协议路由] getCode → 应用宝 成功 %s appid=%s", route.LogSummary(), appID)
 				return c, nil
 			}
 			yybErr = fmt.Errorf("应用宝未返回 code")
 		}
 		if route.FromBind && strings.TrimSpace(route.WxWxid) != "" {
 			if online, _ := checkWxDeviceOnline(route.WxWxid); online {
-				return protocolGetWxCodeViaWechat(route.WxWxid, appID)
+				Yyb().Warnf("[协议路由] getCode 应用宝失败，尝试 wechat08 回退 %s err=%v", route.LogSummary(), yybErr)
+				code, err := protocolGetWxCodeViaWechat(route.WxWxid, appID)
+				if err == nil {
+					Yyb().Infof("[协议路由] getCode → wechat08回退 成功 wxid=%s appid=%s", protocolRefShort(route.WxWxid), appID)
+				} else {
+					Yyb().Warnf("[协议路由] getCode → wechat08回退 失败 wxid=%s err=%v", protocolRefShort(route.WxWxid), err)
+				}
+				return code, err
 			}
 		}
+		Yyb().Warnf("[协议路由] getCode → 应用宝 失败 %s appid=%s err=%v", route.LogSummary(), appID, yybErr)
 		return "", yybErr
 	}
+	Yyb().Infof("[协议路由] getCode → wechat08 %s appid=%s", route.LogSummary(), appID)
 	return protocolGetWxCodeViaWechat(ref, appID)
 }
 
@@ -111,15 +121,25 @@ func ProtocolCallWxFunction(ref, appID string, payload map[string]interface{}) (
 		}
 		data, err := protocolYybOperate(route.OpenID, appID, payload)
 		if err == nil {
+			Yyb().Infof("[协议路由] callFunction → 应用宝 成功 %s appid=%s", route.LogSummary(), appID)
 			return data, nil
 		}
 		if route.FromBind && strings.TrimSpace(route.WxWxid) != "" {
 			if online, _ := checkWxDeviceOnline(route.WxWxid); online {
-				return protocolCallFunctionViaWechat(route.WxWxid, appID, payload)
+				Yyb().Warnf("[协议路由] callFunction 应用宝失败，尝试 wechat08 回退 %s err=%v", route.LogSummary(), err)
+				data2, err2 := protocolCallFunctionViaWechat(route.WxWxid, appID, payload)
+				if err2 == nil {
+					Yyb().Infof("[协议路由] callFunction → wechat08回退 成功 wxid=%s appid=%s", protocolRefShort(route.WxWxid), appID)
+				} else {
+					Yyb().Warnf("[协议路由] callFunction → wechat08回退 失败 wxid=%s err=%v", protocolRefShort(route.WxWxid), err2)
+				}
+				return data2, err2
 			}
 		}
+		Yyb().Warnf("[协议路由] callFunction → 应用宝 失败 %s appid=%s err=%v", route.LogSummary(), appID, err)
 		return nil, err
 	}
+	Yyb().Infof("[协议路由] callFunction → wechat08 %s appid=%s", route.LogSummary(), appID)
 	return protocolCallFunctionViaWechat(ref, appID, payload)
 }
 

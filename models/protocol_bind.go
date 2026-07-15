@@ -35,6 +35,32 @@ type ProtocolRoute struct {
 	InputRef   string
 }
 
+func protocolRefShort(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "-"
+	}
+	if len(s) <= 18 {
+		return s
+	}
+	return s[:8] + "…" + s[len(s)-6:]
+}
+
+// LogSummary 供应用宝分类日志展示路由决策
+func (r ProtocolRoute) LogSummary() string {
+	if r.Backend == "yyb" {
+		switch {
+		case r.DirectYYB:
+			return fmt.Sprintf("route=应用宝 mode=openid直连 openid=%s", protocolRefShort(r.OpenID))
+		case r.FromBind:
+			return fmt.Sprintf("route=应用宝 mode=双绑 wxid=%s openid=%s", protocolRefShort(r.WxWxid), protocolRefShort(r.OpenID))
+		default:
+			return fmt.Sprintf("route=应用宝 openid=%s", protocolRefShort(r.OpenID))
+		}
+	}
+	return fmt.Sprintf("route=wechat08 wxid=%s", protocolRefShort(r.WxWxid))
+}
+
 func IsYybOpenIDRef(ref string) bool {
 	return strings.HasPrefix(strings.TrimSpace(ref), YybOpenIDPrefix)
 }

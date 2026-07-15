@@ -69,7 +69,7 @@ func AllCategories() []CategoryMeta {
 		{Key: string(CatAPI), Label: "HTTP", Desc: "通用 HTTP 请求追踪"},
 		{Key: string(CatDB), Label: "数据库", Desc: "迁移与数据库异常"},
 		{Key: string(CatTask), Label: "任务", Desc: "通用任务执行"},
-		{Key: string(CatYyb), Label: "应用宝", Desc: "应用宝协议扫码、存活检测、京东刷新"},
+		{Key: string(CatYyb), Label: "应用宝", Desc: "应用宝协议、兼容网关路由（应用宝/wechat08）、扫码与京东刷新"},
 	}
 }
 
@@ -85,6 +85,8 @@ func CategoryFromPath(path string) Category {
 		return CatPortal
 	case hasPrefix(path, "/api/login/"), hasPrefix(path, "/api/account"), hasPrefix(path, "/api/getUser"):
 		return CatApp
+	case hasPrefix(path, "/api/v1/wx"):
+		return CatYyb
 	case hasPrefix(path, "/api/wx"), hasPrefix(path, "/wx"):
 		return CatWx
 	default:
