@@ -146,19 +146,19 @@ func CalcYybScanLoginCost(userNumber int) (cost int, free bool, hint string) {
 	online := CountOnlineWxProtocolSlots(userNumber)
 	if online <= 0 {
 		if cost <= 0 {
-			return 0, true, "请使用微信扫码确认登录（本次免费）"
+			return 0, true, "本次扫码免费，不扣除积分"
 		}
-		return cost, false, fmt.Sprintf("请使用微信扫码确认登录，本次将扣除 %d 积分", cost)
+		return cost, false, fmt.Sprintf("本次扫码将扣除 %d 积分", cost)
 	}
 	yybInLibrary := CountPortalYybBindings(userNumber)
 	freeSlots := online - yybInLibrary
 	if freeSlots > 0 {
-		return 0, true, fmt.Sprintf("请使用微信扫码确认登录（免费名额剩余 %d，库内 %d/%d）", freeSlots, yybInLibrary, online)
+		return 0, true, "本次扫码免费，不扣除积分"
 	}
 	if cost <= 0 {
-		return 0, true, "请使用微信扫码确认登录（本次免费）"
+		return 0, true, "本次扫码免费，不扣除积分"
 	}
-	return cost, false, fmt.Sprintf("请使用微信扫码确认登录，免费名额已用完（库内 %d/%d），本次将扣除 %d 积分", yybInLibrary, online, cost)
+	return cost, false, fmt.Sprintf("本次扫码将扣除 %d 积分", cost)
 }
 
 // CountOnlineWxProtocolSlots 在线微信协议名额（主绑定 + 额外设备，仅在线）

@@ -524,9 +524,7 @@
         const cost = Number(quota.scanLoginCost);
         if (Number.isFinite(cost) && cost > 0) return { text: '本次扫码将扣除 ' + cost + ' 积分', free: false };
         if (Number.isFinite(cost) && cost === 0) return { text: '本次扫码免费，不扣除积分', free: true };
-        const hint = (quota.scanCostHint || '').trim();
-        if (!hint) return null;
-        return { text: hint, free: /免费|0\s*积分/.test(hint) };
+        return null;
     }
 
     async function updateRegionScanCostPreview() {
@@ -673,15 +671,11 @@
                 if (Number.isFinite(cost) && cost > 0) {
                     costEl.style.display = 'block';
                     costEl.className = 'yyb-region-scan-cost paid';
-                    costEl.textContent = '本次扫码将扣除 ' + cost + ' 积分（确认登录后扣除）';
+                    costEl.textContent = '本次扫码将扣除 ' + cost + ' 积分';
                 } else if (Number.isFinite(cost) && cost === 0) {
                     costEl.style.display = 'block';
                     costEl.className = 'yyb-region-scan-cost free';
                     costEl.textContent = '本次扫码免费，不扣除积分';
-                } else if (data.scanCostHint) {
-                    costEl.style.display = 'block';
-                    costEl.className = 'yyb-region-scan-cost paid';
-                    costEl.textContent = data.scanCostHint;
                 } else {
                     costEl.style.display = 'none';
                     costEl.textContent = '';
