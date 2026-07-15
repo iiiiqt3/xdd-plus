@@ -1043,18 +1043,41 @@ func shortenProtocolId(_ id: String?, head: Int = 8, tail: Int = 6) -> String {
 func parseProxyAreaRows(_ data: [String: Any]?) -> [(code: String, name: String)] {
     guard let data else { return [] }
     let keys = ["list", "provinceList", "city", "cityList"]
-    var rows: [[String: Any]] = []
+    var rows: [Any] = []
     for key in keys {
-        if let arr = data[key] as? [[String: Any]], !arr.isEmpty {
+        if let arr = data[key] as? [Any], !arr.isEmpty {
             rows = arr
             break
         }
     }
-    return rows.compactMap { row in
+    return rows.compactMap { item in
+        let row: [String: Any]
+        if let dict = item as? [String: Any] {
+            row = dict
+        } else if let dict = item as? NSDictionary {
+            row = dict as? [String: Any] ?? [:]
+        } else {
+            return nil
+        }
         let code = (row["regionCode"] as? String) ?? (row["region_code"] as? String) ?? ""
         let name = (row["regionName"] as? String) ?? (row["region_name"] as? String) ?? code
         return code.isEmpty ? nil : (code, name)
     }
+}
+
+func formatScanCostPreview(cost: Int?, hint: String?) -> (text: String, isFree: Bool) {
+    if let cost, cost > 0 {
+        return ("本次扫码将扣除 \(cost) 积分", false)
+    }
+    if let cost, cost == 0 {
+        return ("本次扫码免费，不扣除积分", true)
+    }
+    let text = (hint ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    if text.isEmpty {
+        return ("", true)
+    }
+    let isFree = text.contains("免费") || text.contains("0 积分") || text.contains("0积分")
+    return (text, isFree)
 }
 
 func formatYybExpiryText(_ acc: PortalYybAccount) -> (text: String, warn: Bool, expired: Bool) {

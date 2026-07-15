@@ -2721,10 +2721,12 @@ final class ProjectEditCKViewController: BaseNativeViewController {
 
 
 final class ProtocolAccessViewController: BaseNativeViewController {
+    private let subTabScroll = UIScrollView()
     private let subTabRow = UIStackView()
     private let container = UIView()
-    private let wechatVC = WechatProtocolViewController()
     private let yybVC = YybProtocolViewController()
+    private let wechatVC = WechatProtocolViewController()
+    private let bindVC = ProtocolBindViewController(embedded: true)
     private var currentVC: UIViewController?
     private var selectedIndex = 0
     private var subTabButtons: [UIButton] = []
@@ -2733,27 +2735,36 @@ final class ProtocolAccessViewController: BaseNativeViewController {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
 
+        subTabScroll.showsHorizontalScrollIndicator = false
+        subTabScroll.translatesAutoresizingMaskIntoConstraints = false
         subTabRow.axis = .horizontal
         subTabRow.spacing = 8
-        subTabRow.distribution = .fillEqually
+        subTabRow.distribution = .fill
         subTabRow.translatesAutoresizingMaskIntoConstraints = false
         container.translatesAutoresizingMaskIntoConstraints = false
 
-        ["微信协议", "应用宝协议"].enumerated().forEach { index, title in
+        ["应用宝协议", "微信协议", "协议双绑"].enumerated().forEach { index, title in
             let btn = makeSubTabButton(title: title, index: index)
+            btn.widthAnchor.constraint(greaterThanOrEqualToConstant: 96).isActive = true
             subTabButtons.append(btn)
             subTabRow.addArrangedSubview(btn)
         }
         refreshSubTabs()
+        subTabScroll.addSubview(subTabRow)
 
-        view.addSubview(subTabRow)
+        view.addSubview(subTabScroll)
         view.addSubview(container)
         NSLayoutConstraint.activate([
-            subTabRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 6),
-            subTabRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            subTabRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            subTabRow.heightAnchor.constraint(equalToConstant: 36),
-            container.topAnchor.constraint(equalTo: subTabRow.bottomAnchor, constant: 8),
+            subTabScroll.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 6),
+            subTabScroll.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            subTabScroll.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            subTabScroll.heightAnchor.constraint(equalToConstant: 38),
+            subTabRow.topAnchor.constraint(equalTo: subTabScroll.topAnchor),
+            subTabRow.leadingAnchor.constraint(equalTo: subTabScroll.leadingAnchor),
+            subTabRow.trailingAnchor.constraint(equalTo: subTabScroll.trailingAnchor),
+            subTabRow.bottomAnchor.constraint(equalTo: subTabScroll.bottomAnchor),
+            subTabRow.heightAnchor.constraint(equalTo: subTabScroll.heightAnchor),
+            container.topAnchor.constraint(equalTo: subTabScroll.bottomAnchor, constant: 8),
             container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             container.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -2764,7 +2775,9 @@ final class ProtocolAccessViewController: BaseNativeViewController {
     private func makeSubTabButton(title: String, index: Int) -> UIButton {
         let btn = UIButton(type: .system)
         btn.setTitle(title, for: .normal)
-        btn.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        btn.titleLabel?.font = .systemFont(ofSize: 12, weight: .semibold)
+        btn.titleLabel?.adjustsFontSizeToFitWidth = true
+        btn.titleLabel?.minimumScaleFactor = 0.85
         btn.layer.cornerRadius = 8
         btn.tag = index
         btn.addTarget(self, action: #selector(subTabTapped(_:)), for: .touchUpInside)
@@ -2791,7 +2804,12 @@ final class ProtocolAccessViewController: BaseNativeViewController {
         currentVC?.willMove(toParent: nil)
         currentVC?.view.removeFromSuperview()
         currentVC?.removeFromParent()
-        let vc: UIViewController = index == 1 ? yybVC : wechatVC
+        let vc: UIViewController
+        switch index {
+        case 1: vc = wechatVC
+        case 2: vc = bindVC
+        default: vc = yybVC
+        }
         addChild(vc)
         vc.view.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(vc.view)
@@ -2815,15 +2833,31 @@ final class ProtocolBindViewController: BaseNativeViewController, UITableViewDat
     private var selectedWx: PortalWxDevice?
     private var selectedYyb: PortalYybAccount?
     private var loading = false
+    private let embedded: Bool
+
+    init(embedded: Bool = false) {
+        self.embedded = embedded
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        self.embedded = false
+        super.init(coder: coder)
+    }
 
     private enum Section: Int, CaseIterable { case header = 0, form, bound }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "协议双绑"
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "关闭", style: .plain, target: self, action: #selector(closeTapped))
+        if !embedded {
+            title = "协议双绑"
+            navigationItem.leftBarButtonItem = UIBarButtonItem(title: "关闭", style: .plain, target: self, action: #selector(closeTapped))
+        }
         tableView.dataSource = self
         tableView.delegate = self
+        if embedded {
+            tableView.backgroundColor = .systemGroupedBackground
+        }
         tableView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tableView)
         NSLayoutConstraint.activate([
@@ -2885,7 +2919,7 @@ final class ProtocolBindViewController: BaseNativeViewController, UITableViewDat
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch Section(rawValue: section) {
         case .header: return 1
-        case .form: return loading ? 0 : 4
+        case .form: return loading ? 0 : 3
         case .bound: return loading ? 0 : max(bindings.count, 1)
         default: return 0
         }
@@ -2906,22 +2940,9 @@ final class ProtocolBindViewController: BaseNativeViewController, UITableViewDat
             cell.selectionStyle = .none
             cell.textLabel?.text = "🔗 微信 wxid ↔ 应用宝 openid"
             cell.textLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-            cell.detailTextLabel?.text = "绑定后青龙脚本仍填原微信 wxid，网关将自动路由到应用宝获取 code。"
+            cell.textLabel?.numberOfLines = 0
+            cell.detailTextLabel?.text = "绑定后青龙脚本原提交 CK 的微信 wxid，网关将自动路由微信协议 wxid 至应用宝请求协议 code；如果你之前没使用微信协议仅使用应用宝时可忽略本功能。绑定关系显示在下方账号卡片内。"
             cell.detailTextLabel?.numberOfLines = 0
-            let q = quota
-            let quotaText = "在线微信 \(q?.onlineWxSlots ?? 0) · 已绑 \(q?.boundPairs ?? 0) · 免费名额 \(q?.freeSlots ?? 0)"
-            let extra = UILabel()
-            extra.text = quotaText
-            extra.font = .systemFont(ofSize: 12)
-            extra.textColor = .secondaryLabel
-            extra.translatesAutoresizingMaskIntoConstraints = false
-            cell.contentView.addSubview(extra)
-            NSLayoutConstraint.activate([
-                extra.topAnchor.constraint(equalTo: cell.detailTextLabel!.bottomAnchor, constant: 8),
-                extra.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 20),
-                extra.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                extra.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -10),
-            ])
             return cell
         case .form:
             let cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
@@ -2938,6 +2959,7 @@ final class ProtocolBindViewController: BaseNativeViewController, UITableViewDat
                 cell.textLabel?.text = "建立双绑"
                 cell.textLabel?.textColor = .systemBlue
                 cell.textLabel?.textAlignment = .center
+                cell.accessoryType = .none
             default:
                 break
             }
@@ -3075,14 +3097,17 @@ final class ProtocolBindViewController: BaseNativeViewController, UITableViewDat
 
 
 final class YybProtocolViewController: BaseNativeViewController {
-    private let scrollView = UIScrollView()
-    private let stack = UIStackView()
+    private let topStack = UIStackView()
+    private let stickyHeaderRow = UIStackView()
+    private let headerActionGroup = UIStackView()
+    private let accountScrollView = UIScrollView()
+    private let accountStack = UIStackView()
     private let sectionTitleLabel = UILabel()
     private let serviceDot = UIView()
     private let serviceLabel = UILabel()
     private let loadingIndicator = UIActivityIndicatorView(style: .medium)
-    private let accountStack = UIStackView()
-    private let accountActionsHost = UIStackView()
+    private let refreshAccountBtn = UIButton(type: .system)
+    private let deleteAccountBtn = UIButton(type: .system)
     private var introBody = UILabel()
     private var introExpanded = false
     private var scanButton: UIButton!
@@ -3096,6 +3121,7 @@ final class YybProtocolViewController: BaseNativeViewController {
     private var didShowPendingAlert = false
     private var scanBusy = false
     private var checkBusy = false
+    private var accountActionBusy = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -3129,27 +3155,49 @@ final class YybProtocolViewController: BaseNativeViewController {
     }
 
     private func setupUI() {
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.alwaysBounceVertical = true
-        stack.axis = .vertical
-        stack.spacing = 14
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(scrollView)
-        scrollView.addSubview(stack)
+        topStack.axis = .vertical
+        topStack.spacing = 14
+        topStack.translatesAutoresizingMaskIntoConstraints = false
+
+        stickyHeaderRow.axis = .horizontal
+        stickyHeaderRow.alignment = .center
+        stickyHeaderRow.spacing = 6
+        stickyHeaderRow.translatesAutoresizingMaskIntoConstraints = false
+        stickyHeaderRow.backgroundColor = .systemGroupedBackground
+
+        accountScrollView.translatesAutoresizingMaskIntoConstraints = false
+        accountScrollView.alwaysBounceVertical = true
+        accountStack.axis = .vertical
+        accountStack.spacing = 10
+        accountStack.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(topStack)
+        view.addSubview(stickyHeaderRow)
+        view.addSubview(accountScrollView)
+        accountScrollView.addSubview(accountStack)
+
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 10),
-            stack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
-            stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -24),
-            stack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32),
+            topStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 10),
+            topStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            topStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+
+            stickyHeaderRow.topAnchor.constraint(equalTo: topStack.bottomAnchor, constant: 8),
+            stickyHeaderRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            stickyHeaderRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            stickyHeaderRow.heightAnchor.constraint(equalToConstant: 36),
+
+            accountScrollView.topAnchor.constraint(equalTo: stickyHeaderRow.bottomAnchor, constant: 4),
+            accountScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            accountScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            accountScrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            accountStack.topAnchor.constraint(equalTo: accountScrollView.topAnchor, constant: 4),
+            accountStack.leadingAnchor.constraint(equalTo: accountScrollView.leadingAnchor, constant: 16),
+            accountStack.trailingAnchor.constraint(equalTo: accountScrollView.trailingAnchor, constant: -16),
+            accountStack.bottomAnchor.constraint(equalTo: accountScrollView.bottomAnchor, constant: -24),
+            accountStack.widthAnchor.constraint(equalTo: accountScrollView.widthAnchor, constant: -32),
         ])
 
-        stack.addArrangedSubview(buildIntroCard())
-        stack.addArrangedSubview(buildProtocolBindEntry())
+        topStack.addArrangedSubview(buildIntroCard())
 
         let actionRow = UIStackView()
         actionRow.axis = .horizontal
@@ -3163,12 +3211,32 @@ final class YybProtocolViewController: BaseNativeViewController {
         }
         actionRow.addArrangedSubview(scanButton)
         actionRow.addArrangedSubview(reloadButton)
-        stack.addArrangedSubview(actionRow)
+        topStack.addArrangedSubview(actionRow)
 
         sectionTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         sectionTitleLabel.textColor = .secondaryLabel
         sectionTitleLabel.text = "账号列表 · 0"
         sectionTitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        headerActionGroup.axis = .horizontal
+        headerActionGroup.spacing = 6
+        headerActionGroup.alignment = .center
+        headerActionGroup.isHidden = true
+
+        configureHeaderActionButton(refreshAccountBtn, title: "刷新", danger: false)
+        configureHeaderActionButton(deleteAccountBtn, title: "删除", danger: true)
+        refreshAccountBtn.addAction(UIAction { [weak self] _ in
+            guard let self = self else { return }
+            self.animateHeaderButton(self.refreshAccountBtn)
+            self.refreshSelected()
+        }, for: .touchUpInside)
+        deleteAccountBtn.addAction(UIAction { [weak self] _ in
+            guard let self = self else { return }
+            self.animateHeaderButton(self.deleteAccountBtn)
+            self.deleteSelected()
+        }, for: .touchUpInside)
+        headerActionGroup.addArrangedSubview(refreshAccountBtn)
+        headerActionGroup.addArrangedSubview(deleteAccountBtn)
 
         serviceDot.translatesAutoresizingMaskIntoConstraints = false
         serviceDot.layer.cornerRadius = 3.5
@@ -3188,26 +3256,49 @@ final class YybProtocolViewController: BaseNativeViewController {
         status.alignment = .center
         status.setContentHuggingPriority(.required, for: .horizontal)
 
-        let sectionRow = UIStackView(arrangedSubviews: [sectionTitleLabel, UIView(), status])
-        sectionRow.axis = .horizontal
-        sectionRow.alignment = .center
-        sectionRow.spacing = 8
-        stack.addArrangedSubview(sectionRow)
+        let headerSpacer = UIView()
+        headerSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        headerSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        stickyHeaderRow.addArrangedSubview(sectionTitleLabel)
+        stickyHeaderRow.addArrangedSubview(headerSpacer)
+        stickyHeaderRow.addArrangedSubview(headerActionGroup)
+        stickyHeaderRow.addArrangedSubview(status)
 
         NSLayoutConstraint.activate([
             serviceDot.widthAnchor.constraint(equalToConstant: 7),
             serviceDot.heightAnchor.constraint(equalToConstant: 7),
+            refreshAccountBtn.widthAnchor.constraint(equalToConstant: 44),
+            deleteAccountBtn.widthAnchor.constraint(equalToConstant: 44),
         ])
+    }
 
-        accountStack.axis = .vertical
-        accountStack.spacing = 10
-        stack.addArrangedSubview(accountStack)
+    private func animateHeaderButton(_ button: UIButton) {
+        UIView.animate(withDuration: 0.08, animations: {
+            button.transform = CGAffineTransform(scaleX: 0.94, y: 0.94)
+            button.alpha = 0.75
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.12) {
+                button.transform = .identity
+                button.alpha = 1
+            }
+        })
+    }
 
-        accountActionsHost.axis = .horizontal
-        accountActionsHost.spacing = 8
-        accountActionsHost.distribution = .fillEqually
-        accountActionsHost.isHidden = true
-        stack.addArrangedSubview(accountActionsHost)
+    private func configureHeaderActionButton(_ button: UIButton, title: String, danger: Bool) {
+        button.setTitle(title, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 12, weight: .semibold)
+        button.layer.cornerRadius = 8
+        button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 4, bottom: 6, right: 4)
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.setContentCompressionResistancePriority(.required, for: .horizontal)
+        if danger {
+            button.backgroundColor = UIColor.systemRed.withAlphaComponent(0.12)
+            button.setTitleColor(.systemRed, for: .normal)
+        } else {
+            button.backgroundColor = UIColor.tertiarySystemFill
+            button.setTitleColor(.label, for: .normal)
+        }
     }
 
     private enum ActionStyle { case primary, secondary, danger, plain }
@@ -3302,55 +3393,8 @@ final class YybProtocolViewController: BaseNativeViewController {
 
     @objc private func toggleIntro() {
         introExpanded.toggle()
-        if let card = stack.arrangedSubviews.first {
-            card.removeFromSuperview()
-            stack.insertArrangedSubview(buildIntroCard(), at: 0)
-        }
-    }
-
-    private func buildProtocolBindEntry() -> UIView {
-        let card = UIView()
-        card.applyCardStyle(cornerRadius: 14)
-        card.translatesAutoresizingMaskIntoConstraints = false
-        let icon = UILabel()
-        icon.text = "🔗"
-        icon.font = .systemFont(ofSize: 22)
-        let title = UILabel()
-        title.text = "协议双绑"
-        title.font = .systemFont(ofSize: 15, weight: .semibold)
-        let sub = UILabel()
-        sub.text = "微信 wxid ↔ 应用宝 openid，点击进入管理"
-        sub.font = .systemFont(ofSize: 12)
-        sub.textColor = .secondaryLabel
-        sub.numberOfLines = 2
-        let chevron = UILabel()
-        chevron.text = "›"
-        chevron.font = .systemFont(ofSize: 22)
-        chevron.textColor = .tertiaryLabel
-        let textStack = UIStackView(arrangedSubviews: [title, sub])
-        textStack.axis = .vertical
-        textStack.spacing = 4
-        let row = UIStackView(arrangedSubviews: [icon, textStack, chevron])
-        row.axis = .horizontal
-        row.spacing = 12
-        row.alignment = .center
-        row.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(row)
-        NSLayoutConstraint.activate([
-            row.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
-            row.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
-            row.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
-            row.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
-        ])
-        card.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openProtocolBindPage)))
-        return card
-    }
-
-    @objc private func openProtocolBindPage() {
-        let vc = ProtocolBindViewController()
-        let nav = UINavigationController(rootViewController: vc)
-        nav.modalPresentationStyle = .pageSheet
-        present(nav, animated: true)
+        topStack.arrangedSubviews.first?.removeFromSuperview()
+        topStack.insertArrangedSubview(buildIntroCard(), at: 0)
     }
 
     private func animatePress(_ button: UIButton) {
@@ -3452,8 +3496,8 @@ final class YybProtocolViewController: BaseNativeViewController {
 
     private func renderAccounts() {
         accountStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        accountActionsHost.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        accountActionsHost.isHidden = true
+        let hasSelection = selectedAccount() != nil
+        headerActionGroup.isHidden = !hasSelection
 
         if accounts.isEmpty {
             let empty = UILabel()
@@ -3470,12 +3514,6 @@ final class YybProtocolViewController: BaseNativeViewController {
 
         for (index, acc) in accounts.enumerated() {
             accountStack.addArrangedSubview(buildAccountCard(acc, index: index))
-        }
-
-        if selectedAccount() != nil {
-            accountActionsHost.isHidden = false
-            accountActionsHost.addArrangedSubview(makeActionButton(title: "刷新", style: .plain) { [weak self] in self?.refreshSelected() })
-            accountActionsHost.addArrangedSubview(makeActionButton(title: "删除", style: .danger) { [weak self] in self?.deleteSelected() })
         }
     }
 
@@ -3536,55 +3574,52 @@ final class YybProtocolViewController: BaseNativeViewController {
         oid.textColor = .tertiaryLabel
         oid.numberOfLines = 2
         oid.lineBreakMode = .byTruncatingMiddle
-        let copyBtn = UIButton(type: .system)
-        copyBtn.setTitle("复制", for: .normal)
-        copyBtn.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
-        copyBtn.addAction(UIAction { _ in
+        oid.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        oidRow.addArrangedSubview(oidLabel)
+        oidRow.addArrangedSubview(oid)
+
+        let cardActionRow = UIStackView()
+        cardActionRow.axis = .horizontal
+        cardActionRow.spacing = 10
+        cardActionRow.distribution = .fillEqually
+        cardActionRow.translatesAutoresizingMaskIntoConstraints = false
+
+        let copyBtn = makeCardActionButton(title: "复制 OpenID", tint: .systemBlue) {
             let text = (acc.openid ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return }
             UIPasteboard.general.string = text
             self.showMessage("已复制 OpenID")
-        }, for: .touchUpInside)
-        oidRow.addArrangedSubview(oidLabel)
-        oidRow.addArrangedSubview(oid)
-        oidRow.addArrangedSubview(copyBtn)
+        }
+        cardActionRow.addArrangedSubview(copyBtn)
 
-        var bottomAnchor: NSLayoutYAxisAnchor = oidRow.bottomAnchor
-        var bottomConstant: CGFloat = -12
         wrap.addSubview(name)
         wrap.addSubview(badge)
         wrap.addSubview(meta)
         wrap.addSubview(oidRow)
+        wrap.addSubview(cardActionRow)
+
+        var actionTopAnchor: NSLayoutYAxisAnchor = oidRow.bottomAnchor
 
         if let binding = ProtocolBindStore.shared.binding(forOpenId: acc.openid) {
             let wxDev = ProtocolBindStore.shared.wxDevices.first { $0.wxid == binding.wxWxid }
             let peer = (wxDev?.nickname?.isEmpty == false ? wxDev?.nickname : nil) ?? binding.nickname ?? "微信设备"
-            let boundRow = UIStackView()
-            boundRow.axis = .horizontal
-            boundRow.spacing = 8
-            boundRow.translatesAutoresizingMaskIntoConstraints = false
             let boundLabel = UILabel()
             boundLabel.text = "已绑定微信 · \(peer) · \(shortenProtocolId(binding.wxWxid))"
             boundLabel.font = .systemFont(ofSize: 11)
             boundLabel.textColor = .secondaryLabel
             boundLabel.numberOfLines = 2
-            let unbindBtn = UIButton(type: .system)
-            unbindBtn.setTitle("解绑", for: .normal)
-            unbindBtn.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
-            unbindBtn.setTitleColor(.systemRed, for: .normal)
-            unbindBtn.addAction(UIAction { [weak self] _ in
-                self?.confirmProtocolUnbind(wxWxid: binding.wxWxid ?? "", yybOpenId: binding.yybOpenId ?? "")
-            }, for: .touchUpInside)
-            boundRow.addArrangedSubview(boundLabel)
-            boundRow.addArrangedSubview(unbindBtn)
-            wrap.addSubview(boundRow)
+            boundLabel.translatesAutoresizingMaskIntoConstraints = false
+            wrap.addSubview(boundLabel)
             NSLayoutConstraint.activate([
-                boundRow.topAnchor.constraint(equalTo: oidRow.bottomAnchor, constant: 6),
-                boundRow.leadingAnchor.constraint(equalTo: name.leadingAnchor),
-                boundRow.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+                boundLabel.topAnchor.constraint(equalTo: oidRow.bottomAnchor, constant: 6),
+                boundLabel.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+                boundLabel.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
             ])
-            bottomAnchor = boundRow.bottomAnchor
-            bottomConstant = -10
+            let unbindBtn = makeCardActionButton(title: "解除双绑", tint: .systemRed) { [weak self] in
+                self?.confirmProtocolUnbind(wxWxid: binding.wxWxid ?? "", yybOpenId: binding.yybOpenId ?? "")
+            }
+            cardActionRow.addArrangedSubview(unbindBtn)
+            actionTopAnchor = boundLabel.bottomAnchor
         }
 
         let expiry = formatYybExpiryText(acc)
@@ -3603,12 +3638,11 @@ final class YybProtocolViewController: BaseNativeViewController {
             expiryLabel.translatesAutoresizingMaskIntoConstraints = false
             wrap.addSubview(expiryLabel)
             NSLayoutConstraint.activate([
-                expiryLabel.topAnchor.constraint(equalTo: bottomAnchor, constant: 6),
+                expiryLabel.topAnchor.constraint(equalTo: actionTopAnchor, constant: 6),
                 expiryLabel.leadingAnchor.constraint(equalTo: name.leadingAnchor),
                 expiryLabel.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
             ])
-            bottomAnchor = expiryLabel.bottomAnchor
-            bottomConstant = -12
+            actionTopAnchor = expiryLabel.bottomAnchor
         }
 
         NSLayoutConstraint.activate([
@@ -3626,15 +3660,37 @@ final class YybProtocolViewController: BaseNativeViewController {
             oidRow.topAnchor.constraint(equalTo: meta.bottomAnchor, constant: 4),
             oidRow.leadingAnchor.constraint(equalTo: name.leadingAnchor),
             oidRow.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
-            bottomAnchor.constraint(lessThanOrEqualTo: wrap.bottomAnchor, constant: bottomConstant),
+            cardActionRow.topAnchor.constraint(equalTo: actionTopAnchor, constant: 10),
+            cardActionRow.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            cardActionRow.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            cardActionRow.bottomAnchor.constraint(equalTo: wrap.bottomAnchor, constant: -12),
         ])
 
         let tap = UITapGestureRecognizer(target: self, action: #selector(accountTapped(_:)))
-        tap.cancelsTouchesInView = false
+        tap.delegate = self
         wrap.isUserInteractionEnabled = true
         wrap.tag = index
         wrap.addGestureRecognizer(tap)
         return wrap
+    }
+
+    private func makeCardActionButton(title: String, tint: UIColor, action: @escaping () -> Void) -> UIButton {
+        let btn = UIButton(type: .system)
+        btn.setTitle(title, for: .normal)
+        btn.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
+        btn.setTitleColor(tint, for: .normal)
+        btn.backgroundColor = tint.withAlphaComponent(0.10)
+        btn.layer.cornerRadius = 8
+        btn.contentEdgeInsets = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
+        btn.addAction(UIAction { _ in action() }, for: .touchUpInside)
+        return btn
+    }
+
+    override func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        if touch.view is UIButton || touch.view?.superview is UIButton {
+            return false
+        }
+        return super.gestureRecognizer(gestureRecognizer, shouldReceive: touch)
     }
 
     @objc private func accountTapped(_ gesture: UITapGestureRecognizer) {
@@ -3698,20 +3754,27 @@ final class YybProtocolViewController: BaseNativeViewController {
 
     private func presentRegionPicker(config: PortalProxyConfig) {
         let packId = config.proxyDefaultPackid ?? ""
-        PortalService.shared.fetchProtocolProxyAreas(packId: packId) { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                let provinces = parseProxyAreaRows(try? result.get())
-                guard !provinces.isEmpty else {
-                    self.showMessage("地区列表加载失败")
-                    return
-                }
-                let sheet = UIAlertController(title: "选择登录地区", message: {
-                    if let bypass = config.proxyBypassRegionName, !bypass.isEmpty {
-                        return "「\(bypass)」等地区免代理直连；其他地区请选择与你所在地一致的省/市。异地登录可能只有1天有效期。"
+        PortalService.shared.fetchProtocolBindQuota { [weak self] quotaResult in
+            PortalService.shared.fetchProtocolProxyAreas(packId: packId) { [weak self] result in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    let provinces = parseProxyAreaRows(try? result.get())
+                    guard !provinces.isEmpty else {
+                        self.showMessage("地区列表加载失败，请检查网络后重试")
+                        return
                     }
-                    return "请选择与你当前所在地一致的省/市。异地登录可能只有1天有效期。"
-                }(), preferredStyle: .actionSheet)
+                    let quota = try? quotaResult.get()
+                    let costPreview = formatScanCostPreview(cost: quota?.scanLoginCost, hint: quota?.scanCostHint)
+                    var message = {
+                        if let bypass = config.proxyBypassRegionName, !bypass.isEmpty {
+                            return "「\(bypass)」等地区免代理直连；其他地区请选择与你所在地一致的省/市。异地登录可能只有1天有效期。"
+                        }
+                        return "请选择与你当前所在地一致的省/市。异地登录可能只有1天有效期。"
+                    }()
+                    if !costPreview.text.isEmpty {
+                        message += "\n\n" + costPreview.text
+                    }
+                    let sheet = UIAlertController(title: "选择登录地区", message: message, preferredStyle: .actionSheet)
                 for province in provinces.prefix(20) {
                     sheet.addAction(UIAlertAction(title: province.name, style: .default) { _ in
                         self.pickCityAndScan(province: province, packId: packId, config: config)
@@ -3719,6 +3782,7 @@ final class YybProtocolViewController: BaseNativeViewController {
                 }
                 sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
                 self.present(sheet, animated: true)
+                }
             }
         }
     }
@@ -3847,14 +3911,19 @@ final class YybProtocolViewController: BaseNativeViewController {
     }
 
     private func refreshSelected() {
+        guard !accountActionBusy else { return }
         guard let acc = selectedAccount() else {
             showMessage("请先选择一个账号")
             return
         }
+        accountActionBusy = true
+        refreshAccountBtn.isEnabled = false
         let ref = accountKey(acc)
         PortalService.shared.refreshYybAccount(ref: ref) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self = self else { return }
+                self.accountActionBusy = false
+                self.refreshAccountBtn.isEnabled = true
                 switch result {
                 case .failure(let error):
                     self.handle(error)
