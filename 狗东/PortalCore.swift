@@ -1088,14 +1088,6 @@ func parseProxyAreaRows(_ data: [String: Any]?) -> [(code: String, name: String)
 }
 
 func formatScanCostPreview(cost: Int?, hint: String?) -> (text: String, isFree: Bool) {
-    let trimmedHint = (hint ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-    if !trimmedHint.isEmpty {
-        let isFree = cost == 0
-            || trimmedHint.contains("免费")
-            || trimmedHint.contains("0积分")
-            || trimmedHint.contains("0 积分")
-        return (trimmedHint, isFree)
-    }
     if let cost, cost > 0 {
         return ("本次扫码将扣除 \(cost) 积分", false)
     }
@@ -1107,17 +1099,13 @@ func formatScanCostPreview(cost: Int?, hint: String?) -> (text: String, isFree: 
 
 func formatYybScanCostNote(cost: Int?, hint: String?) -> String? {
     let preview = formatScanCostPreview(cost: cost, hint: hint)
-    if preview.text.isEmpty { return nil }
-    if let cost, cost > 0, !preview.text.contains("确认登录后") {
-        return preview.text + "（确认登录后扣除）"
-    }
-    return preview.text
+    return preview.text.isEmpty ? nil : preview.text
 }
 
 func formatYybConfirmMessage(alreadyBound: Bool, cost: Int) -> String {
     if alreadyBound { return "续登录成功，未扣除积分" }
     if cost > 0 { return "扫码成功，已扣除 \(cost) 积分" }
-    return "扫码成功，账号已绑定（免费）"
+    return "扫码成功，账号已绑定"
 }
 
 func formatYybExpiryText(_ acc: PortalYybAccount) -> (text: String, warn: Bool, expired: Bool) {
