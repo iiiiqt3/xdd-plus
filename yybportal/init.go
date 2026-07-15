@@ -69,6 +69,7 @@ func Init(c ModuleConfig) error {
 	ready = true
 	initErr = nil
 	RegisterAccountProxyResolver()
+	RegisterProxyLoginHooks()
 	RegisterProtocolGatewayHandlers()
 	startJdCron()
 	return nil
