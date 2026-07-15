@@ -2815,6 +2815,7 @@ final class YybProtocolViewController: BaseNativeViewController {
     private let loadingIndicator = UIActivityIndicatorView(style: .medium)
     private let accountStack = UIStackView()
     private let accountActionsHost = UIStackView()
+    private let bindCardStack = UIStackView()
     private var scanButton: UIButton!
     private var reloadButton: UIButton!
     private var accounts: [PortalYybAccount] = []
@@ -2832,6 +2833,7 @@ final class YybProtocolViewController: BaseNativeViewController {
         view.backgroundColor = .systemGroupedBackground
         setupUI()
         NotificationCenter.default.addObserver(self, selector: #selector(onStoreUpdated), name: AppNotifications.yybStatusDidUpdate, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onProtocolBindUpdated), name: AppNotifications.protocolBindDidUpdate, object: nil)
         applyStore(showPendingAlert: false)
         if YybAccountStore.shared.status == nil, !YybAccountStore.shared.isLoading {
             YybAccountStore.shared.prefetch(autoCheck: true)
@@ -2841,6 +2843,7 @@ final class YybProtocolViewController: BaseNativeViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         applyStore(showPendingAlert: true)
+        ProtocolBindStore.shared.reload(yybAccounts: accounts)
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -2926,6 +2929,11 @@ final class YybProtocolViewController: BaseNativeViewController {
         accountStack.spacing = 10
         stack.addArrangedSubview(accountStack)
 
+        bindCardStack.axis = .vertical
+        bindCardStack.spacing = 8
+        bindCardStack.isHidden = true
+        stack.addArrangedSubview(bindCardStack)
+
         accountActionsHost.axis = .horizontal
         accountActionsHost.spacing = 8
         accountActionsHost.distribution = .fillEqually
@@ -2989,6 +2997,11 @@ final class YybProtocolViewController: BaseNativeViewController {
         return true
     }
 
+    @objc private func onProtocolBindUpdated() {
+        renderAccounts()
+        renderBindCard()
+    }
+
     @objc private func onStoreUpdated() {
         applyStore(showPendingAlert: isViewLoaded && view.window != nil)
     }
@@ -3010,6 +3023,7 @@ final class YybProtocolViewController: BaseNativeViewController {
             selectedKey = accounts.first.map { accountKey($0) } ?? ""
         }
         renderAccounts()
+        renderBindCard()
         updateActionButtonsEnabled()
 
         if showPendingAlert, !didShowPendingAlert, let msg = store.consumePendingAlert() {
@@ -3096,7 +3110,6 @@ final class YybProtocolViewController: BaseNativeViewController {
         if selectedAccount() != nil {
             accountActionsHost.isHidden = false
             accountActionsHost.addArrangedSubview(makeActionButton(title: "刷新", style: .plain) { [weak self] in self?.refreshSelected() })
-            accountActionsHost.addArrangedSubview(makeActionButton(title: "同步", style: .plain) { [weak self] in self?.resyncSelected() })
             accountActionsHost.addArrangedSubview(makeActionButton(title: "删除", style: .danger) { [weak self] in self?.deleteSelected() })
         }
     }
@@ -3151,10 +3164,68 @@ final class YybProtocolViewController: BaseNativeViewController {
         oid.lineBreakMode = .byTruncatingMiddle
         oid.translatesAutoresizingMaskIntoConstraints = false
 
+        var bottomAnchor = oid.bottomAnchor
+        var bottomConstant: CGFloat = -12
         wrap.addSubview(name)
         wrap.addSubview(badge)
         wrap.addSubview(meta)
         wrap.addSubview(oid)
+
+        if let binding = ProtocolBindStore.shared.binding(forOpenId: acc.openid) {
+            let wxDev = ProtocolBindStore.shared.wxDevices.first { $0.wxid == binding.wxWxid }
+            let peer = (wxDev?.nickname?.isEmpty == false ? wxDev?.nickname : nil) ?? binding.nickname ?? "微信设备"
+            let boundRow = UIStackView()
+            boundRow.axis = .horizontal
+            boundRow.spacing = 8
+            boundRow.translatesAutoresizingMaskIntoConstraints = false
+            let boundLabel = UILabel()
+            boundLabel.text = "已绑定微信 · \(peer) · \(shortenProtocolId(binding.wxWxid))"
+            boundLabel.font = .systemFont(ofSize: 11)
+            boundLabel.textColor = .secondaryLabel
+            boundLabel.numberOfLines = 2
+            let unbindBtn = UIButton(type: .system)
+            unbindBtn.setTitle("解绑", for: .normal)
+            unbindBtn.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
+            unbindBtn.setTitleColor(.systemRed, for: .normal)
+            unbindBtn.addAction(UIAction { [weak self] _ in
+                self?.confirmProtocolUnbind(wxWxid: binding.wxWxid ?? "", yybOpenId: binding.yybOpenId ?? "")
+            }, for: .touchUpInside)
+            boundRow.addArrangedSubview(boundLabel)
+            boundRow.addArrangedSubview(unbindBtn)
+            wrap.addSubview(boundRow)
+            NSLayoutConstraint.activate([
+                boundRow.topAnchor.constraint(equalTo: oid.bottomAnchor, constant: 6),
+                boundRow.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+                boundRow.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            ])
+            bottomAnchor = boundRow.bottomAnchor
+            bottomConstant = -10
+        }
+
+        let expiry = formatYybExpiryText(acc)
+        if !expiry.text.isEmpty {
+            let expiryLabel = UILabel()
+            expiryLabel.text = expiry.text
+            expiryLabel.font = .systemFont(ofSize: 11)
+            expiryLabel.numberOfLines = 0
+            if expiry.expired {
+                expiryLabel.textColor = .systemRed
+            } else if expiry.warn {
+                expiryLabel.textColor = .systemOrange
+            } else {
+                expiryLabel.textColor = .tertiaryLabel
+            }
+            expiryLabel.translatesAutoresizingMaskIntoConstraints = false
+            wrap.addSubview(expiryLabel)
+            NSLayoutConstraint.activate([
+                expiryLabel.topAnchor.constraint(equalTo: bottomAnchor, constant: 6),
+                expiryLabel.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+                expiryLabel.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            ])
+            bottomAnchor = expiryLabel.bottomAnchor
+            bottomConstant = -12
+        }
+
         NSLayoutConstraint.activate([
             wrap.heightAnchor.constraint(greaterThanOrEqualToConstant: 96),
             name.topAnchor.constraint(equalTo: wrap.topAnchor, constant: 12),
@@ -3170,7 +3241,7 @@ final class YybProtocolViewController: BaseNativeViewController {
             oid.topAnchor.constraint(equalTo: meta.bottomAnchor, constant: 4),
             oid.leadingAnchor.constraint(equalTo: name.leadingAnchor),
             oid.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
-            oid.bottomAnchor.constraint(lessThanOrEqualTo: wrap.bottomAnchor, constant: -12),
+            bottomAnchor.constraint(lessThanOrEqualTo: wrap.bottomAnchor, constant: bottomConstant),
         ])
 
         let tap = UITapGestureRecognizer(target: self, action: #selector(accountTapped(_:)))
@@ -3187,6 +3258,135 @@ final class YybProtocolViewController: BaseNativeViewController {
         renderAccounts()
     }
 
+    private func renderBindCard() {
+        bindCardStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        guard ProtocolBindStore.shared.shouldShowBindUI(yybAccounts: accounts) else {
+            bindCardStack.isHidden = true
+            return
+        }
+        bindCardStack.isHidden = false
+        let store = ProtocolBindStore.shared
+        let quota = store.quota
+        let card = UIView()
+        card.applyCardStyle(cornerRadius: 14)
+        let title = UILabel()
+        title.text = "协议双绑"
+        title.font = .systemFont(ofSize: 15, weight: .semibold)
+        let quotaLabel = UILabel()
+        quotaLabel.text = "在线微信 \(quota?.onlineWxSlots ?? 0) · 已绑 \(quota?.boundPairs ?? 0) · 免费名额 \(quota?.freeSlots ?? 0)"
+        quotaLabel.font = .systemFont(ofSize: 12)
+        quotaLabel.textColor = .secondaryLabel
+        let hint = UILabel()
+        hint.text = "将微信协议 wxid 与应用宝 openid 配对后，系统会优先走应用宝路由获取小程序凭证。"
+        hint.font = .systemFont(ofSize: 12)
+        hint.textColor = .secondaryLabel
+        hint.numberOfLines = 0
+        let wxPicker = UIButton(type: .system)
+        wxPicker.contentHorizontalAlignment = .left
+        wxPicker.setTitle("选择微信 wxid", for: .normal)
+        wxPicker.titleLabel?.font = .systemFont(ofSize: 14)
+        wxPicker.backgroundColor = .secondarySystemGroupedBackground
+        wxPicker.layer.cornerRadius = 8
+        wxPicker.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+        let yybPicker = UIButton(type: .system)
+        yybPicker.contentHorizontalAlignment = .left
+        yybPicker.setTitle("选择应用宝 openid", for: .normal)
+        yybPicker.titleLabel?.font = .systemFont(ofSize: 14)
+        yybPicker.backgroundColor = .secondarySystemGroupedBackground
+        yybPicker.layer.cornerRadius = 8
+        yybPicker.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+        var selectedWx: PortalWxDevice?
+        var selectedYyb: PortalYybAccount?
+        let unboundWx = store.unboundWxDevices()
+        let unboundYyb = store.unboundYybAccounts(accounts)
+        wxPicker.addAction(UIAction { [weak self] _ in
+            guard let self = self else { return }
+            let sheet = UIAlertController(title: "选择微信", message: nil, preferredStyle: .actionSheet)
+            for dev in unboundWx {
+                let label = "\(dev.nickname ?? "微信设备") · \(shortenProtocolId(dev.wxid))\(dev.online == true ? "" : "（离线）")"
+                sheet.addAction(UIAlertAction(title: label, style: .default) { _ in
+                    selectedWx = dev
+                    wxPicker.setTitle(label, for: .normal)
+                })
+            }
+            sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
+            self.present(sheet, animated: true)
+        }, for: .touchUpInside)
+        yybPicker.addAction(UIAction { [weak self] _ in
+            guard let self = self else { return }
+            let sheet = UIAlertController(title: "选择应用宝", message: nil, preferredStyle: .actionSheet)
+            for acc in unboundYyb {
+                let alive = ((acc.status ?? "").lowercased() == "alive" || (acc.status ?? "").lowercased() == "online")
+                let label = "\(self.displayAccountName(acc)) · \(shortenProtocolId(acc.openid))\(alive ? "" : "（失效）")"
+                sheet.addAction(UIAlertAction(title: label, style: .default) { _ in
+                    selectedYyb = acc
+                    yybPicker.setTitle(label, for: .normal)
+                })
+            }
+            sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
+            self.present(sheet, animated: true)
+        }, for: .touchUpInside)
+        let bindBtn = UIButton(type: .system)
+        bindBtn.setTitle("建立双绑", for: .normal)
+        bindBtn.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+        bindBtn.backgroundColor = .systemBlue
+        bindBtn.setTitleColor(.white, for: .normal)
+        bindBtn.layer.cornerRadius = 10
+        bindBtn.heightAnchor.constraint(equalToConstant: 42).isActive = true
+        bindBtn.addAction(UIAction { [weak self] _ in
+            guard let self = self, let wx = selectedWx, let yyb = selectedYyb else {
+                self?.showMessage("请从列表选择微信和应用宝账号")
+                return
+            }
+            PortalService.shared.protocolBind(
+                wxWxid: wx.wxid ?? "",
+                yybOpenId: yyb.openid ?? "",
+                nickname: yyb.nickname ?? ""
+            ) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .failure(let error):
+                        self.handle(error)
+                    case .success:
+                        self.showMessage("绑定成功")
+                        ProtocolBindStore.shared.reload(yybAccounts: self.accounts)
+                    }
+                }
+            }
+        }, for: .touchUpInside)
+        let vstack = UIStackView(arrangedSubviews: [title, quotaLabel, hint, wxPicker, yybPicker, bindBtn])
+        vstack.axis = .vertical
+        vstack.spacing = 10
+        vstack.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(vstack)
+        NSLayoutConstraint.activate([
+            vstack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            vstack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            vstack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            vstack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+        ])
+        bindCardStack.addArrangedSubview(card)
+    }
+
+    private func confirmProtocolUnbind(wxWxid: String, yybOpenId: String) {
+        let alert = UIAlertController(title: "解除双绑", message: "确定解除该微信与应用宝账号的双绑关系？", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+        alert.addAction(UIAlertAction(title: "解绑", style: .destructive) { [weak self] _ in
+            PortalService.shared.protocolUnbind(wxWxid: wxWxid, yybOpenId: yybOpenId) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .failure(let error):
+                        self?.handle(error)
+                    case .success(let msg):
+                        self?.showMessage(msg)
+                        ProtocolBindStore.shared.reload(yybAccounts: self?.accounts ?? [])
+                    }
+                }
+            }
+        })
+        present(alert, animated: true)
+    }
+
     private static func yybScanCostNote(cost: Int?, hint: String?) -> String? {
         if let cost, cost > 0 {
             return "本次扫码将扣除 \(cost) 积分（确认登录后扣除）"
@@ -3199,9 +3399,80 @@ final class YybProtocolViewController: BaseNativeViewController {
     }
 
     private func startScan() {
+        if scanBusy || checkBusy { return }
         scanBusy = true
         updateActionButtonsEnabled()
-        PortalService.shared.createYybQr { [weak self] result in
+        PortalService.shared.fetchProtocolProxyConfig { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.scanBusy = false
+                self.updateActionButtonsEnabled()
+                switch result {
+                case .failure:
+                    self.beginYybQrScan(regionCode: "", regionName: "", useProxy: false, packId: "")
+                case .success(let cfg):
+                    if cfg.proxyEnabled == true {
+                        self.presentRegionPicker(config: cfg)
+                    } else {
+                        self.beginYybQrScan(regionCode: "", regionName: "", useProxy: false, packId: cfg.proxyDefaultPackid ?? "")
+                    }
+                }
+            }
+        }
+    }
+
+    private func presentRegionPicker(config: PortalProxyConfig) {
+        let packId = config.proxyDefaultPackid ?? ""
+        PortalService.shared.fetchProtocolProxyAreas(packId: packId) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                let provinces = parseProxyAreaRows(try? result.get())
+                guard !provinces.isEmpty else {
+                    self.showMessage("地区列表加载失败")
+                    return
+                }
+                let sheet = UIAlertController(title: "选择登录地区", message: {
+                    if let bypass = config.proxyBypassRegionName, !bypass.isEmpty {
+                        return "「\(bypass)」等地区免代理直连；其他地区请选择与你所在地一致的省/市。异地登录可能只有1天有效期。"
+                    }
+                    return "请选择与你当前所在地一致的省/市。异地登录可能只有1天有效期。"
+                }(), preferredStyle: .actionSheet)
+                for province in provinces.prefix(20) {
+                    sheet.addAction(UIAlertAction(title: province.name, style: .default) { _ in
+                        self.pickCityAndScan(province: province, packId: packId, config: config)
+                    })
+                }
+                sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
+                self.present(sheet, animated: true)
+            }
+        }
+    }
+
+    private func pickCityAndScan(province: (code: String, name: String), packId: String, config: PortalProxyConfig) {
+        PortalService.shared.fetchProtocolProxyAreas(parentCode: province.code, packId: packId) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                let cities = parseProxyAreaRows(try? result.get())
+                guard !cities.isEmpty else {
+                    self.showMessage("城市列表加载失败")
+                    return
+                }
+                let sheet = UIAlertController(title: "选择城市", message: province.name, preferredStyle: .actionSheet)
+                for city in cities.prefix(30) {
+                    sheet.addAction(UIAlertAction(title: city.name, style: .default) { _ in
+                        self.beginYybQrScan(regionCode: city.code, regionName: city.name, useProxy: true, packId: packId)
+                    })
+                }
+                sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
+                self.present(sheet, animated: true)
+            }
+        }
+    }
+
+    private func beginYybQrScan(regionCode: String, regionName: String, useProxy: Bool, packId: String) {
+        scanBusy = true
+        updateActionButtonsEnabled()
+        PortalService.shared.createYybQr(regionCode: regionCode, regionName: regionName, useProxy: useProxy, packId: packId) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.scanBusy = false
@@ -3322,31 +3593,6 @@ final class YybProtocolViewController: BaseNativeViewController {
         }
     }
 
-    private func resyncSelected() {
-        guard let acc = selectedAccount() else {
-            showMessage("请先选择一个账号")
-            return
-        }
-        PortalService.shared.resyncYybAccount(ref: accountKey(acc)) { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                switch result {
-                case .failure(let error):
-                    self.handle(error)
-                case .success:
-                    self.showMessage("资料已同步")
-                    self.didShowPendingAlert = false
-                    YybAccountStore.shared.reload(autoCheck: true, showAlert: true) { [weak self] _ in
-                        if let alert = YybAccountStore.shared.consumePendingAlert() {
-                            self?.showMessage(alert, title: "检测完成")
-                        }
-                        self?.applyStore(showPendingAlert: false)
-                    }
-                }
-            }
-        }
-    }
-
     private func deleteSelected() {
         guard let acc = selectedAccount() else {
             showMessage("请先选择一个账号")
@@ -3413,6 +3659,7 @@ final class WechatProtocolViewController: BaseNativeViewController {
         super.viewWillAppear(animated)
         loadStatus()
         loadDevices()
+        ProtocolBindStore.shared.reload()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -3594,7 +3841,9 @@ final class WechatProtocolViewController: BaseNativeViewController {
             switch result {
             case .failure: break
             case .success(let devices):
-                self?.renderDevices(devices)
+                ProtocolBindStore.shared.reload { [weak self] in
+                    self?.renderDevices(devices)
+                }
             }
         }
     }
@@ -3695,16 +3944,9 @@ final class WechatProtocolViewController: BaseNativeViewController {
             let alert = UIAlertController(title: "确认移除", message: "确认移除设备「\(deviceName)」？\n\n⚠️ 移除后需要重新扫码登录，将再次扣除积分。", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "取消", style: .cancel))
             alert.addAction(UIAlertAction(title: "确认移除", style: .destructive) { _ in
-                if isPrimary {
-                    PortalService.shared.removeWxDevice(id: device.id) { result in
-                        if case .failure(let error) = result { self?.handle(error) }
-                        else { self?.loadDevices() }
-                    }
-                } else {
-                    PortalService.shared.removeWxDevice(id: device.id) { result in
-                        if case .failure(let error) = result { self?.handle(error) }
-                        else { self?.loadDevices() }
-                    }
+                PortalService.shared.removeWxDevice(id: device.id) { result in
+                    if case .failure(let error) = result { self?.handle(error) }
+                    else { self?.loadDevices() }
                 }
             })
             self?.present(alert, animated: true)
@@ -3715,7 +3957,32 @@ final class WechatProtocolViewController: BaseNativeViewController {
         btnStack.axis = .vertical
         btnStack.spacing = 8
 
-        let innerStack = UIStackView(arrangedSubviews: [badgesLabel, nameLabel, infoLabel, btnStack])
+        var stackViews: [UIView] = [badgesLabel, nameLabel, infoLabel]
+        if let binding = ProtocolBindStore.shared.binding(forWxid: device.wxid) {
+            let yybAcc = YybAccountStore.shared.accounts.first { $0.openid == binding.yybOpenId }
+            let peer = (yybAcc?.nickname?.isEmpty == false ? yybAcc?.nickname : nil) ?? "应用宝账号"
+            let boundRow = UIStackView()
+            boundRow.axis = .horizontal
+            boundRow.spacing = 8
+            let boundLabel = UILabel()
+            boundLabel.text = "已绑定应用宝 · \(peer) · \(shortenProtocolId(binding.yybOpenId))"
+            boundLabel.font = .systemFont(ofSize: 11)
+            boundLabel.textColor = .secondaryLabel
+            boundLabel.numberOfLines = 2
+            let unbindBtn = UIButton(type: .system)
+            unbindBtn.setTitle("解绑", for: .normal)
+            unbindBtn.titleLabel?.font = .systemFont(ofSize: 11, weight: .semibold)
+            unbindBtn.setTitleColor(.systemRed, for: .normal)
+            unbindBtn.addAction(UIAction { [weak self] _ in
+                self?.confirmProtocolUnbind(wxWxid: binding.wxWxid ?? "", yybOpenId: binding.yybOpenId ?? "")
+            }, for: .touchUpInside)
+            boundRow.addArrangedSubview(boundLabel)
+            boundRow.addArrangedSubview(unbindBtn)
+            stackViews.append(boundRow)
+        }
+        stackViews.append(btnStack)
+
+        let innerStack = UIStackView(arrangedSubviews: stackViews)
         innerStack.axis = .vertical
         innerStack.spacing = 8
         innerStack.translatesAutoresizingMaskIntoConstraints = false
@@ -3727,6 +3994,25 @@ final class WechatProtocolViewController: BaseNativeViewController {
             innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14)
         ])
         return card
+    }
+
+    private func confirmProtocolUnbind(wxWxid: String, yybOpenId: String) {
+        let alert = UIAlertController(title: "解除双绑", message: "确定解除该微信与应用宝账号的双绑关系？", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+        alert.addAction(UIAlertAction(title: "解绑", style: .destructive) { [weak self] _ in
+            PortalService.shared.protocolUnbind(wxWxid: wxWxid, yybOpenId: yybOpenId) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .failure(let error):
+                        self?.handle(error)
+                    case .success(let msg):
+                        self?.showMessage(msg)
+                        ProtocolBindStore.shared.reload { self?.loadDevices() }
+                    }
+                }
+            }
+        })
+        present(alert, animated: true)
     }
 
     private func confirmWxActionForDevice(title: String, message: String, path: String, wxid: String?) {

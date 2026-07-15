@@ -99,6 +99,7 @@ enum AppNotifications {
     static let sessionRequiresLogin = Notification.Name("PortalSessionRequiresLogin")
     static let jdAuthCallback = Notification.Name("JDAuthCallbackNotification")
     static let yybStatusDidUpdate = Notification.Name("PortalYybStatusDidUpdate")
+    static let protocolBindDidUpdate = Notification.Name("PortalProtocolBindDidUpdate")
 }
 
 
@@ -260,6 +261,31 @@ struct PortalYybAccount: Decodable {
     let status: String?
     let lastCheckedAt: Int64?
     let createdAt: Int64?
+    let loginAt: Int64?
+    let expiresAt: Int64?
+}
+
+struct PortalProtocolBinding: Decodable {
+    let id: Int64?
+    let userNumber: Int?
+    let wxWxid: String?
+    let yybOpenId: String?
+    let nickname: String?
+}
+
+struct PortalProtocolBindQuota: Decodable {
+    let onlineWxSlots: Int?
+    let boundPairs: Int?
+    let freeSlots: Int?
+    let scanLoginCost: Int?
+    let scanCostHint: String?
+}
+
+struct PortalProxyConfig: Decodable {
+    let proxyEnabled: Bool?
+    let proxyAccountConfigured: Bool?
+    let proxyDefaultPackid: String?
+    let proxyBypassRegionName: String?
 }
 
 struct PortalYybCheckSummary: Decodable {
@@ -919,10 +945,10 @@ final class YybAccountStore {
 
     var serviceTitle: String {
         guard let st = status else { return "待机" }
-        if st.enabled != true || st.ready != true {
-            return st.message ?? "不可用"
+        if st.enabled == true && st.ready == true {
+            return "已启动"
         }
-        return "正常"
+        return "未启动"
     }
 
     func clear() {
@@ -993,6 +1019,142 @@ final class YybAccountStore {
                     completion?(.failure(error))
                 }
             }
+        }
+    }
+}
+
+
+func shortenProtocolId(_ id: String?, head: Int = 8, tail: Int = 6) -> String {
+    let s = (id ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    if s.count <= head + tail + 3 { return s }
+    return String(s.prefix(head)) + "…" + String(s.suffix(tail))
+}
+
+func parseProxyAreaRows(_ data: [String: Any]?) -> [(code: String, name: String)] {
+    guard let data else { return [] }
+    let keys = ["list", "provinceList", "city", "cityList"]
+    var rows: [[String: Any]] = []
+    for key in keys {
+        if let arr = data[key] as? [[String: Any]], !arr.isEmpty {
+            rows = arr
+            break
+        }
+    }
+    return rows.compactMap { row in
+        let code = (row["regionCode"] as? String) ?? (row["region_code"] as? String) ?? ""
+        let name = (row["regionName"] as? String) ?? (row["region_name"] as? String) ?? code
+        return code.isEmpty ? nil : (code, name)
+    }
+}
+
+func formatYybExpiryText(_ acc: PortalYybAccount) -> (text: String, warn: Bool, expired: Bool) {
+    let loginSec = acc.loginAt ?? acc.createdAt ?? 0
+    if loginSec <= 0 { return ("", false, false) }
+    let expireSec = acc.expiresAt ?? (loginSec + 30 * 24 * 3600)
+    let remain = expireSec - Int64(Date().timeIntervalSince1970)
+    if remain <= 0 {
+        return ("登录已过期，请重新扫码登录延期", false, true)
+    }
+    let days = remain / 86400
+    let hours = (remain % 86400) / 3600
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "zh_CN")
+    formatter.dateFormat = "MM-dd HH:mm"
+    let expireText = formatter.string(from: Date(timeIntervalSince1970: TimeInterval(expireSec)))
+    let warn = remain < 3 * 86400
+    return ("剩余有效期 \(days) 天 \(hours) 小时（至 \(expireText)）", warn, false)
+}
+
+
+/// 协议双绑缓存：微信 wxid ↔ 应用宝 openid
+final class ProtocolBindStore {
+    static let shared = ProtocolBindStore()
+
+    private(set) var bindings: [PortalProtocolBinding] = []
+    private(set) var quota: PortalProtocolBindQuota?
+    private(set) var wxDevices: [PortalWxDevice] = []
+    private(set) var isLoading = false
+
+    private init() {}
+
+    func binding(forWxid wxid: String?) -> PortalProtocolBinding? {
+        let key = (wxid ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return bindings.first { ($0.wxWxid ?? "") == key }
+    }
+
+    func binding(forOpenId openid: String?) -> PortalProtocolBinding? {
+        let key = (openid ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return bindings.first { ($0.yybOpenId ?? "") == key }
+    }
+
+    func boundWxSet() -> Set<String> {
+        Set(bindings.compactMap { $0.wxWxid }.filter { !$0.isEmpty })
+    }
+
+    func boundOpenIdSet() -> Set<String> {
+        Set(bindings.compactMap { $0.yybOpenId }.filter { !$0.isEmpty })
+    }
+
+    func unboundWxDevices() -> [PortalWxDevice] {
+        let bound = boundWxSet()
+        return wxDevices.filter { let wx = $0.wxid ?? ""; return !wx.isEmpty && !bound.contains(wx) }
+    }
+
+    func unboundYybAccounts(_ accounts: [PortalYybAccount]) -> [PortalYybAccount] {
+        let bound = boundOpenIdSet()
+        return accounts.filter { let oid = $0.openid ?? ""; return !oid.isEmpty && !bound.contains(oid) }
+    }
+
+    func shouldShowBindUI(yybAccounts: [PortalYybAccount]) -> Bool {
+        !wxDevices.isEmpty && !yybAccounts.isEmpty &&
+            (!unboundWxDevices().isEmpty || !unboundYybAccounts(yybAccounts).isEmpty)
+    }
+
+    func clear() {
+        bindings = []
+        quota = nil
+        wxDevices = []
+        isLoading = false
+        NotificationCenter.default.post(name: AppNotifications.protocolBindDidUpdate, object: nil)
+    }
+
+    func reload(yybAccounts: [PortalYybAccount] = [], completion: (() -> Void)? = nil) {
+        guard AppSessionStore.shared.isAuthenticated else {
+            completion?()
+            return
+        }
+        guard !isLoading else {
+            completion?()
+            return
+        }
+        isLoading = true
+        let group = DispatchGroup()
+        var capturedError: APIError?
+
+        group.enter()
+        PortalService.shared.fetchProtocolBindings { [weak self] result in
+            if case .success(let rows) = result { self?.bindings = rows }
+            else if case .failure(let error) = result { capturedError = error }
+            group.leave()
+        }
+        group.enter()
+        PortalService.shared.fetchProtocolBindQuota { [weak self] result in
+            if case .success(let q) = result { self?.quota = q }
+            group.leave()
+        }
+        if wxDevices.isEmpty {
+            group.enter()
+            PortalService.shared.fetchWxDevices { [weak self] result in
+                if case .success(let devices) = result { self?.wxDevices = devices }
+                group.leave()
+            }
+        }
+        _ = yybAccounts
+
+        group.notify(queue: .main) { [weak self] in
+            self?.isLoading = false
+            NotificationCenter.default.post(name: AppNotifications.protocolBindDidUpdate, object: nil)
+            completion?()
         }
     }
 }
@@ -1358,8 +1520,81 @@ final class PortalService {
         APIClient.shared.requestData(path: "/api/portal/yyb/status\(q)", completion: completion)
     }
 
-    func createYybQr(completion: @escaping (Result<PortalYybQrCreateResult, APIError>) -> Void) {
-        APIClient.shared.requestData(path: "/api/portal/yyb/qr", method: "POST", completion: completion)
+    func createYybQr(
+        regionCode: String = "",
+        regionName: String = "",
+        useProxy: Bool = false,
+        packId: String = "",
+        completion: @escaping (Result<PortalYybQrCreateResult, APIError>) -> Void
+    ) {
+        let payload: [String: Any] = [
+            "regionCode": regionCode,
+            "regionName": regionName,
+            "useProxy": useProxy,
+            "packId": packId,
+        ]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(
+            path: "/api/portal/yyb/qr",
+            method: "POST",
+            headers: ["Content-Type": "application/json"],
+            body: body,
+            completion: completion
+        )
+    }
+
+    func fetchProtocolBindings(completion: @escaping (Result<[PortalProtocolBinding], APIError>) -> Void) {
+        APIClient.shared.requestList(path: "/api/portal/protocol/bindings", completion: completion)
+    }
+
+    func fetchProtocolBindQuota(completion: @escaping (Result<PortalProtocolBindQuota, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/protocol/bind/quota", completion: completion)
+    }
+
+    func protocolBind(wxWxid: String, yybOpenId: String, nickname: String = "", completion: @escaping (Result<PortalProtocolBinding, APIError>) -> Void) {
+        let payload: [String: Any] = ["wxWxid": wxWxid, "yybOpenId": yybOpenId, "nickname": nickname]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: "/api/portal/protocol/bind", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func protocolUnbind(wxWxid: String, yybOpenId: String, completion: @escaping (Result<String, APIError>) -> Void) {
+        requestMessageJSON(path: "/api/portal/protocol/unbind", payload: ["wxWxid": wxWxid, "yybOpenId": yybOpenId], completion: completion)
+    }
+
+    func fetchProtocolProxyConfig(completion: @escaping (Result<PortalProxyConfig, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/protocol/proxy/config", completion: completion)
+    }
+
+    func fetchProtocolProxyAreas(parentCode: String = "", packId: String = "", completion: @escaping (Result<[String: Any], APIError>) -> Void) {
+        let payload: [String: Any] = ["parent_code": parentCode, "packid": packId]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestRaw(path: "/api/portal/protocol/proxy/areas", method: "POST", headers: ["Content-Type": "application/json"], body: body) { result in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let raw):
+                guard let data = raw.data(using: .utf8),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let code = json["code"] as? Int else {
+                    completion(.failure(APIError(message: "数据解析失败", isUnauthorized: false)))
+                    return
+                }
+                if code == 0, let payload = json["data"] as? [String: Any] {
+                    completion(.success(payload))
+                } else {
+                    completion(.failure(APIError(message: (json["msg"] as? String) ?? "请求失败", isUnauthorized: code == 401 || code == 403)))
+                }
+            }
+        }
     }
 
     func pollYybQr(sessionId: String, completion: @escaping (Result<PortalYybQrPollResult, APIError>) -> Void) {
