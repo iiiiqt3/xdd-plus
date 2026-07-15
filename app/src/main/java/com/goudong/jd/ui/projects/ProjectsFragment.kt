@@ -1389,17 +1389,15 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                     setPadding(0, ctx.dp(6), 0, 0)
                 })
             }
-            val (expiryText, expired) = formatYybExpiry(acc)
+            val (expiryText, warn) = formatYybExpiry(acc)
             if (expiryText.isNotBlank()) {
                 addView(TextView(ctx).apply {
                     text = expiryText
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                    setTypeface(typeface, if (warn) Typeface.BOLD else Typeface.NORMAL)
                     setTextColor(
-                        when {
-                            expiryText.startsWith("登录已过期") -> Color.parseColor("#DC2626")
-                            expired -> Color.parseColor("#D97706")
-                            else -> ctx.themeColor(R.color.text_muted)
-                        }
+                        if (expiryText.startsWith("登录已过期")) Color.parseColor("#DC2626")
+                        else ctx.themeColor(R.color.brand_primary)
                     )
                     setPadding(0, ctx.dp(6), 0, 0)
                 })
