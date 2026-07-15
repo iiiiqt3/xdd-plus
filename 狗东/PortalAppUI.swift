@@ -3720,14 +3720,7 @@ final class YybProtocolViewController: BaseNativeViewController {
     }
 
     private static func yybScanCostNote(cost: Int?, hint: String?) -> String? {
-        if let cost, cost > 0 {
-            return "本次扫码将扣除 \(cost) 积分（确认登录后扣除）"
-        }
-        if let cost, cost == 0 {
-            return "本次扫码免费，不扣除积分"
-        }
-        let text = (hint ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? nil : text
+        formatYybScanCostNote(cost: cost, hint: hint)
     }
 
     private func startScan() {
@@ -3889,14 +3882,10 @@ final class YybProtocolViewController: BaseNativeViewController {
                                     case .failure(let error):
                                         self.handle(error)
                                     case .success(let conf):
-                                        let msg: String
-                                        if conf.alreadyBound == true {
-                                            msg = "扫码成功，账号已绑定"
-                                        } else if (conf.cost ?? 0) > 0 {
-                                            msg = "扫码成功，已扣除 \(conf.cost ?? 0) 积分"
-                                        } else {
-                                            msg = "扫码成功，账号已绑定"
-                                        }
+                                        let msg = formatYybConfirmMessage(
+                                            alreadyBound: conf.alreadyBound == true,
+                                            cost: conf.cost ?? 0
+                                        )
                                         self.showMessage(msg)
                                         self.didShowPendingAlert = false
                                         YybAccountStore.shared.reload(autoCheck: true, showAlert: true) { [weak self] _ in
