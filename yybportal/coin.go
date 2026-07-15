@@ -1,8 +1,8 @@
 package yybportal
 
 import (
-	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/cdle/xdd/models"
 )
@@ -37,7 +37,18 @@ func ensureCoin(userNumber, cost int) error {
 	}
 	coin := models.GetCoin(userNumber)
 	if coin < cost {
-		return fmt.Errorf("积分不足，应用宝扫码登录需要 %d 积分，当前积分 %d", cost, coin)
+		return fmt.Errorf("积分不足，无法登录（需要 %d 积分，当前 %d 积分）", cost, coin)
+	}
+	return nil
+}
+
+func ensureCoinForScanQR(userNumber, cost int) error {
+	if cost <= 0 {
+		return nil
+	}
+	coin := models.GetCoin(userNumber)
+	if coin < cost {
+		return fmt.Errorf("积分不足，无法生成二维码（需要 %d 积分，当前 %d 积分）", cost, coin)
 	}
 	return nil
 }
@@ -46,13 +57,11 @@ func deductCoin(userNumber, cost int, clientCtx models.ClientContext, remark str
 	if cost <= 0 {
 		return nil
 	}
-	current := models.GetCoin(userNumber)
-	if current < cost {
-		return fmt.Errorf("登录成功但积分不足，无法扣除 %d 积分（当前积分：%d）", cost, current)
-	}
-	actual := models.RemCoin(userNumber, cost)
-	if actual > current {
-		return errors.New("积分扣除异常，请联系管理员")
+	if err := models.DeductCoinChecked(userNumber, cost); err != nil {
+		if strings.Contains(err.Error(), "积分不足") {
+			return fmt.Errorf("积分不足，无法登录（需要 %d 积分，当前 %d 积分）", cost, models.GetCoin(userNumber))
+		}
+		return err
 	}
 	models.RecordCoinLog(userNumber, -cost, "应用宝登录", remark, clientCtx.WithDefault())
 	return nil

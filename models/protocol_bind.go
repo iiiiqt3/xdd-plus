@@ -120,14 +120,27 @@ func CountProtocolBindings(userNumber int) (int64, error) {
 	return n, err
 }
 
-// CountOnlineWxProtocolSlots 在线微信协议名额（主绑定 + 额外设备，仅在线）
-func CountOnlineWxProtocolSlots(userNumber int) int {
-	sender := &Sender{UserID: userNumber}
-	devices := findUserProtocolDevices(sender)
-	return len(devices)
+// CountPortalYybBindings 用户库内已成功登录的应用宝数量（含掉线/失效，不含已删除）
+func CountPortalYybBindings(userNumber int) int {
+	var n int64
+	if err := GormDB().Table("portal_yyb_bindings").Where("user_number = ?", userNumber).Count(&n).Error; err != nil {
+		return 0
+	}
+	return int(n)
 }
 
-// CalcYybScanLoginCost 计算应用宝扫码是否扣费：在线微信数 - 已有双绑对数
+// YybFreeSlotsForNewLogin 新 OpenID 登录剩余免费名额（在线微信数 − 库内应用宝数）
+func YybFreeSlotsForNewLogin(userNumber int) int {
+	online := CountOnlineWxProtocolSlots(userNumber)
+	used := CountPortalYybBindings(userNumber)
+	free := online - used
+	if free < 0 {
+		return 0
+	}
+	return free
+}
+
+// CalcYybScanLoginCost 新 OpenID 扫码费用：库内应用宝数（含掉线）未达在线微信数则免费
 func CalcYybScanLoginCost(userNumber int) (cost int, free bool, hint string) {
 	cost = getYybScanLoginCostConfigured()
 	online := CountOnlineWxProtocolSlots(userNumber)
@@ -137,18 +150,22 @@ func CalcYybScanLoginCost(userNumber int) (cost int, free bool, hint string) {
 		}
 		return cost, false, fmt.Sprintf("请使用微信扫码确认登录，本次将扣除 %d 积分", cost)
 	}
-	bound, err := CountProtocolBindings(userNumber)
-	if err != nil {
-		bound = 0
-	}
-	freeSlots := online - int(bound)
+	yybInLibrary := CountPortalYybBindings(userNumber)
+	freeSlots := online - yybInLibrary
 	if freeSlots > 0 {
-		return 0, true, fmt.Sprintf("请使用微信扫码确认登录（免费名额剩余 %d）", freeSlots)
+		return 0, true, fmt.Sprintf("请使用微信扫码确认登录（免费名额剩余 %d，库内 %d/%d）", freeSlots, yybInLibrary, online)
 	}
 	if cost <= 0 {
 		return 0, true, "请使用微信扫码确认登录（本次免费）"
 	}
-	return cost, false, fmt.Sprintf("请使用微信扫码确认登录，本次将扣除 %d 积分", cost)
+	return cost, false, fmt.Sprintf("请使用微信扫码确认登录，免费名额已用完（库内 %d/%d），本次将扣除 %d 积分", yybInLibrary, online, cost)
+}
+
+// CountOnlineWxProtocolSlots 在线微信协议名额（主绑定 + 额外设备，仅在线）
+func CountOnlineWxProtocolSlots(userNumber int) int {
+	sender := &Sender{UserID: userNumber}
+	devices := findUserProtocolDevices(sender)
+	return len(devices)
 }
 
 func getYybScanLoginCostConfigured() int {

@@ -75,6 +75,11 @@ func PortalCreateQR(userNumber int, proxyOpt models.YybProxyLoginOption) (map[st
 		return nil, fmt.Errorf("应用宝服务不可用")
 	}
 	cost, _, hint := models.CalcYybScanLoginCost(userNumber)
+	if cost > 0 {
+		if err := ensureCoinForScanQR(userNumber, cost); err != nil {
+			return nil, err
+		}
+	}
 	if models.Config.Yyb.Proxy51Enabled {
 		proxyOpt.Enabled = true
 		if strings.TrimSpace(proxyOpt.RegionCode) == "" {

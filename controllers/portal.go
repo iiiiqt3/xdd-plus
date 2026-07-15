@@ -1425,20 +1425,19 @@ func (c *PortalController) ProtocolBindings() {
 	c.ServeJSON()
 }
 
-// ProtocolBindQuota 双绑免费名额
+// ProtocolBindQuota 应用宝扫码免费名额（在线微信数 − 已绑应用宝数）
 func (c *PortalController) ProtocolBindQuota() {
 	online := models.CountOnlineWxProtocolSlots(c.PortalUserID)
-	bound, _ := models.CountProtocolBindings(c.PortalUserID)
-	free := online - int(bound)
-	if free < 0 {
-		free = 0
-	}
+	yybAccounts := models.CountPortalYybBindings(c.PortalUserID)
+	dualBound, _ := models.CountProtocolBindings(c.PortalUserID)
+	free := models.YybFreeSlotsForNewLogin(c.PortalUserID)
 	cost, _, hint := models.CalcYybScanLoginCost(c.PortalUserID)
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"data": map[string]interface{}{
 			"onlineWxSlots": online,
-			"boundPairs":    bound,
+			"yybAccounts":   yybAccounts,
+			"boundPairs":    dualBound,
 			"freeSlots":     free,
 			"scanLoginCost": cost,
 			"scanCostHint":  hint,

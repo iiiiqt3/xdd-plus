@@ -45,11 +45,37 @@ func portalPollScanLogin(sessionID string, userNumber int) (map[string]interface
 	return yyb.PollPortalScanLogin(sessionID, userNumber)
 }
 
+// resolveYybScanCharge 确认时实时计算是否扣费：
+// - 库内已有 OpenID 续登录 → 不扣
+// - 新 OpenID 且库内数 < 在线微信数 → 不扣（含掉线账号占名额）
+// - 新 OpenID 且名额已满 → 扣费
+func resolveYybScanCharge(userNumber int, openid string) (cost int, needCharge bool) {
+	openid = strings.TrimSpace(openid)
+	if openid != "" && isUserBoundOpenID(userNumber, openid) {
+		return 0, false
+	}
+	cost, free, _ := models.CalcYybScanLoginCost(userNumber)
+	if free || cost <= 0 {
+		return 0, false
+	}
+	return cost, true
+}
+
 func portalConfirmScanLogin(sessionID string, userNumber int, clientCtx models.ClientContext) (map[string]interface{}, error) {
-	loginBuffer, creds, proxyMeta, cost, deduct, err := yyb.FinishPortalScanLogin(sessionID, userNumber)
+	loginBuffer, creds, proxyMeta, _, _, err := yyb.FinishPortalScanLogin(sessionID, userNumber)
 	if err != nil {
 		return nil, err
 	}
+
+	openid := strings.TrimSpace(creds.OpenID)
+	alreadyBound := openid != "" && isUserBoundOpenID(userNumber, openid)
+	cost, needCharge := resolveYybScanCharge(userNumber, openid)
+	if needCharge {
+		if err := ensureCoin(userNumber, cost); err != nil {
+			return nil, err
+		}
+	}
+
 	a, err := svc()
 	if err != nil {
 		return nil, err
@@ -60,9 +86,8 @@ func portalConfirmScanLogin(sessionID string, userNumber int, clientCtx models.C
 		return nil, err
 	}
 
-	everBound := hasEverBoundOpenID(userNumber, acc.OpenID)
 	costCharged := 0
-	if deduct && !everBound {
+	if needCharge {
 		nick := ""
 		if acc.Nickname != nil {
 			nick = *acc.Nickname
@@ -73,6 +98,7 @@ func portalConfirmScanLogin(sessionID string, userNumber int, clientCtx models.C
 		models.RecordClientSourceEvent(userNumber, "yyb_scan_login", clientCtx)
 		costCharged = cost
 	}
+
 	binding, err := bindAccount(userNumber, acc, "alive")
 	if err != nil {
 		return nil, err
@@ -81,6 +107,6 @@ func portalConfirmScanLogin(sessionID string, userNumber int, clientCtx models.C
 	return map[string]interface{}{
 		"account":      view,
 		"cost":         costCharged,
-		"alreadyBound": everBound,
+		"alreadyBound": alreadyBound,
 	}, nil
 }
