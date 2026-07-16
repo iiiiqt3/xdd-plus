@@ -121,6 +121,9 @@
             background: var(--card); border: 1px solid var(--card-border);
             box-shadow: var(--card-shadow);
         }
+        .topbar-leading { display: contents; }
+        .mobile-menu-btn { display: none; }
+        .sidebar-backdrop { display: none; }
         .topbar h2 {
             font-size: clamp(20px, 3vw, 28px); font-weight: 800;
             letter-spacing: -0.02em; color: var(--text);
@@ -1037,28 +1040,36 @@
             .jd-task-proxy-row { flex-wrap: wrap; row-gap: 6px; }
             .jd-task-proxy-buy { margin-left: 0; }
         }
-        @media (max-width: 1000px) {
+        @media (max-width: 1000px) and (min-width: 861px) {
             .jd-task-log-aside { width: 340px; min-width: 280px; max-width: 38%; }
             .jd-task-table .col-coin { display: none; }
             .jd-task-table thead th:nth-child(3) { display: none; }
         }
-        @media (max-width: 800px) {
-            .jd-task-shell { min-height: calc(100dvh - 180px); }
-            .jd-task-main { flex-direction: column; }
+        @media (max-width: 860px) {
+            .jd-task-shell { min-height: calc(100dvh - 160px); }
+            .jd-task-toolbar { flex-direction: column; align-items: stretch; }
+            .jd-task-proxy-section {
+                flex: none; width: 100%; border-left: none; border-top: 1px solid var(--glass-border);
+            }
+            .jd-task-proxy-row { flex-wrap: wrap; row-gap: 6px; }
+            .jd-task-proxy-buy { margin-left: 0; }
+            .jd-task-main { flex-direction: column; overflow: visible; }
             .jd-task-list-wrap {
-                max-height: none;
-                padding-bottom: calc(36vh + 12px);
+                max-height: none; overflow-x: auto; overflow-y: visible;
+                padding-bottom: calc(32vh + 16px);
+                -webkit-overflow-scrolling: touch;
             }
             .jd-task-log-aside {
-                position: fixed; left: 10px; right: 10px; bottom: 10px;
-                width: auto; min-width: 0; max-width: none; top: auto;
+                position: fixed; left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom));
+                width: auto !important; min-width: 0 !important; max-width: none !important; top: auto;
                 border-left: none; z-index: 200;
                 box-shadow: 0 -4px 24px rgba(15,23,42,0.12), 0 8px 32px rgba(15,23,42,0.08);
             }
             .jd-task-log-dock {
-                height: 34vh; min-height: 160px; max-height: 36vh;
+                height: 30vh; min-height: 140px; max-height: 34vh;
                 border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);
             }
+            .jd-task-table { min-width: 0 !important; width: 100%; }
             .jd-task-table thead { display: none; }
             .jd-task-table tbody tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 10px 0; }
             .jd-task-table td { padding: 0; border: none; }
@@ -1305,35 +1316,67 @@
         }
         @media (max-width: 860px) {
             .layout { grid-template-columns: 1fr; }
-            .sidebar {
-                position: sticky; top: 0; height: auto; max-height: none;
-                z-index: 100; border-bottom: 1px solid var(--sidebar-border);
-                padding: 0; flex-direction: row; flex-wrap: wrap; align-items: center;
+            /* 移动端：抽屉侧栏（参考管理后台） */
+            .mobile-menu-btn {
+                display: inline-flex; align-items: center; justify-content: center;
+                width: 40px; height: 40px; flex-shrink: 0; border: 1px solid var(--card-border);
+                border-radius: 10px; background: #fff; color: #1c1917; cursor: pointer;
+                font-size: 20px; line-height: 1; -webkit-tap-highlight-color: transparent;
             }
-            .brand { display: none; }
-            .menu-group { margin: 0; padding: 8px 10px; display: contents; }
-            .menu-group-title { display: none; }
-            .menu { display: contents; }
-            .menu button { flex: 0 0 auto; min-height: 38px; padding: 0 14px; white-space: nowrap; font-size: 13.5px; font-weight: 700; border-radius: var(--radius-sm); gap: 5px; }
-            .menu button::before { width: 5px; height: 5px; }
-            .menu-link-btn { width: auto !important; }
+            .mobile-menu-btn:active { background: #f5f5f4; }
+            .sidebar-backdrop {
+                display: none; position: fixed; inset: 0; z-index: 199;
+                background: rgba(15, 23, 42, 0.5); -webkit-tap-highlight-color: transparent;
+            }
+            .sidebar-backdrop.mobile-open { display: block; }
+            .sidebar {
+                display: none; position: fixed; left: 0; top: 0; bottom: 0;
+                width: min(280px, 86vw); height: 100dvh; max-height: none;
+                z-index: 200; padding: 0; flex-direction: column; flex-wrap: nowrap;
+                overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
+                box-shadow: 8px 0 28px rgba(15, 23, 42, 0.28);
+                border-bottom: none;
+            }
+            .sidebar.mobile-open { display: flex; }
+            .sidebar::-webkit-scrollbar { width: 0; height: 0; }
+            .brand { display: block; }
+            .menu-group { margin: 0; padding: 16px 12px 6px; display: block; }
+            .menu-group-title { display: block; }
+            .menu { display: grid; gap: 2px; }
+            .menu button, .menu-link-btn {
+                flex: none; width: 100% !important; min-height: 42px;
+                padding: 0 14px; white-space: nowrap; font-size: 14px; font-weight: 600;
+                border-radius: var(--radius-sm); gap: 10px; justify-content: flex-start;
+            }
+            .menu button::before { width: 6px; height: 6px; }
             .main { padding: 14px; }
+            .topbar {
+                flex-direction: row; flex-wrap: wrap; align-items: flex-start;
+                padding: 14px; margin-bottom: 14px; gap: 10px;
+            }
+            .topbar-leading {
+                display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;
+            }
+            .topbar > div:last-child { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+            .topbar > div:last-child .btn { flex: 1 1 140px; width: auto; }
             .grid-cards, .status-grid, .meta-grid, .form-grid, .wx-feature-grid, .notify-summary-grid, .checkin-stats-grid { grid-template-columns: 1fr; }
             .notify-layout { grid-template-columns: 1fr; }
             .notify-filter-card { position: static; }
             .dash-gauge-row { grid-template-columns: 1fr; }
             .dash-info-grid { grid-template-columns: 1fr; }
-            .topbar { flex-direction: column; align-items: stretch; padding: 16px; margin-bottom: 14px; }
-            .topbar > div:last-child { width: 100%; }
-            .topbar > div:last-child .btn { flex: 1 1 140px; }
+            .dash-bento { grid-template-columns: 1fr; }
+            .dash-chip-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .section-header { flex-direction: column; align-items: flex-start; }
             #panel-projects > .section > .section-header,
             #panel-activities > .section > .section-header,
             #panel-tasks > .section > .section-header,
             #panel-notifications > .section > .section-header { display: none; }
             .table-wrap::before { display: block; }
-            table { min-width: 700px; }
+            /* 通用宽表可横滑；京东任务表走卡片化，不强制 700 */
+            .table-wrap > table { min-width: 700px; }
             .account-subtable { min-width: 600px; }
+            .jd-task-list-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .jd-task-table { min-width: 0 !important; width: 100%; }
             .activities-list { grid-template-columns: 1fr; }
             .activity-row .btn { width: 100%; }
 
@@ -1388,18 +1431,19 @@
         }
         @media (max-width: 560px) {
             .main { padding: 10px; }
-            .sidebar { padding: 0; }
-            .menu button { min-height: 36px; padding: 0 10px; font-size: 13px; font-weight: 700; border-radius: 6px; }
             .card, .task-box, .wx-menu-card, .status-card { border-radius: var(--radius-sm); padding: 14px; }
             .activity-row { padding: 14px; }
             .grid-cards, .status-grid, .task-grid, .wx-feature-grid { gap: 10px; }
-            .topbar { padding: 12px 14px; margin-bottom: 10px; }
-            .topbar h2 { font-size: 20px; line-height: 1.2; }
+            .topbar { padding: 12px; margin-bottom: 10px; }
+            .topbar h2 { font-size: 18px; line-height: 1.2; }
             .topbar .muted { font-size: 11.5px; line-height: 1.5; margin-top: 6px; }
             .topbar-chips { gap: 6px; margin-top: 6px; }
             .topbar-chip { padding: 3px 8px 3px 6px; font-size: 11.5px; }
-            .btn { width: 100%; justify-content: center; }
-            .btn.small { width: auto; min-width: 60px; }
+            .mobile-menu-btn { width: 38px; height: 38px; font-size: 18px; }
+            /* 表单/面板内按钮拉满；顶栏与导航保持自适应 */
+            .card .btn, .task-box .btn, .activity-row .btn, .section .btn, .modal .btn { width: 100%; justify-content: center; }
+            .card .btn.small, .task-box .btn.small, .modal .btn.small,
+            .topbar .btn, .sidebar .btn { width: auto; }
             .tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
             .tabs button { flex: 0 0 auto; }
             .modal-mask { align-items: flex-end; padding: 4px; }
@@ -1849,9 +1893,10 @@
     </div>
 </div>
 
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closePortalSidebar()"></div>
 <div class="layout">
     <!-- 侧边栏 -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="portalSidebar">
         <div class="brand">
             <h1>用户中心</h1>
             <p id="sidebarDesc">授权管理 · 协议登录 · 积分任务</p>
@@ -1886,13 +1931,16 @@
     <!-- 主内容 -->
     <main class="main">
         <div class="topbar">
-            <div style="flex:1;min-width:0;">
-                <h2 id="pageTitle">⚡ 仪表盘</h2>
-                <div class="topbar-chips" id="topbarChips">
-                    <span class="topbar-chip"><span class="chip-icon">👤</span><span class="chip-label">昵称</span><span class="chip-val" id="topNickname">-</span></span>
-                    <span class="topbar-chip"><span class="chip-icon">🏷️</span><span class="chip-label">账号</span><span class="chip-val" id="topAccount">-</span></span>
-                    <span class="topbar-chip"><span class="chip-icon">🔢</span><span class="chip-label">编号</span><span class="chip-val" id="topNumber">-</span></span>
-                    <span class="topbar-chip chip-coin"><span class="chip-icon">💰</span><span class="chip-label">积分</span><span class="chip-val" id="topCoin">-</span></span>
+            <div class="topbar-leading">
+                <button type="button" class="mobile-menu-btn" onclick="togglePortalSidebar()" aria-label="打开菜单">☰</button>
+                <div style="flex:1;min-width:0;">
+                    <h2 id="pageTitle">⚡ 仪表盘</h2>
+                    <div class="topbar-chips" id="topbarChips">
+                        <span class="topbar-chip"><span class="chip-icon">👤</span><span class="chip-label">昵称</span><span class="chip-val" id="topNickname">-</span></span>
+                        <span class="topbar-chip"><span class="chip-icon">🏷️</span><span class="chip-label">账号</span><span class="chip-val" id="topAccount">-</span></span>
+                        <span class="topbar-chip"><span class="chip-icon">🔢</span><span class="chip-label">编号</span><span class="chip-val" id="topNumber">-</span></span>
+                        <span class="topbar-chip chip-coin"><span class="chip-icon">💰</span><span class="chip-label">积分</span><span class="chip-val" id="topCoin">-</span></span>
+                    </div>
                 </div>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -2814,6 +2862,27 @@ async function withJdCkRefreshGuard(kind, fn, btn, loadingText) {
     }
 }
 
+function togglePortalSidebar() {
+    var sidebar = document.getElementById('portalSidebar') || document.querySelector('.sidebar');
+    var backdrop = document.getElementById('sidebarBackdrop') || document.querySelector('.sidebar-backdrop');
+    if (!sidebar || !backdrop) return;
+    var willOpen = !sidebar.classList.contains('mobile-open');
+    if (willOpen) {
+        sidebar.classList.add('mobile-open');
+        backdrop.classList.add('mobile-open');
+        document.body.style.overflow = 'hidden';
+    } else {
+        closePortalSidebar();
+    }
+}
+function closePortalSidebar() {
+    var sidebar = document.getElementById('portalSidebar') || document.querySelector('.sidebar');
+    var backdrop = document.getElementById('sidebarBackdrop') || document.querySelector('.sidebar-backdrop');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+    if (backdrop) backdrop.classList.remove('mobile-open');
+    document.body.style.overflow = '';
+}
+
 document.querySelectorAll('.menu button[data-panel]').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.menu button[data-panel]').forEach(x => x.classList.remove('active'));
@@ -2825,7 +2894,14 @@ document.querySelectorAll('.menu button[data-panel]').forEach(btn => {
         syncPanelTitle(panel);
         if (panel === 'protocol') switchProtocolTab(state.protocolTab || 'yyb', false);
         refreshCurrentPanel(false);
+        closePortalSidebar();
     });
+});
+document.querySelectorAll('.menu-link-btn').forEach(btn => {
+    btn.addEventListener('click', function() { closePortalSidebar(); });
+});
+window.addEventListener('resize', function() {
+    if (window.innerWidth > 860) closePortalSidebar();
 });
 
 function switchProtocolTab(tab, reload) {

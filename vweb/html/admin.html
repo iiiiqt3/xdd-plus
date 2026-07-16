@@ -79,7 +79,20 @@
         .card-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 12px 0; border-bottom: 1px solid #f0f0f0; position: sticky; top: 56px; z-index: 45; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         .card-title { font-size: 16px; font-weight: 600; color: #1a1a2e; display: flex; align-items: center; gap: 8px; }
         .card-title i { color: #409eff; }
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 24px; }
+        .yyb-stats-grid {
+            display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 16px; margin-bottom: 16px;
+        }
+        .aayb-debug-grid {
+            display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+        }
+        .game-config-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+        }
+        @media (max-width: 1100px) {
+            .yyb-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .aayb-debug-grid { grid-template-columns: 1fr 1fr; }
+        }
         .stat-card { background: #fff; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px; border: 1px solid rgba(0,0,0,0.04); }
         .stat-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
         .stat-icon.blue { background: rgba(64,158,255,0.1); color: #409eff; }
@@ -746,14 +759,14 @@
 
         @media (max-width: 768px) {
             .mobile-menu-btn { display: flex; }
-            .sidebar { display: none; position: fixed; left: 0; top: 0; bottom: 0; width: 260px !important; z-index: 200; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+            .sidebar { display: none; position: fixed; left: 0; top: 0; bottom: 0; width: min(280px, 86vw) !important; z-index: 200; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
             .sidebar.mobile-open { display: block; }
             .sidebar-backdrop.mobile-open { display: block; }
-            .main-content { margin-left: 0 !important; }
-            .top-bar { padding: 10px 14px; }
+            .main-content { margin-left: 0 !important; max-width: 100vw; overflow-x: hidden; }
+            .top-bar { padding: 10px 14px; gap: 8px; flex-wrap: wrap; }
             .top-bar h1 { font-size: 16px; }
             .top-bar .breadcrumb { font-size: 12px; }
-            .content-area { padding: 12px; }
+            .content-area { padding: 12px; max-width: 100%; overflow-x: hidden; }
             .card { padding: 12px 12px 0 12px; margin-bottom: 12px; }
             .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
             .stat-card { padding: 10px; }
@@ -769,6 +782,8 @@
             .dash-act-strip { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
             .dash-summary-row { grid-template-columns: 1fr !important; gap: 10px; }
             .dash-grid { grid-template-columns: 1fr !important; gap: 10px; }
+            .dash-chip-row { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+            .dash-panel { padding: 14px 12px 12px; }
             .toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
             .toolbar .search-box { max-width: 100% !important; width: 100%; }
             .toolbar .search-box input { width: 100%; min-width: 0; }
@@ -801,6 +816,63 @@
             .notify-compose-hero { flex-direction: column; align-items: stretch; }
             .notify-compose-actions { flex-direction: column; align-items: stretch; }
             .modal-fullscreen { width: 98vw !important; max-width: 98vw !important; }
+
+            /* 表格横滑不撑破页面；取消 sticky 操作列防遮挡 */
+            .table-wrap {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+                max-width: 100%;
+                overscroll-behavior-x: contain;
+            }
+            .table-wrap::before {
+                content: '\u2190 \u5de6\u53f3\u6ed1\u52a8\u67e5\u770b\u66f4\u591a \u2192';
+                display: block;
+                font-size: 11px;
+                color: #a8a29e;
+                text-align: center;
+                padding: 4px 0 8px;
+            }
+            .data-table .col-action-sticky,
+            #activityTable .sticky-col-name,
+            #activityTable .sticky-col-action,
+            #actAuthTable .sticky-col-name,
+            #actAuthTable .sticky-col-action,
+            #actStatsTable .sticky-col-name,
+            #actStatsTable .sticky-col-action {
+                position: static !important;
+                box-shadow: none !important;
+                left: auto !important;
+                right: auto !important;
+            }
+            .data-table .col-action-sticky,
+            .sticky-col-action {
+                white-space: nowrap !important;
+                min-width: 96px !important;
+            }
+            .col-action-sticky .btn,
+            .sticky-col-action .btn {
+                display: inline-flex !important;
+                vertical-align: middle;
+                margin: 1px 2px;
+            }
+            .toast {
+                left: 50% !important; right: auto !important;
+                top: max(12px, env(safe-area-inset-top));
+                transform: translateX(-50%) translateY(-120%);
+                max-width: calc(100vw - 24px);
+            }
+            .toast.show { transform: translateX(-50%) translateY(0); }
+
+            .yyb-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+            .aayb-debug-grid { grid-template-columns: 1fr !important; }
+            .game-config-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+            #page-gameconfig .form-grid { grid-template-columns: 1fr !important; }
+            #page-jdmanualtasks .toolbar { flex-direction: column; align-items: stretch; }
+            #page-jdmanualtasks .toolbar > div:first-child {
+                white-space: normal !important; overflow: visible !important; text-overflow: unset !important;
+            }
+            #page-jdmanualtasks code { word-break: break-all; white-space: normal; font-size: 10px !important; }
+            #page-jdmanualtasks .toolbar-actions { width: 100%; }
         }
 
         @media (max-width: 480px) {
@@ -2230,7 +2302,7 @@
 
         <!-- ========= 应用宝协议管理 ========= -->
         <div id="page-yyb" class="page-section">
-            <div class="stats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:16px;">
+            <div class="stats yyb-stats-grid">
                 <div class="stat-card" style="background:#fff;border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,0.04);">
                     <h4 style="font-size:12px;color:#999;margin-bottom:8px;">服务状态</h4>
                     <div style="font-size:18px;font-weight:700;" id="ayyb-stHealth">-</div>
@@ -2266,7 +2338,7 @@
                             <button class="btn btn-primary" id="ayyb-scanBtn" type="button"><i class="fas fa-qrcode"></i> 扫码添加</button>
                         </div>
                     </div>
-                    <div class="form-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                    <div class="form-grid aayb-debug-grid">
                         <div class="form-item">
                             <label>账号 Ref（OpenID）</label>
                             <input id="ayyb-refInput" placeholder="输入 OpenID 或账号 ID" autocomplete="off">
@@ -7097,7 +7169,7 @@ async function loadGameConfig() {
         html += '<div class="form-item"><label>游戏功能总开关</label><label class="toggle-switch"><input type="checkbox" id="game_gameOpen" onchange="toggleGameSwitch(\'game_open\',this.checked)"' + (cfg.gameOpen ? ' checked' : '') + '><span class="toggle-slider"></span></label></div>';
         html += '</div></div>';
 
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">';
+        html += '<div class="game-config-grid">';
 
         html += '<div class="card" style="border:1px solid #e4e7ed;"><div class="card-header" style="background:#f0f9eb;"><div class="card-title"><i class="fas fa-dice"></i> 猜数字</div><label class="toggle-switch"><input type="checkbox" id="game_guessNumberOpen" onchange="toggleGameSwitch(\'guess_number_open\',this.checked)"' + (cfg.guessNumberOpen ? ' checked' : '') + '><span class="toggle-slider"></span></label></div><div class="form-grid" style="grid-template-columns:1fr 1fr;padding:12px;">';
         html += '<div class="form-item"><label>每次积分</label><input type="number" id="game_guessNumberCost" value="' + (cfg.guessNumberCost || 10) + '" min="1"></div>';
