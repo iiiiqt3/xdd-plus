@@ -356,6 +356,8 @@ func main() {
 	web.Router("/api/admin/jdcookies/batch/delete", &controllers.AdminApiController{}, "post:BatchDeleteJdCookies")
 	web.Router("/api/admin/jdcookies/batch/update", &controllers.AdminApiController{}, "post:BatchUpdateJdCookies")
 	web.Router("/api/admin/jdtasks", &controllers.AdminApiController{}, "get:GetJdTaskQueue")
+	web.Router("/api/admin/jdtasks/config", &controllers.AdminApiController{}, "get:GetJdTaskSchedulerConfig")
+	web.Router("/api/admin/jdtasks/config/save", &controllers.AdminApiController{}, "post:SaveJdTaskSchedulerConfig")
 	web.Router("/api/admin/jdtasks/kill", &controllers.AdminApiController{}, "post:KillJdTaskQueue")
 	web.Router("/api/admin/envvars/batch/delete", &controllers.AdminApiController{}, "post:BatchDeleteEnvVars")
 	web.Router("/api/admin/qlenvs/create", &controllers.AdminApiController{}, "post:CreateQLEnv")

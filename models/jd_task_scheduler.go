@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	jdMaxWorkers  = 200
-	jdMaxUserJobs = 10
-	jdJobTimeout  = time.Hour
+	jdDefaultMaxWorkers        = 200
+	jdDefaultMaxUserJobs       = 10
+	jdDefaultJobTimeoutMinutes = 60
 )
 
 type jdJobState int
@@ -116,8 +116,14 @@ type JdTaskScheduler struct {
 	taskLogJobs   map[string]map[string]struct{}
 	userJobCounts map[int]int
 	slots         map[string]string
-	workerTokens  chan struct{}
-	started       bool
+
+	workerMu     sync.Mutex
+	workerCond   *sync.Cond
+	workerUsed   int
+	maxWorkers   int
+	maxUserJobs  int
+	jobTimeout   time.Duration
+	started      bool
 }
 
 var (
@@ -125,11 +131,38 @@ var (
 	jdSchedulerOnce sync.Once
 )
 
+func jdResolvedMaxWorkers() int {
+	if Config.JdTask.MaxWorkers > 0 {
+		return Config.JdTask.MaxWorkers
+	}
+	return jdDefaultMaxWorkers
+}
+
+func jdResolvedMaxUserJobs() int {
+	if Config.JdTask.MaxUserJobs > 0 {
+		return Config.JdTask.MaxUserJobs
+	}
+	return jdDefaultMaxUserJobs
+}
+
+func jdResolvedJobTimeout() time.Duration {
+	mins := Config.JdTask.JobTimeoutMinutes
+	if mins <= 0 {
+		mins = jdDefaultJobTimeoutMinutes
+	}
+	return time.Duration(mins) * time.Minute
+}
+
 func InitJdTaskScheduler() {
 	jdSchedulerOnce.Do(func() {
 		cleanupOrphanJdNodeProcesses()
 		jdScheduler = newJdTaskScheduler()
 		jdScheduler.start()
+		RegisterConfigReloadHook(func() {
+			if jdScheduler != nil {
+				jdScheduler.ApplyRuntimeConfig()
+			}
+		})
 	})
 }
 
@@ -145,9 +178,12 @@ func newJdTaskScheduler() *JdTaskScheduler {
 		taskLogJobs:   make(map[string]map[string]struct{}),
 		userJobCounts: make(map[int]int),
 		slots:         make(map[string]string),
-		workerTokens:  make(chan struct{}, jdMaxWorkers),
+		maxWorkers:    jdResolvedMaxWorkers(),
+		maxUserJobs:   jdResolvedMaxUserJobs(),
+		jobTimeout:    jdResolvedJobTimeout(),
 	}
 	s.queueCond = sync.NewCond(&s.mu)
+	s.workerCond = sync.NewCond(&s.workerMu)
 	return s
 }
 
@@ -156,10 +192,57 @@ func (s *JdTaskScheduler) start() {
 		return
 	}
 	s.started = true
-	for i := 0; i < jdMaxWorkers; i++ {
-		s.workerTokens <- struct{}{}
-	}
 	go s.dispatchLoop()
+}
+
+// ApplyRuntimeConfig 热更新 Worker / 每用户上限 / 超时
+func (s *JdTaskScheduler) ApplyRuntimeConfig() {
+	maxWorkers := jdResolvedMaxWorkers()
+	maxUserJobs := jdResolvedMaxUserJobs()
+	timeout := jdResolvedJobTimeout()
+
+	s.mu.Lock()
+	s.maxUserJobs = maxUserJobs
+	s.jobTimeout = timeout
+	s.mu.Unlock()
+
+	s.workerMu.Lock()
+	old := s.maxWorkers
+	s.maxWorkers = maxWorkers
+	if maxWorkers > old {
+		s.workerCond.Broadcast()
+	}
+	s.workerMu.Unlock()
+	Info("京东任务调度配置已生效: workers=%d userJobs=%d timeout=%v", maxWorkers, maxUserJobs, timeout)
+}
+
+func (s *JdTaskScheduler) acquireWorker() {
+	s.workerMu.Lock()
+	for s.workerUsed >= s.maxWorkers {
+		s.workerCond.Wait()
+	}
+	s.workerUsed++
+	s.workerMu.Unlock()
+}
+
+func (s *JdTaskScheduler) releaseWorker() {
+	s.workerMu.Lock()
+	if s.workerUsed > 0 {
+		s.workerUsed--
+	}
+	s.workerCond.Signal()
+	s.workerMu.Unlock()
+}
+
+func (s *JdTaskScheduler) currentLimits() (maxWorkers, maxUserJobs int, timeout time.Duration) {
+	s.mu.Lock()
+	maxUserJobs = s.maxUserJobs
+	timeout = s.jobTimeout
+	s.mu.Unlock()
+	s.workerMu.Lock()
+	maxWorkers = s.maxWorkers
+	s.workerMu.Unlock()
+	return
 }
 
 func (s *JdTaskScheduler) dispatchLoop() {
@@ -173,9 +256,9 @@ func (s *JdTaskScheduler) dispatchLoop() {
 			s.finishPortalBatch(job)
 			continue
 		}
-		<-s.workerTokens
+		s.acquireWorker()
 		go func(j *JdJob) {
-			defer func() { s.workerTokens <- struct{}{} }()
+			defer s.releaseWorker()
 			s.executeJob(j)
 		}(job)
 	}
@@ -275,9 +358,13 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 
 	s.mu.Lock()
 	current := s.userJobCounts[userID]
-	if current+len(specs) > jdMaxUserJobs {
+	limit := s.maxUserJobs
+	if limit <= 0 {
+		limit = jdDefaultMaxUserJobs
+	}
+	if current+len(specs) > limit {
 		s.mu.Unlock()
-		return fmt.Errorf("同一用户同时最多 %d 个任务，当前已有 %d 个", jdMaxUserJobs, current)
+		return fmt.Errorf("同一用户同时最多 %d 个任务，当前已有 %d 个", limit, current)
 	}
 	taskType := normalizeJdTaskType(specs[0].TaskType)
 	userTaskPrefix := fmt.Sprintf("%d:%s:", userID, taskType)
@@ -454,7 +541,11 @@ func (s *JdTaskScheduler) runNodeJob(job *JdJob) (string, error) {
 		ApplyManualJdTaskProxyEnvs(envs)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), jdJobTimeout)
+	timeout := s.jobTimeout
+	if timeout <= 0 {
+		timeout = jdResolvedJobTimeout()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	job.cancel = cancel
 	defer cancel()
 
@@ -693,11 +784,25 @@ func (s *JdTaskScheduler) AdminGetSnapshot() (JdSchedulerStats, []JdAdminTaskVie
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	maxUserJobs := s.maxUserJobs
+	if maxUserJobs <= 0 {
+		maxUserJobs = jdDefaultMaxUserJobs
+	}
+	timeout := s.jobTimeout
+	if timeout <= 0 {
+		timeout = time.Duration(jdDefaultJobTimeoutMinutes) * time.Minute
+	}
+	s.workerMu.Lock()
+	maxWorkers := s.maxWorkers
+	if maxWorkers <= 0 {
+		maxWorkers = jdDefaultMaxWorkers
+	}
+	s.workerMu.Unlock()
 	stats := JdSchedulerStats{
-		MaxWorkers:        jdMaxWorkers,
-		MaxUserJobs:       jdMaxUserJobs,
+		MaxWorkers:        maxWorkers,
+		MaxUserJobs:       maxUserJobs,
 		Queued:            len(s.queue),
-		JobTimeoutMinutes: int(jdJobTimeout / time.Minute),
+		JobTimeoutMinutes: int(timeout / time.Minute),
 	}
 
 	queuePos := make(map[string]int, len(s.queue))

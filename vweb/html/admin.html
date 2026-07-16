@@ -1118,10 +1118,10 @@
             </div>
             <div class="nav-group-items" data-group="jd">
                 <div class="nav-sub-item" data-page="jdcookies" data-search="京东账号 ck cookie" onclick="switchPage('jdcookies')"><i class="fas fa-cookie"></i><span>京东账号</span></div>
-                <div class="nav-sub-item" data-page="jdmanualtasks" data-search="手动京东任务 扫描脚本" onclick="switchPage('jdmanualtasks')"><i class="fas fa-hand-pointer"></i><span>手动京东任务</span></div>
+                <div class="nav-sub-item" data-page="jdmanualtasks" data-search="手动京东任务 扫描脚本 Worker 调度" onclick="switchPage('jdmanualtasks')"><i class="fas fa-hand-pointer"></i><span>手动京东任务</span></div>
                 <div class="nav-sub-item" data-page="jdproxystats" data-search="任务代理 购买统计 门户代理" onclick="switchPage('jdproxystats')"><i class="fas fa-receipt"></i><span>任务代理统计</span></div>
                 <div class="nav-sub-item" data-page="jdcrontasks" data-search="京东任务 cron 定时" onclick="switchPage('jdcrontasks')"><i class="fas fa-list-check"></i><span>京东任务列表</span></div>
-                <div class="nav-sub-item" data-page="jdtaskqueue" data-search="用户任务队列 排队" onclick="switchPage('jdtaskqueue')"><i class="fas fa-layer-group"></i><span>用户任务队列</span></div>
+                <div class="nav-sub-item" data-page="jdtaskqueue" data-search="用户任务队列 排队 Worker 并发" onclick="switchPage('jdtaskqueue')"><i class="fas fa-layer-group"></i><span>用户任务队列</span></div>
             </div>
         </div>
 
@@ -2075,6 +2075,25 @@
                 <div class="log-stat-card"><div class="label">活跃用户</div><div class="val" id="jdqStatUsers">0</div></div>
                 <div class="log-stat-card"><div class="label">Worker 上限</div><div class="val" id="jdqStatWorkers">200</div></div>
             </div>
+            <div class="card" style="margin-bottom:16px;">
+                <div class="config-section" style="margin-bottom:0;">
+                    <div class="config-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <span><i class="fas fa-sliders-h"></i> 任务调度设置 <span class="tag tag-info" style="font-size:11px;">Portal / App / 机器人共用 · 保存后实时生效</span></span>
+                        <button class="btn btn-primary btn-sm" onclick="saveJdTaskSchedulerConfig()"><i class="fas fa-save"></i> 保存调度设置</button>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-item"><label>Worker 上限 <span class="tip">全局同时执行任务数</span></label>
+                            <input type="number" id="jdq_cfg_maxWorkers" min="1" max="2000" value="200">
+                        </div>
+                        <div class="form-item"><label>每用户同时任务数 <span class="tip">排队+执行合计</span></label>
+                            <input type="number" id="jdq_cfg_maxUserJobs" min="1" max="200" value="10">
+                        </div>
+                        <div class="form-item"><label>单任务超时 (分钟)</label>
+                            <input type="number" id="jdq_cfg_jobTimeoutMinutes" min="5" max="1440" value="60">
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="card">
                 <div class="toolbar">
                     <div style="font-size:13px;color:#666;">
@@ -2143,6 +2162,26 @@
                         <div class="form-item"><label>重试间隔 (秒)</label><input type="number" id="jdmt_proxyRedelay" value="2" min="1"></div>
                         <div class="form-item full"><label>代理 API 地址 <span class="tip">留空则回退系统京东代理</span></label>
                             <input type="text" id="jdmt_proxyUrl" placeholder="http://api.xiequ.cn/VAD/GetIp.aspx?...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom:16px;">
+                <div class="config-section" style="margin-bottom:0;">
+                    <div class="config-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <span><i class="fas fa-sliders-h"></i> 任务调度设置 <span class="tag tag-info" style="font-size:11px;">与「用户任务队列」共用 · 保存后实时生效</span></span>
+                        <button class="btn btn-primary btn-sm" onclick="saveJdTaskSchedulerConfig('jdmt')"><i class="fas fa-save"></i> 保存调度设置</button>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-item"><label>Worker 上限 <span class="tip">全局同时执行任务数</span></label>
+                            <input type="number" id="jdmt_cfg_maxWorkers" min="1" max="2000" value="200">
+                        </div>
+                        <div class="form-item"><label>每用户同时任务数 <span class="tip">排队+执行合计</span></label>
+                            <input type="number" id="jdmt_cfg_maxUserJobs" min="1" max="200" value="10">
+                        </div>
+                        <div class="form-item"><label>单任务超时 (分钟)</label>
+                            <input type="number" id="jdmt_cfg_jobTimeoutMinutes" min="5" max="1440" value="60">
                         </div>
                     </div>
                 </div>
@@ -9026,6 +9065,7 @@ async function loadJdManualTasks() {
         normalizeJdManualCache(res.data, []);
         _jdmtPage = 1;
         renderJdManualTasks();
+        loadJdTaskSchedulerConfigIntoForms();
     } catch (e) {
         toast('加载失败: ' + e.message, 'error');
     }
@@ -9248,6 +9288,59 @@ async function batchJdManualDelete() {
 var _jdTaskQueueData = { stats: {}, tasks: [] };
 var _jdTaskQueueTimer = null;
 
+function fillJdTaskSchedulerConfigForms(cfg) {
+    if (!cfg) return;
+    var pairs = [
+        ['jdq_cfg_maxWorkers', cfg.maxWorkers],
+        ['jdq_cfg_maxUserJobs', cfg.maxUserJobs],
+        ['jdq_cfg_jobTimeoutMinutes', cfg.jobTimeoutMinutes],
+        ['jdmt_cfg_maxWorkers', cfg.maxWorkers],
+        ['jdmt_cfg_maxUserJobs', cfg.maxUserJobs],
+        ['jdmt_cfg_jobTimeoutMinutes', cfg.jobTimeoutMinutes],
+    ];
+    pairs.forEach(function(p) {
+        var el = document.getElementById(p[0]);
+        if (el && p[1] != null) el.value = p[1];
+    });
+}
+
+async function loadJdTaskSchedulerConfigIntoForms() {
+    try {
+        var res = await api.get('/api/admin/jdtasks/config');
+        if (res.code === 0) fillJdTaskSchedulerConfigForms(res.data || {});
+    } catch (_) {}
+}
+
+function readJdTaskSchedulerConfigFromForm(prefix) {
+    var p = prefix === 'jdmt' ? 'jdmt_cfg_' : 'jdq_cfg_';
+    return {
+        maxWorkers: parseInt((document.getElementById(p + 'maxWorkers') || {}).value, 10),
+        maxUserJobs: parseInt((document.getElementById(p + 'maxUserJobs') || {}).value, 10),
+        jobTimeoutMinutes: parseInt((document.getElementById(p + 'jobTimeoutMinutes') || {}).value, 10),
+    };
+}
+
+async function saveJdTaskSchedulerConfig(prefix) {
+    var data = readJdTaskSchedulerConfigFromForm(prefix || 'jdq');
+    if (!data.maxWorkers || data.maxWorkers < 1) return toast('Worker 上限至少为 1', 'warning');
+    if (!data.maxUserJobs || data.maxUserJobs < 1) return toast('每用户同时任务数至少为 1', 'warning');
+    if (!data.jobTimeoutMinutes || data.jobTimeoutMinutes < 5) return toast('任务超时至少 5 分钟', 'warning');
+    try {
+        var res = await api.post('/api/admin/jdtasks/config/save', data);
+        toast(res.msg || (res.code === 0 ? '保存成功' : '保存失败'), res.code === 0 ? 'success' : 'error');
+        if (res.code === 0) {
+            fillJdTaskSchedulerConfigForms(res.data || data);
+            var st = Object.assign({}, _jdTaskQueueData.stats || {}, res.data || data);
+            _jdTaskQueueData.stats = st;
+            _jdTaskQueueData.config = res.data || data;
+            updateJdTaskQueueStats(st);
+            if (currentPage === 'jdtaskqueue') loadJdTaskQueue(false);
+        }
+    } catch (e) {
+        toast('保存失败: ' + e.message, 'error');
+    }
+}
+
 function initJdTaskQueuePage() {
     loadJdTaskQueue(true);
     if (_jdTaskQueueTimer) clearInterval(_jdTaskQueueTimer);
@@ -9264,6 +9357,7 @@ async function loadJdTaskQueue(showToast) {
         if (res.code !== 0) throw new Error(res.msg || '加载失败');
         _jdTaskQueueData = res.data || { stats: {}, tasks: [] };
         updateJdTaskQueueStats(_jdTaskQueueData.stats || {});
+        if (showToast) fillJdTaskSchedulerConfigForms(_jdTaskQueueData.config || _jdTaskQueueData.stats || {});
         renderJdTaskQueue();
         var hint = document.getElementById('jdTaskQueueHint');
         if (hint) hint.textContent = '最后更新: ' + new Date().toLocaleTimeString() + ' · 共 ' + ((_jdTaskQueueData.tasks || []).length) + ' 条活跃任务';

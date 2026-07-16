@@ -2654,10 +2654,37 @@ func (c *AdminApiController) GetJdTaskQueue() {
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"data": map[string]interface{}{
-			"stats": stats,
-			"tasks": tasks,
+			"stats":  stats,
+			"tasks":  tasks,
+			"config": models.GetJdTaskSchedulerConfigForAdmin(),
 		},
 	}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) GetJdTaskSchedulerConfig() {
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": models.GetJdTaskSchedulerConfigForAdmin(),
+	}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) SaveJdTaskSchedulerConfig() {
+	var req map[string]interface{}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	msg := models.SaveJdTaskSchedulerConfigForAdmin(req)
+	code := 0
+	if strings.Contains(msg, "失败") || strings.Contains(msg, "至少") || strings.Contains(msg, "不能") {
+		if !strings.HasPrefix(msg, "保存成功") {
+			code = 1
+		}
+	}
+	c.Data["json"] = map[string]interface{}{"code": code, "msg": msg, "data": models.GetJdTaskSchedulerConfigForAdmin()}
 	c.ServeJSON()
 }
 

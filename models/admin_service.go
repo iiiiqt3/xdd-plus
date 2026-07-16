@@ -968,6 +968,177 @@ func SaveGameConfigForAdmin(req map[string]interface{}) string {
 	return "保存成功，游戏配置已实时生效"
 }
 
+// ===================== 京东任务调度配置（支持热更新） =====================
+
+func GetJdTaskSchedulerConfigForAdmin() map[string]interface{} {
+	maxWorkers, maxUserJobs, timeout := jdDefaultMaxWorkers, jdDefaultMaxUserJobs, time.Duration(jdDefaultJobTimeoutMinutes)*time.Minute
+	if jdScheduler != nil {
+		maxWorkers, maxUserJobs, timeout = jdScheduler.currentLimits()
+	} else {
+		maxWorkers = jdResolvedMaxWorkers()
+		maxUserJobs = jdResolvedMaxUserJobs()
+		timeout = jdResolvedJobTimeout()
+	}
+	return map[string]interface{}{
+		"maxWorkers":          maxWorkers,
+		"maxUserJobs":         maxUserJobs,
+		"jobTimeoutMinutes":   int(timeout / time.Minute),
+		"defaults": map[string]int{
+			"maxWorkers":        jdDefaultMaxWorkers,
+			"maxUserJobs":       jdDefaultMaxUserJobs,
+			"jobTimeoutMinutes": jdDefaultJobTimeoutMinutes,
+		},
+	}
+}
+
+func SaveJdTaskSchedulerConfigForAdmin(req map[string]interface{}) string {
+	maxWorkers := jdResolvedMaxWorkers()
+	maxUserJobs := jdResolvedMaxUserJobs()
+	timeoutMin := jdDefaultJobTimeoutMinutes
+	if Config.JdTask.JobTimeoutMinutes > 0 {
+		timeoutMin = Config.JdTask.JobTimeoutMinutes
+	}
+
+	if v, ok := req["maxWorkers"]; ok {
+		n := toAdminInt(v)
+		if n < 1 {
+			return "Worker 上限至少为 1"
+		}
+		if n > 2000 {
+			return "Worker 上限不能超过 2000"
+		}
+		maxWorkers = n
+	}
+	if v, ok := req["maxUserJobs"]; ok {
+		n := toAdminInt(v)
+		if n < 1 {
+			return "每用户同时任务数至少为 1"
+		}
+		if n > 200 {
+			return "每用户同时任务数不能超过 200"
+		}
+		maxUserJobs = n
+	}
+	if v, ok := req["jobTimeoutMinutes"]; ok {
+		n := toAdminInt(v)
+		if n < 5 {
+			return "任务超时至少 5 分钟"
+		}
+		if n > 24*60 {
+			return "任务超时不能超过 1440 分钟（24小时）"
+		}
+		timeoutMin = n
+	}
+
+	data, err := ioutil.ReadFile(ExecPath + "/conf/config.yaml")
+	if err != nil {
+		return "读取配置文件失败: " + err.Error()
+	}
+
+	configMap := map[string]string{
+		"max_workers":          fmt.Sprintf("%d", maxWorkers),
+		"max_user_jobs":        fmt.Sprintf("%d", maxUserJobs),
+		"job_timeout_minutes":  fmt.Sprintf("%d", timeoutMin),
+	}
+
+	lines := strings.Split(string(data), "\n")
+	inSection := false
+	sectionFound := false
+	var newLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "jd_task:") {
+			inSection = true
+			sectionFound = true
+			newLines = append(newLines, line)
+			continue
+		}
+		if inSection && len(trimmed) > 0 && !strings.HasPrefix(trimmed, "#") && strings.Contains(trimmed, ":") {
+			indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+			// 顶层新 key（无缩进）结束本段
+			if len(indent) == 0 && !strings.HasPrefix(trimmed, "-") {
+				for yamlKey, newVal := range configMap {
+					newLines = append(newLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+					delete(configMap, yamlKey)
+				}
+				inSection = false
+				newLines = append(newLines, line)
+				continue
+			}
+			replaced := false
+			for yamlKey, newVal := range configMap {
+				if strings.HasPrefix(trimmed, yamlKey+":") {
+					newLines = append(newLines, fmt.Sprintf("%s%s: %s", indent, yamlKey, newVal))
+					delete(configMap, yamlKey)
+					replaced = true
+					break
+				}
+			}
+			if !replaced {
+				newLines = append(newLines, line)
+			}
+			continue
+		}
+		if inSection && (trimmed == "" || strings.HasPrefix(trimmed, "#")) {
+			newLines = append(newLines, line)
+			continue
+		}
+		if inSection {
+			for yamlKey, newVal := range configMap {
+				newLines = append(newLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+				delete(configMap, yamlKey)
+			}
+			inSection = false
+		}
+		newLines = append(newLines, line)
+	}
+	if inSection {
+		for yamlKey, newVal := range configMap {
+			newLines = append(newLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+			delete(configMap, yamlKey)
+		}
+	}
+	if !sectionFound {
+		if len(newLines) > 0 && strings.TrimSpace(newLines[len(newLines)-1]) != "" {
+			newLines = append(newLines, "")
+		}
+		newLines = append(newLines, "jd_task:")
+		for yamlKey, newVal := range configMap {
+			newLines = append(newLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+		}
+	} else if len(configMap) > 0 {
+		for yamlKey, newVal := range configMap {
+			newLines = append(newLines, fmt.Sprintf("  %s: %s", yamlKey, newVal))
+		}
+	}
+
+	newContent := strings.Join(newLines, "\n")
+	if err := ioutil.WriteFile(ExecPath+"/conf/config.yaml", []byte(newContent), 0644); err != nil {
+		return "写入失败: " + err.Error()
+	}
+	if err := ReloadConfig(); err != nil {
+		Warn("京东任务调度配置热更新失败: %v", err)
+		return "保存成功，但热更新失败（重启后生效）"
+	}
+	return "保存成功，调度配置已实时生效"
+}
+
+func toAdminInt(v interface{}) int {
+	switch n := v.(type) {
+	case float64:
+		return int(n)
+	case int:
+		return n
+	case int64:
+		return int(n)
+	case string:
+		i, _ := strconv.Atoi(strings.TrimSpace(n))
+		return i
+	default:
+		return 0
+	}
+}
+
 func SendActivityToGroups(title, content string) string {
 	return SendActivityToGroupsWithOptions(title, content, true, true)
 }

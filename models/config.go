@@ -70,6 +70,13 @@ type GameConfig struct {
 	DuelMaxRooms          int  `yaml:"duel_max_rooms"`           // 决斗最大房间数
 }
 
+// JdTaskConfig 用户京东任务调度（Portal / App / 机器人共用，支持热更新）
+type JdTaskConfig struct {
+	MaxWorkers          int `yaml:"max_workers"`            // 全局同时执行上限（Worker）
+	MaxUserJobs         int `yaml:"max_user_jobs"`          // 每用户同时排队+执行上限
+	JobTimeoutMinutes   int `yaml:"job_timeout_minutes"`    // 单任务超时（分钟）
+}
+
 type FanLi struct {
 	Appid    string
 	Appkey   string
@@ -140,6 +147,7 @@ type Yaml struct {
 	WxProtocol            WxProtocolConfig `yaml:"wx_protocol"`
 	Yyb                   YybConfig        `yaml:"yyb"`
 	Game                  GameConfig       `yaml:"game"`
+	JdTask                JdTaskConfig     `yaml:"jd_task"`
 	HttpProxyServerPort   int              `yaml:"http_proxy_server_port"`
 	Priority              int              `yaml:"Priority"`
 	DailyCompletePush     string           `yaml:"daily_complete_push"`
@@ -317,6 +325,15 @@ func initConfigDefaults() {
 	}
 	if Config.Game.DuelMaxRooms == 0 {
 		Config.Game.DuelMaxRooms = 10
+	}
+	if Config.JdTask.MaxWorkers <= 0 {
+		Config.JdTask.MaxWorkers = 200
+	}
+	if Config.JdTask.MaxUserJobs <= 0 {
+		Config.JdTask.MaxUserJobs = 10
+	}
+	if Config.JdTask.JobTimeoutMinutes <= 0 {
+		Config.JdTask.JobTimeoutMinutes = 60
 	}
 }
 
