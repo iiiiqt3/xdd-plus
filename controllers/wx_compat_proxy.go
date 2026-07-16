@@ -52,7 +52,7 @@ func (c *WxCompatProxyController) Any() {
 }
 
 func handleYybCompat(path, rawQuery string, body []byte, ref, method string) ([]byte, int) {
-	switch compatPathKind(path) {
+	switch resolveCompatPathKind(path) {
 	case compatKindStatus:
 		return handleCompatStatus()
 	case compatKindLatestUserKey:
@@ -570,7 +570,7 @@ const (
 	compatKindUnknown
 )
 
-func compatPathKind(path string) compatPathKind {
+func resolveCompatPathKind(path string) compatPathKind {
 	switch path {
 	case "/api/v1/wx/user/status", "/api/wx/user/status", "/api/WxApi/UserStatus":
 		return compatKindStatus
@@ -637,7 +637,7 @@ func compatPathKind(path string) compatPathKind {
 }
 
 func compatGatewayAction(path string) string {
-	switch compatPathKind(path) {
+	switch resolveCompatPathKind(path) {
 	case compatKindGetCode:
 		return "getCode"
 	case compatKindGetPhone:
