@@ -16,7 +16,6 @@ require (
 	github.com/lib/pq v1.7.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/satori/go.uuid v1.2.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/image v0.0.0-20220321031419-a8550c1d254a
@@ -31,13 +30,9 @@ require (
 )
 
 require (
-	github.com/eatmoreapple/openwechat v1.4.6
 	github.com/fsnotify/fsnotify v1.4.7
-	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/swaggo/http-swagger/v2 v2.0.2
-	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.53.0
 )
 

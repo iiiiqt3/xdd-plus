@@ -15,8 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"gorm.io/gorm"
 
 	"github.com/cdle/xdd/yyb/internal/protocol"
@@ -56,13 +54,6 @@ type AccountTCPProxyResolver func(ctx context.Context, acc *store.WechatAccount)
 
 // AccountProxyForceRefresher 强制重提账号同地区短效代理
 type AccountProxyForceRefresher func(credentials map[string]any) (proxy string, updated map[string]any, err error)
-
-var swaggerDocsHandler = httpSwagger.Handler(
-	httpSwagger.URL("/openapi.json"),
-	httpSwagger.DocExpansion("list"),
-	httpSwagger.DeepLinking(true),
-	httpSwagger.DefaultModelsExpandDepth(httpSwagger.ShowModel),
-)
 
 func NewApp(cfg Config) (*App, error) {
 	if cfg.ResourceRoot == "" {
@@ -134,81 +125,6 @@ func (a *App) SetTCPProxy(proxy string) {
 	if a.pool != nil {
 		a.pool.SetTCPProxy(proxy)
 	}
-}
-
-func (a *App) Handler() http.Handler {
-	if os.Getenv(gin.EnvGinMode) == "" {
-		gin.SetMode(gin.ReleaseMode)
-	}
-
-	router := gin.New()
-	router.Use(gin.Logger(), gin.Recovery())
-
-	router.Any("/", gin.WrapF(a.handleIndex))
-	router.Any("/scan", gin.WrapF(a.handleScan))
-	router.Any("/docs", func(c *gin.Context) {
-		c.Redirect(http.StatusMovedPermanently, "/docs/index.html")
-	})
-	router.Any("/docs/*path", gin.WrapF(a.handleDocs))
-	router.Any("/openapi.json", gin.WrapF(a.handleOpenAPI))
-	router.Any("/health", func(c *gin.Context) {
-		writeJSON(c.Writer, http.StatusOK, gin.H{"ok": true})
-	})
-	router.StaticFS("/static", http.Dir(a.resources.Static))
-	router.Any("/qr", gin.WrapF(a.handleQRRoot))
-	router.Any("/qr/*path", gin.WrapF(a.handleQR))
-	router.Any("/accounts", gin.WrapF(a.handleAccountsRoot))
-	router.Any("/accounts/avatar", gin.WrapF(a.handleAccountAvatar))
-	router.Any("/accounts/refresh", gin.WrapF(a.handleAccountRefresh))
-	router.Any("/accounts/resync", gin.WrapF(a.handleAccountResync))
-	router.Any("/wxapp/getCode", gin.WrapF(a.handleGetCode))
-	router.Any("/wxapp/getPhoneNumber", gin.WrapF(a.handleGetPhoneNumber))
-	router.Any("/wxapp/operateWxData", gin.WrapF(a.handleOperateWXData))
-	router.NoRoute(func(c *gin.Context) {
-		writeError(c.Writer, http.StatusNotFound, "not found")
-	})
-
-	return router
-}
-
-func (a *App) handleIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		writeError(w, http.StatusNotFound, "not found")
-		return
-	}
-	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-	serveFileOrText(w, r, filepath.Join(a.resources.Templates, "index.html"), fallbackIndexHTML)
-}
-
-func (a *App) handleScan(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-	serveFileOrText(w, r, filepath.Join(a.resources.Templates, "scan.html"), fallbackScanHTML)
-}
-
-func (a *App) handleDocs(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-	if r.URL.Path == "/docs/" {
-		http.Redirect(w, r, "/docs/index.html", http.StatusMovedPermanently)
-		return
-	}
-	swaggerDocsHandler.ServeHTTP(w, r)
-}
-
-func (a *App) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-	writeRawJSON(w, http.StatusOK, openAPISpec)
 }
 
 func (a *App) handleQRRoot(w http.ResponseWriter, r *http.Request) {
@@ -1045,21 +961,6 @@ func writeError(w http.ResponseWriter, status int, detail string) {
 		Msg:  detail,
 		Data: nil,
 	})
-}
-
-func requestLogger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
-	})
-}
-
-func serveFileOrText(w http.ResponseWriter, r *http.Request, path, fallback string) {
-	if _, err := os.Stat(path); err == nil {
-		http.ServeFile(w, r, path)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write([]byte(fallback))
 }
 
 func stringFromAny(v any) string {

@@ -5,7 +5,7 @@ import (
     "strings"
     "time"
 
-    uuid "github.com/satori/go.uuid"
+    "github.com/google/uuid"
 )
 
 type RegisterBindCode struct {
@@ -27,7 +27,7 @@ func CreateRegisterBindCode(userNumber int) (*RegisterBindCode, error) {
     if userNumber <= 0 {
         return nil, fmt.Errorf("无效的用户编号")
     }
-    code := RegisterBindCodePrefix + strings.ReplaceAll(uuid.NewV4().String(), "-", "")[:12]
+    code := RegisterBindCodePrefix + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
     entity := &RegisterBindCode{
         Code:       code,
         UserNumber: userNumber,

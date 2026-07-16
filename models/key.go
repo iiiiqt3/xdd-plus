@@ -2,9 +2,10 @@ package models
 
 import (
     "fmt"
-    uuid "github.com/satori/go.uuid"
     "strings"
     "time"
+
+    "github.com/google/uuid"
 )
 
 type Key struct {
@@ -20,7 +21,7 @@ type Key struct {
 func createKey(num int, value int) string {
     var str []string
     for i := 0; i < num; i++ {
-        id := uuid.NewV4()
+        id := uuid.New()
         ids := "XDD" + id.String()
         var u Key
         u = Key{
@@ -98,9 +99,9 @@ func useKey(id string, use int, ctx ...ClientContext) string {
 //##创建赠送卡密函数
 func create_ZSKey(num int, value int) string {
 	var str []string
-	batchID := uuid.NewV4().String() // 生成一个批次ID，用于标识这一批次卡密
+	batchID := uuid.New().String() // 生成一个批次ID，用于标识这一批次卡密
 	for i := 0; i < num; i++ {
-		id := uuid.NewV4()
+		id := uuid.New()
 		ids := "ZSKM" + id.String()
 		var u Key
 		u = Key{

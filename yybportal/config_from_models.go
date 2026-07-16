@@ -37,7 +37,6 @@ func ModuleConfigFromModels() ModuleConfig {
 		ScanLoginCost:      yybScanLoginCostFromConfig(c),
 		MaxAccountsPerUser: c.MaxAccountsPerUser,
 		APIToken:           c.APIToken,
-		ExposeInternalAPI:  c.ExposeInternalAPI,
 	}
 }
 
@@ -53,6 +52,5 @@ func AdminConfigView() map[string]any {
 		"scanLoginCost":      getScanLoginCost(),
 		"maxAccountsPerUser": getMaxAccountsPerUser(),
 		"hasApiToken":        c.APIToken != "",
-		"exposeInternalApi":  c.ExposeInternalAPI,
 	}
 }

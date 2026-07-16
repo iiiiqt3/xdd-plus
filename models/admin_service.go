@@ -145,7 +145,6 @@ func GetJdConfigForAdmin() map[string]interface{} {
 		"yybScanLoginCost":      yybScanLoginCostForAdmin(),
 		"yybMaxAccountsPerUser": Config.Yyb.MaxAccountsPerUser,
 		"yybAPIToken":           Config.Yyb.APIToken,
-		"yybExposeInternalAPI":  Config.Yyb.ExposeInternalAPI,
 		"yybProxy51Enabled":     Config.Yyb.Proxy51Enabled,
 		"yybProxy51Plan":        Config.Yyb.Proxy51Plan,
 		"yybProxy51APIBase":     Config.Yyb.Proxy51APIBase,
@@ -388,9 +387,6 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	if v, ok := req["yybAPIToken"].(string); ok {
 		configMap["yyb_api_token"] = fmt.Sprintf("%q", v)
 	}
-	if v, ok := req["yybExposeInternalAPI"].(bool); ok {
-		configMap["yyb_expose_internal_api"] = fmt.Sprintf("%v", v)
-	}
 	if v, ok := req["yybProxy51Enabled"].(bool); ok {
 		configMap["yyb_proxy_51_enabled"] = fmt.Sprintf("%v", v)
 	}
@@ -525,7 +521,6 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		"yyb_scan_login_cost":       "scan_login_cost",
 		"yyb_max_accounts_per_user": "max_accounts_per_user",
 		"yyb_api_token":             "api_token",
-		"yyb_expose_internal_api":   "expose_internal_api",
 		"yyb_proxy_51_enabled":           "proxy_51_enabled",
 		"yyb_proxy_51_plan":              "proxy_51_plan",
 		"yyb_proxy_51_api_base":          "proxy_51_api_base",

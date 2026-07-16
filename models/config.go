@@ -36,7 +36,6 @@ type YybConfig struct {
 	ScanLoginCost      *int   `yaml:"scan_login_cost"`
 	MaxAccountsPerUser int    `yaml:"max_accounts_per_user"`
 	APIToken           string `yaml:"api_token"`
-	ExposeInternalAPI  bool   `yaml:"expose_internal_api"`
 	// 51 代理（应用宝扫码/业务）
 	Proxy51Enabled           bool   `yaml:"proxy_51_enabled"`
 	Proxy51Plan              string `yaml:"proxy_51_plan"` // count | traffic

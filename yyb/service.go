@@ -1,7 +1,6 @@
 package yyb
 
 import (
-	"net/http"
 	"strings"
 	"sync"
 
@@ -75,14 +74,6 @@ func (s *Service) appAPI() *httpapi.App {
 		return nil
 	}
 	return s.app
-}
-
-// Handler HTTP 处理器（内部调试 / 可选挂载）
-func (s *Service) Handler() http.Handler {
-	if s == nil || s.app == nil {
-		return http.NotFoundHandler()
-	}
-	return s.app.Handler()
 }
 
 // Close 释放资源

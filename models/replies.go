@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/client/httplib"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 // GetReplyContent 根据消息内容匹配回复

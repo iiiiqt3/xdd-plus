@@ -18,7 +18,6 @@ type ModuleConfig struct {
 	ScanLoginCost      int
 	MaxAccountsPerUser int
 	APIToken           string
-	ExposeInternalAPI  bool
 }
 
 var (
@@ -78,7 +77,6 @@ func Init(c ModuleConfig) error {
 		GormDB:            models.GormDB(),
 		TCPProxy:          c.TCPProxy,
 		Proxy51Enabled:    models.Config.Yyb.Proxy51Enabled,
-		ExposeInternalAPI: c.ExposeInternalAPI,
 	})
 	if err != nil {
 		mu.Lock()
@@ -139,7 +137,6 @@ func RefreshConfigFromModels() {
 	cfg.ScanLoginCost = c.ScanLoginCost
 	cfg.MaxAccountsPerUser = c.MaxAccountsPerUser
 	cfg.APIToken = c.APIToken
-	cfg.ExposeInternalAPI = c.ExposeInternalAPI
 	cfg.TCPProxy = c.TCPProxy
 	cfg.ResourceRoot = c.ResourceRoot
 	cfg.DBFilename = c.DBFilename

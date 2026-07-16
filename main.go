@@ -16,10 +16,7 @@ import (
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/vweb"
 	"github.com/cdle/xdd/yybportal"
-	"github.com/eatmoreapple/openwechat"
 )
-
-var friedns openwechat.Friends
 
 // Result 通用API响应结构体
 type Result struct {
@@ -532,21 +529,6 @@ func main() {
 
 	}()
 
-	// 初始化微信机器人（桌面模式）
-	bot := openwechat.DefaultBot(openwechat.Desktop) // 桌面模式
-
-	// 注册微信消息处理函数
-	bot.MessageHandler = func(msg *openwechat.Message) {
-		if msg.IsText() && msg.Content == "ping" {
-
-			msg.ReplyText("pong")
-
-			name := msg.FromUserName
-			id := friedns.GetByUsername(name).User
-			id.Detail()
-
-		}
-	}
 	// 启动Web服务，阻塞主线程
 	web.Run()
 

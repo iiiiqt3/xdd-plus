@@ -19,8 +19,6 @@ type Config struct {
 	ScanTimeout        time.Duration
 	QRSessionTTL       time.Duration
 	Proxy51Enabled     bool
-	ExposeInternalAPI  bool
-	InternalPathPrefix string
 }
 
 func DefaultConfig() Config {
@@ -33,7 +31,5 @@ func DefaultConfig() Config {
 		AvatarTimeout:      10 * time.Second,
 		ScanTimeout:        180 * time.Second,
 		QRSessionTTL:       5 * time.Minute,
-		ExposeInternalAPI:  false,
-		InternalPathPrefix: "/internal/yyb",
 	}
 }
