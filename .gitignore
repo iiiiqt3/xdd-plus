@@ -19,6 +19,7 @@
 .gomodcache/
 .idea/
 .md
+!ARCHITECTURE.md
 .vscode/
 conf/
 jd_query.js

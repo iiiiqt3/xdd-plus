@@ -97,7 +97,7 @@ func GetJdContainersForAdmin() []map[string]interface{} {
 
 // JdConfigForAdmin 后台展示用的京东配置
 func GetJdConfigForAdmin() map[string]interface{} {
-	return map[string]interface{}{
+	cfg := map[string]interface{}{
 		"mode":            Config.Mode,
 		"wsToken":         Config.WsToken,
 		"atTime":          Config.CTime,
@@ -180,6 +180,7 @@ func GetJdConfigForAdmin() map[string]interface{} {
 		"duelDefaultBet":      Config.Game.DuelDefaultBet,
 		"duelMaxRooms":        Config.Game.DuelMaxRooms,
 	}
+	return MaskJdConfigForAdmin(cfg)
 }
 
 func yybScanLoginCostForAdmin() int {
@@ -249,10 +250,10 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		configMap["mode"] = v
 	}
 	if v, ok := req["apiToken"].(string); ok {
-		configMap["ApiToken"] = v
+		configMap["ApiToken"] = MergeSecretField(v, Config.ApiToken)
 	}
 	if v, ok := req["master"].(string); ok {
-		configMap["master"] = v
+		configMap["master"] = MergeSecretField(v, Config.Master)
 	}
 	if v, ok := req["note"].(string); ok {
 		configMap["Note"] = v
@@ -353,7 +354,7 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	}
 	if v, ok := req["wxToken"].(string); ok {
 		// 使用 wx_token 前缀，避免与文件顶层 token 冲突；落盘时写入 wx.token
-		configMap["wx_token"] = fmt.Sprintf("%q", v)
+		configMap["wx_token"] = fmt.Sprintf("%q", MergeSecretField(v, Config.Wx.Token))
 	}
 	if v, ok := req["wxLoginBaseURL"].(string); ok {
 		configMap["wp_login_base_url"] = v
@@ -391,7 +392,7 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		configMap["yyb_max_accounts_per_user"] = fmt.Sprintf("%d", int(v))
 	}
 	if v, ok := req["yybAPIToken"].(string); ok {
-		configMap["yyb_api_token"] = fmt.Sprintf("%q", v)
+		configMap["yyb_api_token"] = fmt.Sprintf("%q", MergeSecretField(v, Config.Yyb.APIToken))
 	}
 	if v, ok := req["yybProxy51Enabled"].(bool); ok {
 		configMap["yyb_proxy_51_enabled"] = fmt.Sprintf("%v", v)
@@ -453,7 +454,7 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		configMap["jpush_app_key"] = fmt.Sprintf("%q", v)
 	}
 	if v, ok := req["jpushMasterSecret"].(string); ok {
-		configMap["jpush_master_secret"] = fmt.Sprintf("%q", v)
+		configMap["jpush_master_secret"] = fmt.Sprintf("%q", MergeSecretField(v, Config.Jpush.MasterSecret))
 	}
 	if v, ok := req["jpushProduction"].(bool); ok {
 		configMap["jpush_production"] = fmt.Sprintf("%v", v)
@@ -1285,13 +1286,15 @@ func SetUserCoin(number int, coin int) error {
 // ===================== 系统配置 =====================
 
 func GetSystemConfigForAdmin() SystemConfig {
-	return ListConfig()
+	return MaskSystemConfigForAdmin(ListConfig())
 }
 
 func SaveSystemConfigForAdmin(req map[string]interface{}) string {
+	current := ListConfig()
 	var sys SystemConfig
 	data, _ := json.Marshal(req)
 	json.Unmarshal(data, &sys)
+	sys = MergeSystemConfigSecrets(sys, current)
 	return SaveSysConfig(sys)
 }
 

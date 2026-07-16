@@ -856,6 +856,55 @@ func GetKuwoCredentials(userNumber int) (phone, password string, err error) {
 	return accounts[0].Phone, accounts[0].Password, nil
 }
 
+// GetKuwoPasswordForUser 按手机号读取用户已存酷我密码（门户服务端解析，不下发 API）。
+func GetKuwoPasswordForUser(userNumber int, phone string) (string, error) {
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		return "", fmt.Errorf("手机号不能为空")
+	}
+	accounts, err := GetAllKuwoCredentials(userNumber)
+	if err != nil {
+		return "", err
+	}
+	for _, acc := range accounts {
+		if strings.TrimSpace(acc.Phone) == phone && strings.TrimSpace(acc.Password) != "" {
+			return strings.TrimSpace(acc.Password), nil
+		}
+	}
+	return "", fmt.Errorf("未找到该手机号的酷我活动配置")
+}
+
+// ResolveKuwoPassword 请求未带密码时从活动项目读取。
+func ResolveKuwoPassword(userNumber int, phone, password string) (string, error) {
+	password = strings.TrimSpace(password)
+	if password != "" {
+		return password, nil
+	}
+	return GetKuwoPasswordForUser(userNumber, phone)
+}
+
+// KuwoAccountPublic 门户展示用（不含密码）。
+type KuwoAccountPublic struct {
+	Phone       string `json:"phone"`
+	HasPassword bool   `json:"hasPassword"`
+}
+
+// GetAllKuwoCredentialsPublic 返回不含密码的账号列表。
+func GetAllKuwoCredentialsPublic(userNumber int) ([]KuwoAccountPublic, error) {
+	accounts, err := GetAllKuwoCredentials(userNumber)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]KuwoAccountPublic, 0, len(accounts))
+	for _, acc := range accounts {
+		out = append(out, KuwoAccountPublic{
+			Phone:       acc.Phone,
+			HasPassword: strings.TrimSpace(acc.Password) != "",
+		})
+	}
+	return out, nil
+}
+
 // GetAllKuwoCredentials 获取用户所有酷我账号列表
 func GetAllKuwoCredentials(userNumber int) ([]KuwoAccountInfo, error) {
 	projects, err := GetActivityProjectsByUserAndEnv(userNumber, "KWYY", "KWYY")

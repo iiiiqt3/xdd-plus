@@ -1,8 +1,9 @@
 package models
 
 import (
+    "crypto/rand"
     "fmt"
-    "math/rand"
+    "math/big"
     "strings"
     "time"
 )
@@ -20,14 +21,23 @@ type PasswordResetCode struct {
 }
 
 const PasswordResetCodeTTL = 30 * time.Minute
-const PasswordResetCodeLength = 6
+const PasswordResetCodeLength = 8
 
-func init() {
-    rand.Seed(time.Now().UnixNano())
-}
+const passwordResetAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+func init() {}
 
 func generatePasswordResetCode() string {
-    return fmt.Sprintf("%06d", rand.Intn(1000000))
+    b := make([]byte, PasswordResetCodeLength)
+    max := big.NewInt(int64(len(passwordResetAlphabet)))
+    for i := 0; i < PasswordResetCodeLength; i++ {
+        n, err := rand.Int(rand.Reader, max)
+        if err != nil {
+            return fmt.Sprintf("%08d", time.Now().UnixNano()%100000000)
+        }
+        b[i] = passwordResetAlphabet[n.Int64()]
+    }
+    return string(b)
 }
 
 func CreatePasswordResetCode(userNumber int) (*PasswordResetCode, error) {

@@ -5942,7 +5942,10 @@ async function checkKuwoAuth() {
                     const phoneInput = document.getElementById('kuwoPhone');
                     const pwdInput = document.getElementById('kuwoPassword');
                     if (phoneInput) phoneInput.value = cred.data.phone || '';
-                    if (pwdInput) pwdInput.value = cred.data.password || '';
+                    if (pwdInput) {
+                        pwdInput.value = cred.data.hasPassword ? '已自动配置' : '';
+                        pwdInput.dataset.configured = cred.data.hasPassword ? '1' : '0';
+                    }
                     // 多账号下拉
                     const accounts = cred.data.accounts || [];
                     const wrap = document.getElementById('kuwoAccountSelectWrap');
@@ -6101,7 +6104,10 @@ function kuwoSwitchAccount() {
     const pwdInput = document.getElementById('kuwoPassword');
     const smsInput = document.getElementById('kuwoSmsCode');
     if (phoneInput) phoneInput.value = acc.phone;
-    if (pwdInput) pwdInput.value = acc.password;
+    if (pwdInput) {
+        pwdInput.value = acc.hasPassword ? '已自动配置' : '';
+        pwdInput.dataset.configured = acc.hasPassword ? '1' : '0';
+    }
     if (smsInput) smsInput.value = '';
     kuwoSetWithdrawLocked(false, false);
 }
@@ -6109,8 +6115,9 @@ function kuwoSwitchAccount() {
 async function kuwoSendSms() {
     if (!kuwoAuthorized) { toast('酷我活动授权已到期，请前往项目中心续费后再使用', 'error'); return; }
     const phone = document.getElementById('kuwoPhone').value.trim();
-    const password = document.getElementById('kuwoPassword').value.trim();
-    if (!phone || !password) { toast('请填写手机号和密码', 'error'); return; }
+    const pwdInput = document.getElementById('kuwoPassword');
+    if (!phone) { toast('请填写手机号', 'error'); return; }
+    if (pwdInput && pwdInput.dataset.configured !== '1') { toast('未找到酷我活动密码配置', 'error'); return; }
     const btn = document.getElementById('kuwoSendSmsBtn');
     const status = document.getElementById('kuwoSmsStatus');
     btn.disabled = true;
@@ -6124,7 +6131,7 @@ async function kuwoSendSms() {
     try {
         const data = await request('/api/portal/kuwo/send-sms', {
             method: 'POST',
-            body: JSON.stringify({ phone, password })
+            body: JSON.stringify({ phone })
         });
         kuwoSessionData = data.data;
         try { localStorage.setItem(KUWO_SMS_SESSION_KEY, String(Date.now())); } catch (e) {}
@@ -6186,12 +6193,13 @@ function kuwoStartWithdraw() {
     if (!kuwoAuthorized) { toast('酷我活动授权已到期，请前往项目中心续费后再使用', 'error'); return; }
     if (kuwoWithdrawSubmitting) { toast('任务提交中，请稍候', 'info'); return; }
     const phone = document.getElementById('kuwoPhone').value.trim();
-    const password = document.getElementById('kuwoPassword').value.trim();
+    const pwdInput = document.getElementById('kuwoPassword');
     const smsCode = document.getElementById('kuwoSmsCode').value.trim();
     const quotaId = kuwoGetSelectedQuota();
     const useProxy = kuwoUseProxyEnabled();
 
-    if (!phone || !password) { toast('请填写手机号和密码', 'error'); return; }
+    if (!phone) { toast('请填写手机号', 'error'); return; }
+    if (pwdInput && pwdInput.dataset.configured !== '1') { toast('未找到酷我活动密码配置', 'error'); return; }
     if (!smsCode) { toast('请输入验证码', 'error'); return; }
 
     const info = kuwoGetNextWithdrawInfo();
@@ -6203,32 +6211,32 @@ function kuwoStartWithdraw() {
         // 持久化倒计时状态
         try {
             localStorage.setItem(KUWO_STATE_KEY, JSON.stringify({
-                phone, password, smsCode, quotaId,
+                phone, smsCode, quotaId,
                 useProxy,
                 targetHour: info.hour,
                 savedAt: Date.now()
             }));
         } catch (e) {}
         // 调后端定时接口
-        scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, info.hour, info, false, useProxy);
+        scheduleWithdrawOnBackend(phone, smsCode, quotaId, info.hour, info, false, useProxy);
         return;
     }
 
     // 非抢兑窗口 → 立即执行
     kuwoLog('⚡ 立即提交抢兑...');
     kuwoSetWithdrawLocked(true, false);
-    scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, null, null, true, useProxy);
+    scheduleWithdrawOnBackend(phone, smsCode, quotaId, null, null, true, useProxy);
 }
 
 // 调后端定时/立即抢兑接口
-async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targetHour, info, immediate, useProxy) {
+async function scheduleWithdrawOnBackend(phone, smsCode, quotaId, targetHour, info, immediate, useProxy) {
     if (kuwoWithdrawSubmitting) return;
     kuwoWithdrawSubmitting = true;
     const withdrawBtn = document.getElementById('kuwoWithdrawBtn');
     if (withdrawBtn) withdrawBtn.disabled = true;
     try {
         const body = {
-            sessions: [{ phone, password }],
+            sessions: [{ phone }],
             quotaId, smsCode,
             immediate: !!immediate,
             useProxy: useProxy !== false
@@ -6250,7 +6258,7 @@ async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targ
             // 保存taskId到localStorage
             try {
                 const saved = localStorage.getItem(KUWO_STATE_KEY);
-                const state = saved ? JSON.parse(saved) : { phone, password, smsCode, quotaId };
+                const state = saved ? JSON.parse(saved) : { phone, smsCode, quotaId };
                 state.useProxy = useProxy !== false;
                 state.taskId = taskId;
                 state.immediate = !!immediate;

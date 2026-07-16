@@ -56,7 +56,7 @@ func main() {
 	}()
 
 	// 微信消息推送API，通过token验证权限
-	token := models.GetEnv("wx_msg_token")
+	token := strings.TrimSpace(models.GetEnv("wx_msg_token"))
 	web.Post("/api/send_wx_msg", func(ctx *context.Context) {
 		type RequestData struct {
 			WxID string `json:"wxid"`
@@ -64,8 +64,13 @@ func main() {
 		}
 		requestToken := ctx.Input.Query("token") // 假设token是通过 query 参数传递的
 
+		if token == "" {
+			ctx.Output.SetStatus(503)
+			ctx.Output.Body([]byte("禁止访问：未配置 wx_msg_token"))
+			return
+		}
 		// 如果 token 不匹配，则返回 403 错误
-		if requestToken != token {
+		if !models.VerifySharedToken(requestToken, token) {
 			ctx.Output.SetStatus(403)
 			ctx.Output.Body([]byte("禁止访问：token无效"))
 			return
@@ -88,10 +93,14 @@ func main() {
 
 		ctx.Output.Body([]byte("Message sent successfully"))
 	})
-	// 手机号权限验证接口
+	// 手机号权限验证接口（配置了 ApiToken 时需携带 token）
 	web.Get("/permisson", func(ctx *context.Context) {
+		if !models.CheckOptionalApiToken(ctx.Input.Query("token")) {
+			ctx.Output.SetStatus(403)
+			ctx.WriteString(`{"flag":false,"code":40300,"message":"token无效","data":"null"}`)
+			return
+		}
 		tel := ctx.Input.Query("phone")
-		models.Info(tel)
 		auth := models.GetAuth(tel)
 		if auth {
 			result := AuthResult{
@@ -139,8 +148,13 @@ func main() {
 		ctx.WriteString(string(jsons))
 	})
 
-	// 微信协议服务器地址查询接口（无需登录，供查询脚本使用）
+	// 微信协议服务器地址查询接口（配置了 ApiToken 时需携带 token）
 	web.Get("/api/wxserver", func(ctx *context.Context) {
+		if !models.CheckOptionalApiToken(ctx.Input.Query("token")) {
+			ctx.Output.SetStatus(403)
+			ctx.WriteString(`{"code":403,"message":"token无效"}`)
+			return
+		}
 		oldURL := models.Config.WxProtocol.LoginBaseURL
 		newURL := models.Config.WxProtocol.NewLoginBaseURL
 		if oldURL == "" {
@@ -428,9 +442,10 @@ func main() {
 	// ===================== 静态文件服务（上传的图片/视频） =====================
 	web.Get("/uploads/*", func(ctx *context.Context) {
 		filePath := ctx.Input.Param(":filepath")
-		absPath := filepath.Join(models.ExecPath, "uploads", filePath)
-		// 安全检查：防止路径穿越
-		if strings.Contains(absPath, "..") {
+		uploadsRoot := filepath.Clean(filepath.Join(models.ExecPath, "uploads"))
+		absPath := filepath.Clean(filepath.Join(uploadsRoot, filePath))
+		rel, err := filepath.Rel(uploadsRoot, absPath)
+		if err != nil || strings.HasPrefix(rel, "..") || rel == ".." {
 			ctx.Output.SetStatus(403)
 			ctx.WriteString("forbidden")
 			return
@@ -501,18 +516,13 @@ func main() {
 	web.BConfig.WebConfig.Session.SessionName = models.AppName
 	// 配置CORS跨域访问
 	web.InsertFilter("*", web.BeforeRouter, cors.Allow(&cors.Options{
-		//允许所有源（如需限制可改为具体域名列表）
-		AllowAllOrigins: true,
-		//可选参数"GET", "POST", "PUT", "DELETE", "OPTIONS" (*为所有)
-		//其中Options跨域复杂请求预检
-		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		//指的是允许的Header的种类
-		AllowHeaders: []string{"Origin", "Content-Type", "Authorization", "X-Request-Source", "X-Client-Platform", "X-Sign-Timestamp", "X-Sign-Nonce", "X-Sign-DeviceID", "X-Sign-Value", "X-Sign-Version", "X-App-Version"},
-		//公开的HTTP标头列表
-		ExposeHeaders: []string{"Content-Length"},
-		//如果设置，则允许共享身份验证凭据，例如cookie
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Request-Source", "X-Client-Platform", "X-Sign-Timestamp", "X-Sign-Nonce", "X-Sign-DeviceID", "X-Sign-Value", "X-Sign-Version", "X-App-Version"},
+		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
+	web.InsertFilter("*", web.BeforeRouter, models.RateLimitBeegoFilter)
 
 	// 启动后延迟发送启动通知
 	go func() {

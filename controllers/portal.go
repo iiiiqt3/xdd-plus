@@ -990,7 +990,7 @@ func (c *PortalController) JdProxyBuy() {
 	c.ServeJSON()
 }
 
-// KuwoGetCredentials 读取用户挂活动提交的酷我账号密码
+// KuwoGetCredentials 读取用户挂活动提交的酷我账号（不下发密码）
 func (c *PortalController) KuwoGetCredentials() {
 	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
 	if err != nil {
@@ -998,7 +998,7 @@ func (c *PortalController) KuwoGetCredentials() {
 		c.ServeJSON()
 		return
 	}
-	accounts, err := models.GetAllKuwoCredentials(profile.User.Number)
+	accounts, err := models.GetAllKuwoCredentialsPublic(profile.User.Number)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -1009,13 +1009,12 @@ func (c *PortalController) KuwoGetCredentials() {
 		c.ServeJSON()
 		return
 	}
-	// 默认返回第一个账号（兼容旧逻辑）
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"data": map[string]interface{}{
 			"phone":    accounts[0].Phone,
-			"password": accounts[0].Password,
-			"accounts": accounts, // 全部账号列表，供前端下拉选择
+			"hasPassword": accounts[0].HasPassword,
+			"accounts": accounts,
 		},
 	}
 	c.ServeJSON()
@@ -1047,8 +1046,20 @@ func (c *PortalController) KuwoLogin() {
 	}
 	phone := strings.TrimSpace(req.Phone)
 	password := strings.TrimSpace(req.Password)
-	if phone == "" || password == "" {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "手机号和密码不能为空"}
+	if phone == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "手机号不能为空"}
+		c.ServeJSON()
+		return
+	}
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	password, err = models.ResolveKuwoPassword(profile.User.Number, phone, password)
+	if err != nil || password == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "未找到该账号的酷我活动密码配置"}
 		c.ServeJSON()
 		return
 	}
@@ -1085,8 +1096,20 @@ func (c *PortalController) KuwoSendSms() {
 	}
 	phone := strings.TrimSpace(req.Phone)
 	password := strings.TrimSpace(req.Password)
-	if phone == "" || password == "" {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "手机号和密码不能为空"}
+	if phone == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "手机号不能为空"}
+		c.ServeJSON()
+		return
+	}
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	password, err = models.ResolveKuwoPassword(profile.User.Number, phone, password)
+	if err != nil || password == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "未找到该账号的酷我活动密码配置"}
 		c.ServeJSON()
 		return
 	}
@@ -1158,10 +1181,23 @@ func (c *PortalController) KuwoWithdraw() {
 	}
 
 	accounts := make([]*models.KuwoAccountInput, 0, len(req.Sessions))
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
 	for _, s := range req.Sessions {
+		phone := strings.TrimSpace(s.Phone)
+		password, perr := models.ResolveKuwoPassword(profile.User.Number, phone, strings.TrimSpace(s.Password))
+		if perr != nil || password == "" {
+			c.Data["json"] = map[string]interface{}{"code": 1, "msg": "未找到账号 " + phone + " 的酷我活动密码配置"}
+			c.ServeJSON()
+			return
+		}
 		accounts = append(accounts, &models.KuwoAccountInput{
-			Phone:    strings.TrimSpace(s.Phone),
-			Password: strings.TrimSpace(s.Password),
+			Phone:    phone,
+			Password: password,
 		})
 	}
 	sessions := models.KuwoBuildSessionsFromRequest(accounts)
@@ -1250,10 +1286,23 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 	}
 
 	accounts := make([]*models.KuwoAccountInput, 0, len(req.Sessions))
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
 	for _, s := range req.Sessions {
+		phone := strings.TrimSpace(s.Phone)
+		password, perr := models.ResolveKuwoPassword(profile.User.Number, phone, strings.TrimSpace(s.Password))
+		if perr != nil || password == "" {
+			c.Data["json"] = map[string]interface{}{"code": 1, "msg": "未找到账号 " + phone + " 的酷我活动密码配置"}
+			c.ServeJSON()
+			return
+		}
 		accounts = append(accounts, &models.KuwoAccountInput{
-			Phone:    strings.TrimSpace(s.Phone),
-			Password: strings.TrimSpace(s.Password),
+			Phone:    phone,
+			Password: password,
 		})
 	}
 
