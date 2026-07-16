@@ -62,3 +62,12 @@ func ScriptRefreshAccount(ref string) (map[string]any, error) {
 	}
 	return a.RefreshAccount(context.Background(), ref)
 }
+
+// ScriptDeleteAccount 脚本删除应用宝账号
+func ScriptDeleteAccount(ref string) error {
+	a, err := svc()
+	if err != nil {
+		return err
+	}
+	return a.DeleteAccount(context.Background(), strings.TrimSpace(ref))
+}

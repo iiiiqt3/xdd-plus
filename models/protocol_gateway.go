@@ -297,6 +297,11 @@ func webHTTPPort() string {
 	return "8080"
 }
 
+// CheckWxDeviceOnline 供兼容网关判断双绑微信是否在线（可回退 wechat08）
+func CheckWxDeviceOnline(wxid string) (bool, error) {
+	return checkWxDeviceOnline(wxid)
+}
+
 // ForwardWxProtoRequest 转发到 wechat08
 func ForwardWxProtoRequest(method, path, rawQuery string, body []byte) (respBody []byte, status int, contentType string, err error) {
 	base := strings.TrimRight(getWxLoginBaseURL(), "/")

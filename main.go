@@ -410,20 +410,7 @@ func main() {
 
 	// ===================== 青龙脚本兼容网关（WECHAT_SERVER 指向 xdd） =====================
 	wxCompat := &controllers.WxCompatProxyController{}
-	gatewayPaths := []string{
-		"/api/v1/wx/app/get/code",
-		"/api/wx/app/get/code",
-		"/wx/app/get/code",
-		"/api/v1/wx/app/call/function",
-		"/api/wx/app/call/function",
-		"/wx/app/call/function",
-		"/api/v1/wx/app/operate/wxdata",
-		"/api/wx/app/operate/wxdata",
-		"/api/v1/wx/user/status",
-		"/api/wx/user/status",
-	}
-	gatewayPaths = append(gatewayPaths, controllers.CompatGatewayPhonePaths()...)
-	for _, p := range gatewayPaths {
+	for _, p := range controllers.CompatGatewayPaths() {
 		web.Router(p, wxCompat, "*:Any")
 	}
 
