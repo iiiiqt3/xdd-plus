@@ -53,7 +53,7 @@ type PortalJdProxyStatus struct {
 	ProxyReady  bool   `json:"proxyReady"`
 }
 
-// ResolvePortalJdTaskProxy 门户订阅用户：手动代理开关开 → 用手动配置；关 → 用系统设置代理
+// ResolvePortalJdTaskProxy 门户订阅用户：手动代理开关开 → 用手动配置；关 → 用系统「全局代理」
 func ResolvePortalJdTaskProxy() (enabled bool, url, renum, redelay string) {
 	if IsJdManualProxySwitchEnabled() {
 		return resolveManualOnlyJdTaskProxy()

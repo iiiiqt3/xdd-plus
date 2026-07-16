@@ -25,7 +25,9 @@ var (
 	jdProxyCacheTTL = 20 * time.Second
 )
 
-// IsJdTaskProxyEnabled 京东动态代理是否启用（查询 Go + 任务脚本共用，需开关打开且 API 非空）
+// IsJdTaskProxyEnabled 系统「全局代理」是否启用（开关开 + API 非空）。
+// 生效范围：京东 Go 查询、Node 任务脚本、门户任务订阅回退、手动任务回退、酷我等。
+// 不生效：应用宝 51 代理、微信协议（各自独立配置）。
 func IsJdTaskProxyEnabled() bool {
 	if strings.TrimSpace(sysConfig.JdTaskProxyUrl) == "" {
 		return false

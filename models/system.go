@@ -44,13 +44,14 @@ type SystemConfig struct {
 	BBKWx            string `json:"BBKWx"`
 	BBKWxName        string `json:"BBKWxName"`
 	BBKWxNumber      string `json:"BBKWxNumber"`
-	// ProxyUrl 已弃用，查询与任务统一使用 JdTaskProxyUrl 动态 API
-	ProxyUrl           string `json:"ProxyUrl"`
-	JdTaskProxyEnabled bool   `json:"JdTaskProxyEnabled"`
-	JdTaskProxyUrl     string `json:"JdTaskProxyUrl"`
-	JdTaskProxyRenum        string `json:"JdTaskProxyRenum"`
-	JdTaskProxyRedelay       string `json:"JdTaskProxyRedelay"`
-	JdTaskProxyMonthlyCoin   int    `json:"JdTaskProxyMonthlyCoin"`
+	// ProxyUrl 已弃用；全局动态代理统一使用 JdTaskProxy*（京东查询/任务、门户订阅回退、酷我等共用）
+	ProxyUrl string `json:"ProxyUrl"`
+	// JdTaskProxy*：系统「全局代理」——开关开且 URL 非空时生效；应用宝 51 / 微信协议不读此项
+	JdTaskProxyEnabled     bool   `json:"JdTaskProxyEnabled"`
+	JdTaskProxyUrl         string `json:"JdTaskProxyUrl"`
+	JdTaskProxyRenum       string `json:"JdTaskProxyRenum"`
+	JdTaskProxyRedelay     string `json:"JdTaskProxyRedelay"`
+	JdTaskProxyMonthlyCoin int    `json:"JdTaskProxyMonthlyCoin"`
 }
 
 func initSysConfig() {

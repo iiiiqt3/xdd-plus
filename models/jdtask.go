@@ -534,7 +534,7 @@ func resolveManualOnlyJdTaskProxy() (enabled bool, url, renum, redelay string) {
 	return true, manualURL, renum, redelay
 }
 
-// ResolveSystemJdTaskProxy 系统设置中的京东任务代理
+// ResolveSystemJdTaskProxy 系统设置中的「全局代理」
 func ResolveSystemJdTaskProxy() (enabled bool, url, renum, redelay string) {
 	if !IsJdTaskProxyEnabled() {
 		return false, "", "", ""
@@ -548,7 +548,7 @@ func IsJdManualProxySwitchEnabled() bool {
 	return getJdManualProxyConfig().Enabled
 }
 
-// ResolveManualJdTaskProxy 后台手动任务：开且填写 → 用手动；否则回退系统京东代理
+// ResolveManualJdTaskProxy 后台手动任务：开且填写 → 用手动；否则回退系统「全局代理」
 func ResolveManualJdTaskProxy() (enabled bool, url, renum, redelay string) {
 	if ok, url, renum, redelay := resolveManualOnlyJdTaskProxy(); ok {
 		return ok, url, renum, redelay

@@ -79,6 +79,32 @@
         .card-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 12px 0; border-bottom: 1px solid #f0f0f0; position: sticky; top: 56px; z-index: 45; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         .card-title { font-size: 16px; font-weight: 600; color: #1a1a2e; display: flex; align-items: center; gap: 8px; }
         .card-title i { color: #409eff; }
+        /* 系统配置分区跳转导航 */
+        #page-sysconfig .sysconfig-sticky {
+            position: sticky; top: 56px; z-index: 46; background: #fff;
+            margin: 0 -16px; padding: 0 16px 10px; border-bottom: 1px solid #f0f0f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        #page-sysconfig .sysconfig-sticky .card-header {
+            position: static; top: auto; box-shadow: none; border-bottom: none; margin: 0; padding: 8px 0 8px;
+        }
+        .sysconfig-toc {
+            display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+            padding: 2px 0 4px; scrollbar-width: thin;
+        }
+        .sysconfig-toc::-webkit-scrollbar { height: 4px; }
+        .sysconfig-toc::-webkit-scrollbar-thumb { background: #dcdfe6; border-radius: 4px; }
+        .sysconfig-toc-btn {
+            flex: 0 0 auto; border: 1px solid #e4e7ed; background: #f5f7fa; color: #606266;
+            border-radius: 16px; padding: 5px 12px; font-size: 12px; line-height: 1.4; cursor: pointer;
+            white-space: nowrap; transition: all .15s ease;
+        }
+        .sysconfig-toc-btn:hover { color: #409eff; border-color: #b3d8ff; background: #ecf5ff; }
+        .sysconfig-toc-btn.active {
+            color: #fff; background: #409eff; border-color: #409eff; font-weight: 600;
+            box-shadow: 0 2px 6px rgba(64,158,255,0.28);
+        }
+        #page-sysconfig .config-section { scroll-margin-top: 130px; }
         .yyb-stats-grid {
             display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 16px; margin-bottom: 16px;
@@ -1170,7 +1196,7 @@
             <div class="nav-group-items" data-group="sys">
                 <div class="nav-sub-item" data-page="logmgmt" data-search="日志管理 log" onclick="switchPage('logmgmt')"><i class="fas fa-file-alt"></i><span>日志管理</span></div>
                 <div class="nav-sub-item" data-page="gameconfig" data-search="娱乐功能 游戏" onclick="switchPage('gameconfig')"><i class="fas fa-gamepad"></i><span>娱乐功能</span></div>
-                <div class="nav-sub-item" data-page="sysconfig" data-search="系统配置 设置 config 应用宝 极光 推送 jpush yyb" onclick="switchPage('sysconfig')"><i class="fas fa-cog"></i><span>系统配置</span></div>
+                <div class="nav-sub-item" data-page="sysconfig" data-search="系统配置 设置 config 应用宝 极光 推送 jpush yyb 全局代理" onclick="switchPage('sysconfig')"><i class="fas fa-cog"></i><span>系统配置</span></div>
                 <div class="nav-sub-item" data-page="apidocs" data-search="API 接口文档 接口说明 调用方式 docs" onclick="switchPage('apidocs')"><i class="fas fa-book"></i><span>API 接口文档</span></div>
             </div>
         </div>
@@ -2153,14 +2179,14 @@
 
             <div class="card" style="margin-bottom:16px;">
                 <div class="config-section" style="margin-bottom:0;">
-                    <div class="config-section-title"><i class="fas fa-network-wired"></i> 手动任务代理 <span class="tag tag-info" style="font-size:11px;">开且填写 → 用此处；否则回退系统设置「京东代理」</span></div>
+                    <div class="config-section-title"><i class="fas fa-network-wired"></i> 手动任务代理 <span class="tag tag-info" style="font-size:11px;">开且填写 → 用此处；否则回退系统设置「全局代理」</span></div>
                     <div class="form-grid">
                         <div class="form-item"><label>启用代理</label>
                             <select id="jdmt_proxyEnabled"><option value="false">关闭</option><option value="true">开启</option></select>
                         </div>
                         <div class="form-item"><label>取 IP 失败重试</label><input type="number" id="jdmt_proxyRenum" value="10" min="1"></div>
                         <div class="form-item"><label>重试间隔 (秒)</label><input type="number" id="jdmt_proxyRedelay" value="2" min="1"></div>
-                        <div class="form-item full"><label>代理 API 地址 <span class="tip">留空则回退系统京东代理</span></label>
+                        <div class="form-item full"><label>代理 API 地址 <span class="tip">留空则回退系统「全局代理」</span></label>
                             <input type="text" id="jdmt_proxyUrl" placeholder="http://api.xiequ.cn/VAD/GetIp.aspx?...">
                         </div>
                     </div>
@@ -2562,12 +2588,15 @@
         <!-- ========= 系统配置（修复值显示 + 新增第三方服务配置） ========= -->
         <div id="page-sysconfig" class="page-section">
             <div class="card">
-                <div class="card-header">
-                    <div class="card-title"><i class="fas fa-cog"></i> 系统配置 <span class="tag tag-success" style="font-size:11px;">支持热更新，保存即生效</span></div>
-                    <button class="btn btn-success" onclick="saveSysConfig()"><i class="fas fa-save"></i> 保存配置</button>
+                <div class="sysconfig-sticky">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-cog"></i> 系统配置 <span class="tag tag-success" style="font-size:11px;">支持热更新，保存即生效</span></div>
+                        <button class="btn btn-success" onclick="saveSysConfig()"><i class="fas fa-save"></i> 保存配置</button>
+                    </div>
+                    <div class="sysconfig-toc" id="sysConfigToc" aria-label="配置分区导航"></div>
                 </div>
-                <div style="background:#fdf6ec;border:1px solid #faecd8;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#e6a23c;">
-                    <i class="fas fa-info-circle"></i> 提示：修改系统配置后点击保存即可实时生效，无需重启服务。
+                <div style="background:#fdf6ec;border:1px solid #faecd8;border-radius:6px;padding:10px 14px;margin:12px 0 16px;font-size:12px;color:#e6a23c;">
+                    <i class="fas fa-info-circle"></i> 提示：修改系统配置后点击保存即可实时生效，无需重启服务。点击上方导航可快速跳转到对应分区。
                 </div>
                 <div id="sysConfigForm" style="margin-bottom:24px;"></div>
             </div>
@@ -7271,6 +7300,71 @@ async function saveGameConfig() {
 }
 
 // ============ 系统配置（修复值不显示 + 增加 Image/Nolan/BBK/Rabbit 等配置） ============
+var _sysConfigTocItems = [
+    { id: 'syscfg-basic', label: '基础设置', icon: 'fas fa-cog' },
+    { id: 'syscfg-push', label: '活动推送', icon: 'fas fa-bullhorn' },
+    { id: 'syscfg-switches', label: '功能开关', icon: 'fas fa-toggle-on' },
+    { id: 'syscfg-text', label: '文本配置', icon: 'fas fa-comment' },
+    { id: 'syscfg-wxbot', label: '微信机器人', icon: 'fab fa-weixin' },
+    { id: 'syscfg-wxproto', label: '微信协议', icon: 'fas fa-plug' },
+    { id: 'syscfg-yyb', label: '应用宝', icon: 'fas fa-mobile-alt' },
+    { id: 'syscfg-jpush', label: '极光推送', icon: 'fas fa-bell' },
+    { id: 'syscfg-third', label: '第三方服务', icon: 'fas fa-server' },
+    { id: 'syscfg-jdproxy', label: '全局代理', icon: 'fas fa-globe' },
+];
+var _sysConfigSpyBound = false;
+var _sysConfigJumping = false;
+
+function renderSysConfigToc(activeId) {
+    var toc = document.getElementById('sysConfigToc');
+    if (!toc) return;
+    toc.innerHTML = _sysConfigTocItems.map(function(item) {
+        var cls = 'sysconfig-toc-btn' + (item.id === activeId ? ' active' : '');
+        return '<button type="button" class="' + cls + '" data-target="' + item.id + '" onclick="jumpSysConfigSection(\'' + item.id + '\')">' +
+            '<i class="' + item.icon + '" style="margin-right:4px;opacity:.85;"></i>' + item.label +
+            '</button>';
+    }).join('');
+}
+
+function jumpSysConfigSection(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    _sysConfigJumping = true;
+    setSysConfigTocActive(id);
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(function() { _sysConfigJumping = false; }, 700);
+}
+
+function setSysConfigTocActive(id) {
+    var toc = document.getElementById('sysConfigToc');
+    if (!toc) return;
+    var btns = toc.querySelectorAll('.sysconfig-toc-btn');
+    btns.forEach(function(btn) {
+        var on = btn.getAttribute('data-target') === id;
+        btn.classList.toggle('active', on);
+        if (on) {
+            try { btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (_) {}
+        }
+    });
+}
+
+function bindSysConfigScrollSpy() {
+    if (_sysConfigSpyBound) return;
+    _sysConfigSpyBound = true;
+    window.addEventListener('scroll', function() {
+        if (currentPage !== 'sysconfig' || _sysConfigJumping) return;
+        var sticky = document.querySelector('#page-sysconfig .sysconfig-sticky');
+        var offset = (sticky ? sticky.getBoundingClientRect().bottom : 120) + 8;
+        var current = _sysConfigTocItems[0] && _sysConfigTocItems[0].id;
+        for (var i = 0; i < _sysConfigTocItems.length; i++) {
+            var el = document.getElementById(_sysConfigTocItems[i].id);
+            if (!el) continue;
+            if (el.getBoundingClientRect().top <= offset) current = _sysConfigTocItems[i].id;
+        }
+        if (current) setSysConfigTocActive(current);
+    }, { passive: true });
+}
+
 async function loadSysConfig() {
     try {
         const [jdRes, sysRes] = await Promise.all([
@@ -7285,8 +7379,11 @@ async function loadSysConfig() {
         };
         const v = (val) => vPlain(val);  // 系统配置表单用纯文本，不输出HTML span
 
+        renderSysConfigToc('syscfg-basic');
+        bindSysConfigScrollSpy();
+
         document.getElementById('sysConfigForm').innerHTML = `
-            <div class="config-section">
+            <div class="config-section" id="syscfg-basic">
                 <div class="config-section-title"><i class="fas fa-cog"></i> 基础设置</div>
                 <div class="form-grid">
                     <div class="form-item"><label>运行模式</label>
@@ -7308,14 +7405,14 @@ async function loadSysConfig() {
                     <div class="form-item"><label>限制次数</label><input type="number" id="cfg_lim" value="${cfg.lim||20}"></div>
                 </div>
             </div>
-            <div class="config-section">
+            <div class="config-section" id="syscfg-push">
                 <div class="config-section-title"><i class="fas fa-bullhorn"></i> 活动推送群设置 <span class="tag tag-info" style="font-size:11px;">仅用于推送活动消息，与监听群独立</span></div>
                 <div class="form-grid">
                     <div class="form-item"><label>QQ群号</label><input type="text" id="cfg_activityPushQQGroupId" value="${v(cfg.activityPushQQGroupId)}" placeholder="如：95581263,916246295（多个用英文逗号分隔）"></div>
                     <div class="form-item"><label>微信群号</label><input type="text" id="cfg_activityPushWXGroupId" value="${v(cfg.activityPushWXGroupId)}" placeholder="如：56984485809@chatroom（多个用英文逗号分隔）"></div>
                 </div>
             </div>
-            <div class="config-section">
+            <div class="config-section" id="syscfg-switches">
                 <div class="config-section-title"><i class="fas fa-toggle-on"></i> 功能开关</div>
                 <div class="form-grid">
                     <div class="form-item"><label>自动加好友</label><select id="cfg_isAddFriend">${sel(cfg.isAddFriend)}</select></div>
@@ -7323,7 +7420,7 @@ async function loadSysConfig() {
                     <div class="form-item"><label>群聊模式</label><select id="cfg_qbotPublicMode">${sel(cfg.qbotPublicMode,'群聊','私聊')}</select></div>
                 </div>
             </div>
-            <div class="config-section">
+            <div class="config-section" id="syscfg-text">
                 <div class="config-section-title"><i class="fas fa-comment"></i> 文本配置</div>
                 <div class="form-grid">
                     <div class="form-item"><label>备注模式</label><select id="cfg_note"><option value="pin" ${cfg.note==='pin'?'selected':''}>pin</option><option value="note" ${cfg.note==='note'?'selected':''}>note</option></select></div>
@@ -7333,7 +7430,7 @@ async function loadSysConfig() {
                     <div class="form-item full"><label>自定义查询1 (Query1)</label><input type="text" id="cfg_query1" value="${v(cfg.query1)}"></div>
                 </div>
             </div>
-            <div class="config-section">
+            <div class="config-section" id="syscfg-wxbot">
                 <div class="config-section-title"><i class="fab fa-weixin"></i> 微信机器人配置</div>
                 <div class="form-grid">
                     <div class="form-item"><label>框架类型</label><select id="cfg_wxModel"><option value="qx" ${cfg.wxModel==='qx'?'selected':''}>千寻 (qx)</option><option value="my" ${cfg.wxModel==='my'?'selected':''}>西瓜 (my)</option><option value="wechat08" ${cfg.wxModel==='wechat08'?'selected':''}>WeChat08 (wechat08)</option></select></div>
@@ -7342,7 +7439,7 @@ async function loadSysConfig() {
                     <div class="form-item"><label>Token</label><input type="text" id="cfg_wxToken" value="${v(cfg.wxToken)}" placeholder="西瓜 / wechat08 需要；千寻可空"></div>
                 </div>
             </div>
-            <div class="config-section">
+            <div class="config-section" id="syscfg-wxproto">
                 <div class="config-section-title"><i class="fas fa-plug"></i> 微信协议配置 <span class="tag tag-info" style="font-size:11px;">扫码登录服务</span></div>
                 <div class="form-grid">
                     <div class="form-item"><label>旧协议地址</label><input type="text" id="cfg_wxLoginBaseURL" value="${v(cfg.wxLoginBaseURL)}" placeholder="http://180.152.5.230:8011"></div>
@@ -7352,7 +7449,7 @@ async function loadSysConfig() {
                     <div class="form-item"><label>设备名称</label><input type="text" id="cfg_wxDeviceName" value="${v(cfg.wxDeviceName)}" placeholder="Xiaomi-M2012K11AC"></div>
                 </div>
             </div>
-            <div class="config-section">
+            <div class="config-section" id="syscfg-yyb">
                 <div class="config-section-title"><i class="fas fa-mobile-alt"></i> 应用宝协议配置 <span class="tag tag-info" style="font-size:11px;">京东 CK 刷新 / 门户应用宝</span></div>
                 <div class="form-grid">
                     <div class="form-item"><label>启用模块</label><select id="cfg_yybEnabled">${sel(cfg.yybEnabled)}</select></div>
@@ -7380,7 +7477,7 @@ async function loadSysConfig() {
                     </div>
                 </div>
             </div>
-            <div class="config-section">
+            <div class="config-section" id="syscfg-jpush">
                 <div class="config-section-title"><i class="fas fa-bell"></i> 极光推送（狗东 App） <span class="tag tag-info" style="font-size:11px;">Android 通知推送</span></div>
                 <div class="form-grid">
                     <div class="form-item"><label>启用推送</label><select id="cfg_jpushEnabled">${sel(cfg.jpushEnabled)}</select></div>
@@ -7394,7 +7491,7 @@ async function loadSysConfig() {
                     </div>
                 </div>
             </div>
-            <div class="config-section">
+            <div class="config-section" id="syscfg-third">
                 <div class="config-section-title"><i class="fas fa-plug"></i> 第三方服务配置 <span class="tag tag-info" style="font-size:11px;">数据库存储</span></div>
                 <div class="form-grid">
                     <div class="form-item"><label>Image 用户名 <span class="tip">邮箱/账号</span></label><input type="text" id="sys_ImageUserName" value="${v(sys.ImageUserName)}"></div>
@@ -7420,14 +7517,31 @@ async function loadSysConfig() {
                     <div class="form-item"><label>BBK Token</label><input type="text" id="sys_BBKToken" value="${v(sys.BBKToken)}"></div>
                 </div>
             </div>
-            <div class="config-section">
-                <div class="config-section-title"><i class="fas fa-network-wired"></i> 京东代理 <span class="tag tag-info" style="font-size:11px;">Go 查询 + 任务脚本共用，API 取动态 IP</span></div>
+            <div class="config-section" id="syscfg-jdproxy">
+                <div class="config-section-title"><i class="fas fa-globe"></i> 全局代理 <span class="tag tag-success" style="font-size:11px;">系统默认动态 IP · 多业务共用</span></div>
+                <div style="background:#f0f9eb;border:1px solid #e1f3d8;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#529b2e;line-height:1.75;">
+                    <div style="font-weight:700;margin-bottom:6px;color:#3d7a24;"><i class="fas fa-info-circle"></i> 什么时候会走这里的全局代理？</div>
+                    <div><strong>会使用（开关开且 API 已填）：</strong></div>
+                    <ul style="margin:4px 0 8px 18px;padding:0;">
+                        <li>京东 Go 查询（京豆 / 农场 / 资产等）</li>
+                        <li>京东 Node 任务脚本（注入 <code>DY_PROXY</code>）</li>
+                        <li>门户用户已购买「任务代理」后的手动任务</li>
+                        <li>后台「手动京东任务」未单独配置代理时的回退</li>
+                        <li>酷我提现等勾选走代理的业务</li>
+                    </ul>
+                    <div><strong>不会使用（各自独立配置）：</strong></div>
+                    <ul style="margin:4px 0 8px 18px;padding:0;">
+                        <li>应用宝 51 代理（见上方「应用宝协议配置」）</li>
+                        <li>微信协议 / 机器人相关网络（不读此项）</li>
+                    </ul>
+                    <div style="color:#67c23a;"><strong>覆盖规则：</strong>「手动京东任务」页若开启并填写了专用代理 → 优先用专用；否则回退到这里的全局代理。</div>
+                </div>
                 <div class="form-grid">
-                    <div class="form-item"><label>启用代理</label><select id="sys_JdTaskProxyEnabled">${sel(sys.JdTaskProxyEnabled)}</select></div>
-                    <div class="form-item full"><label>动态 IP API 地址</label><input type="text" id="sys_JdTaskProxyUrl" value="${v(sys.JdTaskProxyUrl)}" placeholder="http://api.xiequ.cn/VAD/GetIp.aspx?act=get&uid=...&vkey=..."></div>
+                    <div class="form-item"><label>启用全局代理</label><select id="sys_JdTaskProxyEnabled">${sel(sys.JdTaskProxyEnabled)}</select></div>
+                    <div class="form-item full"><label>动态 IP API 地址 <span class="tip">取 IP 的 HTTP 接口，开启后多业务共用</span></label><input type="text" id="sys_JdTaskProxyUrl" value="${v(sys.JdTaskProxyUrl)}" placeholder="http://api.xiequ.cn/VAD/GetIp.aspx?act=get&uid=...&vkey=..."></div>
                     <div class="form-item"><label>取 IP 失败重试次数</label><input type="number" id="sys_JdTaskProxyRenum" value="${v(sys.JdTaskProxyRenum)||'10'}" min="1"></div>
                     <div class="form-item"><label>重试间隔 (秒)</label><input type="number" id="sys_JdTaskProxyRedelay" value="${v(sys.JdTaskProxyRedelay)||'2'}" min="1"></div>
-                    <div class="form-item"><label>门户代理月费 (积分)</label><input type="number" id="sys_JdTaskProxyMonthlyCoin" value="${v(sys.JdTaskProxyMonthlyCoin)||'0'}" min="0" placeholder="0 表示不可购买"></div>
+                    <div class="form-item"><label>门户代理月费 (积分) <span class="tip">门户「任务代理」订阅价；0=不可购买</span></label><input type="number" id="sys_JdTaskProxyMonthlyCoin" value="${v(sys.JdTaskProxyMonthlyCoin)||'0'}" min="0" placeholder="0 表示不可购买"></div>
                 </div>
             </div>
         `;
