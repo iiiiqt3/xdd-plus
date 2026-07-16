@@ -135,7 +135,6 @@ type Yaml struct {
 	OpenFan               bool
 	NoAdmin               bool   `yaml:"no_admin"`
 	QbotConfigFile        string `yaml:"qbot_config_file"`
-	Repos                 []Repo
 	FanLis                FanLi
 	Wx                    WxConfig
 	WxProtocol            WxProtocolConfig `yaml:"wx_protocol"`

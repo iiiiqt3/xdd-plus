@@ -106,7 +106,6 @@ module.exports = cookies`, cookies)
 			f.Close()
 			f1.Close()
 			f2.Close() // 完成操作后记得关闭文件
-			go CopyConfigAll()
 			if Config.Mode == Parallel {
 				for i := range Config.Containers {
 					(&Config.Containers[i]).read()
