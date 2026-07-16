@@ -1,8 +1,15 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
     <title>XDD 管理后台</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
     <style>
@@ -297,22 +304,98 @@
         .dash-info-list .row .val { font-weight: 500; color: #333; }
 
         /* ===== 仪表盘重新设计 ===== */
-        .dash-hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
-        .dash-hero-card { border-radius: 10px; padding: 16px 16px; color: #fff; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
-        .dash-hero-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
-        .dash-hero-card .hero-icon { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 42px; opacity: 0.2; }
-        .dash-hero-card .hero-value { font-size: 26px; font-weight: 800; line-height: 1.2; }
-        .dash-hero-card .hero-label { font-size: 12px; opacity: 0.85; margin-top: 3px; }
-        .dash-hero-card .hero-sub { font-size: 10px; opacity: 0.65; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
-        .hero-blue { background: linear-gradient(135deg, #409eff 0%, #2d8cf0 50%, #1a6dd1 100%); }
-        .hero-green { background: linear-gradient(135deg, #67c23a 0%, #529b2e 50%, #3d8a1f 100%); }
-        .hero-orange { background: linear-gradient(135deg, #e6a23c 0%, #d4910f 50%, #c07d08 100%); }
-        .hero-red { background: linear-gradient(135deg, #f56c6c 0%, #e04848 50%, #c93030 100%); }
-        .hero-purple { background: linear-gradient(135deg, #722ed1 0%, #6025b0 50%, #4e1d8f 100%); }
-        .hero-cyan { background: linear-gradient(135deg, #13c2c2 0%, #0ea8a8 50%, #0b8e8e 100%); }
-        .hero-teal { background: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%); }
-        .hero-indigo { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%); }
-        .hero-pink { background: linear-gradient(135deg, #ec4899 0%, #db2777 50%, #be185d 100%); }
+
+        /* ===== Dashboard gauges (2026 redesign) ===== */
+        .dash-head {
+            display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+            margin-bottom: 16px;
+        }
+        .dash-head h3 {
+            font-size: 18px; font-weight: 750; letter-spacing: -0.03em; color: #1c1917;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        .dash-head .dash-sub { font-size: 12px; color: #78716c; font-weight: 500; }
+        .dash-gauge-row {
+            display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;
+            margin-bottom: 18px;
+        }
+        .dash-gauge-row.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .gauge-card {
+            position: relative;
+            background: #fff;
+            border: 1px solid rgba(28,25,23,0.08);
+            border-radius: 16px;
+            padding: 14px 12px 16px;
+            display: flex; flex-direction: column; align-items: center;
+            transition: border-color .25s cubic-bezier(0.32,0.72,0,1), box-shadow .25s cubic-bezier(0.32,0.72,0,1), background .25s;
+        }
+        .gauge-card:hover {
+            border-color: rgba(28,25,23,0.14);
+            box-shadow: 0 10px 30px rgba(28,25,23,0.06);
+        }
+        .gauge-card.is-focus { background: #eff6ff; border-color: #93c5fd; }
+        .gauge-card .gauge-caption {
+            width: 100%; font-size: 12px; font-weight: 700; color: #57534e;
+            margin-bottom: 4px; padding: 0 4px;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        .gauge-ring { position: relative; width: 148px; height: 118px; margin: 0 auto; }
+        .gauge-ring svg { width: 148px; height: 118px; display: block; overflow: visible; }
+        .gauge-track {
+            fill: none; stroke: #e7e5e4; stroke-width: 10; stroke-linecap: round;
+            stroke-dasharray: 75 100; transform-origin: 60px 58px; transform: rotate(135deg);
+        }
+        .gauge-fg {
+            fill: none; stroke-width: 10; stroke-linecap: round;
+            stroke-dasharray: 75 100; stroke-dashoffset: 75;
+            transform-origin: 60px 58px; transform: rotate(135deg);
+            transition: stroke-dashoffset .95s cubic-bezier(0.32,0.72,0,1);
+        }
+        .gauge-card.tone-wine .gauge-fg { stroke: #9f1239; }
+        .gauge-card.tone-teal .gauge-fg { stroke: #0f766e; }
+        .gauge-card.tone-amber .gauge-fg { stroke: #b45309; }
+        .gauge-card.tone-slate .gauge-fg { stroke: #334155; }
+        .gauge-card.tone-sky .gauge-fg { stroke: #0369a1; }
+        .gauge-card.tone-wine .gauge-val-a { color: #9f1239; }
+        .gauge-card.tone-teal .gauge-val-a { color: #0f766e; }
+        .gauge-card.tone-amber .gauge-val-a { color: #b45309; }
+        .gauge-card.tone-slate .gauge-val-a { color: #334155; }
+        .gauge-card.tone-sky .gauge-val-a { color: #0369a1; }
+        .gauge-center {
+            position: absolute; inset: 18px 12px 8px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center; pointer-events: none;
+        }
+        .gauge-kicker { font-size: 10px; font-weight: 600; color: #a8a29e; letter-spacing: 0.04em; }
+        .gauge-val {
+            font-size: 22px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.15;
+            color: #1c1917; font-variant-numeric: tabular-nums;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        .gauge-val .unit { font-size: 11px; font-weight: 600; color: #a8a29e; margin-left: 2px; }
+        .gauge-split { width: 36px; height: 1px; background: #e7e5e4; margin: 5px 0; }
+        .gauge-val-a {
+            font-size: 18px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15;
+            font-variant-numeric: tabular-nums;
+        }
+        .gauge-foot { margin-top: 2px; font-size: 11px; color: #a8a29e; font-weight: 500; text-align: center; }
+        .dash-bento {
+            display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 14px; margin-bottom: 16px;
+        }
+        .dash-bento > .dash-info-card, .dash-bento > .card, .dash-bento > .dash-notice-card {
+            margin-bottom: 0 !important; height: 100%;
+        }
+        @media (max-width: 1100px) {
+            .dash-gauge-row, .dash-gauge-row.cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .dash-bento { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 640px) {
+            .dash-gauge-row, .dash-gauge-row.cols-3 { grid-template-columns: 1fr; }
+            .dash-bento { grid-template-columns: 1fr; }
+            .gauge-ring, .gauge-ring svg { width: 132px; height: 106px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .gauge-fg { transition: none !important; }
+        }
 
         /* 活动人数统计横条 */
         .dash-act-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
@@ -493,7 +576,7 @@
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .form-grid { grid-template-columns: repeat(2, 1fr); }
             .dash-grid { grid-template-columns: 1fr; }
-            .dash-hero { grid-template-columns: repeat(2, 1fr); }
+            .dash-gauge-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .dash-act-strip { grid-template-columns: repeat(2, 1fr); }
             .dash-summary-row { grid-template-columns: 1fr !important; }
             .container-cards { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
@@ -518,7 +601,7 @@
             .form-grid { grid-template-columns: 1fr !important; }
             .form-item.full { grid-column: 1 / -1; }
             .form-item input, .form-item select, .form-item textarea { font-size: 16px; padding: 10px 12px; }
-            .dash-hero { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+            .dash-gauge-row { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px; }
             .dash-hero-card { padding: 12px; }
             .dash-hero-card .hero-value { font-size: 22px; }
             .dash-hero-card .hero-icon { font-size: 32px; }
@@ -564,7 +647,7 @@
             .top-bar h1 { font-size: 15px; }
             .content-area { padding: 8px; }
             .card { padding: 10px 10px 0 10px; border-radius: 8px; }
-            .dash-hero { grid-template-columns: 1fr !important; gap: 8px; }
+            .dash-gauge-row { grid-template-columns: 1fr !important; gap: 8px; }
             .dash-hero-card .hero-value { font-size: 20px; }
             .stats-grid { grid-template-columns: 1fr !important; }
             .btn-sm { padding: 6px 10px; font-size: 11px; }
@@ -874,54 +957,79 @@
 
         <!-- ========= 仪表盘 ========= -->
         <div id="page-dashboard" class="page-section active">
-            <!-- 核心数据英雄卡片 -->
-            <div class="dash-hero">
-                <div class="dash-hero-card hero-blue">
-                    <div class="hero-icon"><i class="fas fa-cookie-bite"></i></div>
-                    <div class="hero-value" id="statCk">-</div>
-                    <div class="hero-label">京东 CK 总数</div>
-                    <div class="hero-sub"><i class="fas fa-circle" style="font-size:6px;"></i> 全部账号</div>
-                </div>
-                <div class="dash-hero-card hero-green">
-                    <div class="hero-icon"><i class="fas fa-users"></i></div>
-                    <div class="hero-value" id="statUsers">-</div>
-                    <div class="hero-label">注册用户数</div>
-                    <div class="hero-sub"><i class="fas fa-circle" style="font-size:6px;"></i> 活跃用户</div>
-                </div>
-                <div class="dash-hero-card hero-orange">
-                    <div class="hero-icon"><i class="fas fa-box-open"></i></div>
-                    <div class="hero-value" id="statEnvs">-</div>
-                    <div class="hero-label">环境变量</div>
-                    <div class="hero-sub"><i class="fas fa-circle" style="font-size:6px;"></i> 全部变量</div>
-                </div>
-                <div class="dash-hero-card hero-purple">
-                    <div class="hero-icon"><i class="fas fa-server"></i></div>
-                    <div class="hero-value" id="statQlCtn">-</div>
-                    <div class="hero-label">青龙容器</div>
-                    <div class="hero-sub"><i class="fas fa-circle" style="font-size:6px;"></i> 容器总数</div>
-                </div>
+            <div class="dash-head">
+                <h3>系统总览</h3>
+                <div class="dash-sub">账号 · 容器 · 在线活跃</div>
             </div>
-
-            <!-- 互动概览：在线用户统计 -->
-            <div class="dash-hero" style="grid-template-columns: repeat(3, 1fr);">
-                <div class="dash-hero-card hero-indigo">
-                    <div class="hero-icon"><i class="fas fa-user-plus"></i></div>
-                    <div class="hero-value" id="statTotalAccounts">-</div>
-                    <div class="hero-label">APP/网页 注册账号</div>
-                    <div class="hero-sub"><i class="fas fa-circle" style="font-size:6px;"></i> 累计注册总数</div>
+            <div class="dash-gauge-row">
+            <div class="gauge-card tone-sky" data-gauge="a-ck">
+                <div class="gauge-caption">京东 CK</div>
+                <div class="gauge-ring">
+                    <svg viewBox="0 0 120 100" aria-hidden="true">
+                        <circle class="gauge-track" cx="60" cy="58" r="46" pathLength="100"></circle>
+                        <circle class="gauge-fg" cx="60" cy="58" r="46" pathLength="100"></circle>
+                    </svg>
+                    <div class="gauge-center">
+                        <div class="gauge-kicker">CK 总数</div>
+                        <div class="gauge-val"><span id="statCk">0</span></div>
+                        <div class="gauge-split"></div>
+                        <div class="gauge-kicker">环境变量</div>
+                        <div><span id="statEnvs" class="gauge-val-a">0</span></div>
+                    </div>
                 </div>
-                <div class="dash-hero-card hero-teal">
-                    <div class="hero-icon"><i class="fas fa-signal"></i></div>
-                    <div class="hero-value" id="statOnlineCount">-</div>
-                    <div class="hero-label">当前在线用户</div>
-                    <div class="hero-sub"><i class="fas fa-circle" style="font-size:6px;color:#67c23a;"></i> APP+网页 15分钟内活跃</div>
+                <div class="gauge-foot">账号资产规模</div>
+            </div>
+            <div class="gauge-card tone-teal is-focus" data-gauge="a-users">
+                <div class="gauge-caption">用户规模</div>
+                <div class="gauge-ring">
+                    <svg viewBox="0 0 120 100" aria-hidden="true">
+                        <circle class="gauge-track" cx="60" cy="58" r="46" pathLength="100"></circle>
+                        <circle class="gauge-fg" cx="60" cy="58" r="46" pathLength="100"></circle>
+                    </svg>
+                    <div class="gauge-center">
+                        <div class="gauge-kicker">注册用户</div>
+                        <div class="gauge-val"><span id="statUsers">0</span></div>
+                        <div class="gauge-split"></div>
+                        <div class="gauge-kicker">青龙容器</div>
+                        <div><span id="statQlCtn" class="gauge-val-a">0</span></div>
+                    </div>
                 </div>
-                <div class="dash-hero-card hero-pink">
-                    <div class="hero-icon"><i class="fas fa-calendar-day"></i></div>
-                    <div class="hero-value" id="statTodayActive">-</div>
-                    <div class="hero-label">今日使用人数</div>
-                    <div class="hero-sub"><i class="fas fa-circle" style="font-size:6px;color:#f56c6c;"></i> 今日活跃用户数</div>
+                <div class="gauge-foot">用户与容器</div>
+            </div>
+            <div class="gauge-card tone-slate" data-gauge="a-online">
+                <div class="gauge-caption">在线活跃</div>
+                <div class="gauge-ring">
+                    <svg viewBox="0 0 120 100" aria-hidden="true">
+                        <circle class="gauge-track" cx="60" cy="58" r="46" pathLength="100"></circle>
+                        <circle class="gauge-fg" cx="60" cy="58" r="46" pathLength="100"></circle>
+                    </svg>
+                    <div class="gauge-center">
+                        <div class="gauge-kicker">当前在线</div>
+                        <div class="gauge-val"><span id="statOnlineCount">0</span></div>
+                        <div class="gauge-split"></div>
+                        <div class="gauge-kicker">注册账号</div>
+                        <div><span id="statTotalAccounts" class="gauge-val-a">0</span></div>
+                    </div>
                 </div>
+                <div class="gauge-foot">15 分钟内活跃占比</div>
+            </div>
+            <div class="gauge-card tone-amber" data-gauge="a-today">
+                <div class="gauge-caption">今日使用</div>
+                <div class="gauge-ring">
+                    <svg viewBox="0 0 120 100" aria-hidden="true">
+                        <circle class="gauge-track" cx="60" cy="58" r="46" pathLength="100"></circle>
+                        <circle class="gauge-fg" cx="60" cy="58" r="46" pathLength="100"></circle>
+                    </svg>
+                    <div class="gauge-center">
+                        <div class="gauge-kicker">今日活跃</div>
+                        <div class="gauge-val"><span id="statTodayActive">0</span></div>
+                        <div class="gauge-split"></div>
+                        <div class="gauge-kicker">日活率</div>
+                        <div><span id="statTodayRate" class="gauge-val-a">0%</span></div>
+                    </div>
+                </div>
+                <div class="gauge-foot">相对注册账号</div>
+            </div>
             </div>
 
             <!-- 活动人数统计 + 微信协议状态 并排 -->
@@ -3148,6 +3256,15 @@ function loadContainers() {
 }
 
 // ============ 仪表盘（丰富内容） ============
+function setDashGauge(id, ratio) {
+    const card = document.querySelector('[data-gauge="' + id + '"]');
+    if (!card) return;
+    const fg = card.querySelector('.gauge-fg');
+    if (!fg) return;
+    const p = Math.max(0, Math.min(1, Number(ratio) || 0));
+    fg.style.strokeDashoffset = String(75 * (1 - p));
+}
+
 async function loadDashboard() {
     try {
         // 重置所有数字为0，确保动画每次触发
@@ -3174,10 +3291,17 @@ async function loadDashboard() {
             api.get('/api/admin/users?page=1&limit=1').catch(() => ({ data: { total: 0 } })),
             api.get('/api/admin/qlconfigs').catch(() => ({ data: [] })),
         ]);
-        animateCounter(document.getElementById('statCk'), (ckRes.data||{}).total || 0);
-        animateCounter(document.getElementById('statUsers'), (userRes.data||{}).total || 0);
-        animateCounter(document.getElementById('statEnvs'), (envRes.data||{}).total || 0);
-        animateCounter(document.getElementById('statQlCtn'), Array.isArray(qlRes.data) ? qlRes.data.length : 0);
+        const ckTotal = (ckRes.data||{}).total || 0;
+        const userTotal = (userRes.data||{}).total || 0;
+        const envTotal = (envRes.data||{}).total || 0;
+        const qlTotal = Array.isArray(qlRes.data) ? qlRes.data.length : 0;
+        animateCounter(document.getElementById('statCk'), ckTotal);
+        animateCounter(document.getElementById('statUsers'), userTotal);
+        animateCounter(document.getElementById('statEnvs'), envTotal);
+        animateCounter(document.getElementById('statQlCtn'), qlTotal);
+        window.__dashBase = { ckTotal, userTotal, envTotal, qlTotal };
+        setDashGauge('a-ck', ckTotal > 0 ? Math.min(1, envTotal / Math.max(ckTotal, 1)) : 0);
+        setDashGauge('a-users', userTotal > 0 ? Math.min(1, qlTotal / Math.max(userTotal / 50, 1)) : (qlTotal > 0 ? 0.35 : 0));
 
         // 用户在线统计
         loadDashUserOnlineStats();
@@ -4599,9 +4723,17 @@ async function loadDashUserOnlineStats() {
     try {
         const res = await api.get('/api/admin/user-online-stats');
         const d = res.data || {};
-        animateCounter(document.getElementById('statTotalAccounts'), d.totalAccounts || 0);
-        animateCounter(document.getElementById('statOnlineCount'), d.onlineCount || 0);
-        animateCounter(document.getElementById('statTodayActive'), d.todayActive || 0);
+        const totalAccounts = d.totalAccounts || 0;
+        const onlineCount = d.onlineCount || 0;
+        const todayActive = d.todayActive || 0;
+        animateCounter(document.getElementById('statTotalAccounts'), totalAccounts);
+        animateCounter(document.getElementById('statOnlineCount'), onlineCount);
+        animateCounter(document.getElementById('statTodayActive'), todayActive);
+        const rateEl = document.getElementById('statTodayRate');
+        const dayRate = totalAccounts > 0 ? Math.round((todayActive / totalAccounts) * 100) : 0;
+        if (rateEl) rateEl.textContent = dayRate + '%';
+        setDashGauge('a-online', totalAccounts > 0 ? onlineCount / totalAccounts : 0);
+        setDashGauge('a-today', totalAccounts > 0 ? todayActive / totalAccounts : 0);
     } catch(e) {
         console.error('加载用户在线统计失败:', e);
     }
