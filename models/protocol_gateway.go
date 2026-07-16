@@ -17,11 +17,12 @@ import (
 
 // 由 yybportal 在启动时注入，避免 models ↔ yybportal 循环依赖
 var (
-	protocolYybGetCode         func(openid, appID string) (map[string]interface{}, error)
-	protocolYybOperate       func(openid, appID string, payload map[string]interface{}) (map[string]interface{}, error)
-	protocolYybIsAlive       func(openid string) bool
-	protocolYybRefresh         func(openid string) (string, error)
-	protocolYybAccountExistsFn func(ref string) bool
+	protocolYybGetCode           func(openid, appID string) (map[string]interface{}, error)
+	protocolYybGetPhone          func(openid, appID string) (map[string]interface{}, error)
+	protocolYybOperate           func(openid, appID string, payload map[string]interface{}) (map[string]interface{}, error)
+	protocolYybIsAlive           func(openid string) bool
+	protocolYybRefresh           func(openid string) (string, error)
+	protocolYybAccountExistsFn   func(ref string) bool
 )
 
 func SetProtocolYybHandlers(
@@ -34,6 +35,11 @@ func SetProtocolYybHandlers(
 	protocolYybOperate = operate
 	protocolYybIsAlive = isAlive
 	protocolYybRefresh = refresh
+}
+
+// SetProtocolYybGetPhone 注册应用宝取手机号
+func SetProtocolYybGetPhone(fn func(openid, appID string) (map[string]interface{}, error)) {
+	protocolYybGetPhone = fn
 }
 
 // SetProtocolYybAccountExists 注册应用宝账号是否存在检查
@@ -147,6 +153,55 @@ func ProtocolGetWxAppCode(ref, appID string) (code string, err error) {
 	}
 	Yyb().Infof("[协议路由] getCode → wechat08 %s appid=%s", route.LogSummary(), appID)
 	return protocolGetWxCodeViaWechat(ref, appID)
+}
+
+// ProtocolGetWxAppPhone 统一取小程序手机号（授权 code / 手机号列表）
+func ProtocolGetWxAppPhone(ref, appID string) (map[string]interface{}, error) {
+	ref = strings.TrimSpace(ref)
+	appID = strings.TrimSpace(appID)
+	if ref == "" {
+		return nil, fmt.Errorf("缺少账号标识")
+	}
+	if appID == "" {
+		appID = WxJdAppID
+	}
+	route := ResolveProtocolRoute(ref)
+	if route.Backend == "yyb" {
+		if protocolYybGetPhone == nil {
+			return nil, fmt.Errorf("应用宝模块未就绪")
+		}
+		data, err := protocolYybGetPhone(route.OpenID, appID)
+		if err == nil {
+			Yyb().Infof("[协议路由] getPhone → 应用宝 成功 %s appid=%s", route.LogSummary(), appID)
+			return data, nil
+		}
+		if route.FromBind && strings.TrimSpace(route.WxWxid) != "" {
+			if online, _ := checkWxDeviceOnline(route.WxWxid); online {
+				Yyb().Warnf("[协议路由] getPhone 应用宝失败，尝试 wechat08 回退 %s err=%v", route.LogSummary(), err)
+				data2, err2 := protocolGetPhoneViaWechat(route.WxWxid, appID)
+				if err2 == nil {
+					Yyb().Infof("[协议路由] getPhone → wechat08回退 成功 wxid=%s appid=%s", protocolRefShort(route.WxWxid), appID)
+				}
+				return data2, err2
+			}
+		}
+		Yyb().Warnf("[协议路由] getPhone → 应用宝 失败 %s appid=%s err=%v", route.LogSummary(), appID, err)
+		return nil, friendlyProtocolErr(err)
+	}
+	Yyb().Infof("[协议路由] getPhone → wechat08 %s appid=%s", route.LogSummary(), appID)
+	return protocolGetPhoneViaWechat(ref, appID)
+}
+
+func protocolGetPhoneViaWechat(wxid, appID string) (map[string]interface{}, error) {
+	if strings.TrimSpace(wxid) == "" {
+		return nil, fmt.Errorf("缺少微信ID")
+	}
+	base := getWxJdServerForDevice(wxid)
+	body := map[string]interface{}{
+		"wxid":  wxid,
+		"appid": appID,
+	}
+	return wxJdPostToURL(base, []string{"/api/Wxapp/GetAllMobile", "/api/v1/wx/app/get/all/mobile"}, body, 15)
 }
 
 func protocolGetWxCodeViaWechat(wxid, appID string) (string, error) {
@@ -335,6 +390,17 @@ func BuildCompatCodeResponse(code string) []byte {
 		"Data": map[string]interface{}{
 			"code": code,
 		},
+	}
+	b, _ := json.Marshal(payload)
+	return b
+}
+
+func BuildCompatSuccessResponse(data interface{}) []byte {
+	payload := map[string]interface{}{
+		"Code":    0,
+		"Success": true,
+		"Message": "成功",
+		"Data":    data,
 	}
 	b, _ := json.Marshal(payload)
 	return b

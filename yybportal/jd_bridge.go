@@ -17,6 +17,15 @@ func InternalWxappGetCode(ref, appID string) (map[string]any, error) {
 	return a.WxappGetCode(context.Background(), strings.TrimSpace(ref), strings.TrimSpace(appID))
 }
 
+// InternalWxappGetPhone 内部取小程序手机号
+func InternalWxappGetPhone(ref, appID string) (map[string]any, error) {
+	a, err := svc()
+	if err != nil {
+		return nil, err
+	}
+	return a.WxappGetPhoneNumber(context.Background(), strings.TrimSpace(ref), strings.TrimSpace(appID))
+}
+
 // InternalWxappOperate 内部云函数调用
 func InternalWxappOperate(ref, appID string, payload map[string]any) (map[string]any, error) {
 	a, err := svc()

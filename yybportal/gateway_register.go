@@ -26,6 +26,13 @@ func RegisterProtocolGatewayHandlers() {
 			return RefreshYybAccountLiveness(openid)
 		},
 	)
+	models.SetProtocolYybGetPhone(func(openid, appID string) (map[string]interface{}, error) {
+		data, err := InternalWxappGetPhone(openid, appID)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	})
 	models.SetProtocolYybAccountExists(func(ref string) bool {
 		_, err := AccountPublic(ref)
 		return err == nil

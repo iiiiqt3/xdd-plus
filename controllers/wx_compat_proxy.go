@@ -49,10 +49,23 @@ func (c *WxCompatProxyController) Any() {
 	c.Ctx.Output.Body(resp)
 }
 
+// CompatGatewayPhonePaths 兼容网关：取手机号（新旧路径）
+func CompatGatewayPhonePaths() []string {
+	return []string{
+		"/api/v1/wx/app/get/all/mobile",
+		"/api/v1/wx/app/get/all",
+		"/wx/app/get/all/mobile",
+		"/api/Wxapp/GetAllMobile",
+		"/api/Wxapp/v1/GetAllMobile",
+	}
+}
+
 func compatGatewayAction(path string) string {
 	switch {
 	case strings.Contains(path, "/get/code") || strings.Contains(path, "GetCode") || strings.Contains(path, "JSLogin"):
 		return "getCode"
+	case strings.Contains(path, "/get/all/mobile") || strings.Contains(path, "GetAllMobile"):
+		return "getPhone"
 	case strings.Contains(path, "/call/function") || strings.Contains(path, "CallFunction"):
 		return "callFunction"
 	case strings.Contains(path, "/operate/wxdata") || strings.Contains(path, "OperateWxData"):
@@ -68,6 +81,8 @@ func handleYybCompat(path, rawQuery string, body []byte, ref string) ([]byte, in
 	switch {
 	case strings.Contains(path, "/get/code") || strings.Contains(path, "GetCode") || strings.Contains(path, "JSLogin"):
 		return handleCompatGetCode(body, ref)
+	case strings.Contains(path, "/get/all/mobile") || strings.Contains(path, "GetAllMobile"):
+		return handleCompatGetPhone(body, ref)
 	case strings.Contains(path, "/call/function") || strings.Contains(path, "CallFunction"):
 		return handleCompatCallFunction(body, ref)
 	case strings.Contains(path, "/operate/wxdata") || strings.Contains(path, "OperateWxData"):
@@ -94,6 +109,18 @@ func handleCompatGetCode(body []byte, ref string) ([]byte, int) {
 		return models.BuildCompatErrorResponse(err.Error()), 200
 	}
 	return models.BuildCompatCodeResponse(code), 200
+}
+
+func handleCompatGetPhone(body []byte, ref string) ([]byte, int) {
+	appID := extractCompatAppID(body)
+	if appID == "" {
+		appID = models.WxJdAppID
+	}
+	data, err := models.ProtocolGetWxAppPhone(ref, appID)
+	if err != nil {
+		return models.BuildCompatErrorResponse(err.Error()), 200
+	}
+	return models.BuildCompatSuccessResponse(extractCompatPhoneData(data)), 200
 }
 
 func handleCompatCallFunction(body []byte, ref string) ([]byte, int) {
@@ -149,6 +176,29 @@ func extractCompatPayload(body []byte) map[string]interface{} {
 		}
 	}
 	return m
+}
+
+func extractCompatPhoneData(data map[string]interface{}) interface{} {
+	if data == nil {
+		return nil
+	}
+	// wechat08 直返：{Code, Success, Data:{ALLMobile:...}}
+	if v, ok := data["Data"]; ok {
+		return v
+	}
+	if v, ok := data["data"]; ok {
+		return v
+	}
+	// 应用宝原始结果：尽量贴近旧脚本 Data 结构
+	if v, ok := data["result"]; ok {
+		return v
+	}
+	if code, ok := data["code"].(string); ok && code != "" {
+		return map[string]interface{}{
+			"ALLMobile": []map[string]interface{}{{"code": code}},
+		}
+	}
+	return data
 }
 
 func parseCompatJSON(body []byte) map[string]interface{} {
