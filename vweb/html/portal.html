@@ -233,11 +233,11 @@
         .gauge-ring { position: relative; width: 148px; height: 118px; margin: 0 auto; }
         .gauge-ring svg { width: 148px; height: 118px; display: block; overflow: visible; }
         .gauge-track {
-            fill: none; stroke: #e7e5e4; stroke-width: 10; stroke-linecap: round;
+            fill: none; stroke: #e7e5e4; stroke-width: 5.5; stroke-linecap: round;
             stroke-dasharray: 75 100; transform-origin: 60px 58px; transform: rotate(135deg);
         }
         .gauge-fg {
-            fill: none; stroke-width: 10; stroke-linecap: round;
+            fill: none; stroke-width: 5.5; stroke-linecap: round;
             stroke-dasharray: 75 100; stroke-dashoffset: 75;
             transform-origin: 60px 58px; transform: rotate(135deg);
             transition: stroke-dashoffset .95s cubic-bezier(0.32,0.72,0,1);
@@ -287,6 +287,160 @@
         @media (prefers-reduced-motion: reduce) {
             .gauge-fg { transition: none !important; }
         }
+
+        /* ===== Dashboard lower panels (unified) ===== */
+        .dash-panel {
+            background: #fff;
+            border: 1px solid rgba(28,25,23,0.08);
+            border-radius: 16px;
+            padding: 18px 18px 16px;
+            box-shadow: none;
+            transition: border-color .25s cubic-bezier(0.32,0.72,0,1), box-shadow .25s cubic-bezier(0.32,0.72,0,1);
+        }
+        .dash-panel:hover {
+            border-color: rgba(28,25,23,0.14);
+            box-shadow: 0 10px 28px rgba(28,25,23,0.05);
+        }
+        .dash-panel-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            margin-bottom: 14px; padding-bottom: 12px;
+            border-bottom: 1px solid #f5f5f4;
+        }
+        .dash-panel-title {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 14px; font-weight: 750; color: #1c1917; letter-spacing: -0.02em;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        .dash-panel-title .dot {
+            width: 8px; height: 8px; border-radius: 99px; flex-shrink: 0;
+            background: #0f766e;
+        }
+        .dash-panel-title .dot.sky { background: #0369a1; }
+        .dash-panel-title .dot.amber { background: #b45309; }
+        .dash-panel-title .dot.wine { background: #9f1239; }
+        .dash-panel-title .dot.slate { background: #57534e; }
+        .dash-panel-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .dash-icon-btn {
+            width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e7e5e4;
+            background: #fafaf9; color: #57534e; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 12px; transition: background .2s, border-color .2s, color .2s;
+        }
+        .dash-icon-btn:hover { background: #f5f5f4; border-color: #d6d3d1; color: #1c1917; }
+        .dash-icon-btn.primary { background: #1c1917; border-color: #1c1917; color: #fff; }
+        .dash-icon-btn.primary:hover { background: #44403c; }
+        .dash-chip-row {
+            display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px;
+        }
+        .dash-chip-row.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .dash-chip-row.cols-4 { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+        .dash-chip {
+            text-align: center; padding: 12px 8px; border-radius: 12px;
+            background: #fafaf9; border: 1px solid #f5f5f4;
+        }
+        .dash-chip .n {
+            font-size: 22px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.15;
+            color: #1c1917; font-variant-numeric: tabular-nums;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        .dash-chip .n.sky { color: #0369a1; }
+        .dash-chip .n.teal { color: #0f766e; }
+        .dash-chip .n.amber { color: #b45309; }
+        .dash-chip .n.wine { color: #9f1239; }
+        .dash-chip .n.slate { color: #44403c; }
+        .dash-chip .l { font-size: 11px; color: #a8a29e; margin-top: 4px; font-weight: 600; }
+        .dash-meta-row {
+            display: flex; flex-wrap: wrap; gap: 10px 18px; margin-bottom: 12px;
+            font-size: 12px; color: #78716c; font-weight: 500;
+        }
+        .dash-meta-row strong { color: #1c1917; font-weight: 750; }
+        .dash-meta-row strong.wine { color: #9f1239; }
+        #page-dashboard .card,
+        #panel-dashboard .dash-info-card,
+        #panel-dashboard .dash-notice-card {
+            background: #fff !important;
+            border: 1px solid rgba(28,25,23,0.08) !important;
+            border-radius: 16px !important;
+            box-shadow: none !important;
+        }
+        #page-dashboard .card:hover,
+        #panel-dashboard .dash-info-card:hover,
+        #panel-dashboard .dash-notice-card:hover {
+            border-color: rgba(28,25,23,0.14) !important;
+            box-shadow: 0 10px 28px rgba(28,25,23,0.05) !important;
+        }
+        #panel-dashboard .dash-info-card .card-title,
+        #panel-dashboard .dash-notice-title {
+            border-bottom-color: #f5f5f4 !important;
+            color: #1c1917 !important;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        #panel-dashboard .dash-info-card .title-icon {
+            background: #f5f5f4 !important; color: #57534e !important;
+            border-radius: 9px !important; width: 30px !important; height: 30px !important;
+            font-size: 13px !important;
+        }
+        #panel-dashboard .dash-notice-viewport {
+            background: #fafaf9 !important; border-color: #f5f5f4 !important; border-radius: 12px !important;
+        }
+        #panel-dashboard .dash-notice-item {
+            background: #fff !important; border-color: #f5f5f4 !important; border-radius: 12px !important;
+        }
+        #panel-dashboard .dash-notice-item:hover { border-color: #d6d3d1 !important; box-shadow: none !important; }
+        #panel-dashboard .dash-wx-mini {
+            background: #fafaf9 !important; border: 1px solid #f5f5f4 !important; border-radius: 12px !important;
+        }
+        #panel-dashboard .dash-wx-mini.primary-mini { background: #f0fdfa !important; border-color: #99f6e4 !important; }
+        #panel-dashboard .dash-wx-mini:hover { border-color: #d6d3d1 !important; background: #f5f5f4 !important; }
+        #panel-dashboard .dash-profile-row { border-bottom-color: #f5f5f4 !important; }
+        #panel-dashboard .dash-profile-row .pr-label { color: #a8a29e !important; }
+        #panel-dashboard .dash-profile-row .pr-value { color: #1c1917 !important; font-weight: 650 !important; }
+        #panel-dashboard .yyb-dash-item {
+            background: #fafaf9 !important; border: 1px solid #f5f5f4 !important; border-radius: 12px !important;
+        }
+        #panel-dashboard .yyb-chip {
+            background: #fafaf9 !important; border: 1px solid #f5f5f4 !important; border-radius: 999px !important;
+            color: #57534e !important;
+        }
+        #panel-dashboard .yyb-chip.ok { background: #f0fdfa !important; border-color: #99f6e4 !important; color: #0f766e !important; }
+        #panel-dashboard .dash-notice-head { margin-bottom: 12px; }
+        #panel-dashboard .dash-icon-btn {
+            width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e7e5e4;
+            background: #fafaf9; color: #57534e; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 12px; transition: background .2s, border-color .2s, color .2s;
+        }
+        #panel-dashboard .dash-icon-btn:hover { background: #f5f5f4; border-color: #d6d3d1; color: #1c1917; }
+        #panel-dashboard .dash-icon-btn.primary { background: #1c1917; border-color: #1c1917; color: #fff; }
+        #panel-dashboard .dash-icon-btn.primary:hover { background: #44403c; }
+        .dash-act-strip .strip-item {
+            background: #fafaf9 !important; border: 1px solid #f5f5f4 !important; border-radius: 12px !important;
+            box-shadow: none !important;
+        }
+        .dash-act-strip .strip-item:hover { border-color: #d6d3d1 !important; box-shadow: none !important; }
+        .dash-act-strip .strip-item .strip-bar { height: 2px !important; border-radius: 0 0 12px 12px !important; }
+        .dash-act-strip .strip-item .strip-num {
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif !important;
+            letter-spacing: -0.03em;
+        }
+        .ctn-status-item {
+            border-radius: 10px !important; padding: 8px 10px !important; margin-bottom: 4px !important;
+            border: 1px solid transparent;
+        }
+        .ctn-status-item:hover { background: #fafaf9 !important; border-color: #f5f5f4 !important; }
+        .ctn-status-item .ctn-tag {
+            border-radius: 999px !important; font-size: 10px !important; font-weight: 700 !important;
+            padding: 3px 8px !important;
+        }
+        #page-dashboard .dash-summary-row { gap: 14px !important; margin-bottom: 14px !important; }
+        #page-dashboard .dash-grid { gap: 14px !important; }
+        #page-dashboard .card-header .card-title,
+        #page-dashboard .card-title {
+            color: #1c1917 !important; font-weight: 750 !important; letter-spacing: -0.02em;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        #page-dashboard .card-header .card-title i { color: #78716c !important; }
+
 
         .dash-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px; }
         .dash-info-card {
@@ -1824,14 +1978,14 @@
             </div>
             </div>
 
-            <div class="dash-info-card dash-notice-card">
+            <div class="dash-info-card dash-notice-card dash-panel">
                 <div class="dash-notice-head">
-                    <div class="dash-notice-title"><span class="pulse-dot"></span><span>重要通知滚动提醒</span></div>
-                    <button class="btn small secondary" onclick="document.querySelector('button[data-panel=&quot;notifications&quot;]').click()">查看通知</button>
+                    <div class="dash-panel-title"><span class="dot wine"></span>重要通知</div>
+                    <button class="dash-icon-btn primary" type="button" onclick="document.querySelector('button[data-panel=&quot;notifications&quot;]').click()" title="查看通知">→</button>
                 </div>
-                <div class="meta-grid" style="margin-bottom:12px;">
-                    <div>通知总数：<strong id="dashNotifyTotal">0</strong></div>
-                    <div>未读通知：<strong id="dashNotifyUnread" style="color:var(--red);">0</strong></div>
+                <div class="dash-meta-row">
+                    <span>通知总数 <strong id="dashNotifyTotal">0</strong></span>
+                    <span>未读 <strong id="dashNotifyUnread" class="wine">0</strong></span>
                 </div>
                 <div class="dash-notice-viewport">
                     <div class="dash-notice-track" id="dashNoticeTrack">
@@ -1840,12 +1994,15 @@
                 </div>
             </div>
 
+            <div class="dash-head" style="margin-top:8px;">
+                <h3>账号与协议</h3>
+                <div class="dash-sub">资料 · 微信 · 应用宝</div>
+            </div>
             <!-- 账号信息 + 微信状态 双列 -->
             <div class="dash-bento">
-                <div class="dash-info-card">
-                    <div class="card-title">
-                        <span class="title-icon" style="background:var(--cyan-dim);color:var(--cyan);">👤</span>
-                        账号信息
+                <div class="dash-info-card dash-panel">
+                    <div class="dash-panel-head" style="margin-bottom:10px;padding-bottom:10px;">
+                        <div class="dash-panel-title"><span class="dot slate"></span>账号信息</div>
                     </div>
                     <div id="profileBox">
                         <div class="dash-profile-row"><span class="pr-label">用户昵称</span><span class="pr-value" id="profileNickname">-</span></div>
@@ -1859,22 +2016,18 @@
                         <div class="dash-profile-row"><span class="pr-label">绑定时间</span><span class="pr-value" id="profileBoundAt">-</span></div>
                     </div>
                 </div>
-                <div class="dash-info-card">
-                    <div class="card-title">
-                        <span class="title-icon" style="background:var(--green-dim);color:var(--green);">💬</span>
-                        微信协议状态
+                <div class="dash-info-card dash-panel">
+                    <div class="dash-panel-head" style="margin-bottom:10px;padding-bottom:10px;">
+                        <div class="dash-panel-title"><span class="dot teal"></span>微信协议状态</div>
                     </div>
                     <div id="wxDashDevices" class="dash-wx-grid">
                         <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0;grid-column:1/-1;">暂无微信协议设备</div>
                     </div>
                 </div>
-                <div class="dash-info-card">
-                    <div class="card-title" style="justify-content:space-between;">
-                        <span style="display:flex;align-items:center;gap:8px;">
-                            <span class="title-icon" style="background:var(--purple-dim);color:var(--purple);">📲</span>
-                            应用宝协议
-                        </span>
-                        <button class="btn small secondary" type="button" onclick="openProtocolPanel('yyb')">管理</button>
+                <div class="dash-info-card dash-panel">
+                    <div class="dash-panel-head" style="margin-bottom:10px;padding-bottom:10px;">
+                        <div class="dash-panel-title"><span class="dot sky"></span>应用宝协议</div>
+                        <button class="dash-icon-btn primary" type="button" onclick="openProtocolPanel('yyb')" title="管理">→</button>
                     </div>
                     <div id="yybDashAccounts">
                         <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0;">加载中…</div>

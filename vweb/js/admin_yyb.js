@@ -281,19 +281,10 @@
                 return;
             }
             container.innerHTML = `
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-                    <div style="text-align:center;padding:10px 6px;border-radius:8px;background:linear-gradient(135deg,rgba(64,158,255,0.08),rgba(64,158,255,0.03));border:1px solid rgba(64,158,255,0.12);">
-                        <div style="font-size:22px;font-weight:800;color:#409eff;" id="ayybDashProtocol">${st.protocolCount ?? state.protocolCount}</div>
-                        <div style="font-size:11px;color:#999;margin-top:2px;">协议账号</div>
-                    </div>
-                    <div style="text-align:center;padding:10px 6px;border-radius:8px;background:linear-gradient(135deg,rgba(103,194,58,0.08),rgba(103,194,58,0.03));border:1px solid rgba(103,194,58,0.12);">
-                        <div style="font-size:22px;font-weight:800;color:#67c23a;" id="ayybDashAlive">${st.aliveCount ?? 0}</div>
-                        <div style="font-size:11px;color:#999;margin-top:2px;">可用</div>
-                    </div>
-                    <div style="text-align:center;padding:10px 6px;border-radius:8px;background:linear-gradient(135deg,rgba(230,162,60,0.08),rgba(230,162,60,0.03));border:1px solid rgba(230,162,60,0.12);">
-                        <div style="font-size:22px;font-weight:800;color:#e6a23c;">${st.bindingCount ?? state.bindings.length}</div>
-                        <div style="font-size:11px;color:#999;margin-top:2px;">门户绑定</div>
-                    </div>
+                <div class="dash-chip-row">
+                    <div class="dash-chip"><div class="n sky" id="ayybDashProtocol">${st.protocolCount ?? state.protocolCount}</div><div class="l">协议账号</div></div>
+                    <div class="dash-chip"><div class="n teal" id="ayybDashAlive">${st.aliveCount ?? 0}</div><div class="l">可用</div></div>
+                    <div class="dash-chip"><div class="n amber">${st.bindingCount ?? state.bindings.length}</div><div class="l">门户绑定</div></div>
                 </div>`;
         } catch (_) {
             container.innerHTML = '<p style="color:#999;text-align:center;padding:16px;">加载失败</p>';

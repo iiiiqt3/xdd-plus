@@ -342,11 +342,11 @@
         .gauge-ring { position: relative; width: 148px; height: 118px; margin: 0 auto; }
         .gauge-ring svg { width: 148px; height: 118px; display: block; overflow: visible; }
         .gauge-track {
-            fill: none; stroke: #e7e5e4; stroke-width: 10; stroke-linecap: round;
+            fill: none; stroke: #e7e5e4; stroke-width: 5.5; stroke-linecap: round;
             stroke-dasharray: 75 100; transform-origin: 60px 58px; transform: rotate(135deg);
         }
         .gauge-fg {
-            fill: none; stroke-width: 10; stroke-linecap: round;
+            fill: none; stroke-width: 5.5; stroke-linecap: round;
             stroke-dasharray: 75 100; stroke-dashoffset: 75;
             transform-origin: 60px 58px; transform: rotate(135deg);
             transition: stroke-dashoffset .95s cubic-bezier(0.32,0.72,0,1);
@@ -397,20 +397,181 @@
             .gauge-fg { transition: none !important; }
         }
 
-        /* 活动人数统计横条 */
-        .dash-act-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
-        .dash-act-strip .strip-item { background: #fff; border-radius: 8px; padding: 10px 12px; text-align: center; border: 1px solid #f0f0f0; transition: all 0.2s; position: relative; overflow: hidden; }
-        .dash-act-strip .strip-item:hover { border-color: #409eff; box-shadow: 0 4px 12px rgba(64,158,255,0.1); }
-        .dash-act-strip .strip-item .strip-num { font-size: 22px; font-weight: 800; line-height: 1.2; min-width: 60px; display: inline-block; text-align: center; }
-        .dash-act-strip .strip-item .strip-label { font-size: 11px; color: #999; margin-top: 2px; }
-        .dash-act-strip .strip-item .strip-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; border-radius: 0 0 10px 10px; }
+        /* ===== Dashboard lower panels (unified) ===== */
+        .dash-panel {
+            background: #fff;
+            border: 1px solid rgba(28,25,23,0.08);
+            border-radius: 16px;
+            padding: 18px 18px 16px;
+            box-shadow: none;
+            transition: border-color .25s cubic-bezier(0.32,0.72,0,1), box-shadow .25s cubic-bezier(0.32,0.72,0,1);
+        }
+        .dash-panel:hover {
+            border-color: rgba(28,25,23,0.14);
+            box-shadow: 0 10px 28px rgba(28,25,23,0.05);
+        }
+        .dash-panel-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            margin-bottom: 14px; padding-bottom: 12px;
+            border-bottom: 1px solid #f5f5f4;
+        }
+        .dash-panel-title {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 14px; font-weight: 750; color: #1c1917; letter-spacing: -0.02em;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        .dash-panel-title .dot {
+            width: 8px; height: 8px; border-radius: 99px; flex-shrink: 0;
+            background: #0f766e;
+        }
+        .dash-panel-title .dot.sky { background: #0369a1; }
+        .dash-panel-title .dot.amber { background: #b45309; }
+        .dash-panel-title .dot.wine { background: #9f1239; }
+        .dash-panel-title .dot.slate { background: #57534e; }
+        .dash-panel-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .dash-icon-btn {
+            width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e7e5e4;
+            background: #fafaf9; color: #57534e; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 12px; transition: background .2s, border-color .2s, color .2s;
+        }
+        .dash-icon-btn:hover { background: #f5f5f4; border-color: #d6d3d1; color: #1c1917; }
+        .dash-icon-btn.primary { background: #1c1917; border-color: #1c1917; color: #fff; }
+        .dash-icon-btn.primary:hover { background: #44403c; }
+        .dash-chip-row {
+            display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px;
+        }
+        .dash-chip-row.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .dash-chip-row.cols-4 { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+        .dash-chip {
+            text-align: center; padding: 12px 8px; border-radius: 12px;
+            background: #fafaf9; border: 1px solid #f5f5f4;
+        }
+        .dash-chip .n {
+            font-size: 22px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.15;
+            color: #1c1917; font-variant-numeric: tabular-nums;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        .dash-chip .n.sky { color: #0369a1; }
+        .dash-chip .n.teal { color: #0f766e; }
+        .dash-chip .n.amber { color: #b45309; }
+        .dash-chip .n.wine { color: #9f1239; }
+        .dash-chip .n.slate { color: #44403c; }
+        .dash-chip .l { font-size: 11px; color: #a8a29e; margin-top: 4px; font-weight: 600; }
+        .dash-meta-row {
+            display: flex; flex-wrap: wrap; gap: 10px 18px; margin-bottom: 12px;
+            font-size: 12px; color: #78716c; font-weight: 500;
+        }
+        .dash-meta-row strong { color: #1c1917; font-weight: 750; }
+        .dash-meta-row strong.wine { color: #9f1239; }
+        #page-dashboard .card,
+        #panel-dashboard .dash-info-card,
+        #panel-dashboard .dash-notice-card {
+            background: #fff !important;
+            border: 1px solid rgba(28,25,23,0.08) !important;
+            border-radius: 16px !important;
+            box-shadow: none !important;
+        }
+        #page-dashboard .card:hover,
+        #panel-dashboard .dash-info-card:hover,
+        #panel-dashboard .dash-notice-card:hover {
+            border-color: rgba(28,25,23,0.14) !important;
+            box-shadow: 0 10px 28px rgba(28,25,23,0.05) !important;
+        }
+        #panel-dashboard .dash-info-card .card-title,
+        #panel-dashboard .dash-notice-title {
+            border-bottom-color: #f5f5f4 !important;
+            color: #1c1917 !important;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        #panel-dashboard .dash-info-card .title-icon {
+            background: #f5f5f4 !important; color: #57534e !important;
+            border-radius: 9px !important; width: 30px !important; height: 30px !important;
+            font-size: 13px !important;
+        }
+        #panel-dashboard .dash-notice-viewport {
+            background: #fafaf9 !important; border-color: #f5f5f4 !important; border-radius: 12px !important;
+        }
+        #panel-dashboard .dash-notice-item {
+            background: #fff !important; border-color: #f5f5f4 !important; border-radius: 12px !important;
+        }
+        #panel-dashboard .dash-notice-item:hover { border-color: #d6d3d1 !important; box-shadow: none !important; }
+        #panel-dashboard .dash-wx-mini {
+            background: #fafaf9 !important; border: 1px solid #f5f5f4 !important; border-radius: 12px !important;
+        }
+        #panel-dashboard .dash-wx-mini.primary-mini { background: #eff6ff !important; border-color: #bfdbfe !important; }
+        #panel-dashboard .dash-profile-row { border-bottom-color: #f5f5f4 !important; }
+        #panel-dashboard .yyb-dash-item {
+            background: #fafaf9 !important; border: 1px solid #f5f5f4 !important; border-radius: 12px !important;
+        }
+        .dash-act-strip .strip-item {
+            background: #fafaf9 !important; border: 1px solid #f5f5f4 !important; border-radius: 12px !important;
+            box-shadow: none !important;
+        }
+        .dash-act-strip .strip-item:hover { border-color: #d6d3d1 !important; box-shadow: none !important; }
+        .dash-act-strip .strip-item .strip-bar { height: 2px !important; border-radius: 0 0 12px 12px !important; }
+        .dash-act-strip .strip-item .strip-num {
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif !important;
+            letter-spacing: -0.03em;
+        }
+        .ctn-status-item {
+            border-radius: 10px !important; padding: 8px 10px !important; margin-bottom: 4px !important;
+            border: 1px solid transparent;
+        }
+        .ctn-status-item:hover { background: #fafaf9 !important; border-color: #f5f5f4 !important; }
+        .ctn-status-item .ctn-tag {
+            border-radius: 999px !important; font-size: 10px !important; font-weight: 700 !important;
+            padding: 3px 8px !important;
+        }
+        #page-dashboard .dash-summary-row { gap: 14px !important; margin-bottom: 14px !important; }
+        #page-dashboard .dash-grid { gap: 14px !important; }
+        #page-dashboard .card-header .card-title,
+        #page-dashboard .card-title {
+            color: #1c1917 !important; font-weight: 750 !important; letter-spacing: -0.02em;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        #page-dashboard .card-header .card-title i { color: #78716c !important; }
+        .dash-kv {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px;
+            font-size: 12.5px;
+        }
+        .dash-kv-row {
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+            padding: 8px 0; border-bottom: 1px solid #f5f5f4;
+        }
+        .dash-kv-row.span2 { grid-column: 1 / -1; }
+        .dash-kv-row .k { color: #a8a29e; font-weight: 500; white-space: nowrap; }
+        .dash-kv-row .v { color: #1c1917; font-weight: 700; text-align: right; word-break: break-all; }
+        .dash-kv-row .v.sky { color: #0369a1; }
+        .dash-kv-row .v.teal { color: #0f766e; }
+        .dash-kv-row .v.mute { color: #57534e; font-weight: 600; }
+        .dash-kv-row .v.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; font-weight: 600; color: #44403c; }
+
+
+        /* 活动人数统计横条（统一风格，覆盖旧 Element 蓝） */
+        #page-dashboard .dash-act-strip {
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 0;
+        }
+        #page-dashboard .dash-act-strip .strip-item {
+            background: #fafaf9; border-radius: 12px; padding: 12px 8px; text-align: center;
+            border: 1px solid #f5f5f4; transition: border-color .2s; position: relative; overflow: hidden;
+        }
+        #page-dashboard .dash-act-strip .strip-item:hover { border-color: #d6d3d1; box-shadow: none; }
+        #page-dashboard .dash-act-strip .strip-item .strip-num {
+            font-size: 22px; font-weight: 800; line-height: 1.15; letter-spacing: -0.04em;
+            font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+        }
+        #page-dashboard .dash-act-strip .strip-item .strip-label { font-size: 11px; color: #a8a29e; margin-top: 4px; font-weight: 600; }
+        #page-dashboard .dash-act-strip .strip-item .strip-bar {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 2px; border-radius: 0 0 12px 12px;
+        }
 
         /* 容器状态卡片 */
-        .ctn-status-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; margin-bottom: 2px; transition: background 0.2s; }
-        .ctn-status-item:hover { background: #f8f9fa; }
-        .ctn-status-item .ctn-name { font-weight: 600; font-size: 13px; min-width: 55px; }
-        .ctn-status-item .ctn-host { color: #999; font-size: 12px; font-family: monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .ctn-status-item .ctn-tag { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px; }
+        .ctn-status-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; margin-bottom: 4px; transition: background 0.2s; border: 1px solid transparent; }
+        .ctn-status-item:hover { background: #fafaf9; border-color: #f5f5f4; }
+        .ctn-status-item .ctn-name { font-weight: 650; font-size: 13px; min-width: 55px; color: #1c1917; }
+        .ctn-status-item .ctn-host { color: #a8a29e; font-size: 12px; font-family: ui-monospace, monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ctn-status-item .ctn-tag { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
 
         /* 系统信息 */
         .sys-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 13px; }
@@ -1032,71 +1193,76 @@
             </div>
             </div>
 
-            <!-- 活动人数统计 + 微信协议状态 并排 -->
+            <div class="dash-head" style="margin-top:4px;">
+                <h3>协议与活动</h3>
+                <div class="dash-sub">微信 · 应用宝 · 上车人数</div>
+            </div>
             <div class="dash-summary-row">
-                <!-- 微信协议状态 -->
-                <div class="card" style="margin-bottom:0;padding:14px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <div style="font-size:14px;font-weight:600;color:#1a1a2e;display:flex;align-items:center;gap:8px;">
-                            <i class="fab fa-weixin" style="color:#67c23a;"></i> 微信协议状态
-                        </div>
-                        <div style="display:flex;gap:6px;">
-                            <button class="btn btn-info btn-xs" onclick="loadDashWxStats()"><i class="fas fa-sync-alt"></i></button>
-                            <button class="btn btn-primary btn-xs" onclick="switchPage('wxdevices')"><i class="fas fa-external-link-alt"></i> 详情</button>
+                <div class="dash-panel">
+                    <div class="dash-panel-head">
+                        <div class="dash-panel-title"><span class="dot teal"></span>微信协议状态</div>
+                        <div class="dash-panel-actions">
+                            <button class="dash-icon-btn" onclick="loadDashWxStats()" title="刷新"><i class="fas fa-sync-alt"></i></button>
+                            <button class="dash-icon-btn primary" onclick="switchPage('wxdevices')" title="详情"><i class="fas fa-arrow-right"></i></button>
                         </div>
                     </div>
                     <div id="dashWxStats" class="loading"><i class="fas fa-spinner"></i> 加载中...</div>
                 </div>
-                <!-- 应用宝协议状态 -->
-                <div class="card" style="margin-bottom:0;padding:14px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <div style="font-size:14px;font-weight:600;color:#1a1a2e;display:flex;align-items:center;gap:8px;">
-                            <i class="fas fa-mobile-alt" style="color:#722ed1;"></i> 应用宝协议
-                        </div>
-                        <div style="display:flex;gap:6px;">
-                            <button class="btn btn-info btn-xs" onclick="loadDashYybStats()"><i class="fas fa-sync-alt"></i></button>
-                            <button class="btn btn-primary btn-xs" onclick="switchPage('yyb')"><i class="fas fa-external-link-alt"></i> 详情</button>
+                <div class="dash-panel">
+                    <div class="dash-panel-head">
+                        <div class="dash-panel-title"><span class="dot sky"></span>应用宝协议</div>
+                        <div class="dash-panel-actions">
+                            <button class="dash-icon-btn" onclick="loadDashYybStats()" title="刷新"><i class="fas fa-sync-alt"></i></button>
+                            <button class="dash-icon-btn primary" onclick="switchPage('yyb')" title="详情"><i class="fas fa-arrow-right"></i></button>
                         </div>
                     </div>
                     <div id="dashYybStats" class="loading"><i class="fas fa-spinner"></i> 加载中...</div>
                 </div>
-                <!-- 活动人数统计 -->
-                <div class="card" style="margin-bottom:0;padding:14px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <div style="font-size:14px;font-weight:600;color:#1a1a2e;display:flex;align-items:center;gap:8px;">
-                            <i class="fas fa-chart-pie" style="color:#409eff;"></i> 活动人数统计
-                        </div>
-                        <div style="display:flex;gap:6px;">
-                            <button class="btn btn-info btn-xs" onclick="loadDashActStrip()"><i class="fas fa-sync-alt"></i></button>
-                            <button class="btn btn-primary btn-xs" onclick="switchPage('actstats')"><i class="fas fa-external-link-alt"></i> 详情</button>
+                <div class="dash-panel">
+                    <div class="dash-panel-head">
+                        <div class="dash-panel-title"><span class="dot amber"></span>活动人数统计</div>
+                        <div class="dash-panel-actions">
+                            <button class="dash-icon-btn" onclick="loadDashActStrip()" title="刷新"><i class="fas fa-sync-alt"></i></button>
+                            <button class="dash-icon-btn primary" onclick="switchPage('actstats')" title="详情"><i class="fas fa-arrow-right"></i></button>
                         </div>
                     </div>
-                    <div class="dash-act-strip" id="dashActStrip" style="grid-template-columns: repeat(2, 1fr);gap:8px;">
-                        <div class="strip-item"><div class="strip-num" style="color:#409eff;">-</div><div class="strip-label">上车总人数</div><div class="strip-bar" style="background:#409eff;"></div></div>
-                        <div class="strip-item"><div class="strip-num" style="color:#67c23a;">-</div><div class="strip-label">有效人数</div><div class="strip-bar" style="background:#67c23a;"></div></div>
-                        <div class="strip-item"><div class="strip-num" style="color:#e6a23c;">-</div><div class="strip-label">快过期人数</div><div class="strip-bar" style="background:#e6a23c;"></div></div>
-                        <div class="strip-item"><div class="strip-num" style="color:#f56c6c;">-</div><div class="strip-label">过期人数</div><div class="strip-bar" style="background:#f56c6c;"></div></div>
+                    <div class="dash-act-strip dash-chip-row cols-4" id="dashActStrip">
+                        <div class="strip-item dash-chip"><div class="strip-num n sky">-</div><div class="strip-label l">上车总人数</div><div class="strip-bar" style="background:#0369a1;"></div></div>
+                        <div class="strip-item dash-chip"><div class="strip-num n teal">-</div><div class="strip-label l">有效人数</div><div class="strip-bar" style="background:#0f766e;"></div></div>
+                        <div class="strip-item dash-chip"><div class="strip-num n amber">-</div><div class="strip-label l">快过期人数</div><div class="strip-bar" style="background:#b45309;"></div></div>
+                        <div class="strip-item dash-chip"><div class="strip-num n wine">-</div><div class="strip-label l">过期人数</div><div class="strip-bar" style="background:#9f1239;"></div></div>
                     </div>
                 </div>
             </div>
 
-            <!-- 下方四宫格：容器状态 + 系统信息 -->
+            <div class="dash-head" style="margin-top:8px;">
+                <h3>基础设施</h3>
+                <div class="dash-sub">容器连通 · 系统参数 · 活动配置</div>
+            </div>
             <div class="dash-grid">
-                <div class="card" style="margin-bottom:0;padding:8px 12px 4px 12px;">
-                    <div class="card-header" style="position:static;padding:0 0 4px 0;border-bottom:none;box-shadow:none;"><div class="card-title" style="font-size:14px;"><i class="fas fa-server" style="color:#409eff;"></i> 青龙容器状态</div></div>
-                    <div id="dashQlStatus" class="loading" style="padding:8px 0;"><i class="fas fa-spinner"></i> 加载中...</div>
+                <div class="dash-panel">
+                    <div class="dash-panel-head">
+                        <div class="dash-panel-title"><span class="dot sky"></span>青龙容器状态</div>
+                    </div>
+                    <div id="dashQlStatus" class="loading" style="padding:4px 0;"><i class="fas fa-spinner"></i> 加载中...</div>
                 </div>
-                <div class="card" style="margin-bottom:0;padding:8px 12px 4px 12px;">
-                    <div class="card-header" style="position:static;padding:0 0 4px 0;border-bottom:none;box-shadow:none;"><div class="card-title" style="font-size:14px;"><i class="fas fa-box" style="color:#e6a23c;"></i> 京东容器状态</div></div>
-                    <div id="dashJdCtnStatus" class="loading" style="padding:8px 0;"><i class="fas fa-spinner"></i> 加载中...</div>
+                <div class="dash-panel">
+                    <div class="dash-panel-head">
+                        <div class="dash-panel-title"><span class="dot amber"></span>京东容器状态</div>
+                    </div>
+                    <div id="dashJdCtnStatus" class="loading" style="padding:4px 0;"><i class="fas fa-spinner"></i> 加载中...</div>
                 </div>
-                <div class="card" style="margin-bottom:0;padding:8px 12px 4px 12px;">
-                    <div class="card-header" style="position:static;padding:0 0 4px 0;border-bottom:none;box-shadow:none;"><div class="card-title" style="font-size:14px;"><i class="fas fa-info-circle" style="color:#722ed1;"></i> 系统信息</div></div>
-                    <div id="dashSysInfo" class="loading" style="padding:8px 0;"><i class="fas fa-spinner"></i> 加载中...</div>
+                <div class="dash-panel">
+                    <div class="dash-panel-head">
+                        <div class="dash-panel-title"><span class="dot slate"></span>系统信息</div>
+                    </div>
+                    <div id="dashSysInfo" class="loading" style="padding:4px 0;"><i class="fas fa-spinner"></i> 加载中...</div>
                 </div>
-                <div class="card" style="margin-bottom:0;padding:8px 12px 4px 12px;">
-                    <div class="card-header" style="position:static;padding:0 0 4px 0;border-bottom:none;box-shadow:none;"><div class="card-title" style="font-size:14px;"><i class="fas fa-tasks" style="color:#67c23a;"></i> 活动概览</div></div>
-                    <div id="dashActInfo" class="loading" style="padding:8px 0;"><i class="fas fa-spinner"></i> 加载中...</div>
+                <div class="dash-panel">
+                    <div class="dash-panel-head">
+                        <div class="dash-panel-title"><span class="dot teal"></span>活动概览</div>
+                    </div>
+                    <div id="dashActInfo" class="loading" style="padding:4px 0;"><i class="fas fa-spinner"></i> 加载中...</div>
                 </div>
             </div>
 
@@ -3300,8 +3466,9 @@ async function loadDashboard() {
         animateCounter(document.getElementById('statEnvs'), envTotal);
         animateCounter(document.getElementById('statQlCtn'), qlTotal);
         window.__dashBase = { ckTotal, userTotal, envTotal, qlTotal };
-        setDashGauge('a-ck', ckTotal > 0 ? Math.min(1, envTotal / Math.max(ckTotal, 1)) : 0);
-        setDashGauge('a-users', userTotal > 0 ? Math.min(1, qlTotal / Math.max(userTotal / 50, 1)) : (qlTotal > 0 ? 0.35 : 0));
+        const soft = (r) => { r = Math.max(0, Math.min(1, Number(r) || 0)); return r <= 0 ? 0 : Math.min(1, 0.18 + 0.82 * Math.pow(r, 0.5)); };
+        setDashGauge('a-ck', soft(ckTotal / 4000));
+        setDashGauge('a-users', soft(userTotal / 4000));
 
         // 用户在线统计
         loadDashUserOnlineStats();
@@ -3320,7 +3487,7 @@ async function loadDashboard() {
                     <span class="status-dot checking" id="dash-ql-${escapeHtml(c.name)}"></span>
                     <span class="ctn-name" id="dash-ql-name-${escapeHtml(c.name)}">${escapeHtml(c.name)}</span>
                     <span class="ctn-host" title="${escapeHtml(c.host)}">${escapeHtml(c.host)}</span>
-                    <span class="ctn-tag" id="dash-ql-tag-${escapeHtml(c.name)}" style="background:#fdf6ec;color:#e6a23c;">检测中</span>
+                    <span class="ctn-tag" id="dash-ql-tag-${escapeHtml(c.name)}" style="background:#fffbeb;color:#b45309;">检测中</span>
                 </div>
             `).join('');
             qlRes.data.forEach(c => testSingleQl(c.name, c.host, c.clientId, c.clientSecret));
@@ -3337,7 +3504,7 @@ async function loadDashboard() {
                     <span class="status-dot checking" id="dash-jd-${i}"></span>
                     <span class="ctn-name">容器${i + 1}</span>
                     <span class="ctn-host" title="${escapeHtml(c.address)}">${escapeHtml(c.address)}</span>
-                    <span class="ctn-tag" id="dash-jd-tag-${i}" style="background:#fdf6ec;color:#e6a23c;">检测中</span>
+                    <span class="ctn-tag" id="dash-jd-tag-${i}" style="background:#fffbeb;color:#b45309;">检测中</span>
                 </div>
             `).join('');
             jdCtns.forEach((c, i) => testJdContainer(i, c.address, c.cid, c.secret));
@@ -3349,35 +3516,14 @@ async function loadDashboard() {
         const jdCfg = await api.get('/api/admin/jdconfig').catch(() => ({ data: {} }));
         const cfg = jdCfg.data || {};
         const wxModelMap = { 'qx': '千寻 (qx)', 'my': '美云 (my)', 'wechat08': 'WeChat08 (wechat08)', '': '-' };
-        document.getElementById('dashSysInfo').innerHTML = `<div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
-                <span style="color:#999;">运行模式</span>
-                <span style="font-weight:600;color:#409eff;">${formatVal(cfg.mode || 'vip')}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
-                <span style="color:#999;">QQ UID</span>
-                <span style="font-weight:600;color:#409eff;">${formatVal(cfg.qqUid)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;grid-column:1/-1;">
-                <span style="color:#999;white-space:nowrap;margin-right:12px;">QQ 群</span>
-                <span style="font-weight:500;color:#333;text-align:right;word-break:break-all;">${formatVal(cfg.qqGid)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
-                <span style="color:#999;">QQ 群监听</span>
-                <span style="font-weight:600;color:${cfg.openQQ ? '#67c23a' : '#909399'};">${cfg.openQQ ? '是' : '否'}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
-                <span style="color:#999;">微信框架</span>
-                <span style="font-weight:600;color:#67c23a;">${wxModelMap[cfg.wxModel] || cfg.wxModel || '-'}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;grid-column:1/-1;">
-                <span style="color:#999;white-space:nowrap;margin-right:12px;">机器人地址</span>
-                <span style="font-weight:500;color:#333;text-align:right;word-break:break-all;">${formatVal(cfg.wxUrl)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;grid-column:1/-1;">
-                <span style="color:#999;white-space:nowrap;margin-right:12px;">RobotID</span>
-                <span style="font-weight:500;color:#333;text-align:right;word-break:break-all;font-family:monospace;">${formatVal(cfg.wxRobotId)}</span>
-            </div>
+        document.getElementById('dashSysInfo').innerHTML = `<div class="dash-kv">
+            <div class="dash-kv-row"><span class="k">运行模式</span><span class="v sky">${formatVal(cfg.mode || 'vip')}</span></div>
+            <div class="dash-kv-row"><span class="k">QQ UID</span><span class="v sky">${formatVal(cfg.qqUid)}</span></div>
+            <div class="dash-kv-row span2"><span class="k">QQ 群</span><span class="v mute">${formatVal(cfg.qqGid)}</span></div>
+            <div class="dash-kv-row"><span class="k">QQ 群监听</span><span class="v ${cfg.openQQ ? 'teal' : 'mute'}">${cfg.openQQ ? '是' : '否'}</span></div>
+            <div class="dash-kv-row"><span class="k">微信框架</span><span class="v teal">${wxModelMap[cfg.wxModel] || cfg.wxModel || '-'}</span></div>
+            <div class="dash-kv-row span2"><span class="k">机器人地址</span><span class="v mute">${formatVal(cfg.wxUrl)}</span></div>
+            <div class="dash-kv-row span2"><span class="k">RobotID</span><span class="v mono">${formatVal(cfg.wxRobotId)}</span></div>
         </div>`;
 
         // 活动概览
@@ -3388,30 +3534,14 @@ async function loadDashboard() {
             const disabled = acts.filter(a => a['启用状态'] !== true);
             const monthly = acts.filter(a => a['是否按月扣费'] === true || a['是否按天扣费'] === true);
             const onetime = acts.filter(a => a['是否按月扣费'] !== true && a['是否按天扣费'] !== true);
-            document.getElementById('dashActInfo').innerHTML = `<div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
-                    <span style="color:#999;">活动总数</span>
-                    <span class="tag tag-primary" style="font-size:13px;font-weight:600;">${acts.length}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
-                    <span style="color:#999;">已启用</span>
-                    <span class="tag tag-success" style="font-size:13px;">${enabled.length}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
-                    <span style="color:#999;">已禁用</span>
-                    <span class="tag tag-danger" style="font-size:13px;">${disabled.length}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
-                    <span style="color:#999;">按月扣费</span>
-                    <span class="tag tag-warning" style="font-size:13px;">${monthly.length}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;">
-                    <span style="color:#999;">一次性活动</span>
-                    <span class="tag tag-primary" style="font-size:13px;">${onetime.length}</span>
-                </div>
-                <div></div>
-            </div>`;
-        } catch(e) { document.getElementById('dashActInfo').innerHTML = '<p style="color:#c0c4cc;text-align:center;padding:30px;">加载失败</p>'; }
+            document.getElementById('dashActInfo').innerHTML = `<div class="dash-chip-row cols-4" style="margin-bottom:10px;">
+                <div class="dash-chip"><div class="n slate">${acts.length}</div><div class="l">活动总数</div></div>
+                <div class="dash-chip"><div class="n teal">${enabled.length}</div><div class="l">已启用</div></div>
+                <div class="dash-chip"><div class="n wine">${disabled.length}</div><div class="l">已禁用</div></div>
+                <div class="dash-chip"><div class="n amber">${monthly.length}</div><div class="l">按月扣费</div></div>
+            </div>
+            <div class="dash-meta-row" style="margin:0;"><span>一次性活动 <strong>${onetime.length}</strong></span></div>`;
+        } catch(e) { document.getElementById('dashActInfo').innerHTML = '<p style="color:#a8a29e;text-align:center;padding:24px;">加载失败</p>'; }
 
     } catch (e) {
         console.error('加载仪表盘失败:', e);
@@ -4732,8 +4862,9 @@ async function loadDashUserOnlineStats() {
         const rateEl = document.getElementById('statTodayRate');
         const dayRate = totalAccounts > 0 ? Math.round((todayActive / totalAccounts) * 100) : 0;
         if (rateEl) rateEl.textContent = dayRate + '%';
-        setDashGauge('a-online', totalAccounts > 0 ? onlineCount / totalAccounts : 0);
-        setDashGauge('a-today', totalAccounts > 0 ? todayActive / totalAccounts : 0);
+        const soft2 = (r) => { r = Math.max(0, Math.min(1, Number(r) || 0)); return r <= 0 ? 0 : Math.min(1, 0.18 + 0.82 * Math.pow(r, 0.5)); };
+        setDashGauge('a-online', soft2(totalAccounts > 0 ? Math.min(1, (onlineCount / totalAccounts) * 8) : 0));
+        setDashGauge('a-today', soft2(totalAccounts > 0 ? todayActive / totalAccounts : 0));
     } catch(e) {
         console.error('加载用户在线统计失败:', e);
     }
@@ -4744,19 +4875,10 @@ async function loadDashWxStats() {
     if (!el) return;
     // 先渲染骨架（数字初始为0），确保每次都能看到动画
     el.innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-            <div style="text-align:center;padding:10px 6px;border-radius:8px;background:linear-gradient(135deg,rgba(64,158,255,0.08),rgba(64,158,255,0.03));border:1px solid rgba(64,158,255,0.12);">
-                <div style="font-size:22px;font-weight:800;color:#409eff;line-height:1.2;" id="wxStatTotal">0</div>
-                <div style="font-size:11px;color:#999;margin-top:2px;"><i class="fab fa-weixin" style="color:#409eff;margin-right:4px;"></i>设备总数</div>
-            </div>
-            <div style="text-align:center;padding:10px 6px;border-radius:8px;background:linear-gradient(135deg,rgba(103,194,58,0.08),rgba(103,194,58,0.03));border:1px solid rgba(103,194,58,0.12);">
-                <div style="font-size:22px;font-weight:800;color:#67c23a;line-height:1.2;" id="wxStatOnline">0</div>
-                <div style="font-size:11px;color:#999;margin-top:2px;"><i class="fas fa-check-circle" style="color:#67c23a;margin-right:4px;"></i>在线</div>
-            </div>
-            <div style="text-align:center;padding:10px 6px;border-radius:8px;background:linear-gradient(135deg,rgba(245,108,108,0.08),rgba(245,108,108,0.03));border:1px solid rgba(245,108,108,0.12);">
-                <div style="font-size:22px;font-weight:800;color:#f56c6c;line-height:1.2;" id="wxStatOffline">0</div>
-                <div style="font-size:11px;color:#999;margin-top:2px;"><i class="fas fa-times-circle" style="color:#f56c6c;margin-right:4px;"></i>掉线</div>
-            </div>
+        <div class="dash-chip-row">
+            <div class="dash-chip"><div class="n sky" id="wxStatTotal">0</div><div class="l">设备总数</div></div>
+            <div class="dash-chip"><div class="n teal" id="wxStatOnline">0</div><div class="l">在线</div></div>
+            <div class="dash-chip"><div class="n wine" id="wxStatOffline">0</div><div class="l">掉线</div></div>
         </div>`;
     try {
         const res = await api.get('/api/admin/wx-device-stats');
@@ -6587,26 +6709,27 @@ async function testSingleQl(name, host, clientId, secret) {
     const dashTag = document.getElementById('dash-ql-tag-' + name);
     if (dot) { dot.className = 'status-dot checking'; }
     if (dashDot && dashDot !== dot) { dashDot.className = 'status-dot checking'; }
-    if (tag) { tag.textContent = '检测中...'; tag.style.color = '#e6a23c'; }
-    if (dashTag && dashTag !== tag) { dashTag.textContent = '检测中...'; dashTag.style.color = '#e6a23c'; }
-    if (statusText) { statusText.textContent = '检测中...'; statusText.style.color = '#e6a23c'; }
+    if (tag) { tag.textContent = '检测中...'; tag.style.color = '#b45309'; tag.style.background = '#fffbeb'; }
+    if (dashTag && dashTag !== tag) { dashTag.textContent = '检测中...'; dashTag.style.color = '#b45309'; dashTag.style.background = '#fffbeb'; }
+    if (statusText) { statusText.textContent = '检测中...'; statusText.style.color = '#b45309'; }
     try {
         const res = await api.post('/api/admin/qlconfigs/test', { host, clientId, clientSecret: secret });
         const isOk = res.code === 0;
         if (dot) dot.className = isOk ? 'status-dot online' : 'status-dot offline';
         if (dashDot && dashDot !== dot) dashDot.className = isOk ? 'status-dot online' : 'status-dot offline';
         const msg = isOk ? '已连接' : (res.msg || '连接失败');
-        const color = isOk ? '#67c23a' : '#f56c6c';
-        if (tag) { tag.textContent = msg; tag.style.color = color; }
-        if (dashTag && dashTag !== tag) { dashTag.textContent = msg; dashTag.style.color = color; }
+        const color = isOk ? '#0f766e' : '#9f1239';
+        const bg = isOk ? '#f0fdfa' : '#fff1f2';
+        if (tag) { tag.textContent = msg; tag.style.color = color; tag.style.background = bg; }
+        if (dashTag && dashTag !== tag) { dashTag.textContent = msg; dashTag.style.color = color; dashTag.style.background = bg; }
         if (statusText) { statusText.textContent = msg; statusText.style.color = color; }
     } catch (e) {
         const emsg = '请求失败: ' + (e.message || '未知错误');
         if (dot) dot.className = 'status-dot offline';
         if (dashDot && dashDot !== dot) dashDot.className = 'status-dot offline';
-        if (tag) { tag.textContent = emsg; tag.style.color = '#f56c6c'; }
-        if (dashTag && dashTag !== tag) { dashTag.textContent = emsg; dashTag.style.color = '#f56c6c'; }
-        if (statusText) { statusText.textContent = emsg; statusText.style.color = '#f56c6c'; }
+        if (tag) { tag.textContent = emsg; tag.style.color = '#9f1239'; tag.style.background = '#fff1f2'; }
+        if (dashTag && dashTag !== tag) { dashTag.textContent = emsg; dashTag.style.color = '#9f1239'; dashTag.style.background = '#fff1f2'; }
+        if (statusText) { statusText.textContent = emsg; statusText.style.color = '#9f1239'; }
     }
 }
 async function testAllQlConnections() {
@@ -6942,23 +7065,24 @@ async function testJdContainer(idx, address, cid, secret) {
     const dashTag = document.getElementById('dash-jd-tag-' + idx);
     if (dot) dot.className = 'status-dot checking';
     if (dashDot && dashDot !== dot) dashDot.className = 'status-dot checking';
-    if (tag) { tag.textContent = '检测中...'; tag.style.color = '#e6a23c'; }
-    if (dashTag && dashTag !== tag) { dashTag.textContent = '检测中...'; dashTag.style.color = '#e6a23c'; }
+    if (tag) { tag.textContent = '检测中...'; tag.style.color = '#b45309'; tag.style.background = '#fffbeb'; }
+    if (dashTag && dashTag !== tag) { dashTag.textContent = '检测中...'; dashTag.style.color = '#b45309'; dashTag.style.background = '#fffbeb'; }
     try {
         const res = await api.post('/api/admin/container/test', { address, cid, secret });
         const isOk = res.code === 0;
         if (dot) dot.className = isOk ? 'status-dot online' : 'status-dot offline';
         if (dashDot && dashDot !== dot) dashDot.className = isOk ? 'status-dot online' : 'status-dot offline';
         const msg = isOk ? '已连接' : (res.msg || '连接失败');
-        const color = isOk ? '#67c23a' : '#f56c6c';
-        if (tag) { tag.textContent = msg; tag.style.color = color; }
-        if (dashTag && dashTag !== tag) { dashTag.textContent = msg; dashTag.style.color = color; }
+        const color = isOk ? '#0f766e' : '#9f1239';
+        const bg = isOk ? '#f0fdfa' : '#fff1f2';
+        if (tag) { tag.textContent = msg; tag.style.color = color; tag.style.background = bg; }
+        if (dashTag && dashTag !== tag) { dashTag.textContent = msg; dashTag.style.color = color; dashTag.style.background = bg; }
     } catch (e) {
         const emsg = '请求失败';
         if (dot) dot.className = 'status-dot offline';
         if (dashDot && dashDot !== dot) dashDot.className = 'status-dot offline';
-        if (tag) { tag.textContent = emsg; tag.style.color = '#f56c6c'; }
-        if (dashTag && dashTag !== tag) { dashTag.textContent = emsg; dashTag.style.color = '#f56c6c'; }
+        if (tag) { tag.textContent = emsg; tag.style.color = '#9f1239'; tag.style.background = '#fff1f2'; }
+        if (dashTag && dashTag !== tag) { dashTag.textContent = emsg; dashTag.style.color = '#9f1239'; dashTag.style.background = '#fff1f2'; }
     }
 }
 
