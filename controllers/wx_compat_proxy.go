@@ -120,7 +120,7 @@ func handleCompatGetPhone(body []byte, ref string) ([]byte, int) {
 	if err != nil {
 		return models.BuildCompatErrorResponse(err.Error()), 200
 	}
-	return models.BuildCompatSuccessResponse(extractCompatPhoneData(data)), 200
+	return models.BuildCompatGetAllMobileResponse(data), 200
 }
 
 func handleCompatCallFunction(body []byte, ref string) ([]byte, int) {
@@ -175,30 +175,17 @@ func extractCompatPayload(body []byte) map[string]interface{} {
 			return out
 		}
 	}
-	return m
-}
-
-func extractCompatPhoneData(data map[string]interface{}) interface{} {
-	if data == nil {
-		return nil
-	}
-	// wechat08 直返：{Code, Success, Data:{ALLMobile:...}}
-	if v, ok := data["Data"]; ok {
-		return v
-	}
-	if v, ok := data["data"]; ok {
-		return v
-	}
-	// 应用宝原始结果：尽量贴近旧脚本 Data 结构
-	if v, ok := data["result"]; ok {
-		return v
-	}
-	if code, ok := data["code"].(string); ok && code != "" {
-		return map[string]interface{}{
-			"ALLMobile": []map[string]interface{}{{"code": code}},
+	if raw, ok := m["Data"]; ok {
+		switch v := raw.(type) {
+		case map[string]interface{}:
+			return v
+		case string:
+			out := map[string]interface{}{}
+			_ = jsonUnmarshalCompat([]byte(v), &out)
+			return out
 		}
 	}
-	return data
+	return m
 }
 
 func parseCompatJSON(body []byte) map[string]interface{} {

@@ -406,6 +406,142 @@ func BuildCompatSuccessResponse(data interface{}) []byte {
 	return b
 }
 
+// BuildCompatGetAllMobileResponse 将应用宝/wechat08 结果统一为旧脚本期望的 GetAllMobile 结构：
+// {Code, Success, Data: {Data: "<json string>", ALLMobile: [...]}}
+func BuildCompatGetAllMobileResponse(raw map[string]interface{}) []byte {
+	if raw == nil {
+		return BuildCompatErrorResponse("GetAllMobile 未返回数据")
+	}
+	if isCompatOKEnvelope(raw) {
+		if inner, ok := raw["Data"].(map[string]interface{}); ok {
+			if _, has := inner["Data"]; has {
+				b, _ := json.Marshal(raw)
+				return b
+			}
+		}
+	}
+	if inner, ok := raw["Data"].(map[string]interface{}); ok {
+		if _, has := inner["Data"]; has {
+			return BuildCompatSuccessResponse(inner)
+		}
+	}
+	if inner, ok := raw["data"].(map[string]interface{}); ok {
+		if _, has := inner["Data"]; has {
+			return BuildCompatSuccessResponse(inner)
+		}
+		if _, has := inner["data"]; has {
+			return BuildCompatSuccessResponse(inner)
+		}
+	}
+
+	phoneCode, mobile := extractPhoneAuthCode(raw)
+	if phoneCode == "" {
+		return BuildCompatErrorResponse("GetAllMobile 未找到手机号授权 code")
+	}
+	itemData, _ := json.Marshal(map[string]string{"code": phoneCode})
+	item := map[string]interface{}{
+		"mobile":       mobile,
+		"show_mobile":  mobile,
+		"need_auth":    "0",
+		"allow_send_sms": "0",
+		"data":         string(itemData),
+		"code":         phoneCode,
+	}
+	innerObj := map[string]interface{}{
+		"custom_phone_list": []map[string]interface{}{item},
+	}
+	if mobile != "" {
+		innerObj["wx_phone"] = item
+	}
+	innerBytes, _ := json.Marshal(innerObj)
+	outerData := map[string]interface{}{
+		"Data":      string(innerBytes),
+		"ALLMobile": []map[string]interface{}{item},
+	}
+	return BuildCompatSuccessResponse(outerData)
+}
+
+func isCompatOKEnvelope(m map[string]interface{}) bool {
+	if v, ok := m["Success"].(bool); ok && v {
+		return true
+	}
+	switch c := m["Code"].(type) {
+	case float64:
+		return c == 0
+	case int:
+		return c == 0
+	case int64:
+		return c == 0
+	}
+	return false
+}
+
+func extractPhoneAuthCode(raw map[string]interface{}) (code, mobile string) {
+	var walk func(interface{}) bool
+	walk = func(v interface{}) bool {
+		switch x := v.(type) {
+		case map[string]interface{}:
+			if m := strings.TrimSpace(stringFromAnyMap(x, "mobile", "phone", "show_mobile")); m != "" && mobile == "" {
+				mobile = m
+			}
+			if c := strings.TrimSpace(stringFromAnyMap(x, "code", "phoneCode", "wxCode")); c != "" {
+				code = c
+				return true
+			}
+			if dataStr := strings.TrimSpace(stringFromAnyMap(x, "data", "Data")); dataStr != "" && strings.HasPrefix(dataStr, "{") {
+				var inner map[string]interface{}
+				if json.Unmarshal([]byte(dataStr), &inner) == nil {
+					if c := strings.TrimSpace(stringFromAnyMap(inner, "code", "phoneCode")); c != "" {
+						code = c
+						return true
+					}
+				}
+			}
+			for _, key := range []string{"Data", "data", "result", "ALLMobile", "custom_phone_list", "wx_phone"} {
+				if walk(x[key]) {
+					return true
+				}
+			}
+			for _, val := range x {
+				if walk(val) {
+					return true
+				}
+			}
+		case []interface{}:
+			for _, item := range x {
+				if walk(item) {
+					return true
+				}
+			}
+		case string:
+			text := strings.TrimSpace(x)
+			if text == "" {
+				return false
+			}
+			if strings.HasPrefix(text, "{") {
+				var obj map[string]interface{}
+				if json.Unmarshal([]byte(text), &obj) == nil && walk(obj) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	walk(raw)
+	return code, mobile
+}
+
+func stringFromAnyMap(m map[string]interface{}, keys ...string) string {
+	for _, key := range keys {
+		if v, ok := m[key]; ok {
+			if s := strings.TrimSpace(fmt.Sprint(v)); s != "" && s != "<nil>" {
+				return s
+			}
+		}
+	}
+	return ""
+}
+
 func BuildCompatErrorResponse(msg string) []byte {
 	payload := map[string]interface{}{
 		"Code":    1,
