@@ -289,6 +289,12 @@
         if (global.YybPortal && typeof global.YybPortal.loadPanel === 'function') {
             await global.YybPortal.loadPanel({ autoCheck: false, silent: true });
         }
+        if (global.YybPortal && typeof global.YybPortal.loadDashboard === 'function') {
+            try { await global.YybPortal.loadDashboard(); } catch (_) {}
+        }
+        if (typeof global.renderDashboard === 'function') {
+            try { global.renderDashboard(); } catch (_) {}
+        }
     }
 
     function setWxDevices(devices) {

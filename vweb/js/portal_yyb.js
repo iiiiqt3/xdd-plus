@@ -279,25 +279,37 @@
         }
         const accounts = st.accounts || [];
         if (!accounts.length) {
-            container.innerHTML = '<div class="yyb-empty">暂无绑定账号，<a href="#" onclick="openProtocolPanel(\'yyb\');return false;" style="color:var(--cyan);">去添加</a></div>';
+            container.innerHTML = '<div class="yyb-empty" style="text-align:center;line-height:1.7;padding:16px 8px;">暂无绑定账号<br><a href="#" onclick="openProtocolPanel(\'yyb\');return false;" style="color:var(--cyan);font-weight:700;">去扫码添加</a></div>';
             return;
         }
         const alive = accounts.filter(a => a.status === 'alive' || a.status === 'online').length;
+        const boundN = accounts.filter(a => global.PortalProtocolBind && global.PortalProtocolBind.hasYybBinding(a.openid)).length;
         container.innerHTML = `
             <div class="yyb-chips" style="margin-bottom:10px;">
                 <span class="yyb-chip">共 <strong>${accounts.length}</strong> 个</span>
                 <span class="yyb-chip ok">可用 <strong>${alive}</strong></span>
+                <span class="yyb-chip">双绑 <strong>${boundN}</strong></span>
                 <span class="yyb-chip">扫码 <strong>${st.scanLoginCost ?? '-'}</strong> 积分</span>
             </div>
-            <div class="yyb-dash-list">${accounts.slice(0, 4).map(a => `
-                <div class="yyb-dash-item">
+            <div class="yyb-dash-list">${accounts.slice(0, 4).map(a => {
+                const isBound = global.PortalProtocolBind && global.PortalProtocolBind.hasYybBinding(a.openid);
+                const boundHtml = global.PortalProtocolBind
+                    ? (global.PortalProtocolBind.renderYybBoundBlock(a.openid) ||
+                        '<div class="yyb-dash-uin" style="opacity:.75;">双绑：未绑定微信</div>')
+                    : '';
+                const expiry = renderExpiryLine(a);
+                return `
+                <div class="yyb-dash-item${isBound ? ' proto-bound' : ''}">
                     <div class="yyb-dash-item-head">
                         <span class="yyb-dash-item-name">${esc(accountName(a))}</span>
                         ${statusTag(a.status)}
                     </div>
                     <div class="yyb-dash-uin">UIN: ${esc(formatUin(a) || '未获取')}</div>
                     <div class="yyb-dash-openid">OpenID: ${esc(a.openid)}</div>
-                </div>`).join('')}</div>
+                    ${boundHtml}
+                    ${expiry ? '<div class="yyb-dash-expiry">' + expiry + '</div>' : ''}
+                </div>`;
+            }).join('')}</div>
             ${accounts.length > 4 ? '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center;">还有 ' + (accounts.length - 4) + ' 个账号…</div>' : ''}`;
     }
 
@@ -306,7 +318,14 @@
         if (!container) return;
         try {
             const st = await request('/status');
+            if (global.PortalProtocolBind) {
+                global.PortalProtocolBind.setYybAccounts(st.accounts || []);
+                try { await global.PortalProtocolBind.refresh(); } catch (_) {}
+            }
             renderDashboard(container, st);
+            if (typeof global.renderDashboard === 'function') {
+                try { global.renderDashboard(); } catch (_) {}
+            }
         } catch (_) {
             container.innerHTML = '<div class="yyb-empty">加载失败</div>';
         }
@@ -522,7 +541,26 @@
     function formatRegionScanCost(quota) {
         if (!quota) return null;
         const cost = Number(quota.scanLoginCost);
-        if (Number.isFinite(cost) && cost > 0) return { text: '本次扫码将扣除 ' + cost + ' 积分', free: false };
+        const hint = String(quota.scanCostHint || '').trim();
+        if (hint) {
+            if (Number.isFinite(cost) && cost > 0 && /续登免费/.test(hint)) {
+                return { text: hint, free: false };
+            }
+            if (Number.isFinite(cost) && cost === 0) {
+                return { text: hint, free: true };
+            }
+            if (Number.isFinite(cost) && cost > 0) {
+                return { text: hint, free: false };
+            }
+            return { text: hint, free: true };
+        }
+        if (Number.isFinite(cost) && cost > 0) {
+            const yybN = Number(quota.yybAccounts);
+            if (Number.isFinite(yybN) && yybN > 0) {
+                return { text: '已有账号续登免费；新增账号将扣除 ' + cost + ' 积分', free: false };
+            }
+            return { text: '本次扫码将扣除 ' + cost + ' 积分', free: false };
+        }
         if (Number.isFinite(cost) && cost === 0) return { text: '本次扫码免费，不扣除积分', free: true };
         return null;
     }
@@ -667,8 +705,13 @@
             }
             const costEl = $('yyb-qrCost');
             const cost = Number(data.scanLoginCost);
+            const costHint = String(data.scanCostHint || '').trim();
             if (costEl) {
-                if (Number.isFinite(cost) && cost > 0) {
+                if (costHint) {
+                    costEl.style.display = 'block';
+                    costEl.className = 'yyb-region-scan-cost ' + (Number.isFinite(cost) && cost > 0 ? 'paid' : 'free');
+                    costEl.textContent = costHint;
+                } else if (Number.isFinite(cost) && cost > 0) {
                     costEl.style.display = 'block';
                     costEl.className = 'yyb-region-scan-cost paid';
                     costEl.textContent = '本次扫码将扣除 ' + cost + ' 积分';

@@ -394,7 +394,22 @@
             background: #fafaf9 !important; border: 1px solid #f5f5f4 !important; border-radius: 12px !important;
         }
         #panel-dashboard .dash-wx-mini.primary-mini { background: #f0fdfa !important; border-color: #99f6e4 !important; }
+        #panel-dashboard .dash-wx-mini.proto-bound { border-color: rgba(8,145,178,0.35) !important; }
         #panel-dashboard .dash-wx-mini:hover { border-color: #d6d3d1 !important; background: #f5f5f4 !important; }
+        #panel-dashboard .dash-wx-mini .proto-bound-line {
+            margin-top: 8px; padding: 6px 8px; gap: 6px; font-size: 11px; border-radius: 8px;
+        }
+        #panel-dashboard .dash-wx-mini .proto-bound-line-peer { font-size: 11px; }
+        #panel-dashboard .dash-wx-mini .proto-card-unbind-btn { font-size: 11px; }
+        #panel-dashboard .yyb-dash-item.proto-bound { border-color: rgba(99,102,241,0.35) !important; }
+        #panel-dashboard .yyb-dash-item .proto-bound-line {
+            margin-top: 6px; padding: 6px 8px; gap: 6px; font-size: 11px; border-radius: 8px;
+        }
+        #panel-dashboard .yyb-dash-item .proto-card-unbind-btn { font-size: 11px; }
+        #panel-dashboard .yyb-dash-item .yyb-acc-expiry,
+        #panel-dashboard .yyb-dash-item .yyb-dash-expiry {
+            margin-top: 4px; font-size: 11px; color: var(--text-muted);
+        }
         #panel-dashboard .dash-profile-row { border-bottom-color: #f5f5f4 !important; }
         #panel-dashboard .dash-profile-row .pr-label { color: #a8a29e !important; }
         #panel-dashboard .dash-profile-row .pr-value { color: #1c1917 !important; font-weight: 650 !important; }
@@ -2067,7 +2082,9 @@
                 <div class="dash-info-card dash-panel">
                     <div class="dash-panel-head" style="margin-bottom:10px;padding-bottom:10px;">
                         <div class="dash-panel-title"><span class="dot teal"></span>微信协议状态</div>
+                        <button class="dash-icon-btn primary" type="button" onclick="openProtocolPanel('wx')" title="管理">→</button>
                     </div>
+                    <div id="wxDashSummary" class="dash-meta-row" style="margin-bottom:10px;display:none;"></div>
                     <div id="wxDashDevices" class="dash-wx-grid">
                         <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0;grid-column:1/-1;">暂无微信协议设备</div>
                     </div>
@@ -2740,8 +2757,8 @@
 </div>
 
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/portal_protocol_bind.js?v=3"></script>
-<script src="/vweb/js/portal_yyb.js?v=17"></script>
+<script src="/vweb/js/portal_protocol_bind.js?v=4"></script>
+<script src="/vweb/js/portal_yyb.js?v=19"></script>
 <script>
 async function getSignatureHeaders(path) {
     try {
@@ -3371,31 +3388,52 @@ function renderDashboard() {
     document.getElementById('profileLastLogin').textContent = d.lastLoginAt || '-';
     document.getElementById('profileBoundAt').textContent = d.boundAt || '-';
 
-    // 微信状态指示器
+    // 微信协议设备 + 双绑信息
     const devices = state.wxDevices || [];
-    const container = document.getElementById('wxDashDevices');
-    if (devices.length === 0) {
-        container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0;grid-column:1/-1;">暂无微信协议设备</div>';
-    } else {
-        container.innerHTML = devices.map(function(d) {
-            var dotClass = d.online ? 'online-dot' : 'offline-dot';
-            var cardClass = 'dash-wx-mini' + (d.isPrimary ? ' primary-mini' : '');
-            var badgeHtml = d.isPrimary ? '<span class="mini-badge primary-tag">主</span>' : '';
-            var statusText = d.online ? '在线' : '离线';
-            var statusClass = d.online ? 'online-tag' : 'offline-tag';
-            return '<div class="' + cardClass + '">' +
-                '<div class="mini-head">' +
-                    '<span class="mini-dot ' + dotClass + '"></span>' +
-                    '<span class="mini-name" title="' + escapeAttr(d.nickname || d.wxid) + '">' + escapeHtml(d.nickname || d.wxid) + '</span>' +
-                    '<span class="mini-badge ' + statusClass + '">' + statusText + '</span>' +
-                    badgeHtml +
-                '</div>' +
-                '<div class="mini-row"><span class="mini-label">微信ID</span><span class="mini-val" title="' + escapeAttr(d.wxid) + '">' + escapeHtml(d.wxid) + '</span></div>' +
-                '<div class="mini-row"><span class="mini-label">设备</span><span class="mini-val">' + escapeHtml(d.device || '-') + '</span></div>' +
-                '<div class="mini-row"><span class="mini-label">登录</span><span class="mini-val">' + escapeHtml(d.loginTime || '-') + '</span></div>' +
-                '<div class="mini-row"><span class="mini-label">刷新</span><span class="mini-val">' + escapeHtml(d.refreshTime || '-') + '</span></div>' +
-                '</div>';
-        }).join('');
+    const wxBox = document.getElementById('wxDashDevices');
+    const wxSummary = document.getElementById('wxDashSummary');
+    if (wxBox) {
+        if (devices.length === 0) {
+            if (wxSummary) wxSummary.style.display = 'none';
+            wxBox.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px 8px;grid-column:1/-1;line-height:1.7;">暂无微信协议设备<br><a href="#" onclick="openProtocolPanel(\'wx\');return false;" style="color:var(--cyan);font-weight:700;">去扫码绑定</a></div>';
+        } else {
+            var onlineN = devices.filter(function(d) { return !!d.online; }).length;
+            var boundN = devices.filter(function(d) {
+                return window.PortalProtocolBind && PortalProtocolBind.hasWxBinding(d.wxid);
+            }).length;
+            if (wxSummary) {
+                wxSummary.style.display = 'flex';
+                wxSummary.innerHTML =
+                    '<span>设备 <strong>' + devices.length + '</strong></span>' +
+                    '<span>在线 <strong style="color:#0f766e;">' + onlineN + '</strong></span>' +
+                    '<span>已双绑 <strong style="color:#0369a1;">' + boundN + '</strong></span>';
+            }
+            wxBox.innerHTML = devices.map(function(d) {
+                var isBound = window.PortalProtocolBind && PortalProtocolBind.hasWxBinding(d.wxid);
+                var dotClass = d.online ? 'online-dot' : 'offline-dot';
+                var cardClass = 'dash-wx-mini' + (d.isPrimary ? ' primary-mini' : '') + (isBound ? ' proto-bound' : '');
+                var badgeHtml = d.isPrimary ? '<span class="mini-badge primary-tag">主</span>' : '';
+                var statusText = d.online ? '在线' : '离线';
+                var statusClass = d.online ? 'online-tag' : 'offline-tag';
+                var boundHtml = '';
+                if (window.PortalProtocolBind) {
+                    boundHtml = PortalProtocolBind.renderWxBoundBlock(d.wxid) ||
+                        '<div class="mini-row" style="margin-top:6px;"><span class="mini-label">双绑</span><span class="mini-val" style="color:var(--text-muted);font-weight:500;">未绑定应用宝</span></div>';
+                }
+                return '<div class="' + cardClass + '">' +
+                    '<div class="mini-head">' +
+                        '<span class="mini-dot ' + dotClass + '"></span>' +
+                        '<span class="mini-name" title="' + escapeAttr(d.nickname || d.wxid) + '">' + escapeHtml(d.nickname || d.wxid) + '</span>' +
+                        '<span class="mini-badge ' + statusClass + '">' + statusText + '</span>' +
+                        badgeHtml +
+                    '</div>' +
+                    '<div class="mini-row"><span class="mini-label">微信ID</span><span class="mini-val" title="' + escapeAttr(d.wxid) + '">' + escapeHtml(d.wxid) + '</span></div>' +
+                    '<div class="mini-row"><span class="mini-label">设备</span><span class="mini-val">' + escapeHtml(d.device || '-') + '</span></div>' +
+                    '<div class="mini-row"><span class="mini-label">登录</span><span class="mini-val">' + escapeHtml(d.loginTime || '-') + '</span></div>' +
+                    boundHtml +
+                    '</div>';
+            }).join('');
+        }
     }
 }
 
@@ -4309,6 +4347,7 @@ async function loadWxDevices() {
         state.wxDevices = [];
         if (window.PortalProtocolBind) PortalProtocolBind.setWxDevices([]);
         renderWxDevices();
+        renderDashboard();
     }
 }
 

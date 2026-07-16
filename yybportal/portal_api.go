@@ -70,12 +70,15 @@ func PortalListAccounts(userNumber int) ([]PortalAccountView, error) {
 }
 
 // PortalCreateQR 创建扫码（用户选择 51 代理省市区）
+// 积分预检：仅「库内尚无应用宝绑定时」按新增账号要求余额。
+// 已有绑定（含失效）允许先出码——确认时旧 OpenID 续登不扣费，新 OpenID 再按名额扣费。
 func PortalCreateQR(userNumber int, proxyOpt models.YybProxyLoginOption) (map[string]any, error) {
 	if !Ready() {
 		return nil, fmt.Errorf("应用宝服务不可用")
 	}
 	cost, _, hint := models.CalcYybScanLoginCost(userNumber)
-	if cost > 0 {
+	hasBinding := models.CountPortalYybBindings(userNumber) > 0
+	if cost > 0 && !hasBinding {
 		if err := ensureCoinForScanQR(userNumber, cost); err != nil {
 			return nil, err
 		}

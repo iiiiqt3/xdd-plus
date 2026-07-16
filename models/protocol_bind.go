@@ -140,23 +140,30 @@ func YybFreeSlotsForNewLogin(userNumber int) int {
 	return free
 }
 
-// CalcYybScanLoginCost 新 OpenID 扫码费用：库内应用宝数（含掉线）未达在线微信数则免费
+// CalcYybScanLoginCost 新 OpenID 扫码费用：库内应用宝数（含掉线）未达在线微信数则免费。
+// 已有 OpenID 续登在确认阶段另判免费，此处 hint 会提示「续登免费 / 新增才扣」。
 func CalcYybScanLoginCost(userNumber int) (cost int, free bool, hint string) {
 	cost = getYybScanLoginCostConfigured()
 	online := CountOnlineWxProtocolSlots(userNumber)
+	yybInLibrary := CountPortalYybBindings(userNumber)
 	if online <= 0 {
 		if cost <= 0 {
 			return 0, true, "本次扫码免费，不扣除积分"
 		}
+		if yybInLibrary > 0 {
+			return cost, false, fmt.Sprintf("已有账号续登免费；新增账号将扣除 %d 积分", cost)
+		}
 		return cost, false, fmt.Sprintf("本次扫码将扣除 %d 积分", cost)
 	}
-	yybInLibrary := CountPortalYybBindings(userNumber)
 	freeSlots := online - yybInLibrary
 	if freeSlots > 0 {
 		return 0, true, "本次扫码免费，不扣除积分"
 	}
 	if cost <= 0 {
 		return 0, true, "本次扫码免费，不扣除积分"
+	}
+	if yybInLibrary > 0 {
+		return cost, false, fmt.Sprintf("已有账号续登免费；新增账号将扣除 %d 积分", cost)
 	}
 	return cost, false, fmt.Sprintf("本次扫码将扣除 %d 积分", cost)
 }
