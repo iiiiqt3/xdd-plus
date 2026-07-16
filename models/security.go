@@ -178,20 +178,42 @@ type rateLimitEntry struct {
 
 var (
 	rateLimitStore sync.Map
+	// 业务主路径不限流（门户/管理/青龙网关/应用宝脚本）
+	rateLimitExemptPrefixes = []string{
+		"/api/portal/",
+		"/api/admin/",
+		"/api/v1/wx/",
+		"/api/wx/",
+		"/api/Wxapp/",
+		"/api/WxApi/",
+		"/api/OfficialAccounts/",
+		"/api/TenPay/",
+		"/api/yyb/",
+		"/wechat/api/",
+	}
 	rateLimitRules = []struct {
 		prefix string
 		rule   rateLimitRule
 	}{
-		{"/api/login/reset/", rateLimitRule{limit: 8, window: 15 * time.Minute, scope: "reset"}},
-		{"/api/getUserInfo", rateLimitRule{limit: 40, window: time.Minute, scope: "getUserInfo"}},
-		{"/api/getUserPin", rateLimitRule{limit: 40, window: time.Minute, scope: "getUserPin"}},
-		{"/permisson", rateLimitRule{limit: 30, window: time.Minute, scope: "permisson"}},
-		{"/api/wxserver", rateLimitRule{limit: 30, window: time.Minute, scope: "wxserver"}},
-		{"/api/send_wx_msg", rateLimitRule{limit: 30, window: time.Minute, scope: "wxmsg"}},
-		{"/wx/receive", rateLimitRule{limit: 120, window: time.Minute, scope: "wxhook"}},
+		{"/api/login/reset/", rateLimitRule{limit: 15, window: 15 * time.Minute, scope: "reset"}},
+		{"/api/getUserInfo", rateLimitRule{limit: 120, window: time.Minute, scope: "getUserInfo"}},
+		{"/api/getUserPin", rateLimitRule{limit: 120, window: time.Minute, scope: "getUserPin"}},
+		{"/permisson", rateLimitRule{limit: 60, window: time.Minute, scope: "permisson"}},
+		{"/api/wxserver", rateLimitRule{limit: 60, window: time.Minute, scope: "wxserver"}},
+		{"/api/send_wx_msg", rateLimitRule{limit: 60, window: time.Minute, scope: "wxmsg"}},
+		{"/wx/receive", rateLimitRule{limit: 300, window: time.Minute, scope: "wxhook"}},
 	}
-	defaultRateLimit = rateLimitRule{limit: 180, window: time.Minute, scope: "global"}
+	defaultRateLimit = rateLimitRule{limit: 600, window: time.Minute, scope: "global"}
 )
+
+func isRateLimitExempt(path string) bool {
+	for _, prefix := range rateLimitExemptPrefixes {
+		if strings.HasPrefix(path, prefix) {
+			return true
+		}
+	}
+	return false
+}
 
 func rateLimitKey(ip, scope string) string {
 	return scope + ":" + ip
@@ -252,6 +274,9 @@ func BuildCORSAllowOrigins() []string {
 func RateLimitBeegoFilter(ctx *context.Context) {
 	path := ctx.Request.URL.Path
 	if strings.HasPrefix(path, "/static/") || strings.HasPrefix(path, "/vweb/") || strings.HasPrefix(path, "/uploads/") {
+		return
+	}
+	if isRateLimitExempt(path) {
 		return
 	}
 	ip := ctx.Input.IP()
