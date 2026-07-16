@@ -58,13 +58,13 @@ func handleYybCompat(path, rawQuery string, body []byte, ref, method string) ([]
 	case compatKindLatestUserKey:
 		return handleCompatLatestUserKey(body, ref)
 	case compatKindWxOAuth:
-		return compatYybUnavailable(path, rawQuery, body, ref, method, "公众号 OAuth，需 official/cgi")
+		return handleCompatWxOAuth(rawQuery, body)
 	case compatKindDelete:
 		return handleCompatDelete(body, ref)
 	case compatKindGetCode:
 		return handleCompatGetCode(body, ref)
 	case compatKindSessionID:
-		return compatYybUnavailable(path, rawQuery, body, ref, method, "runtimeSession，内嵌协议未实现")
+		return handleCompatSessionID(path, rawQuery, body)
 	case compatKindGetPhone:
 		return handleCompatGetPhone(body, ref)
 	case compatKindGetOpenID:
@@ -78,11 +78,11 @@ func handleYybCompat(path, rawQuery string, body []byte, ref, method string) ([]
 	case compatKindRefresh:
 		return handleCompatRefresh(body, ref)
 	case compatKindTools:
-		return compatYybUnavailable(path, rawQuery, body, ref, method, "步数/微信运动，需 tools/*")
+		return handleCompatStep(path, rawQuery, body)
 	case compatKindOfficial:
-		return compatYybUnavailable(path, rawQuery, body, ref, method, "公众号 CGI，需 official/cgi")
+		return handleCompatOfficial(path, rawQuery, body)
 	case compatKindTenPay:
-		return compatYybUnavailable(path, rawQuery, body, ref, method, "TenPay CGI，内嵌协议未实现")
+		return handleCompatTenPay(path, rawQuery, body)
 	case compatKindLoginMisc:
 		return compatYybUnavailable(path, rawQuery, body, ref, method, "设备登录类接口，应用宝无对应能力")
 	case compatKindWxappMisc:

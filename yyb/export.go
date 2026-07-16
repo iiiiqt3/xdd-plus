@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/cdle/xdd/yyb/internal/protocol"
 	"github.com/cdle/xdd/yyb/internal/store"
 )
 
@@ -129,6 +130,55 @@ func (s *Service) WxappOperateWXData(ctx context.Context, ref, appID string, pay
 		return nil, errNotReady
 	}
 	return s.app.WxappOperateWXData(ctx, ref, appID, payload)
+}
+
+func (s *Service) OfficialCGI(ctx context.Context, ref string, req protocol.OfficialCGIRequest) (map[string]any, error) {
+	if s == nil || s.app == nil {
+		return nil, errNotReady
+	}
+	return s.app.OfficialCGI(ctx, ref, req)
+}
+
+func (s *Service) TenPayCGI(ctx context.Context, ref string, req protocol.TenPayRequest) (map[string]any, error) {
+	if s == nil || s.app == nil {
+		return nil, errNotReady
+	}
+	return s.app.TenPayCGI(ctx, ref, req)
+}
+
+func (s *Service) RuntimeSession(ctx context.Context, ref, appID string, payload map[string]any) (map[string]any, error) {
+	if s == nil || s.app == nil {
+		return nil, errNotReady
+	}
+	return s.app.RuntimeSession(ctx, ref, appID, payload)
+}
+
+func (s *Service) UpdateStep(ctx context.Context, ref string, req protocol.StepRequest) (map[string]any, error) {
+	if s == nil || s.app == nil {
+		return nil, errNotReady
+	}
+	return s.app.UpdateStep(ctx, ref, req)
+}
+
+func (s *Service) ReportMotion(ctx context.Context, ref string, req protocol.StepRequest) (map[string]any, error) {
+	if s == nil || s.app == nil {
+		return nil, errNotReady
+	}
+	return s.app.ReportMotion(ctx, ref, req)
+}
+
+func (s *Service) GetBoundHardDevices(ctx context.Context, ref string, req protocol.StepRequest) (map[string]any, error) {
+	if s == nil || s.app == nil {
+		return nil, errNotReady
+	}
+	return s.app.GetBoundHardDevices(ctx, ref, req)
+}
+
+func (s *Service) GetWeRunData(ctx context.Context, ref, appID string) (map[string]any, error) {
+	if s == nil || s.app == nil {
+		return nil, errNotReady
+	}
+	return s.app.GetWeRunData(ctx, ref, appID)
 }
 
 func (s *Service) ServeAccountAvatar(w http.ResponseWriter, r *http.Request, ref string) error {

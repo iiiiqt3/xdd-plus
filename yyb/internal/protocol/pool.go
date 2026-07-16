@@ -476,3 +476,21 @@ func int64FromAny(v any) int64 {
 		return 0
 	}
 }
+
+func probeHostAppID(mode string, sessionHostAppID []byte) []byte {
+	switch mode {
+	case "", "default":
+		return nil
+	case "session":
+		return sessionHostAppID
+	default:
+		return []byte(mode)
+	}
+}
+
+func truncateHex(data []byte, maxBytes int) string {
+	if maxBytes > 0 && len(data) > maxBytes {
+		return hex.EncodeToString(data[:maxBytes]) + "...truncated"
+	}
+	return hex.EncodeToString(data)
+}

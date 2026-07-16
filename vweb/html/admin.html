@@ -2618,6 +2618,11 @@
                 </div>
             </div>
             <div class="apidocs-toolbar">
+                <select id="apiDocsCategory" aria-label="按大类筛选">
+                    <option value="">全部大类</option>
+                    <option value="xdd">xdd</option>
+                    <option value="应用宝">应用宝</option>
+                </select>
                 <select id="apiDocsMethod" aria-label="按请求方法筛选">
                     <option value="">全部方法</option>
                     <option value="GET">GET</option>
@@ -3121,7 +3126,7 @@
 <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/admin_yyb.js?v=9"></script>
-<script src="/vweb/js/api_docs_data.js?v=1"></script>
+<script src="/vweb/js/api_docs_data.js?v=2"></script>
 <script>
 // ============ 通用工具 ============
 function sanitizeErrorMessage(message) {
@@ -9588,7 +9593,7 @@ async function cleanupJdOrphanNodes() {
 }
 
 // ============ API 接口文档 ============
-var apiDocsState = { group: '', q: '', method: '', auth: '', inited: false };
+var apiDocsState = { category: '', group: '', q: '', method: '', auth: '', inited: false };
 
 function initApiDocsPage() {
     if (!Array.isArray(window.XDD_API_DOCS) || !window.XDD_API_DOCS.length) {
@@ -9615,6 +9620,15 @@ function initApiDocsPage() {
             apiDocsState.auth = auth.value || '';
             renderApiDocs();
         });
+        var category = document.getElementById('apiDocsCategory');
+        if (category) {
+            category.addEventListener('change', function() {
+                apiDocsState.category = category.value || '';
+                apiDocsState.group = '';
+                renderApiDocsChips();
+                renderApiDocs();
+            });
+        }
         apiDocsState.inited = true;
     }
     document.getElementById('apiDocsTotal').textContent = String(window.XDD_API_DOCS.length);
@@ -9625,6 +9639,7 @@ function initApiDocsPage() {
 function getApiDocsGroups() {
     var map = {};
     (window.XDD_API_DOCS || []).forEach(function(item) {
+        if (apiDocsState.category && item.category !== apiDocsState.category) return;
         var g = item.group || '其他';
         map[g] = (map[g] || 0) + 1;
     });
@@ -9636,7 +9651,11 @@ function getApiDocsGroups() {
 function renderApiDocsChips() {
     var groups = getApiDocsGroups();
     document.getElementById('apiDocsGroups').textContent = String(groups.length);
-    var html = '<button type="button" class="apidocs-chip' + (!apiDocsState.group ? ' active' : '') + '" data-group="" onclick="selectApiDocsGroup(\'\')">全部<span class="cnt">' + (window.XDD_API_DOCS || []).length + '</span></button>';
+    var totalInView = (window.XDD_API_DOCS || []).filter(function(item) {
+        if (apiDocsState.category && item.category !== apiDocsState.category) return false;
+        return true;
+    }).length;
+    var html = '<button type="button" class="apidocs-chip' + (!apiDocsState.group ? ' active' : '') + '" data-group="" onclick="selectApiDocsGroup(\'\')">全部<span class="cnt">' + totalInView + '</span></button>';
     groups.forEach(function(g) {
         html += '<button type="button" class="apidocs-chip' + (apiDocsState.group === g.name ? ' active' : '') + '" data-group="' + escapeHtml(g.name) + '" onclick="selectApiDocsGroup(this.getAttribute(\'data-group\'))">' + escapeHtml(g.name) + '<span class="cnt">' + g.count + '</span></button>';
     });
@@ -9650,10 +9669,12 @@ function selectApiDocsGroup(group) {
 }
 
 function resetApiDocsFilters() {
-    apiDocsState = { group: '', q: '', method: '', auth: '', inited: true };
+    apiDocsState = { category: '', group: '', q: '', method: '', auth: '', inited: true };
     document.getElementById('apiDocsSearch').value = '';
     document.getElementById('apiDocsMethod').value = '';
     document.getElementById('apiDocsAuth').value = '';
+    var cat = document.getElementById('apiDocsCategory');
+    if (cat) cat.value = '';
     renderApiDocsChips();
     renderApiDocs();
 }
@@ -9661,11 +9682,12 @@ function resetApiDocsFilters() {
 function filterApiDocsList() {
     var q = apiDocsState.q;
     return (window.XDD_API_DOCS || []).filter(function(item) {
+        if (apiDocsState.category && item.category !== apiDocsState.category) return false;
         if (apiDocsState.group && item.group !== apiDocsState.group) return false;
         if (apiDocsState.method && String(item.method || '').toUpperCase() !== apiDocsState.method) return false;
         if (apiDocsState.auth && item.auth !== apiDocsState.auth) return false;
         if (!q) return true;
-        var hay = [item.method, item.path, item.group, item.name, item.desc, item.auth, item.body, item.note].join(' ').toLowerCase();
+        var hay = [item.method, item.path, item.category, item.group, item.name, item.desc, item.auth, item.body, item.note].join(' ').toLowerCase();
         return hay.indexOf(q) >= 0;
     });
 }
@@ -9728,6 +9750,7 @@ function renderApiDocs() {
             '<div class="apidocs-name">' + escapeHtml(item.name || '') + '</div>' +
             '<div class="apidocs-path">' + escapeHtml(item.path || '') + '</div>' +
             '<div class="apidocs-meta">' +
+            '<span class="apidocs-tag">' + escapeHtml(item.category || 'xdd') + '</span>' +
             '<span class="apidocs-tag">' + escapeHtml(item.group || '其他') + '</span>' +
             '<span class="apidocs-tag ' + apiDocsAuthClass(item.auth) + '">' + escapeHtml(item.auth || '公开') + '</span>' +
             '</div></div>' +
