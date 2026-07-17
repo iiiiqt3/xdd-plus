@@ -173,7 +173,7 @@ func portalRefreshAccountCore(userNumber int, ref string, perAccountCooldown boo
 	if err != nil {
 		return nil, err
 	}
-	if !perAccountCooldown {
+	if perAccountCooldown {
 		markYybManualRefreshUsed(scope, ref)
 	}
 	syncBindingFromRefresh(b, data)
@@ -216,7 +216,7 @@ func portalCheckAllAccounts(userNumber int) (map[string]any, error) {
 		return summary, nil
 	}
 	scope := fmt.Sprintf("portal:%d", userNumber)
-	if err := ensureYybManualRefreshAllowed(scope, "__check_all__"); err != nil {
+	if err := checkYybManualRefreshAllowed(scope, "__check_all__"); err != nil {
 		summary["alive"] = 0
 		summary["dead"] = 0
 		summary["failed"] = len(rows)
@@ -224,6 +224,7 @@ func portalCheckAllAccounts(userNumber int) (map[string]any, error) {
 		summary["message"] = err.Error()
 		return summary, nil
 	}
+	var firstErr error
 	for _, b := range rows {
 		ref := strconv.FormatInt(b.ID, 10)
 		if strings.TrimSpace(b.OpenID) != "" {
@@ -231,6 +232,9 @@ func portalCheckAllAccounts(userNumber int) (map[string]any, error) {
 		}
 		if _, err := portalRefreshAccountCore(userNumber, ref, false); err != nil {
 			failed++
+			if firstErr == nil {
+				firstErr = err
+			}
 			if isYybRefreshCooldownError(err) {
 				cooldown++
 			}
@@ -246,11 +250,17 @@ func portalCheckAllAccounts(userNumber int) (map[string]any, error) {
 			}
 		}
 	}
+	if alive+dead > 0 {
+		markYybManualRefreshUsed(scope, "__check_all__")
+	}
 	summary["alive"] = alive
 	summary["dead"] = dead
 	summary["failed"] = failed
 	if cooldown > 0 {
 		summary["cooldown"] = cooldown
+	}
+	if failed > 0 && firstErr != nil && strings.TrimSpace(fmt.Sprint(summary["message"])) == "" {
+		summary["message"] = firstErr.Error()
 	}
 	return summary, nil
 }

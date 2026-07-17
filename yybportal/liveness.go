@@ -77,8 +77,8 @@ func yybManualRefreshCooldownMin() int {
 	return mins
 }
 
-// ensureYybManualRefreshAllowed 手动刷新存活冷却（门户/管理端）
-func ensureYybManualRefreshAllowed(scope, ref string) error {
+// checkYybManualRefreshAllowed 仅检查冷却，不写入
+func checkYybManualRefreshAllowed(scope, ref string) error {
 	ref = strings.TrimSpace(ref)
 	if ref == "" {
 		return fmt.Errorf("缺少账号 ref")
@@ -86,6 +86,14 @@ func ensureYybManualRefreshAllowed(scope, ref string) error {
 	key := yybRefreshCooldownKey(scope, ref)
 	if strings.TrimSpace(models.GetCache(key)) != "" {
 		return fmt.Errorf("刷新太频繁，请 %d 分钟后再试", yybManualRefreshCooldownMin())
+	}
+	return nil
+}
+
+// ensureYybManualRefreshAllowed 手动刷新存活冷却（门户/管理端）
+func ensureYybManualRefreshAllowed(scope, ref string) error {
+	if err := checkYybManualRefreshAllowed(scope, ref); err != nil {
+		return err
 	}
 	markYybManualRefreshUsed(scope, ref)
 	return nil

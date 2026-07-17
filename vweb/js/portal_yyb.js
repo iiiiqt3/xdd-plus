@@ -391,20 +391,22 @@
 
     function formatCheckSummary(s) {
         if (!s) return '';
-        if (s.message && Number(s.cooldown || 0) > 0) {
-            return s.message;
-        }
         const alive = Number(s.alive || 0);
         const dead = Number(s.dead || 0);
         const failed = Number(s.failed || 0);
         const cooldown = Number(s.cooldown || 0);
         const total = Number(s.total || 0);
+        const hint = String(s.message || '').trim();
         if (!total) return '暂无绑定账号';
+        if (hint && cooldown >= total && failed >= total) {
+            return hint;
+        }
         let msg = '检测完成：共 ' + total + ' 个，可用 ' + alive + ' 个';
         if (dead > 0) msg += '，失效 ' + dead + ' 个';
         if (cooldown > 0) msg += '，冷却中 ' + cooldown + ' 个';
         const otherFailed = failed - cooldown;
         if (otherFailed > 0) msg += '，失败 ' + otherFailed + ' 个';
+        if (hint && otherFailed > 0) msg += '（' + hint + '）';
         return msg;
     }
 
