@@ -294,6 +294,29 @@ struct PortalYybCheckSummary: Decodable {
     let alive: Int?
     let dead: Int?
     let failed: Int?
+    let cooldown: Int?
+    let message: String?
+}
+
+func formatYybCheckSummary(_ summary: PortalYybCheckSummary?) -> String? {
+    guard let s = summary else { return nil }
+    let total = s.total ?? 0
+    if total <= 0 { return "暂无绑定账号" }
+    let alive = s.alive ?? 0
+    let dead = s.dead ?? 0
+    let failed = s.failed ?? 0
+    let cooldown = s.cooldown ?? 0
+    let hint = (s.message ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    if !hint.isEmpty, cooldown >= total, failed >= total {
+        return hint
+    }
+    var msg = "检测完成：共 \(total) 个，可用 \(alive) 个"
+    if dead > 0 { msg += "，失效 \(dead) 个" }
+    if cooldown > 0 { msg += "，冷却中 \(cooldown) 个" }
+    let otherFailed = failed - cooldown
+    if otherFailed > 0 { msg += "，失败 \(otherFailed) 个" }
+    if !hint.isEmpty, otherFailed > 0 { msg += "（\(hint)）" }
+    return msg
 }
 
 struct PortalYybStatus: Decodable {
@@ -987,11 +1010,8 @@ final class YybAccountStore {
                     self.status = st
                     self.lastUpdatedAt = Date()
                     self.sessionAutoChecked = true
-                    if autoCheck, let s = st.checkSummary, (s.total ?? 0) > 0 {
-                        var msg = "检测完成：共 \(s.total ?? 0) 个，可用 \(s.alive ?? 0) 个"
-                        if (s.dead ?? 0) > 0 { msg += "，失效 \(s.dead ?? 0) 个" }
-                        if (s.failed ?? 0) > 0 { msg += "，失败 \(s.failed ?? 0) 个" }
-                        self.pendingAlertSummary = msg
+                    if autoCheck {
+                        self.pendingAlertSummary = formatYybCheckSummary(st.checkSummary)
                     }
                 case .failure:
                     break
@@ -1017,11 +1037,8 @@ final class YybAccountStore {
                     self.status = st
                     self.lastUpdatedAt = Date()
                     self.sessionAutoChecked = true
-                    if showAlert, autoCheck, let s = st.checkSummary {
-                        var msg = "检测完成：共 \(s.total ?? 0) 个，可用 \(s.alive ?? 0) 个"
-                        if (s.dead ?? 0) > 0 { msg += "，失效 \(s.dead ?? 0) 个" }
-                        if (s.failed ?? 0) > 0 { msg += "，失败 \(s.failed ?? 0) 个" }
-                        self.pendingAlertSummary = msg
+                    if showAlert, autoCheck {
+                        self.pendingAlertSummary = formatYybCheckSummary(st.checkSummary)
                     }
                     NotificationCenter.default.post(name: AppNotifications.yybStatusDidUpdate, object: nil)
                     completion?(.success(st))

@@ -3888,11 +3888,7 @@ final class YybProtocolViewController: BaseNativeViewController {
                                         )
                                         self.showMessage(msg)
                                         self.didShowPendingAlert = false
-                                        YybAccountStore.shared.reload(autoCheck: true, showAlert: true) { [weak self] _ in
-                                            self?.didShowPendingAlert = false
-                                            if let alert = YybAccountStore.shared.consumePendingAlert() {
-                                                self?.showMessage(alert, title: "检测完成")
-                                            }
+                                        YybAccountStore.shared.reload(autoCheck: false, showAlert: false) { [weak self] _ in
                                             self?.applyStore(showPendingAlert: false)
                                         }
                                     }
