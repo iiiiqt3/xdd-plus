@@ -2334,7 +2334,7 @@ func (c *AdminApiController) NotifyWxOffline() {
 		WxIDs    []string `json:"wxids"`
 	}
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
-	channels := models.NormalizeNotifyChannels(req.Channels)
+	channels := models.ProtocolOfflineNotifyChannelsFromStrings(req.Channels)
 	go models.CheckWxOfflineAndNotifyWithChannels(channels, req.WxIDs, true)
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,

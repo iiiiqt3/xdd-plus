@@ -1257,10 +1257,11 @@ func CheckWxOfflineAndNotify() {
 	if n := CleanupStaleOfflineNotifications(); n > 0 {
 		Wx().Infof("已自动清理 %d 条超过 %d 天的微信/应用宝掉线提醒通知", n, OfflineNotifyRetentionDays)
 	}
-	CheckWxOfflineAndNotifyWithChannels(NotifyChannels{Web: true, App: true, Robot: true}, nil, false)
+	CheckWxOfflineAndNotifyWithChannels(DefaultProtocolOfflineNotifyChannels(), nil, false)
 }
 
 func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string, force bool) {
+	channels = ProtocolOfflineNotifyChannels(channels)
 	Wx().Infof("开始执行微信掉线检测推送...")
 
 	// 同时查询新旧两个地址，合并结果（在线优先）
@@ -1323,22 +1324,21 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 		refreshTime := time.Unix(info.RefreshDate, 0).Format("01-02 15:04")
 
 		notifyMsg := fmt.Sprintf(
-			"⚠️ 你的微信协议已掉线，将会影响协议本的执行，请发送 【微信唤醒登陆】或者【微信重新登陆】上线。\n\n"+
-				"📋 你的设备信息：\n"+
-				"👤 %s (🔴 掉线)\n"+
+			"⚠️ 微信协议已掉线，将影响协议项目获取 CK。\n\n"+
+				"📋 设备信息\n"+
+				"👤 %s（掉线）\n"+
 				"🆔 %s\n"+
 				"📱 %s\n"+
 				"💡 登录：%s | 刷新：%s\n\n"+
-				"📌 本消息只发送一次，设备恢复上线后如再次掉线将重新通知。\n"+
-				"📌 狗东 App 将同步推送提醒，请打开 App 处理。",
-			info.Nickname, wxid, info.Device, loginTime, refreshTime,
+				"💡 请发送【微信唤醒登陆】或【微信重新登陆】重新上线。\n"+
+				"%s",
+			info.Nickname, wxid, info.Device, loginTime, refreshTime, ProtocolOfflineNotifyFooter(),
 		)
-		if channels.Robot {
-			go SendWxMsg(wxid, notifyMsg)
-		}
 		var user User
 		if db.Where("wxid = ?", wxid).First(&user).Error == nil {
-			PushUserOfflineNotification(NotifyTitleWxOffline, notifyMsg, NotifyCategoryWx, NotifySourceWx, user.Number, channels)
+			PushProtocolOfflineNotification(NotifyTitleWxOffline, notifyMsg, NotifyCategoryWx, NotifySourceWx, user.Number, channels)
+		} else {
+			PushProtocolOfflineToWxid(wxid, notifyMsg, channels)
 		}
 		notifiedCount++
 

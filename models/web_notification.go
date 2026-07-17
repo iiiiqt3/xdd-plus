@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -139,6 +140,61 @@ func NormalizeNotifyChannels(channels []string) NotifyChannels {
 		return NotifyChannels{Web: true, App: true, Robot: true}
 	}
 	return result
+}
+
+// DefaultProtocolOfflineNotifyChannels 协议掉线默认定时推送：App + 机器人（不含网页库）
+func DefaultProtocolOfflineNotifyChannels() NotifyChannels {
+	return NotifyChannels{App: true, Robot: true, Web: false}
+}
+
+// ProtocolOfflineNotifyChannels 协议掉线推送渠道（强制关闭网页）
+func ProtocolOfflineNotifyChannels(ch NotifyChannels) NotifyChannels {
+	return NotifyChannels{App: ch.App, Robot: ch.Robot, Web: false}
+}
+
+// ProtocolOfflineNotifyChannelsFromStrings 解析后台勾选（webapp 仅保留 App，不写网页库）
+func ProtocolOfflineNotifyChannelsFromStrings(channels []string) NotifyChannels {
+	if len(channels) == 0 {
+		return DefaultProtocolOfflineNotifyChannels()
+	}
+	n := NormalizeNotifyChannels(channels)
+	out := NotifyChannels{App: n.App, Robot: n.Robot, Web: false}
+	if !out.App && !out.Robot {
+		return DefaultProtocolOfflineNotifyChannels()
+	}
+	return out
+}
+
+// PushProtocolOfflineNotification 协议掉线：App 极光 + 机器人(QQ/微信私聊)，不写网页通知库
+func PushProtocolOfflineNotification(title, content, category, source string, userNumber int, channels NotifyChannels) {
+	if userNumber <= 0 {
+		return
+	}
+	ch := ProtocolOfflineNotifyChannels(channels)
+	if ch.Robot {
+		go PushByQQ(strconv.Itoa(userNumber), content)
+	}
+	if ch.App {
+		_ = PushUserOfflineNotification(title, content, category, source, userNumber, ch)
+	}
+}
+
+// PushProtocolOfflineToWxid 找不到系统用户时，机器人渠道仅发微信私聊兜底
+func PushProtocolOfflineToWxid(wxid, content string, channels NotifyChannels) {
+	ch := ProtocolOfflineNotifyChannels(channels)
+	if ch.Robot {
+		wxid = strings.TrimSpace(wxid)
+		if wxid != "" {
+			go SendWxMsg(wxid, content)
+		}
+	}
+}
+
+const protocolOfflineNotifyFooter = "📌 本消息仅发送一次，账号恢复后若再次掉线将重新提醒。\n📌 狗东 App 将同步推送，请及时处理。"
+
+// ProtocolOfflineNotifyFooter 协议掉线推送统一页脚
+func ProtocolOfflineNotifyFooter() string {
+	return protocolOfflineNotifyFooter
 }
 
 func channelsToString(ch NotifyChannels) string {

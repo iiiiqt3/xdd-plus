@@ -317,12 +317,12 @@ func RefreshYybCKAuto() {
 
 // CheckYybOfflineAndNotify 每日检测应用宝账号掉线并通知用户（真 refresh + 推送）
 func CheckYybOfflineAndNotify() {
-	RunYybDailyLivenessCheckWithChannels(models.NotifyChannels{Web: true, App: true, Robot: false}, false)
+	RunYybDailyLivenessCheckWithChannels(models.DefaultProtocolOfflineNotifyChannels(), nil, false)
 }
 
 // CheckYybOfflineAndNotifyWithChannels 带渠道的应用宝掉线检测（管理员强制触发）
-func CheckYybOfflineAndNotifyWithChannels(channels models.NotifyChannels, force bool) {
-	RunYybDailyLivenessCheckWithChannels(channels, force)
+func CheckYybOfflineAndNotifyWithChannels(channels models.NotifyChannels, openIDs []string, force bool) {
+	RunYybDailyLivenessCheckWithChannels(channels, openIDs, force)
 }
 
 func truncateMap(v map[string]any, maxLen int) string {

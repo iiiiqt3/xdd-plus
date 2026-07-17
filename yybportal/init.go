@@ -102,6 +102,7 @@ func Init(c ModuleConfig) error {
 	RegisterProxyLoginHooks()
 	RegisterProtocolGatewayHandlers()
 	startJdCron()
+	models.SetYybOfflineNotifyHandler(CheckYybOfflineAndNotify)
 	models.Yyb().Infof("应用宝模块初始化完成 ready=%v 总耗时=%v", Ready(), time.Since(t0).Round(time.Millisecond))
 	return nil
 }

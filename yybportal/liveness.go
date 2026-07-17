@@ -87,8 +87,21 @@ func ensureYybManualRefreshAllowed(scope, ref string) error {
 	if strings.TrimSpace(models.GetCache(key)) != "" {
 		return fmt.Errorf("刷新太频繁，请 %d 分钟后再试", yybManualRefreshCooldownMin())
 	}
-	models.SaveCacheTTL(key, "1", yybManualRefreshCooldownMin()*60)
+	markYybManualRefreshUsed(scope, ref)
 	return nil
+}
+
+func markYybManualRefreshUsed(scope, ref string) {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return
+	}
+	key := yybRefreshCooldownKey(scope, ref)
+	models.SaveCacheTTL(key, "1", yybManualRefreshCooldownMin()*60)
+}
+
+func isYybRefreshCooldownError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "刷新太频繁")
 }
 
 func isYybProxyOrNetworkError(err error) bool {
@@ -128,11 +141,12 @@ func yybAccountRecentlyChecked(openid string) bool {
 
 // RunYybDailyLivenessCheck 每日定时：真 refresh 存活 + 掉线推送
 func RunYybDailyLivenessCheck(force bool) {
-	RunYybDailyLivenessCheckWithChannels(models.NotifyChannels{Web: true, App: true, Robot: false}, force)
+	RunYybDailyLivenessCheckWithChannels(models.DefaultProtocolOfflineNotifyChannels(), nil, force)
 }
 
-// RunYybDailyLivenessCheckWithChannels 带推送渠道的每日存活检测
-func RunYybDailyLivenessCheckWithChannels(channels models.NotifyChannels, force bool) {
+// RunYybDailyLivenessCheckWithChannels 带推送渠道的每日存活检测；openIDs 非空时仅处理指定账号
+func RunYybDailyLivenessCheckWithChannels(channels models.NotifyChannels, openIDs []string, force bool) {
+	channels = models.ProtocolOfflineNotifyChannels(channels)
 	if !Ready() {
 		models.Yyb().Infof("应用宝每日存活检测：服务不可用，跳过")
 		return
@@ -158,6 +172,9 @@ func RunYybDailyLivenessCheckWithChannels(channels models.NotifyChannels, force 
 	for i, b := range bindings {
 		openid := strings.TrimSpace(b.OpenID)
 		if openid == "" {
+			continue
+		}
+		if len(openIDs) > 0 && !yybOpenIDInList(openid, openIDs) {
 			continue
 		}
 		if !force && yybAccountRecentlyChecked(openid) {
@@ -202,7 +219,6 @@ func notifyYybOfflineBindings(bindings []PortalYybBinding, offlineOpenIDs []stri
 		offlineSet[openid] = struct{}{}
 	}
 	notifiedCount := 0
-	seenUser := map[int]bool{}
 	for _, b := range bindings {
 		openid := strings.TrimSpace(b.OpenID)
 		if openid == "" {
@@ -226,20 +242,31 @@ func notifyYybOfflineBindings(bindings []PortalYybBinding, offlineOpenIDs []stri
 			nick = openid
 		}
 		notifyMsg := fmt.Sprintf(
-			"⚠️ 你的应用宝协议账号已掉线，将影响京东 CK 自动续期。\n\n"+
-				"📋 账号信息：\n"+
-				"👤 %s (🔴 不可用)\n"+
+			"⚠️ 应用宝协议账号已掉线，将影响协议项目获取 CK。\n\n"+
+				"📋 账号信息\n"+
+				"👤 %s（不可用）\n"+
 				"🆔 %s\n\n"+
-				"💡 请前往用户中心 → 应用宝协议，重新扫码登录。\n"+
-				"📌 本消息只发送一次，账号恢复后如再次掉线将重新通知。\n"+
-				"📌 狗东 App 将同步推送提醒，请打开 App 处理。",
-			nick, openid,
+				"💡 请前往 用户中心 → 应用宝协议，重新扫码登录。\n"+
+				"%s",
+			nick, openid, models.ProtocolOfflineNotifyFooter(),
 		)
-		if !seenUser[b.UserNumber] {
-			_ = models.PushUserOfflineNotification(models.NotifyTitleYybOffline, notifyMsg, models.NotifyCategoryWx, models.NotifySourceYyb, b.UserNumber, channels)
-			seenUser[b.UserNumber] = true
+		if b.UserNumber > 0 {
+			models.PushProtocolOfflineNotification(models.NotifyTitleYybOffline, notifyMsg, models.NotifyCategoryWx, models.NotifySourceYyb, b.UserNumber, channels)
 			notifiedCount++
+			if notifiedCount >= 2 {
+				time.Sleep(time.Duration(3+rand.Intn(3)) * time.Second)
+			}
 		}
 	}
-	models.Yyb().Infof("应用宝掉线推送完成，通知 %d 个用户", notifiedCount)
+	models.Yyb().Infof("应用宝掉线推送完成，通知 %d 个账号", notifiedCount)
+}
+
+func yybOpenIDInList(openid string, refs []string) bool {
+	openid = strings.TrimSpace(openid)
+	for _, ref := range refs {
+		if strings.EqualFold(strings.TrimSpace(ref), openid) {
+			return true
+		}
+	}
+	return false
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/yybportal"
 )
 
@@ -139,6 +140,18 @@ func (c *AdminYybController) CheckAllProtocol() {
 		return
 	}
 	c.jsonOK(data, "检测完成")
+}
+
+// NotifyOffline 检测掉线并推送（App + 机器人，不含网页库）
+func (c *AdminYybController) NotifyOffline() {
+	var req struct {
+		Channels []string `json:"channels"`
+		OpenIDs  []string `json:"openids"`
+	}
+	_ = json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	channels := models.ProtocolOfflineNotifyChannelsFromStrings(req.Channels)
+	go yybportal.CheckYybOfflineAndNotifyWithChannels(channels, req.OpenIDs, true)
+	c.jsonOK(nil, "通知已触发，正在后台检测并发送")
 }
 
 // ResyncAccount 同步

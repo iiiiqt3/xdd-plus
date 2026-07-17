@@ -2441,8 +2441,14 @@
                 <div class="card">
                     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                         <span><i class="fas fa-table"></i> 门户绑定列表</span>
-                        <div class="toolbar" style="margin:0;align-items:center;">
+                        <div class="toolbar" style="margin:0;align-items:center;flex-wrap:wrap;gap:8px;">
                             <span class="ayyb-binding-status" id="ayyb-bindingStatus">加载中…</span>
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:#606266;">
+                                <span>通知渠道</span>
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" name="yybNotifyChannel" value="app" checked>App</label>
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" name="yybNotifyChannel" value="robot" checked>机器人</label>
+                            </div>
+                            <button class="btn btn-warning btn-sm" id="ayyb-notifyOfflineBtn" type="button"><i class="fas fa-bell"></i> 通知掉线用户</button>
                             <button class="btn btn-primary btn-sm" id="ayyb-checkAllBtn" type="button"><i class="fas fa-stethoscope"></i> 一键检测</button>
                             <button class="btn btn-default btn-sm" id="ayyb-reloadBindingsBtn" type="button"><i class="fas fa-sync-alt"></i> 刷新</button>
                         </div>
@@ -2482,7 +2488,7 @@
                     <div class="toolbar-actions">
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:#606266;">
                             <span>通知渠道</span>
-                            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" name="wxNotifyChannel" value="webapp" checked>APP/网页</label>
+                            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" name="wxNotifyChannel" value="app" checked>App</label>
                             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" name="wxNotifyChannel" value="robot" checked>机器人</label>
                         </div>
                         <button class="btn btn-danger btn-sm" onclick="deleteWxDevices()"><i class="fas fa-trash-alt"></i> 批量删除</button>
@@ -4831,7 +4837,7 @@ async function submitActAuthDelete() {
 function getCheckedNotifyChannels(name) {
     var nodes = document.querySelectorAll('input[name="' + name + '"]:checked');
     var channels = Array.from(nodes).map(function(x) { return x.value; });
-    return channels.length ? channels : ['webapp', 'robot'];
+    return channels.length ? channels : ['app', 'robot'];
 }
 
 async function submitActAuth() {

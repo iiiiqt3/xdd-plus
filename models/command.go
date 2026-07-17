@@ -926,6 +926,15 @@ var codeSignals = []CodeSignal{
 	},
 
 	{
+		Command: []string{"应用宝协议掉线推送"},
+		Admin:   true,
+		Handle: func(sender *Sender) interface{} {
+			RunYybOfflineNotify()
+			return nil
+		},
+	},
+
+	{
 		Command: []string{"微信扫码登录", "微信扫码登陆"},
 		Handle: func(sender *Sender) interface{} {
 			if sender.Type != "wx" {

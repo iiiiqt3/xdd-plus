@@ -215,6 +215,33 @@
         }
     }
 
+    function getProtocolOfflineNotifyChannels(name) {
+        const nodes = document.querySelectorAll('input[name="' + name + '"]:checked');
+        const channels = Array.from(nodes).map(x => x.value);
+        return channels.length ? channels : ['app', 'robot'];
+    }
+
+    function formatProtocolOfflineChannels(channels) {
+        return (channels || []).map(c => c === 'app' ? 'App' : (c === 'robot' ? '机器人' : c)).join(' / ');
+    }
+
+    async function notifyOfflineBindings() {
+        const channels = getProtocolOfflineNotifyChannels('yybNotifyChannel');
+        const channelText = formatProtocolOfflineChannels(channels);
+        if (!confirm('确认通知掉线用户？\n\n目标范围：全部绑定账号（真检测后推送）\n通知渠道：' + channelText + '\n不含网页通知库。')) return;
+        const btn = $('ayyb-notifyOfflineBtn');
+        const prev = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = '触发中…'; }
+        try {
+            await request('/notify-offline', { method: 'POST', body: JSON.stringify({ channels }) });
+            if (typeof global.toast === 'function') global.toast('通知已触发，正在后台检测并发送', 'success');
+        } catch (e) {
+            if (typeof global.toast === 'function') global.toast(e.message || '触发失败', 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = prev; }
+        }
+    }
+
     async function checkAllBindings() {
         if (state.bindingLoading) return;
         state.bindingLoading = true;
@@ -390,6 +417,7 @@
             copyText(text, $('ayyb-copyBtn'));
         };
         if ($('ayyb-checkAllBtn')) $('ayyb-checkAllBtn').onclick = checkAllBindings;
+        if ($('ayyb-notifyOfflineBtn')) $('ayyb-notifyOfflineBtn').onclick = notifyOfflineBindings;
         if ($('ayyb-reloadBindingsBtn')) $('ayyb-reloadBindingsBtn').onclick = () => loadBindings(true);
         if ($('ayyb-scanBtn')) $('ayyb-scanBtn').onclick = startScan;
         if ($('ayyb-qrCloseBtn')) $('ayyb-qrCloseBtn').onclick = closeQr;

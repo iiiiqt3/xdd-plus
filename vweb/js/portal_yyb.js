@@ -391,14 +391,20 @@
 
     function formatCheckSummary(s) {
         if (!s) return '';
+        if (s.message && Number(s.cooldown || 0) > 0) {
+            return s.message;
+        }
         const alive = Number(s.alive || 0);
         const dead = Number(s.dead || 0);
         const failed = Number(s.failed || 0);
+        const cooldown = Number(s.cooldown || 0);
         const total = Number(s.total || 0);
         if (!total) return '暂无绑定账号';
         let msg = '检测完成：共 ' + total + ' 个，可用 ' + alive + ' 个';
         if (dead > 0) msg += '，失效 ' + dead + ' 个';
-        if (failed > 0) msg += '，失败 ' + failed + ' 个';
+        if (cooldown > 0) msg += '，冷却中 ' + cooldown + ' 个';
+        const otherFailed = failed - cooldown;
+        if (otherFailed > 0) msg += '，失败 ' + otherFailed + ' 个';
         return msg;
     }
 
@@ -433,8 +439,9 @@
                     const summaryText = st.checkSummary ? formatCheckSummary(st.checkSummary) : '检测完成';
                     const dead = Number((st.checkSummary && st.checkSummary.dead) || 0);
                     const failed = Number((st.checkSummary && st.checkSummary.failed) || 0);
+                    const cooldown = Number((st.checkSummary && st.checkSummary.cooldown) || 0);
                     if (!silent && typeof global.toast === 'function') {
-                        const toastType = dead > 0 ? 'error' : (failed > 0 ? 'warn' : 'success');
+                        const toastType = dead > 0 ? 'error' : ((failed - cooldown) > 0 ? 'warn' : (cooldown > 0 ? 'warn' : 'success'));
                         global.toast(summaryText, toastType);
                     }
                 } else if (!silent && typeof global.toast === 'function') {
