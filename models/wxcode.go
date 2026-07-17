@@ -18,6 +18,24 @@ import (
 // 当设备恢复上线时会清除记录，再次掉线时会重新通知
 var offlineNotifiedWxIDs sync.Map
 
+// MarkWxOfflineNotified 标记 wxid 已推送掉线（供应用宝双绑场景交叉去重）
+func MarkWxOfflineNotified(wxid string) {
+	wxid = strings.TrimSpace(wxid)
+	if wxid != "" {
+		offlineNotifiedWxIDs.Store(wxid, true)
+	}
+}
+
+// WxOfflineAlreadyNotified wxid 是否已推送过微信协议掉线
+func WxOfflineAlreadyNotified(wxid string) bool {
+	wxid = strings.TrimSpace(wxid)
+	if wxid == "" {
+		return false
+	}
+	_, loaded := offlineNotifiedWxIDs.Load(wxid)
+	return loaded
+}
+
 // recentlyLoggedOutWxIDs 记录最近主动登出的 wxid 及登出时间戳
 // 用于在 wechat08 API 延迟更新 survival 字段时，强制将设备显示为离线
 // 记录会在 60 秒后自动过期
@@ -1303,6 +1321,11 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 			if _, loaded := offlineNotifiedWxIDs.LoadAndDelete(wxid); loaded {
 				Wx().Infof("微信掉线检测：用户 %s (%s) 已恢复上线，清除通知记录", info.Nickname, wxid)
 			}
+			continue
+		}
+
+		if WxOfflineNotifySkippedByDualBind(wxid) {
+			Wx().Infof("微信掉线检测：%s (%s) 已双绑应用宝，跳过微信掉线推送", info.Nickname, wxid)
 			continue
 		}
 

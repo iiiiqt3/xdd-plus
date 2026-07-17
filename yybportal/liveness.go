@@ -237,6 +237,11 @@ func notifyYybOfflineBindings(bindings []PortalYybBinding, offlineOpenIDs []stri
 		} else {
 			offlineNotifiedYybOIDs.Store(openid, true)
 		}
+		protoBind, _ := models.FindProtocolBindingByOpenID(openid)
+		if protoBind != nil && models.WxOfflineAlreadyNotified(protoBind.WxWxid) {
+			models.Yyb().Infof("应用宝掉线检测：openid=%s 对应微信 %s 已推送掉线，跳过重复通知", openid, protoBind.WxWxid)
+			continue
+		}
 		nick := b.Nickname
 		if nick == "" {
 			nick = openid
@@ -252,6 +257,9 @@ func notifyYybOfflineBindings(bindings []PortalYybBinding, offlineOpenIDs []stri
 		)
 		if b.UserNumber > 0 {
 			models.PushProtocolOfflineNotification(models.NotifyTitleYybOffline, notifyMsg, models.NotifyCategoryWx, models.NotifySourceYyb, b.UserNumber, channels)
+			if protoBind != nil {
+				models.MarkWxOfflineNotified(protoBind.WxWxid)
+			}
 			notifiedCount++
 			if notifiedCount >= 2 {
 				time.Sleep(time.Duration(3+rand.Intn(3)) * time.Second)

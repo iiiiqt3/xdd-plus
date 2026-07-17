@@ -108,6 +108,12 @@ func FindProtocolBindingByOpenID(openid string) (*PortalProtocolBinding, error) 
 	return &row, nil
 }
 
+// WxOfflineNotifySkippedByDualBind 微信 wxid 已双绑应用宝时跳过微信掉线推送（由应用宝存活检测统一通知）
+func WxOfflineNotifySkippedByDualBind(wxid string) bool {
+	b, err := FindProtocolBindingByWx(wxid)
+	return err == nil && b != nil
+}
+
 func ListProtocolBindings(userNumber int) ([]PortalProtocolBinding, error) {
 	var rows []PortalProtocolBinding
 	err := db.Where("user_number = ?", userNumber).Order("id asc").Find(&rows).Error
