@@ -353,6 +353,22 @@ class MainActivity : AppCompatActivity() {
         switchToTab(tabId)
     }
 
+    fun openProjectsProtocol(subIndex: Int = 0) {
+        ProjectsFragment.prepareOpenProtocolAccess(subIndex)
+        val projectsPosition = tabOrder.indexOf(TAB_PROJECTS)
+        val alreadyOnProjects = viewPager.currentItem == projectsPosition
+        switchToTab(TAB_PROJECTS)
+        if (alreadyOnProjects) {
+            viewPager.post {
+                val fragment = mainFragmentAt(projectsPosition) as? ProjectsFragment ?: return@post
+                if (ProjectsFragment.skipNextProjectsReset) {
+                    ProjectsFragment.skipNextProjectsReset = false
+                }
+                fragment.applyPendingNavigationIfNeeded()
+            }
+        }
+    }
+
     private fun switchToTab(tabId: Int) {
         val position = tabOrder.indexOf(tabId)
         if (position < 0) return
@@ -527,6 +543,16 @@ class MainActivity : AppCompatActivity() {
             val fragment = mainFragmentAt(position) ?: return@post
             if (!fragment.isAdded) return@post
             when (fragment) {
+                is ProjectsFragment -> {
+                    when {
+                        ProjectsFragment.skipNextProjectsReset -> {
+                            ProjectsFragment.skipNextProjectsReset = false
+                            fragment.applyPendingNavigationIfNeeded()
+                        }
+                        ProjectsFragment.pendingInnerTab == 3 -> fragment.applyPendingNavigationIfNeeded()
+                        else -> fragment.resetToInitialState()
+                    }
+                }
                 is MainTabResettable -> fragment.resetToInitialState()
                 else -> {
                     for (child in fragment.childFragmentManager.fragments) {

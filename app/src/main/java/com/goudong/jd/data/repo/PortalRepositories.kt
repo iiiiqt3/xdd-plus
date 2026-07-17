@@ -134,6 +134,9 @@ class PortalRepository(
     suspend fun fetchHomeSnapshot(): PortalHomeSnapshot = coroutineScope {
         val homeDeferred = async { apiClient.requestData<PortalHomePayload>("/api/portal/home") }
         val wechatDeferred = async { runCatching { apiClient.requestData<com.goudong.jd.data.model.PortalWechatStatus>("/api/portal/wx/status") }.getOrNull() }
+        val wxDevicesDeferred = async { runCatching { fetchWxDevices() }.getOrDefault(emptyList()) }
+        val yybDeferred = async { runCatching { fetchYybStatus(false) }.getOrNull() }
+        val bindingsDeferred = async { runCatching { fetchProtocolBindings() }.getOrDefault(emptyList()) }
         val notificationsDeferred = async { runCatching { fetchNotifications(includeContent = true).list.filter { it.isTop == true }.take(3) }.getOrDefault(emptyList()) }
         val home = homeDeferred.await()
         val snapshot = PortalHomeSnapshot(
@@ -141,6 +144,9 @@ class PortalRepository(
             profile = home.profile,
             wechatStatus = wechatDeferred.await(),
             topNotifications = notificationsDeferred.await(),
+            wxDevices = wxDevicesDeferred.await(),
+            yybStatus = yybDeferred.await(),
+            protocolBindings = bindingsDeferred.await(),
         )
         sessionManager.setAuthenticated(true)
         snapshot

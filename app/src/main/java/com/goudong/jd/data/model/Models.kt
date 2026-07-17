@@ -189,6 +189,9 @@ data class PortalHomeSnapshot(
     val wechatStatus: PortalWechatStatus? = null,
     val notifications: PortalNotificationPage? = null,
     val topNotifications: List<PortalNotification> = emptyList(),
+    val wxDevices: List<PortalWxDevice> = emptyList(),
+    val yybStatus: PortalYybStatus? = null,
+    val protocolBindings: List<PortalProtocolBinding> = emptyList(),
 )
 
 data class PortalNotificationPage(

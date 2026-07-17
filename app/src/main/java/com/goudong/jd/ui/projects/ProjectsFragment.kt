@@ -61,6 +61,18 @@ import kotlinx.coroutines.launch
 import com.goudong.jd.ui.common.themeColor
 
 class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
+    companion object {
+        var pendingInnerTab: Int? = null
+        var pendingProtocolSubIndex: Int? = null
+        @Volatile var skipNextProjectsReset = false
+
+        fun prepareOpenProtocolAccess(subIndex: Int = 0) {
+            skipNextProjectsReset = true
+            pendingInnerTab = 3
+            pendingProtocolSubIndex = subIndex
+        }
+    }
+
     private lateinit var contentRoot: LinearLayout
     private lateinit var tabs: TabLayout
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
@@ -164,6 +176,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             })
         }
         wrapper.addView(tabs)
+        applyPendingNavigation()
 
         searchBox = EditText(requireContext()).apply {
             hint = "搜索活动、项目、备注名…"
@@ -233,6 +246,12 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     override fun onResume() {
         super.onResume()
+        if (pendingInnerTab == 3 || pendingProtocolSubIndex != null) {
+            applyPendingNavigation()
+            loadedOnce = true
+            return
+        }
+        applyPendingNavigation()
         when (currentTab) {
             0 -> cachedActivities = null
             1 -> cachedProjects = null
@@ -247,12 +266,48 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     fun refreshCurrentTab() {
+        applyPendingNavigation()
         when (currentTab) {
             0 -> cachedActivities = null
             1 -> cachedProjects = null
             else -> Unit
         }
         renderCurrentTab(forceRefresh = true)
+    }
+
+    fun openProtocolAccess(subIndex: Int) {
+        protocolSubIndex = subIndex.coerceIn(0, 2)
+        if (!::tabs.isInitialized) {
+            pendingInnerTab = 3
+            pendingProtocolSubIndex = protocolSubIndex
+            return
+        }
+        currentTab = 3
+        if (tabs.selectedTabPosition != 3) {
+            tabs.getTabAt(3)?.select()
+        } else {
+            renderProtocolAccess(forceRefresh = false)
+        }
+    }
+
+    fun applyPendingNavigationIfNeeded() {
+        applyPendingNavigation()
+    }
+
+    private fun applyPendingNavigation() {
+        if (!::tabs.isInitialized) return
+        val innerTab = pendingInnerTab
+        val protocolSub = pendingProtocolSubIndex
+        if (innerTab == null && protocolSub == null) return
+        pendingInnerTab = null
+        pendingProtocolSubIndex = null
+        if (protocolSub != null) protocolSubIndex = protocolSub.coerceIn(0, 2)
+        if (innerTab != null && tabs.selectedTabPosition != innerTab) {
+            tabs.getTabAt(innerTab)?.select()
+        } else if (innerTab == 3 || protocolSub != null) {
+            if (currentTab != 3) currentTab = 3
+            renderProtocolAccess(forceRefresh = false)
+        }
     }
 
     private fun renderCurrentTab(forceRefresh: Boolean) {
@@ -2572,6 +2627,12 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
 
     override fun resetToInitialState() {
         if (!::tabs.isInitialized) return
+        if (skipNextProjectsReset || pendingInnerTab == 3) {
+            applyPendingNavigation()
+            contentScroll?.scrollTo(0, 0)
+            view?.findFirstScrollView()?.scrollTo(0, 0)
+            return
+        }
         if (rushFragment.isAdded) rushFragment.popToList()
         searchQuery = ""
         searchBox?.setText("")

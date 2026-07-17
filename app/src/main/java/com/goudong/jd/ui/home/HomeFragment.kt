@@ -3,6 +3,7 @@ package com.goudong.jd.ui.home
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.text.TextUtils
 import android.util.TypedValue
@@ -23,7 +24,11 @@ import com.goudong.jd.AppServices
 import com.goudong.jd.MainActivity
 import com.goudong.jd.R
 import com.goudong.jd.data.model.ApiError
+import com.goudong.jd.data.model.PortalHomeSnapshot
 import com.goudong.jd.data.model.PortalNotification
+import com.goudong.jd.data.model.PortalProtocolBinding
+import com.goudong.jd.data.model.PortalWxDevice
+import com.goudong.jd.data.model.PortalYybAccount
 import com.goudong.jd.ui.auth.AuthActivity
 import com.goudong.jd.ui.common.bodyText
 import com.goudong.jd.ui.common.cardView
@@ -43,6 +48,7 @@ import com.goudong.jd.ui.common.themeColor
 class HomeFragment : Fragment(), MainTabResettable {
     private lateinit var summaryText: TextView
     private lateinit var detailText: TextView
+    private lateinit var protocolSection: LinearLayout
     private lateinit var coinText: TextView
     private lateinit var notificationSection: LinearLayout
     private lateinit var statsSection: LinearLayout
@@ -117,6 +123,11 @@ class HomeFragment : Fragment(), MainTabResettable {
         detailText = requireContext().bodyText("正在加载首页数据")
         profileCard.addView(summaryText)
         profileCard.addView(detailText)
+        protocolSection = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, requireContext().dp(10), 0, 0)
+        }
+        profileCard.addView(protocolSection)
         root.addView(profileCard)
 
         statsSection = requireContext().cardView().apply {
@@ -235,18 +246,7 @@ class HomeFragment : Fragment(), MainTabResettable {
             }
             runCatching { AppServices.portalRepository.fetchHomeSnapshot() }
                 .onSuccess { snapshot ->
-                    val wxStatus = snapshot.wechatStatus?.status ?: if (!snapshot.profile.user?.Wxid.isNullOrBlank()) "已绑定" else "未绑定"
-                    summaryText.text = buildString {
-                        append("编号：${snapshot.dashboard.number}")
-                        if (!snapshot.dashboard.nickname.isNullOrBlank()) {
-                            append("  ·  ${snapshot.dashboard.nickname}")
-                        }
-                    }
-                    detailText.text = buildString {
-                        appendLine("积分：${snapshot.dashboard.coin}")
-                        appendLine("登录：${snapshot.dashboard.lastLoginAt ?: "-"}")
-                        appendLine("微信：$wxStatus")
-                    }.trim()
+                    renderAccountCard(snapshot)
                     coinText.text = "当前积分：${snapshot.dashboard.coin}"
 
                     updateStat(statsSection, 0, "${snapshot.dashboard.availableCount}")
@@ -279,7 +279,7 @@ class HomeFragment : Fragment(), MainTabResettable {
                         snapshot.dashboard.coin.toString(),
                         snapshot.dashboard.validCkCount.toString(),
                         snapshot.dashboard.expiringCount.toString(),
-                        wxStatus
+                        bindSummaryText(snapshot),
                     )
                 }
                 .onFailure { error ->
@@ -302,6 +302,223 @@ class HomeFragment : Fragment(), MainTabResettable {
             if (::swipeRefreshLayout.isInitialized) {
                 swipeRefreshLayout.isRefreshing = false
             }
+        }
+    }
+
+    private fun renderAccountCard(snapshot: PortalHomeSnapshot) {
+        summaryText.text = buildString {
+            append("编号：${snapshot.dashboard.number}")
+            if (!snapshot.dashboard.nickname.isNullOrBlank()) {
+                append("  ·  ${snapshot.dashboard.nickname}")
+            }
+        }
+        detailText.text = buildString {
+            append("积分：${snapshot.dashboard.coin}")
+            append("  ·  登录：${snapshot.dashboard.lastLoginAt ?: "-"}")
+        }
+        renderProtocolSection(snapshot)
+    }
+
+    private fun renderProtocolSection(snapshot: PortalHomeSnapshot) {
+        protocolSection.removeAllViews()
+        val ctx = requireContext()
+        val brandBlue = ContextCompat.getColor(ctx, R.color.brand_secondary)
+
+        val titleRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, ctx.dp(8))
+            isClickable = true
+            isFocusable = true
+            foreground = ctx.obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackground)).getDrawable(0)
+            setOnClickListener { (activity as? MainActivity)?.openProjectsProtocol() }
+        }
+        titleRow.addView(TextView(ctx).apply {
+            text = "🔗 协议接入"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(ctx.themeColor(R.color.text_primary))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        titleRow.addView(TextView(ctx).apply {
+            text = "›"
+            setTextColor(brandBlue)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+            setTypeface(typeface, Typeface.BOLD)
+        })
+        protocolSection.addView(titleRow)
+
+        val yyb = snapshot.yybStatus
+        val yybAccounts = yyb?.accounts.orEmpty()
+        val wxHint = if (snapshot.wxDevices.isEmpty()) "暂无微信协议设备" else null
+        val yybHint = when {
+            yyb == null || yyb.enabled != true -> "应用宝模块未启用"
+            yyb.ready != true -> yyb.message?.trim()?.takeIf { it.isNotEmpty() } ?: "应用宝服务暂不可用"
+            yybAccounts.isEmpty() -> "暂无应用宝账号"
+            else -> null
+        }
+        val yybChips = if (yyb?.enabled == true && yyb.ready == true) {
+            listOf(
+                "共" to "${yybAccounts.size}",
+                "可用" to "${yybAccounts.count { isYybAlive(it.status) }}",
+            )
+        } else {
+            listOf("共" to "0", "可用" to "0")
+        }
+        val infoRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        infoRow.addView(
+            buildProtocolInfoBlock(
+                ctx,
+                title = "📱 微信协议",
+                hint = wxHint,
+                chips = listOf(
+                    "设备" to "${snapshot.wxDevices.size}",
+                    "在线" to "${snapshot.wxDevices.count { it.online == true }}",
+                ),
+                chipAccentIndex = 1,
+            ),
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = ctx.dp(4) },
+        )
+        infoRow.addView(
+            buildProtocolInfoBlock(
+                ctx,
+                title = "📦 应用宝协议",
+                hint = yybHint,
+                chips = yybChips,
+                chipAccentIndex = 1,
+            ),
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = ctx.dp(4) },
+        )
+        protocolSection.addView(infoRow)
+
+        val bindSummary = computeBindSummary(snapshot.wxDevices, yybAccounts, snapshot.protocolBindings)
+        val bindChips = buildList {
+            add("已绑" to "${bindSummary.pairs} 对")
+            if (bindSummary.wxUnbound > 0) add("微信待绑" to "${bindSummary.wxUnbound}")
+            if (bindSummary.yybUnbound > 0) add("应用宝待绑" to "${bindSummary.yybUnbound}")
+        }
+        val bindHint = when {
+            bindSummary.pairs > 0 -> "双绑后可继续提交 wxid 或应用宝 openid 获取 CK"
+            snapshot.wxDevices.isNotEmpty() || yybAccounts.isNotEmpty() -> "建立双绑后，可继续提交 wxid 或应用宝 openid"
+            else -> null
+        }
+        protocolSection.addView(TextView(ctx).apply {
+            text = "协议双绑"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(ctx.themeColor(R.color.text_primary))
+            setPadding(0, ctx.dp(8), 0, ctx.dp(4))
+        })
+        val bindChipRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        bindChips.forEachIndexed { index, (label, value) ->
+            bindChipRow.addView(protocolChip(ctx, label, value, index == 0))
+        }
+        protocolSection.addView(bindChipRow)
+        if (!bindHint.isNullOrBlank()) {
+            protocolSection.addView(TextView(ctx).apply {
+                text = bindHint
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setTextColor(ctx.themeColor(R.color.text_hint))
+                setPadding(0, ctx.dp(4), 0, 0)
+            })
+        }
+    }
+
+    private fun buildProtocolInfoBlock(
+        ctx: android.content.Context,
+        title: String,
+        hint: String?,
+        chips: List<Pair<String, String>>,
+        chipAccentIndex: Int,
+    ): LinearLayout {
+        return LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(TextView(ctx).apply {
+                text = title
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(ctx.themeColor(R.color.text_primary))
+            })
+            val chipRow = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, ctx.dp(4), 0, 0)
+            }
+            chips.forEachIndexed { index, (label, value) ->
+                chipRow.addView(protocolChip(ctx, label, value, index == chipAccentIndex))
+            }
+            addView(chipRow)
+            if (!hint.isNullOrBlank()) {
+                addView(TextView(ctx).apply {
+                    text = hint
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                    setTextColor(ctx.themeColor(R.color.text_hint))
+                    setPadding(0, ctx.dp(3), 0, 0)
+                })
+            }
+        }
+    }
+
+    private data class BindSummary(val pairs: Int, val wxUnbound: Int, val yybUnbound: Int)
+
+    private fun computeBindSummary(
+        devices: List<PortalWxDevice>,
+        accounts: List<PortalYybAccount>,
+        bindings: List<PortalProtocolBinding>,
+    ): BindSummary {
+        val boundWx = bindings.mapNotNull { it.wxWxid?.trim() }.filter { it.isNotEmpty() }.toSet()
+        val boundOid = bindings.mapNotNull { it.yybOpenId?.trim() }.filter { it.isNotEmpty() }.toSet()
+        return BindSummary(
+            pairs = bindings.size,
+            wxUnbound = devices.count { d ->
+                val wx = d.wxid?.trim().orEmpty()
+                wx.isNotEmpty() && !boundWx.contains(wx)
+            },
+            yybUnbound = accounts.count { a ->
+                val oid = a.openid?.trim().orEmpty()
+                oid.isNotEmpty() && !boundOid.contains(oid)
+            },
+        )
+    }
+
+    private fun bindSummaryText(snapshot: PortalHomeSnapshot): String {
+        val summary = computeBindSummary(
+            snapshot.wxDevices,
+            snapshot.yybStatus?.accounts.orEmpty(),
+            snapshot.protocolBindings,
+        )
+        return "双绑${summary.pairs}对"
+    }
+
+    private fun isYybAlive(status: String?): Boolean {
+        val st = status?.trim()?.lowercase().orEmpty()
+        return st == "alive" || st == "online"
+    }
+
+    private fun protocolChip(ctx: android.content.Context, label: String, value: String, accent: Boolean): TextView {
+        val color = if (accent) ContextCompat.getColor(ctx, R.color.brand_green) else ctx.themeColor(R.color.text_secondary)
+        return TextView(ctx).apply {
+            text = "$label $value"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(color)
+            background = GradientDrawable().apply {
+                setColor(
+                    if (accent) Color.argb(20, Color.red(color), Color.green(color), Color.blue(color))
+                    else ctx.themeColor(R.color.chip_bg)
+                )
+                cornerRadius = ctx.dp(10).toFloat()
+            }
+            setPadding(ctx.dp(8), ctx.dp(5), ctx.dp(8), ctx.dp(5))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginEnd = ctx.dp(6) }
         }
     }
 
