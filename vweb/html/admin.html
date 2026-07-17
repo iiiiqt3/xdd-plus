@@ -2390,6 +2390,15 @@
                 </div>
             </div>
 
+            <div class="toolbar" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:#fffbeb;border:1px solid #faecd8;border-radius:10px;">
+                <span style="font-size:12px;color:#b88230;font-weight:600;"><i class="fas fa-bell"></i> 掉线推送</span>
+                <span style="font-size:12px;color:#606266;">通知渠道</span>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;"><input type="checkbox" name="yybNotifyChannel" value="app" checked>App</label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;"><input type="checkbox" name="yybNotifyChannel" value="robot" checked>机器人</label>
+                <button class="btn btn-warning btn-sm" id="ayyb-notifyOfflineBtn" type="button" onclick="if(window.AdminYyb&&AdminYyb.notifyOffline)AdminYyb.notifyOffline();"><i class="fas fa-bell"></i> 通知掉线用户</button>
+                <span style="font-size:11px;color:#909399;">真检测全部绑定后，仅对掉线账号推送（App/QQ/微信）</span>
+            </div>
+
             <div class="ayyb-tab-bar">
                 <button type="button" class="ayyb-tab active" data-tab="debug">调试台</button>
                 <button type="button" class="ayyb-tab" data-tab="bindings">门户绑定</button>
@@ -2443,12 +2452,6 @@
                         <span><i class="fas fa-table"></i> 门户绑定列表</span>
                         <div class="toolbar" style="margin:0;align-items:center;flex-wrap:wrap;gap:8px;">
                             <span class="ayyb-binding-status" id="ayyb-bindingStatus">加载中…</span>
-                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:#606266;">
-                                <span>通知渠道</span>
-                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" name="yybNotifyChannel" value="app" checked>App</label>
-                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" name="yybNotifyChannel" value="robot" checked>机器人</label>
-                            </div>
-                            <button class="btn btn-warning btn-sm" id="ayyb-notifyOfflineBtn" type="button"><i class="fas fa-bell"></i> 通知掉线用户</button>
                             <button class="btn btn-primary btn-sm" id="ayyb-checkAllBtn" type="button"><i class="fas fa-stethoscope"></i> 一键检测</button>
                             <button class="btn btn-default btn-sm" id="ayyb-reloadBindingsBtn" type="button"><i class="fas fa-sync-alt"></i> 刷新</button>
                         </div>
@@ -3131,7 +3134,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/admin_yyb.js?v=9"></script>
+<script src="/vweb/js/admin_yyb.js?v=10"></script>
 <script src="/vweb/js/api_docs_data.js?v=2"></script>
 <script>
 // ============ 通用工具 ============

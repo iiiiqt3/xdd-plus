@@ -234,7 +234,7 @@
         if (btn) { btn.disabled = true; btn.textContent = '触发中…'; }
         try {
             await request('/notify-offline', { method: 'POST', body: JSON.stringify({ channels }) });
-            if (typeof global.toast === 'function') global.toast('通知已触发，正在后台检测并发送', 'success');
+            if (typeof global.toast === 'function') global.toast('已触发掉线检测推送，请查看应用宝日志（无掉线则不推送）', 'success');
         } catch (e) {
             if (typeof global.toast === 'function') global.toast(e.message || '触发失败', 'error');
         } finally {
@@ -436,5 +436,6 @@
         checkAllBindings,
         loadBindings,
         warmupProtocolCheck,
+        notifyOffline: notifyOfflineBindings,
     };
 })(window);

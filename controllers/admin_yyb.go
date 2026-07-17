@@ -150,7 +150,10 @@ func (c *AdminYybController) NotifyOffline() {
 	}
 	_ = json.Unmarshal(c.Ctx.Input.RequestBody, &req)
 	channels := models.ProtocolOfflineNotifyChannelsFromStrings(req.Channels)
-	go yybportal.CheckYybOfflineAndNotifyWithChannels(channels, req.OpenIDs, true)
+	models.Yyb().Infof("[管理后台] 收到应用宝掉线推送请求 channels=app:%v robot:%v openids=%d", channels.App, channels.Robot, len(req.OpenIDs))
+	go func() {
+		yybportal.CheckYybOfflineAndNotifyWithChannels(channels, req.OpenIDs, true)
+	}()
 	c.jsonOK(nil, "通知已触发，正在后台检测并发送")
 }
 

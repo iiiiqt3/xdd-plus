@@ -163,7 +163,11 @@ func RunYybDailyLivenessCheckWithChannels(channels models.NotifyChannels, openID
 	if !force && !models.YybLivenessCheckEnabled(cfg) {
 		return
 	}
-	models.Yyb().Infof("开始应用宝每日存活检测（真 refresh）...")
+	if force {
+		models.Yyb().Infof("[应用宝掉线检测] 管理员手动触发（真 refresh + 推送）")
+	} else {
+		models.Yyb().Infof("开始应用宝每日存活检测（真 refresh）...")
+	}
 	bindings, err := ListAllBindings()
 	if err != nil || len(bindings) == 0 {
 		models.Yyb().Infof("应用宝每日存活检测：暂无绑定账号，跳过")
@@ -211,6 +215,10 @@ func RunYybDailyLivenessCheckWithChannels(channels models.NotifyChannels, openID
 
 	models.Yyb().Infof("应用宝每日存活检测完成：绑定 %d，探测 %d，跳过 %d，代理失败 %d，掉线 %d",
 		len(bindings), probed, skipped, proxyFail, len(offlineOpenIDs))
+
+	if force && len(offlineOpenIDs) == 0 {
+		models.Yyb().Infof("[应用宝掉线检测] 管理员手动触发完成：当前无掉线账号，未发送推送")
+	}
 
 	if n := models.CleanupStaleOfflineNotifications(); n > 0 {
 		models.Yyb().Infof("已自动清理 %d 条超过 %d 天的应用宝掉线提醒通知", n, models.OfflineNotifyRetentionDays)
