@@ -866,7 +866,7 @@ final class AppSessionStore {
                 self.snapshot = snapshot
                 CookieStorageManager.shared.persistCookies(for: AppEnvironment.baseURL.host ?? "")
                 NotificationCenter.default.post(name: AppNotifications.sessionDidChange, object: nil)
-                YybAccountStore.shared.prefetch(autoCheck: true)
+                YybAccountStore.shared.prefetch(autoCheck: false)
                 completion?(true)
             case .failure(let error):
                 if error.isUnauthorized, allowAutoRelogin, let credentials = CredentialStore.shared.load() {
@@ -897,7 +897,7 @@ final class AppSessionStore {
         self.snapshot = snapshot
         CookieStorageManager.shared.persistCookies(for: AppEnvironment.baseURL.host ?? "")
         NotificationCenter.default.post(name: AppNotifications.sessionDidChange, object: nil)
-        YybAccountStore.shared.prefetch(autoCheck: true)
+        YybAccountStore.shared.prefetch(autoCheck: false)
     }
 
     func update(snapshot: PortalHomeSnapshot, notify: Bool = true) {
@@ -968,13 +968,13 @@ final class YybAccountStore {
         return text
     }
 
-    func prefetchIfNeeded(autoCheck: Bool = true) {
+    func prefetchIfNeeded(autoCheck: Bool = false) {
         guard AppSessionStore.shared.isAuthenticated else { return }
         if sessionAutoChecked, status != nil { return }
         prefetch(autoCheck: autoCheck)
     }
 
-    func prefetch(autoCheck: Bool = true) {
+    func prefetch(autoCheck: Bool = false) {
         guard AppSessionStore.shared.isAuthenticated else { return }
         guard !isLoading else { return }
         isLoading = true

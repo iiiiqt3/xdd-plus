@@ -3131,7 +3131,7 @@ final class YybProtocolViewController: BaseNativeViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(onProtocolBindUpdated), name: AppNotifications.protocolBindDidUpdate, object: nil)
         applyStore(showPendingAlert: false)
         if YybAccountStore.shared.status == nil, !YybAccountStore.shared.isLoading, !YybAccountStore.shared.sessionAutoChecked {
-            YybAccountStore.shared.prefetchIfNeeded(autoCheck: true)
+            YybAccountStore.shared.prefetchIfNeeded(autoCheck: false)
         }
     }
 
@@ -3139,7 +3139,7 @@ final class YybProtocolViewController: BaseNativeViewController {
         super.viewWillAppear(animated)
         applyStore(showPendingAlert: false)
         if !YybAccountStore.shared.sessionAutoChecked {
-            YybAccountStore.shared.prefetchIfNeeded(autoCheck: true)
+            YybAccountStore.shared.prefetchIfNeeded(autoCheck: false)
         }
     }
 
