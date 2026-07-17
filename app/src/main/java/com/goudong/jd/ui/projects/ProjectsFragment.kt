@@ -1675,7 +1675,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                                 dialog.dismiss()
                                 val msg = formatYybConfirmMessage(result.alreadyBound, result.cost)
                                 toast(msg)
-                                loadYybPanel(autoCheck = true, showAlert = true)
+                                loadYybPanel(autoCheck = false, showAlert = false)
                             }
                             .onFailure {
                                 dialog.dismiss()

@@ -295,6 +295,8 @@ data class PortalYybCheckSummary(
     val alive: Int = 0,
     val dead: Int = 0,
     val failed: Int = 0,
+    val cooldown: Int = 0,
+    val message: String? = null,
 )
 
 data class PortalYybStatus(

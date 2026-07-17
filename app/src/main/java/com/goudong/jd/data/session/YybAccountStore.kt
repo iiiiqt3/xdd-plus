@@ -98,10 +98,21 @@ object YybAccountStore {
     }
 
     private fun formatCheckSummary(summary: PortalYybCheckSummary?): String? {
-        if (summary == null || summary.total <= 0) return null
-        var msg = "检测完成：共 ${summary.total} 个，可用 ${summary.alive} 个"
+        if (summary == null) return null
+        val total = summary.total
+        if (total <= 0) return "暂无绑定账号"
+        val hint = summary.message?.trim().orEmpty()
+        val cooldown = summary.cooldown
+        val failed = summary.failed
+        if (hint.isNotEmpty() && cooldown >= total && failed >= total) {
+            return hint
+        }
+        var msg = "检测完成：共 $total 个，可用 ${summary.alive} 个"
         if (summary.dead > 0) msg += "，失效 ${summary.dead} 个"
-        if (summary.failed > 0) msg += "，失败 ${summary.failed} 个"
+        if (cooldown > 0) msg += "，冷却中 $cooldown 个"
+        val otherFailed = failed - cooldown
+        if (otherFailed > 0) msg += "，失败 $otherFailed 个"
+        if (hint.isNotEmpty() && otherFailed > 0) msg += "（$hint）"
         return msg
     }
 }
