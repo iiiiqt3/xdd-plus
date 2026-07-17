@@ -101,7 +101,13 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     private var yybScanBusy = false
     private var yybManualRefreshing = false
     private var yybAccountActionBusy = false
-    private val yybStoreListener = { applyYybFromStore() }
+    private var tabLoadGeneration = 0
+    private val yybStoreListener = {
+        if (yybManualRefreshing && !YybAccountStore.isLoading) {
+            yybManualRefreshing = false
+        }
+        applyYybFromStore()
+    }
     private var protocolBindings: List<com.goudong.jd.data.model.PortalProtocolBinding> = emptyList()
     private var protocolBindQuota: com.goudong.jd.data.model.PortalProtocolBindQuota? = null
     private var protocolProxyConfig: com.goudong.jd.data.model.PortalProxyConfig? = null
@@ -250,6 +256,8 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     private fun renderCurrentTab(forceRefresh: Boolean) {
+        tabLoadGeneration++
+        val generation = tabLoadGeneration
         val isRushTab = currentTab == 2
         val hideSearchTab = currentTab == 2 || currentTab == 3
         searchBox?.visibility = if (hideSearchTab) View.GONE else View.VISIBLE
@@ -266,10 +274,13 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         } else {
             swipeRefreshLayout.isRefreshing = false
         }
+        if (isProtocolTab) {
+            swipeRefreshLayout.isRefreshing = false
+        }
         categoryChipRow?.visibility = if (currentTab == 0) View.VISIBLE else View.GONE
         when (currentTab) {
-            0 -> loadActivities(forceRefresh)
-            1 -> loadProjects(forceRefresh)
+            0 -> loadActivities(forceRefresh, generation)
+            1 -> loadProjects(forceRefresh, generation)
             2 -> renderProjectRush()
             3 -> renderProtocolAccess(forceRefresh)
         }
@@ -335,22 +346,25 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }
     }
 
-    private fun loadActivities(forceRefresh: Boolean) {
+    private fun loadActivities(forceRefresh: Boolean, generation: Int = tabLoadGeneration) {
         // 有缓存且不强制刷新，直接用缓存
         if (!forceRefresh && cachedActivities != null) {
             renderActivities(cachedActivities!!)
+            swipeRefreshLayout.isRefreshing = false
             return
         }
         showLoading()
         lifecycleScope.launch {
             runCatching { AppServices.portalRepository.fetchActivities() }
                 .onSuccess { list ->
+                    if (generation != tabLoadGeneration || currentTab != 0) return@launch
                     cachedActivities = list
                     contentRoot.removeAllViews()
                     renderActivities(list)
                     swipeRefreshLayout.isRefreshing = false
                 }
                 .onFailure {
+                    if (generation != tabLoadGeneration || currentTab != 0) return@launch
                     contentRoot.removeAllViews()
                     handlePortalError(it)
                     contentRoot.addView(emptyCard(sanitizeErrorMessage(it.message)))
@@ -376,21 +390,24 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         else filtered.forEach { contentRoot.addView(activityCard(it)) }
     }
 
-    private fun loadProjects(forceRefresh: Boolean) {
+    private fun loadProjects(forceRefresh: Boolean, generation: Int = tabLoadGeneration) {
         if (!forceRefresh && cachedProjects != null) {
             renderProjects(cachedProjects!!)
+            swipeRefreshLayout.isRefreshing = false
             return
         }
         showLoading()
         lifecycleScope.launch {
             runCatching { AppServices.portalRepository.fetchProjects() }
                 .onSuccess { list ->
+                    if (generation != tabLoadGeneration || currentTab != 1) return@launch
                     cachedProjects = list
                     contentRoot.removeAllViews()
                     renderProjects(list)
                     swipeRefreshLayout.isRefreshing = false
                 }
                 .onFailure {
+                    if (generation != tabLoadGeneration || currentTab != 1) return@launch
                     contentRoot.removeAllViews()
                     handlePortalError(it)
                     contentRoot.addView(emptyCard(sanitizeErrorMessage(it.message)))
@@ -1226,11 +1243,15 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     private fun updateYybActionEnabled() {
-        val busy = yybManualRefreshing || yybScanBusy
+        val busy = (yybManualRefreshing || YybAccountStore.isLoading) || yybScanBusy
         yybReloadBtn?.isEnabled = !busy
         yybReloadBtn?.alpha = if (busy) 0.5f else 1f
-        yybReloadBtn?.text = if (yybManualRefreshing) "检测中…" else "刷新检测"
-        yybLoadingBar?.visibility = if (yybManualRefreshing) View.VISIBLE else View.GONE
+        yybReloadBtn?.text = when {
+            yybManualRefreshing -> "检测中…"
+            YybAccountStore.isLoading -> "同步中…"
+            else -> "刷新检测"
+        }
+        yybLoadingBar?.visibility = if (busy && !yybScanBusy) View.VISIBLE else View.GONE
     }
 
     private fun applyYybHeader(ready: Boolean, title: String, count: Int) {
@@ -1249,6 +1270,11 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
     }
 
     private fun loadYybPanel(autoCheck: Boolean, showAlert: Boolean = autoCheck, manual: Boolean = false) {
+        if (manual && YybAccountStore.isLoading) {
+            toast("正在刷新，请稍候")
+            swipeRefreshLayout.isRefreshing = false
+            return
+        }
         if (manual) {
             yybManualRefreshing = true
             updateYybActionEnabled()
@@ -1263,6 +1289,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 yybManualRefreshing = false
                 updateYybActionEnabled()
             }
+            swipeRefreshLayout.isRefreshing = false
             result.onFailure {
                 if (showAlert) handlePortalError(it)
                 if (isYybProtocolTabActive()) renderYybAccounts(it.message)

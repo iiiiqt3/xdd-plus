@@ -73,8 +73,14 @@ object YybAccountStore {
         force: Boolean = true,
         onComplete: ((Result<PortalYybStatus>) -> Unit)? = null,
     ) {
-        if (!AppServices.sessionManager.isAuthenticated()) return
-        if (isLoading) return
+        if (!AppServices.sessionManager.isAuthenticated()) {
+            onComplete?.invoke(Result.failure(IllegalStateException("未登录")))
+            return
+        }
+        if (isLoading) {
+            onComplete?.invoke(Result.failure(IllegalStateException("正在刷新，请稍候")))
+            return
+        }
         if (!force && sessionAutoChecked && status != null) {
             onComplete?.invoke(Result.success(status!!))
             notifyChanged()
