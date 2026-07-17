@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cdle/xdd/models"
@@ -14,7 +15,10 @@ import (
 var (
 	yybLivenessLastRunDate string
 	yybLivenessMu          sync.Mutex
+	adminYybNotifyOfflineRunning atomic.Bool
 )
+
+const adminYybNotifyOfflineRef = "__notify_offline__"
 
 func yybLivenessSettings() models.YybConfig {
 	cfg := models.Config.Yyb
@@ -283,6 +287,28 @@ func notifyYybOfflineBindings(bindings []PortalYybBinding, offlineOpenIDs []stri
 		}
 	}
 	models.Yyb().Infof("应用宝掉线推送完成，通知 %d 个账号", notifiedCount)
+}
+
+// AdminTriggerYybOfflineNotify 管理后台手动触发掉线检测推送（运行锁 + 冷却，防重复点击）
+func AdminTriggerYybOfflineNotify(channels models.NotifyChannels, openIDs []string) (cooldownMin int, err error) {
+	cooldownMin = yybManualRefreshCooldownMin()
+	if !Ready() {
+		return cooldownMin, fmt.Errorf("应用宝服务不可用")
+	}
+	if !adminYybNotifyOfflineRunning.CompareAndSwap(false, true) {
+		return cooldownMin, fmt.Errorf("应用宝掉线检测推送正在进行中，请等待完成后再试")
+	}
+	if err := checkYybManualRefreshAllowed("admin", adminYybNotifyOfflineRef); err != nil {
+		adminYybNotifyOfflineRunning.Store(false)
+		return cooldownMin, err
+	}
+	markYybManualRefreshUsed("admin", adminYybNotifyOfflineRef)
+	models.Yyb().Infof("[应用宝掉线检测] 管理员手动触发掉线推送 channels=app:%v robot:%v openids=%d", channels.App, channels.Robot, len(openIDs))
+	go func() {
+		defer adminYybNotifyOfflineRunning.Store(false)
+		CheckYybOfflineAndNotifyWithChannels(channels, openIDs, true)
+	}()
+	return cooldownMin, nil
 }
 
 func yybOpenIDInList(openid string, refs []string) bool {

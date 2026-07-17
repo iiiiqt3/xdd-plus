@@ -1105,7 +1105,11 @@
         }
         .yyb-result-box.error { color: #fca5a5; border-color: #7f1d1d; }
         .yyb-empty { text-align: center; color: #999; padding: 24px 12px; font-size: 13px; grid-column: 1 / -1; }
-        .ayyb-tab-bar { display: flex; gap: 4px; background: #f5f7fa; border-radius: 8px; padding: 4px; margin-bottom: 16px; width: fit-content; }
+        .ayyb-tab-bar { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #f5f7fa; border-radius: 8px; padding: 4px 8px; margin-bottom: 16px; width: 100%; box-sizing: border-box; }
+        .ayyb-tab-group { display: flex; gap: 4px; flex-shrink: 0; }
+        .ayyb-notify-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; font-size: 12px; min-width: 0; }
+        .ayyb-notify-inline label { display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; margin: 0; }
+        #ayyb-notifyStatus { font-size: 11px; color: #909399; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .ayyb-tab { border: none; background: transparent; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #666; }
         .ayyb-tab.active { background: #fff; color: #409eff; box-shadow: 0 1px 3px rgba(0,0,0,0.08); font-weight: 600; }
         .ayyb-panel { display: none; }
@@ -2390,18 +2394,19 @@
                 </div>
             </div>
 
-            <div class="toolbar" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:#fffbeb;border:1px solid #faecd8;border-radius:10px;">
-                <span style="font-size:12px;color:#b88230;font-weight:600;"><i class="fas fa-bell"></i> 掉线推送</span>
-                <span style="font-size:12px;color:#606266;">通知渠道</span>
-                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;"><input type="checkbox" name="yybNotifyChannel" value="app" checked>App</label>
-                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;"><input type="checkbox" name="yybNotifyChannel" value="robot" checked>机器人</label>
-                <button class="btn btn-warning btn-sm" id="ayyb-notifyOfflineBtn" type="button" onclick="if(window.AdminYyb&&AdminYyb.notifyOffline)AdminYyb.notifyOffline();"><i class="fas fa-bell"></i> 通知掉线用户</button>
-                <span style="font-size:11px;color:#909399;">真检测全部绑定后，仅对掉线账号推送（App/QQ/微信）</span>
-            </div>
-
             <div class="ayyb-tab-bar">
-                <button type="button" class="ayyb-tab active" data-tab="debug">调试台</button>
-                <button type="button" class="ayyb-tab" data-tab="bindings">门户绑定</button>
+                <div class="ayyb-tab-group">
+                    <button type="button" class="ayyb-tab active" data-tab="debug">调试台</button>
+                    <button type="button" class="ayyb-tab" data-tab="bindings">门户绑定</button>
+                </div>
+                <div class="ayyb-notify-inline">
+                    <span style="color:#b88230;font-weight:600;white-space:nowrap;"><i class="fas fa-bell"></i> 掉线推送</span>
+                    <span style="color:#606266;white-space:nowrap;">通知渠道</span>
+                    <label><input type="checkbox" name="yybNotifyChannel" value="app" checked>App</label>
+                    <label><input type="checkbox" name="yybNotifyChannel" value="robot" checked>机器人</label>
+                    <button class="btn btn-warning btn-sm" id="ayyb-notifyOfflineBtn" type="button" title="真检测全部绑定后，仅对掉线账号推送" onclick="if(window.AdminYyb&&AdminYyb.notifyOffline)AdminYyb.notifyOffline();"><i class="fas fa-bell"></i> 通知掉线用户</button>
+                    <span id="ayyb-notifyStatus"></span>
+                </div>
             </div>
 
             <div class="ayyb-panel active" id="ayyb-panel-debug">
@@ -3134,7 +3139,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
 <script src="/vweb/js/clipboard.js?v=4"></script>
-<script src="/vweb/js/admin_yyb.js?v=10"></script>
+<script src="/vweb/js/admin_yyb.js?v=11"></script>
 <script src="/vweb/js/api_docs_data.js?v=2"></script>
 <script>
 // ============ 通用工具 ============

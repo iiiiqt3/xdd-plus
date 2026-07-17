@@ -2,7 +2,9 @@
     'use strict';
 
     const API = '/api/admin/yyb';
-    const state = { bindings: [], protocolCount: 0, aliveCount: 0, lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, tab: 'debug', bindingLoading: false, warmupStarted: false, statusPollTimer: null };
+    const state = { bindings: [], protocolCount: 0, aliveCount: 0, lastResult: '', scanSessionId: '', scanTimer: null, scanPolling: false, inited: false, tab: 'debug', bindingLoading: false, warmupStarted: false, statusPollTimer: null, notifyOfflineLocked: false };
+    const NOTIFY_OFFLINE_BTN_HTML = '<i class="fas fa-bell"></i> 通知掉线用户';
+    let notifyOfflineLockTimer = null;
 
     function $(id) { return document.getElementById(id); }
 
@@ -225,20 +227,70 @@
         return (channels || []).map(c => c === 'app' ? 'App' : (c === 'robot' ? '机器人' : c)).join(' / ');
     }
 
+    function setNotifyOfflineStatus(msg, kind) {
+        const el = $('ayyb-notifyStatus');
+        if (!el) return;
+        el.textContent = msg || '';
+        el.style.color = kind === 'error' ? '#f56c6c' : (kind === 'ok' ? '#67c23a' : (kind === 'loading' ? '#e6a23c' : '#909399'));
+    }
+
+    function clearNotifyOfflineLock() {
+        if (notifyOfflineLockTimer) {
+            clearInterval(notifyOfflineLockTimer);
+            notifyOfflineLockTimer = null;
+        }
+        state.notifyOfflineLocked = false;
+        const btn = $('ayyb-notifyOfflineBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = NOTIFY_OFFLINE_BTN_HTML;
+        }
+    }
+
+    function lockNotifyOfflineButton(cooldownMin) {
+        state.notifyOfflineLocked = true;
+        const btn = $('ayyb-notifyOfflineBtn');
+        let left = Math.max(60, (Number(cooldownMin) || 10) * 60);
+        const tick = () => {
+            if (!btn) return;
+            btn.disabled = true;
+            const m = Math.floor(left / 60);
+            const s = left % 60;
+            btn.textContent = m > 0 ? ('冷却 ' + m + ':' + String(s).padStart(2, '0')) : ('冷却 ' + s + 's');
+        };
+        tick();
+        notifyOfflineLockTimer = setInterval(() => {
+            left--;
+            if (left <= 0) {
+                clearNotifyOfflineLock();
+                setNotifyOfflineStatus('', '');
+                return;
+            }
+            tick();
+        }, 1000);
+    }
+
     async function notifyOfflineBindings() {
+        if (state.notifyOfflineLocked) {
+            if (typeof global.toast === 'function') global.toast('掉线推送冷却中或任务进行中，请稍候', 'warning');
+            return;
+        }
         const channels = getProtocolOfflineNotifyChannels('yybNotifyChannel');
         const channelText = formatProtocolOfflineChannels(channels);
         if (!confirm('确认通知掉线用户？\n\n目标范围：全部绑定账号（真检测后推送）\n通知渠道：' + channelText + '\n不含网页通知库。')) return;
         const btn = $('ayyb-notifyOfflineBtn');
-        const prev = btn ? btn.textContent : '';
-        if (btn) { btn.disabled = true; btn.textContent = '触发中…'; }
+        if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
+        setNotifyOfflineStatus('正在提交掉线推送任务…', 'loading');
         try {
-            await request('/notify-offline', { method: 'POST', body: JSON.stringify({ channels }) });
+            const data = await request('/notify-offline', { method: 'POST', body: JSON.stringify({ channels }) });
+            const cooldownMin = (data && data.cooldownMin) || 10;
+            setNotifyOfflineStatus('已提交：后台全量检测中，仅掉线账号会推送。' + cooldownMin + ' 分钟内请勿重复点击。', 'ok');
             if (typeof global.toast === 'function') global.toast('已触发掉线检测推送，请查看应用宝日志（无掉线则不推送）', 'success');
+            lockNotifyOfflineButton(cooldownMin);
         } catch (e) {
+            clearNotifyOfflineLock();
+            setNotifyOfflineStatus(e.message || '触发失败', 'error');
             if (typeof global.toast === 'function') global.toast(e.message || '触发失败', 'error');
-        } finally {
-            if (btn) { btn.disabled = false; btn.textContent = prev; }
         }
     }
 

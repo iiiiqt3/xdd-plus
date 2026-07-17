@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/cdle/xdd/models"
@@ -151,10 +152,12 @@ func (c *AdminYybController) NotifyOffline() {
 	_ = json.Unmarshal(c.Ctx.Input.RequestBody, &req)
 	channels := models.ProtocolOfflineNotifyChannelsFromStrings(req.Channels)
 	models.Yyb().Infof("[管理后台] 收到应用宝掉线推送请求 channels=app:%v robot:%v openids=%d", channels.App, channels.Robot, len(req.OpenIDs))
-	go func() {
-		yybportal.CheckYybOfflineAndNotifyWithChannels(channels, req.OpenIDs, true)
-	}()
-	c.jsonOK(nil, "通知已触发，正在后台检测并发送")
+	cooldownMin, err := yybportal.AdminTriggerYybOfflineNotify(channels, req.OpenIDs)
+	if err != nil {
+		c.jsonErr(err)
+		return
+	}
+	c.jsonOK(map[string]any{"cooldownMin": cooldownMin}, fmt.Sprintf("通知已触发，正在后台检测并发送（%d 分钟内请勿重复点击）", cooldownMin))
 }
 
 // ResyncAccount 同步
