@@ -40,16 +40,17 @@ func Start(cfg Config) (*Service, error) {
 	}
 
 	app, err := httpapi.NewApp(httpapi.Config{
-		ResourceRoot:   cfg.ResourceRoot,
-		DBFilename:     cfg.DBFilename,
-		GormDB:         cfg.GormDB,
-		TCPProxy:       cfg.TCPProxy,
-		Proxy51Enabled: cfg.Proxy51Enabled,
-		SessionTTL:     cfg.SessionTTL,
-		RequestTimeout: cfg.RequestTimeout,
-		AvatarTimeout:  cfg.AvatarTimeout,
-		ScanTimeout:    cfg.ScanTimeout,
-		QRSessionTTL:   cfg.QRSessionTTL,
+		ResourceRoot:           cfg.ResourceRoot,
+		DBFilename:             cfg.DBFilename,
+		GormDB:                 cfg.GormDB,
+		TCPProxy:               cfg.TCPProxy,
+		Proxy51Enabled:         cfg.Proxy51Enabled,
+		Proxy51BusinessEnabled: cfg.Proxy51BusinessEnabled,
+		SessionTTL:             cfg.SessionTTL,
+		RequestTimeout:         cfg.RequestTimeout,
+		AvatarTimeout:          cfg.AvatarTimeout,
+		ScanTimeout:            cfg.ScanTimeout,
+		QRSessionTTL:           cfg.QRSessionTTL,
 	})
 	if err != nil {
 		return nil, err
@@ -102,4 +103,13 @@ func (s *Service) SetTCPProxy(proxy string) {
 	}
 	s.app.SetTCPProxy(proxy)
 	s.cfg.TCPProxy = strings.TrimSpace(proxy)
+}
+
+// SetProxy51BusinessEnabled 热更新脚本业务是否走 51 代理
+func (s *Service) SetProxy51BusinessEnabled(enabled bool) {
+	if s == nil || s.app == nil {
+		return
+	}
+	s.app.SetProxy51BusinessEnabled(enabled)
+	s.cfg.Proxy51BusinessEnabled = enabled
 }

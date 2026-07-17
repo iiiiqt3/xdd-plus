@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/beego/beego/v2/client/httplib"
@@ -49,6 +50,45 @@ type YybConfig struct {
 	Proxy51ISP               string `yaml:"proxy_51_isp"`
 	Proxy51BypassRegionCode  string `yaml:"proxy_51_bypass_region_code"`
 	Proxy51BypassRegionName  string `yaml:"proxy_51_bypass_region_name"`
+	// Proxy51BusinessEnabled 脚本业务（getCode/手机号/云函数等）是否走 51 代理；默认 false 直连
+	Proxy51BusinessEnabled bool `yaml:"proxy_51_business_enabled"`
+	// LivenessCheckEnabled 每日定时存活检测（真 refresh + 掉线推送）；yaml 未配置时默认开启
+	LivenessCheckEnabled *bool `yaml:"liveness_check_enabled"`
+	// LivenessCheckTime 每日检测时刻 HH:MM（本地时区）
+	LivenessCheckTime string `yaml:"liveness_check_time"`
+	// LivenessCheckIntervalSec 定时检测时账号间隔秒数
+	LivenessCheckIntervalSec int `yaml:"liveness_check_interval_sec"`
+	// LivenessManualCooldownMin 手动刷新存活冷却分钟
+	LivenessManualCooldownMin int `yaml:"liveness_manual_cooldown_min"`
+	// LivenessSkipIfCheckedWithinHours 距上次检测不足该小时数则跳过（防重复）
+	LivenessSkipIfCheckedWithinHours int `yaml:"liveness_skip_if_checked_within_hours"`
+}
+
+// YybLivenessCheckEnabled 每日存活检测是否开启（未配置 yaml 键时默认 true）
+func YybLivenessCheckEnabled(cfg YybConfig) bool {
+	if cfg.LivenessCheckEnabled == nil {
+		return true
+	}
+	return *cfg.LivenessCheckEnabled
+}
+
+// NormalizeYybConfig 补齐应用宝配置默认值
+func NormalizeYybConfig(cfg *YybConfig) {
+	if cfg == nil {
+		return
+	}
+	if strings.TrimSpace(cfg.LivenessCheckTime) == "" {
+		cfg.LivenessCheckTime = "09:00"
+	}
+	if cfg.LivenessCheckIntervalSec <= 0 {
+		cfg.LivenessCheckIntervalSec = 3
+	}
+	if cfg.LivenessManualCooldownMin <= 0 {
+		cfg.LivenessManualCooldownMin = 10
+	}
+	if cfg.LivenessSkipIfCheckedWithinHours <= 0 {
+		cfg.LivenessSkipIfCheckedWithinHours = 20
+	}
 }
 
 // GameConfig 游戏配置（支持热更新）
@@ -335,6 +375,7 @@ func initConfigDefaults() {
 	if Config.JdTask.JobTimeoutMinutes <= 0 {
 		Config.JdTask.JobTimeoutMinutes = 60
 	}
+	NormalizeYybConfig(&Config.Yyb)
 }
 
 // configReloadHooks 配置热更新后的回调（避免 models ↔ 业务模块循环依赖）

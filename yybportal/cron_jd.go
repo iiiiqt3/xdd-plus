@@ -12,6 +12,6 @@ func startJdCron() {
 	}
 	jdCron = cron.New()
 	jdCron.AddFunc("0 */3 * * ?", RefreshYybCKAuto)
-	jdCron.AddFunc("0 13 * * ?", CheckYybOfflineAndNotify)
+	jdCron.AddFunc("* * * * *", runYybLivenessScheduleTick)
 	jdCron.Start()
 }

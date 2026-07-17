@@ -213,6 +213,15 @@
         });
     }
 
+    function formatLastChecked(ts) {
+        const n = Number(ts || 0);
+        if (!n) return '上次检测：暂无';
+        const d = new Date(n * 1000);
+        if (Number.isNaN(d.getTime())) return '上次检测：暂无';
+        const pad = (x) => String(x).padStart(2, '0');
+        return '上次检测：' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
     function renderAccountCard(acc) {
         const rawOpenid = String(acc.openid || '');
         const openid = esc(rawOpenid);
@@ -232,6 +241,7 @@
                 <button type="button" class="yyb-copy-btn" data-yyb-copy="${attrEsc(rawOpenid)}">复制</button>
             </div>
             ${boundBlock}
+            <div class="yyb-acc-meta-line muted" style="font-size:12px;margin-top:6px;">${formatLastChecked(acc.lastCheckedAt)}</div>
             <div class="yyb-acc-expiry-slot">${renderExpiryLine(acc)}</div>
         </div>`;
     }
@@ -451,9 +461,7 @@
     }
 
     async function runInitialSessionCheck() {
-        if (state.sessionAliveChecked) return;
-        state.sessionAliveChecked = true;
-        await loadPanel({ autoCheck: true, silent: true });
+        // 已改为每日定时检测；进页只展示缓存状态，不再自动 refresh
     }
 
     async function withAccountAction(btn, loadingLabel, action) {

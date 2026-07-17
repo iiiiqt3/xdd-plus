@@ -2649,7 +2649,7 @@
                 </div>
                 <div class="yyb-toolbar" style="margin-bottom:14px;">
                     <button class="btn accent" id="yyb-scanBtn" type="button">扫码添加</button>
-                    <button class="btn secondary" id="yyb-reloadBtn" type="button">刷新并检测</button>
+                    <button class="btn secondary" id="yyb-reloadBtn" type="button">检测全部存活</button>
                 </div>
 
                 <div class="card proto-bind-card hidden" id="protoBindCardYyb">
@@ -3242,7 +3242,6 @@ async function initialLoad() {
         loadWxDevices().catch(function() {});
         if (window.YybPortal) {
             YybPortal.loadDashboard().catch(function() {});
-            YybPortal.runInitialSessionCheck().catch(function() {});
         }
         request('/api/portal/wx/status').then(function(wxStatus) {
             state.wxStatus = wxStatus.data;

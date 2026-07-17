@@ -151,6 +151,9 @@ func PortalDeleteAccount(userNumber int, ref string) error {
 
 // PortalRefreshAccount 刷新存活
 func PortalRefreshAccount(userNumber int, ref string) (map[string]any, error) {
+	if err := ensureYybManualRefreshAllowed(fmt.Sprintf("portal:%d", userNumber), ref); err != nil {
+		return nil, err
+	}
 	b, err := resolveBinding(userNumber, ref)
 	if err != nil {
 		return nil, err

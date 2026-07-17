@@ -23,6 +23,15 @@ func GetCache(key string) (value string) {
 }
 
 func SaveCache(key string, value string) (flag bool) {
+	return SaveCacheTTL(key, value, 3600)
+}
+
+// SaveCacheTTL 写入缓存，ttlSec 秒后过期
+func SaveCacheTTL(key string, value string, ttlSec int) (flag bool) {
+	if ttlSec <= 0 {
+		ttlSec = 3600
+	}
+	expireAt := time.Now().Unix() + int64(ttlSec)
 	u := &Cache{}
 	err := db.Where("ckey = ?", key).First(&u).Error
 	if err == nil {
@@ -30,20 +39,11 @@ func SaveCache(key string, value string) (flag bool) {
 		if u.Cvalue != "" {
 			db.Where("ckey = ?", u.Ckey).Updates(&Cache{
 				Cvalue:   value,
-				ActiveAt: time.Now().Unix() + 3600,
+				ActiveAt: expireAt,
 			})
 			return true
-		} else {
-			u.ActiveAt = time.Now().Unix() + 3600
-			u.Ckey = key
-			u.Cvalue = value
-			begin := db.Begin()
-			begin.Create(u)
-			begin.Commit()
-			return true
 		}
-	} else {
-		u.ActiveAt = time.Now().Unix() + 3600
+		u.ActiveAt = expireAt
 		u.Ckey = key
 		u.Cvalue = value
 		begin := db.Begin()
@@ -51,5 +51,11 @@ func SaveCache(key string, value string) (flag bool) {
 		begin.Commit()
 		return true
 	}
-
+	u.ActiveAt = expireAt
+	u.Ckey = key
+	u.Cvalue = value
+	begin := db.Begin()
+	begin.Create(u)
+	begin.Commit()
+	return true
 }

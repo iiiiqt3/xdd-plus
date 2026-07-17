@@ -43,6 +43,8 @@ func ModuleConfigFromModels() ModuleConfig {
 // AdminConfigView 管理后台配置展示
 func AdminConfigView() map[string]any {
 	c := Config()
+	yyb := models.Config.Yyb
+	models.NormalizeYybConfig(&yyb)
 	return map[string]any{
 		"enabled":            c.Enabled,
 		"ready":              Ready(),
@@ -52,5 +54,11 @@ func AdminConfigView() map[string]any {
 		"scanLoginCost":      getScanLoginCost(),
 		"maxAccountsPerUser": getMaxAccountsPerUser(),
 		"hasApiToken":        c.APIToken != "",
+		"proxy51BusinessEnabled": yyb.Proxy51BusinessEnabled,
+		"livenessCheckEnabled":        models.YybLivenessCheckEnabled(yyb),
+		"livenessCheckTime":           yyb.LivenessCheckTime,
+		"livenessCheckIntervalSec":    yyb.LivenessCheckIntervalSec,
+		"livenessManualCooldownMin":   yyb.LivenessManualCooldownMin,
+		"livenessSkipIfCheckedWithinHours": yyb.LivenessSkipIfCheckedWithinHours,
 	}
 }

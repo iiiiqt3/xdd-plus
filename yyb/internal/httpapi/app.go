@@ -27,7 +27,8 @@ type Config struct {
 	DBFilename     string
 	GormDB         *gorm.DB
 	TCPProxy       string
-	Proxy51Enabled bool
+	Proxy51Enabled         bool
+	Proxy51BusinessEnabled bool
 	SessionTTL     time.Duration
 	RequestTimeout time.Duration
 	AvatarTimeout  time.Duration
@@ -125,6 +126,13 @@ func (a *App) SetTCPProxy(proxy string) {
 	if a.pool != nil {
 		a.pool.SetTCPProxy(proxy)
 	}
+}
+
+// SetProxy51BusinessEnabled 热更新脚本业务是否走 51 代理（扫码/存活刷新不受影响）
+func (a *App) SetProxy51BusinessEnabled(enabled bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.cfg.Proxy51BusinessEnabled = enabled
 }
 
 func (a *App) handleQRRoot(w http.ResponseWriter, r *http.Request) {
@@ -726,7 +734,7 @@ type accountExpiredError struct{ openid string }
 func (e accountExpiredError) Error() string { return "account expired: " + e.openid }
 
 func (a *App) businessUsesProxy(acc *store.WechatAccount) bool {
-	return a.cfg.Proxy51Enabled && accountUsesSavedProxy(acc.Credentials)
+	return a.cfg.Proxy51Enabled && a.cfg.Proxy51BusinessEnabled && accountUsesSavedProxy(acc.Credentials)
 }
 
 func (a *App) businessProxyForAccount(ctx context.Context, acc *store.WechatAccount) string {

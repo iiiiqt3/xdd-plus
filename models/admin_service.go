@@ -157,6 +157,12 @@ func GetJdConfigForAdmin() map[string]interface{} {
 		"yybProxy51ISP":         Config.Yyb.Proxy51ISP,
 		"yybProxy51BypassRegionCode": Config.Yyb.Proxy51BypassRegionCode,
 		"yybProxy51BypassRegionName": Config.Yyb.Proxy51BypassRegionName,
+		"yybProxy51BusinessEnabled":  Config.Yyb.Proxy51BusinessEnabled,
+		"yybLivenessCheckEnabled":    YybLivenessCheckEnabled(Config.Yyb),
+		"yybLivenessCheckTime":       Config.Yyb.LivenessCheckTime,
+		"yybLivenessCheckIntervalSec": Config.Yyb.LivenessCheckIntervalSec,
+		"yybLivenessManualCooldownMin": Config.Yyb.LivenessManualCooldownMin,
+		"yybLivenessSkipIfCheckedWithinHours": Config.Yyb.LivenessSkipIfCheckedWithinHours,
 		// 极光推送
 		"jpushEnabled":      Config.Jpush.Enabled,
 		"jpushAppKey":       Config.Jpush.AppKey,
@@ -420,6 +426,24 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	if v, ok := req["yybProxy51BypassRegionName"].(string); ok {
 		configMap["yyb_proxy_51_bypass_region_name"] = fmt.Sprintf("%q", v)
 	}
+	if v, ok := req["yybProxy51BusinessEnabled"].(bool); ok {
+		configMap["yyb_proxy_51_business_enabled"] = fmt.Sprintf("%v", v)
+	}
+	if v, ok := req["yybLivenessCheckEnabled"].(bool); ok {
+		configMap["yyb_liveness_check_enabled"] = fmt.Sprintf("%v", v)
+	}
+	if v, ok := req["yybLivenessCheckTime"].(string); ok {
+		configMap["yyb_liveness_check_time"] = fmt.Sprintf("%q", strings.TrimSpace(v))
+	}
+	if v, ok := req["yybLivenessCheckIntervalSec"].(float64); ok {
+		configMap["yyb_liveness_check_interval_sec"] = fmt.Sprintf("%d", int(v))
+	}
+	if v, ok := req["yybLivenessManualCooldownMin"].(float64); ok {
+		configMap["yyb_liveness_manual_cooldown_min"] = fmt.Sprintf("%d", int(v))
+	}
+	if v, ok := req["yybLivenessSkipIfCheckedWithinHours"].(float64); ok {
+		configMap["yyb_liveness_skip_if_checked_within_hours"] = fmt.Sprintf("%d", int(v))
+	}
 
 	// 极光推送
 	if v, ok := req["jpushEnabled"].(bool); ok {
@@ -532,6 +556,12 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 		"yyb_proxy_51_isp":               "proxy_51_isp",
 		"yyb_proxy_51_bypass_region_code": "proxy_51_bypass_region_code",
 		"yyb_proxy_51_bypass_region_name": "proxy_51_bypass_region_name",
+		"yyb_proxy_51_business_enabled":   "proxy_51_business_enabled",
+		"yyb_liveness_check_enabled":      "liveness_check_enabled",
+		"yyb_liveness_check_time":         "liveness_check_time",
+		"yyb_liveness_check_interval_sec": "liveness_check_interval_sec",
+		"yyb_liveness_manual_cooldown_min": "liveness_manual_cooldown_min",
+		"yyb_liveness_skip_if_checked_within_hours": "liveness_skip_if_checked_within_hours",
 	}
 	jpushYamlKeys := map[string]string{
 		"jpush_enabled":       "enabled",

@@ -18,7 +18,8 @@ type Config struct {
 	AvatarTimeout      time.Duration
 	ScanTimeout        time.Duration
 	QRSessionTTL       time.Duration
-	Proxy51Enabled     bool
+	Proxy51Enabled           bool
+	Proxy51BusinessEnabled   bool
 }
 
 func DefaultConfig() Config {

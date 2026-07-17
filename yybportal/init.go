@@ -71,12 +71,13 @@ func Init(c ModuleConfig) error {
 	models.Yyb().Infof("应用宝核心服务启动中 db=%s proxy51=%v", c.DBFilename, models.Config.Yyb.Proxy51Enabled)
 	t1 := time.Now()
 	s, err := yyb.Start(yyb.Config{
-		Enabled:           true,
-		ResourceRoot:      c.ResourceRoot,
-		DBFilename:        c.DBFilename,
-		GormDB:            models.GormDB(),
-		TCPProxy:          c.TCPProxy,
-		Proxy51Enabled:    models.Config.Yyb.Proxy51Enabled,
+		Enabled:                true,
+		ResourceRoot:           c.ResourceRoot,
+		DBFilename:             c.DBFilename,
+		GormDB:                 models.GormDB(),
+		TCPProxy:               c.TCPProxy,
+		Proxy51Enabled:         models.Config.Yyb.Proxy51Enabled,
+		Proxy51BusinessEnabled: models.Config.Yyb.Proxy51BusinessEnabled,
 	})
 	if err != nil {
 		mu.Lock()
@@ -141,6 +142,10 @@ func RefreshConfigFromModels() {
 	cfg.ResourceRoot = c.ResourceRoot
 	cfg.DBFilename = c.DBFilename
 	cfg.Enabled = c.Enabled
+	models.NormalizeYybConfig(&models.Config.Yyb)
+	if yybSvc != nil {
+		yybSvc.SetProxy51BusinessEnabled(models.Config.Yyb.Proxy51BusinessEnabled)
+	}
 }
 
 // LastError 启动错误

@@ -138,6 +138,9 @@ func AdminDeleteAccount(ref string) error {
 
 // AdminRefreshAccount 刷新并同步门户绑定状态
 func AdminRefreshAccount(ref string) (map[string]any, error) {
+	if err := ensureYybManualRefreshAllowed("admin", ref); err != nil {
+		return nil, err
+	}
 	a, err := svc()
 	if err != nil {
 		return nil, err

@@ -195,24 +195,8 @@
         }, delay);
     }
 
-    // 每次管理员登录会话只自动检测 1 次（切页/再进应用宝不再触发）
-    async function warmupProtocolCheck() {
-        if (state.warmupStarted) return;
-        try {
-            if (sessionStorage.getItem(WARMUP_KEY) === '1') {
-                state.warmupStarted = true;
-                return;
-            }
-        } catch (_) { /* ignore */ }
-        state.warmupStarted = true;
-        try {
-            sessionStorage.setItem(WARMUP_KEY, '1');
-        } catch (_) { /* ignore */ }
-        try {
-            const data = await request('/protocol/warmup', { method: 'POST', body: '{}' });
-            if (data && data.started) scheduleStatusPoll(2000);
-        } catch (_) { /* 静默：不影响其他页面 */ }
-    }
+    // 管理后台不再自动 warmup 全量检测（改由每日定时任务 + 手动按钮）
+    async function warmupProtocolCheck() {}
 
     async function loadBindings(showToast) {
         if (state.bindingLoading) return;

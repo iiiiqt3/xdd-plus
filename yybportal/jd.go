@@ -315,76 +315,14 @@ func RefreshYybCKAuto() {
 	go func() { models.Save <- &models.JdCookie{} }()
 }
 
-// CheckYybOfflineAndNotify 每日检测应用宝账号掉线并通知用户
+// CheckYybOfflineAndNotify 每日检测应用宝账号掉线并通知用户（真 refresh + 推送）
 func CheckYybOfflineAndNotify() {
-	if n := models.CleanupStaleOfflineNotifications(); n > 0 {
-		models.Yyb().Infof("已自动清理 %d 条超过 %d 天的微信/应用宝掉线提醒通知", n, models.OfflineNotifyRetentionDays)
-	}
-	CheckYybOfflineAndNotifyWithChannels(models.NotifyChannels{Web: true, App: true, Robot: false}, false)
+	RunYybDailyLivenessCheckWithChannels(models.NotifyChannels{Web: true, App: true, Robot: false}, false)
 }
 
-// CheckYybOfflineAndNotifyWithChannels 带渠道的应用宝掉线检测
+// CheckYybOfflineAndNotifyWithChannels 带渠道的应用宝掉线检测（管理员强制触发）
 func CheckYybOfflineAndNotifyWithChannels(channels models.NotifyChannels, force bool) {
-	if !Ready() {
-		models.Yyb().Infof("应用宝掉线检测：服务不可用，跳过")
-		return
-	}
-	models.Yyb().Infof("开始执行应用宝掉线检测推送...")
-	bindings, err := ListAllBindings()
-	if err != nil || len(bindings) == 0 {
-		models.Yyb().Infof("应用宝掉线检测：暂无绑定账号，跳过")
-		return
-	}
-
-	offlineCount := 0
-	notifiedCount := 0
-	seenUser := make(map[int]bool)
-
-	for _, b := range bindings {
-		openid := strings.TrimSpace(b.OpenID)
-		if openid == "" {
-			continue
-		}
-		alive := IsYybAccountAlive(openid)
-		if alive {
-			if _, loaded := offlineNotifiedYybOIDs.LoadAndDelete(openid); loaded {
-				models.Yyb().Infof("应用宝掉线检测：账号 %s 已恢复可用，清除通知记录", openid)
-			}
-			continue
-		}
-		offlineCount++
-		if !force {
-			if _, loaded := offlineNotifiedYybOIDs.LoadOrStore(openid, true); loaded {
-				continue
-			}
-		} else {
-			offlineNotifiedYybOIDs.Store(openid, true)
-		}
-
-		nick := b.Nickname
-		if nick == "" {
-			nick = openid
-		}
-		notifyMsg := fmt.Sprintf(
-			"⚠️ 你的应用宝协议账号已掉线，将影响京东 CK 自动续期。\n\n"+
-				"📋 账号信息：\n"+
-				"👤 %s (🔴 不可用)\n"+
-				"🆔 %s\n\n"+
-				"💡 请前往用户中心 → 应用宝协议，重新扫码登录。\n"+
-				"📌 本消息只发送一次，账号恢复后如再次掉线将重新通知。\n"+
-				"📌 狗东 App 将同步推送提醒，请打开 App 处理。",
-			nick, openid,
-		)
-		if !seenUser[b.UserNumber] {
-			_ = models.PushUserOfflineNotification(models.NotifyTitleYybOffline, notifyMsg, models.NotifyCategoryWx, models.NotifySourceYyb, b.UserNumber, channels)
-			seenUser[b.UserNumber] = true
-			notifiedCount++
-		}
-		if offlineCount >= 2 {
-			time.Sleep(time.Duration(3+rand.Intn(3)) * time.Second)
-		}
-	}
-	models.Yyb().Infof("应用宝掉线检测完成，共 %d 个绑定，%d 个掉线，通知 %d 个用户", len(bindings), offlineCount, notifiedCount)
+	RunYybDailyLivenessCheckWithChannels(channels, force)
 }
 
 func truncateMap(v map[string]any, maxLen int) string {

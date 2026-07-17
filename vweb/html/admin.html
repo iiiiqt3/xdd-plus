@@ -7474,6 +7474,12 @@ async function loadSysConfig() {
                     <div class="form-item"><label>运营商 ISP</label><input type="text" id="cfg_yybProxy51ISP" value="${v(cfg.yybProxy51ISP)||'1'}" placeholder="1=电信"></div>
                     <div class="form-item"><label>免代理地区码</label><input type="text" id="cfg_yybProxy51BypassRegionCode" value="${v(cfg.yybProxy51BypassRegionCode)||'310100'}" placeholder="上海 310100"></div>
                     <div class="form-item"><label>免代理地区名</label><input type="text" id="cfg_yybProxy51BypassRegionName" value="${v(cfg.yybProxy51BypassRegionName)||'上海'}"></div>
+                    <div class="form-item"><label>业务接口走 51 代理 <span class="tip">getCode/手机号/云函数；关=直连省代理</span></label><select id="cfg_yybProxy51BusinessEnabled">${sel(cfg.yybProxy51BusinessEnabled)}</select></div>
+                    <div class="form-item"><label>每日存活检测</label><select id="cfg_yybLivenessCheckEnabled">${cfg.yybLivenessCheckEnabled === false ? sel(false) : sel(true)}</select></div>
+                    <div class="form-item"><label>每日检测时刻 <span class="tip">HH:MM 本地时间</span></label><input type="text" id="cfg_yybLivenessCheckTime" value="${v(cfg.yybLivenessCheckTime)||'09:00'}" placeholder="09:00"></div>
+                    <div class="form-item"><label>检测账号间隔 (秒)</label><input type="number" id="cfg_yybLivenessCheckIntervalSec" min="1" value="${cfg.yybLivenessCheckIntervalSec || 3}"></div>
+                    <div class="form-item"><label>手动刷新冷却 (分钟)</label><input type="number" id="cfg_yybLivenessManualCooldownMin" min="1" value="${cfg.yybLivenessManualCooldownMin || 10}"></div>
+                    <div class="form-item"><label>跳过近期已检 (小时)</label><input type="number" id="cfg_yybLivenessSkipIfCheckedWithinHours" min="1" value="${cfg.yybLivenessSkipIfCheckedWithinHours || 20}"></div>
                     <div class="form-item full"><label>API Token <span class="tip">脚本/内部接口鉴权</span></label>
                         <div style="display:flex;gap:6px;position:relative;">
                             <input type="password" id="cfg_yybAPIToken" value="${v(cfg.yybAPIToken)}" style="flex:1;" autocomplete="off">
@@ -7624,6 +7630,12 @@ async function saveSysConfig() {
             yybProxy51ISP: (document.getElementById('cfg_yybProxy51ISP')||{}).value || '1',
             yybProxy51BypassRegionCode: (document.getElementById('cfg_yybProxy51BypassRegionCode')||{}).value || '310100',
             yybProxy51BypassRegionName: (document.getElementById('cfg_yybProxy51BypassRegionName')||{}).value || '上海',
+            yybProxy51BusinessEnabled: (document.getElementById('cfg_yybProxy51BusinessEnabled')||{}).value === 'true',
+            yybLivenessCheckEnabled: (document.getElementById('cfg_yybLivenessCheckEnabled')||{}).value === 'true',
+            yybLivenessCheckTime: (document.getElementById('cfg_yybLivenessCheckTime')||{}).value || '09:00',
+            yybLivenessCheckIntervalSec: parseInt((document.getElementById('cfg_yybLivenessCheckIntervalSec')||{}).value) || 3,
+            yybLivenessManualCooldownMin: parseInt((document.getElementById('cfg_yybLivenessManualCooldownMin')||{}).value) || 10,
+            yybLivenessSkipIfCheckedWithinHours: parseInt((document.getElementById('cfg_yybLivenessSkipIfCheckedWithinHours')||{}).value) || 20,
             jpushEnabled: (document.getElementById('cfg_jpushEnabled')||{}).value === 'true',
             jpushAppKey: (document.getElementById('cfg_jpushAppKey')||{}).value || '',
             jpushMasterSecret: (document.getElementById('cfg_jpushMasterSecret')||{}).value || '',
@@ -7709,7 +7721,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavMenu();
     if (window.AdminYyb) {
         AdminYyb.init();
-        AdminYyb.warmupProtocolCheck(); // 登录进后台只自动检测 1 次
     }
     loadDashboard();
     initResizableColumns();
