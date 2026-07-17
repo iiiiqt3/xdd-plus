@@ -414,6 +414,14 @@ func (db *DB) InvalidateSession(ctx context.Context, accountID int64, tcpProxy s
 	return err
 }
 
+func (db *DB) InvalidateAllSessions(ctx context.Context, accountID int64) error {
+	if db.useGORM() {
+		return db.gormInvalidateAllSessions(ctx, accountID)
+	}
+	_, err := db.sql.ExecContext(ctx, "DELETE FROM sessions WHERE wechat_account_id=?", accountID)
+	return err
+}
+
 func (db *DB) PurgeExpiredSessions(ctx context.Context) (int64, error) {
 	if db.useGORM() {
 		return db.gormPurgeExpiredSessions(ctx)

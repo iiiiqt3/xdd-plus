@@ -287,6 +287,12 @@ func (db *DB) gormInvalidateSession(ctx context.Context, accountID int64, tcpPro
 		Delete(&GormSession{}).Error
 }
 
+func (db *DB) gormInvalidateAllSessions(ctx context.Context, accountID int64) error {
+	return db.orm.WithContext(ctx).
+		Where("wechat_account_id = ?", accountID).
+		Delete(&GormSession{}).Error
+}
+
 func (db *DB) gormPurgeExpiredSessions(ctx context.Context) (int64, error) {
 	res := db.orm.WithContext(ctx).Where("expires_at <= ?", time.Now().Unix()).Delete(&GormSession{})
 	return res.RowsAffected, res.Error

@@ -676,6 +676,8 @@ func (a *App) refreshLivenessCore(ctx context.Context, acc *store.WechatAccount)
 	if err := a.db.SetAccountCredential(ctx, acc.ID, result.LoginBuffer, credMap); err != nil {
 		return nil, err
 	}
+	// login_buffer 更新后必须清 WMPF 会话，否则 pool 仍用旧 session_blob 导致 AppData decrypt 失败。
+	a.invalidateAccountSessions(ctx, acc.ID)
 	_ = a.db.SetAccountStatus(ctx, acc.ID, "alive")
 	if avatar := a.resolveAvatar(ctx, acc.OpenID, acc.UserInfo); avatar != "" {
 		_ = a.db.SetAccountProfile(ctx, acc.ID, acc.Nickname, &avatar, acc.UserInfo)
@@ -734,6 +736,10 @@ func (a *App) businessProxyForAccount(ctx context.Context, acc *store.WechatAcco
 	return a.tcpProxyForAccount(ctx, acc)
 }
 
+func (a *App) invalidateAccountSessions(ctx context.Context, accountID int64) {
+	_ = a.db.InvalidateAllSessions(ctx, accountID)
+}
+
 func (a *App) runBusinessWithProxyRetry(ctx context.Context, acc *store.WechatAccount, op func(*store.WechatAccount, string) (map[string]any, error)) (map[string]any, *store.WechatAccount, error) {
 	if acc == nil {
 		return nil, acc, fmt.Errorf("应用宝账号为空")
@@ -760,6 +766,8 @@ func (a *App) runBusinessWithProxyRetry(ctx context.Context, acc *store.WechatAc
 			}
 			break
 		}
+		// 对齐 yyb-go invokeWXApp：业务失败先清会话缓存，再刷新 login_buffer 后重试。
+		a.invalidateAccountSessions(ctx, current.ID)
 		fresh, refreshErr := a.refreshLivenessCore(ctx, current)
 		if refreshErr != nil {
 			lastErr = refreshErr
