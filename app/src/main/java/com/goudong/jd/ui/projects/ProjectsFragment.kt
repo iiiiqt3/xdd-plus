@@ -1158,7 +1158,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         updateYybActionEnabled()
         applyYybFromStore()
         if (!YybAccountStore.sessionAutoChecked) {
-            YybAccountStore.prefetchIfNeeded(lifecycleScope, autoCheck = true)
+            YybAccountStore.prefetchIfNeeded(lifecycleScope, autoCheck = false)
         }
     }
 

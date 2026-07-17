@@ -56,7 +56,7 @@ object YybAccountStore {
         return msg
     }
 
-    fun prefetchIfNeeded(scope: CoroutineScope, autoCheck: Boolean = true) {
+    fun prefetchIfNeeded(scope: CoroutineScope, autoCheck: Boolean = false) {
         if (!AppServices.sessionManager.isAuthenticated()) return
         if (sessionAutoChecked && status != null) {
             notifyChanged()
