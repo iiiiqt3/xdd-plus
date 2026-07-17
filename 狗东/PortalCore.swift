@@ -549,6 +549,9 @@ struct PortalHomeSnapshot {
     let dashboard: PortalDashboard
     let profile: PortalProfile
     let wechatStatus: PortalWechatStatus?
+    let wxDevices: [PortalWxDevice]
+    let yybStatus: PortalYybStatus?
+    let protocolBindings: [PortalProtocolBinding]
 }
 
 
@@ -1338,6 +1341,9 @@ final class PortalService {
     func fetchHomeSnapshot(completion: @escaping (Result<PortalHomeSnapshot, APIError>) -> Void) {
         var homePayload: PortalHomePayload?
         var wxStatus: PortalWechatStatus?
+        var wxDevices: [PortalWxDevice] = []
+        var yybStatus: PortalYybStatus?
+        var protocolBindings: [PortalProtocolBinding] = []
         var capturedUnauthorized: APIError?
         var capturedError: APIError?
         let group = DispatchGroup()
@@ -1358,6 +1364,24 @@ final class PortalService {
             group.leave()
         }
 
+        group.enter()
+        APIClient.shared.requestList(path: "/api/portal/wx/devices") { (result: Result<[PortalWxDevice], APIError>) in
+            if case .success(let value) = result { wxDevices = value }
+            group.leave()
+        }
+
+        group.enter()
+        APIClient.shared.requestData(path: "/api/portal/yyb/status") { (result: Result<PortalYybStatus, APIError>) in
+            if case .success(let value) = result { yybStatus = value }
+            group.leave()
+        }
+
+        group.enter()
+        APIClient.shared.requestList(path: "/api/portal/protocol/bindings") { (result: Result<[PortalProtocolBinding], APIError>) in
+            if case .success(let value) = result { protocolBindings = value }
+            group.leave()
+        }
+
         group.notify(queue: .main) {
             if let authError = capturedUnauthorized {
                 completion(.failure(authError))
@@ -1367,7 +1391,14 @@ final class PortalService {
                 completion(.failure(capturedError ?? APIError(message: "首页数据不完整", isUnauthorized: false)))
                 return
             }
-            completion(.success(PortalHomeSnapshot(dashboard: payload.dashboard, profile: payload.profile, wechatStatus: wxStatus)))
+            completion(.success(PortalHomeSnapshot(
+                dashboard: payload.dashboard,
+                profile: payload.profile,
+                wechatStatus: wxStatus,
+                wxDevices: wxDevices,
+                yybStatus: yybStatus,
+                protocolBindings: protocolBindings
+            )))
         }
     }
 

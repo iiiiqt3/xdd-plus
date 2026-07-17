@@ -35,6 +35,22 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
         swipeRight.map { view.removeGestureRecognizer($0) }
     }
 
+    func openProjectsProtocol(subIndex: Int) {
+        ProjectsRootViewController.prepareOpenProtocolAccess(subIndex: subIndex)
+        let alreadyOnProjects = selectedIndex == 1
+        selectedIndex = 1
+        if alreadyOnProjects {
+            DispatchQueue.main.async { [weak self] in
+                guard let nav = self?.viewControllers?[1] as? UINavigationController,
+                      let projects = nav.topViewController as? ProjectsRootViewController else { return }
+                if ProjectsRootViewController.skipNextProjectsReset {
+                    ProjectsRootViewController.skipNextProjectsReset = false
+                }
+                projects.applyPendingNavigationIfNeeded()
+            }
+        }
+    }
+
     private func setupTabs() {
         let home = AppNavigationController(rootViewController: HomeDashboardViewController())
         home.tabBarItem = UITabBarItem(title: "首页", image: UIImage(systemName: "house"), selectedImage: UIImage(systemName: "house.fill"))
@@ -136,6 +152,17 @@ final class RootTabBarController: UITabBarController, UITabBarControllerDelegate
     private func resetScrollPosition(for vc: UIViewController) {
         if let nav = vc as? UINavigationController {
             nav.popToRootViewController(animated: false)
+            if let topVC = nav.topViewController as? ProjectsRootViewController,
+               ProjectsRootViewController.skipNextProjectsReset || ProjectsRootViewController.pendingSegment == 3 {
+                if ProjectsRootViewController.skipNextProjectsReset {
+                    ProjectsRootViewController.skipNextProjectsReset = false
+                }
+                topVC.applyPendingNavigationIfNeeded()
+                if let scrollView = findScrollView(in: topVC.view) {
+                    scrollView.setContentOffset(.zero, animated: false)
+                }
+                return
+            }
             if let topVC = nav.topViewController {
                 if let resetable = topVC as? ResetableViewController {
                     resetable.resetToInitialState()
@@ -901,6 +928,7 @@ final class HomeDashboardViewController: BaseNativeViewController {
     private let stack = UIStackView()
     private let summaryLabel = UILabel()
     private let userInfoLabel = UILabel()
+    private let protocolSectionStack = UIStackView()
     private var cards: [InfoCardView] = []
     private var notificationSection: UIView?
     private var notificationStack: UIStackView?
@@ -1040,7 +1068,9 @@ final class HomeDashboardViewController: BaseNativeViewController {
 
         let headerCard = UIView()
         headerCard.applyCardStyle(cornerRadius: 22)
-        let headerStack = UIStackView(arrangedSubviews: [summaryLabel, userInfoLabel])
+        protocolSectionStack.axis = .vertical
+        protocolSectionStack.spacing = 6
+        let headerStack = UIStackView(arrangedSubviews: [summaryLabel, userInfoLabel, protocolSectionStack])
         headerStack.axis = .vertical
         headerStack.spacing = 8
         headerStack.translatesAutoresizingMaskIntoConstraints = false
@@ -1223,20 +1253,196 @@ final class HomeDashboardViewController: BaseNativeViewController {
 
     private func render(_ snapshot: PortalHomeSnapshot) {
         let dashboard = snapshot.dashboard
-        let profile = snapshot.profile
         let displayName = dashboard.nickname ?? dashboard.username ?? "用户"
         summaryLabel.text = "编号：\(dashboard.number)  ·  \(displayName)"
-        let wxStatusText = snapshot.wechatStatus?.status ?? (profile.user?.Wxid?.isEmpty == false ? "已绑定" : "未绑定")
-        userInfoLabel.text = "积分：\(dashboard.coin)  ·  登录：\(dashboard.lastLoginAt ?? "-")\n微信：\(wxStatusText)"
+        userInfoLabel.text = "积分：\(dashboard.coin)  ·  登录：\(dashboard.lastLoginAt ?? "-")"
+        renderProtocolSection(snapshot)
         cards[0].updateValue("\(dashboard.expiringCount)")
         cards[1].updateValue("\(dashboard.activeCount)")
         cards[2].updateValue("\(dashboard.coin)")
         cards[3].updateValue("\(dashboard.joinedCount)")
     }
+
+    private func renderProtocolSection(_ snapshot: PortalHomeSnapshot) {
+        protocolSectionStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        let titleRow = UIStackView()
+        titleRow.axis = .horizontal
+        titleRow.alignment = .center
+        let titleLabel = UILabel()
+        titleLabel.text = "🔗 协议接入"
+        titleLabel.font = .systemFont(ofSize: 14, weight: .bold)
+        let chevron = UILabel()
+        chevron.text = "›"
+        chevron.font = .systemFont(ofSize: 18, weight: .bold)
+        chevron.textColor = .systemBlue
+        titleRow.addArrangedSubview(titleLabel)
+        titleRow.addArrangedSubview(UIView())
+        titleRow.addArrangedSubview(chevron)
+        let titleButton = UIButton(type: .system)
+        titleButton.addAction(UIAction { [weak self] _ in
+            (self?.tabBarController as? RootTabBarController)?.openProjectsProtocol(subIndex: 0)
+        }, for: .touchUpInside)
+        titleButton.translatesAutoresizingMaskIntoConstraints = false
+        titleRow.addSubview(titleButton)
+        NSLayoutConstraint.activate([
+            titleButton.topAnchor.constraint(equalTo: titleRow.topAnchor),
+            titleButton.leadingAnchor.constraint(equalTo: titleRow.leadingAnchor),
+            titleButton.trailingAnchor.constraint(equalTo: titleRow.trailingAnchor),
+            titleButton.bottomAnchor.constraint(equalTo: titleRow.bottomAnchor),
+        ])
+        protocolSectionStack.addArrangedSubview(titleRow)
+
+        let yyb = snapshot.yybStatus
+        let yybAccounts = yyb?.accounts ?? []
+        let wxHint = snapshot.wxDevices.isEmpty ? "暂无微信协议设备" : nil
+        let yybHint: String? = {
+            guard let yyb else { return "应用宝模块未启用" }
+            if yyb.enabled != true { return "应用宝模块未启用" }
+            if yyb.ready != true {
+                let msg = yyb.message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                return msg.isEmpty ? "应用宝服务暂不可用" : msg
+            }
+            if yybAccounts.isEmpty { return "暂无应用宝账号" }
+            return nil
+        }()
+        let yybChips: [(String, String)] = (yyb?.enabled == true && yyb?.ready == true)
+            ? [
+                ("共", "\(yybAccounts.count)"),
+                ("可用", "\(yybAccounts.filter { isYybAlive($0.status) }.count)"),
+            ]
+            : [("共", "0"), ("可用", "0")]
+        let infoRow = UIStackView()
+        infoRow.axis = .horizontal
+        infoRow.spacing = 8
+        infoRow.distribution = .fillEqually
+        infoRow.addArrangedSubview(makeProtocolInfoBlock(
+            title: "📱 微信协议",
+            hint: wxHint,
+            chips: [
+                ("设备", "\(snapshot.wxDevices.count)"),
+                ("在线", "\(snapshot.wxDevices.filter { $0.online == true }.count)"),
+            ],
+            accentIndex: 1
+        ))
+        infoRow.addArrangedSubview(makeProtocolInfoBlock(
+            title: "📦 应用宝协议",
+            hint: yybHint,
+            chips: yybChips,
+            accentIndex: 1
+        ))
+        protocolSectionStack.addArrangedSubview(infoRow)
+
+        let bindSummary = computeBindSummary(devices: snapshot.wxDevices, accounts: yybAccounts, bindings: snapshot.protocolBindings)
+        var bindChips: [(String, String)] = [("已绑", "\(bindSummary.pairs) 对")]
+        if bindSummary.wxUnbound > 0 { bindChips.append(("微信待绑", "\(bindSummary.wxUnbound)")) }
+        if bindSummary.yybUnbound > 0 { bindChips.append(("应用宝待绑", "\(bindSummary.yybUnbound)")) }
+        let bindHint: String? = {
+            if bindSummary.pairs > 0 { return "双绑后可继续提交 wxid 或应用宝 openid 获取 CK" }
+            if !snapshot.wxDevices.isEmpty || !yybAccounts.isEmpty { return "建立双绑后，可继续提交 wxid 或应用宝 openid" }
+            return nil
+        }()
+        let bindTitle = UILabel()
+        bindTitle.text = "协议双绑"
+        bindTitle.font = .systemFont(ofSize: 12, weight: .bold)
+        protocolSectionStack.addArrangedSubview(bindTitle)
+        let bindChipRow = UIStackView()
+        bindChipRow.axis = .horizontal
+        bindChipRow.spacing = 6
+        for (index, chip) in bindChips.enumerated() {
+            bindChipRow.addArrangedSubview(makeProtocolChip(label: chip.0, value: chip.1, accent: index == 0))
+        }
+        protocolSectionStack.addArrangedSubview(bindChipRow)
+        if let bindHint, !bindHint.isEmpty {
+            let hintLabel = UILabel()
+            hintLabel.text = bindHint
+            hintLabel.font = .systemFont(ofSize: 11)
+            hintLabel.textColor = .tertiaryLabel
+            hintLabel.numberOfLines = 0
+            protocolSectionStack.addArrangedSubview(hintLabel)
+        }
+    }
+
+    private func makeProtocolInfoBlock(
+        title: String,
+        hint: String?,
+        chips: [(String, String)],
+        accentIndex: Int
+    ) -> UIStackView {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 4
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = .systemFont(ofSize: 12, weight: .bold)
+        stack.addArrangedSubview(titleLabel)
+        let chipRow = UIStackView()
+        chipRow.axis = .horizontal
+        chipRow.spacing = 6
+        for (index, chip) in chips.enumerated() {
+            chipRow.addArrangedSubview(makeProtocolChip(label: chip.0, value: chip.1, accent: index == accentIndex))
+        }
+        stack.addArrangedSubview(chipRow)
+        if let hint, !hint.isEmpty {
+            let hintLabel = UILabel()
+            hintLabel.text = hint
+            hintLabel.font = .systemFont(ofSize: 10)
+            hintLabel.textColor = .tertiaryLabel
+            hintLabel.numberOfLines = 0
+            stack.addArrangedSubview(hintLabel)
+        }
+        return stack
+    }
+
+    private struct BindSummary {
+        let pairs: Int
+        let wxUnbound: Int
+        let yybUnbound: Int
+    }
+
+    private func computeBindSummary(devices: [PortalWxDevice], accounts: [PortalYybAccount], bindings: [PortalProtocolBinding]) -> BindSummary {
+        let boundWx = Set(bindings.compactMap { $0.wxWxid?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+        let boundOid = Set(bindings.compactMap { $0.yybOpenId?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+        let wxUnbound = devices.filter {
+            let wx = $0.wxid?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return !wx.isEmpty && !boundWx.contains(wx)
+        }.count
+        let yybUnbound = accounts.filter {
+            let oid = $0.openid?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return !oid.isEmpty && !boundOid.contains(oid)
+        }.count
+        return BindSummary(pairs: bindings.count, wxUnbound: wxUnbound, yybUnbound: yybUnbound)
+    }
+
+    private func isYybAlive(_ status: String?) -> Bool {
+        let st = (status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return st == "alive" || st == "online"
+    }
+
+    private func makeProtocolChip(label: String, value: String, accent: Bool) -> UILabel {
+        let chip = UILabel()
+        chip.text = "  \(label) \(value)  "
+        chip.font = .systemFont(ofSize: 11, weight: .bold)
+        chip.textColor = accent ? .systemGreen : .secondaryLabel
+        chip.backgroundColor = accent ? UIColor.systemGreen.withAlphaComponent(0.12) : UIColor.secondarySystemGroupedBackground
+        chip.layer.cornerRadius = 10
+        chip.clipsToBounds = true
+        return chip
+    }
 }
 
 
 final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDelegate, InnerTabSwipeHandling {
+    static var pendingSegment: Int?
+    static var pendingProtocolSubIndex: Int?
+    static var skipNextProjectsReset = false
+
+    static func prepareOpenProtocolAccess(subIndex: Int = 0) {
+        skipNextProjectsReset = true
+        pendingSegment = 3
+        pendingProtocolSubIndex = subIndex
+    }
+
     private let segmented = UISegmentedControl(items: ["活动中心", "我的项目", "项目抢兑", "协议接入"])
     private let container = UIView()
     private let searchBar = UISearchBar()
@@ -1269,7 +1475,35 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
+        applyPendingNavigationIfNeeded()
         refreshVisibleList()
+    }
+
+    private func applyPendingNavigationIfNeeded() {
+        guard let segment = Self.pendingSegment else {
+            if let sub = Self.pendingProtocolSubIndex {
+                Self.pendingProtocolSubIndex = nil
+                protocolVC.openSubTab(sub)
+            }
+            return
+        }
+        Self.pendingSegment = nil
+        let sub = Self.pendingProtocolSubIndex
+        Self.pendingProtocolSubIndex = nil
+        if segmented.selectedSegmentIndex != segment {
+            segmented.selectedSegmentIndex = segment
+            switchTo(index: segment)
+        }
+        if let sub {
+            protocolVC.openSubTab(sub)
+        }
+    }
+
+    func openProtocolAccess(subIndex: Int) {
+        Self.pendingProtocolSubIndex = subIndex
+        Self.pendingSegment = 3
+        guard isViewLoaded else { return }
+        applyPendingNavigationIfNeeded()
     }
 
     private func refreshVisibleList() {
@@ -1287,6 +1521,10 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
 
     override func resetToInitialState() {
         guard isViewLoaded else { return }
+        if Self.skipNextProjectsReset || Self.pendingSegment == 3 {
+            applyPendingNavigationIfNeeded()
+            return
+        }
         segmented.selectedSegmentIndex = 0
         searchBar.text = nil
         searchBar.resignFirstResponder()
@@ -2791,6 +3029,13 @@ final class ProtocolAccessViewController: BaseNativeViewController {
             btn.titleLabel?.font = .systemFont(ofSize: 13, weight: active ? .bold : .medium)
             btn.backgroundColor = active ? UIColor.systemBlue.withAlphaComponent(0.10) : .clear
         }
+    }
+
+    func openSubTab(_ index: Int) {
+        let idx = max(0, min(2, index))
+        selectedIndex = idx
+        refreshSubTabs()
+        switchTo(index: idx)
     }
 
     @objc private func subTabTapped(_ sender: UIButton) {
