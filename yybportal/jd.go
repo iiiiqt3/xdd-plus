@@ -240,7 +240,7 @@ func PortalJdYybRefresh(userNumber int, openid string, riskConfirmed bool) (*Por
 
 func portalYybJdRefreshOne(userNumber int, openid string, riskConfirmed bool) (detail string, needRisk bool, riskURL, riskMsg string, ok bool) {
 	if pending, exists := portalYybJdRisk[userNumber]; exists && pending.openid == openid && !riskConfirmed {
-		return "请先完成短信验证后再继续", true, pending.riskUrl, pending.riskMsg, false
+		delete(portalYybJdRisk, userNumber)
 	}
 
 	ptKey, ptPin, err := yybJdRefreshCK(openid)
