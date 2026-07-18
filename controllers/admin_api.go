@@ -253,14 +253,7 @@ func (c *AdminApiController) TestContainer() {
 		return
 	}
 
-	parsed, err := models.ValidateOutboundHTTPURL(req.Address)
-	if err != nil {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
-		c.ServeJSON()
-		return
-	}
-
-	url := strings.TrimSuffix(parsed.String(), "/") + "/open/auth/token?client_id=" + req.Cid + "&client_secret=" + req.Secret
+	url := strings.TrimSuffix(req.Address, "/") + "/open/auth/token?client_id=" + req.Cid + "&client_secret=" + req.Secret
 	resp, err := http.Get(url)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "连接失败: " + err.Error()}

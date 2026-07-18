@@ -138,7 +138,7 @@ func (c *LoginController) GetQrcode1() {
 	}
 	body, err1 := ioutil.ReadAll(rsp.Body)
 	if err1 == nil {
-		fmt.Println(models.RedactSensitiveLog(string(body)))
+		fmt.Println(string(body))
 	}
 	s := &models.QQuery{}
 	if len(body) > 0 {
@@ -762,7 +762,7 @@ func (c *LoginController) SMSLogin() {
 	cookie := c.GetString("ck")
 	qq := c.GetString("qq")
 	token := c.GetString("token")
-	models.App().Infof("smslogin request qq=%s", qq)
+	models.App().Infof("%s", cookie)
 
 	if token == models.Config.ApiToken || models.Config.ApiToken == "" {
 		ptKey := FetchJdCookieValue("pt_key", cookie)
@@ -990,7 +990,7 @@ func truncateStr(s string, maxLen int) string {
 func (c *LoginController) WskeyLogin() {
 	cookie := string(c.Ctx.Input.RequestBody)
 	cookie, _ = url.QueryUnescape(cookie)
-	models.App().Infof("wskeylogin request received")
+	models.App().Infof("%s", cookie)
 	Wskey := FetchJdCookieValue("wskey", cookie)
 	ptPin := FetchJdCookieValue("pin", cookie)
 	ptPin = url.QueryEscape(ptPin)

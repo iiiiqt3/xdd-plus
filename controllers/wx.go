@@ -177,7 +177,7 @@ type QxAgreeFriend struct {
 // HandleWxMessage 处理微信消息入口，根据消息事件类型分发到不同的处理逻辑
 func (c *WxController) HandleWxMessage() {
 	data := c.Ctx.Input.RequestBody
-	models.Bot().Infof("微信Hook消息: len=%d", len(data))
+	models.Bot().Infof("微信Hook原始消息: %s", string(data))
 
 	if models.Config.Wx.Model == "wechat08" {
 		c.HandleWechat08Message(data)
