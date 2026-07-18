@@ -927,7 +927,12 @@ final class HomeDashboardViewController: BaseNativeViewController {
     private let refreshControl = UIRefreshControl()
     private let stack = UIStackView()
     private let summaryLabel = UILabel()
-    private let userInfoLabel = UILabel()
+    private let userIdLabel = UILabel()
+    private let avatarWrap = UIView()
+    private let avatarLabel = UILabel()
+    private let coinValueLabel = UILabel()
+    private let coinTitleLabel = UILabel()
+    private let protocolCard = UIView()
     private let protocolSectionStack = UIStackView()
     private var cards: [InfoCardView] = []
     private var notificationSection: UIView?
@@ -1068,25 +1073,80 @@ final class HomeDashboardViewController: BaseNativeViewController {
 
         let headerCard = UIView()
         headerCard.applyCardStyle(cornerRadius: 22)
-        protocolSectionStack.axis = .vertical
-        protocolSectionStack.spacing = 6
-        let headerStack = UIStackView(arrangedSubviews: [summaryLabel, userInfoLabel, protocolSectionStack])
-        headerStack.axis = .vertical
-        headerStack.spacing = 8
-        headerStack.translatesAutoresizingMaskIntoConstraints = false
-        headerCard.addSubview(headerStack)
+        headerCard.backgroundColor = .secondarySystemGroupedBackground
+
+        avatarWrap.backgroundColor = UIColor(red: 37 / 255, green: 99 / 255, blue: 235 / 255, alpha: 1)
+        avatarWrap.layer.cornerRadius = 28
+        avatarWrap.translatesAutoresizingMaskIntoConstraints = false
+        avatarLabel.font = .systemFont(ofSize: 22, weight: .bold)
+        avatarLabel.textColor = .white
+        avatarLabel.textAlignment = .center
+        avatarLabel.translatesAutoresizingMaskIntoConstraints = false
+        avatarWrap.addSubview(avatarLabel)
+
+        summaryLabel.font = UIFont.systemFont(ofSize: 20, weight: .bold)
+        summaryLabel.numberOfLines = 1
+        userIdLabel.font = UIFont.systemFont(ofSize: 13)
+        userIdLabel.textColor = .secondaryLabel
+        userIdLabel.numberOfLines = 1
+        let nameStack = UIStackView(arrangedSubviews: [summaryLabel, userIdLabel])
+        nameStack.axis = .vertical
+        nameStack.spacing = 6
+        nameStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        let coinWrap = UIView()
+        coinWrap.backgroundColor = UIColor(red: 37 / 255, green: 99 / 255, blue: 235 / 255, alpha: 0.1)
+        coinWrap.layer.cornerRadius = 14
+        coinWrap.translatesAutoresizingMaskIntoConstraints = false
+        coinValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
+        coinValueLabel.textColor = UIColor(red: 37 / 255, green: 99 / 255, blue: 235 / 255, alpha: 1)
+        coinValueLabel.textAlignment = .center
+        coinValueLabel.text = "-"
+        coinTitleLabel.text = "积分"
+        coinTitleLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        coinTitleLabel.textColor = .secondaryLabel
+        coinTitleLabel.textAlignment = .center
+        let coinStack = UIStackView(arrangedSubviews: [coinValueLabel, coinTitleLabel])
+        coinStack.axis = .vertical
+        coinStack.spacing = 2
+        coinStack.translatesAutoresizingMaskIntoConstraints = false
+        coinWrap.addSubview(coinStack)
+
+        let profileRow = UIStackView(arrangedSubviews: [avatarWrap, nameStack, coinWrap])
+        profileRow.axis = .horizontal
+        profileRow.alignment = .center
+        profileRow.spacing = 14
+        profileRow.translatesAutoresizingMaskIntoConstraints = false
+        headerCard.addSubview(profileRow)
         NSLayoutConstraint.activate([
-            headerStack.topAnchor.constraint(equalTo: headerCard.topAnchor, constant: 18),
-            headerStack.leadingAnchor.constraint(equalTo: headerCard.leadingAnchor, constant: 18),
-            headerStack.trailingAnchor.constraint(equalTo: headerCard.trailingAnchor, constant: -18),
-            headerStack.bottomAnchor.constraint(equalTo: headerCard.bottomAnchor, constant: -18)
+            avatarWrap.widthAnchor.constraint(equalToConstant: 56),
+            avatarWrap.heightAnchor.constraint(equalToConstant: 56),
+            avatarLabel.centerXAnchor.constraint(equalTo: avatarWrap.centerXAnchor),
+            avatarLabel.centerYAnchor.constraint(equalTo: avatarWrap.centerYAnchor),
+            coinWrap.widthAnchor.constraint(greaterThanOrEqualToConstant: 72),
+            coinStack.topAnchor.constraint(equalTo: coinWrap.topAnchor, constant: 10),
+            coinStack.leadingAnchor.constraint(equalTo: coinWrap.leadingAnchor, constant: 12),
+            coinStack.trailingAnchor.constraint(equalTo: coinWrap.trailingAnchor, constant: -12),
+            coinStack.bottomAnchor.constraint(equalTo: coinWrap.bottomAnchor, constant: -10),
+            profileRow.topAnchor.constraint(equalTo: headerCard.topAnchor, constant: 18),
+            profileRow.leadingAnchor.constraint(equalTo: headerCard.leadingAnchor, constant: 18),
+            profileRow.trailingAnchor.constraint(equalTo: headerCard.trailingAnchor, constant: -18),
+            profileRow.bottomAnchor.constraint(equalTo: headerCard.bottomAnchor, constant: -18),
         ])
-        summaryLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
-        summaryLabel.numberOfLines = 0
-        userInfoLabel.font = UIFont.systemFont(ofSize: 13)
-        userInfoLabel.textColor = .secondaryLabel
-        userInfoLabel.numberOfLines = 0
         stack.addArrangedSubview(headerCard)
+
+        protocolCard.applyCardStyle(cornerRadius: 22)
+        protocolSectionStack.axis = .vertical
+        protocolSectionStack.spacing = 12
+        protocolSectionStack.translatesAutoresizingMaskIntoConstraints = false
+        protocolCard.addSubview(protocolSectionStack)
+        NSLayoutConstraint.activate([
+            protocolSectionStack.topAnchor.constraint(equalTo: protocolCard.topAnchor, constant: 18),
+            protocolSectionStack.leadingAnchor.constraint(equalTo: protocolCard.leadingAnchor, constant: 18),
+            protocolSectionStack.trailingAnchor.constraint(equalTo: protocolCard.trailingAnchor, constant: -18),
+            protocolSectionStack.bottomAnchor.constraint(equalTo: protocolCard.bottomAnchor, constant: -18),
+        ])
+        stack.addArrangedSubview(protocolCard)
 
         let grid = UIStackView()
         grid.axis = .vertical
@@ -1165,7 +1225,10 @@ final class HomeDashboardViewController: BaseNativeViewController {
     @objc private func reloadData() {
         guard AppSessionStore.shared.isAuthenticated else {
             summaryLabel.text = "请先登录用户中心"
-            userInfoLabel.text = "登录后可查看积分、项目、微信协议等信息。"
+            userIdLabel.text = "登录后可查看积分、项目、微信协议等信息"
+            avatarLabel.text = "?"
+            coinValueLabel.text = "-"
+            protocolSectionStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
             cards.forEach { $0.updateValue("-") }
             return
         }
@@ -1254,8 +1317,10 @@ final class HomeDashboardViewController: BaseNativeViewController {
     private func render(_ snapshot: PortalHomeSnapshot) {
         let dashboard = snapshot.dashboard
         let displayName = dashboard.nickname ?? dashboard.username ?? "用户"
-        summaryLabel.text = "编号：\(dashboard.number)  ·  \(displayName)"
-        userInfoLabel.text = "积分：\(dashboard.coin)  ·  登录：\(dashboard.lastLoginAt ?? "-")"
+        summaryLabel.text = displayName
+        userIdLabel.text = "编号 \(dashboard.number)"
+        avatarLabel.text = String(displayName.prefix(1)).uppercased()
+        coinValueLabel.text = "\(dashboard.coin)"
         renderProtocolSection(snapshot)
         cards[0].updateValue("\(dashboard.expiringCount)")
         cards[1].updateValue("\(dashboard.activeCount)")
@@ -1269,16 +1334,42 @@ final class HomeDashboardViewController: BaseNativeViewController {
         let titleRow = UIStackView()
         titleRow.axis = .horizontal
         titleRow.alignment = .center
+        titleRow.spacing = 10
+        let iconWrap = UIView()
+        iconWrap.backgroundColor = UIColor(red: 37 / 255, green: 99 / 255, blue: 235 / 255, alpha: 0.12)
+        iconWrap.layer.cornerRadius = 18
+        iconWrap.translatesAutoresizingMaskIntoConstraints = false
+        let iconLabel = UILabel()
+        iconLabel.text = "🔗"
+        iconLabel.font = .systemFont(ofSize: 16)
+        iconLabel.translatesAutoresizingMaskIntoConstraints = false
+        iconWrap.addSubview(iconLabel)
+        let titleCol = UIStackView()
+        titleCol.axis = .vertical
+        titleCol.spacing = 2
         let titleLabel = UILabel()
-        titleLabel.text = "🔗 协议接入"
-        titleLabel.font = .systemFont(ofSize: 14, weight: .bold)
+        titleLabel.text = "协议接入"
+        titleLabel.font = .systemFont(ofSize: 16, weight: .bold)
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "微信协议 · 应用宝协议 · 双绑管理"
+        subtitleLabel.font = .systemFont(ofSize: 12)
+        subtitleLabel.textColor = .secondaryLabel
+        titleCol.addArrangedSubview(titleLabel)
+        titleCol.addArrangedSubview(subtitleLabel)
         let chevron = UILabel()
         chevron.text = "›"
-        chevron.font = .systemFont(ofSize: 18, weight: .bold)
-        chevron.textColor = .systemBlue
-        titleRow.addArrangedSubview(titleLabel)
+        chevron.font = .systemFont(ofSize: 20, weight: .bold)
+        chevron.textColor = .tertiaryLabel
+        titleRow.addArrangedSubview(iconWrap)
+        titleRow.addArrangedSubview(titleCol)
         titleRow.addArrangedSubview(UIView())
         titleRow.addArrangedSubview(chevron)
+        NSLayoutConstraint.activate([
+            iconWrap.widthAnchor.constraint(equalToConstant: 36),
+            iconWrap.heightAnchor.constraint(equalToConstant: 36),
+            iconLabel.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
+            iconLabel.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
+        ])
         let titleButton = UIButton(type: .system)
         titleButton.addAction(UIAction { [weak self] _ in
             (self?.tabBarController as? RootTabBarController)?.openProjectsProtocol(subIndex: 0)
@@ -1293,6 +1384,12 @@ final class HomeDashboardViewController: BaseNativeViewController {
         ])
         protocolSectionStack.addArrangedSubview(titleRow)
 
+        let divider = UIView()
+        divider.backgroundColor = UIColor.separator.withAlphaComponent(0.35)
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        protocolSectionStack.addArrangedSubview(divider)
+
         let yyb = snapshot.yybStatus
         let yybAccounts = yyb?.accounts ?? []
         let wxHint = snapshot.wxDevices.isEmpty ? "暂无微信协议设备" : nil
@@ -1306,53 +1403,67 @@ final class HomeDashboardViewController: BaseNativeViewController {
             if yybAccounts.isEmpty { return "暂无应用宝账号" }
             return nil
         }()
-        let yybChips: [(String, String)] = (yyb?.enabled == true && yyb?.ready == true)
-            ? [
-                ("共", "\(yybAccounts.count)"),
-                ("可用", "\(yybAccounts.filter { isYybAlive($0.status) }.count)"),
-            ]
-            : [("共", "0"), ("可用", "0")]
         let infoRow = UIStackView()
         infoRow.axis = .horizontal
-        infoRow.spacing = 8
+        infoRow.spacing = 10
         infoRow.distribution = .fillEqually
-        infoRow.addArrangedSubview(makeProtocolInfoBlock(
-            title: "📱 微信协议",
-            hint: wxHint,
-            chips: [
-                ("设备", "\(snapshot.wxDevices.count)"),
-                ("在线", "\(snapshot.wxDevices.filter { $0.online == true }.count)"),
-            ],
-            accentIndex: 1
+        infoRow.addArrangedSubview(makeProtocolTile(
+            icon: "message.fill",
+            title: "微信协议",
+            primaryValue: "\(snapshot.wxDevices.count)",
+            primaryLabel: "设备",
+            secondaryValue: "\(snapshot.wxDevices.filter { $0.online == true }.count)",
+            secondaryLabel: "在线",
+            tint: UIColor.systemGreen,
+            hint: wxHint
         ))
-        infoRow.addArrangedSubview(makeProtocolInfoBlock(
-            title: "📦 应用宝协议",
-            hint: yybHint,
-            chips: yybChips,
-            accentIndex: 1
+        infoRow.addArrangedSubview(makeProtocolTile(
+            icon: "shippingbox.fill",
+            title: "应用宝协议",
+            primaryValue: (yyb?.enabled == true && yyb?.ready == true) ? "\(yybAccounts.count)" : "0",
+            primaryLabel: "账号",
+            secondaryValue: (yyb?.enabled == true && yyb?.ready == true) ? "\(yybAccounts.filter { isYybAlive($0.status) }.count)" : "0",
+            secondaryLabel: "可用",
+            tint: UIColor(red: 37 / 255, green: 99 / 255, blue: 235 / 255, alpha: 1),
+            hint: yybHint
         ))
         protocolSectionStack.addArrangedSubview(infoRow)
 
         let bindSummary = computeBindSummary(devices: snapshot.wxDevices, accounts: yybAccounts, bindings: snapshot.protocolBindings)
-        var bindChips: [(String, String)] = [("已绑", "\(bindSummary.pairs) 对")]
-        if bindSummary.wxUnbound > 0 { bindChips.append(("微信待绑", "\(bindSummary.wxUnbound)")) }
-        if bindSummary.yybUnbound > 0 { bindChips.append(("应用宝待绑", "\(bindSummary.yybUnbound)")) }
+        let bindBar = UIView()
+        bindBar.backgroundColor = UIColor.secondarySystemGroupedBackground
+        bindBar.layer.cornerRadius = 12
+        bindBar.translatesAutoresizingMaskIntoConstraints = false
+        let bindTitle = UILabel()
+        bindTitle.text = "协议双绑"
+        bindTitle.font = .systemFont(ofSize: 12, weight: .bold)
+        bindTitle.translatesAutoresizingMaskIntoConstraints = false
+        let bindValue = UILabel()
+        bindValue.font = .systemFont(ofSize: 13, weight: .semibold)
+        bindValue.textColor = bindSummary.pairs > 0 ? .systemGreen : .secondaryLabel
+        bindValue.translatesAutoresizingMaskIntoConstraints = false
+        var bindParts = ["已绑 \(bindSummary.pairs) 对"]
+        if bindSummary.wxUnbound > 0 { bindParts.append("微信待绑 \(bindSummary.wxUnbound)") }
+        if bindSummary.yybUnbound > 0 { bindParts.append("应用宝待绑 \(bindSummary.yybUnbound)") }
+        bindValue.text = bindParts.joined(separator: "  ·  ")
+        bindBar.addSubview(bindTitle)
+        bindBar.addSubview(bindValue)
+        NSLayoutConstraint.activate([
+            bindTitle.topAnchor.constraint(equalTo: bindBar.topAnchor, constant: 10),
+            bindTitle.leadingAnchor.constraint(equalTo: bindBar.leadingAnchor, constant: 12),
+            bindTitle.trailingAnchor.constraint(equalTo: bindBar.trailingAnchor, constant: -12),
+            bindValue.topAnchor.constraint(equalTo: bindTitle.bottomAnchor, constant: 4),
+            bindValue.leadingAnchor.constraint(equalTo: bindBar.leadingAnchor, constant: 12),
+            bindValue.trailingAnchor.constraint(equalTo: bindBar.trailingAnchor, constant: -12),
+            bindValue.bottomAnchor.constraint(equalTo: bindBar.bottomAnchor, constant: -10),
+        ])
+        protocolSectionStack.addArrangedSubview(bindBar)
+
         let bindHint: String? = {
             if bindSummary.pairs > 0 { return "双绑后可继续提交 wxid 或应用宝 openid 获取 CK" }
             if !snapshot.wxDevices.isEmpty || !yybAccounts.isEmpty { return "建立双绑后，可继续提交 wxid 或应用宝 openid" }
             return nil
         }()
-        let bindTitle = UILabel()
-        bindTitle.text = "协议双绑"
-        bindTitle.font = .systemFont(ofSize: 12, weight: .bold)
-        protocolSectionStack.addArrangedSubview(bindTitle)
-        let bindChipRow = UIStackView()
-        bindChipRow.axis = .horizontal
-        bindChipRow.spacing = 6
-        for (index, chip) in bindChips.enumerated() {
-            bindChipRow.addArrangedSubview(makeProtocolChip(label: chip.0, value: chip.1, accent: index == 0))
-        }
-        protocolSectionStack.addArrangedSubview(bindChipRow)
         if let bindHint, !bindHint.isEmpty {
             let hintLabel = UILabel()
             hintLabel.text = bindHint
@@ -1361,6 +1472,79 @@ final class HomeDashboardViewController: BaseNativeViewController {
             hintLabel.numberOfLines = 0
             protocolSectionStack.addArrangedSubview(hintLabel)
         }
+    }
+
+    private func makeProtocolTile(
+        icon: String,
+        title: String,
+        primaryValue: String,
+        primaryLabel: String,
+        secondaryValue: String,
+        secondaryLabel: String,
+        tint: UIColor,
+        hint: String?
+    ) -> UIView {
+        let wrap = UIView()
+        wrap.backgroundColor = tint.withAlphaComponent(0.06)
+        wrap.layer.cornerRadius = 14
+        wrap.layer.borderWidth = 1
+        wrap.layer.borderColor = tint.withAlphaComponent(0.12).cgColor
+        wrap.translatesAutoresizingMaskIntoConstraints = false
+
+        let iconView = UIImageView(image: UIImage(systemName: icon))
+        iconView.tintColor = tint
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = .systemFont(ofSize: 12, weight: .bold)
+        titleLabel.textColor = .label
+
+        let primaryLabelView = UILabel()
+        primaryLabelView.text = primaryLabel
+        primaryLabelView.font = .systemFont(ofSize: 11)
+        primaryLabelView.textColor = .secondaryLabel
+
+        let primaryValueView = UILabel()
+        primaryValueView.text = primaryValue
+        primaryValueView.font = .systemFont(ofSize: 22, weight: .bold)
+        primaryValueView.textColor = tint
+
+        let secondaryLabelView = UILabel()
+        secondaryLabelView.text = "\(secondaryLabel) \(secondaryValue)"
+        secondaryLabelView.font = .systemFont(ofSize: 11, weight: .medium)
+        secondaryLabelView.textColor = .secondaryLabel
+
+        let topRow = UIStackView(arrangedSubviews: [iconView, titleLabel, UIView()])
+        topRow.axis = .horizontal
+        topRow.alignment = .center
+        topRow.spacing = 6
+        topRow.translatesAutoresizingMaskIntoConstraints = false
+
+        let stack = UIStackView(arrangedSubviews: [topRow, primaryValueView, primaryLabelView, secondaryLabelView])
+        stack.axis = .vertical
+        stack.spacing = 2
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        wrap.addSubview(stack)
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 16),
+            iconView.heightAnchor.constraint(equalToConstant: 16),
+            stack.topAnchor.constraint(equalTo: wrap.topAnchor, constant: 12),
+            stack.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            stack.bottomAnchor.constraint(equalTo: wrap.bottomAnchor, constant: -12),
+            wrap.heightAnchor.constraint(greaterThanOrEqualToConstant: 108),
+        ])
+        if let hint, !hint.isEmpty {
+            let hintLabel = UILabel()
+            hintLabel.text = hint
+            hintLabel.font = .systemFont(ofSize: 10)
+            hintLabel.textColor = .tertiaryLabel
+            hintLabel.numberOfLines = 2
+            stack.addArrangedSubview(hintLabel)
+        }
+        return wrap
     }
 
     private func makeProtocolInfoBlock(
@@ -1479,7 +1663,7 @@ final class ProjectsRootViewController: BaseNativeViewController, UISearchBarDel
         refreshVisibleList()
     }
 
-    private func applyPendingNavigationIfNeeded() {
+    func applyPendingNavigationIfNeeded() {
         guard let segment = Self.pendingSegment else {
             if let sub = Self.pendingProtocolSubIndex {
                 Self.pendingProtocolSubIndex = nil

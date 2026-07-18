@@ -241,6 +241,24 @@ struct PortalJdWxRefreshResult: Decodable {
     let needRiskVerify: Bool?
     let riskUrl: String?
     let riskMsg: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case success, fail, details, needRiskVerify, riskUrl, riskMsg
+        case riskUrlSnake = "risk_url"
+        case jmpUrl = "jmp_url"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        success = try container.decodeIfPresent(Int.self, forKey: .success)
+        fail = try container.decodeIfPresent(Int.self, forKey: .fail)
+        details = try container.decodeIfPresent([String].self, forKey: .details)
+        needRiskVerify = try container.decodeIfPresent(Bool.self, forKey: .needRiskVerify)
+        riskMsg = try container.decodeIfPresent(String.self, forKey: .riskMsg)
+        riskUrl = try container.decodeIfPresent(String.self, forKey: .riskUrl)
+            ?? container.decodeIfPresent(String.self, forKey: .riskUrlSnake)
+            ?? container.decodeIfPresent(String.self, forKey: .jmpUrl)
+    }
 }
 
 struct PortalJdYybAccount: Decodable {

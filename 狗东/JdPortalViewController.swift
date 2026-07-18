@@ -17,6 +17,7 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
     private let loginPanel = UIView()
+    private let loginScrollView = UIScrollView()
     private let headerRow = UIView()
     private let mainSegmented = UISegmentedControl(items: ["查询", "登录", "京东任务"])
     private let loginTabRow = UIStackView()
@@ -63,12 +64,16 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     private let wxDeviceGridStack = UIStackView()
     private let wxRiskStack = UIStackView()
     private let wxRiskLabel = UILabel()
-    private let wxRiskLink = UILabel()
+    private let wxRiskUrlLabel = UILabel()
+    private let wxOpenLinkBtn = UIButton(type: .system)
+    private let wxResultCard = UIView()
     private let wxResultLabel = UILabel()
     private let yybAccountGridStack = UIStackView()
     private let yybRiskStack = UIStackView()
     private let yybRiskLabel = UILabel()
-    private let yybRiskLink = UILabel()
+    private let yybRiskUrlLabel = UILabel()
+    private let yybOpenLinkBtn = UIButton(type: .system)
+    private let yybResultCard = UIView()
     private let yybResultLabel = UILabel()
     private var yybRiskUrl: String?
 
@@ -185,7 +190,12 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             $0.translatesAutoresizingMaskIntoConstraints = false
         }
 
-        loginPanel.addSubview(loginContentStack)
+        loginScrollView.translatesAutoresizingMaskIntoConstraints = false
+        loginScrollView.alwaysBounceVertical = true
+        loginScrollView.keyboardDismissMode = .interactive
+        loginScrollView.showsVerticalScrollIndicator = true
+        loginPanel.addSubview(loginScrollView)
+        loginScrollView.addSubview(loginContentStack)
         stack.addArrangedSubview(queryContentStack)
         stack.addArrangedSubview(taskContentStack)
 
@@ -223,10 +233,16 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             loginPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             loginPanel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
 
-            loginContentStack.topAnchor.constraint(equalTo: loginPanel.topAnchor),
-            loginContentStack.leadingAnchor.constraint(equalTo: loginPanel.leadingAnchor),
-            loginContentStack.trailingAnchor.constraint(equalTo: loginPanel.trailingAnchor),
-            loginContentStack.bottomAnchor.constraint(lessThanOrEqualTo: loginPanel.bottomAnchor),
+            loginScrollView.topAnchor.constraint(equalTo: loginPanel.topAnchor),
+            loginScrollView.leadingAnchor.constraint(equalTo: loginPanel.leadingAnchor),
+            loginScrollView.trailingAnchor.constraint(equalTo: loginPanel.trailingAnchor),
+            loginScrollView.bottomAnchor.constraint(equalTo: loginPanel.bottomAnchor),
+
+            loginContentStack.topAnchor.constraint(equalTo: loginScrollView.contentLayoutGuide.topAnchor),
+            loginContentStack.leadingAnchor.constraint(equalTo: loginScrollView.frameLayoutGuide.leadingAnchor),
+            loginContentStack.trailingAnchor.constraint(equalTo: loginScrollView.frameLayoutGuide.trailingAnchor),
+            loginContentStack.bottomAnchor.constraint(equalTo: loginScrollView.contentLayoutGuide.bottomAnchor),
+            loginContentStack.widthAnchor.constraint(equalTo: loginScrollView.frameLayoutGuide.widthAnchor),
 
             taskStickyBar.topAnchor.constraint(equalTo: mainSegmented.bottomAnchor, constant: 8),
             taskStickyBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
@@ -747,25 +763,26 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         ])
         loginContentStack.addArrangedSubview(refreshBar)
 
-        yybAccountGridStack.axis = .vertical
-        yybAccountGridStack.spacing = 10
-        yybAccountGridStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        yybAccountGridStack.addArrangedSubview(placeholderLabel("加载中..."))
-        loginContentStack.addArrangedSubview(yybAccountGridStack)
-
         yybRiskStack.axis = .vertical
         yybRiskStack.spacing = 8
+        yybRiskStack.isLayoutMarginsRelativeArrangement = true
+        yybRiskStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         yybRiskStack.isHidden = true
+        yybRiskStack.backgroundColor = UIColor.systemOrange.withAlphaComponent(0.08)
+        yybRiskStack.layer.cornerRadius = 10
+        yybRiskStack.layer.borderWidth = 1
+        yybRiskStack.layer.borderColor = UIColor.systemOrange.withAlphaComponent(0.22).cgColor
         yybRiskStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         yybRiskLabel.numberOfLines = 0
+        yybRiskLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        yybRiskLabel.textColor = UIColor(red: 217 / 255, green: 119 / 255, blue: 6 / 255, alpha: 1)
         yybRiskStack.addArrangedSubview(yybRiskLabel)
-        yybRiskLink.numberOfLines = 0
-        yybRiskLink.font = .systemFont(ofSize: 13)
-        yybRiskLink.textColor = .systemBlue
-        yybRiskLink.isUserInteractionEnabled = true
-        yybRiskLink.gestureRecognizers?.forEach { yybRiskLink.removeGestureRecognizer($0) }
-        yybRiskLink.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openYybRiskUrl)))
-        yybRiskStack.addArrangedSubview(yybRiskLink)
+        configureRiskUrlLabel(yybRiskUrlLabel)
+        yybRiskUrlLabel.gestureRecognizers?.forEach { yybRiskUrlLabel.removeGestureRecognizer($0) }
+        yybRiskUrlLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openYybRiskUrl)))
+        yybRiskStack.addArrangedSubview(yybRiskUrlLabel)
+        configureOpenLinkButton(yybOpenLinkBtn, action: #selector(openYybRiskUrl))
+        yybRiskStack.addArrangedSubview(yybOpenLinkBtn)
         var riskBtn: UIButton!
         riskBtn = compactButton("验证完成，继续刷新", color: .systemOrange) { [weak self] in
             self?.continueYybRisk(button: riskBtn)
@@ -773,11 +790,14 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         yybRiskStack.addArrangedSubview(riskBtn)
         loginContentStack.addArrangedSubview(yybRiskStack)
 
-        yybResultLabel.numberOfLines = 0
-        yybResultLabel.font = .systemFont(ofSize: 13)
-        yybResultLabel.textColor = .secondaryLabel
-        yybResultLabel.isHidden = true
-        loginContentStack.addArrangedSubview(yybResultLabel)
+        configureResultCard(yybResultCard, label: yybResultLabel)
+        loginContentStack.addArrangedSubview(yybResultCard)
+
+        yybAccountGridStack.axis = .vertical
+        yybAccountGridStack.spacing = 10
+        yybAccountGridStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        yybAccountGridStack.addArrangedSubview(placeholderLabel("加载中..."))
+        loginContentStack.addArrangedSubview(yybAccountGridStack)
 
         loadYybAccounts()
     }
@@ -910,19 +930,19 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     }
 
     private func showYybRefreshResult(_ data: PortalJdWxRefreshResult) {
-        if data.needRiskVerify == true {
+        if needsRiskVerify(data) {
             yybRiskStack.isHidden = false
             yybRiskLabel.text = data.riskMsg ?? "账号需要短信验证，请打开链接完成验证"
-            yybRiskUrl = data.riskUrl
-            yybRiskLink.text = data.riskUrl ?? "验证链接"
-            yybRiskLink.isHidden = (data.riskUrl ?? "").isEmpty
-            yybResultLabel.isHidden = true
+            let resolvedUrl = resolveJdRiskUrl(from: data)
+            yybRiskUrl = resolvedUrl
+            applyRiskLinkText(to: yybRiskUrlLabel, url: resolvedUrl)
+            yybOpenLinkBtn.isHidden = resolvedUrl?.isEmpty != false
+            yybResultCard.isHidden = true
+            scrollLoginFeedbackIntoView(yybRiskStack)
         } else {
             yybRiskStack.isHidden = true
-            let details = data.details?.joined(separator: "\n") ?? ""
-            let summary = "成功 \(data.success ?? 0)，失败 \(data.fail ?? 0)"
-            yybResultLabel.text = details.isEmpty ? summary : "\(summary)\n\(details)"
-            yybResultLabel.isHidden = false
+            applyRefreshResultCard(yybResultCard, label: yybResultLabel, data: data)
+            scrollLoginFeedbackIntoView(yybResultCard)
         }
     }
 
@@ -931,6 +951,9 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             showMessage("账号 OpenID 无效")
             return
         }
+        yybRiskStack.isHidden = true
+        yybRiskUrl = nil
+        yybOpenLinkBtn.isHidden = true
         setButtonLoading(button, loading: true, title: "刷新中...")
         PortalService.shared.refreshJdYyb(openid: openid) { [weak self] result in
             DispatchQueue.main.async {
@@ -951,6 +974,9 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     }
 
     private func refreshYybAll(button: UIButton) {
+        yybRiskStack.isHidden = true
+        yybRiskUrl = nil
+        yybOpenLinkBtn.isHidden = true
         setButtonLoading(button, loading: true, title: "刷新中...")
         PortalService.shared.refreshJdYyb(openid: "all") { [weak self] result in
             DispatchQueue.main.async {
@@ -991,8 +1017,123 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     }
 
     @objc private func openYybRiskUrl() {
-        guard let raw = yybRiskUrl, let url = URL(string: raw) else { return }
+        guard let raw = yybRiskUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            showMessage("验证链接暂未返回，请稍后重试")
+            return
+        }
+        guard let url = URL(string: raw) else {
+            showMessage("验证链接格式无效")
+            return
+        }
         UIApplication.shared.open(url)
+    }
+
+    private func configureOpenLinkButton(_ button: UIButton, action: Selector) {
+        button.setTitle("点击链接进行短信验证", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+        button.setTitleColor(.systemBlue, for: .normal)
+        button.contentHorizontalAlignment = .left
+        button.isHidden = true
+        button.removeTarget(nil, action: nil, for: .allEvents)
+        button.addTarget(self, action: action, for: .touchUpInside)
+    }
+
+    private func configureResultCard(_ card: UIView, label: UILabel) {
+        card.isHidden = true
+        card.backgroundColor = UIColor.secondarySystemGroupedBackground
+        card.layer.cornerRadius = 10
+        card.translatesAutoresizingMaskIntoConstraints = false
+        label.numberOfLines = 0
+        label.font = .systemFont(ofSize: 13)
+        label.textColor = .label
+        label.translatesAutoresizingMaskIntoConstraints = false
+        card.subviews.forEach { $0.removeFromSuperview() }
+        card.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            label.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            label.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            label.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+        ])
+    }
+
+    private func applyRefreshResultCard(_ card: UIView, label: UILabel, data: PortalJdWxRefreshResult) {
+        let details = data.details?.joined(separator: "\n") ?? ""
+        let summary = "成功 \(data.success ?? 0)，失败 \(data.fail ?? 0)"
+        label.text = details.isEmpty ? summary : "\(summary)\n\(details)"
+        let success = (data.success ?? 0) > 0
+        let failed = (data.fail ?? 0) > 0
+        if success && !failed {
+            card.backgroundColor = UIColor.systemGreen.withAlphaComponent(0.12)
+            label.textColor = UIColor(red: 22 / 255, green: 101 / 255, blue: 52 / 255, alpha: 1)
+        } else if failed && !success {
+            card.backgroundColor = UIColor.systemRed.withAlphaComponent(0.1)
+            label.textColor = UIColor(red: 153 / 255, green: 27 / 255, blue: 27 / 255, alpha: 1)
+        } else {
+            card.backgroundColor = UIColor.secondarySystemGroupedBackground
+            label.textColor = .label
+        }
+        card.isHidden = false
+    }
+
+    private func needsRiskVerify(_ data: PortalJdWxRefreshResult) -> Bool {
+        if data.needRiskVerify == true { return true }
+        return resolveJdRiskUrl(from: data) != nil
+    }
+
+    private func scrollLoginFeedbackIntoView(_ target: UIView) {
+        guard mainTab == .login else { return }
+        DispatchQueue.main.async {
+            self.loginScrollView.layoutIfNeeded()
+            let frame = target.convert(target.bounds, to: self.loginScrollView)
+            self.loginScrollView.scrollRectToVisible(frame.insetBy(dx: 0, dy: -16), animated: true)
+        }
+    }
+
+    private func configureRiskUrlLabel(_ label: UILabel) {
+        label.numberOfLines = 0
+        label.font = .systemFont(ofSize: 13)
+        label.textColor = .systemBlue
+        label.lineBreakMode = .byCharWrapping
+        label.isUserInteractionEnabled = true
+    }
+
+    private func applyRiskLinkText(to label: UILabel, url: String?) {
+        if let url = url?.trimmingCharacters(in: .whitespacesAndNewlines), !url.isEmpty {
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 13),
+                .foregroundColor: UIColor.systemBlue,
+                .underlineStyle: NSUnderlineStyle.single.rawValue,
+            ]
+            label.attributedText = NSAttributedString(string: url, attributes: attrs)
+        } else {
+            label.attributedText = nil
+            label.text = "验证链接暂未返回，请稍后重试或联系管理员"
+            label.textColor = .secondaryLabel
+        }
+        label.isHidden = false
+    }
+
+    private func resolveJdRiskUrl(from data: PortalJdWxRefreshResult) -> String? {
+        if let url = data.riskUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !url.isEmpty {
+            return url
+        }
+        if let url = extractFirstURL(from: data.riskMsg) {
+            return url
+        }
+        for detail in data.details ?? [] {
+            if let url = extractFirstURL(from: detail) {
+                return url
+            }
+        }
+        return nil
+    }
+
+    private func extractFirstURL(from text: String?) -> String? {
+        guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return nil }
+        let pattern = #"https?://[^\s<>"']+"#
+        guard let range = text.range(of: pattern, options: .regularExpression) else { return nil }
+        return String(text[range])
     }
 
     private func renderWx() {
@@ -1030,23 +1171,26 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         ])
         loginContentStack.addArrangedSubview(refreshBar)
 
-        wxDeviceGridStack.axis = .vertical
-        wxDeviceGridStack.spacing = 10
-        wxDeviceGridStack.addArrangedSubview(placeholderLabel("加载中..."))
-        loginContentStack.addArrangedSubview(wxDeviceGridStack)
-
         wxRiskStack.axis = .vertical
         wxRiskStack.spacing = 8
+        wxRiskStack.isLayoutMarginsRelativeArrangement = true
+        wxRiskStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         wxRiskStack.isHidden = true
+        wxRiskStack.backgroundColor = UIColor.systemOrange.withAlphaComponent(0.08)
+        wxRiskStack.layer.cornerRadius = 10
+        wxRiskStack.layer.borderWidth = 1
+        wxRiskStack.layer.borderColor = UIColor.systemOrange.withAlphaComponent(0.22).cgColor
+        wxRiskStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         wxRiskLabel.numberOfLines = 0
+        wxRiskLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        wxRiskLabel.textColor = UIColor(red: 217 / 255, green: 119 / 255, blue: 6 / 255, alpha: 1)
         wxRiskStack.addArrangedSubview(wxRiskLabel)
-        wxRiskLink.numberOfLines = 0
-        wxRiskLink.font = .systemFont(ofSize: 13)
-        wxRiskLink.textColor = .systemBlue
-        wxRiskLink.isUserInteractionEnabled = true
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openRiskUrl))
-        wxRiskLink.addGestureRecognizer(tapGesture)
-        wxRiskStack.addArrangedSubview(wxRiskLink)
+        configureRiskUrlLabel(wxRiskUrlLabel)
+        wxRiskUrlLabel.gestureRecognizers?.forEach { wxRiskUrlLabel.removeGestureRecognizer($0) }
+        wxRiskUrlLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openRiskUrl)))
+        wxRiskStack.addArrangedSubview(wxRiskUrlLabel)
+        configureOpenLinkButton(wxOpenLinkBtn, action: #selector(openRiskUrl))
+        wxRiskStack.addArrangedSubview(wxOpenLinkBtn)
         var riskBtn: UIButton!
         riskBtn = compactButton("验证完成，继续刷新", color: .systemOrange) { [weak self] in
             self?.continueWxRisk(button: riskBtn)
@@ -1054,11 +1198,13 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         wxRiskStack.addArrangedSubview(riskBtn)
         loginContentStack.addArrangedSubview(wxRiskStack)
 
-        wxResultLabel.numberOfLines = 0
-        wxResultLabel.font = .systemFont(ofSize: 13)
-        wxResultLabel.textColor = .secondaryLabel
-        wxResultLabel.isHidden = true
-        loginContentStack.addArrangedSubview(wxResultLabel)
+        configureResultCard(wxResultCard, label: wxResultLabel)
+        loginContentStack.addArrangedSubview(wxResultCard)
+
+        wxDeviceGridStack.axis = .vertical
+        wxDeviceGridStack.spacing = 10
+        wxDeviceGridStack.addArrangedSubview(placeholderLabel("加载中..."))
+        loginContentStack.addArrangedSubview(wxDeviceGridStack)
 
         loadWxDevices()
     }
@@ -1175,9 +1321,29 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         return wrap
     }
 
+    private func showWxRefreshResult(_ data: PortalJdWxRefreshResult) {
+        if needsRiskVerify(data) {
+            wxRiskStack.isHidden = false
+            wxRiskLabel.text = data.riskMsg ?? "账号需要短信验证，请打开链接完成验证"
+            let resolvedUrl = resolveJdRiskUrl(from: data)
+            currentRiskUrl = resolvedUrl
+            applyRiskLinkText(to: wxRiskUrlLabel, url: resolvedUrl)
+            wxOpenLinkBtn.isHidden = resolvedUrl?.isEmpty != false
+            wxResultCard.isHidden = true
+            scrollLoginFeedbackIntoView(wxRiskStack)
+        } else {
+            wxRiskStack.isHidden = true
+            applyRefreshResultCard(wxResultCard, label: wxResultLabel, data: data)
+            scrollLoginFeedbackIntoView(wxResultCard)
+        }
+    }
+
     private func refreshWx(_ wxid: String, button: UIButton) {
         guard !wxid.isEmpty else { return }
         guard button.isEnabled else { return }
+        wxRiskStack.isHidden = true
+        currentRiskUrl = nil
+        wxOpenLinkBtn.isHidden = true
         setButtonLoading(button, loading: true, title: "刷新中...")
         PortalService.shared.refreshJdWx(wxid: wxid) { [weak self] result in
             DispatchQueue.main.async {
@@ -1187,19 +1353,7 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
                 case .failure(let error): self.handle(error)
                 case .success(let data):
                     self.flashButtonSuccess(button, message: "✅ 已刷新", restore: "刷新 CK")
-                    self.wxRiskStack.isHidden = data.needRiskVerify != true
-                    if data.needRiskVerify == true {
-                        self.wxRiskLabel.text = data.riskMsg ?? "账号需要短信验证"
-                        self.currentRiskUrl = data.riskUrl
-                        if let url = data.riskUrl, !url.isEmpty {
-                            self.wxRiskLink.text = url
-                            self.wxRiskLink.isHidden = false
-                        } else {
-                            self.wxRiskLink.isHidden = true
-                        }
-                    }
-                    self.wxResultLabel.text = "成功 \(data.success ?? 0) / 失败 \(data.fail ?? 0)\n\(data.details?.joined(separator: "\n") ?? "")"
-                    self.wxResultLabel.isHidden = false
+                    self.showWxRefreshResult(data)
                 }
             }
         }
@@ -1208,7 +1362,14 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     private var currentRiskUrl: String?
 
     @objc private func openRiskUrl() {
-        guard let urlStr = currentRiskUrl, let url = URL(string: urlStr) else { return }
+        guard let raw = currentRiskUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            showMessage("验证链接暂未返回，请稍后重试")
+            return
+        }
+        guard let url = URL(string: raw) else {
+            showMessage("验证链接格式无效")
+            return
+        }
         UIApplication.shared.open(url)
     }
 
@@ -1223,19 +1384,10 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
                 case .failure(let error): self.handle(error)
                 case .success(let data):
                     self.flashButtonSuccess(button, message: "✅ 刷新完成", restore: "验证完成，继续刷新")
-                    if data.needRiskVerify == true {
-                        self.wxRiskStack.isHidden = false
-                        self.wxRiskLabel.text = data.riskMsg ?? "账号需要短信验证"
-                        self.currentRiskUrl = data.riskUrl
-                        if let url = data.riskUrl, !url.isEmpty {
-                            self.wxRiskLink.text = url
-                            self.wxRiskLink.isHidden = false
-                        }
-                    } else {
-                        self.wxRiskStack.isHidden = true
+                    self.showWxRefreshResult(data)
+                    if data.needRiskVerify != true {
+                        self.loadAccounts()
                     }
-                    self.wxResultLabel.text = data.details?.joined(separator: "\n") ?? "刷新完成"
-                    self.wxResultLabel.isHidden = false
                 }
             }
         }
