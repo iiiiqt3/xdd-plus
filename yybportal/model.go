@@ -35,6 +35,8 @@ type PortalAccountView struct {
 	ExpiresAt    int64  `json:"expiresAt"`
 	LastChecked  *int64 `json:"lastCheckedAt,omitempty"`
 	CreatedAt    int64  `json:"createdAt"`
+	ProxyRegionCode string `json:"proxyRegionCode,omitempty"`
+	ProxyRegionName string `json:"proxyRegionName,omitempty"`
 }
 
 // AdminAccountView 管理后台展示

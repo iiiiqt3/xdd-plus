@@ -28,11 +28,13 @@ type portalYybRiskInfo struct {
 
 // PortalJdYybAccount 门户京东应用宝账号
 type PortalJdYybAccount struct {
-	Index      int    `json:"index"`
-	OpenID     string `json:"openid"`
-	Nickname   string `json:"nickname"`
-	Status     string `json:"status"`
-	JdNickname string `json:"jdNickname,omitempty"`
+	Index           int    `json:"index"`
+	OpenID          string `json:"openid"`
+	Nickname        string `json:"nickname"`
+	Status          string `json:"status"`
+	JdNickname      string `json:"jdNickname,omitempty"`
+	ProxyRegionCode string `json:"proxyRegionCode,omitempty"`
+	ProxyRegionName string `json:"proxyRegionName,omitempty"`
 }
 
 // PortalJdYybRefreshResult 门户应用宝京东刷新结果
@@ -172,11 +174,13 @@ func GetPortalJdYybAccounts(userNumber int) ([]PortalJdYybAccount, error) {
 			st = "alive"
 		}
 		result = append(result, PortalJdYybAccount{
-			Index:      i + 1,
-			OpenID:     acc.OpenID,
-			Nickname:   nick,
-			Status:     st,
-			JdNickname: models.FindJdNicknameByYybOpenID(userNumber, acc.OpenID),
+			Index:           i + 1,
+			OpenID:          acc.OpenID,
+			Nickname:        nick,
+			Status:          st,
+			JdNickname:      models.FindJdNicknameByYybOpenID(userNumber, acc.OpenID),
+			ProxyRegionCode: acc.ProxyRegionCode,
+			ProxyRegionName: acc.ProxyRegionName,
 		})
 	}
 	return result, nil
