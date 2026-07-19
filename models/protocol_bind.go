@@ -227,6 +227,7 @@ func BindProtocolPair(userNumber int, wxWxid, yybOpenID, nickname string) (*Port
 	if !IsYybOpenIDRef(yybOpenID) {
 		return nil, fmt.Errorf("应用宝openid必须以 %s 开头", YybOpenIDPrefix)
 	}
+	purgeProtocolBindingGhosts(wxWxid, yybOpenID)
 	if b, _ := FindProtocolBindingByWx(wxWxid); b != nil && b.UserNumber != userNumber {
 		return nil, fmt.Errorf("该微信ID已被其他用户绑定")
 	}
@@ -235,6 +236,12 @@ func BindProtocolPair(userNumber int, wxWxid, yybOpenID, nickname string) (*Port
 	}
 	var existing PortalProtocolBinding
 	err := db.Where("user_number = ? AND wx_wxid = ?", userNumber, wxWxid).First(&existing).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = db.Unscoped().Where("user_number = ? AND wx_wxid = ?", userNumber, wxWxid).First(&existing).Error
+		if err == nil {
+			existing.DeletedAt = gorm.DeletedAt{}
+		}
+	}
 	if err == nil {
 		if existing.YybOpenID != yybOpenID {
 			if other, _ := FindProtocolBindingByOpenID(yybOpenID); other != nil && other.ID != existing.ID {
@@ -246,7 +253,7 @@ func BindProtocolPair(userNumber int, wxWxid, yybOpenID, nickname string) (*Port
 			existing.Nickname = strings.TrimSpace(nickname)
 		}
 		existing.UpdatedAt = time.Now()
-		if err := db.Save(&existing).Error; err != nil {
+		if err := db.Unscoped().Save(&existing).Error; err != nil {
 			return nil, err
 		}
 		return &existing, nil
@@ -269,11 +276,11 @@ func BindProtocolPair(userNumber int, wxWxid, yybOpenID, nickname string) (*Port
 	return &row, nil
 }
 
-// UnbindProtocolPair 解除双绑
+// UnbindProtocolPair 解除双绑（物理删除，避免软删占位导致唯一索引冲突）
 func UnbindProtocolPair(userNumber int, wxWxid, yybOpenID string) error {
 	wxWxid = strings.TrimSpace(wxWxid)
 	yybOpenID = strings.TrimSpace(yybOpenID)
-	q := db.Where("user_number = ?", userNumber)
+	q := db.Unscoped().Where("user_number = ?", userNumber)
 	if wxWxid != "" {
 		q = q.Where("wx_wxid = ?", wxWxid)
 	}
@@ -291,4 +298,20 @@ func UnbindProtocolPair(userNumber int, wxWxid, yybOpenID string) error {
 		return fmt.Errorf("未找到绑定记录")
 	}
 	return nil
+}
+
+// purgeProtocolBindingGhosts 清理已软删但仍占用唯一索引的双绑残留
+func purgeProtocolBindingGhosts(wxWxid, yybOpenID string) {
+	q := db.Unscoped().Model(&PortalProtocolBinding{}).Where("deleted_at IS NOT NULL")
+	switch {
+	case wxWxid != "" && yybOpenID != "":
+		q = q.Where("wx_wxid = ? OR yyb_open_id = ?", wxWxid, yybOpenID)
+	case wxWxid != "":
+		q = q.Where("wx_wxid = ?", wxWxid)
+	case yybOpenID != "":
+		q = q.Where("yyb_open_id = ?", yybOpenID)
+	default:
+		return
+	}
+	_ = q.Delete(&PortalProtocolBinding{}).Error
 }

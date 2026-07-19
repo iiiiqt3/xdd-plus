@@ -146,6 +146,7 @@ func PortalDeleteAccount(userNumber int, ref string) error {
 	if err := a.DeleteAccount(context.Background(), refID); err != nil {
 		// 本地账号可能已不存在，继续删绑定
 	}
+	_ = models.UnbindProtocolPair(userNumber, "", strings.TrimSpace(b.OpenID))
 	return db().Unscoped().Delete(b).Error
 }
 
