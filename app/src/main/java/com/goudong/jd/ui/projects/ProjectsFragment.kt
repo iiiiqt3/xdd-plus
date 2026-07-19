@@ -1392,6 +1392,11 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }
     }
 
+    private fun formatYybProxyCity(acc: com.goudong.jd.data.model.PortalYybAccount): String {
+        val name = acc.proxyRegionName?.trim().orEmpty()
+        return if (name.isBlank() || name == "直连") "直连" else name
+    }
+
     private fun buildYybProtocolCard(acc: com.goudong.jd.data.model.PortalYybAccount): View {
         val ctx = requireContext()
         val key = yybAccountKey(acc)
@@ -1447,6 +1452,12 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             addView(ctx.captionText("UIN $uinText").apply {
                 setPadding(0, ctx.dp(6), 0, 0)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            })
+            addView(ctx.captionText("代理 ${formatYybProxyCity(acc)}").apply {
+                setPadding(0, ctx.dp(4), 0, 0)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setTextColor(Color.parseColor("#2563EB"))
+                setTypeface(typeface, Typeface.BOLD)
             })
             addView(LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL

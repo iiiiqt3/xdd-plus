@@ -267,6 +267,8 @@ data class PortalYybAccount(
     val createdAt: Long = 0,
     val loginAt: Long? = null,
     val expiresAt: Long? = null,
+    val proxyRegionCode: String? = null,
+    val proxyRegionName: String? = null,
 )
 
 data class PortalProtocolBinding(
@@ -338,6 +340,8 @@ data class PortalJdYybAccount(
     val nickname: String? = null,
     val status: String? = null,
     val jdNickname: String? = null,
+    val proxyRegionCode: String? = null,
+    val proxyRegionName: String? = null,
 )
 
 data class PortalJdTaskExecuteResult(

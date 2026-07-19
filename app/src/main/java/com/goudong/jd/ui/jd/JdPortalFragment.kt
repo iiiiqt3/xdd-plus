@@ -618,6 +618,15 @@ class JdPortalFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                 ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
                 setPadding(0, ctx.dp(4), 0, 0)
             })
+            addView(TextView(ctx).apply {
+                val proxyCity = acc.proxyRegionName?.trim().orEmpty().takeIf { it.isNotBlank() && it != "直连" } ?: "直连"
+                text = "代理 $proxyCity"
+                setTextColor(Color.parseColor("#2563EB"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+                setTypeface(typeface, Typeface.BOLD)
+                maxLines = 1
+                setPadding(0, ctx.dp(2), 0, 0)
+            })
             // 始终占位，保证左右卡片高度一致
             addView(TextView(ctx).apply {
                 text = if (jdNick != null) "京东 $jdNick" else " "

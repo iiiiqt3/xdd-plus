@@ -11,8 +11,8 @@ android {
         applicationId = "com.goudong.jd"
         minSdk = 23
         targetSdk = 36
-        versionCode = 49
-        versionName = "2.9.3"
+        versionCode = 50
+        versionName = "5.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
