@@ -3953,6 +3953,12 @@ final class YybProtocolViewController: BaseNativeViewController {
         return oid.isEmpty ? "未命名" : oid
     }
 
+    private func formatYybProxyCity(_ acc: PortalYybAccount) -> String {
+        let name = (acc.proxyRegionName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty || name == "直连" { return "直连" }
+        return name
+    }
+
     private func buildAccountCard(_ acc: PortalYybAccount, index: Int) -> UIView {
         let key = accountKey(acc)
         let selected = key == selectedKey
@@ -3987,6 +3993,12 @@ final class YybProtocolViewController: BaseNativeViewController {
         meta.font = .systemFont(ofSize: 11)
         meta.textColor = .secondaryLabel
         meta.translatesAutoresizingMaskIntoConstraints = false
+
+        let proxyLabel = UILabel()
+        proxyLabel.text = "代理 \(formatYybProxyCity(acc))"
+        proxyLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+        proxyLabel.textColor = UIColor(red: 37 / 255, green: 99 / 255, blue: 235 / 255, alpha: 1)
+        proxyLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let oidRow = UIStackView()
         oidRow.axis = .horizontal
@@ -4024,6 +4036,7 @@ final class YybProtocolViewController: BaseNativeViewController {
         wrap.addSubview(name)
         wrap.addSubview(badge)
         wrap.addSubview(meta)
+        wrap.addSubview(proxyLabel)
         wrap.addSubview(oidRow)
         wrap.addSubview(cardActionRow)
 
@@ -4087,7 +4100,10 @@ final class YybProtocolViewController: BaseNativeViewController {
             meta.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 6),
             meta.leadingAnchor.constraint(equalTo: name.leadingAnchor),
             meta.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
-            oidRow.topAnchor.constraint(equalTo: meta.bottomAnchor, constant: 4),
+            proxyLabel.topAnchor.constraint(equalTo: meta.bottomAnchor, constant: 4),
+            proxyLabel.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            proxyLabel.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            oidRow.topAnchor.constraint(equalTo: proxyLabel.bottomAnchor, constant: 4),
             oidRow.leadingAnchor.constraint(equalTo: name.leadingAnchor),
             oidRow.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
             cardActionRow.topAnchor.constraint(equalTo: actionTopAnchor, constant: 10),

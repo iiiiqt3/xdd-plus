@@ -267,6 +267,8 @@ struct PortalJdYybAccount: Decodable {
     let nickname: String?
     let status: String?
     let jdNickname: String?
+    let proxyRegionCode: String?
+    let proxyRegionName: String?
 }
 
 struct PortalYybAccount: Decodable {
@@ -281,6 +283,8 @@ struct PortalYybAccount: Decodable {
     let createdAt: Int64?
     let loginAt: Int64?
     let expiresAt: Int64?
+    let proxyRegionCode: String?
+    let proxyRegionName: String?
 }
 
 struct PortalProtocolBinding: Decodable {

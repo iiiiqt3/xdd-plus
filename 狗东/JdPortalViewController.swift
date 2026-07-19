@@ -847,6 +847,12 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         return text.isEmpty ? nil : text
     }
 
+    private func formatYybProxyCity(_ account: PortalJdYybAccount) -> String {
+        let name = (account.proxyRegionName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty || name == "直连" { return "直连" }
+        return name
+    }
+
     private func buildYybAccountCard(_ account: PortalJdYybAccount) -> UIView {
         let wrap = UIView()
         wrap.applyCardStyle(cornerRadius: 14)
@@ -880,6 +886,13 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         openid.lineBreakMode = .byTruncatingMiddle
         openid.translatesAutoresizingMaskIntoConstraints = false
 
+        let proxyCity = UILabel()
+        proxyCity.text = "代理 \(formatYybProxyCity(account))"
+        proxyCity.font = .systemFont(ofSize: 11, weight: .semibold)
+        proxyCity.textColor = UIColor(red: 37 / 255, green: 99 / 255, blue: 235 / 255, alpha: 1)
+        proxyCity.numberOfLines = 1
+        proxyCity.translatesAutoresizingMaskIntoConstraints = false
+
         let jdNick = UILabel()
         if let jd = nonEmpty(account.jdNickname) {
             jdNick.text = "京东 \(jd)"
@@ -903,6 +916,7 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         wrap.addSubview(name)
         wrap.addSubview(badge)
         wrap.addSubview(openid)
+        wrap.addSubview(proxyCity)
         wrap.addSubview(jdNick)
         wrap.addSubview(btn)
         NSLayoutConstraint.activate([
@@ -917,7 +931,10 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             openid.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 4),
             openid.leadingAnchor.constraint(equalTo: name.leadingAnchor),
             openid.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
-            jdNick.topAnchor.constraint(equalTo: openid.bottomAnchor, constant: 4),
+            proxyCity.topAnchor.constraint(equalTo: openid.bottomAnchor, constant: 4),
+            proxyCity.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            proxyCity.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
+            jdNick.topAnchor.constraint(equalTo: proxyCity.bottomAnchor, constant: 4),
             jdNick.leadingAnchor.constraint(equalTo: name.leadingAnchor),
             jdNick.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -12),
             btn.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 10),
