@@ -865,6 +865,7 @@
         .jd-device-card .jd-dev-info .jd-dev-title-row { display:flex; align-items:center; gap:8px; min-width:0; }
         .jd-device-card .jd-dev-info .jd-dev-title-row strong { flex:1; min-width:0; font-size:15px; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .jd-device-card .jd-dev-meta { font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; }
+        .jd-device-card .jd-dev-jd-nick { font-size:11px; font-weight:600; color:#ea580c; margin-top:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .jd-device-card.offline-card { opacity: 0.82; }
         .jd-device-card .jd-card-bottom { display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:auto; padding-top:12px; border-top:1px solid var(--glass-border); }
         .jd-device-card .jd-card-bottom .btn { font-size:12px; padding:5px 16px; border-radius:8px; }
@@ -5378,6 +5379,12 @@ async function jdSmsVerify() {
     }
 }
 
+function renderJdNicknameMeta(item) {
+    var jd = String((item && item.jdNickname) || '').trim();
+    if (!jd) return '';
+    return '<div class="jd-dev-jd-nick">京东 ' + escapeHtml(jd) + '</div>';
+}
+
 async function loadJdWxDevices() {
     var box = document.getElementById('jdWxDeviceList');
     if (!box) return;
@@ -5411,6 +5418,7 @@ function renderJdWxDevices() {
         html += '<div class="jd-dev-meta">' + escapeHtml(item.wxid) + '</div>';
         html += '</div></div>';
         if (item.device) html += '<div class="jd-dev-meta" style="margin-top:8px;">' + escapeHtml(item.device) + ' · ' + escapeHtml(item.serverType || '') + '设备</div>';
+        html += renderJdNicknameMeta(item);
         html += '<div class="jd-card-bottom"><span class="jd-dev-meta">设备</span><button class="btn primary" data-jd-wx-refresh-btn onclick="jdWxRefreshDevice(\'' + escapeAttr(item.wxid) + '\', this)">刷新CK</button></div>';
         html += '</div>';
     });
@@ -5547,6 +5555,7 @@ function renderJdYybAccounts() {
         html += '</div>';
         html += '<div class="jd-dev-meta" title="' + escapeAttr(item.openid) + '">' + escapeHtml(item.openid) + '</div>';
         html += '</div></div>';
+        html += renderJdNicknameMeta(item);
         html += '<div class="jd-card-bottom"><span class="jd-dev-meta">应用宝</span><button class="btn primary" data-jd-yyb-refresh-btn onclick="jdYybRefreshAccount(\'' + escapeAttr(item.openid) + '\', this)">刷新CK</button></div>';
         html += '</div>';
     });
