@@ -180,6 +180,20 @@
         return '';
     }
 
+    function formatProxyCity(acc) {
+        const name = String((acc && (acc.proxyRegionName || acc.proxy_region_name)) || '').trim();
+        if (!name || name === '直连') return '直连';
+        return name;
+    }
+
+    function renderProxyCityLine(acc) {
+        const city = formatProxyCity(acc);
+        return `<div class="yyb-acc-proxy-line">
+            <span class="yyb-meta-label">代理</span>
+            <span class="yyb-proxy-city-text">${esc(city)}</span>
+        </div>`;
+    }
+
     function renderUinLine(acc) {
         const uin = formatUin(acc);
         const display = uin || '未获取';
@@ -235,6 +249,7 @@
                 ${statusTag(acc.status)}
             </div>
             ${renderUinLine(acc)}
+            ${renderProxyCityLine(acc)}
             <div class="yyb-acc-openid-line">
                 <span class="yyb-meta-label">OpenID</span>
                 <code class="yyb-openid-text" title="${attrEsc(rawOpenid)}">${openid || '-'}</code>
@@ -315,6 +330,7 @@
                         ${statusTag(a.status)}
                     </div>
                     <div class="yyb-dash-uin">UIN: ${esc(formatUin(a) || '未获取')}</div>
+                    <div class="yyb-dash-uin">代理: ${esc(formatProxyCity(a))}</div>
                     <div class="yyb-dash-openid">OpenID: ${esc(a.openid)}</div>
                     ${boundHtml}
                     ${expiry ? '<div class="yyb-dash-expiry">' + expiry + '</div>' : ''}

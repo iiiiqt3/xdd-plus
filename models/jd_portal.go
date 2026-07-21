@@ -557,7 +557,7 @@ func PortalJdWxRefresh(userNumber int, wxid string, riskConfirmed bool) (*Portal
 
 func portalWxJdRefreshOne(userNumber int, wxid string, riskConfirmed bool) (detail string, needRisk bool, riskURL, riskMsg string, ok bool) {
 	if pending, exists := portalWxJdRisk[userNumber]; exists && pending.wxid == wxid && !riskConfirmed {
-		return "请先完成短信验证后再继续", true, pending.riskUrl, pending.riskMsg, false
+		delete(portalWxJdRisk, userNumber)
 	}
 
 	ptKey, ptPin, err := wxJdRefreshCK(wxid)

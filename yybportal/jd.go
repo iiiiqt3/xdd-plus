@@ -28,11 +28,13 @@ type portalYybRiskInfo struct {
 
 // PortalJdYybAccount 门户京东应用宝账号
 type PortalJdYybAccount struct {
-	Index      int    `json:"index"`
-	OpenID     string `json:"openid"`
-	Nickname   string `json:"nickname"`
-	Status     string `json:"status"`
-	JdNickname string `json:"jdNickname,omitempty"`
+	Index           int    `json:"index"`
+	OpenID          string `json:"openid"`
+	Nickname        string `json:"nickname"`
+	Status          string `json:"status"`
+	JdNickname      string `json:"jdNickname,omitempty"`
+	ProxyRegionCode string `json:"proxyRegionCode,omitempty"`
+	ProxyRegionName string `json:"proxyRegionName,omitempty"`
 }
 
 // PortalJdYybRefreshResult 门户应用宝京东刷新结果
@@ -172,11 +174,13 @@ func GetPortalJdYybAccounts(userNumber int) ([]PortalJdYybAccount, error) {
 			st = "alive"
 		}
 		result = append(result, PortalJdYybAccount{
-			Index:      i + 1,
-			OpenID:     acc.OpenID,
-			Nickname:   nick,
-			Status:     st,
-			JdNickname: models.FindJdNicknameByYybOpenID(userNumber, acc.OpenID),
+			Index:           i + 1,
+			OpenID:          acc.OpenID,
+			Nickname:        nick,
+			Status:          st,
+			JdNickname:      models.FindJdNicknameByYybOpenID(userNumber, acc.OpenID),
+			ProxyRegionCode: acc.ProxyRegionCode,
+			ProxyRegionName: acc.ProxyRegionName,
 		})
 	}
 	return result, nil
@@ -240,7 +244,7 @@ func PortalJdYybRefresh(userNumber int, openid string, riskConfirmed bool) (*Por
 
 func portalYybJdRefreshOne(userNumber int, openid string, riskConfirmed bool) (detail string, needRisk bool, riskURL, riskMsg string, ok bool) {
 	if pending, exists := portalYybJdRisk[userNumber]; exists && pending.openid == openid && !riskConfirmed {
-		return "请先完成短信验证后再继续", true, pending.riskUrl, pending.riskMsg, false
+		delete(portalYybJdRisk, userNumber)
 	}
 
 	ptKey, ptPin, err := yybJdRefreshCK(openid)

@@ -318,5 +318,14 @@ func toPortalView(ctx context.Context, b PortalYybBinding, s *yyb.Service) Porta
 		view.Status = *acc.Status
 	}
 	view.LastChecked = acc.LastCheckedAt
+	if code, name := s.AccountProxyRegion(ctx, strconv.FormatInt(b.YybAccountID, 10)); name != "" {
+		view.ProxyRegionCode = code
+		view.ProxyRegionName = name
+	} else if b.OpenID != "" {
+		if code, name := s.AccountProxyRegion(ctx, b.OpenID); name != "" {
+			view.ProxyRegionCode = code
+			view.ProxyRegionName = name
+		}
+	}
 	return view
 }
