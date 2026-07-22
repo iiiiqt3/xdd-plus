@@ -2082,23 +2082,61 @@ private func firstCkTemplateFieldKey(_ template: String?) -> String? {
     return key.isEmpty ? nil : key
 }
 
-final class ProtocolAccountPickerRow: UIView, UIPickerViewDataSource, UIPickerViewDelegate {
+final class ProtocolAccountPickerRow: UIView, UIPickerViewDataSource, UIPickerViewDelegate, UITextFieldDelegate {
     private let titleLabel = UILabel()
+    private let textField = UITextField()
     private let picker = UIPickerView()
     private let hintLabel = UILabel()
     private var options: [ProtocolAccountOption] = []
+    private var selectedIndex: Int?
     var onSelect: ((String) -> Void)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+        accessibilityIdentifier = "protocol_account_picker_row"
+        isUserInteractionEnabled = true
         titleLabel.text = "协议账号"
         titleLabel.font = .systemFont(ofSize: 14, weight: .medium)
+
+        textField.applyAppInputStyle(placeholder: "请选择协议账号")
+        textField.font = .systemFont(ofSize: 13.5)
+        textField.adjustsFontSizeToFitWidth = true
+        textField.minimumFontSize = 11
+        textField.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        textField.tintColor = .clear
+        textField.delegate = self
+
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.down"))
+        chevron.tintColor = .tertiaryLabel
+        chevron.contentMode = .scaleAspectFit
+        let rightWrap = UIView(frame: CGRect(x: 0, y: 0, width: 36, height: 50))
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+        rightWrap.addSubview(chevron)
+        NSLayoutConstraint.activate([
+            chevron.centerYAnchor.constraint(equalTo: rightWrap.centerYAnchor),
+            chevron.trailingAnchor.constraint(equalTo: rightWrap.trailingAnchor, constant: -12),
+            chevron.widthAnchor.constraint(equalToConstant: 14),
+            chevron.heightAnchor.constraint(equalToConstant: 14),
+        ])
+        textField.rightView = rightWrap
+        textField.rightViewMode = .always
+
         picker.dataSource = self
         picker.delegate = self
+        textField.inputView = picker
+
+        let toolbar = UIToolbar()
+        toolbar.sizeToFit()
+        let flex = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        let done = UIBarButtonItem(title: "完成", style: .done, target: self, action: #selector(doneTapped))
+        toolbar.items = [flex, done]
+        textField.inputAccessoryView = toolbar
+
         hintLabel.font = .systemFont(ofSize: 11)
         hintLabel.textColor = .tertiaryLabel
         hintLabel.numberOfLines = 0
-        let inner = UIStackView(arrangedSubviews: [titleLabel, picker, hintLabel])
+
+        let inner = UIStackView(arrangedSubviews: [titleLabel, textField, hintLabel])
         inner.axis = .vertical
         inner.spacing = 6
         inner.translatesAutoresizingMaskIntoConstraints = false
@@ -2108,44 +2146,82 @@ final class ProtocolAccountPickerRow: UIView, UIPickerViewDataSource, UIPickerVi
             inner.leadingAnchor.constraint(equalTo: leadingAnchor),
             inner.trailingAnchor.constraint(equalTo: trailingAnchor),
             inner.bottomAnchor.constraint(equalTo: bottomAnchor),
-            picker.heightAnchor.constraint(equalToConstant: 120)
         ])
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    @objc private func doneTapped() {
+        textField.resignFirstResponder()
+    }
+
+    func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool {
+        !options.isEmpty && options.contains(where: { $0.selectable != false })
+    }
+
     func configure(options: [ProtocolAccountOption], selectedFillRef: String?) {
         self.options = options
+        selectedIndex = nil
         picker.reloadAllComponents()
         hintLabel.text = nil
+        textField.text = nil
+        textField.isEnabled = !options.isEmpty
+
         if options.isEmpty {
             hintLabel.text = "暂无在线协议账号，请先到协议接入扫码登录"
             return
         }
         if !options.contains(where: { $0.selectable != false }) {
             hintLabel.text = "本活动在线协议账号已全部上车"
+            textField.isEnabled = false
         }
+
         if let selectedFillRef, !selectedFillRef.isEmpty,
-           let idx = options.firstIndex(where: { $0.fillRef == selectedFillRef || $0.wxid == selectedFillRef || $0.openid == selectedFillRef }) {
-            picker.selectRow(idx, inComponent: 0, animated: false)
-            onSelect?(options[idx].fillRef)
+           let idx = options.firstIndex(where: { $0.fillRef == selectedFillRef || $0.wxid == selectedFillRef || $0.openid == selectedFillRef }),
+           options[idx].selectable != false {
+            applySelection(at: idx, notify: true)
         }
     }
 
+    private func applySelection(at index: Int, notify: Bool) {
+        guard options.indices.contains(index) else { return }
+        let opt = options[index]
+        guard opt.selectable != false else { return }
+        selectedIndex = index
+        picker.selectRow(index, inComponent: 0, animated: false)
+        textField.text = opt.label
+        if notify { onSelect?(opt.fillRef) }
+    }
+
     func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
+
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int { options.count }
-    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
-        options[row].label
-    }
-    func pickerView(_ pickerView: UIPickerView, attributedTitleForRow row: Int, forComponent component: Int) -> NSAttributedString? {
+
+    func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat { 34 }
+
+    func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
+        let label = (view as? UILabel) ?? UILabel()
         let opt = options[row]
-        let color: UIColor = opt.selectable == false ? .tertiaryLabel : .label
-        return NSAttributedString(string: opt.label, attributes: [.foregroundColor: color])
+        label.text = opt.label
+        label.textAlignment = .center
+        label.font = .systemFont(ofSize: 13)
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.75
+        label.numberOfLines = 2
+        label.lineBreakMode = .byTruncatingTail
+        label.textColor = opt.selectable == false ? .tertiaryLabel : .label
+        return label
     }
+
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         let opt = options[row]
-        guard opt.selectable != false else { return }
-        onSelect?(opt.fillRef)
+        guard opt.selectable != false else {
+            if let prev = selectedIndex {
+                picker.selectRow(prev, inComponent: 0, animated: true)
+            }
+            return
+        }
+        applySelection(at: row, notify: true)
     }
 }
 
@@ -2934,6 +3010,7 @@ final class ProjectEditCKViewController: BaseNativeViewController {
     private var ckTemplate: String = ""
     private var isRawMode = false
     private var protocolPicker: ProtocolAccountPickerRow?
+    private let fieldsStack = UIStackView()
 
     init(project: PortalProject, onSaved: @escaping (String) -> Void) {
         self.project = project
@@ -2987,16 +3064,15 @@ final class ProjectEditCKViewController: BaseNativeViewController {
         noticeLabel.numberOfLines = 0
 
         let scrollView = UIScrollView()
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 12
-        stack.translatesAutoresizingMaskIntoConstraints = false
+        fieldsStack.axis = .vertical
+        fieldsStack.spacing = 12
+        fieldsStack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(remarkLabel)
         view.addSubview(noticeLabel)
         view.addSubview(scrollView)
-        scrollView.addSubview(stack)
+        scrollView.addSubview(fieldsStack)
         remarkLabel.translatesAutoresizingMaskIntoConstraints = false
         noticeLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -3010,11 +3086,11 @@ final class ProjectEditCKViewController: BaseNativeViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
-            stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
-            stack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32)
+            fieldsStack.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            fieldsStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
+            fieldsStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
+            fieldsStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
+            fieldsStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32)
         ])
 
         if isRawMode {
@@ -3047,7 +3123,7 @@ final class ProjectEditCKViewController: BaseNativeViewController {
                 innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
                 input.heightAnchor.constraint(greaterThanOrEqualToConstant: 80)
             ])
-            stack.addArrangedSubview(card)
+            fieldsStack.addArrangedSubview(card)
         } else {
             for field in visibleFields {
                 let key = field.key
@@ -3092,7 +3168,7 @@ final class ProjectEditCKViewController: BaseNativeViewController {
                     innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
                     input.heightAnchor.constraint(greaterThanOrEqualToConstant: 40)
                 ])
-                stack.addArrangedSubview(card)
+                fieldsStack.addArrangedSubview(card)
             }
         }
 
@@ -3120,11 +3196,7 @@ final class ProjectEditCKViewController: BaseNativeViewController {
             previewStack.bottomAnchor.constraint(equalTo: previewCard.bottomAnchor, constant: -12),
             previewLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 60)
         ])
-        stack.addArrangedSubview(previewCard)
-
-        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKb))
-        tap.cancelsTouchesInView = false
-        view.addGestureRecognizer(tap)
+        fieldsStack.addArrangedSubview(previewCard)
 
         updatePreview()
         if project.isProtocolActivity == true && !isRawMode {
@@ -3144,17 +3216,15 @@ final class ProjectEditCKViewController: BaseNativeViewController {
                         self.fieldInputs[key]?.isHidden = true
                     }
                     self.protocolPicker = picker
-                    if let firstCard = self.stack.arrangedSubviews.first {
-                        self.stack.insertArrangedSubview(picker, at: 0)
+                    if self.fieldsStack.arrangedSubviews.first != nil {
+                        self.fieldsStack.insertArrangedSubview(picker, at: 0)
                     } else {
-                        self.stack.addArrangedSubview(picker)
+                        self.fieldsStack.addArrangedSubview(picker)
                     }
                 }
             }
         }
     }
-
-    @objc private func dismissKb() { view.endEditing(true) }
 
     @objc private func fieldChanged() { updatePreview() }
 

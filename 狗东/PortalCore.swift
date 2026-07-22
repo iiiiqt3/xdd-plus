@@ -2106,6 +2106,9 @@ class BaseNativeViewController: UIViewController, ResetableViewController, UIGes
             if view is UIControl || view is UITextField || view is UITextView {
                 return false
             }
+            if view.accessibilityIdentifier == "protocol_account_picker_row" {
+                return false
+            }
             current = view.superview
         }
         return true
