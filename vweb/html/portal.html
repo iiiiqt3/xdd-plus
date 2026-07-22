@@ -1564,17 +1564,21 @@
 
         /* ===== 协议登录 ===== */
         .protocol-subtabs {
-            display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
-            padding: 4px; border-radius: 12px; background: rgba(128,128,128,0.06); border: 1px solid var(--glass-border);
+            display: flex; gap: 0; flex-wrap: wrap; margin-bottom: 16px;
+            padding: 4px; border-radius: 10px; background: var(--glass-bg); border: 1px solid var(--glass-border);
         }
         .protocol-subtab {
-            flex: 1; min-width: 140px; padding: 10px 16px; border: none; border-radius: 9px;
-            background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 700; cursor: pointer;
-            transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+            flex: 1; min-width: 140px; padding: 10px 16px; border: none; border-radius: 8px;
+            background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s ease;
         }
-        .protocol-subtab:hover { color: var(--text); background: rgba(255,255,255,0.5); }
-        .protocol-subtab.active {
-            background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(15,23,42,0.08);
+        .protocol-subtab[data-protocol-tab="yyb"]:hover:not(.active) { color: #0369a1; background: rgba(3,105,161,0.08); }
+        .protocol-subtab[data-protocol-tab="wx"]:hover:not(.active) { color: #047857; background: rgba(5,150,105,0.08); }
+        .protocol-subtab[data-protocol-tab="yyb"].active {
+            background: #0369a1; color: #fff; box-shadow: 0 2px 8px rgba(3,105,161,0.28);
+        }
+        .protocol-subtab[data-protocol-tab="wx"].active {
+            background: #059669; color: #fff; box-shadow: 0 2px 8px rgba(5,150,105,0.28);
         }
         .protocol-pane { display: none; }
         .protocol-pane.active { display: block; }
