@@ -879,7 +879,39 @@
             border: 1px solid var(--glass-border);
             border-radius: 12px;
             background: var(--card);
+            overflow: hidden;
         }
+        .jd-task-proxy-notice {
+            border-bottom: 1px solid rgba(99,102,241,0.14);
+            background: linear-gradient(180deg, rgba(99,102,241,0.08), rgba(99,102,241,0.02));
+        }
+        .jd-task-proxy-notice summary {
+            display: flex; align-items: center; gap: 8px;
+            padding: 11px 14px; cursor: pointer; user-select: none; list-style: none;
+            font-size: 13px; font-weight: 700; color: var(--text);
+        }
+        .jd-task-proxy-notice summary::-webkit-details-marker { display: none; }
+        .jd-task-proxy-notice summary::marker { content: ""; }
+        .jd-task-proxy-notice summary::after {
+            content: "▾"; margin-left: auto; font-size: 12px; color: var(--text-muted);
+            transition: transform 0.2s ease; flex-shrink: 0;
+        }
+        .jd-task-proxy-notice[open] summary::after { transform: rotate(180deg); }
+        .jd-task-proxy-notice[open] summary { border-bottom: 1px solid rgba(99,102,241,0.1); }
+        .jd-task-notice-icon { font-size: 15px; line-height: 1; flex-shrink: 0; }
+        .jd-task-notice-title { flex-shrink: 0; }
+        .jd-task-notice-hint {
+            margin-left: 4px; font-size: 11px; font-weight: 500; color: var(--text-muted);
+        }
+        .jd-task-proxy-notice[open] .jd-task-notice-hint { display: none; }
+        .jd-task-notice-body {
+            padding: 10px 14px 12px; font-size: 12px; line-height: 1.75; color: var(--text-secondary);
+        }
+        .jd-task-notice-body ul { margin: 0; padding-left: 18px; }
+        .jd-task-notice-body li { margin-bottom: 5px; }
+        .jd-task-notice-body li:last-child { margin-bottom: 0; }
+        .jd-task-notice-body li::marker { color: #6366f1; }
+        .jd-task-notice-body strong { color: var(--text); font-weight: 700; }
         .jd-task-sticky-bar {
             position: sticky; top: 0; z-index: 12;
             padding: 8px 12px;
@@ -2520,6 +2552,21 @@
                 <!-- 京东任务 -->
                 <div class="jd-tab-panel" id="jdPanel-task">
                     <div class="jd-task-shell">
+                        <details class="jd-task-proxy-notice" id="jdTaskProxyNotice">
+                            <summary>
+                                <span class="jd-task-notice-icon" aria-hidden="true">💡</span>
+                                <span class="jd-task-notice-title">任务代理说明</span>
+                                <span class="jd-task-notice-hint">点击展开 · 再次点击可收起</span>
+                            </summary>
+                            <div class="jd-task-notice-body">
+                                <ul>
+                                    <li><strong>青龙定时任务</strong>：账号在服务器自动执行，默认不配统一代理</li>
+                                    <li><strong>手动任务代理</strong>：面向有代理需求的用户，可在此单独购买</li>
+                                    <li><strong>购买后生效</strong>：下方所有手动任务执行时<strong>自动走代理</strong></li>
+                                    <li><strong>适用场景</strong>：农场、浇水、话费、评价等，有助于提高任务成功率</li>
+                                </ul>
+                            </div>
+                        </details>
                         <div class="jd-task-sticky-bar">
                             <div class="jd-task-toolbar">
                                 <div class="jd-task-toolbar-section jd-task-accounts-section">

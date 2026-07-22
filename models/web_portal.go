@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -304,31 +303,10 @@ func getPortalCheckInStatus(user *User) (bool, int) {
 }
 
 func countTodayCheckIns() int {
-	today := time.Now().Local().Format("2006-01-02")
-	portalTodayCheckInCache.RLock()
-	if portalTodayCheckInCache.date == today {
-		count := portalTodayCheckInCache.count
-		portalTodayCheckInCache.RUnlock()
-		return count
-	}
-	portalTodayCheckInCache.RUnlock()
-
 	zero := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Local)
 	var count int64
 	db.Model(&User{}).Where("sign_in_date >= ?", zero).Count(&count)
-	n := int(count)
-
-	portalTodayCheckInCache.Lock()
-	portalTodayCheckInCache.date = today
-	portalTodayCheckInCache.count = n
-	portalTodayCheckInCache.Unlock()
-	return n
-}
-
-var portalTodayCheckInCache struct {
-	sync.RWMutex
-	date  string
-	count int
+	return int(count)
 }
 
 func hasPrayedToday(userNumber int) bool {
