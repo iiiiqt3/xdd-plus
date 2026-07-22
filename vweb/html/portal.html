@@ -663,7 +663,16 @@
             box-shadow: var(--card-shadow);
         }
         .activity-row:hover { box-shadow: 0 8px 24px rgba(79,70,229,0.12), 0 4px 8px rgba(0,0,0,0.06); transform: translateY(-3px); border-color: #a5b4fc; }
-        .activity-title { font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+        .activity-row-top {
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+        }
+        .activity-title { flex: 1; min-width: 0; font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+        .activity-sort-no {
+            flex-shrink: 0; min-width: 32px; height: 28px; padding: 0 10px;
+            border: 1.5px solid #818cf8; border-radius: 8px; background: #fff;
+            color: #4f46e5; font-size: 13px; font-weight: 700; line-height: 1;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
         .activity-desc { color: var(--text-muted); font-size: 12px; line-height: 1.65; word-break: break-word; }
         .activity-guide { color: rgba(30,41,59,0.68); font-size: 12px; line-height: 1.7; word-break: break-word; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 5; line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; min-height: 8.5em; }
         .activity-row .activity-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: auto; padding-bottom: 2px; }
@@ -3716,7 +3725,10 @@ function renderActivities() {
     }
     box.innerHTML = list.map(item => `
         <div class="activity-row">
-            <div class="activity-title">${escapeHtml(item.name)}</div>
+            <div class="activity-row-top">
+                <div class="activity-title">${escapeHtml(item.name)}</div>
+                ${item.displayOrder > 0 ? `<span class="activity-sort-no" title="排序编号">${item.displayOrder}</span>` : ''}
+            </div>
             <div class="activity-desc">环境变量：${escapeHtml(item.envKey)} · 青龙容器：${escapeHtml(item.qingLongConfig || '默认容器')}</div>
             ${item.guide ? `<div class="activity-guide">玩法摘要：${escapeHtml(item.guide)}</div>` : ''}
             <div class="activity-tags">

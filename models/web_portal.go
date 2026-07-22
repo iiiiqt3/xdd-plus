@@ -67,6 +67,7 @@ type PortalActivityItem struct {
 	Enabled         bool                  `json:"enabled"`
 	IsProtocolActivity bool               `json:"isProtocolActivity"`
 	Category        string                `json:"category"`
+	DisplayOrder    int                   `json:"displayOrder"`
 }
 
 type PortalDashboard struct {
@@ -344,6 +345,7 @@ func GetPortalActivities() []PortalActivityItem {
 			Enabled:         cfg.Enabled,
 			IsProtocolActivity: cfg.IsProtocolActivity,
 			Category:        NormalizeActivityCategory(cfg.Category),
+			DisplayOrder:    cfg.DisplayOrder,
 		}
 		for _, field := range cfg.InputFields {
 			prompt := field.Prompt
