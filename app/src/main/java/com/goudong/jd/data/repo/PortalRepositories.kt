@@ -162,6 +162,15 @@ class PortalRepository(
         return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.PortalProject::class.java)
     }
 
+    suspend fun fetchProtocolAccountOptions(activityId: String, remarks: String? = null): List<com.goudong.jd.data.model.ProtocolAccountOption> {
+        var path = "/api/portal/protocol/account-options?activityId=${java.net.URLEncoder.encode(activityId, "UTF-8")}"
+        if (!remarks.isNullOrBlank()) {
+            path += "&remarks=${java.net.URLEncoder.encode(remarks, "UTF-8")}"
+        }
+        val text = apiClient.requestText(path = path)
+        return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.ProtocolAccountOption::class.java)
+    }
+
     suspend fun createProject(activityId: String, inputs: Map<String, String>, remarks: String, months: Int): String {
         return apiClient.requestMessage(
             path = "/api/portal/project",

@@ -99,6 +99,8 @@ data class PortalActivity(
     val inputFields: List<PortalActivityField>? = null,
     val ckTemplate: String? = null,
     val enabled: Boolean? = null,
+    @com.google.gson.annotations.SerializedName("isProtocolActivity")
+    val isProtocolActivity: Boolean? = null,
 ) : java.io.Serializable
 
 data class PortalProject(
@@ -127,6 +129,22 @@ data class PortalProject(
     val priceText: String? = null,
     val inputFields: List<PortalActivityField>? = null,
     val ckTemplate: String? = null,
+    @com.google.gson.annotations.SerializedName("isProtocolActivity")
+    val isProtocolActivity: Boolean? = null,
+)
+
+data class ProtocolAccountOption(
+    val id: String? = null,
+    val label: String? = null,
+    val nickname: String? = null,
+    val mode: String? = null,
+    val wxid: String? = null,
+    val openid: String? = null,
+    @com.google.gson.annotations.SerializedName("fillRef")
+    val fillRef: String? = null,
+    @com.google.gson.annotations.SerializedName("usedInActivity")
+    val usedInActivity: Boolean? = null,
+    val selectable: Boolean? = null,
 )
 
 data class PortalWechatStatus(

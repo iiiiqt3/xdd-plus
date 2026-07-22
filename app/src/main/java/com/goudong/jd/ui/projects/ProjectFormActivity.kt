@@ -58,6 +58,7 @@ class ProjectFormActivity : AppCompatActivity() {
         }
 
         val inputs = LinkedHashMap<String, android.widget.EditText>()
+        val fieldsHost = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
         // 项目信息卡（松弛排版）
         root.addView(cardView().apply {
@@ -141,9 +142,10 @@ class ProjectFormActivity : AppCompatActivity() {
                     })
                 })
             }
+            addView(fieldsHost)
             // 动态字段
             activityItem.inputFields.orEmpty().forEach { field ->
-                addView(TextView(context).apply {
+                fieldsHost.addView(TextView(context).apply {
                     text = field.prompt ?: field.key ?: "输入项"
                     setTextColor(themeColor(R.color.text_secondary))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
@@ -151,37 +153,37 @@ class ProjectFormActivity : AppCompatActivity() {
                 })
                 val input = inputField(field.prompt ?: field.key ?: "请输入")
                 inputs[field.key ?: ""] = input
-                addView(input)
+                fieldsHost.addView(input)
             }
             // 备注名
-            addView(TextView(context).apply {
+            fieldsHost.addView(TextView(context).apply {
                 text = "用户备注名"
                 setTextColor(themeColor(R.color.text_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                 setPadding(0, dp(14), 0, dp(6))
             })
             val remark = inputField("请输入唯一备注名")
-            addView(remark)
+            fieldsHost.addView(remark)
             // 授权时长输入框
             val monthInput = when {
                 activityItem.isDailyDeduct == true -> {
                     val minDays = activityItem.minDays ?: 1
-                    addView(TextView(context).apply {
+                    fieldsHost.addView(TextView(context).apply {
                         text = "授权天数（最少${minDays}天）"
                         setTextColor(themeColor(R.color.text_secondary))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                         setPadding(0, dp(14), 0, dp(6))
                     })
-                    inputField("最少${minDays}天，如 ${minDays}/7/30", number = true).also { addView(it) }
+                    inputField("最少${minDays}天，如 ${minDays}/7/30", number = true).also { fieldsHost.addView(it) }
                 }
                 activityItem.isMonthlyDeduct == true -> {
-                    addView(TextView(context).apply {
+                    fieldsHost.addView(TextView(context).apply {
                         text = "授权月数"
                         setTextColor(themeColor(R.color.text_secondary))
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                         setPadding(0, dp(14), 0, dp(6))
                     })
-                    inputField("请输入 1-12", number = true).also { addView(it) }
+                    inputField("请输入 1-12", number = true).also { fieldsHost.addView(it) }
                 }
                 else -> null
             }
@@ -196,6 +198,12 @@ class ProjectFormActivity : AppCompatActivity() {
                 if (remarks.isBlank()) return@setOnClickListener alert("请输入备注名")
                 val map = inputs.mapValues { it.value.text?.toString().orEmpty().trim() }
                 val months = monthInput?.text?.toString()?.toIntOrNull() ?: 0
+
+                if (activityItem.isProtocolActivity == true) {
+                    val protoKey = ProtocolActivityPicker.firstTemplateFieldKey(activityItem.ckTemplate)
+                    val protoRef = protoKey?.let { map[it] }.orEmpty()
+                    if (protoRef.isBlank()) return@setOnClickListener alert("请选择协议账号")
+                }
 
                 // 验证输入
                 if (activityItem.isDailyDeduct == true) {
@@ -269,6 +277,36 @@ class ProjectFormActivity : AppCompatActivity() {
         })
         scroll.addView(root)
         setContentView(scroll)
+
+        if (activityItem.isProtocolActivity == true) {
+            lifecycleScope.launch {
+                val options = runCatching {
+                    AppServices.portalRepository.fetchProtocolAccountOptions(activityItem.id.orEmpty())
+                }.getOrElse { emptyList() }
+                val protoKey = ProtocolActivityPicker.firstTemplateFieldKey(activityItem.ckTemplate)
+                val protoInput = protoKey?.let { inputs[it] }
+                ProtocolActivityPicker.mount(
+                    context = this@ProjectFormActivity,
+                    container = fieldsHost,
+                    insertIndex = 0,
+                    options = options,
+                    template = activityItem.ckTemplate,
+                ) { fillRef ->
+                    protoInput?.setText(fillRef)
+                }
+                protoKey?.let { key ->
+                    inputs[key]?.visibility = android.view.View.GONE
+                    (inputs[key]?.parent as? LinearLayout)?.let { parent ->
+                        for (i in 0 until parent.childCount) {
+                            val child = parent.getChildAt(i)
+                            if (child === inputs[key] || (child is TextView && child.text == activityItem.inputFields?.find { f -> f.key == key }?.prompt)) {
+                                child.visibility = android.view.View.GONE
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {

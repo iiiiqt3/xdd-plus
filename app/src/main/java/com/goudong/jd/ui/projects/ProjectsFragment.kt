@@ -822,6 +822,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             item.envValue.orEmpty(),
             item.ckTemplate.orEmpty(),
             item.inputFields ?: emptyList(),
+            item.isProtocolActivity == true,
         ))
     }
 

@@ -17,7 +17,7 @@ alwaysApply: false
 ## 打包
 
 - 清理缓存：`./clean-cache.sh`
-- Debug：`./build-debug.sh` → 输出 `goudong-v{versionName}-debug.apk`
-- Release：`./build.sh` → 输出 `goudong-v{versionName}.apk`
+- **默认打 Debug**：`./build-debug.sh` → 输出 `goudong-v{versionName}-debug.apk`（用户要求安卓打包默认用此方式）
+- Release（仅用户明确要求时）：`./build.sh` → 输出 `goudong-v{versionName}.apk`
 
 不要在没有设置 Android Studio JBR 的情况下直接运行 `gradlew`。

@@ -34,6 +34,7 @@ class CkEditActivity : AppCompatActivity() {
     private lateinit var activityId: String
     private var originalCk: String = ""
     private var ckTemplate: String = ""
+    private var isProtocolActivity: Boolean = false
     private var inputFields: List<PortalActivityField> = emptyList()
     private val fieldInputs = mutableMapOf<String, EditText>()
     private val fieldNames = mutableListOf<String>()
@@ -50,6 +51,7 @@ class CkEditActivity : AppCompatActivity() {
         activityId = intent.getStringExtra(EXTRA_ACTIVITY_ID) ?: ""
         originalCk = intent.getStringExtra(EXTRA_CK_VALUE) ?: ""
         ckTemplate = intent.getStringExtra(EXTRA_CK_TEMPLATE) ?: ""
+        isProtocolActivity = intent.getBooleanExtra(EXTRA_IS_PROTOCOL, false)
         @Suppress("UNCHECKED_CAST")
         inputFields = intent.getSerializableExtra(EXTRA_INPUT_FIELDS) as? List<PortalActivityField> ?: emptyList()
 
@@ -74,10 +76,10 @@ class CkEditActivity : AppCompatActivity() {
         val templateFields = getCkTemplateFields(ckTemplate)
         val parsedFields = if (templateFields.isNotEmpty()) splitCkValueByTemplate(ckTemplate, originalCk) else null
         val visibleFields = inputFields.filter { field -> templateFields.contains(field.key) }
+        val fieldsCard = cardView()
+        fieldsCard.addView(sectionTitle("CK 字段编辑"))
 
-        root.addView(cardView().apply {
-            addView(sectionTitle("CK 字段编辑"))
-
+        root.addView(fieldsCard.apply {
             if (parsedFields != null && visibleFields.isNotEmpty()) {
                 fieldNames.clear()
                 fieldNames.addAll(visibleFields.mapNotNull { it.key })
@@ -204,6 +206,30 @@ class CkEditActivity : AppCompatActivity() {
 
         scroll.addView(root)
         setContentView(scroll)
+
+        if (isProtocolActivity && parsedFields != null && visibleFields.isNotEmpty()) {
+            val protoKey = ProtocolActivityPicker.firstTemplateFieldKey(ckTemplate)
+            val selectedRef = protoKey?.let { parsedFields[it] }.orEmpty()
+            lifecycleScope.launch {
+                val options = runCatching {
+                    AppServices.portalRepository.fetchProtocolAccountOptions(activityId, projectRemark)
+                }.getOrElse { emptyList() }
+                ProtocolActivityPicker.mount(
+                    context = this@CkEditActivity,
+                    container = fieldsCard,
+                    insertIndex = 1,
+                    options = options,
+                    template = ckTemplate,
+                    selectedFillRef = selectedRef,
+                ) { fillRef ->
+                    protoKey?.let { fieldInputs[it]?.setText(fillRef) }
+                    previewText.text = buildPreview()
+                }
+                protoKey?.let { key ->
+                    fieldInputs[key]?.visibility = android.view.View.GONE
+                }
+            }
+        }
     }
 
     private fun getCkTemplateFields(template: String): List<String> {
@@ -333,6 +359,7 @@ class CkEditActivity : AppCompatActivity() {
         private const val EXTRA_CK_VALUE = "ckValue"
         private const val EXTRA_CK_TEMPLATE = "ckTemplate"
         private const val EXTRA_INPUT_FIELDS = "inputFields"
+        private const val EXTRA_IS_PROTOCOL = "isProtocolActivity"
 
         fun intent(
             context: android.content.Context,
@@ -341,6 +368,7 @@ class CkEditActivity : AppCompatActivity() {
             ckValue: String,
             ckTemplate: String = "",
             inputFields: List<PortalActivityField> = emptyList(),
+            isProtocolActivity: Boolean = false,
         ): Intent {
             return Intent(context, CkEditActivity::class.java).apply {
                 putExtra(EXTRA_REMARK, remark)
@@ -348,6 +376,7 @@ class CkEditActivity : AppCompatActivity() {
                 putExtra(EXTRA_CK_VALUE, ckValue)
                 putExtra(EXTRA_CK_TEMPLATE, ckTemplate)
                 putExtra(EXTRA_INPUT_FIELDS, ArrayList(inputFields))
+                putExtra(EXTRA_IS_PROTOCOL, isProtocolActivity)
             }
         }
     }
