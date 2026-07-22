@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -56,7 +55,10 @@ func localUploadFile(relativePath string) string {
 	if !strings.HasPrefix(relativePath, "/uploads/") {
 		return ""
 	}
-	local := filepath.Join(ExecPath, filepath.FromSlash(strings.TrimPrefix(relativePath, "/")))
+	local, ok := ResolveUploadAbsPath(relativePath)
+	if !ok {
+		return ""
+	}
 	if st, err := os.Stat(local); err == nil && !st.IsDir() {
 		return local
 	}

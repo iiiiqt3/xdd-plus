@@ -428,14 +428,12 @@ func main() {
 	// ===================== 静态文件服务（上传的图片/视频） =====================
 	web.Get("/uploads/*", func(ctx *context.Context) {
 		filePath := ctx.Input.Param(":filepath")
-		absPath := filepath.Join(models.ExecPath, "uploads", filePath)
-		// 安全检查：防止路径穿越
-		if strings.Contains(absPath, "..") {
+		absPath, ok := models.ResolveUploadAbsPath(filePath)
+		if !ok {
 			ctx.Output.SetStatus(403)
 			ctx.WriteString("forbidden")
 			return
 		}
-		// 使用 http.ServeFile 提供静态文件服务
 		http.ServeFile(ctx.ResponseWriter, ctx.Request, absPath)
 	})
 
@@ -483,10 +481,9 @@ func main() {
 		models.Config.Static = "./static"
 	}
 	web.BConfig.WebConfig.StaticDir["/static"] = models.Config.Static
-	// 上传文件静态服务（玩法简介图片等）
-	uploadsDir := models.ExecPath + "/uploads"
-	os.MkdirAll(uploadsDir+"/guide", 0755)
-	web.BConfig.WebConfig.StaticDir["/uploads"] = uploadsDir
+	// uploads 仅走上方带路径校验的 web.Get，避免 StaticDir 与穿越风险
+	uploadsDir := filepath.Join(models.ExecPath, "uploads")
+	os.MkdirAll(filepath.Join(uploadsDir, "guide"), 0755)
 	if jsDir := vweb.AssetDir("js"); jsDir != "" {
 		web.BConfig.WebConfig.StaticDir["/vweb/js"] = jsDir
 	}
