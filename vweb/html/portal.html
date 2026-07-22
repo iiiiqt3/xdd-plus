@@ -2812,7 +2812,7 @@
 
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_bind.js?v=4"></script>
-<script src="/vweb/js/portal_protocol_activity.js?v=1"></script>
+<script src="/vweb/js/portal_protocol_activity.js?v=2"></script>
 <script src="/vweb/js/portal_yyb.js?v=20"></script>
 <script>
 async function getSignatureHeaders(path) {
@@ -3788,13 +3788,16 @@ function openProjectModal(activityId) {
 
     initProjectModalValidation(item);
     state.protocolActivityPicker = null;
-    if (item.isProtocolActivity && global.PortalProtocolActivity) {
+    if (item.isProtocolActivity && window.PortalProtocolActivity) {
         PortalProtocolActivity.mountPicker({
             container: fields,
             activityId: item.id,
             template: item.ckTemplate || '',
             onChange: function () { updateProjectModalProtocolPreview(item); }
-        }).then(function (picker) { state.protocolActivityPicker = picker; });
+        }).then(function (picker) { state.protocolActivityPicker = picker; }).catch(function (e) {
+            console.error('[协议活动] 加载账号列表失败', e);
+            toast(e.message || '协议账号加载失败', 'error');
+        });
     }
     document.getElementById('projectModalMask').classList.add('show');
 }
@@ -4199,7 +4202,7 @@ function editProjectCk(activityId, remarks, displayName) {
         toast('当前 CK 格式无法自动拆分，已切换为原始编辑模式', 'info');
     }
     state.editCkProtocolPicker = null;
-    if (isProtocolActivity && parsed && visibleFields.length && global.PortalProtocolActivity) {
+    if (isProtocolActivity && parsed && visibleFields.length && window.PortalProtocolActivity) {
         const protoKey = PortalProtocolActivity.firstTemplateFieldKey(ckTemplate);
         const selectedFillRef = protoKey ? String(parsed[protoKey] || '').trim() : '';
         PortalProtocolActivity.mountPicker({

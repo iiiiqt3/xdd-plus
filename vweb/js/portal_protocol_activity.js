@@ -109,7 +109,21 @@
                 }
             }
             return { wrap: wrap, selectEl: selectEl, options: options, fieldKey: fieldKey };
+        }).catch(function (err) {
+            var wrap = document.createElement('div');
+            wrap.className = 'field full proto-activity-picker';
+            wrap.innerHTML = ''
+                + '<label>协议账号<span class="field-required" title="必选">*</span></label>'
+                + '<div class="proto-activity-hint" style="margin-top:6px;font-size:11px;color:#dc2626;">'
+                + escapeHtml(err && err.message ? err.message : '协议账号加载失败，请刷新重试')
+                + '</div>';
+            container.insertBefore(wrap, container.firstChild);
+            return null;
         });
+    }
+
+    function escapeHtml(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     global.PortalProtocolActivity = {
