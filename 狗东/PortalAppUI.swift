@@ -2082,115 +2082,77 @@ private func firstCkTemplateFieldKey(_ template: String?) -> String? {
     return key.isEmpty ? nil : key
 }
 
-final class ProtocolAccountPickerRow: UIView, UIPickerViewDataSource, UIPickerViewDelegate, UITextFieldDelegate {
-    private let titleLabel = UILabel()
-    private let textField = UITextField()
-    private let picker = UIPickerView()
-    private let hintLabel = UILabel()
-    private var options: [ProtocolAccountOption] = []
-    private var selectedIndex: Int?
-    var onSelect: ((String) -> Void)?
+private extension UIResponder {
+    var owningViewController: UIViewController? {
+        var responder: UIResponder? = self
+        while let current = responder {
+            if let vc = current as? UIViewController { return vc }
+            responder = current.next
+        }
+        return nil
+    }
+}
 
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        accessibilityIdentifier = "protocol_account_picker_row"
-        isUserInteractionEnabled = true
-        titleLabel.text = "协议账号"
-        titleLabel.font = .systemFont(ofSize: 14, weight: .medium)
+private final class ProtocolAccountPickerSheetViewController: UIViewController, UIPickerViewDataSource, UIPickerViewDelegate {
+    private let options: [ProtocolAccountOption]
+    private var selectedRow: Int
+    private let onConfirm: (Int) -> Void
 
-        textField.applyAppInputStyle(placeholder: "请选择协议账号")
-        textField.font = .systemFont(ofSize: 13.5)
-        textField.adjustsFontSizeToFitWidth = true
-        textField.minimumFontSize = 11
-        textField.heightAnchor.constraint(equalToConstant: 50).isActive = true
-        textField.tintColor = .clear
-        textField.delegate = self
-
-        let chevron = UIImageView(image: UIImage(systemName: "chevron.down"))
-        chevron.tintColor = .tertiaryLabel
-        chevron.contentMode = .scaleAspectFit
-        let rightWrap = UIView(frame: CGRect(x: 0, y: 0, width: 36, height: 50))
-        chevron.translatesAutoresizingMaskIntoConstraints = false
-        rightWrap.addSubview(chevron)
-        NSLayoutConstraint.activate([
-            chevron.centerYAnchor.constraint(equalTo: rightWrap.centerYAnchor),
-            chevron.trailingAnchor.constraint(equalTo: rightWrap.trailingAnchor, constant: -12),
-            chevron.widthAnchor.constraint(equalToConstant: 14),
-            chevron.heightAnchor.constraint(equalToConstant: 14),
-        ])
-        textField.rightView = rightWrap
-        textField.rightViewMode = .always
-
-        picker.dataSource = self
-        picker.delegate = self
-        textField.inputView = picker
-
-        let toolbar = UIToolbar()
-        toolbar.sizeToFit()
-        let flex = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
-        let done = UIBarButtonItem(title: "完成", style: .done, target: self, action: #selector(doneTapped))
-        toolbar.items = [flex, done]
-        textField.inputAccessoryView = toolbar
-
-        hintLabel.font = .systemFont(ofSize: 11)
-        hintLabel.textColor = .tertiaryLabel
-        hintLabel.numberOfLines = 0
-
-        let inner = UIStackView(arrangedSubviews: [titleLabel, textField, hintLabel])
-        inner.axis = .vertical
-        inner.spacing = 6
-        inner.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(inner)
-        NSLayoutConstraint.activate([
-            inner.topAnchor.constraint(equalTo: topAnchor),
-            inner.leadingAnchor.constraint(equalTo: leadingAnchor),
-            inner.trailingAnchor.constraint(equalTo: trailingAnchor),
-            inner.bottomAnchor.constraint(equalTo: bottomAnchor),
-        ])
+    init(options: [ProtocolAccountOption], selectedRow: Int?, onConfirm: @escaping (Int) -> Void) {
+        self.options = options
+        if let selectedRow, options.indices.contains(selectedRow), options[selectedRow].selectable != false {
+            self.selectedRow = selectedRow
+        } else {
+            self.selectedRow = options.firstIndex(where: { $0.selectable != false }) ?? 0
+        }
+        self.onConfirm = onConfirm
+        super.init(nibName: nil, bundle: nil)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+
+        let toolbar = UIToolbar()
+        toolbar.sizeToFit()
+        let cancel = UIBarButtonItem(title: "取消", style: .plain, target: self, action: #selector(cancelTapped))
+        let flex = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        let done = UIBarButtonItem(title: "完成", style: .done, target: self, action: #selector(doneTapped))
+        toolbar.items = [cancel, flex, done]
+
+        let picker = UIPickerView()
+        picker.dataSource = self
+        picker.delegate = self
+        picker.selectRow(selectedRow, inComponent: 0, animated: false)
+
+        toolbar.translatesAutoresizingMaskIntoConstraints = false
+        picker.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(toolbar)
+        view.addSubview(picker)
+        NSLayoutConstraint.activate([
+            toolbar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            toolbar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            toolbar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            picker.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
+            picker.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            picker.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            picker.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+        ])
+    }
+
+    @objc private func cancelTapped() {
+        dismiss(animated: true)
+    }
+
     @objc private func doneTapped() {
-        textField.resignFirstResponder()
-    }
-
-    func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool {
-        !options.isEmpty && options.contains(where: { $0.selectable != false })
-    }
-
-    func configure(options: [ProtocolAccountOption], selectedFillRef: String?) {
-        self.options = options
-        selectedIndex = nil
-        picker.reloadAllComponents()
-        hintLabel.text = nil
-        textField.text = nil
-        textField.isEnabled = !options.isEmpty
-
-        if options.isEmpty {
-            hintLabel.text = "暂无在线协议账号，请先到协议接入扫码登录"
+        guard options.indices.contains(selectedRow), options[selectedRow].selectable != false else {
+            dismiss(animated: true)
             return
         }
-        if !options.contains(where: { $0.selectable != false }) {
-            hintLabel.text = "本活动在线协议账号已全部上车"
-            textField.isEnabled = false
-        }
-
-        if let selectedFillRef, !selectedFillRef.isEmpty,
-           let idx = options.firstIndex(where: { $0.fillRef == selectedFillRef || $0.wxid == selectedFillRef || $0.openid == selectedFillRef }),
-           options[idx].selectable != false {
-            applySelection(at: idx, notify: true)
-        }
-    }
-
-    private func applySelection(at index: Int, notify: Bool) {
-        guard options.indices.contains(index) else { return }
-        let opt = options[index]
-        guard opt.selectable != false else { return }
-        selectedIndex = index
-        picker.selectRow(index, inComponent: 0, animated: false)
-        textField.text = opt.label
-        if notify { onSelect?(opt.fillRef) }
+        onConfirm(selectedRow)
+        dismiss(animated: true)
     }
 
     func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
@@ -2214,14 +2176,152 @@ final class ProtocolAccountPickerRow: UIView, UIPickerViewDataSource, UIPickerVi
     }
 
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
-        let opt = options[row]
-        guard opt.selectable != false else {
-            if let prev = selectedIndex {
-                picker.selectRow(prev, inComponent: 0, animated: true)
-            }
+        guard options[row].selectable != false else {
+            let fallback = options.indices.contains(selectedRow) && options[selectedRow].selectable != false
+                ? selectedRow
+                : (options.firstIndex(where: { $0.selectable != false }) ?? 0)
+            pickerView.selectRow(fallback, inComponent: 0, animated: true)
+            selectedRow = fallback
             return
         }
-        applySelection(at: row, notify: true)
+        selectedRow = row
+    }
+}
+
+final class ProtocolAccountPickerRow: UIView {
+    private static let placeholderText = "点击选择已登录的协议账号"
+
+    private let titleLabel = UILabel()
+    private let fieldControl = UIControl()
+    private let valueLabel = UILabel()
+    private let hintLabel = UILabel()
+    private var options: [ProtocolAccountOption] = []
+    private var selectedIndex: Int?
+    var onSelect: ((String) -> Void)?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        accessibilityIdentifier = "protocol_account_picker_row"
+        isUserInteractionEnabled = true
+
+        titleLabel.text = "协议账号"
+        titleLabel.font = .systemFont(ofSize: 14, weight: .medium)
+
+        valueLabel.font = .systemFont(ofSize: 13.5)
+        valueLabel.adjustsFontSizeToFitWidth = true
+        valueLabel.minimumScaleFactor = 0.75
+        valueLabel.numberOfLines = 2
+        valueLabel.lineBreakMode = .byTruncatingTail
+        valueLabel.isUserInteractionEnabled = false
+        resetPlaceholder()
+
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.down"))
+        chevron.tintColor = .tertiaryLabel
+        chevron.contentMode = .scaleAspectFit
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+        chevron.isUserInteractionEnabled = false
+        chevron.setContentHuggingPriority(.required, for: .horizontal)
+
+        fieldControl.backgroundColor = .secondarySystemBackground
+        fieldControl.layer.cornerRadius = 14
+        fieldControl.layer.borderWidth = 1
+        fieldControl.layer.borderColor = UIColor.systemGray5.cgColor
+        fieldControl.translatesAutoresizingMaskIntoConstraints = false
+        fieldControl.addTarget(self, action: #selector(openPicker), for: .touchUpInside)
+
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        fieldControl.addSubview(valueLabel)
+        fieldControl.addSubview(chevron)
+        NSLayoutConstraint.activate([
+            fieldControl.heightAnchor.constraint(equalToConstant: 50),
+            valueLabel.leadingAnchor.constraint(equalTo: fieldControl.leadingAnchor, constant: 14),
+            valueLabel.centerYAnchor.constraint(equalTo: fieldControl.centerYAnchor),
+            valueLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevron.leadingAnchor, constant: -8),
+            chevron.trailingAnchor.constraint(equalTo: fieldControl.trailingAnchor, constant: -14),
+            chevron.centerYAnchor.constraint(equalTo: fieldControl.centerYAnchor),
+            chevron.widthAnchor.constraint(equalToConstant: 14),
+            chevron.heightAnchor.constraint(equalToConstant: 14),
+        ])
+
+        hintLabel.font = .systemFont(ofSize: 11)
+        hintLabel.textColor = .tertiaryLabel
+        hintLabel.numberOfLines = 0
+
+        let inner = UIStackView(arrangedSubviews: [titleLabel, fieldControl, hintLabel])
+        inner.axis = .vertical
+        inner.spacing = 6
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(inner)
+        NSLayoutConstraint.activate([
+            inner.topAnchor.constraint(equalTo: topAnchor),
+            inner.leadingAnchor.constraint(equalTo: leadingAnchor),
+            inner.trailingAnchor.constraint(equalTo: trailingAnchor),
+            inner.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private var canOpenPicker: Bool {
+        !options.isEmpty && options.contains(where: { $0.selectable != false })
+    }
+
+    private func resetPlaceholder() {
+        valueLabel.text = Self.placeholderText
+        valueLabel.textColor = .placeholderText
+    }
+
+    @objc private func openPicker() {
+        guard canOpenPicker else { return }
+        guard let host = owningViewController else { return }
+
+        let sheet = ProtocolAccountPickerSheetViewController(options: options, selectedRow: selectedIndex) { [weak self] index in
+            self?.applySelection(at: index, notify: true)
+        }
+        if #available(iOS 15.0, *) {
+            if let pres = sheet.sheetPresentationController {
+                pres.detents = [.medium()]
+                pres.prefersGrabberVisible = true
+            }
+        } else {
+            sheet.modalPresentationStyle = .pageSheet
+        }
+        host.present(sheet, animated: true)
+    }
+
+    func configure(options: [ProtocolAccountOption], selectedFillRef: String?) {
+        self.options = options
+        selectedIndex = nil
+        hintLabel.text = nil
+        resetPlaceholder()
+        fieldControl.isEnabled = canOpenPicker
+        fieldControl.alpha = canOpenPicker ? 1 : 0.55
+
+        if options.isEmpty {
+            hintLabel.text = "暂无在线协议账号，请先到协议接入扫码登录"
+            return
+        }
+        if !options.contains(where: { $0.selectable != false }) {
+            hintLabel.text = "本活动在线协议账号已全部上车"
+            fieldControl.isEnabled = false
+            fieldControl.alpha = 0.55
+        }
+
+        if let selectedFillRef, !selectedFillRef.isEmpty,
+           let idx = options.firstIndex(where: { $0.fillRef == selectedFillRef || $0.wxid == selectedFillRef || $0.openid == selectedFillRef }),
+           options[idx].selectable != false {
+            applySelection(at: idx, notify: true)
+        }
+    }
+
+    private func applySelection(at index: Int, notify: Bool) {
+        guard options.indices.contains(index) else { return }
+        let opt = options[index]
+        guard opt.selectable != false else { return }
+        selectedIndex = index
+        valueLabel.text = opt.label
+        valueLabel.textColor = .label
+        if notify { onSelect?(opt.fillRef) }
     }
 }
 
