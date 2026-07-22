@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -314,4 +315,330 @@ func purgeProtocolBindingGhosts(wxWxid, yybOpenID string) {
 		return
 	}
 	_ = q.Delete(&PortalProtocolBinding{}).Error
+}
+
+// ProtocolYybAccountBrief 应用宝账号摘要（供协议选项合并）
+type ProtocolYybAccountBrief struct {
+	OpenID   string
+	Nickname string
+	Status   string
+}
+
+// ProtocolAccountOption 协议活动可选账号
+type ProtocolAccountOption struct {
+	ID             string `json:"id"`
+	Label          string `json:"label"`
+	Nickname       string `json:"nickname"`
+	Mode           string `json:"mode"`
+	WxWxid         string `json:"wxid,omitempty"`
+	OpenID         string `json:"openid,omitempty"`
+	FillRef        string `json:"fillRef"`
+	UsedInActivity bool   `json:"usedInActivity"`
+	Selectable     bool   `json:"selectable"`
+}
+
+func isYybAccountAlive(status string) bool {
+	st := strings.ToLower(strings.TrimSpace(status))
+	return st == "alive" || st == "online"
+}
+
+func pickNickname(parts ...string) string {
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			return p
+		}
+	}
+	return "未命名账号"
+}
+
+func buildProtocolOptionLabel(nickname, fillRef, mode string, used bool) string {
+	tag := "微信"
+	switch mode {
+	case "dual":
+		tag = "已双绑"
+	case "yyb_only":
+		tag = "应用宝"
+	}
+	label := fmt.Sprintf("%s · %s · %s", nickname, protocolRefShort(fillRef), tag)
+	if used {
+		label += " · 已上车"
+	}
+	return label
+}
+
+func identityMatchesRef(identityID, wxid, openid, ref string) bool {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return false
+	}
+	if wxid != "" && ref == wxid {
+		return true
+	}
+	if openid != "" && ref == openid {
+		return true
+	}
+	switch {
+	case strings.HasPrefix(identityID, "dual:"):
+		idOpen := strings.TrimPrefix(identityID, "dual:")
+		return ref == idOpen || (openid != "" && ref == openid) || (wxid != "" && ref == wxid)
+	case strings.HasPrefix(identityID, "wx:"):
+		return ref == strings.TrimPrefix(identityID, "wx:")
+	case strings.HasPrefix(identityID, "yyb:"):
+		return ref == strings.TrimPrefix(identityID, "yyb:")
+	default:
+		return false
+	}
+}
+
+func collectUsedProtocolIdentityIDs(userNumber int, cfg *ActivityConfig, excludeRemarks string) (map[string]bool, error) {
+	used := make(map[string]bool)
+	if cfg == nil {
+		return used, nil
+	}
+	projects, err := GetActivityProjectsByUserAndEnv(userNumber, cfg.ID, cfg.EnvKey)
+	if err != nil {
+		return nil, err
+	}
+	bindings, _ := ListProtocolBindings(userNumber)
+	wxToOpen := make(map[string]string, len(bindings))
+	openToWx := make(map[string]string, len(bindings))
+	for _, b := range bindings {
+		wxToOpen[b.WxWxid] = b.YybOpenID
+		openToWx[b.YybOpenID] = b.WxWxid
+	}
+	excludeRemarks = strings.TrimSpace(excludeRemarks)
+	for _, p := range projects {
+		if excludeRemarks != "" && projectRemarkAlias(p) == excludeRemarks {
+			continue
+		}
+		refs := ExtractProtocolRefsFromCK(cfg.CKTemplate, p.EnvValue)
+		for _, ref := range refs {
+			if id := protocolIdentityID(ref, wxToOpen, openToWx); id != "" {
+				used[id] = true
+			}
+		}
+	}
+	return used, nil
+}
+
+func projectRemarkAlias(p ActivityProject) string {
+	if strings.TrimSpace(p.RemarkAlias) != "" {
+		return strings.TrimSpace(p.RemarkAlias)
+	}
+	remarks := strings.TrimSpace(p.Remarks)
+	if idx := strings.Index(remarks, "/"); idx > 0 {
+		return remarks[:idx]
+	}
+	return remarks
+}
+
+func protocolIdentityID(ref string, wxToOpen, openToWx map[string]string) string {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return ""
+	}
+	if IsYybOpenIDRef(ref) {
+		if wx, ok := openToWx[ref]; ok && wx != "" {
+			return "dual:" + ref
+		}
+		return "yyb:" + ref
+	}
+	if open, ok := wxToOpen[ref]; ok && open != "" {
+		return "dual:" + open
+	}
+	return "wx:" + ref
+}
+
+// BuildProtocolAccountOptions 构建协议活动账号下拉选项
+func BuildProtocolAccountOptions(userNumber int, activityID, excludeRemarks string, yybAccounts []ProtocolYybAccountBrief) ([]ProtocolAccountOption, error) {
+	cfg := getActivityByID(activityID)
+	if cfg == nil {
+		return nil, fmt.Errorf("活动不存在")
+	}
+	if !cfg.IsProtocolActivity {
+		return []ProtocolAccountOption{}, nil
+	}
+
+	usedIDs, err := collectUsedProtocolIdentityIDs(userNumber, cfg, excludeRemarks)
+	if err != nil {
+		return nil, err
+	}
+
+	bindings, err := ListProtocolBindings(userNumber)
+	if err != nil {
+		return nil, err
+	}
+	wxDevices, err := GetPortalWxDevices(userNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	boundWx := make(map[string]PortalProtocolBinding, len(bindings))
+	boundOpen := make(map[string]PortalProtocolBinding, len(bindings))
+	for _, b := range bindings {
+		boundWx[b.WxWxid] = b
+		boundOpen[b.YybOpenID] = b
+	}
+
+	yybByOpen := make(map[string]ProtocolYybAccountBrief, len(yybAccounts))
+	for _, a := range yybAccounts {
+		openid := strings.TrimSpace(a.OpenID)
+		if openid == "" {
+			continue
+		}
+		yybByOpen[openid] = a
+	}
+
+	wxNick := make(map[string]string)
+	for _, d := range wxDevices {
+		wxNick[d.Wxid] = d.Nickname
+	}
+
+	options := make([]ProtocolAccountOption, 0)
+	seenIdentity := make(map[string]bool)
+
+	addOption := func(opt ProtocolAccountOption) {
+		if opt.ID == "" || seenIdentity[opt.ID] {
+			return
+		}
+		seenIdentity[opt.ID] = true
+		opt.UsedInActivity = usedIDs[opt.ID]
+		opt.Selectable = !opt.UsedInActivity
+		opt.Label = buildProtocolOptionLabel(opt.Nickname, opt.FillRef, opt.Mode, opt.UsedInActivity)
+		options = append(options, opt)
+	}
+
+	for _, b := range bindings {
+		yyb, ok := yybByOpen[b.YybOpenID]
+		if !ok || !isYybAccountAlive(yyb.Status) {
+			continue
+		}
+		nickname := pickNickname(b.Nickname, yyb.Nickname, wxNick[b.WxWxid])
+		addOption(ProtocolAccountOption{
+			ID:       "dual:" + b.YybOpenID,
+			Nickname: nickname,
+			Mode:     "dual",
+			WxWxid:   b.WxWxid,
+			OpenID:   b.YybOpenID,
+			FillRef:  b.YybOpenID,
+		})
+	}
+
+	for _, d := range wxDevices {
+		wxid := strings.TrimSpace(d.Wxid)
+		if wxid == "" || !d.Online {
+			continue
+		}
+		if _, bound := boundWx[wxid]; bound {
+			continue
+		}
+		nickname := pickNickname(d.Nickname)
+		addOption(ProtocolAccountOption{
+			ID:       "wx:" + wxid,
+			Nickname: nickname,
+			Mode:     "wx_only",
+			WxWxid:   wxid,
+			FillRef:  wxid,
+		})
+	}
+
+	for _, a := range yybAccounts {
+		openid := strings.TrimSpace(a.OpenID)
+		if openid == "" || !isYybAccountAlive(a.Status) {
+			continue
+		}
+		if _, bound := boundOpen[openid]; bound {
+			continue
+		}
+		nickname := pickNickname(a.Nickname)
+		addOption(ProtocolAccountOption{
+			ID:       "yyb:" + openid,
+			Nickname: nickname,
+			Mode:     "yyb_only",
+			OpenID:   openid,
+			FillRef:  openid,
+		})
+	}
+
+	sort.Slice(options, func(i, j int) bool {
+		if options[i].UsedInActivity != options[j].UsedInActivity {
+			return !options[i].UsedInActivity
+		}
+		return options[i].Label < options[j].Label
+	})
+	return options, nil
+}
+
+// ValidateProtocolRefForActivity 校验协议引用是否可用于活动（上车/改 CK）
+func ValidateProtocolRefForActivity(userNumber int, activityID, excludeRemarks, ref string) error {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return fmt.Errorf("请选择协议账号")
+	}
+	cfg := getActivityByID(activityID)
+	if cfg == nil {
+		return fmt.Errorf("活动不存在")
+	}
+	if !cfg.IsProtocolActivity {
+		return nil
+	}
+	options, err := BuildProtocolAccountOptions(userNumber, activityID, excludeRemarks, listYybBriefsForUser(userNumber))
+	if err != nil {
+		return err
+	}
+	for _, opt := range options {
+		if identityMatchesRef(opt.ID, opt.WxWxid, opt.OpenID, ref) {
+			if !opt.Selectable {
+				return fmt.Errorf("该协议账号已在本活动中使用")
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("协议账号无效或已掉线，请重新选择")
+}
+
+var protocolListYybBriefsFn func(userNumber int) ([]ProtocolYybAccountBrief, error)
+
+// SetProtocolListYybBriefsFn 注入应用宝账号列表（避免 models ↔ yybportal 循环依赖）
+func SetProtocolListYybBriefsFn(fn func(userNumber int) ([]ProtocolYybAccountBrief, error)) {
+	protocolListYybBriefsFn = fn
+}
+
+func listYybBriefsForUser(userNumber int) []ProtocolYybAccountBrief {
+	if protocolListYybBriefsFn == nil {
+		return nil
+	}
+	rows, err := protocolListYybBriefsFn(userNumber)
+	if err != nil {
+		return nil
+	}
+	return rows
+}
+
+// ListProtocolYybBriefs 获取用户应用宝账号摘要
+func ListProtocolYybBriefs(userNumber int) []ProtocolYybAccountBrief {
+	return listYybBriefsForUser(userNumber)
+}
+
+// ValidateProtocolActivityInputs 协议活动提交前校验 inputs 中的协议引用
+func ValidateProtocolActivityInputs(userNumber int, cfg *ActivityConfig, excludeRemarks string, inputs map[string]string) error {
+	if cfg == nil || !cfg.IsProtocolActivity {
+		return nil
+	}
+	fields := GetCkTemplateFields(cfg.CKTemplate)
+	if len(fields) == 0 {
+		return fmt.Errorf("活动 CK 模板未配置字段")
+	}
+	ref := strings.TrimSpace(inputs[fields[0]])
+	if ref == "" {
+		for _, v := range inputs {
+			v = strings.TrimSpace(v)
+			if IsYybOpenIDRef(v) || strings.HasPrefix(v, "wxid") {
+				ref = v
+				break
+			}
+		}
+	}
+	return ValidateProtocolRefForActivity(userNumber, cfg.ID, excludeRemarks, ref)
 }

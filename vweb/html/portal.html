@@ -2812,6 +2812,7 @@
 
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_bind.js?v=4"></script>
+<script src="/vweb/js/portal_protocol_activity.js?v=1"></script>
 <script src="/vweb/js/portal_yyb.js?v=20"></script>
 <script>
 async function getSignatureHeaders(path) {
@@ -3786,7 +3787,20 @@ function openProjectModal(activityId) {
     fields.innerHTML = built.join('');
 
     initProjectModalValidation(item);
+    state.protocolActivityPicker = null;
+    if (item.isProtocolActivity && global.PortalProtocolActivity) {
+        PortalProtocolActivity.mountPicker({
+            container: fields,
+            activityId: item.id,
+            template: item.ckTemplate || '',
+            onChange: function () { updateProjectModalProtocolPreview(item); }
+        }).then(function (picker) { state.protocolActivityPicker = picker; });
+    }
     document.getElementById('projectModalMask').classList.add('show');
+}
+
+function updateProjectModalProtocolPreview(item) {
+    // 协议字段隐藏后仍依赖 input 值，预览无需额外处理
 }
 
 function initProjectModalValidation(item) {
@@ -3938,6 +3952,15 @@ async function confirmProjectSubmit() {
     const months = parseInt(inputs.__months || '0', 10) || 0;
     delete inputs.__remarks;
     delete inputs.__months;
+
+    if (item.isProtocolActivity) {
+        const protoKey = PortalProtocolActivity.firstTemplateFieldKey(item.ckTemplate || '');
+        const protoRef = protoKey ? String(inputs[protoKey] || '').trim() : '';
+        if (!protoRef) {
+            toast('请选择协议账号', 'error');
+            return;
+        }
+    }
 
     // 验证最小天数
     if (item.isDailyDeduct && months > 0) {
@@ -4131,6 +4154,7 @@ function updateEditCkPreview() {
 function editProjectCk(activityId, remarks, displayName) {
     const item = (state.projects || []).find(x => String(x.activityId) === String(activityId) && x.remark === remarks);
     const activity = (state.activities || []).find(x => String(x.id) === String(activityId));
+    const isProtocolActivity = !!(item?.isProtocolActivity || activity?.isProtocolActivity);
     const fields = (item?.inputFields && item.inputFields.length ? item.inputFields : (activity?.inputFields || []));
     const ckTemplate = item?.ckTemplate || activity?.ckTemplate || '';
     const envValue = item ? (item.envValue || '') : '';
@@ -4173,6 +4197,19 @@ function editProjectCk(activityId, remarks, displayName) {
         list.innerHTML = '';
         rawWrap.style.display = 'block';
         toast('当前 CK 格式无法自动拆分，已切换为原始编辑模式', 'info');
+    }
+    state.editCkProtocolPicker = null;
+    if (isProtocolActivity && parsed && visibleFields.length && global.PortalProtocolActivity) {
+        const protoKey = PortalProtocolActivity.firstTemplateFieldKey(ckTemplate);
+        const selectedFillRef = protoKey ? String(parsed[protoKey] || '').trim() : '';
+        PortalProtocolActivity.mountPicker({
+            container: list,
+            activityId: activityId,
+            remarks: remarks,
+            template: ckTemplate,
+            selectedFillRef: selectedFillRef,
+            onChange: function () { updateEditCkPreview(); }
+        }).then(function (picker) { state.editCkProtocolPicker = picker; });
     }
     updateEditCkPreview();
     document.getElementById('editCkModalMask').classList.add('show');

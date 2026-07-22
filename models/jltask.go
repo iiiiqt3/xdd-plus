@@ -74,6 +74,7 @@ type ActivityConfig struct {
 	// 👇 核心字段：控制菜单显示顺序，数值越小越靠前
 	DisplayOrder int
 	Enabled      bool
+	IsProtocolActivity bool // 是否协议活动（上车/改CK 可选协议账号）
 	Category     string // 活动类型：现金类、积分换实物、抽奖类、其他类
 }
 

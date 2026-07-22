@@ -37,4 +37,19 @@ func RegisterProtocolGatewayHandlers() {
 		_, err := AccountPublic(ref)
 		return err == nil
 	})
+	models.SetProtocolListYybBriefsFn(func(userNumber int) ([]models.ProtocolYybAccountBrief, error) {
+		accounts, err := PortalListAccounts(userNumber)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]models.ProtocolYybAccountBrief, 0, len(accounts))
+		for _, a := range accounts {
+			out = append(out, models.ProtocolYybAccountBrief{
+				OpenID:   a.OpenID,
+				Nickname: a.Nickname,
+				Status:   a.Status,
+			})
+		}
+		return out, nil
+	})
 }

@@ -246,6 +246,7 @@ func main() {
 	web.Router("/api/portal/protocol/bind/quota", &controllers.PortalController{}, "get:ProtocolBindQuota")
 	web.Router("/api/portal/protocol/bind", &controllers.PortalController{}, "post:ProtocolBind")
 	web.Router("/api/portal/protocol/unbind", &controllers.PortalController{}, "post:ProtocolUnbind")
+	web.Router("/api/portal/protocol/account-options", &controllers.PortalController{}, "get:ProtocolAccountOptions")
 	web.Router("/api/portal/protocol/proxy/areas", &controllers.PortalController{}, "post:ProtocolProxyAreas")
 	web.Router("/api/portal/protocol/proxy/config", &controllers.PortalController{}, "get:ProtocolProxyConfig")
 	// ===================== 酷我提现 API =====================

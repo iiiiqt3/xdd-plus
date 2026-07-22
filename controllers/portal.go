@@ -1425,6 +1425,25 @@ func (c *PortalController) ProtocolBindings() {
 	c.ServeJSON()
 }
 
+// ProtocolAccountOptions 协议活动可选账号（上车/改 CK 下拉）
+func (c *PortalController) ProtocolAccountOptions() {
+	activityID := strings.TrimSpace(c.GetString("activityId"))
+	if activityID == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "activityId 不能为空"}
+		c.ServeJSON()
+		return
+	}
+	remarks := strings.TrimSpace(c.GetString("remarks"))
+	options, err := models.BuildProtocolAccountOptions(c.PortalUserID, activityID, remarks, models.ListProtocolYybBriefs(c.PortalUserID))
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": options}
+	c.ServeJSON()
+}
+
 // ProtocolBindQuota 应用宝扫码免费名额（在线微信数 − 已绑应用宝数）
 func (c *PortalController) ProtocolBindQuota() {
 	online := models.CountOnlineWxProtocolSlots(c.PortalUserID)

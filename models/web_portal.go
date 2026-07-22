@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -37,6 +38,7 @@ type PortalProjectItem struct {
 	PriceText       string                `json:"priceText"`
 	InputFields     []PortalActivityField `json:"inputFields"`
 	CKTemplate      string                `json:"ckTemplate"`
+	IsProtocolActivity bool               `json:"isProtocolActivity"`
 }
 
 type PortalActivityField struct {
@@ -63,6 +65,7 @@ type PortalActivityItem struct {
 	InputFields     []PortalActivityField `json:"inputFields"`
 	CKTemplate      string                `json:"ckTemplate"`
 	Enabled         bool                  `json:"enabled"`
+	IsProtocolActivity bool               `json:"isProtocolActivity"`
 	Category        string                `json:"category"`
 }
 
@@ -339,6 +342,7 @@ func GetPortalActivities() []PortalActivityItem {
 			Guide:           strings.TrimSpace(cfg.Guide),
 			CKTemplate:      cfg.CKTemplate,
 			Enabled:         cfg.Enabled,
+			IsProtocolActivity: cfg.IsProtocolActivity,
 			Category:        NormalizeActivityCategory(cfg.Category),
 		}
 		for _, field := range cfg.InputFields {
@@ -470,6 +474,7 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 			PriceText:       priceText,
 			InputFields:     projectFields,
 			CKTemplate:      cfg.CKTemplate,
+			IsProtocolActivity: cfg.IsProtocolActivity,
 		})
 	}
 
@@ -512,6 +517,10 @@ func PortalCreateProject(userNumber int, activityID string, inputs map[string]st
 			}
 		}
 		cleanedInputs[field.Key] = value
+	}
+
+	if err := ValidateProtocolActivityInputs(userNumber, cfg, "", cleanedInputs); err != nil {
+		return "", err
 	}
 
 	if cfg.IsDailyDeduct {
@@ -760,6 +769,16 @@ func PortalUpdateProject(userNumber int, activityID, remarks, newCkValue string)
 
 	if project.UserNumber != userNumber {
 		return "", fmt.Errorf("无权操作此账号")
+	}
+
+	if cfg.IsProtocolActivity {
+		refs := ExtractProtocolRefsFromCK(cfg.CKTemplate, newCkValue)
+		if len(refs) == 0 {
+			return "", fmt.Errorf("CK 中未找到有效的协议账号")
+		}
+		if err := ValidateProtocolRefForActivity(userNumber, activityID, remarks, refs[0]); err != nil {
+			return "", err
+		}
 	}
 
 	project.EnvValue = newCkValue
@@ -1013,4 +1032,112 @@ func formatPortalTime(t time.Time) string {
 		return ""
 	}
 	return t.Format("2006-01-02 15:04:05")
+}
+
+var ckTemplateFieldRe = regexp.MustCompile(`\{\{\.([^}]+)\}\}`)
+
+// GetCkTemplateFields 从 CK 模板提取字段 key（保持顺序、去重）
+func GetCkTemplateFields(template string) []string {
+	seen := make(map[string]bool)
+	var fields []string
+	for _, m := range ckTemplateFieldRe.FindAllStringSubmatch(template, -1) {
+		key := strings.TrimSpace(m[1])
+		if key == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		fields = append(fields, key)
+	}
+	return fields
+}
+
+type ckTemplatePart struct {
+	key    string
+	prefix string
+}
+
+// SplitCkValueByTemplate 按 CK 模板从 env_value 解析各字段值
+func SplitCkValueByTemplate(template, value string) map[string]string {
+	fieldKeys := GetCkTemplateFields(template)
+	if len(fieldKeys) == 0 {
+		return nil
+	}
+	source := value
+	var parts []ckTemplatePart
+	cursor := 0
+	loc := ckTemplateFieldRe.FindAllStringSubmatchIndex(template, -1)
+	for _, m := range loc {
+		if len(m) < 4 {
+			continue
+		}
+		key := strings.TrimSpace(template[m[2]:m[3]])
+		parts = append(parts, ckTemplatePart{
+			key:    key,
+			prefix: template[cursor:m[0]],
+		})
+		cursor = m[1]
+	}
+	suffix := template[cursor:]
+	if len(parts) == 0 {
+		return nil
+	}
+	result := make(map[string]string, len(parts))
+	pos := 0
+	for i, part := range parts {
+		if part.prefix != "" {
+			if !strings.HasPrefix(source[pos:], part.prefix) {
+				return nil
+			}
+			pos += len(part.prefix)
+		}
+		nextText := suffix
+		if i+1 < len(parts) {
+			nextText = parts[i+1].prefix
+		}
+		end := len(source)
+		if nextText != "" {
+			idx := strings.Index(source[pos:], nextText)
+			if idx < 0 {
+				return nil
+			}
+			end = pos + idx
+		}
+		result[part.key] = source[pos:end]
+		pos = end
+	}
+	if suffix != "" {
+		if !strings.HasPrefix(source[pos:], suffix) {
+			return nil
+		}
+		pos += len(suffix)
+	}
+	if pos != len(source) {
+		return nil
+	}
+	return result
+}
+
+// ExtractProtocolRefsFromCK 从 CK 值中提取可能是协议引用的字段值
+func ExtractProtocolRefsFromCK(template, envValue string) []string {
+	parsed := SplitCkValueByTemplate(template, envValue)
+	if parsed == nil {
+		ref := strings.TrimSpace(envValue)
+		if ref != "" {
+			return []string{ref}
+		}
+		return nil
+	}
+	seen := make(map[string]bool)
+	var refs []string
+	for _, v := range parsed {
+		v = strings.TrimSpace(v)
+		if v == "" || seen[v] {
+			continue
+		}
+		if IsYybOpenIDRef(v) || strings.HasPrefix(v, "wxid_") || strings.HasPrefix(v, "wxid") {
+			seen[v] = true
+			refs = append(refs, v)
+		}
+	}
+	return refs
 }
