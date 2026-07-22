@@ -4212,7 +4212,10 @@ function editProjectCk(activityId, remarks, displayName) {
             template: ckTemplate,
             selectedFillRef: selectedFillRef,
             onChange: function () { updateEditCkPreview(); }
-        }).then(function (picker) { state.editCkProtocolPicker = picker; });
+        }).then(function (picker) { state.editCkProtocolPicker = picker; }).catch(function (e) {
+            console.error('[协议活动] 改CK加载账号失败', e);
+            toast(e.message || '协议账号加载失败', 'error');
+        });
     }
     updateEditCkPreview();
     document.getElementById('editCkModalMask').classList.add('show');
