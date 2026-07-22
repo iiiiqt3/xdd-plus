@@ -1119,25 +1119,23 @@ func SplitCkValueByTemplate(template, value string) map[string]string {
 
 // ExtractProtocolRefsFromCK 从 CK 值中提取可能是协议引用的字段值
 func ExtractProtocolRefsFromCK(template, envValue string) []string {
-	parsed := SplitCkValueByTemplate(template, envValue)
-	if parsed == nil {
-		ref := strings.TrimSpace(envValue)
-		if ref != "" {
-			return []string{ref}
-		}
-		return nil
-	}
 	seen := make(map[string]bool)
 	var refs []string
-	for _, v := range parsed {
+	add := func(v string) {
 		v = strings.TrimSpace(v)
 		if v == "" || seen[v] {
-			continue
+			return
 		}
-		if IsYybOpenIDRef(v) || strings.HasPrefix(v, "wxid_") || strings.HasPrefix(v, "wxid") {
-			seen[v] = true
-			refs = append(refs, v)
+		seen[v] = true
+		refs = append(refs, v)
+	}
+	if parsed := SplitCkValueByTemplate(template, envValue); parsed != nil {
+		for _, v := range parsed {
+			add(v)
 		}
+	}
+	if len(refs) == 0 {
+		add(envValue)
 	}
 	return refs
 }

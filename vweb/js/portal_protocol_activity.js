@@ -41,6 +41,10 @@
         }
     }
 
+    function escapeHtml(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     function renderSelect(selectEl, options, selectedFillRef) {
         if (!selectEl) return;
         var current = String(selectedFillRef || '').trim();
@@ -53,18 +57,16 @@
             var item = document.createElement('option');
             item.value = String(opt.fillRef || '');
             item.textContent = String(opt.label || opt.nickname || opt.fillRef || '协议账号');
-            item.disabled = opt.selectable === false;
-            if (opt.usedInActivity && opt.selectable === false) {
-                item.style.color = '#9ca3af';
-            }
-            if (current && (item.value === current || findOptionByFillRef([opt], current))) {
-                item.selected = true;
-            }
+            item.disabled = opt.selectable === false || opt.usedInActivity === true;
             selectEl.appendChild(item);
         });
         if (current) {
-            var matched = Array.from(selectEl.options).find(function (o) { return o.value === current && !o.disabled; });
-            if (matched) selectEl.value = current;
+            var matched = (options || []).find(function (opt) {
+                return opt.fillRef === current || opt.wxid === current || opt.openid === current;
+            });
+            if (matched && matched.selectable !== false && matched.usedInActivity !== true) {
+                selectEl.value = matched.fillRef;
+            }
         }
     }
 
@@ -81,19 +83,25 @@
             wrap.className = 'field full proto-activity-picker';
             wrap.innerHTML = ''
                 + '<label>协议账号<span class="field-required" title="必选">*</span></label>'
-                + '<select data-proto-activity-select></select>'
-                + '<div class="proto-activity-hint" style="display:none;margin-top:6px;font-size:11px;color:#9ca3af;"></div>';
+                + '<select class="proto-activity-select" data-proto-activity-select></select>'
+                + '<div class="proto-activity-hint" style="display:none;"></div>';
             var selectEl = wrap.querySelector('[data-proto-activity-select]');
             var hintEl = wrap.querySelector('.proto-activity-hint');
             renderSelect(selectEl, options, selectedFillRef);
             if (!options.length) {
                 hintEl.style.display = 'block';
                 hintEl.textContent = '暂无在线协议账号，请先到「协议接入」扫码登录。';
-            } else if (!options.some(function (o) { return o.selectable !== false; })) {
+            } else if (!options.some(function (o) { return o.selectable !== false && o.usedInActivity !== true; })) {
                 hintEl.style.display = 'block';
                 hintEl.textContent = '本活动在线协议账号已全部上车。';
             }
             selectEl.addEventListener('change', function () {
+                var idx = selectEl.selectedIndex;
+                var opt = options[idx - 1];
+                if (!selectEl.value || (opt && (opt.selectable === false || opt.usedInActivity === true))) {
+                    selectEl.value = '';
+                    return;
+                }
                 applyFillRef(selectEl.value, template, container);
                 if (typeof config.onChange === 'function') config.onChange(selectEl.value);
             });
@@ -114,16 +122,12 @@
             wrap.className = 'field full proto-activity-picker';
             wrap.innerHTML = ''
                 + '<label>协议账号<span class="field-required" title="必选">*</span></label>'
-                + '<div class="proto-activity-hint" style="margin-top:6px;font-size:11px;color:#dc2626;">'
+                + '<div class="proto-activity-hint" style="color:#dc2626;">'
                 + escapeHtml(err && err.message ? err.message : '协议账号加载失败，请刷新重试')
                 + '</div>';
             container.insertBefore(wrap, container.firstChild);
             return null;
         });
-    }
-
-    function escapeHtml(s) {
-        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     global.PortalProtocolActivity = {

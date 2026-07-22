@@ -352,15 +352,19 @@ func pickNickname(parts ...string) string {
 	return "未命名账号"
 }
 
-func buildProtocolOptionLabel(nickname, fillRef, mode string, used bool) string {
+func buildProtocolOptionLabel(opt ProtocolAccountOption, used bool) string {
 	tag := "微信"
-	switch mode {
+	displayRef := opt.FillRef
+	switch opt.Mode {
 	case "dual":
 		tag = "已双绑"
+		if strings.TrimSpace(opt.WxWxid) != "" {
+			displayRef = opt.WxWxid
+		}
 	case "yyb_only":
 		tag = "应用宝"
 	}
-	label := fmt.Sprintf("%s · %s · %s", nickname, protocolRefShort(fillRef), tag)
+	label := fmt.Sprintf("%s · %s · %s", opt.Nickname, protocolRefShort(displayRef), tag)
 	if used {
 		label += " · 已上车"
 	}
@@ -391,10 +395,56 @@ func identityMatchesRef(identityID, wxid, openid, ref string) bool {
 	}
 }
 
-func collectUsedProtocolIdentityIDs(userNumber int, cfg *ActivityConfig, excludeRemarks string) (map[string]bool, error) {
-	used := make(map[string]bool)
+type protocolUsedState struct {
+	ids     map[string]bool
+	wxids   map[string]bool
+	openids map[string]bool
+}
+
+func projectRemarkAlias(p ActivityProject) string {
+	if strings.TrimSpace(p.RemarkAlias) != "" {
+		return strings.TrimSpace(p.RemarkAlias)
+	}
+	remarks := strings.TrimSpace(p.Remarks)
+	if idx := strings.Index(remarks, "/"); idx > 0 {
+		return remarks[:idx]
+	}
+	return remarks
+}
+
+func extractProtocolRefsFromProject(template, envValue string, wxToOpen map[string]string) []string {
+	seen := make(map[string]bool)
+	var refs []string
+	add := func(v string) {
+		v = strings.TrimSpace(v)
+		if v == "" || seen[v] {
+			return
+		}
+		seen[v] = true
+		refs = append(refs, v)
+	}
+	for _, v := range ExtractProtocolRefsFromCK(template, envValue) {
+		add(v)
+	}
+	for wxid, openid := range wxToOpen {
+		if strings.Contains(envValue, wxid) {
+			add(wxid)
+		}
+		if strings.Contains(envValue, openid) {
+			add(openid)
+		}
+	}
+	return refs
+}
+
+func collectProtocolUsedState(userNumber int, cfg *ActivityConfig, excludeRemarks string) (*protocolUsedState, error) {
+	state := &protocolUsedState{
+		ids:     make(map[string]bool),
+		wxids:   make(map[string]bool),
+		openids: make(map[string]bool),
+	}
 	if cfg == nil {
-		return used, nil
+		return state, nil
 	}
 	projects, err := GetActivityProjectsByUserAndEnv(userNumber, cfg.ID, cfg.EnvKey)
 	if err != nil {
@@ -412,25 +462,48 @@ func collectUsedProtocolIdentityIDs(userNumber int, cfg *ActivityConfig, exclude
 		if excludeRemarks != "" && projectRemarkAlias(p) == excludeRemarks {
 			continue
 		}
-		refs := ExtractProtocolRefsFromCK(cfg.CKTemplate, p.EnvValue)
-		for _, ref := range refs {
+		for _, ref := range extractProtocolRefsFromProject(cfg.CKTemplate, p.EnvValue, wxToOpen) {
 			if id := protocolIdentityID(ref, wxToOpen, openToWx); id != "" {
-				used[id] = true
+				state.ids[id] = true
+			}
+			if IsYybOpenIDRef(ref) {
+				state.openids[ref] = true
+			} else {
+				state.wxids[ref] = true
 			}
 		}
 	}
-	return used, nil
+	return state, nil
 }
 
-func projectRemarkAlias(p ActivityProject) string {
-	if strings.TrimSpace(p.RemarkAlias) != "" {
-		return strings.TrimSpace(p.RemarkAlias)
+func (s *protocolUsedState) optionUsed(opt ProtocolAccountOption, wxToOpen, openToWx map[string]string) bool {
+	if s == nil {
+		return false
 	}
-	remarks := strings.TrimSpace(p.Remarks)
-	if idx := strings.Index(remarks, "/"); idx > 0 {
-		return remarks[:idx]
+	if s.ids[opt.ID] {
+		return true
 	}
-	return remarks
+	if opt.WxWxid != "" {
+		if s.wxids[opt.WxWxid] || s.ids["wx:"+opt.WxWxid] {
+			return true
+		}
+		if openid, ok := wxToOpen[opt.WxWxid]; ok && openid != "" {
+			if s.openids[openid] || s.ids["dual:"+openid] || s.ids["yyb:"+openid] {
+				return true
+			}
+		}
+	}
+	if opt.OpenID != "" {
+		if s.openids[opt.OpenID] || s.ids["dual:"+opt.OpenID] || s.ids["yyb:"+opt.OpenID] {
+			return true
+		}
+		if wxid, ok := openToWx[opt.OpenID]; ok && wxid != "" {
+			if s.wxids[wxid] || s.ids["wx:"+wxid] {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func protocolIdentityID(ref string, wxToOpen, openToWx map[string]string) string {
@@ -460,7 +533,7 @@ func BuildProtocolAccountOptions(userNumber int, activityID, excludeRemarks stri
 		return []ProtocolAccountOption{}, nil
 	}
 
-	usedIDs, err := collectUsedProtocolIdentityIDs(userNumber, cfg, excludeRemarks)
+	usedState, err := collectProtocolUsedState(userNumber, cfg, excludeRemarks)
 	if err != nil {
 		return nil, err
 	}
@@ -469,6 +542,13 @@ func BuildProtocolAccountOptions(userNumber int, activityID, excludeRemarks stri
 	if err != nil {
 		return nil, err
 	}
+	wxToOpen := make(map[string]string, len(bindings))
+	openToWx := make(map[string]string, len(bindings))
+	for _, b := range bindings {
+		wxToOpen[b.WxWxid] = b.YybOpenID
+		openToWx[b.YybOpenID] = b.WxWxid
+	}
+
 	wxDevices, err := GetPortalWxDevices(userNumber)
 	if err != nil {
 		return nil, err
@@ -503,9 +583,9 @@ func BuildProtocolAccountOptions(userNumber int, activityID, excludeRemarks stri
 			return
 		}
 		seenIdentity[opt.ID] = true
-		opt.UsedInActivity = usedIDs[opt.ID]
+		opt.UsedInActivity = usedState.optionUsed(opt, wxToOpen, openToWx)
 		opt.Selectable = !opt.UsedInActivity
-		opt.Label = buildProtocolOptionLabel(opt.Nickname, opt.FillRef, opt.Mode, opt.UsedInActivity)
+		opt.Label = buildProtocolOptionLabel(opt, opt.UsedInActivity)
 		options = append(options, opt)
 	}
 
