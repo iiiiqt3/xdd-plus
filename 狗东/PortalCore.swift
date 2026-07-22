@@ -479,6 +479,21 @@ struct PortalActivity: Decodable {
     let guide: String?
     let inputFields: [PortalActivityField]?
     let category: String?
+    let ckTemplate: String?
+    let isProtocolActivity: Bool?
+}
+
+
+struct ProtocolAccountOption: Decodable {
+    let id: String
+    let label: String
+    let nickname: String?
+    let mode: String?
+    let wxid: String?
+    let openid: String?
+    let fillRef: String
+    let usedInActivity: Bool?
+    let selectable: Bool?
 }
 
 
@@ -507,6 +522,7 @@ struct PortalProject: Decodable {
     let priceText: String?
     let inputFields: [PortalActivityField]?
     let ckTemplate: String?
+    let isProtocolActivity: Bool?
 }
 
 
@@ -1430,6 +1446,14 @@ final class PortalService {
 
     func fetchProjects(completion: @escaping (Result<[PortalProject], APIError>) -> Void) {
         APIClient.shared.requestData(path: "/api/portal/projects", completion: completion)
+    }
+
+    func fetchProtocolAccountOptions(activityId: String, remarks: String? = nil, completion: @escaping (Result<[ProtocolAccountOption], APIError>) -> Void) {
+        var path = "/api/portal/protocol/account-options?activityId=\(activityId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? activityId)"
+        if let remarks, !remarks.isEmpty {
+            path += "&remarks=\(remarks.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? remarks)"
+        }
+        APIClient.shared.requestData(path: path, completion: completion)
     }
 
     func createProject(activityId: String, inputs: [String: String], remarks: String, months: Int, completion: @escaping (Result<String, APIError>) -> Void) {

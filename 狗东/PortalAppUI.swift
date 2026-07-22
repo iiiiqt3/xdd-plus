@@ -2070,11 +2070,93 @@ final class ActivitiesListViewController: UITableViewController {
 
 
 
+
+
+private func firstCkTemplateFieldKey(_ template: String?) -> String? {
+    guard let template, !template.isEmpty else { return nil }
+    let regex = try? NSRegularExpression(pattern: #"\{\{\.([^}]+)\}\}"#)
+    let range = NSRange(template.startIndex..<template.endIndex, in: template)
+    guard let match = regex?.firstMatch(in: template, range: range), match.numberOfRanges > 1,
+          let keyRange = Range(match.range(at: 1), in: template) else { return nil }
+    let key = String(template[keyRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+    return key.isEmpty ? nil : key
+}
+
+final class ProtocolAccountPickerRow: UIView, UIPickerViewDataSource, UIPickerViewDelegate {
+    private let titleLabel = UILabel()
+    private let picker = UIPickerView()
+    private let hintLabel = UILabel()
+    private var options: [ProtocolAccountOption] = []
+    var onSelect: ((String) -> Void)?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        titleLabel.text = "协议账号"
+        titleLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        picker.dataSource = self
+        picker.delegate = self
+        hintLabel.font = .systemFont(ofSize: 11)
+        hintLabel.textColor = .tertiaryLabel
+        hintLabel.numberOfLines = 0
+        let inner = UIStackView(arrangedSubviews: [titleLabel, picker, hintLabel])
+        inner.axis = .vertical
+        inner.spacing = 6
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(inner)
+        NSLayoutConstraint.activate([
+            inner.topAnchor.constraint(equalTo: topAnchor),
+            inner.leadingAnchor.constraint(equalTo: leadingAnchor),
+            inner.trailingAnchor.constraint(equalTo: trailingAnchor),
+            inner.bottomAnchor.constraint(equalTo: bottomAnchor),
+            picker.heightAnchor.constraint(equalToConstant: 120)
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func configure(options: [ProtocolAccountOption], selectedFillRef: String?) {
+        self.options = options
+        picker.reloadAllComponents()
+        hintLabel.text = nil
+        if options.isEmpty {
+            hintLabel.text = "暂无在线协议账号，请先到协议接入扫码登录"
+            return
+        }
+        if !options.contains(where: { $0.selectable != false }) {
+            hintLabel.text = "本活动在线协议账号已全部上车"
+        }
+        if let selectedFillRef, !selectedFillRef.isEmpty,
+           let idx = options.firstIndex(where: { $0.fillRef == selectedFillRef || $0.wxid == selectedFillRef || $0.openid == selectedFillRef }) {
+            picker.selectRow(idx, inComponent: 0, animated: false)
+            onSelect?(options[idx].fillRef)
+        }
+    }
+
+    func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
+    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int { options.count }
+    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+        options[row].label
+    }
+    func pickerView(_ pickerView: UIPickerView, attributedTitleForRow row: Int, forComponent component: Int) -> NSAttributedString? {
+        let opt = options[row]
+        let color: UIColor = opt.selectable == false ? .tertiaryLabel : .label
+        return NSAttributedString(string: opt.label, attributes: [.foregroundColor: color])
+    }
+    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+        let opt = options[row]
+        guard opt.selectable != false else { return }
+        onSelect?(opt.fillRef)
+    }
+}
+
+
 final class ProjectFormViewController: BaseNativeViewController {
     private let activity: PortalActivity
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
     private var fieldViews: [String: UITextField] = [:]
+    private var fieldLabels: [String: UIView] = [:]
+    private var protocolPicker: ProtocolAccountPickerRow?
     private var isSubmitting = false
 
     init(activity: PortalActivity) {
@@ -2092,6 +2174,39 @@ final class ProjectFormViewController: BaseNativeViewController {
         title = activity.name
         navigationItem.largeTitleDisplayMode = .never
         setupUI()
+        if activity.isProtocolActivity == true {
+            loadProtocolPicker(remarks: nil)
+        }
+    }
+
+    private func loadProtocolPicker(remarks: String?) {
+        PortalService.shared.fetchProtocolAccountOptions(activityId: activity.id, remarks: remarks) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .failure(let error):
+                self.showMessage(error.message)
+            case .success(let options):
+                let key = firstCkTemplateFieldKey(self.activity.ckTemplate)
+                let picker = ProtocolAccountPickerRow()
+                picker.configure(options: options, selectedFillRef: key.flatMap { self.fieldViews[$0]?.text })
+                picker.onSelect = { [weak self] fillRef in
+                    guard let self, let key else { return }
+                    self.fieldViews[key]?.text = fillRef
+                }
+                if let key {
+                    self.fieldViews[key]?.isHidden = true
+                    self.fieldLabels[key]?.isHidden = true
+                }
+                self.protocolPicker?.removeFromSuperview()
+                self.protocolPicker = picker
+                if let remarkLabel = self.stack.arrangedSubviews.first(where: { ($0 as? UILabel)?.text == "用户备注名" }),
+                   let remarkIndex = self.stack.arrangedSubviews.firstIndex(of: remarkLabel) {
+                    self.stack.insertArrangedSubview(picker, at: remarkIndex)
+                } else {
+                    self.stack.insertArrangedSubview(picker, at: 0)
+                }
+            }
+        }
     }
 
     private func setupUI() {
@@ -2142,6 +2257,7 @@ final class ProjectFormViewController: BaseNativeViewController {
             input.applyAppInputStyle(placeholder: field.prompt)
             input.heightAnchor.constraint(equalToConstant: 50).isActive = true
             fieldViews[field.key] = input
+            fieldLabels[field.key] = label
             stack.addArrangedSubview(label)
             stack.addArrangedSubview(input)
         }
@@ -2199,6 +2315,14 @@ final class ProjectFormViewController: BaseNativeViewController {
         if remarks.isEmpty {
             showMessage("请输入备注名")
             return
+        }
+        if activity.isProtocolActivity == true {
+            let key = firstCkTemplateFieldKey(activity.ckTemplate)
+            let protoRef = key.flatMap { inputs[$0] }?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if protoRef.isEmpty {
+                showMessage("请选择协议账号")
+                return
+            }
         }
         // 验证输入
         if activity.isDailyDeduct == true {
@@ -2809,6 +2933,7 @@ final class ProjectEditCKViewController: BaseNativeViewController {
     private let previewLabel = UILabel()
     private var ckTemplate: String = ""
     private var isRawMode = false
+    private var protocolPicker: ProtocolAccountPickerRow?
 
     init(project: PortalProject, onSaved: @escaping (String) -> Void) {
         self.project = project
@@ -3002,6 +3127,31 @@ final class ProjectEditCKViewController: BaseNativeViewController {
         view.addGestureRecognizer(tap)
 
         updatePreview()
+        if project.isProtocolActivity == true && !isRawMode {
+            let key = firstCkTemplateFieldKey(ckTemplate)
+            let selected = key.flatMap { parsed?[$0] }
+            PortalService.shared.fetchProtocolAccountOptions(activityId: project.activityId, remarks: project.remark) { [weak self] result in
+                guard let self else { return }
+                if case .success(let options) = result {
+                    let picker = ProtocolAccountPickerRow()
+                    picker.configure(options: options, selectedFillRef: selected)
+                    picker.onSelect = { [weak self] fillRef in
+                        guard let self, let key else { return }
+                        self.fieldInputs[key]?.text = fillRef
+                        self.updatePreview()
+                    }
+                    if let key {
+                        self.fieldInputs[key]?.isHidden = true
+                    }
+                    self.protocolPicker = picker
+                    if let firstCard = self.stack.arrangedSubviews.first {
+                        self.stack.insertArrangedSubview(picker, at: 0)
+                    } else {
+                        self.stack.addArrangedSubview(picker)
+                    }
+                }
+            }
+        }
     }
 
     @objc private func dismissKb() { view.endEditing(true) }
