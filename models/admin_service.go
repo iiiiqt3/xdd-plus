@@ -2699,7 +2699,7 @@ func AdminBindWechatToQQ(qqNumber, wxNumber int64) (map[string]interface{}, erro
 	}
 
 	var conflict User
-	if db.Where("wxid = ? AND number NOT IN ?", wxid, []int{qqNumber, wxNumber}).First(&conflict).Error == nil {
+	if db.Where("wxid = ? AND number NOT IN ?", wxid, []int{int(qqNumber), int(wxNumber)}).First(&conflict).Error == nil {
 		return nil, fmt.Errorf("微信ID %s 已绑定到其他用户 %d", wxid, conflict.Number)
 	}
 
@@ -2732,10 +2732,10 @@ func AdminBindWechatToQQ(qqNumber, wxNumber int64) (map[string]interface{}, erro
 
 	if mergedCoin > 0 {
 		detail := fmt.Sprintf("微信绑定合并积分（原微信用户 %d）", wxNumber)
-		RecordCoinLog(qqNumber, mergedCoin, "管理员操作", detail, AdminContext())
+		RecordCoinLog(int(qqNumber), mergedCoin, "管理员操作", detail, AdminContext())
 	}
 
-	totalCoin := GetCoin(qqNumber)
+	totalCoin := GetCoin(int(qqNumber))
 	return map[string]interface{}{
 		"qqNumber":   qqNumber,
 		"wxNumber":   wxNumber,
