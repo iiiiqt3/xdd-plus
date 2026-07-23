@@ -371,8 +371,8 @@ func jdAutoHourToClock(h int) int {
 	if h == 24 {
 		return 0
 	}
-	if h < 1 {
-		return 1
+	if h < 0 {
+		return 0
 	}
 	if h > 23 {
 		return 23
@@ -386,8 +386,8 @@ func computeJdAutoAdjustedHours(entries []PortalJdAutoTaskEntry) ([]PortalJdAuto
 		if !e.Enabled {
 			continue
 		}
-		if e.RunHour < 1 || e.RunHour > 24 {
-			return nil, fmt.Errorf("任务 %s 的整点需在 1-24 之间", e.TaskID)
+		if e.RunHour < 0 || e.RunHour > 23 {
+			return nil, fmt.Errorf("任务 %s 的整点需在 0-23 之间", e.TaskID)
 		}
 		enabled = append(enabled, e)
 	}
@@ -397,13 +397,13 @@ func computeJdAutoAdjustedHours(entries []PortalJdAutoTaskEntry) ([]PortalJdAuto
 		}
 		return enabled[i].RunHour < enabled[j].RunHour
 	})
-	last := 0
+	last := -1
 	for i := range enabled {
 		h := enabled[i].RunHour
 		if i > 0 && h <= last {
 			h = last + 1
 		}
-		if h > 24 {
+		if h > 23 {
 			return nil, fmt.Errorf("自动任务过多，同账号无法保证至少间隔 1 小时，请减少勾选或调整整点")
 		}
 		enabled[i].AdjustedHour = h
@@ -438,7 +438,7 @@ func mergeJdAutoTasksWithCatalog(userNumber int, stored []PortalJdAutoTaskEntry)
 	for _, t := range catalog {
 		e, ok := byID[t.ID]
 		if !ok {
-			e = PortalJdAutoTaskEntry{TaskID: t.ID, Enabled: false, RunHour: 8}
+			e = PortalJdAutoTaskEntry{TaskID: t.ID, Enabled: false, RunHour: 0}
 		}
 		e.TaskID = t.ID
 		out = append(out, e)

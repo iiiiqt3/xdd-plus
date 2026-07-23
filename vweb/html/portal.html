@@ -1058,14 +1058,30 @@
             display: none; margin-bottom: 12px; padding: 10px 12px;
             border-radius: 10px; border: 1px solid rgba(99,102,241,0.18);
             background: linear-gradient(180deg, rgba(99,102,241,0.06), rgba(99,102,241,0.02));
-            font-size: 12px; line-height: 1.65; color: var(--text-secondary);
+            font-size: 12px; line-height: 1.5; color: var(--text-secondary);
         }
         .jd-auto-bar.show { display: block; }
-        .jd-auto-bar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+        .jd-auto-bar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
         .jd-auto-bar-title { font-weight: 700; color: var(--text); font-size: 13px; }
-        .jd-auto-preview { margin: 0; padding-left: 18px; }
-        .jd-auto-preview li { margin-bottom: 2px; }
-        .jd-auto-preview .adj { color: #6366f1; font-weight: 600; }
+        .jd-auto-preview-wrap { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .jd-auto-preview-count {
+            flex-shrink: 0; font-size: 11px; font-weight: 700; color: #6366f1;
+            padding: 2px 8px; border-radius: 999px; background: rgba(99,102,241,0.12);
+        }
+        .jd-auto-preview-chips {
+            display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto;
+            min-width: 0; flex: 1; padding-bottom: 2px; -webkit-overflow-scrolling: touch;
+        }
+        .jd-auto-preview-chips::-webkit-scrollbar { height: 4px; }
+        .jd-auto-preview-chips::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.25); border-radius: 4px; }
+        .jd-auto-preview-empty { font-size: 11px; color: var(--text-muted); }
+        .jd-auto-chip {
+            flex-shrink: 0; font-size: 11px; padding: 4px 10px; border-radius: 999px;
+            background: #fff; border: 1px solid rgba(99,102,241,0.18);
+            color: var(--text-secondary); white-space: nowrap;
+        }
+        .jd-auto-chip .time { color: #6366f1; font-weight: 700; margin-left: 4px; }
+        .jd-auto-chip.staggered { border-style: dashed; }
         .jd-run-history-panel {
             display: none; margin-bottom: 12px; border: 1px solid var(--glass-border);
             border-radius: 10px; overflow: hidden; background: var(--glass-bg);
@@ -2631,7 +2647,7 @@
                                     <li><strong>青龙定时任务</strong>：账号在服务器自动执行，默认不配统一代理</li>
                                     <li><strong>手动任务代理</strong>：面向有代理需求的用户，可在此单独购买</li>
                                     <li><strong>购买后生效</strong>：下方所有手动任务执行时<strong>自动走代理</strong></li>
-                                    <li><strong>自动执行</strong>：代理有效期内可为每个任务设置每日整点自动跑（1-24点）</li>
+                                    <li><strong>自动执行</strong>：代理有效期内可为每个任务设置每日整点自动跑（0-23点）</li>
                                     <li><strong>适用场景</strong>：农场、浇水、话费、评价等，有助于提高任务成功率</li>
                                 </ul>
                             </div>
@@ -2692,9 +2708,11 @@
                                 <div class="jd-auto-bar" id="jdAutoBar">
                                     <div class="jd-auto-bar-head">
                                         <span class="jd-auto-bar-title">⏰ 自动执行（代理用户）</span>
-                                        <span class="muted" style="font-size:11px;">整点 1-24 · 同账号任务自动错峰 ≥1 小时</span>
+                                        <span class="muted" style="font-size:11px;">整点 0-23 · 同账号错峰 ≥1h</span>
                                     </div>
-                                    <ul class="jd-auto-preview" id="jdAutoPreview"><li>勾选任务并设置整点后，将在此显示今日执行计划</li></ul>
+                                    <div class="jd-auto-preview-wrap" id="jdAutoPreview">
+                                        <span class="jd-auto-preview-empty">勾选任务后在此显示紧凑排期</span>
+                                    </div>
                                 </div>
                                 <div class="jd-run-history-panel" id="jdRunHistoryPanel">
                                     <div class="jd-run-history-head">
@@ -5028,9 +5046,54 @@ function updateJdAutoSectionVisibility() {
 }
 
 function getJdAutoTaskEntry(taskId) {
-    if (!jdAutoConfig || !jdAutoConfig.tasks) return { taskId: taskId, enabled: false, runHour: 8, adjustedHour: 8 };
+    if (!jdAutoConfig || !jdAutoConfig.tasks) return { taskId: taskId, enabled: false, runHour: 0, adjustedHour: 0 };
     var hit = jdAutoConfig.tasks.find(function(t) { return t.taskId === taskId; });
-    return hit || { taskId: taskId, enabled: false, runHour: 8, adjustedHour: 8 };
+    return hit || { taskId: taskId, enabled: false, runHour: 0, adjustedHour: 0 };
+}
+
+function suggestJdAutoHourForTask(taskId) {
+    if (!jdAutoConfig || !jdAutoConfig.tasks) return 0;
+    var maxHour = -1;
+    jdAutoConfig.tasks.forEach(function(t) {
+        if (!t.enabled || t.taskId === taskId) return;
+        var h = parseInt(t.runHour, 10);
+        if (!isNaN(h) && h > maxHour) maxHour = h;
+    });
+    return maxHour + 1;
+}
+
+function formatJdAutoHourLabel(hour) {
+    var h = parseInt(hour, 10);
+    if (isNaN(h)) h = 0;
+    return String(h).padStart(2, '0') + ':00';
+}
+
+function computeLocalJdAutoPreview() {
+    if (!jdAutoConfig || !jdAutoConfig.tasks) return [];
+    var enabled = jdAutoConfig.tasks.filter(function(t) { return t.enabled; }).map(function(t) {
+        return { taskId: t.taskId, runHour: parseInt(t.runHour, 10) || 0 };
+    });
+    enabled.sort(function(a, b) {
+        if (a.runHour === b.runHour) return a.taskId.localeCompare(b.taskId);
+        return a.runHour - b.runHour;
+    });
+    var last = -1;
+    var out = [];
+    enabled.forEach(function(e, i) {
+        var h = e.runHour;
+        if (i > 0 && h <= last) h = last + 1;
+        var name = e.taskId;
+        var cat = jdTasksCache.find(function(t) { return t.id === e.taskId; });
+        if (cat && cat.name) name = cat.name;
+        out.push({
+            taskId: e.taskId,
+            taskName: name,
+            runHour: e.runHour,
+            adjustedHour: h
+        });
+        last = h;
+    });
+    return out;
 }
 
 function scheduleSaveJdAutoConfig() {
@@ -5066,7 +5129,10 @@ function onJdAutoToggle(taskId, checked) {
     if (!jdAutoConfig.tasks) jdAutoConfig.tasks = [];
     var entry = getJdAutoTaskEntry(taskId);
     entry.enabled = !!checked;
-    if (!entry.runHour) entry.runHour = 8;
+    if (checked) {
+        entry.runHour = suggestJdAutoHourForTask(taskId);
+        if (entry.runHour > 23) entry.runHour = 23;
+    }
     var idx = jdAutoConfig.tasks.findIndex(function(t) { return t.taskId === taskId; });
     if (idx >= 0) jdAutoConfig.tasks[idx] = entry;
     else jdAutoConfig.tasks.push(entry);
@@ -5077,8 +5143,8 @@ function onJdAutoToggle(taskId, checked) {
 
 function onJdAutoHourChange(taskId, value) {
     var hour = parseInt(value, 10);
-    if (isNaN(hour) || hour < 1) hour = 1;
-    if (hour > 24) hour = 24;
+    if (isNaN(hour) || hour < 0) hour = 0;
+    if (hour > 23) hour = 23;
     if (!jdAutoConfig) jdAutoConfig = { tasks: [], accountIndexes: getSelectedJdTaskAccountIndexes() };
     if (!jdAutoConfig.tasks) jdAutoConfig.tasks = [];
     var entry = getJdAutoTaskEntry(taskId);
@@ -5093,17 +5159,23 @@ function onJdAutoHourChange(taskId, value) {
 function renderJdAutoPreview() {
     var el = document.getElementById('jdAutoPreview');
     if (!el) return;
-    var preview = (jdAutoConfig && jdAutoConfig.preview) ? jdAutoConfig.preview : [];
+    var preview = (jdAutoConfig && jdAutoConfig.preview && jdAutoConfig.preview.length)
+        ? jdAutoConfig.preview
+        : computeLocalJdAutoPreview();
     if (!preview.length) {
-        el.innerHTML = '<li>勾选任务并设置整点后，将在此显示今日执行计划</li>';
+        el.innerHTML = '<span class="jd-auto-preview-empty">勾选任务后在此显示紧凑排期</span>';
         return;
     }
-    el.innerHTML = preview.map(function(p) {
-        var adj = p.adjustedHour !== p.runHour
-            ? ('<span class="adj">' + p.adjustedHour + ':00</span>（原 ' + p.runHour + ' 点，已错峰）')
-            : ('<span class="adj">' + p.adjustedHour + ':00</span>');
-        return '<li>' + escapeHtml(p.taskName) + ' → 每日 ' + adj + '</li>';
+    var chips = preview.map(function(p) {
+        var staggered = p.adjustedHour !== p.runHour;
+        var timeLabel = formatJdAutoHourLabel(p.adjustedHour);
+        var title = staggered
+            ? (escapeHtml(p.taskName) + '（原' + p.runHour + '点）')
+            : escapeHtml(p.taskName);
+        return '<span class="jd-auto-chip' + (staggered ? ' staggered' : '') + '" title="' + title + '">' +
+            escapeHtml(p.taskName) + '<span class="time">' + timeLabel + '</span></span>';
     }).join('');
+    el.innerHTML = '<span class="jd-auto-preview-count">' + preview.length + ' 个</span><div class="jd-auto-preview-chips">' + chips + '</div>';
 }
 
 async function toggleJdRunHistory() {
@@ -5389,7 +5461,7 @@ function renderJdTaskList() {
         html += '<td class="col-coin">' + coinText + '</td>';
         if (autoActive) {
             html += '<td class="col-auto"><input type="checkbox" class="jd-auto-toggle" ' + (autoEntry.enabled ? 'checked' : '') + ' onchange="onJdAutoToggle(\'' + safeId.replace(/'/g, "\\'") + '\', this.checked)" /></td>';
-            html += '<td class="col-hour"><input type="number" class="jd-auto-hour-input" min="1" max="24" value="' + (autoEntry.runHour || 8) + '" ' + (autoEntry.enabled ? '' : 'disabled') + ' onchange="onJdAutoHourChange(\'' + safeId.replace(/'/g, "\\'") + '\', this.value)" /></td>';
+            html += '<td class="col-hour"><input type="number" class="jd-auto-hour-input" min="0" max="23" value="' + (autoEntry.runHour != null ? autoEntry.runHour : 0) + '" ' + (autoEntry.enabled ? '' : 'disabled') + ' onchange="onJdAutoHourChange(\'' + safeId.replace(/'/g, "\\'") + '\', this.value)" /></td>';
         }
         html += '<td class="col-action">';
         html += '<button class="btn primary" id="taskBtn_' + safeId + '" data-task-id="' + safeId + '" data-task-name="' + safeName + '" onclick="executeJdTask(this.dataset.taskId, this.dataset.taskName)">执行</button>';
