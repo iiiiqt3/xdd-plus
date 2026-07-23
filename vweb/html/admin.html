@@ -3014,7 +3014,7 @@
 <div class="modal-overlay hidden" id="bindWechatModal">
     <div class="modal" style="max-width:520px;">
         <div class="modal-header"><h3><i class="fab fa-weixin" style="color:#07c160;"></i> 绑定微信到QQ</h3><span class="modal-close" onclick="closeBindWechatModal()">&times;</span></div>
-        <p style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.7;">将微信账号绑定到指定 QQ 用户，绑定后微信端积分将自动合并到 QQ 账号。请填写微信用户的<strong>编号</strong>（微信端自动生成的长数字，用户发送【用户信息】可查看），不是 wxid。</p>
+        <p style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.7;">与机器人绑定逻辑一致：将微信用户绑定到 QQ 用户，删除微信孤儿账号并把 wxid 写入 QQ 行，微信端通过 wxid 解析到 QQ 编号。绑定前会自动合并微信端积分。请填写微信用户的<strong>编号</strong>（用户发送【用户信息】可查看）。</p>
         <div class="form-grid" style="grid-template-columns:1fr;">
             <div class="form-item"><label>QQ 用户编号</label><input type="number" id="bindWechatQQ" placeholder="QQ 用户编号"></div>
             <div class="form-item"><label>微信用户编号</label><input type="number" id="bindWechatWxNumber" placeholder="微信端自动生成的编号" onblur="previewWxBind()"></div>

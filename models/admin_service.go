@@ -2711,25 +2711,19 @@ func AdminBindWechatToQQ(qqNumber, wxNumber int) (map[string]interface{}, error)
 				return err
 			}
 		}
-		if err := adminMigrateUserNumberRefs(tx, wxNumber, qqNumber); err != nil {
+		// 与 setWxId 一致：删除 class=wx 的微信孤儿账号
+		if err := tx.Where("wxid = ? AND class = ?", wxid, "wx").Delete(&User{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Delete(&wxUser).Error; err != nil {
-			return err
+		// 与 setWxId 一致：将 wxid 写入 QQ 用户行
+		result := tx.Model(&User{}).Where("number = ?", qqNumber).Update("wxid", wxid)
+		if result.Error != nil {
+			return result.Error
 		}
-
-		updates := map[string]interface{}{"wxid": wxid}
-		qqStr := strconv.Itoa(qqNumber)
-		if qqUser.QQ == "" {
-			updates["qq"] = qqStr
+		if result.RowsAffected == 0 {
+			return fmt.Errorf("绑定失败")
 		}
-		if qqUser.Class == "" || qqUser.Class == "wx" {
-			updates["class"] = "qq"
-		}
-		if wxUser.Nickname != "" && qqUser.Nickname == "" {
-			updates["nickname"] = wxUser.Nickname
-		}
-		return tx.Model(&User{}).Where("number = ?", qqNumber).Updates(updates).Error
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -2748,24 +2742,6 @@ func AdminBindWechatToQQ(qqNumber, wxNumber int) (map[string]interface{}, error)
 		"mergedCoin": mergedCoin,
 		"totalCoin":  totalCoin,
 	}, nil
-}
-
-func adminMigrateUserNumberRefs(tx *gorm.DB, fromNumber, toNumber int) error {
-	if fromNumber <= 0 || toNumber <= 0 || fromNumber == toNumber {
-		return nil
-	}
-
-	var webCount int64
-	tx.Model(&WebUserAccount{}).Where("user_number = ?", toNumber).Count(&webCount)
-	if webCount == 0 {
-		tx.Model(&WebUserAccount{}).Where("user_number = ?", fromNumber).Update("user_number", toNumber)
-	}
-
-	tx.Model(&PortalWxDevice{}).Where("user_number = ?", fromNumber).Update("user_number", toNumber)
-	tx.Model(&PortalProtocolBinding{}).Where("user_number = ?", fromNumber).Update("user_number", toNumber)
-	tx.Table("portal_yyb_bindings").Where("user_number = ?", fromNumber).Update("user_number", toNumber)
-	tx.Model(&JdCookie{}).Where("QQ = ?", fromNumber).Update("QQ", toNumber)
-	return nil
 }
 
 // ===================== 批量操作（京东CK、环境变量、青龙变量） =====================
