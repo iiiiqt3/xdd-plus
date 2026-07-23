@@ -351,6 +351,8 @@ func main() {
 	web.Router("/api/admin/qlconfigs/delete", &controllers.AdminApiController{}, "post:DeleteQLConfig")
 	web.Router("/api/admin/users/create", &controllers.AdminApiController{}, "post:CreateUser")
 	web.Router("/api/admin/users/update", &controllers.AdminApiController{}, "post:UpdateUser")
+	web.Router("/api/admin/users/bind-wechat/preview", &controllers.AdminApiController{}, "get:PreviewWxBind")
+	web.Router("/api/admin/users/bind-wechat", &controllers.AdminApiController{}, "post:BindWechatToQQ")
 	web.Router("/api/admin/users/batch/delete", &controllers.AdminApiController{}, "post:BatchDeleteUsers")
 	web.Router("/api/admin/users/batch/update", &controllers.AdminApiController{}, "post:BatchUpdateUserCoins")
 	web.Router("/api/admin/users/web-accounts", &controllers.AdminApiController{}, "get:GetWebUserAccounts")

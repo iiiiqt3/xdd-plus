@@ -1808,6 +1808,47 @@ func (c *AdminApiController) CreateUser() {
 	c.ServeJSON()
 }
 
+// PreviewWxBind 预览微信绑定（查找 wxid 对应账号及积分）
+func (c *AdminApiController) PreviewWxBind() {
+	wxid := strings.TrimSpace(c.GetString("wxid"))
+	if wxid == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请提供微信ID"}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": models.AdminPreviewWxBind(wxid),
+	}
+	c.ServeJSON()
+}
+
+// BindWechatToQQ 管理员手动绑定微信到 QQ 用户并合并积分
+func (c *AdminApiController) BindWechatToQQ() {
+	var req struct {
+		QQNumber int    `json:"qqNumber"`
+		Wxid     string `json:"wxid"`
+	}
+	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	if req.QQNumber <= 0 || strings.TrimSpace(req.Wxid) == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "QQ编号和微信ID不能为空"}
+		c.ServeJSON()
+		return
+	}
+	result, err := models.AdminBindWechatToQQ(req.QQNumber, req.Wxid)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	msg := "绑定成功"
+	if merged, ok := result["mergedCoin"].(int); ok && merged > 0 {
+		msg = fmt.Sprintf("绑定成功，已合并 %d 积分", merged)
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": msg, "data": result}
+	c.ServeJSON()
+}
+
 // UpdateUser 更新用户
 func (c *AdminApiController) UpdateUser() {
 	var req struct {

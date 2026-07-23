@@ -2634,6 +2634,138 @@ func BatchUpdateUserCoins(numbers []int, coin int) error {
 	return db.Model(&User{}).Where("number IN ?", numbers).Update("coin", coin).Error
 }
 
+// AdminPreviewWxBind 预览微信绑定：查找该 wxid 对应的孤儿账号及积分
+func AdminPreviewWxBind(wxid string) map[string]interface{} {
+	wxid = strings.TrimSpace(wxid)
+	if wxid == "" {
+		return map[string]interface{}{"found": false}
+	}
+	var u User
+	if db.Where("wxid = ?", wxid).First(&u).Error != nil {
+		return map[string]interface{}{"found": false}
+	}
+	return map[string]interface{}{
+		"found":    true,
+		"number":   u.Number,
+		"nickname": u.Nickname,
+		"coin":     u.Coin,
+		"class":    u.Class,
+		"qq":       u.QQ,
+	}
+}
+
+// AdminBindWechatToQQ 管理员手动将微信绑定到 QQ 用户，并合并微信端积分
+func AdminBindWechatToQQ(qqNumber int, wxid string) (map[string]interface{}, error) {
+	wxid = strings.TrimSpace(wxid)
+	if qqNumber <= 0 {
+		return nil, fmt.Errorf("QQ用户编号不能为空")
+	}
+	if wxid == "" {
+		return nil, fmt.Errorf("微信ID不能为空")
+	}
+	if strings.HasPrefix(wxid, "DXWX") {
+		return nil, fmt.Errorf("请填写真实微信ID，不能填写绑定码")
+	}
+
+	var qqUser User
+	if db.Where("number = ?", qqNumber).First(&qqUser).Error != nil {
+		return nil, fmt.Errorf("找不到编号为 %d 的用户", qqNumber)
+	}
+
+	if qqUser.Wxid == wxid {
+		return map[string]interface{}{
+			"qqNumber":   qqNumber,
+			"wxid":       wxid,
+			"mergedCoin": 0,
+			"totalCoin":  qqUser.Coin,
+			"message":    "该用户已绑定此微信ID",
+		}, nil
+	}
+
+	if qqUser.Wxid != "" && !strings.HasPrefix(qqUser.Wxid, "DXWX") {
+		return nil, fmt.Errorf("该用户已绑定微信 %s，请先解绑后再操作", qqUser.Wxid)
+	}
+
+	var conflict User
+	if db.Where("wxid = ? AND number != ?", wxid, qqNumber).First(&conflict).Error == nil {
+		if conflict.Class != "wx" {
+			return nil, fmt.Errorf("微信ID %s 已绑定到其他用户 %d", wxid, conflict.Number)
+		}
+	}
+
+	mergedCoin := 0
+	var mergedFrom []int
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+		var orphans []User
+		if err := tx.Where("wxid = ? AND number != ?", wxid, qqNumber).Find(&orphans).Error; err != nil {
+			return err
+		}
+
+		for _, orphan := range orphans {
+			if orphan.Coin > 0 {
+				mergedCoin += orphan.Coin
+				if err := tx.Model(&User{}).Where("number = ?", qqNumber).
+					Update("coin", gorm.Expr("coin + ?", orphan.Coin)).Error; err != nil {
+					return err
+				}
+			}
+			mergedFrom = append(mergedFrom, orphan.Number)
+			if err := adminMigrateUserNumberRefs(tx, orphan.Number, qqNumber); err != nil {
+				return err
+			}
+			if err := tx.Delete(&orphan).Error; err != nil {
+				return err
+			}
+		}
+
+		updates := map[string]interface{}{"wxid": wxid}
+		qqStr := strconv.Itoa(qqNumber)
+		if qqUser.QQ == "" {
+			updates["qq"] = qqStr
+		}
+		if qqUser.Class == "" || qqUser.Class == "wx" {
+			updates["class"] = "qq"
+		}
+		return tx.Model(&User{}).Where("number = ?", qqNumber).Updates(updates).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if mergedCoin > 0 {
+		detail := fmt.Sprintf("微信绑定合并积分（原微信用户 %v）", mergedFrom)
+		RecordCoinLog(qqNumber, mergedCoin, "管理员操作", detail, AdminContext())
+	}
+
+	totalCoin := GetCoin(qqNumber)
+	return map[string]interface{}{
+		"qqNumber":   qqNumber,
+		"wxid":       wxid,
+		"mergedCoin": mergedCoin,
+		"mergedFrom": mergedFrom,
+		"totalCoin":  totalCoin,
+	}, nil
+}
+
+func adminMigrateUserNumberRefs(tx *gorm.DB, fromNumber, toNumber int) error {
+	if fromNumber <= 0 || toNumber <= 0 || fromNumber == toNumber {
+		return nil
+	}
+
+	var webCount int64
+	tx.Model(&WebUserAccount{}).Where("user_number = ?", toNumber).Count(&webCount)
+	if webCount == 0 {
+		tx.Model(&WebUserAccount{}).Where("user_number = ?", fromNumber).Update("user_number", toNumber)
+	}
+
+	tx.Model(&PortalWxDevice{}).Where("user_number = ?", fromNumber).Update("user_number", toNumber)
+	tx.Model(&PortalProtocolBinding{}).Where("user_number = ?", fromNumber).Update("user_number", toNumber)
+	tx.Table("portal_yyb_bindings").Where("user_number = ?", fromNumber).Update("user_number", toNumber)
+	tx.Model(&JdCookie{}).Where("QQ = ?", fromNumber).Update("QQ", toNumber)
+	return nil
+}
+
 // ===================== 批量操作（京东CK、环境变量、青龙变量） =====================
 
 // BatchDeleteJdCookies 批量删除京东CK
