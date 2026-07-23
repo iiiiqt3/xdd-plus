@@ -340,7 +340,7 @@ func (PortalJdAutoSetting) TableName() string { return "portal_jd_auto_setting" 
 type PortalJdAutoTaskEntry struct {
 	TaskID       string `json:"taskId"`
 	Enabled      bool   `json:"enabled"`
-	RunHour      int    `json:"runHour"`      // 用户输入 1-24
+	RunHour      int    `json:"runHour"`      // 用户输入 0-23，默认 0 点
 	AdjustedHour int    `json:"adjustedHour"` // 错峰后实际整点
 	LastRunDate  string `json:"lastRunDate,omitempty"`
 }
@@ -522,6 +522,9 @@ func SavePortalJdAutoConfig(userNumber int, accountIndexes []int, tasks []Portal
 			merged[i].Enabled = inc.Enabled
 			merged[i].RunHour = inc.RunHour
 			merged[i].LastRunDate = inc.LastRunDate
+		}
+		if !merged[i].Enabled {
+			merged[i].RunHour = 0
 		}
 	}
 	computed, err := computeJdAutoAdjustedHours(merged)

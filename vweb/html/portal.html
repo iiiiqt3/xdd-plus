@@ -5005,6 +5005,11 @@ async function loadJdAutoConfig() {
         var resp = await request('/api/portal/jd/auto/config');
         if (resp.code === 0 && resp.data) {
             jdAutoConfig = resp.data;
+            if (jdAutoConfig.tasks) {
+                jdAutoConfig.tasks.forEach(function(t) {
+                    if (!t.enabled) t.runHour = 0;
+                });
+            }
             if (jdAutoConfig.accountIndexes && jdAutoConfig.accountIndexes.length) {
                 applyJdAutoAccountIndexes(jdAutoConfig.accountIndexes);
             }
@@ -5132,6 +5137,8 @@ function onJdAutoToggle(taskId, checked) {
     if (checked) {
         entry.runHour = suggestJdAutoHourForTask(taskId);
         if (entry.runHour > 23) entry.runHour = 23;
+    } else {
+        entry.runHour = 0;
     }
     var idx = jdAutoConfig.tasks.findIndex(function(t) { return t.taskId === taskId; });
     if (idx >= 0) jdAutoConfig.tasks[idx] = entry;
