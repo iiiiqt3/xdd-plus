@@ -23,6 +23,8 @@ const (
 	jdManualLogRelDir      = "scripts/自定义执行京东脚本/logs"
 	jdManualTasksConfigRel = "conf/jd_manual_tasks.yaml"
 	jdManualLogRetainDays  = 3
+	jdManualLogMaxFiles    = 5000
+	jdManualLogMaxBytes    = int64(512 * 1024 * 1024)
 )
 
 var (
@@ -110,6 +112,8 @@ func defaultJdManualTasksFile() JdManualTasksFile {
 func InitJdManualTasks() {
 	_ = os.MkdirAll(jdManualScriptDir(), 0755)
 	_ = os.MkdirAll(jdManualLogDir(), 0755)
+	CleanupJdManualTaskLogs()
+	CleanupPortalJdRunRecords()
 	if err := loadJdManualTasksFile(); err != nil {
 		JD().Warnf("[手动京东任务] 加载配置失败，使用默认: %v", err)
 		jdManualTasks.mu.Lock()
@@ -580,7 +584,7 @@ func ApplyManualJdTaskProxyEnvs(envs map[string]string) {
 	applyJdProxyEnvsFromConfig(envs, url, renum, redelay)
 }
 
-// CleanupJdManualTaskLogs 删除超过保留天数的任务日志
+// CleanupJdManualTaskLogs 清理过期、超数量或超容量的任务日志
 func CleanupJdManualTaskLogs() {
 	dir := jdManualLogDir()
 	entries, err := ioutil.ReadDir(dir)
@@ -589,6 +593,8 @@ func CleanupJdManualTaskLogs() {
 	}
 	cutoff := time.Now().AddDate(0, 0, -jdManualLogRetainDays)
 	removed := 0
+	remaining := make([]os.FileInfo, 0, len(entries))
+	var totalBytes int64
 	for _, ent := range entries {
 		if ent.IsDir() {
 			continue
@@ -597,10 +603,27 @@ func CleanupJdManualTaskLogs() {
 			if err := os.Remove(filepath.Join(dir, ent.Name())); err == nil {
 				removed++
 			}
+			continue
 		}
+		remaining = append(remaining, ent)
+		totalBytes += ent.Size()
+	}
+
+	// 时间保留之外，再按数量和总容量淘汰最旧文件，避免高频任务在保留期内撑满磁盘。
+	sort.Slice(remaining, func(i, j int) bool {
+		return remaining[i].ModTime().Before(remaining[j].ModTime())
+	})
+	trimmed := 0
+	for trimmed < len(remaining) && (len(remaining)-trimmed > jdManualLogMaxFiles || totalBytes > jdManualLogMaxBytes) {
+		ent := remaining[trimmed]
+		if err := os.Remove(filepath.Join(dir, ent.Name())); err == nil {
+			removed++
+			totalBytes -= ent.Size()
+		}
+		trimmed++
 	}
 	if removed > 0 {
-		JD().Infof("[手动京东任务] 已清理 %d 个过期日志文件", removed)
+		JD().Infof("[手动京东任务] 已清理 %d 个日志文件", removed)
 	}
 }
 
@@ -692,6 +715,18 @@ func CreatePortalJdRunRecord(userNumber int, taskID, taskName, taskLogID, trigge
 		return 0, err
 	}
 	return rec.ID, nil
+}
+
+// SetPortalJdRunLogFile 为一次批次执行只登记一个日志文件，避免每个账号重复查询和更新数据库。
+func SetPortalJdRunLogFile(runRecordID int64, basename string) {
+	if runRecordID <= 0 || strings.TrimSpace(basename) == "" {
+		return
+	}
+	data, err := json.Marshal([]string{basename})
+	if err != nil {
+		return
+	}
+	db.Model(&PortalJdRunRecord{}).Where("id = ?", runRecordID).Update("log_files", string(data))
 }
 
 func AppendPortalJdRunLogFile(runRecordID int64, basename string) {

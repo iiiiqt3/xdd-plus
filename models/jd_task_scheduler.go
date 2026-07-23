@@ -53,8 +53,7 @@ type JdJob struct {
 	LogChan    chan string
 	Sender     *Sender
 	OnComplete func(fullOutput string, runErr error)
-	RunRecordID int64
-	LogFileName string
+	batchLog *jdBatchLogWriter
 
 	state   jdJobState
 	slotKey string
@@ -108,6 +107,61 @@ type jdPortalBatch struct {
 	remaining    int32
 	logChan      chan string
 	runRecordID  int64
+	batchLog     *jdBatchLogWriter
+}
+
+type jdBatchLogWriter struct {
+	mu     sync.Mutex
+	file   *os.File
+	name   string
+	closed bool
+}
+
+func (w *jdBatchLogWriter) writeAccountHeader(job *JdJob) {
+	if w == nil || job == nil {
+		return
+	}
+	w.writeRaw(fmt.Sprintf("\n===== %s | %s | %s =====\n",
+		time.Now().Format("2006-01-02 15:04:05"), job.TaskName, job.PtPin))
+}
+
+func (w *jdBatchLogWriter) writeAccountLine(ptPin, stream, line string) {
+	if w == nil || strings.TrimSpace(line) == "" {
+		return
+	}
+	prefix := fmt.Sprintf("[%s]", ptPin)
+	if stream != "" {
+		prefix += fmt.Sprintf("[%s]", stream)
+	}
+	w.writeRaw(fmt.Sprintf("%s %s\n", prefix, line))
+}
+
+func (w *jdBatchLogWriter) writeRaw(content string) {
+	if w == nil || content == "" {
+		return
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.closed || w.file == nil {
+		return
+	}
+	_, _ = w.file.WriteString(content)
+}
+
+func (w *jdBatchLogWriter) close() {
+	if w == nil {
+		return
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.closed {
+		return
+	}
+	w.closed = true
+	if w.file != nil {
+		_, _ = w.file.WriteString(fmt.Sprintf("\n===== 批次结束 %s =====\n", time.Now().Format("2006-01-02 15:04:05")))
+		_ = w.file.Close()
+	}
 }
 
 type JdTaskScheduler struct {
@@ -380,7 +434,9 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 	}
 
 	var batch *jdPortalBatch
+	var batchLog *jdBatchLogWriter
 	if taskLogID != "" {
+		batchLog = openJdTaskBatchLog(userID, runRecordID, specs[0].TaskType)
 		batch = &jdPortalBatch{
 			taskLogID:    taskLogID,
 			portalTaskID: portalTaskID,
@@ -388,6 +444,7 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 			remaining:    int32(len(specs)),
 			logChan:      logChan,
 			runRecordID:  runRecordID,
+			batchLog:     batchLog,
 		}
 		s.batches[taskLogID] = batch
 	}
@@ -412,7 +469,7 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 			EnqueuedAt:     time.Now(),
 			ClientSource:   clientCtx.Source,
 			ClientPlatform: clientCtx.Platform,
-			RunRecordID:    runRecordID,
+			batchLog:       batchLog,
 		}
 		s.jobsByID[job.ID] = job
 		s.slots[job.slotKey] = job.ID
@@ -523,6 +580,7 @@ func (s *JdTaskScheduler) finishPortalBatch(job *JdJob) {
 	s.mu.Lock()
 	delete(s.batches, job.TaskLogID)
 	s.mu.Unlock()
+	batch.batchLog.close()
 
 	if batch.logChan != nil {
 		safeLogSend(batch.logChan, "=====DONE=====所有账号任务执行完成")
@@ -561,11 +619,7 @@ func (s *JdTaskScheduler) runNodeJob(job *JdJob) (string, error) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 	}
 
-	logFile := openJdManualTaskLogFile(job)
-	if logFile != nil {
-		defer logFile.Close()
-		_, _ = fmt.Fprintf(logFile, "==== %s | %s | %s ====\n", time.Now().Format("2006-01-02 15:04:05"), job.TaskName, job.PtPin)
-	}
+	job.batchLog.writeAccountHeader(job)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -588,9 +642,7 @@ func (s *JdTaskScheduler) runNodeJob(job *JdJob) (string, error) {
 			if len(strings.TrimSpace(line)) > 0 {
 				trimmed := strings.TrimSpace(line)
 				JD().Infof("[%s] stderr: %s", job.TaskName, trimmed)
-				if logFile != nil {
-					_, _ = fmt.Fprintf(logFile, "[stderr] %s\n", trimmed)
-				}
+				job.batchLog.writeAccountLine(job.PtPin, "stderr", trimmed)
 				if job.LogChan != nil {
 					safeLogSend(job.LogChan, fmt.Sprintf("[stderr] %s", trimmed))
 				}
@@ -613,9 +665,7 @@ func (s *JdTaskScheduler) runNodeJob(job *JdJob) (string, error) {
 			trimmed := strings.TrimSpace(line)
 			if trimmed != "" {
 				JD().Infof("[%s] %s", job.TaskName, trimmed)
-				if logFile != nil {
-					_, _ = fmt.Fprintf(logFile, "%s\n", trimmed)
-				}
+				job.batchLog.writeAccountLine(job.PtPin, "", trimmed)
 				if job.LogChan != nil {
 					safeLogSend(job.LogChan, trimmed)
 				}
@@ -649,27 +699,27 @@ func killProcessGroup(cmd *exec.Cmd) {
 	_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 }
 
-func openJdManualTaskLogFile(job *JdJob) *os.File {
-	if job == nil {
-		return nil
-	}
+func openJdTaskBatchLog(userID int, runRecordID int64, taskType string) *jdBatchLogWriter {
 	dir := jdManualLogDir()
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil
 	}
-	safePin := strings.ReplaceAll(job.PtPin, "/", "_")
-	safePin = strings.ReplaceAll(safePin, "\\", "_")
-	name := fmt.Sprintf("%s_%s_%d.log", normalizeJdTaskType(job.TaskType), safePin, time.Now().UnixNano())
-	job.LogFileName = name
-	if job.RunRecordID > 0 {
-		AppendPortalJdRunLogFile(job.RunRecordID, name)
+	safeTaskType := strings.NewReplacer("/", "_", "\\", "_").Replace(normalizeJdTaskType(taskType))
+	if safeTaskType == "" {
+		safeTaskType = "jd_task"
 	}
+	name := fmt.Sprintf("%s_user%d_%d.log", safeTaskType, userID, time.Now().UnixNano())
 	f, err := os.OpenFile(filepath.Join(dir, name), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		JD().Warnf("[手动京东任务] 创建日志文件失败: %v", err)
 		return nil
 	}
-	return f
+	writer := &jdBatchLogWriter{file: f, name: name}
+	writer.writeRaw(fmt.Sprintf("===== 批次开始 %s =====\n", time.Now().Format("2006-01-02 15:04:05")))
+	if runRecordID > 0 {
+		SetPortalJdRunLogFile(runRecordID, name)
+	}
+	return writer
 }
 
 func cleanupOrphanJdNodeProcesses() {
