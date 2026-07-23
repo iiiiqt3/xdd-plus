@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -21,7 +22,7 @@ const (
 	jdManualScriptRelDir   = "scripts/自定义执行京东脚本/6dylan6_jdpro"
 	jdManualLogRelDir      = "scripts/自定义执行京东脚本/logs"
 	jdManualTasksConfigRel = "conf/jd_manual_tasks.yaml"
-	jdManualLogRetainDays  = 7
+	jdManualLogRetainDays  = 3
 )
 
 var (
@@ -660,8 +661,142 @@ func StopPortalJdTask(taskId string) {
 	GetJdTaskScheduler().StopTaskLog(taskId)
 }
 
+// PortalJdRunRecord 门户京东任务执行记录（日志正文存于 jdManualLogDir 文件）
+type PortalJdRunRecord struct {
+	ID         int64      `gorm:"primaryKey;autoIncrement"`
+	UserNumber int        `gorm:"index;not null"`
+	TaskID     string     `gorm:"index;size:64"`
+	TaskName   string     `gorm:"size:128"`
+	TaskLogID  string     `gorm:"index;size:128"`
+	Trigger    string     `gorm:"size:16"` // manual | auto
+	Status     string     `gorm:"size:16"` // running | success | failed | skipped
+	Message    string     `gorm:"type:text"`
+	LogFiles   string     `gorm:"type:text"` // json []string basenames
+	StartedAt  time.Time  `gorm:"index"`
+	FinishedAt *time.Time `gorm:"index"`
+}
+
+func (PortalJdRunRecord) TableName() string { return "portal_jd_run_record" }
+
+func CreatePortalJdRunRecord(userNumber int, taskID, taskName, taskLogID, trigger string) (int64, error) {
+	rec := PortalJdRunRecord{
+		UserNumber: userNumber,
+		TaskID:     taskID,
+		TaskName:   taskName,
+		TaskLogID:  taskLogID,
+		Trigger:    trigger,
+		Status:     "running",
+		StartedAt:  time.Now(),
+	}
+	if err := db.Create(&rec).Error; err != nil {
+		return 0, err
+	}
+	return rec.ID, nil
+}
+
+func AppendPortalJdRunLogFile(runRecordID int64, basename string) {
+	if runRecordID <= 0 || strings.TrimSpace(basename) == "" {
+		return
+	}
+	var rec PortalJdRunRecord
+	if err := db.First(&rec, runRecordID).Error; err != nil {
+		return
+	}
+	var files []string
+	if rec.LogFiles != "" {
+		_ = json.Unmarshal([]byte(rec.LogFiles), &files)
+	}
+	for _, f := range files {
+		if f == basename {
+			return
+		}
+	}
+	files = append(files, basename)
+	data, _ := json.Marshal(files)
+	db.Model(&rec).Update("log_files", string(data))
+}
+
+func FinishPortalJdRunRecord(runRecordID int64, status, message string) {
+	if runRecordID <= 0 {
+		return
+	}
+	now := time.Now()
+	db.Model(&PortalJdRunRecord{}).Where("id = ?", runRecordID).Updates(map[string]interface{}{
+		"status":      status,
+		"message":     message,
+		"finished_at": now,
+	})
+}
+
+func ListPortalJdRunRecords(userNumber int, page, limit int) ([]PortalJdRunRecord, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	since := time.Now().AddDate(0, 0, -jdManualLogRetainDays)
+	q := db.Model(&PortalJdRunRecord{}).Where("user_number = ? AND started_at >= ?", userNumber, since)
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var rows []PortalJdRunRecord
+	err := q.Order("id desc").Offset((page - 1) * limit).Limit(limit).Find(&rows).Error
+	return rows, total, err
+}
+
+func GetPortalJdRunRecord(userNumber int, id int64) (*PortalJdRunRecord, error) {
+	var rec PortalJdRunRecord
+	err := db.Where("id = ? AND user_number = ?", id, userNumber).First(&rec).Error
+	if err != nil {
+		return nil, err
+	}
+	return &rec, nil
+}
+
+func ReadPortalJdRunLogContent(rec *PortalJdRunRecord) (string, error) {
+	if rec == nil {
+		return "", fmt.Errorf("记录不存在")
+	}
+	var files []string
+	if rec.LogFiles != "" {
+		_ = json.Unmarshal([]byte(rec.LogFiles), &files)
+	}
+	if len(files) == 0 {
+		return "", fmt.Errorf("暂无日志文件")
+	}
+	dir := jdManualLogDir()
+	var b strings.Builder
+	for i, name := range files {
+		data, err := ioutil.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		if i > 0 {
+			b.WriteString("\n\n===== " + name + " =====\n")
+		}
+		b.Write(data)
+	}
+	if b.Len() == 0 {
+		return "", fmt.Errorf("日志文件不存在或已过期")
+	}
+	return b.String(), nil
+}
+
+func CleanupPortalJdRunRecords() {
+	cutoff := time.Now().AddDate(0, 0, -jdManualLogRetainDays)
+	res := db.Where("started_at < ?", cutoff).Delete(&PortalJdRunRecord{})
+	if res.RowsAffected > 0 {
+		JD().Infof("[手动京东任务] 已清理 %d 条过期执行记录", res.RowsAffected)
+	}
+}
+
 // SubmitPortalJdTask 提交网页端京东任务到调度队列（按账号数扣 coin）
-func SubmitPortalJdTask(userId int, taskId string, taskName string, accountIndexes []int, taskLogId string, clientCtx ClientContext) error {
+func SubmitPortalJdTask(userId int, taskId string, taskName string, accountIndexes []int, taskLogId string, clientCtx ClientContext, trigger string, runRecordID int64) error {
+	if strings.TrimSpace(trigger) == "" {
+		trigger = "manual"
+	}
 	logChan := GetTaskLogChannel(taskLogId)
 	if logChan == nil {
 		return fmt.Errorf("日志通道不存在")
@@ -674,10 +809,6 @@ func SubmitPortalJdTask(userId int, taskId string, taskName string, accountIndex
 	displayName := task.Name
 	if strings.TrimSpace(taskName) != "" {
 		displayName = taskName
-	}
-
-	if IsUserJdTaskRunning(userId, taskId) {
-		return fmt.Errorf("该任务正在执行中，请勿重复点击")
 	}
 
 	safeLogSend(logChan, fmt.Sprintf("开始执行任务: %s", displayName))
@@ -704,7 +835,7 @@ func SubmitPortalJdTask(userId int, taskId string, taskName string, accountIndex
 	}
 
 	safeLogSend(logChan, fmt.Sprintf("已选择 %d 个账号", len(specs)))
-	if err := GetJdTaskScheduler().submitPortalBatch(userId, taskId, taskLogId, logChan, specs, clientCtx); err != nil {
+	if err := GetJdTaskScheduler().submitPortalBatch(userId, taskId, taskLogId, logChan, specs, clientCtx, runRecordID); err != nil {
 		if totalCoin > 0 {
 			db.Model(&User{}).Where("number = ?", userId).Update("coin", gorm.Expr(fmt.Sprintf("coin+%d", totalCoin)))
 			RecordCoinLogEx(userId, totalCoin, "任务退费", fmt.Sprintf("入队失败: %s", displayName), clientCtx)

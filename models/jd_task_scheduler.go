@@ -53,6 +53,8 @@ type JdJob struct {
 	LogChan    chan string
 	Sender     *Sender
 	OnComplete func(fullOutput string, runErr error)
+	RunRecordID int64
+	LogFileName string
 
 	state   jdJobState
 	slotKey string
@@ -105,6 +107,7 @@ type jdPortalBatch struct {
 	userID       int
 	remaining    int32
 	logChan      chan string
+	runRecordID  int64
 }
 
 type JdTaskScheduler struct {
@@ -351,7 +354,7 @@ func (s *JdTaskScheduler) releaseJob(job *JdJob) {
 	}
 }
 
-func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan string, sender *Sender, specs []jdJobSpec, onComplete func(fullOutput string, runErr error), clientCtx ClientContext) error {
+func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan string, sender *Sender, specs []jdJobSpec, onComplete func(fullOutput string, runErr error), clientCtx ClientContext, runRecordID int64, portalTaskID string) error {
 	if len(specs) == 0 {
 		return fmt.Errorf("没有可执行的任务")
 	}
@@ -367,13 +370,7 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 		return fmt.Errorf("同一用户同时最多 %d 个任务，当前已有 %d 个", limit, current)
 	}
 	taskType := normalizeJdTaskType(specs[0].TaskType)
-	userTaskPrefix := fmt.Sprintf("%d:%s:", userID, taskType)
-	for slot := range s.slots {
-		if strings.HasPrefix(slot, userTaskPrefix) {
-			s.mu.Unlock()
-			return fmt.Errorf("该任务正在执行中，请勿重复点击")
-		}
-	}
+	_ = taskType
 	for _, spec := range specs {
 		slot := jdSlotKey(userID, spec.TaskType, spec.PtPin)
 		if _, ok := s.slots[slot]; ok {
@@ -385,9 +382,12 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 	var batch *jdPortalBatch
 	if taskLogID != "" {
 		batch = &jdPortalBatch{
-			taskLogID: taskLogID,
-			remaining: int32(len(specs)),
-			logChan:   logChan,
+			taskLogID:    taskLogID,
+			portalTaskID: portalTaskID,
+			userID:       userID,
+			remaining:    int32(len(specs)),
+			logChan:      logChan,
+			runRecordID:  runRecordID,
 		}
 		s.batches[taskLogID] = batch
 	}
@@ -395,23 +395,24 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 	jobs := make([]*JdJob, 0, len(specs))
 	for _, spec := range specs {
 		job := &JdJob{
-			ID:         newJdJobID(),
-			TaskLogID:  taskLogID,
-			UserID:     userID,
-			TaskType:   spec.TaskType,
-			TaskName:   spec.TaskName,
-			PtPin:      spec.PtPin,
-			ScriptPath: spec.ScriptPath,
-			Envs:       copyStringMap(spec.Envs),
-			Parser:     spec.Parser,
-			LogChan:    logChan,
-			Sender:     sender,
-			OnComplete: onComplete,
-			state:      jdJobQueued,
-			slotKey:    jdSlotKey(userID, spec.TaskType, spec.PtPin),
-			EnqueuedAt: time.Now(),
+			ID:             newJdJobID(),
+			TaskLogID:      taskLogID,
+			UserID:         userID,
+			TaskType:       spec.TaskType,
+			TaskName:       spec.TaskName,
+			PtPin:          spec.PtPin,
+			ScriptPath:     spec.ScriptPath,
+			Envs:           copyStringMap(spec.Envs),
+			Parser:         spec.Parser,
+			LogChan:        logChan,
+			Sender:         sender,
+			OnComplete:     onComplete,
+			state:          jdJobQueued,
+			slotKey:        jdSlotKey(userID, spec.TaskType, spec.PtPin),
+			EnqueuedAt:     time.Now(),
 			ClientSource:   clientCtx.Source,
 			ClientPlatform: clientCtx.Platform,
+			RunRecordID:    runRecordID,
 		}
 		s.jobsByID[job.ID] = job
 		s.slots[job.slotKey] = job.ID
@@ -443,8 +444,8 @@ func (s *JdTaskScheduler) submitSpecs(userID int, taskLogID string, logChan chan
 	return nil
 }
 
-func (s *JdTaskScheduler) submitPortalBatch(userID int, portalTaskID, taskLogID string, logChan chan string, specs []jdJobSpec, clientCtx ClientContext) error {
-	return s.submitSpecs(userID, taskLogID, logChan, nil, specs, nil, clientCtx)
+func (s *JdTaskScheduler) submitPortalBatch(userID int, portalTaskID, taskLogID string, logChan chan string, specs []jdJobSpec, clientCtx ClientContext, runRecordID int64) error {
+	return s.submitSpecs(userID, taskLogID, logChan, nil, specs, nil, clientCtx, runRecordID, portalTaskID)
 }
 
 func (s *JdTaskScheduler) executeJob(job *JdJob) {
@@ -525,6 +526,9 @@ func (s *JdTaskScheduler) finishPortalBatch(job *JdJob) {
 
 	if batch.logChan != nil {
 		safeLogSend(batch.logChan, "=====DONE=====所有账号任务执行完成")
+	}
+	if batch.runRecordID > 0 {
+		FinishPortalJdRunRecord(batch.runRecordID, "success", "执行完成")
 	}
 	RemoveTaskLogChannel(job.TaskLogID)
 }
@@ -656,6 +660,10 @@ func openJdManualTaskLogFile(job *JdJob) *os.File {
 	safePin := strings.ReplaceAll(job.PtPin, "/", "_")
 	safePin = strings.ReplaceAll(safePin, "\\", "_")
 	name := fmt.Sprintf("%s_%s_%d.log", normalizeJdTaskType(job.TaskType), safePin, time.Now().UnixNano())
+	job.LogFileName = name
+	if job.RunRecordID > 0 {
+		AppendPortalJdRunLogFile(job.RunRecordID, name)
+	}
 	f, err := os.OpenFile(filepath.Join(dir, name), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		JD().Warnf("[手动京东任务] 创建日志文件失败: %v", err)

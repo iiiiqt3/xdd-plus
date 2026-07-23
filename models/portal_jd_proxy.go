@@ -1,8 +1,10 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -320,4 +322,327 @@ func GetAdminJdProxyPurchases(userNumber int, days int, page int, limit int) ([]
 		items = append(items, item)
 	}
 	return items, total, stats
+}
+
+// ===================== 门户京东任务自动执行（代理订阅用户） =====================
+
+// PortalJdAutoSetting 用户自动执行配置（按门户账号 + 任务列表）
+type PortalJdAutoSetting struct {
+	UserNumber     int       `gorm:"primaryKey"`
+	AccountIndexes string    `gorm:"type:text"` // json []int，与手动执行 chips 一致
+	TasksJSON      string    `gorm:"type:text"` // json []PortalJdAutoTaskEntry
+	UpdatedAt      time.Time
+}
+
+func (PortalJdAutoSetting) TableName() string { return "portal_jd_auto_setting" }
+
+// PortalJdAutoTaskEntry 单任务自动配置
+type PortalJdAutoTaskEntry struct {
+	TaskID       string `json:"taskId"`
+	Enabled      bool   `json:"enabled"`
+	RunHour      int    `json:"runHour"`      // 用户输入 1-24
+	AdjustedHour int    `json:"adjustedHour"` // 错峰后实际整点
+	LastRunDate  string `json:"lastRunDate,omitempty"`
+}
+
+// PortalJdAutoConfigView 门户展示
+type PortalJdAutoConfigView struct {
+	AccountIndexes []int                   `json:"accountIndexes"`
+	Tasks          []PortalJdAutoTaskEntry `json:"tasks"`
+	Preview        []PortalJdAutoPreview   `json:"preview,omitempty"`
+}
+
+type PortalJdAutoPreview struct {
+	TaskID       string `json:"taskId"`
+	TaskName     string `json:"taskName"`
+	RunHour      int    `json:"runHour"`
+	AdjustedHour int    `json:"adjustedHour"`
+}
+
+func jdPortalBeijingNow() time.Time {
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		loc = time.FixedZone("CST", 8*3600)
+	}
+	return time.Now().In(loc)
+}
+
+func jdAutoHourToClock(h int) int {
+	if h == 24 {
+		return 0
+	}
+	if h < 1 {
+		return 1
+	}
+	if h > 23 {
+		return 23
+	}
+	return h
+}
+
+func computeJdAutoAdjustedHours(entries []PortalJdAutoTaskEntry) ([]PortalJdAutoTaskEntry, error) {
+	enabled := make([]PortalJdAutoTaskEntry, 0)
+	for _, e := range entries {
+		if !e.Enabled {
+			continue
+		}
+		if e.RunHour < 1 || e.RunHour > 24 {
+			return nil, fmt.Errorf("任务 %s 的整点需在 1-24 之间", e.TaskID)
+		}
+		enabled = append(enabled, e)
+	}
+	sort.Slice(enabled, func(i, j int) bool {
+		if enabled[i].RunHour == enabled[j].RunHour {
+			return enabled[i].TaskID < enabled[j].TaskID
+		}
+		return enabled[i].RunHour < enabled[j].RunHour
+	})
+	last := 0
+	for i := range enabled {
+		h := enabled[i].RunHour
+		if i > 0 && h <= last {
+			h = last + 1
+		}
+		if h > 24 {
+			return nil, fmt.Errorf("自动任务过多，同账号无法保证至少间隔 1 小时，请减少勾选或调整整点")
+		}
+		enabled[i].AdjustedHour = h
+		last = h
+	}
+	adjMap := make(map[string]int, len(enabled))
+	lastDate := make(map[string]string)
+	for _, e := range entries {
+		lastDate[e.TaskID] = e.LastRunDate
+	}
+	for _, e := range enabled {
+		adjMap[e.TaskID] = e.AdjustedHour
+	}
+	out := make([]PortalJdAutoTaskEntry, len(entries))
+	for i, e := range entries {
+		out[i] = e
+		if e.Enabled {
+			out[i].AdjustedHour = adjMap[e.TaskID]
+		}
+		out[i].LastRunDate = lastDate[e.TaskID]
+	}
+	return out, nil
+}
+
+func mergeJdAutoTasksWithCatalog(userNumber int, stored []PortalJdAutoTaskEntry) []PortalJdAutoTaskEntry {
+	catalog := GetJdManualTaskList(true)
+	byID := make(map[string]PortalJdAutoTaskEntry, len(stored))
+	for _, e := range stored {
+		byID[e.TaskID] = e
+	}
+	out := make([]PortalJdAutoTaskEntry, 0, len(catalog))
+	for _, t := range catalog {
+		e, ok := byID[t.ID]
+		if !ok {
+			e = PortalJdAutoTaskEntry{TaskID: t.ID, Enabled: false, RunHour: 8}
+		}
+		e.TaskID = t.ID
+		out = append(out, e)
+	}
+	return out
+}
+
+func buildJdAutoPreview(tasks []PortalJdAutoTaskEntry) []PortalJdAutoPreview {
+	prev := make([]PortalJdAutoPreview, 0)
+	for _, e := range tasks {
+		if !e.Enabled {
+			continue
+		}
+		name := e.TaskID
+		if t, ok := getJdManualTaskByID(e.TaskID); ok {
+			name = t.Name
+		}
+		prev = append(prev, PortalJdAutoPreview{
+			TaskID:       e.TaskID,
+			TaskName:     name,
+			RunHour:      e.RunHour,
+			AdjustedHour: e.AdjustedHour,
+		})
+	}
+	sort.Slice(prev, func(i, j int) bool {
+		if prev[i].AdjustedHour == prev[j].AdjustedHour {
+			return prev[i].TaskID < prev[j].TaskID
+		}
+		return prev[i].AdjustedHour < prev[j].AdjustedHour
+	})
+	return prev
+}
+
+// GetPortalJdAutoConfig 获取自动执行配置（无代理时返回空）
+func GetPortalJdAutoConfig(userNumber int) (PortalJdAutoConfigView, error) {
+	view := PortalJdAutoConfigView{
+		AccountIndexes: []int{0},
+		Tasks:          mergeJdAutoTasksWithCatalog(userNumber, nil),
+	}
+	if !IsPortalJdProxyActive(userNumber) {
+		return view, nil
+	}
+	var row PortalJdAutoSetting
+	if err := db.Where("user_number = ?", userNumber).First(&row).Error; err != nil {
+		if computed, err2 := computeJdAutoAdjustedHours(view.Tasks); err2 == nil {
+			view.Tasks = computed
+		}
+		view.Preview = buildJdAutoPreview(view.Tasks)
+		return view, nil
+	}
+	if row.AccountIndexes != "" {
+		_ = json.Unmarshal([]byte(row.AccountIndexes), &view.AccountIndexes)
+	}
+	var stored []PortalJdAutoTaskEntry
+	if row.TasksJSON != "" {
+		_ = json.Unmarshal([]byte(row.TasksJSON), &stored)
+	}
+	view.Tasks = mergeJdAutoTasksWithCatalog(userNumber, stored)
+	if computed, err := computeJdAutoAdjustedHours(view.Tasks); err == nil {
+		view.Tasks = computed
+	}
+	view.Preview = buildJdAutoPreview(view.Tasks)
+	return view, nil
+}
+
+// SavePortalJdAutoConfig 保存自动执行配置
+func SavePortalJdAutoConfig(userNumber int, accountIndexes []int, tasks []PortalJdAutoTaskEntry) (PortalJdAutoConfigView, error) {
+	if !IsPortalJdProxyActive(userNumber) {
+		return PortalJdAutoConfigView{}, fmt.Errorf("任务代理未开通或已过期")
+	}
+	if len(accountIndexes) == 0 {
+		return PortalJdAutoConfigView{}, fmt.Errorf("请至少选择一个执行账号")
+	}
+	merged := mergeJdAutoTasksWithCatalog(userNumber, tasks)
+	byIncoming := make(map[string]PortalJdAutoTaskEntry, len(tasks))
+	for _, t := range tasks {
+		byIncoming[t.TaskID] = t
+	}
+	for i := range merged {
+		if inc, ok := byIncoming[merged[i].TaskID]; ok {
+			merged[i].Enabled = inc.Enabled
+			merged[i].RunHour = inc.RunHour
+			merged[i].LastRunDate = inc.LastRunDate
+		}
+	}
+	computed, err := computeJdAutoAdjustedHours(merged)
+	if err != nil {
+		return PortalJdAutoConfigView{}, err
+	}
+	accJSON, _ := json.Marshal(accountIndexes)
+	taskJSON, _ := json.Marshal(computed)
+	now := time.Now()
+	row := PortalJdAutoSetting{
+		UserNumber:     userNumber,
+		AccountIndexes: string(accJSON),
+		TasksJSON:      string(taskJSON),
+		UpdatedAt:      now,
+	}
+	if err := db.Save(&row).Error; err != nil {
+		return PortalJdAutoConfigView{}, err
+	}
+	return PortalJdAutoConfigView{
+		AccountIndexes: accountIndexes,
+		Tasks:          computed,
+		Preview:        buildJdAutoPreview(computed),
+	}, nil
+}
+
+func markJdAutoTaskRunToday(userNumber int, taskID string) {
+	var row PortalJdAutoSetting
+	if err := db.Where("user_number = ?", userNumber).First(&row).Error; err != nil {
+		return
+	}
+	var tasks []PortalJdAutoTaskEntry
+	if row.TasksJSON != "" {
+		_ = json.Unmarshal([]byte(row.TasksJSON), &tasks)
+	}
+	today := jdPortalBeijingNow().Format("2006-01-02")
+	changed := false
+	for i := range tasks {
+		if tasks[i].TaskID == taskID {
+			tasks[i].LastRunDate = today
+			changed = true
+		}
+	}
+	if !changed {
+		return
+	}
+	data, _ := json.Marshal(tasks)
+	db.Model(&row).Updates(map[string]interface{}{"tasks_json": string(data), "updated_at": time.Now()})
+}
+
+// RunJdPortalAutoTasksTick 每分钟检查并触发自动任务
+func RunJdPortalAutoTasksTick() {
+	now := jdPortalBeijingNow()
+	if now.Minute() != 0 {
+		return
+	}
+	clockHour := now.Hour()
+
+	var subs []PortalJdProxySubscription
+	db.Where("expire_at > ?", time.Now()).Find(&subs)
+	for _, sub := range subs {
+		runJdAutoForUser(sub.UserNumber, clockHour, now)
+	}
+}
+
+func runJdAutoForUser(userNumber int, clockHour int, now time.Time) {
+	if !IsPortalJdProxyActive(userNumber) {
+		return
+	}
+	cfg, err := GetPortalJdAutoConfig(userNumber)
+	if err != nil {
+		return
+	}
+	today := now.Format("2006-01-02")
+	for _, task := range cfg.Tasks {
+		if !task.Enabled {
+			continue
+		}
+		if jdAutoHourToClock(task.AdjustedHour) != clockHour {
+			continue
+		}
+		if task.LastRunDate == today {
+			continue
+		}
+		taskName := task.TaskID
+		if t, ok := getJdManualTaskByID(task.TaskID); ok {
+			taskName = t.Name
+		}
+		if err := TriggerPortalJdAutoTask(userNumber, task.TaskID, taskName, cfg.AccountIndexes); err != nil {
+			JD().Warnf("[京东自动任务] user=%d task=%s err=%v", userNumber, task.TaskID, err)
+			continue
+		}
+		markJdAutoTaskRunToday(userNumber, task.TaskID)
+	}
+}
+
+// TriggerPortalJdAutoTask 触发单次自动执行
+func TriggerPortalJdAutoTask(userNumber int, taskID, taskName string, accountIndexes []int) error {
+	if !IsPortalJdProxyActive(userNumber) {
+		return fmt.Errorf("任务代理未开通或已过期")
+	}
+	task, ok := getJdManualTaskByID(taskID)
+	if !ok || !task.Enabled {
+		return fmt.Errorf("任务不存在或未启用")
+	}
+	displayName := task.Name
+	if strings.TrimSpace(taskName) != "" {
+		displayName = taskName
+	}
+	taskLogID := fmt.Sprintf("auto_%s_%d_%d", taskID, userNumber, time.Now().UnixNano())
+	CreateTaskLogChannel(taskLogID)
+	recID, err := CreatePortalJdRunRecord(userNumber, taskID, displayName, taskLogID, "auto")
+	if err != nil {
+		RemoveTaskLogChannel(taskLogID)
+		return err
+	}
+	ctx := ClientContext{Source: ClientSourceWeb, Platform: ClientPlatformWeb}
+	if err := SubmitPortalJdTask(userNumber, taskID, displayName, accountIndexes, taskLogID, ctx, "auto", recID); err != nil {
+		FinishPortalJdRunRecord(recID, "failed", err.Error())
+		RemoveTaskLogChannel(taskLogID)
+		return err
+	}
+	JD().Infof("[京东自动任务] 已触发 user=%d task=%s accounts=%v", userNumber, taskID, accountIndexes)
+	return nil
 }

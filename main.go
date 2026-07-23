@@ -241,6 +241,9 @@ func main() {
 	web.Router("/api/portal/jd/tasks", &controllers.PortalController{}, "get:JdTaskList")
 	web.Router("/api/portal/jd/proxy/status", &controllers.PortalController{}, "get:JdProxyStatus")
 	web.Router("/api/portal/jd/proxy/buy", &controllers.PortalController{}, "post:JdProxyBuy")
+	web.Router("/api/portal/jd/auto/config", &controllers.PortalController{}, "get:JdAutoConfig;post:JdAutoConfigSave")
+	web.Router("/api/portal/jd/auto/runs", &controllers.PortalController{}, "get:JdAutoRuns")
+	web.Router("/api/portal/jd/auto/runs/log", &controllers.PortalController{}, "get:JdAutoRunLog")
 	// 协议双绑（微信 wxid ↔ 应用宝 openid）
 	web.Router("/api/portal/protocol/bindings", &controllers.PortalController{}, "get:ProtocolBindings")
 	web.Router("/api/portal/protocol/bind/quota", &controllers.PortalController{}, "get:ProtocolBindQuota")

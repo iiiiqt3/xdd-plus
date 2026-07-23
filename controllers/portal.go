@@ -847,20 +847,13 @@ func (c *PortalController) JdTaskExecute() {
 		return
 	}
 
-	// 检查是否有同一任务正在执行
-	if models.IsUserJdTaskRunning(c.PortalUserID, req.TaskId) {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "该任务正在执行中，请勿重复点击"}
-		c.ServeJSON()
-		return
-	}
-
-	// 生成任务ID
 	taskLogId := fmt.Sprintf("%s_%d_%d", req.TaskId, c.PortalUserID, time.Now().UnixNano())
 	c.logPortalInfo("启动京东任务 task=%s name=%s accounts=%v source=%s platform=%s", req.TaskId, req.TaskName, req.AccountIndexes, c.ClientCtx.Source, c.ClientCtx.Platform)
 
-	// 创建日志通道并入队
 	models.CreateTaskLogChannel(taskLogId)
-	if err := models.SubmitPortalJdTask(c.PortalUserID, req.TaskId, req.TaskName, req.AccountIndexes, taskLogId, c.ClientCtx); err != nil {
+	recID, _ := models.CreatePortalJdRunRecord(c.PortalUserID, req.TaskId, req.TaskName, taskLogId, "manual")
+	if err := models.SubmitPortalJdTask(c.PortalUserID, req.TaskId, req.TaskName, req.AccountIndexes, taskLogId, c.ClientCtx, "manual", recID); err != nil {
+		models.FinishPortalJdRunRecord(recID, "failed", err.Error())
 		models.RemoveTaskLogChannel(taskLogId)
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -868,6 +861,103 @@ func (c *PortalController) JdTaskExecute() {
 	}
 
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "任务已启动", "data": map[string]string{"taskId": taskLogId}}
+	c.ServeJSON()
+}
+
+// JdAutoConfig 获取京东自动执行配置（需有效代理订阅）
+func (c *PortalController) JdAutoConfig() {
+	cfg, err := models.GetPortalJdAutoConfig(c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": cfg,
+		"proxyActive": models.IsPortalJdProxyActive(c.PortalUserID),
+	}
+	c.ServeJSON()
+}
+
+// JdAutoConfigSave 保存京东自动执行配置
+func (c *PortalController) JdAutoConfigSave() {
+	if !models.IsPortalJdProxyActive(c.PortalUserID) {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "任务代理未开通或已过期"}
+		c.ServeJSON()
+		return
+	}
+	var req struct {
+		AccountIndexes []int                         `json:"accountIndexes"`
+		Tasks          []models.PortalJdAutoTaskEntry `json:"tasks"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	cfg, err := models.SavePortalJdAutoConfig(c.PortalUserID, req.AccountIndexes, req.Tasks)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "已保存", "data": cfg}
+	c.ServeJSON()
+}
+
+// JdAutoRuns 自动/手动执行记录（近3天）
+func (c *PortalController) JdAutoRuns() {
+	page, _ := c.GetInt("page", 1)
+	limit, _ := c.GetInt("limit", 20)
+	rows, total, err := models.ListPortalJdRunRecords(c.PortalUserID, page, limit)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	items := make([]map[string]interface{}, 0, len(rows))
+	for _, r := range rows {
+		finished := ""
+		if r.FinishedAt != nil {
+			finished = r.FinishedAt.Format("2006-01-02 15:04:05")
+		}
+		items = append(items, map[string]interface{}{
+			"id":         r.ID,
+			"taskId":     r.TaskID,
+			"taskName":   r.TaskName,
+			"trigger":    r.Trigger,
+			"status":     r.Status,
+			"message":    r.Message,
+			"startedAt":  r.StartedAt.Format("2006-01-02 15:04:05"),
+			"finishedAt": finished,
+		})
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": map[string]interface{}{"items": items, "total": total}}
+	c.ServeJSON()
+}
+
+// JdAutoRunLog 查看单次执行日志文件内容
+func (c *PortalController) JdAutoRunLog() {
+	id, _ := c.GetInt64("id", 0)
+	if id <= 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "缺少 id 参数"}
+		c.ServeJSON()
+		return
+	}
+	rec, err := models.GetPortalJdRunRecord(c.PortalUserID, id)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "记录不存在"}
+		c.ServeJSON()
+		return
+	}
+	content, err := models.ReadPortalJdRunLogContent(rec)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": map[string]interface{}{"content": content}}
 	c.ServeJSON()
 }
 

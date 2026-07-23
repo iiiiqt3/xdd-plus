@@ -57,7 +57,9 @@ func initDB() {
 		&WxProtocolMigration{},
 		&PortalProtocolBinding{},
 		&CoinLog{},
-		&PortalJdProxySubscription{},
+	&PortalJdProxySubscription{},
+		&PortalJdAutoSetting{},
+		&PortalJdRunRecord{},
 	); err != nil {
 		DB().Infof("[数据库迁移] AutoMigrate 失败: %v", err)
 	}

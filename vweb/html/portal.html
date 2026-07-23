@@ -1045,6 +1045,48 @@
         .jd-task-table .col-name { font-weight: 600; color: var(--text); }
         .jd-task-table .col-id { font-family: Consolas, monospace; font-size: 11px; color: var(--text-muted); }
         .jd-task-table .col-coin { font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap; }
+        .jd-task-table .col-auto { text-align: center; white-space: nowrap; }
+        .jd-task-table .col-hour { text-align: center; white-space: nowrap; }
+        .jd-auto-hour-input {
+            width: 52px; padding: 4px 6px; text-align: center;
+            border: 1px solid var(--glass-border); border-radius: 8px;
+            font-size: 12px; font-weight: 600; background: var(--card);
+        }
+        .jd-auto-hour-input:disabled { opacity: 0.45; background: #f8fafc; }
+        .jd-auto-toggle { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; }
+        .jd-auto-bar {
+            display: none; margin-bottom: 12px; padding: 10px 12px;
+            border-radius: 10px; border: 1px solid rgba(99,102,241,0.18);
+            background: linear-gradient(180deg, rgba(99,102,241,0.06), rgba(99,102,241,0.02));
+            font-size: 12px; line-height: 1.65; color: var(--text-secondary);
+        }
+        .jd-auto-bar.show { display: block; }
+        .jd-auto-bar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+        .jd-auto-bar-title { font-weight: 700; color: var(--text); font-size: 13px; }
+        .jd-auto-preview { margin: 0; padding-left: 18px; }
+        .jd-auto-preview li { margin-bottom: 2px; }
+        .jd-auto-preview .adj { color: #6366f1; font-weight: 600; }
+        .jd-run-history-panel {
+            display: none; margin-bottom: 12px; border: 1px solid var(--glass-border);
+            border-radius: 10px; overflow: hidden; background: var(--glass-bg);
+        }
+        .jd-run-history-panel.show { display: block; }
+        .jd-run-history-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 12px; border-bottom: 1px solid var(--glass-border);
+            font-size: 12px; font-weight: 700; color: var(--text);
+        }
+        .jd-run-history-body { max-height: 200px; overflow-y: auto; font-size: 12px; }
+        .jd-run-history-row {
+            display: grid; grid-template-columns: 1fr auto auto auto;
+            gap: 8px; align-items: center; padding: 8px 12px;
+            border-bottom: 1px solid rgba(148,163,184,0.12);
+        }
+        .jd-run-history-row:last-child { border-bottom: none; }
+        .jd-run-history-row .meta { color: var(--text-muted); font-size: 11px; }
+        .jd-run-status-success { color: #059669; font-weight: 600; }
+        .jd-run-status-failed, .jd-run-status-skipped { color: #dc2626; font-weight: 600; }
+        .jd-run-status-running { color: #d97706; font-weight: 600; }
         .jd-task-table .col-action { text-align: right; white-space: nowrap; }
         .jd-task-table .col-action .btn { font-size: 12px; padding: 6px 14px; border-radius: 8px; }
         .jd-task-table .col-action .btn.running {
@@ -2589,6 +2631,7 @@
                                     <li><strong>青龙定时任务</strong>：账号在服务器自动执行，默认不配统一代理</li>
                                     <li><strong>手动任务代理</strong>：面向有代理需求的用户，可在此单独购买</li>
                                     <li><strong>购买后生效</strong>：下方所有手动任务执行时<strong>自动走代理</strong></li>
+                                    <li><strong>自动执行</strong>：代理有效期内可为每个任务设置每日整点自动跑（1-24点）</li>
                                     <li><strong>适用场景</strong>：农场、浇水、话费、评价等，有助于提高任务成功率</li>
                                 </ul>
                             </div>
@@ -2638,18 +2681,37 @@
                             <div class="jd-task-list-wrap">
                                 <div class="jd-task-list-toolbar">
                                     <h4>任务列表</h4>
-                                    <div class="filter-bar" style="margin:0;flex:1;max-width:320px;">
-                                        <input class="search-input" id="jdTaskSearchInput" type="text" placeholder="搜索任务名称、ID…" oninput="onJdTaskSearch(this.value)">
-                                        <button class="search-clear" id="jdTaskSearchClear" onclick="clearJdTaskSearch()">✕</button>
+                                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                        <button type="button" class="btn secondary small" id="jdAutoHistoryBtn" style="display:none;" onclick="toggleJdRunHistory()">执行记录</button>
+                                        <div class="filter-bar" style="margin:0;flex:1;max-width:320px;">
+                                            <input class="search-input" id="jdTaskSearchInput" type="text" placeholder="搜索任务名称、ID…" oninput="onJdTaskSearch(this.value)">
+                                            <button class="search-clear" id="jdTaskSearchClear" onclick="clearJdTaskSearch()">✕</button>
+                                        </div>
                                     </div>
+                                </div>
+                                <div class="jd-auto-bar" id="jdAutoBar">
+                                    <div class="jd-auto-bar-head">
+                                        <span class="jd-auto-bar-title">⏰ 自动执行（代理用户）</span>
+                                        <span class="muted" style="font-size:11px;">整点 1-24 · 同账号任务自动错峰 ≥1 小时</span>
+                                    </div>
+                                    <ul class="jd-auto-preview" id="jdAutoPreview"><li>勾选任务并设置整点后，将在此显示今日执行计划</li></ul>
+                                </div>
+                                <div class="jd-run-history-panel" id="jdRunHistoryPanel">
+                                    <div class="jd-run-history-head">
+                                        <span>近 3 天执行记录</span>
+                                        <button type="button" class="btn secondary small" onclick="toggleJdRunHistory()">收起</button>
+                                    </div>
+                                    <div class="jd-run-history-body" id="jdRunHistoryBody"></div>
                                 </div>
                                 <div id="jdTaskListWrap">
                                     <table class="jd-task-table">
                                         <thead>
-                                            <tr>
+                                            <tr id="jdTaskTableHeadRow">
                                                 <th>任务名称</th>
                                                 <th>ID</th>
                                                 <th>积分</th>
+                                                <th class="jd-auto-col" style="display:none;">自动</th>
+                                                <th class="jd-auto-col" style="display:none;">整点</th>
                                                 <th style="text-align:right;">操作</th>
                                             </tr>
                                         </thead>
@@ -4882,6 +4944,8 @@ var jdTaskAccounts = [];
 var jdTasksCache = [];
 var jdTaskSearchQuery = '';
 var jdProxyStatus = null;
+var jdAutoConfig = null;
+var jdAutoSaveTimer = null;
 
 async function loadJdTasks() {
     var listBody = document.getElementById('jdTaskListBody');
@@ -4909,7 +4973,188 @@ async function loadJdTasks() {
     }
 
     await loadJdProxyStatus();
+    if (jdProxyStatus && jdProxyStatus.active) {
+        await loadJdAutoConfig();
+    } else {
+        jdAutoConfig = null;
+        updateJdAutoSectionVisibility();
+    }
     renderJdTaskList();
+}
+
+async function loadJdAutoConfig() {
+    try {
+        var resp = await request('/api/portal/jd/auto/config');
+        if (resp.code === 0 && resp.data) {
+            jdAutoConfig = resp.data;
+            if (jdAutoConfig.accountIndexes && jdAutoConfig.accountIndexes.length) {
+                applyJdAutoAccountIndexes(jdAutoConfig.accountIndexes);
+            }
+        }
+    } catch (err) {
+        jdAutoConfig = null;
+    }
+    updateJdAutoSectionVisibility();
+    renderJdAutoPreview();
+}
+
+function applyJdAutoAccountIndexes(indexes) {
+    var chipsEl = document.getElementById('jdTaskAccountChips');
+    if (!chipsEl || !indexes || !indexes.length) return;
+    chipsEl.querySelectorAll('.jd-account-chip').forEach(function(c) { c.classList.remove('selected'); });
+    indexes.forEach(function(v) {
+        var chip = chipsEl.querySelector('.jd-account-chip[data-value="' + v + '"]');
+        if (chip) chip.classList.add('selected');
+    });
+    if (!chipsEl.querySelector('.jd-account-chip.selected')) {
+        var allChip = chipsEl.querySelector('.jd-account-chip[data-value="0"]');
+        if (allChip) allChip.classList.add('selected');
+    }
+}
+
+function updateJdAutoSectionVisibility() {
+    var active = !!(jdProxyStatus && jdProxyStatus.active);
+    var bar = document.getElementById('jdAutoBar');
+    var histBtn = document.getElementById('jdAutoHistoryBtn');
+    document.querySelectorAll('.jd-auto-col').forEach(function(el) {
+        el.style.display = active ? '' : 'none';
+    });
+    if (bar) bar.classList.toggle('show', active);
+    if (histBtn) histBtn.style.display = active ? '' : 'none';
+    if (!active) {
+        var panel = document.getElementById('jdRunHistoryPanel');
+        if (panel) panel.classList.remove('show');
+    }
+}
+
+function getJdAutoTaskEntry(taskId) {
+    if (!jdAutoConfig || !jdAutoConfig.tasks) return { taskId: taskId, enabled: false, runHour: 8, adjustedHour: 8 };
+    var hit = jdAutoConfig.tasks.find(function(t) { return t.taskId === taskId; });
+    return hit || { taskId: taskId, enabled: false, runHour: 8, adjustedHour: 8 };
+}
+
+function scheduleSaveJdAutoConfig() {
+    if (!jdProxyStatus || !jdProxyStatus.active) return;
+    if (jdAutoSaveTimer) clearTimeout(jdAutoSaveTimer);
+    jdAutoSaveTimer = setTimeout(function() { saveJdAutoConfigNow(); }, 500);
+}
+
+async function saveJdAutoConfigNow() {
+    if (!jdProxyStatus || !jdProxyStatus.active) return;
+    var payload = {
+        accountIndexes: getSelectedJdTaskAccountIndexes(),
+        tasks: (jdAutoConfig && jdAutoConfig.tasks) ? jdAutoConfig.tasks : []
+    };
+    try {
+        var resp = await request('/api/portal/jd/auto/config', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        if (resp.code === 0 && resp.data) {
+            jdAutoConfig = resp.data;
+            renderJdAutoPreview();
+        } else if (resp.msg) {
+            toast(resp.msg, 'warning');
+        }
+    } catch (err) {
+        toast(err.message || '自动配置保存失败', 'error');
+    }
+}
+
+function onJdAutoToggle(taskId, checked) {
+    if (!jdAutoConfig) jdAutoConfig = { tasks: [], accountIndexes: getSelectedJdTaskAccountIndexes() };
+    if (!jdAutoConfig.tasks) jdAutoConfig.tasks = [];
+    var entry = getJdAutoTaskEntry(taskId);
+    entry.enabled = !!checked;
+    if (!entry.runHour) entry.runHour = 8;
+    var idx = jdAutoConfig.tasks.findIndex(function(t) { return t.taskId === taskId; });
+    if (idx >= 0) jdAutoConfig.tasks[idx] = entry;
+    else jdAutoConfig.tasks.push(entry);
+    renderJdTaskList();
+    renderJdAutoPreview();
+    scheduleSaveJdAutoConfig();
+}
+
+function onJdAutoHourChange(taskId, value) {
+    var hour = parseInt(value, 10);
+    if (isNaN(hour) || hour < 1) hour = 1;
+    if (hour > 24) hour = 24;
+    if (!jdAutoConfig) jdAutoConfig = { tasks: [], accountIndexes: getSelectedJdTaskAccountIndexes() };
+    if (!jdAutoConfig.tasks) jdAutoConfig.tasks = [];
+    var entry = getJdAutoTaskEntry(taskId);
+    entry.runHour = hour;
+    var idx = jdAutoConfig.tasks.findIndex(function(t) { return t.taskId === taskId; });
+    if (idx >= 0) jdAutoConfig.tasks[idx] = entry;
+    else jdAutoConfig.tasks.push(entry);
+    renderJdAutoPreview();
+    scheduleSaveJdAutoConfig();
+}
+
+function renderJdAutoPreview() {
+    var el = document.getElementById('jdAutoPreview');
+    if (!el) return;
+    var preview = (jdAutoConfig && jdAutoConfig.preview) ? jdAutoConfig.preview : [];
+    if (!preview.length) {
+        el.innerHTML = '<li>勾选任务并设置整点后，将在此显示今日执行计划</li>';
+        return;
+    }
+    el.innerHTML = preview.map(function(p) {
+        var adj = p.adjustedHour !== p.runHour
+            ? ('<span class="adj">' + p.adjustedHour + ':00</span>（原 ' + p.runHour + ' 点，已错峰）')
+            : ('<span class="adj">' + p.adjustedHour + ':00</span>');
+        return '<li>' + escapeHtml(p.taskName) + ' → 每日 ' + adj + '</li>';
+    }).join('');
+}
+
+async function toggleJdRunHistory() {
+    var panel = document.getElementById('jdRunHistoryPanel');
+    if (!panel) return;
+    var show = !panel.classList.contains('show');
+    panel.classList.toggle('show', show);
+    if (show) await loadJdRunHistory();
+}
+
+async function loadJdRunHistory() {
+    var body = document.getElementById('jdRunHistoryBody');
+    if (!body) return;
+    body.innerHTML = '<div style="padding:12px;color:var(--text-muted);">加载中…</div>';
+    try {
+        var resp = await request('/api/portal/jd/auto/runs?limit=30');
+        var items = (resp.data && resp.data.items) ? resp.data.items : [];
+        if (!items.length) {
+            body.innerHTML = '<div style="padding:12px;color:var(--text-muted);">暂无执行记录</div>';
+            return;
+        }
+        body.innerHTML = items.map(function(it) {
+            var stCls = 'jd-run-status-' + (it.status || 'running');
+            var trigger = it.trigger === 'auto' ? '自动' : '手动';
+            return '<div class="jd-run-history-row">' +
+                '<div><div>' + escapeHtml(it.taskName || it.taskId) + '</div><div class="meta">' + escapeHtml(it.startedAt) + ' · ' + trigger + '</div></div>' +
+                '<span class="' + stCls + '">' + escapeHtml(it.status || '-') + '</span>' +
+                '<button type="button" class="btn secondary small" onclick="viewJdRunLog(' + it.id + ')">日志</button>' +
+                '</div>';
+        }).join('');
+    } catch (err) {
+        body.innerHTML = '<div style="padding:12px;color:#dc2626;">加载失败</div>';
+    }
+}
+
+async function viewJdRunLog(id) {
+    try {
+        var resp = await request('/api/portal/jd/auto/runs/log?id=' + encodeURIComponent(id));
+        if (resp.code !== 0) {
+            toast(resp.msg || '读取日志失败', 'error');
+            return;
+        }
+        var logBox = document.getElementById('jdTaskLog');
+        if (logBox) {
+            logBox.innerHTML = '';
+            appendJdTaskLog('===== 历史执行日志 #' + id + ' =====');
+            appendJdTaskLog(resp.data.content || '(空)');
+        }
+    } catch (err) {
+        toast(err.message || '读取日志失败', 'error');
+    }
 }
 
 function renderJdTaskAccountSelect() {
@@ -4965,6 +5210,9 @@ function toggleJdTaskAccountChip(chip) {
 
     if (!chipsEl.querySelector('.jd-account-chip.selected') && allChip) {
         allChip.classList.add('selected');
+    }
+    if (jdProxyStatus && jdProxyStatus.active) {
+        scheduleSaveJdAutoConfig();
     }
 }
 
@@ -5029,6 +5277,10 @@ function renderJdProxyCard() {
         var need = monthly * months;
         buyBtn.title = '将扣除 ' + need + ' 积分';
     }
+    updateJdAutoSectionVisibility();
+    if (active && typeof loadJdAutoConfig === 'function') {
+        loadJdAutoConfig().then(function() { renderJdTaskList(); });
+    }
 }
 
 async function buyJdTaskProxy(btn) {
@@ -5056,6 +5308,8 @@ async function buyJdTaskProxy(btn) {
             jdProxyStatus = resp.data || jdProxyStatus;
             renderJdProxyCard();
             showJdProxyBuySuccessModal(months, need, jdProxyStatus);
+            await loadJdAutoConfig();
+            renderJdTaskList();
             if (typeof loadDashboardData === 'function') loadDashboardData().catch(function() {});
         } else {
             toast(resp.msg || '购买失败', 'error');
@@ -5113,11 +5367,13 @@ function renderJdTaskList() {
     if (!listBody) return;
 
     var tasks = getFilteredJdTasks();
+    var autoActive = !!(jdProxyStatus && jdProxyStatus.active);
+    var colSpan = autoActive ? 6 : 4;
     if (!tasks.length) {
         var emptyMsg = jdTaskSearchQuery
             ? '未找到匹配「' + escapeHtml(jdTaskSearchQuery) + '」的任务'
             : (!jdTasksCache.length ? '暂无可用任务，请联系管理员在后台启用' : '暂无任务');
-        listBody.innerHTML = '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text-muted);">' + emptyMsg + '</td></tr>';
+        listBody.innerHTML = '<tr><td colspan="' + colSpan + '" style="padding:24px;text-align:center;color:var(--text-muted);">' + emptyMsg + '</td></tr>';
         return;
     }
 
@@ -5126,10 +5382,15 @@ function renderJdTaskList() {
         var safeId = escapeHtml(task.id);
         var safeName = escapeHtml(task.name);
         var coinText = task.coin > 0 ? (task.coin + ' / 账号') : '免费';
+        var autoEntry = getJdAutoTaskEntry(task.id);
         html += '<tr data-task-id="' + safeId + '">';
         html += '<td class="col-name">' + safeName + '</td>';
         html += '<td class="col-id">' + safeId + '</td>';
         html += '<td class="col-coin">' + coinText + '</td>';
+        if (autoActive) {
+            html += '<td class="col-auto"><input type="checkbox" class="jd-auto-toggle" ' + (autoEntry.enabled ? 'checked' : '') + ' onchange="onJdAutoToggle(\'' + safeId.replace(/'/g, "\\'") + '\', this.checked)" /></td>';
+            html += '<td class="col-hour"><input type="number" class="jd-auto-hour-input" min="1" max="24" value="' + (autoEntry.runHour || 8) + '" ' + (autoEntry.enabled ? '' : 'disabled') + ' onchange="onJdAutoHourChange(\'' + safeId.replace(/'/g, "\\'") + '\', this.value)" /></td>';
+        }
         html += '<td class="col-action">';
         html += '<button class="btn primary" id="taskBtn_' + safeId + '" data-task-id="' + safeId + '" data-task-name="' + safeName + '" onclick="executeJdTask(this.dataset.taskId, this.dataset.taskName)">执行</button>';
         html += '</td></tr>';
