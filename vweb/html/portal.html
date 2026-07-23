@@ -6328,7 +6328,7 @@ function kuwoStartWithdraw() {
 
     // 在4分钟窗口内且还没到点 → 后端定时 + 前端倒计时
     if (info.inWindow === true && info.diffMin > 0 && info.diffMin <= 4) {
-        kuwoLog('🎯 提交定时抢兑任务，后端将在 ' + String(info.hour).padStart(2,'0') + ':00 自动执行（3轮错峰）');
+        kuwoLog('🎯 提交定时抢兑任务，后端将在 ' + String(info.hour).padStart(2,'0') + ':00 自动执行（整点后3轮错峰）');
         kuwoSetWithdrawLocked(true, true);
         // 持久化倒计时状态
         try {

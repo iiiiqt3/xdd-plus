@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"math/big"
 	"net/http"
@@ -35,9 +36,10 @@ const (
 
 	kuwoSessionCacheTTL     = 4 * time.Minute // 与倒计时窗口一致，短信码有效期5分钟
 	kuwoDefaultQuotaID        = "30002"         // 默认 2 元档位
-	kuwoWithdrawRounds        = 3               // 定时抢兑轮数
-	kuwoWithdrawRetryPerRound = 15              // 每轮并发次数
-	kuwoWithdrawStaggerMs     = 30              // 同轮内错峰毫秒
+	kuwoWithdrawRounds        = 3  // 定时抢兑轮数
+	kuwoWithdrawRetryPerRound = 4  // 每轮并发次数（过多易触发酷我限流）
+	kuwoWithdrawStaggerMs     = 100 // 同轮内错峰毫秒
+	kuwoWithdrawUserJitterMs  = 150 // 多用户同秒抢兑时的随机错峰上限（毫秒）
 	kuwoWarmupBeforeSec       = 5
 	kuwoSessionRefreshBefore  = 35 * time.Second
 	kuwoLoginMaxRetry         = 3
@@ -49,8 +51,8 @@ const (
 	kuwoProxyMaxAge           = 25 * time.Second // 动态 IP 约 30s 有效，超龄换 IP
 )
 
-// kuwoScheduledLeadOffsets 三轮抢兑触发点：相对整点提前的毫秒数
-var kuwoScheduledLeadOffsets = []int{30, 20, 10}
+// kuwoScheduledLagOffsets 三轮抢兑触发点：相对整点延后的毫秒数（库存通常在整点释放）
+var kuwoScheduledLagOffsets = []int{0, 80, 250}
 
 var kuwoHTTPClient = &http.Client{
 	Timeout: 12 * time.Second,
@@ -314,6 +316,27 @@ func kuwoIsFatalWithdrawError(text string) bool {
 		}
 	}
 	return false
+}
+
+func kuwoIsRateLimitError(text string) bool {
+	if text == "" {
+		return false
+	}
+	keys := []string{"过于频繁", "稍后再试", "请求太快", "操作频繁"}
+	for _, k := range keys {
+		if strings.Contains(text, k) {
+			return true
+		}
+	}
+	return false
+}
+
+func kuwoTaskJitter(task *KuwoScheduledTask) time.Duration {
+	if task == nil || task.Phone == "" || kuwoWithdrawUserJitterMs <= 0 {
+		return 0
+	}
+	seed := crc32.ChecksumIEEE([]byte(task.Phone))
+	return time.Duration(seed%uint32(kuwoWithdrawUserJitterMs)) * time.Millisecond
 }
 
 func kuwoIsSmsCodeError(text string) bool {
@@ -688,7 +711,13 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 						return
 					default:
 					}
-					msg, err := KuwoExecuteWithdraw(s, quotaId, smsCode, proxy)
+					attemptProxy := proxy
+					if task != nil && task.proxyEnabled() && attempt > 0 {
+						if fresh := kuwoWithdrawProxyOnDemand(fmt.Sprintf("kuwo_wd_r%d_%d", round+1, attempt+1)); fresh != nil {
+							attemptProxy = fresh
+						}
+					}
+					msg, err := KuwoExecuteWithdraw(s, quotaId, smsCode, attemptProxy)
 					ch <- attemptResult{msg: msg, err: err, index: attempt}
 					if task != nil {
 						attemptNo := attempt + 1
@@ -696,13 +725,15 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 							task.AddLog("success", "第%d轮 第%d次 %s 成功：%s", round+1, attemptNo, phoneLabel, msg)
 						} else if kuwoIsFatalWithdrawError(msg) {
 							task.AddLog("error", "第%d轮 第%d次 %s 失败（终止重试）：%s", round+1, attemptNo, phoneLabel, msg)
+						} else if kuwoIsRateLimitError(msg) {
+							task.AddLog("warn", "第%d轮 第%d次 %s 限流：%s", round+1, attemptNo, phoneLabel, msg)
 						} else {
 							task.AddLog("warn", "第%d轮 第%d次 %s 失败：%s", round+1, attemptNo, phoneLabel, msg)
 						}
 					}
 					if err == nil {
 						once.Do(func() { close(stopCh) })
-					} else if kuwoIsFatalWithdrawError(msg) {
+					} else if kuwoIsFatalWithdrawError(msg) || kuwoIsRateLimitError(msg) {
 						once.Do(func() { close(stopCh) })
 					}
 				}(t)
@@ -1320,13 +1351,21 @@ func kuwoRunScheduledTask(taskID string) {
 		return
 	}
 
-	firstFireAt := task.ExecuteAt.Add(-time.Duration(kuwoScheduledLeadOffsets[0]) * time.Millisecond)
+	firstFireAt := task.ExecuteAt
+	if len(kuwoScheduledLagOffsets) > 0 {
+		firstFireAt = firstFireAt.Add(time.Duration(kuwoScheduledLagOffsets[0]) * time.Millisecond)
+	}
+	firstFireAt = firstFireAt.Add(kuwoTaskJitter(task))
 	warmupAt := firstFireAt.Add(-time.Duration(kuwoWarmupBeforeSec) * time.Second)
 	refreshAt := firstFireAt.Add(-kuwoSessionRefreshBefore)
 	proxyPrepAt := firstFireAt.Add(-time.Duration(kuwoProxyPrepareBeforeSec) * time.Second)
 
 	task.AddLog("info", "后台调度已启动，等待抢兑时刻…")
-	task.AddLog("info", "抢兑策略：%d轮并发（提前%v ms），每轮%d次并发，每轮独立代理", kuwoWithdrawRounds, kuwoScheduledLeadOffsets, kuwoWithdrawRetryPerRound)
+	jitter := kuwoTaskJitter(task)
+	if jitter > 0 {
+		task.AddLog("info", "用户错峰延迟：%s", jitter.Round(time.Millisecond))
+	}
+	task.AddLog("info", "抢兑策略：%d轮（整点后%v ms），每轮%d次错峰，每轮独立代理", kuwoWithdrawRounds, kuwoScheduledLagOffsets, kuwoWithdrawRetryPerRound)
 
 	// 代理准备与预热/登录并行，避免卡点提交时取 IP 占用到点后的抢兑时间
 	var proxyWg sync.WaitGroup
@@ -1338,7 +1377,7 @@ func kuwoRunScheduledTask(taskID string) {
 				task.AddLog("info", "距抢兑代理准备还有 %s", d.Round(time.Millisecond))
 				kuwoSleepUntil(proxyPrepAt)
 			}
-			task.prepareRoundWithdrawProxies(len(kuwoScheduledLeadOffsets))
+			task.prepareRoundWithdrawProxies(len(kuwoScheduledLagOffsets))
 		}()
 	} else {
 		task.AddLog("info", "抢兑代理：未启用（直连）")
@@ -1398,16 +1437,21 @@ func kuwoRoundProxy(task *KuwoScheduledTask, roundIdx int) *kuwoWithdrawProxy {
 	return nil
 }
 
-// kuwoRunConcurrentWithdrawRounds 三轮并发：在整点前 30/20/10ms 错开触发，每轮独立代理
+// kuwoRunConcurrentWithdrawRounds 多轮错峰抢兑：整点后错开触发，每轮独立代理
 func kuwoRunConcurrentWithdrawRounds(sessions []*KuwoSession, quotaID, smsCode string, task *KuwoScheduledTask, executeAt time.Time) []KuwoWithdrawResult {
-	leads := kuwoScheduledLeadOffsets
-	roundCount := len(leads)
+	lags := kuwoScheduledLagOffsets
+	roundCount := len(lags)
 	if roundCount == 0 {
-		leads = []int{30, 20, 10}
-		roundCount = len(leads)
+		lags = []int{0, 80, 250}
+		roundCount = len(lags)
 	}
+	jitter := kuwoTaskJitter(task)
 	if task != nil {
-		task.AddLog("info", "开始并发抢兑：%d轮（提前%v ms），每轮最多%d次", roundCount, leads, kuwoWithdrawRetryPerRound)
+		if jitter > 0 {
+			task.AddLog("info", "开始并发抢兑：%d轮（整点后%v ms，错峰+%s），每轮最多%d次", roundCount, lags, jitter.Round(time.Millisecond), kuwoWithdrawRetryPerRound)
+		} else {
+			task.AddLog("info", "开始并发抢兑：%d轮（整点后%v ms），每轮最多%d次", roundCount, lags, kuwoWithdrawRetryPerRound)
+		}
 	}
 
 	var (
@@ -1418,15 +1462,15 @@ func kuwoRunConcurrentWithdrawRounds(sessions []*KuwoSession, quotaID, smsCode s
 		wg           sync.WaitGroup
 	)
 
-	for roundIdx, leadMs := range leads {
+	for roundIdx, lagMs := range lags {
 		wg.Add(1)
-		go func(roundIdx, leadMs int) {
+		go func(roundIdx, lagMs int) {
 			defer wg.Done()
 
-			fireAt := executeAt.Add(-time.Duration(leadMs) * time.Millisecond)
+			fireAt := executeAt.Add(time.Duration(lagMs) * time.Millisecond).Add(jitter)
 			if d := time.Until(fireAt); d > 0 {
 				if task != nil {
-					task.AddLog("info", "第%d轮等待触发点 %s（提前%dms）", roundIdx+1, fireAt.Format("15:04:05.000"), leadMs)
+					task.AddLog("info", "第%d轮等待触发点 %s（整点后%dms）", roundIdx+1, fireAt.Format("15:04:05.000"), lagMs)
 				}
 				kuwoSleepUntil(fireAt)
 			}
@@ -1446,7 +1490,7 @@ func kuwoRunConcurrentWithdrawRounds(sessions []*KuwoSession, quotaID, smsCode s
 				proxyLabel = proxy.host()
 			}
 			if task != nil {
-				task.AddLog("info", "═══ 第 %d/%d 轮（提前%dms）开始 [代理:%s] ═══", roundIdx+1, roundCount, leadMs, proxyLabel)
+				task.AddLog("info", "═══ 第 %d/%d 轮（整点后%dms）开始 [代理:%s] ═══", roundIdx+1, roundCount, lagMs, proxyLabel)
 			}
 			Kuwo().Infof("[kuwo] 并发第%d轮 at %s proxy=%s\n", roundIdx+1, time.Now().Format("15:04:05.000"), proxyLabel)
 
@@ -1467,7 +1511,7 @@ func kuwoRunConcurrentWithdrawRounds(sessions []*KuwoSession, quotaID, smsCode s
 			if task != nil && kuwoAllResultsSmsFatal(roundResults) {
 				task.AddLog("warn", "第%d轮疑似验证码错误", roundIdx+1)
 			}
-		}(roundIdx, leadMs)
+		}(roundIdx, lagMs)
 	}
 
 	wg.Wait()
