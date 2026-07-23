@@ -1267,6 +1267,7 @@ func GetUsersAdmin(search string, page, limit int) ([]User, int) {
 	var total int64
 	tx := db.Model(&User{})
 	if search != "" {
+		search = strings.TrimSpace(search)
 		searchStr := "%" + search + "%"
 		tx = tx.Where("nickname LIKE ? OR wxid LIKE ? OR qq LIKE ? OR CAST(number AS CHAR) LIKE ?",
 			searchStr, searchStr, searchStr, searchStr)
@@ -2635,7 +2636,7 @@ func BatchUpdateUserCoins(numbers []int, coin int) error {
 }
 
 // AdminPreviewWxBind 预览微信绑定：按微信用户编号查找账号及积分
-func AdminPreviewWxBind(wxNumber int) map[string]interface{} {
+func AdminPreviewWxBind(wxNumber int64) map[string]interface{} {
 	if wxNumber <= 0 {
 		return map[string]interface{}{"found": false}
 	}
@@ -2645,7 +2646,7 @@ func AdminPreviewWxBind(wxNumber int) map[string]interface{} {
 	}
 	return map[string]interface{}{
 		"found":    true,
-		"number":   u.Number,
+		"number":   strconv.FormatInt(int64(u.Number), 10),
 		"wxid":     u.Wxid,
 		"nickname": u.Nickname,
 		"coin":     u.Coin,
@@ -2655,7 +2656,7 @@ func AdminPreviewWxBind(wxNumber int) map[string]interface{} {
 }
 
 // AdminBindWechatToQQ 管理员手动将微信用户绑定到 QQ 用户，并合并微信端积分
-func AdminBindWechatToQQ(qqNumber, wxNumber int) (map[string]interface{}, error) {
+func AdminBindWechatToQQ(qqNumber, wxNumber int64) (map[string]interface{}, error) {
 	if qqNumber <= 0 {
 		return nil, fmt.Errorf("QQ用户编号不能为空")
 	}

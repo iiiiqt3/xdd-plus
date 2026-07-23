@@ -603,7 +603,7 @@ func (c *AdminApiController) DeleteEnvVar() {
 
 // GetUsers 获取用户列表（支持搜索和分页）
 func (c *AdminApiController) GetUsers() {
-	search := c.GetString("search")
+	search := strings.TrimSpace(c.GetString("search"))
 	page := c.GetQueryInt("page")
 	limit := c.GetQueryInt("limit")
 	if page == 0 {
@@ -614,14 +614,44 @@ func (c *AdminApiController) GetUsers() {
 	}
 
 	users, total := models.GetUsersAdmin(search, page, limit)
+	list := make([]map[string]interface{}, 0, len(users))
+	for _, u := range users {
+		list = append(list, userToAdminView(u))
+	}
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"data": map[string]interface{}{
-			"list":  users,
+			"list":  list,
 			"total": total,
 		},
 	}
 	c.ServeJSON()
+}
+
+func userToAdminView(u models.User) map[string]interface{} {
+	return map[string]interface{}{
+		"ID":       u.ID,
+		"Number":   strconv.FormatInt(int64(u.Number), 10),
+		"Nickname": u.Nickname,
+		"Wxid":     u.Wxid,
+		"QQ":       u.QQ,
+		"Coin":     u.Coin,
+		"Class":    u.Class,
+		"IsAdmin":  u.IsAdmin,
+		"ActiveAt": u.ActiveAt,
+	}
+}
+
+func parseAdminUserNumber(raw string) (int64, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, fmt.Errorf("用户编号不能为空")
+	}
+	n, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("无效的用户编号")
+	}
+	return n, nil
 }
 
 // UpdateUserCoin 修改用户积分
@@ -1810,9 +1840,9 @@ func (c *AdminApiController) CreateUser() {
 
 // PreviewWxBind 预览微信绑定（按微信用户编号查找账号及积分）
 func (c *AdminApiController) PreviewWxBind() {
-	wxNumber := c.GetQueryInt("wxNumber")
-	if wxNumber <= 0 {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请提供微信用户编号"}
+	wxNumber, err := parseAdminUserNumber(c.GetString("wxNumber"))
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
@@ -1826,16 +1856,23 @@ func (c *AdminApiController) PreviewWxBind() {
 // BindWechatToQQ 管理员手动绑定微信到 QQ 用户并合并积分
 func (c *AdminApiController) BindWechatToQQ() {
 	var req struct {
-		QQNumber int `json:"qqNumber"`
-		WxNumber int `json:"wxNumber"`
+		QQNumber interface{} `json:"qqNumber"`
+		WxNumber interface{} `json:"wxNumber"`
 	}
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
-	if req.QQNumber <= 0 || req.WxNumber <= 0 {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "QQ编号和微信用户编号不能为空"}
+	qqNumber, err := parseAdminUserNumber(fmt.Sprint(req.QQNumber))
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "QQ用户编号无效"}
 		c.ServeJSON()
 		return
 	}
-	result, err := models.AdminBindWechatToQQ(req.QQNumber, req.WxNumber)
+	wxNumber, err := parseAdminUserNumber(fmt.Sprint(req.WxNumber))
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "微信用户编号无效"}
+		c.ServeJSON()
+		return
+	}
+	result, err := models.AdminBindWechatToQQ(qqNumber, wxNumber)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()

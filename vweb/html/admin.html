@@ -3016,8 +3016,8 @@
         <div class="modal-header"><h3><i class="fab fa-weixin" style="color:#07c160;"></i> 绑定微信到QQ</h3><span class="modal-close" onclick="closeBindWechatModal()">&times;</span></div>
         <p style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.7;">与机器人绑定逻辑一致：将微信用户绑定到 QQ 用户，删除微信孤儿账号并把 wxid 写入 QQ 行，微信端通过 wxid 解析到 QQ 编号。绑定前会自动合并微信端积分。请填写微信用户的<strong>编号</strong>（用户发送【用户信息】可查看）。</p>
         <div class="form-grid" style="grid-template-columns:1fr;">
-            <div class="form-item"><label>QQ 用户编号</label><input type="number" id="bindWechatQQ" placeholder="QQ 用户编号"></div>
-            <div class="form-item"><label>微信用户编号</label><input type="number" id="bindWechatWxNumber" placeholder="微信端自动生成的编号" onblur="previewWxBind()"></div>
+            <div class="form-item"><label>QQ 用户编号</label><input type="text" id="bindWechatQQ" inputmode="numeric" pattern="[0-9]*" placeholder="QQ 用户编号"></div>
+            <div class="form-item"><label>微信用户编号</label><input type="text" id="bindWechatWxNumber" inputmode="numeric" pattern="[0-9]*" placeholder="微信端自动生成的编号" onblur="previewWxBind()"></div>
         </div>
         <div id="bindWechatPreview" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:13px;line-height:1.8;">
             <div style="font-weight:600;color:#166534;margin-bottom:6px;"><i class="fas fa-info-circle"></i> 微信账号预览</div>
@@ -5347,7 +5347,7 @@ function copyWebPwdCredentialPair() {
 // ============ 用户管理 ============
 async function loadUsers(page) {
     if (page) userPage = page;
-    const search = (document.getElementById('userSearch')||{}).value || '';
+    const search = ((document.getElementById('userSearch')||{}).value || '').trim();
     try {
         const res = await api.get(`/api/admin/users?page=${userPage}&limit=${getPageSize('user')}&search=${encodeURIComponent(search)}`);
         const tbody = document.getElementById('userTableBody');
@@ -5365,9 +5365,9 @@ async function loadUsers(page) {
                 <td>${u.IsAdmin ? '<span class="tag tag-success">是</span>' : '<span class="tag tag-info">否</span>'}</td>
                 <td style="font-size:12px;">${u.ActiveAt ? new Date(u.ActiveAt).toLocaleDateString('zh-CN') : '-'}</td>
                 <td class="col-action-sticky">
-                    <button class="btn btn-success btn-xs" onclick="showBindWechatModal(${u.Number})" title="绑定微信"><i class="fab fa-weixin"></i></button>
+                    <button class="btn btn-success btn-xs" onclick="showBindWechatModal('${escapeAttr(String(u.Number))}')" title="绑定微信"><i class="fab fa-weixin"></i></button>
                     <button class="btn btn-primary btn-xs" onclick="showUserEditModal(${u.ID}, '${escapeAttr(u.Wxid)}', '${escapeAttr(u.QQ)}', ${u.Coin}, '${escapeAttr(u.Class)}', ${u.IsAdmin}, '${escapeAttr(u.Nickname || '')}')" title="编辑"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-warning btn-xs" onclick="quickLookupWebPassword(${u.Number})" title="网页账号"><i class="fas fa-globe"></i></button>
+                    <button class="btn btn-warning btn-xs" onclick="quickLookupWebPassword('${escapeAttr(String(u.Number))}')" title="网页账号"><i class="fas fa-globe"></i></button>
                     <button class="btn btn-danger btn-xs" onclick="deleteUser(${u.ID})" title="删除"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`).join('');
@@ -5475,21 +5475,24 @@ function toggleAllUserCheck(checked) { toggleAllCheck('user-check', checked); }
 function updateUserCheckAll() { updateCheckAll('user-check', 'userCheckAll'); }
 
 function showBindWechatModal(qqNumber) {
-    document.getElementById('bindWechatQQ').value = qqNumber || '';
+    document.getElementById('bindWechatQQ').value = qqNumber ? String(qqNumber).trim() : '';
     document.getElementById('bindWechatWxNumber').value = '';
     document.getElementById('bindWechatPreview').style.display = 'none';
     document.getElementById('bindWechatModal').classList.remove('hidden');
 }
 function closeBindWechatModal() { document.getElementById('bindWechatModal').classList.add('hidden'); }
+function readUserNumberInput(id) {
+    return String((document.getElementById(id) || {}).value || '').trim();
+}
 async function previewWxBind() {
-    const wxNumber = parseInt(document.getElementById('bindWechatWxNumber').value);
+    const wxNumber = readUserNumberInput('bindWechatWxNumber');
     const box = document.getElementById('bindWechatPreview');
-    if (!wxNumber) { box.style.display = 'none'; return; }
+    if (!wxNumber || !/^\d+$/.test(wxNumber)) { box.style.display = 'none'; return; }
     try {
-        const res = await api.get('/api/admin/users/bind-wechat/preview?wxNumber=' + wxNumber);
+        const res = await api.get('/api/admin/users/bind-wechat/preview?wxNumber=' + encodeURIComponent(wxNumber));
         const data = (res.data || {});
         if (!data.found) { box.style.display = 'none'; toast('未找到该微信用户编号', 'error'); return; }
-        document.getElementById('bindPreviewNumber').textContent = data.number;
+        document.getElementById('bindPreviewNumber').textContent = data.number || wxNumber;
         document.getElementById('bindPreviewWxid').textContent = data.wxid || '-';
         document.getElementById('bindPreviewNickname').textContent = data.nickname || '-';
         document.getElementById('bindPreviewClass').textContent = data.class || '-';
@@ -5498,13 +5501,13 @@ async function previewWxBind() {
     } catch (e) { box.style.display = 'none'; }
 }
 async function confirmBindWechat() {
-    const qqNumber = parseInt(document.getElementById('bindWechatQQ').value);
-    const wxNumber = parseInt(document.getElementById('bindWechatWxNumber').value);
-    if (!qqNumber || !wxNumber) { toast('请填写 QQ 编号和微信用户编号', 'error'); return; }
+    const qqNumber = readUserNumberInput('bindWechatQQ');
+    const wxNumber = readUserNumberInput('bindWechatWxNumber');
+    if (!qqNumber || !wxNumber || !/^\d+$/.test(qqNumber) || !/^\d+$/.test(wxNumber)) { toast('请填写有效的 QQ 编号和微信用户编号', 'error'); return; }
     if (qqNumber === wxNumber) { toast('QQ编号与微信编号不能相同', 'error'); return; }
     if (!confirm('确认将微信用户 ' + wxNumber + ' 绑定到 QQ 用户 ' + qqNumber + '？\n微信端积分将自动合并到该 QQ 账号。')) return;
     try {
-        const res = await api.post('/api/admin/users/bind-wechat', { qqNumber, wxNumber });
+        const res = await api.post('/api/admin/users/bind-wechat', { qqNumber: qqNumber, wxNumber: wxNumber });
         toast(res.msg || '绑定完成', res.code === 0 ? 'success' : 'error');
         if (res.code === 0) { closeBindWechatModal(); loadUsers(); }
     } catch (e) { toast('绑定失败: ' + e.message, 'error'); }
