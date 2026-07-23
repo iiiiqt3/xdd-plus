@@ -501,6 +501,9 @@ func main() {
 	web.BConfig.WebConfig.Session.SessionGCMaxLifetime = 172800
 	web.BConfig.WebConfig.Session.SessionCookieLifeTime = 172800
 	web.BConfig.WebConfig.Session.SessionName = models.AppName
+	// 青龙脚本兼容网关 Token 鉴权（/gw/{token}/... 或 api_token）
+	web.InsertFilter("*", web.BeforeRouter, controllers.CompatGatewayAuthFilter)
+
 	// 配置CORS跨域访问
 	web.InsertFilter("*", web.BeforeRouter, cors.Allow(&cors.Options{
 		//允许所有源（如需限制可改为具体域名列表）

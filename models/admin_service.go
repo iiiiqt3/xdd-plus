@@ -145,6 +145,7 @@ func GetJdConfigForAdmin() map[string]interface{} {
 		"yybScanLoginCost":      yybScanLoginCostForAdmin(),
 		"yybMaxAccountsPerUser": Config.Yyb.MaxAccountsPerUser,
 		"yybAPIToken":           Config.Yyb.APIToken,
+		"wechatServerGatewayHint": CompatGatewayWechatServerHint(),
 		"yybProxy51Enabled":     Config.Yyb.Proxy51Enabled,
 		"yybProxy51Plan":        Config.Yyb.Proxy51Plan,
 		"yybProxy51APIBase":     Config.Yyb.Proxy51APIBase,

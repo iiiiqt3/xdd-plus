@@ -272,10 +272,14 @@ func LocalGatewayBaseURL() string {
 
 // ScriptWechatGatewayURL 查询/记录等脚本应请求的协议网关（xdd 本机，自动分流应用宝/wechat08）
 func ScriptWechatGatewayURL() string {
-	if u := strings.TrimRight(strings.TrimSpace(LocalGatewayBaseURL()), "/"); u != "" {
-		return u
+	base := strings.TrimRight(strings.TrimSpace(LocalGatewayBaseURL()), "/")
+	if base == "" {
+		base = "http://127.0.0.1:8080"
 	}
-	return "http://127.0.0.1:8080"
+	if token := strings.TrimSpace(Config.Yyb.APIToken); token != "" {
+		return base + "/gw/" + token
+	}
+	return base
 }
 
 // ScriptWechatGatewayEnvs 注入 WECHAT_SERVER，供 scripts/query 下脚本取 code
@@ -285,6 +289,16 @@ func ScriptWechatGatewayEnvs() []string {
 		"WECHAT_SERVER=" + u,
 		"WECHAT_SERVER_NEW=" + u,
 	}
+}
+
+// CompatGatewayWechatServerHint 青龙 WECHAT_SERVER 配置提示（公网地址需自行替换主机名）
+func CompatGatewayWechatServerHint() string {
+	port := webHTTPPort()
+	token := strings.TrimSpace(Config.Yyb.APIToken)
+	if token == "" {
+		return "请先设置 API Token；青龙 WECHAT_SERVER 示例：http://公网IP:" + port + "/gw/{token}"
+	}
+	return "青龙 WECHAT_SERVER = http://公网IP或域名:" + port + "/gw/" + token
 }
 
 func webHTTPPort() string {

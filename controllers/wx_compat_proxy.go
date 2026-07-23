@@ -3,7 +3,9 @@ package controllers
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 
+	"github.com/beego/beego/v2/server/web/context"
 	"github.com/cdle/xdd/models"
 	"github.com/cdle/xdd/yyb"
 	"github.com/cdle/xdd/yybportal"
@@ -670,5 +672,102 @@ func compatGatewayAction(path string) string {
 		return "wxOAuth"
 	default:
 		return "other"
+	}
+}
+
+var (
+	compatGatewayPathOnce sync.Once
+	compatGatewayPathSet  map[string]struct{}
+)
+
+func compatGatewayPaths() map[string]struct{} {
+	compatGatewayPathOnce.Do(func() {
+		compatGatewayPathSet = make(map[string]struct{}, len(CompatGatewayPaths()))
+		for _, p := range CompatGatewayPaths() {
+			compatGatewayPathSet[p] = struct{}{}
+		}
+	})
+	return compatGatewayPathSet
+}
+
+// IsCompatGatewayPath 是否为青龙脚本兼容网关路径
+func IsCompatGatewayPath(path string) bool {
+	_, ok := compatGatewayPaths()[path]
+	return ok
+}
+
+// StripGwTokenPrefix 解析 /gw/{token}/api/... 前缀
+func StripGwTokenPrefix(path string) (restPath, token string, ok bool) {
+	if !strings.HasPrefix(path, "/gw/") {
+		return "", "", false
+	}
+	remain := strings.TrimPrefix(path, "/gw/")
+	slash := strings.Index(remain, "/")
+	if slash <= 0 {
+		return "", "", false
+	}
+	token = remain[:slash]
+	restPath = remain[slash:]
+	if restPath == "" || !strings.HasPrefix(restPath, "/") {
+		return "", "", false
+	}
+	return restPath, token, true
+}
+
+func extractCompatGatewayToken(ctx *context.Context) string {
+	token := strings.TrimSpace(ctx.Input.Query("api_token"))
+	if token != "" {
+		return token
+	}
+	auth := strings.TrimSpace(ctx.Input.Header("Authorization"))
+	if len(auth) > 7 && strings.EqualFold(auth[:7], "Bearer ") {
+		return strings.TrimSpace(auth[7:])
+	}
+	return ""
+}
+
+func rewriteCompatRequestPath(ctx *context.Context, newPath string) {
+	ctx.Request.URL.Path = newPath
+	if q := ctx.Request.URL.RawQuery; q != "" {
+		ctx.Request.RequestURI = newPath + "?" + q
+	} else {
+		ctx.Request.RequestURI = newPath
+	}
+}
+
+func denyCompatGateway(ctx *context.Context) {
+	ctx.Output.SetStatus(403)
+	ctx.Output.Header("Content-Type", "application/json; charset=utf-8")
+	ctx.Output.Body([]byte(`{"status":false,"message":"协议网关鉴权失败：请在 WECHAT_SERVER 中配置 /gw/{api_token} 前缀，或携带 api_token / Authorization: Bearer"}`))
+}
+
+// CompatGatewayAuthFilter 协议网关 Token 鉴权（/gw/{token}/... 或 query/header）
+func CompatGatewayAuthFilter(ctx *context.Context) {
+	if ctx.Request.Method == "OPTIONS" {
+		return
+	}
+
+	path := ctx.Request.URL.Path
+
+	if strings.HasPrefix(path, "/gw/") {
+		restPath, token, ok := StripGwTokenPrefix(path)
+		if !ok || !yybportal.CheckScriptToken(token) {
+			denyCompatGateway(ctx)
+			return
+		}
+		if !IsCompatGatewayPath(restPath) {
+			denyCompatGateway(ctx)
+			return
+		}
+		rewriteCompatRequestPath(ctx, restPath)
+		return
+	}
+
+	if !IsCompatGatewayPath(path) {
+		return
+	}
+
+	if !yybportal.CheckScriptToken(extractCompatGatewayToken(ctx)) {
+		denyCompatGateway(ctx)
 	}
 }
