@@ -2634,19 +2634,19 @@ func BatchUpdateUserCoins(numbers []int, coin int) error {
 	return db.Model(&User{}).Where("number IN ?", numbers).Update("coin", coin).Error
 }
 
-// AdminPreviewWxBind 预览微信绑定：查找该 wxid 对应的孤儿账号及积分
-func AdminPreviewWxBind(wxid string) map[string]interface{} {
-	wxid = strings.TrimSpace(wxid)
-	if wxid == "" {
+// AdminPreviewWxBind 预览微信绑定：按微信用户编号查找账号及积分
+func AdminPreviewWxBind(wxNumber int) map[string]interface{} {
+	if wxNumber <= 0 {
 		return map[string]interface{}{"found": false}
 	}
 	var u User
-	if db.Where("wxid = ?", wxid).First(&u).Error != nil {
+	if db.Where("number = ?", wxNumber).First(&u).Error != nil {
 		return map[string]interface{}{"found": false}
 	}
 	return map[string]interface{}{
 		"found":    true,
 		"number":   u.Number,
+		"wxid":     u.Wxid,
 		"nickname": u.Nickname,
 		"coin":     u.Coin,
 		"class":    u.Class,
@@ -2654,69 +2654,68 @@ func AdminPreviewWxBind(wxid string) map[string]interface{} {
 	}
 }
 
-// AdminBindWechatToQQ 管理员手动将微信绑定到 QQ 用户，并合并微信端积分
-func AdminBindWechatToQQ(qqNumber int, wxid string) (map[string]interface{}, error) {
-	wxid = strings.TrimSpace(wxid)
+// AdminBindWechatToQQ 管理员手动将微信用户绑定到 QQ 用户，并合并微信端积分
+func AdminBindWechatToQQ(qqNumber, wxNumber int) (map[string]interface{}, error) {
 	if qqNumber <= 0 {
 		return nil, fmt.Errorf("QQ用户编号不能为空")
 	}
-	if wxid == "" {
-		return nil, fmt.Errorf("微信ID不能为空")
+	if wxNumber <= 0 {
+		return nil, fmt.Errorf("微信用户编号不能为空")
 	}
-	if strings.HasPrefix(wxid, "DXWX") {
-		return nil, fmt.Errorf("请填写真实微信ID，不能填写绑定码")
+	if qqNumber == wxNumber {
+		return nil, fmt.Errorf("QQ编号与微信编号不能相同")
 	}
 
-	var qqUser User
+	var qqUser, wxUser User
 	if db.Where("number = ?", qqNumber).First(&qqUser).Error != nil {
-		return nil, fmt.Errorf("找不到编号为 %d 的用户", qqNumber)
+		return nil, fmt.Errorf("找不到编号为 %d 的QQ用户", qqNumber)
+	}
+	if db.Where("number = ?", wxNumber).First(&wxUser).Error != nil {
+		return nil, fmt.Errorf("找不到编号为 %d 的微信用户", wxNumber)
+	}
+
+	wxid := strings.TrimSpace(wxUser.Wxid)
+	if wxid == "" {
+		return nil, fmt.Errorf("该微信用户未关联微信ID，无法绑定")
+	}
+	if strings.HasPrefix(wxid, "DXWX") {
+		return nil, fmt.Errorf("该微信用户仅有绑定码，请让用户先完成微信机器人绑定流程")
 	}
 
 	if qqUser.Wxid == wxid {
 		return map[string]interface{}{
 			"qqNumber":   qqNumber,
+			"wxNumber":   wxNumber,
 			"wxid":       wxid,
 			"mergedCoin": 0,
 			"totalCoin":  qqUser.Coin,
-			"message":    "该用户已绑定此微信ID",
+			"message":    "该QQ用户已绑定此微信",
 		}, nil
 	}
 
 	if qqUser.Wxid != "" && !strings.HasPrefix(qqUser.Wxid, "DXWX") {
-		return nil, fmt.Errorf("该用户已绑定微信 %s，请先解绑后再操作", qqUser.Wxid)
+		return nil, fmt.Errorf("该QQ用户已绑定微信 %s，请先解绑后再操作", qqUser.Wxid)
 	}
 
 	var conflict User
-	if db.Where("wxid = ? AND number != ?", wxid, qqNumber).First(&conflict).Error == nil {
-		if conflict.Class != "wx" {
-			return nil, fmt.Errorf("微信ID %s 已绑定到其他用户 %d", wxid, conflict.Number)
-		}
+	if db.Where("wxid = ? AND number NOT IN ?", wxid, []int{qqNumber, wxNumber}).First(&conflict).Error == nil {
+		return nil, fmt.Errorf("微信ID %s 已绑定到其他用户 %d", wxid, conflict.Number)
 	}
 
-	mergedCoin := 0
-	var mergedFrom []int
+	mergedCoin := wxUser.Coin
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		var orphans []User
-		if err := tx.Where("wxid = ? AND number != ?", wxid, qqNumber).Find(&orphans).Error; err != nil {
+		if mergedCoin > 0 {
+			if err := tx.Model(&User{}).Where("number = ?", qqNumber).
+				Update("coin", gorm.Expr("coin + ?", mergedCoin)).Error; err != nil {
+				return err
+			}
+		}
+		if err := adminMigrateUserNumberRefs(tx, wxNumber, qqNumber); err != nil {
 			return err
 		}
-
-		for _, orphan := range orphans {
-			if orphan.Coin > 0 {
-				mergedCoin += orphan.Coin
-				if err := tx.Model(&User{}).Where("number = ?", qqNumber).
-					Update("coin", gorm.Expr("coin + ?", orphan.Coin)).Error; err != nil {
-					return err
-				}
-			}
-			mergedFrom = append(mergedFrom, orphan.Number)
-			if err := adminMigrateUserNumberRefs(tx, orphan.Number, qqNumber); err != nil {
-				return err
-			}
-			if err := tx.Delete(&orphan).Error; err != nil {
-				return err
-			}
+		if err := tx.Delete(&wxUser).Error; err != nil {
+			return err
 		}
 
 		updates := map[string]interface{}{"wxid": wxid}
@@ -2727,6 +2726,9 @@ func AdminBindWechatToQQ(qqNumber int, wxid string) (map[string]interface{}, err
 		if qqUser.Class == "" || qqUser.Class == "wx" {
 			updates["class"] = "qq"
 		}
+		if wxUser.Nickname != "" && qqUser.Nickname == "" {
+			updates["nickname"] = wxUser.Nickname
+		}
 		return tx.Model(&User{}).Where("number = ?", qqNumber).Updates(updates).Error
 	})
 	if err != nil {
@@ -2734,16 +2736,16 @@ func AdminBindWechatToQQ(qqNumber int, wxid string) (map[string]interface{}, err
 	}
 
 	if mergedCoin > 0 {
-		detail := fmt.Sprintf("微信绑定合并积分（原微信用户 %v）", mergedFrom)
+		detail := fmt.Sprintf("微信绑定合并积分（原微信用户 %d）", wxNumber)
 		RecordCoinLog(qqNumber, mergedCoin, "管理员操作", detail, AdminContext())
 	}
 
 	totalCoin := GetCoin(qqNumber)
 	return map[string]interface{}{
 		"qqNumber":   qqNumber,
+		"wxNumber":   wxNumber,
 		"wxid":       wxid,
 		"mergedCoin": mergedCoin,
-		"mergedFrom": mergedFrom,
 		"totalCoin":  totalCoin,
 	}, nil
 }
