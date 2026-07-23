@@ -119,6 +119,12 @@
             .yyb-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
             .aayb-debug-grid { grid-template-columns: 1fr 1fr; }
         }
+        #page-actstats #actStatsSummary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
         .stat-card { background: #fff; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px; border: 1px solid rgba(0,0,0,0.04); }
         .stat-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
         .stat-icon.blue { background: rgba(64,158,255,0.1); color: #409eff; }
@@ -589,10 +595,10 @@
 
         /* 活动人数统计横条（统一风格，覆盖旧 Element 蓝） */
         #page-dashboard .dash-act-strip {
-            display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 0;
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 0;
         }
         #page-dashboard .dash-act-strip .strip-item {
-            background: #fafaf9; border-radius: 12px; padding: 10px 4px; text-align: center;
+            background: #fafaf9; border-radius: 12px; padding: 12px 8px; text-align: center;
             border: 1px solid #f5f5f4; transition: border-color .2s; position: relative; overflow: hidden;
         }
         #page-dashboard .dash-act-strip .strip-item:hover { border-color: #d6d3d1; box-shadow: none; }
@@ -600,7 +606,7 @@
             font-size: 22px; font-weight: 800; line-height: 1.15; letter-spacing: -0.04em;
             font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
         }
-        #page-dashboard .dash-act-strip .strip-item .strip-label { font-size: 11px; color: #a8a29e; margin-top: 4px; font-weight: 600; white-space: nowrap; }
+        #page-dashboard .dash-act-strip .strip-item .strip-label { font-size: 11px; color: #a8a29e; margin-top: 4px; font-weight: 600; }
         #page-dashboard .dash-act-strip .strip-item .strip-bar {
             position: absolute; bottom: 0; left: 0; right: 0; height: 2px; border-radius: 0 0 12px 12px;
         }
@@ -805,9 +811,7 @@
             .dash-hero-card { padding: 12px; }
             .dash-hero-card .hero-value { font-size: 22px; }
             .dash-hero-card .hero-icon { font-size: 32px; }
-            #page-dashboard .dash-act-strip { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 4px; }
-            #page-dashboard .dash-act-strip .strip-item { padding-left: 2px; padding-right: 2px; }
-            #page-dashboard .dash-act-strip .strip-num { font-size: 18px; }
+            .dash-act-strip { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
             .dash-summary-row { grid-template-columns: 1fr !important; gap: 10px; }
             .dash-grid { grid-template-columns: 1fr !important; gap: 10px; }
             .dash-chip-row { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
