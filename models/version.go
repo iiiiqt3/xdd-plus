@@ -190,7 +190,7 @@ func GetNewVersion() {
 
 func Update(sender *Sender) error {
 	Info("开始git更新检查")
-	sender.Reply("小滴滴开始检查更新")
+	sender.Reply("大师曼正在检查更新")
 
 	hasUpdate, checkErr := checkGitUpdate()
 	if checkErr != nil {
