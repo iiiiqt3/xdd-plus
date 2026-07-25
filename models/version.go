@@ -243,7 +243,7 @@ func Update(sender *Sender) error {
 		return errors.New("替换程序失败: " + err.Error())
 	}
 
-	sender.Reply("更新完成，马上重启")
+	sender.Reply("更新完成，大师曼正在重启")
 	Info("更新成功")
 	return nil
 }
