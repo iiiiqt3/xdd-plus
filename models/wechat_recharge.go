@@ -1746,17 +1746,38 @@ func creditWechatRechargeOrder(order WechatRechargeOrder, record wechatBillRecor
 		return nil
 	}
 	RecordCoinLog(order.QQ, points, "微信充值", fmt.Sprintf("微信赞赏充值 %.2f 元，订单 %s", float64(record.Balance)/100, order.OrderNo), WebContext())
-	msg := fmt.Sprintf("微信充值成功！支付 %.2f 元，已增加 %d 积分，当前积分 %d。", float64(record.Balance)/100, points, GetCoin(order.QQ))
+	coin := GetCoin(order.QQ)
+	msg := formatWechatRechargeSuccessUserMessage(order, record.Balance, points, coin)
 	SendQQ(order.QQ, msg)
 	notifyWechatRechargeAdmin("微信充值成功", order, fmt.Sprintf("支付 %.2f 元，到账 %d 积分", float64(record.Balance)/100, points))
 	return nil
 }
 
-func notifyWechatRechargeAdmin(title string, order WechatRechargeOrder, detail string) {
-	channelName := map[string]string{"portal": "网页", "bot": "机器人", "app": "App"}[order.Channel]
-	if channelName == "" {
-		channelName = order.Channel
+func wechatRechargeChannelName(channel string) string {
+	name := map[string]string{"portal": "网页", "bot": "机器人", "app": "App"}[strings.TrimSpace(channel)]
+	if name == "" {
+		return strings.TrimSpace(channel)
 	}
+	return name
+}
+
+func formatWechatRechargeSuccessUserMessage(order WechatRechargeOrder, paidFen, points, coin int) string {
+	var b strings.Builder
+	b.WriteString("━━━━━━━━━━━━━━━━\n")
+	b.WriteString("  微信充值成功\n")
+	b.WriteString("━━━━━━━━━━━━━━━━\n\n")
+	fmt.Fprintf(&b, "💰 支付金额：%.2f 元\n", float64(paidFen)/100)
+	fmt.Fprintf(&b, "🎁 到账积分：+%d 积分\n", points)
+	fmt.Fprintf(&b, "💎 当前余额：%d 积分\n\n", coin)
+	b.WriteString("【订单信息】\n")
+	fmt.Fprintf(&b, "档位：%d 元\n", order.RequestedFen/100)
+	fmt.Fprintf(&b, "来源：%s\n", wechatRechargeChannelName(order.Channel))
+	fmt.Fprintf(&b, "订单号：%s", order.OrderNo)
+	return b.String()
+}
+
+func notifyWechatRechargeAdmin(title string, order WechatRechargeOrder, detail string) {
+	channelName := wechatRechargeChannelName(order.Channel)
 	msg := fmt.Sprintf("%s\nQQ：%d\n来源：%s\n档位：%.2f 元\n订单号：%s", title, order.QQ, channelName, float64(order.RequestedFen)/100, order.OrderNo)
 	if strings.TrimSpace(detail) != "" {
 		msg += "\n详情：" + detail
