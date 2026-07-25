@@ -57,6 +57,8 @@ func initDB() {
 		&WxProtocolMigration{},
 		&PortalProtocolBinding{},
 		&CoinLog{},
+		&WechatRechargeOrder{},
+		&WechatRechargeReceipt{},
 	&PortalJdProxySubscription{},
 		&PortalJdAutoSetting{},
 		&PortalJdRunRecord{},

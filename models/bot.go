@@ -141,6 +141,20 @@ var ckList = make(map[int]chan string)
 
 var inputList = make(map[int]chan string)
 
+func chanSetIfAbsent(m map[int]chan string, uid int, c chan string) bool {
+	if m[uid] != nil {
+		return false
+	}
+	m[uid] = c
+	return true
+}
+
+func chanDelIf(m map[int]chan string, uid int, expected chan string) {
+	if m[uid] == expected {
+		delete(m, uid)
+	}
+}
+
 var handleMessage = func(msgs ...interface{}) interface{} {
 	time.Sleep(time.Second * time.Duration(rand.Intn(3)))
 	msg := msgs[0].(string)

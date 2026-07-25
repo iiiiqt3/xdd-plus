@@ -46,6 +46,8 @@ func init() {
 	// 启动数据库→青龙同步服务
 	InitSyncService()
 
+	InitWechatRecharge()
+
 	initiiiiqtTask()
 }
 

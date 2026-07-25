@@ -289,6 +289,14 @@ func (sender *Sender) handleJdCookies(handle func(ck *JdCookie)) error {
 
 var codeSignals = []CodeSignal{
 
+	{
+		Command: []string{"充值", "充值积分", "积分充值", "我要充值", "我要充值积分", "怎么充值积分"},
+		Admin:   false,
+		Handle: func(sender *Sender) interface{} {
+			return StartBotWechatRecharge(sender)
+		},
+	},
+
 	//拉人进微信群
 	{
 		Command: []string{"拉1群"},

@@ -225,6 +225,10 @@ func main() {
 	web.Router("/api/portal/push/unregister", &controllers.PortalController{}, "post:PushUnregister")
 	web.Router("/api/portal/feedback", &controllers.PortalController{}, "post:SubmitFeedback")
 	web.Router("/api/portal/coin-logs", &controllers.PortalController{}, "get:CoinLogs")
+	web.Router("/api/portal/wechat-recharge/config", &controllers.PortalController{}, "get:WechatRechargeConfig")
+	web.Router("/api/portal/wechat-recharge/orders", &controllers.PortalController{}, "get:WechatRechargeOrders;post:WechatRechargeCreateOrder")
+	web.Router("/api/portal/wechat-recharge/orders/:orderNo", &controllers.PortalController{}, "get:WechatRechargeOrderStatus")
+	web.Router("/api/portal/wechat-recharge/qrcode/:orderNo", &controllers.PortalController{}, "get:WechatRechargeQRCode")
 	web.Router("/api/portal/jd/accounts", &controllers.PortalController{}, "get:JdAccounts")
 	web.Router("/api/portal/jd/query", &controllers.PortalController{}, "post:JdQuery")
 	web.Router("/api/portal/jd/sms/send", &controllers.PortalController{}, "post:JdSmsSend")
@@ -429,6 +433,10 @@ func main() {
 
 	// ===================== 玩法简介图片上传 =====================
 	web.Router("/api/admin/upload/guide-image", &controllers.AdminApiController{}, "post:UploadGuideImage")
+	web.Router("/api/admin/wechat-recharge/config", &controllers.AdminApiController{}, "get:GetWechatRechargeConfig;post:SaveWechatRechargeConfig")
+	web.Router("/api/admin/wechat-recharge/qrcode/upload", &controllers.AdminApiController{}, "post:UploadWechatRechargeQRCode")
+	web.Router("/api/admin/wechat-recharge/orders", &controllers.AdminApiController{}, "get:GetWechatRechargeOrders")
+	web.Router("/api/admin/wechat-recharge/analytics", &controllers.AdminApiController{}, "get:GetWechatRechargeAnalytics")
 
 	// ===================== 静态文件服务（上传的图片/视频） =====================
 	web.Get("/uploads/*", func(ctx *context.Context) {

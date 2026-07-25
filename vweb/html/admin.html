@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
     <title>XDD 管理后台</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #333; }
@@ -1169,6 +1170,7 @@
                 <div class="nav-sub-item" data-page="users" data-search="用户管理 账号" onclick="switchPage('users')"><i class="fas fa-user-cog"></i><span>用户管理</span></div>
                 <div class="nav-sub-item" data-page="webaccounts" data-search="网页账号 登录密码 门户账号" onclick="switchPage('webaccounts')"><i class="fas fa-globe"></i><span>网页账号</span></div>
                 <div class="nav-sub-item" data-page="coinlogs" data-search="积分变动 金币" onclick="switchPage('coinlogs')"><i class="fas fa-history"></i><span>积分变动</span></div>
+                <div class="nav-sub-item" data-page="wechatrecharge" data-search="微信充值 赞赏码 收款码 充值设置" onclick="switchPage('wechatrecharge')"><i class="fas fa-qrcode"></i><span>微信充值设置</span></div>
                 <div class="nav-sub-item" data-page="notifications" data-search="通知中心 消息" onclick="switchPage('notifications')"><i class="fas fa-bell"></i><span>通知中心</span></div>
                 <div class="nav-sub-item" data-page="feedbacks" data-search="意见反馈 投稿" onclick="switchPage('feedbacks')"><i class="fas fa-comment-dots"></i><span>意见反馈</span></div>
             </div>
@@ -1556,6 +1558,88 @@
                     </table>
                 </div>
                 <div class="pagination" id="coinLogPagination"></div>
+            </div>
+        </div>
+
+        <!-- ========= 微信赞赏码充值 ========= -->
+        <div id="page-wechatrecharge" class="page-section">
+            <div class="card" style="margin-bottom:14px;">
+                <div class="config-section-title" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span><i class="fas fa-chart-line"></i> 微信充值数据概览</span>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <button class="btn btn-sm coinlog-day-btn wrc-analytics-day active" data-days="7" onclick="setWrcAnalyticsDays(7)">7天</button>
+                        <button class="btn btn-sm coinlog-day-btn wrc-analytics-day" data-days="30" onclick="setWrcAnalyticsDays(30)">30天</button>
+                        <button class="btn btn-sm coinlog-day-btn wrc-analytics-day" data-days="90" onclick="setWrcAnalyticsDays(90)">90天</button>
+                        <button class="btn btn-info btn-sm" onclick="loadWechatRechargeAnalytics()"><i class="fas fa-sync-alt"></i> 刷新图表</button>
+                    </div>
+                </div>
+                <div class="stats-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:14px;">
+                    <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-coins"></i></div><div class="stat-info"><h3 id="wrc_chart_today">0</h3><p>今日收入(元)</p></div></div>
+                    <div class="stat-card"><div class="stat-icon green"><i class="fas fa-calendar-check"></i></div><div class="stat-info"><h3 id="wrc_chart_month">0</h3><p>本月收入(元)</p></div></div>
+                    <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-receipt"></i></div><div class="stat-info"><h3 id="wrc_chart_count">0</h3><p>累计成功笔数</p></div></div>
+                    <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-wallet"></i></div><div class="stat-info"><h3 id="wrc_chart_total">0</h3><p>累计收入(元)</p></div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px;">
+                    <div class="card" style="padding:12px;margin:0;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#334155;">每日收入趋势</div><div style="height:260px;"><canvas id="wrcChartDaily"></canvas></div></div>
+                    <div class="card" style="padding:12px;margin:0;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#334155;">订单状态分布</div><div style="height:260px;"><canvas id="wrcChartStatus"></canvas></div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                    <div class="card" style="padding:12px;margin:0;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#334155;">每月收入对比</div><div style="height:240px;"><canvas id="wrcChartMonthly"></canvas></div></div>
+                    <div class="card" style="padding:12px;margin:0;"><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#334155;">来源渠道（已支付）</div><div style="height:240px;"><canvas id="wrcChartChannel"></canvas></div></div>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:14px;">
+                <div class="config-section-title" style="margin-bottom:12px;"><i class="fas fa-cog"></i> 微信赞赏码充值设置 <button class="btn btn-primary btn-sm" style="float:right;" onclick="saveWechatRechargeConfig()"><i class="fas fa-save"></i> 保存配置</button></div>
+                <div id="wrcStatsBar" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                    <span class="tag tag-info">今日 <strong id="wrc_stat_today">0</strong> 元</span>
+                    <span class="tag tag-primary">本月 <strong id="wrc_stat_month">0</strong> 元</span>
+                    <span class="tag tag-success">累计 <strong id="wrc_stat_total">0</strong> 元</span>
+                    <span class="tag tag-warning">成功笔数 <strong id="wrc_stat_count">0</strong></span>
+                </div>
+                <div class="form-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+                    <div class="form-item"><label>总开关</label><select id="wrc_enabled"><option value="true">开启</option><option value="false">关闭</option></select></div>
+                    <div class="form-item"><label>网页充值</label><select id="wrc_portal_enabled"><option value="true">开启</option><option value="false">关闭</option></select></div>
+                    <div class="form-item"><label>机器人充值</label><select id="wrc_bot_enabled"><option value="true">开启</option><option value="false">关闭</option></select></div>
+                    <div class="form-item"><label>查账账号类型</label><select id="wrc_bill_type" onchange="onWrcBillTypeChange()"><option value="yyb">应用宝</option><option value="wx">微信协议</option></select></div>
+                    <div class="form-item full"><label>查账账号标识 <span class="tip">应用宝填 openid/ref；微信协议填 wxid</span></label><input type="text" id="wrc_bill_ref" placeholder="例如 openid 或 wxid_xxx"></div>
+                    <div class="form-item"><label>收款码方式</label><select id="wrc_qr_mode" onchange="onWrcQrModeChange()"><option value="url">图片链接</option><option value="upload">上传图片</option></select></div>
+                    <div class="form-item full" id="wrc_qr_url_wrap"><label>收款二维码链接</label><input type="text" id="wrc_qr_url" placeholder="https://..."></div>
+                    <div class="form-item full" id="wrc_qr_upload_wrap" style="display:none;"><label>上传收款码</label><input type="file" id="wrc_qr_file" accept="image/*" onchange="uploadWechatRechargeQR()"><span id="wrc_qr_file_hint" class="tip"></span></div>
+                    <div class="form-item full"><label>充值档位（元，逗号分隔）</label><input type="text" id="wrc_tiers" placeholder="5,10,20,30"></div>
+                    <div class="form-item"><label>积分比例（每元）</label><input type="number" id="wrc_points_per_yuan" min="1" value="100"></div>
+                    <div class="form-item"><label>同时充值人数上限</label><input type="number" id="wrc_max_concurrent" min="1" max="20" value="5"></div>
+                    <div class="form-item"><label>每用户每日次数</label><input type="number" id="wrc_daily_limit" min="1" value="10"></div>
+                    <div class="form-item"><label>订单超时（分钟）</label><input type="number" id="wrc_timeout_min" min="1" max="30" value="3"></div>
+                    <div class="form-item"><label>随机减分最小（分）</label><input type="number" id="wrc_rand_min" min="1" value="1"><span class="tip">0.01元=1分</span></div>
+                    <div class="form-item"><label>随机减分最大（分）</label><input type="number" id="wrc_rand_max" min="1" value="5"><span class="tip">0.05元=5分</span></div>
+                    <div class="form-item"><label>轮询间隔（秒）</label><input type="number" id="wrc_poll_sec" min="3" max="60" value="5"></div>
+                    <div class="form-item full"><label>前往购买积分链接</label><input type="text" id="wrc_external_url" placeholder="http://180.152.5.230:8005/#/"></div>
+                    <div class="form-item full"><label>失败兜底链接（发卡网等）</label><input type="text" id="wrc_fallback_url" placeholder="http://..."></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="config-section-title" style="margin-bottom:12px;"><i class="fas fa-list"></i> 充值订单记录</div>
+                <div class="toolbar" style="margin-bottom:12px;">
+                    <div class="search-box" style="max-width:160px;"><input type="number" id="wrc_filter_qq" placeholder="用户编号" onkeyup="if(event.key==='Enter')loadWechatRechargeOrders(1)"></div>
+                    <select id="wrc_filter_status" style="padding:6px 10px;border-radius:6px;border:1px solid #dcdfe6;">
+                        <option value="">全部状态</option>
+                        <option value="pending">待支付</option>
+                        <option value="paid">已支付</option>
+                        <option value="expired">已过期</option>
+                        <option value="failed">失败</option>
+                    </select>
+                    <button class="btn btn-success btn-sm" onclick="loadWechatRechargeOrders(1)"><i class="fas fa-search"></i> 查询</button>
+                    <button class="btn btn-info btn-sm" onclick="loadWechatRechargeOrders()"><i class="fas fa-sync-alt"></i> 刷新</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead><tr>
+                            <th>时间</th><th>订单号</th><th>用户</th><th>来源</th><th>档位</th><th>应付</th><th>实付</th><th>积分</th><th>状态</th><th>备注</th>
+                        </tr></thead>
+                        <tbody id="wrcOrderBody"><tr><td colspan="10" style="text-align:center;color:#999;padding:32px;">加载中...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="wrcOrderPagination"></div>
             </div>
         </div>
 
@@ -3483,7 +3567,7 @@ function switchContainerTab(tab) {
 // ============ 侧栏分组导航 ============
 var NAV_PAGE_GROUP = {
     jdcookies: 'jd', jdcrontasks: 'jd', jdtaskqueue: 'jd', jdmanualtasks: 'jd', jdproxystats: 'jd',
-    users: 'user', coinlogs: 'user', notifications: 'user', feedbacks: 'user',
+    users: 'user', coinlogs: 'user', wechatrecharge: 'user', notifications: 'user', feedbacks: 'user',
     activities: 'ql', actauth: 'ql', actstats: 'ql', qlcrontasks: 'ql', qlenvs: 'ql', containers: 'ql',
     wxdevices: 'proto', yyb: 'proto', envvars: 'proto',
     logmgmt: 'sys', gameconfig: 'sys', sysconfig: 'sys'
@@ -3572,6 +3656,7 @@ function switchPage(page) {
     const titles = {
         dashboard: ['仪表盘', '总览 / 仪表盘'], jdcookies: ['京东账号', '京东业务 / 京东账号'],
         users: ['用户管理', '用户与积分 / 用户管理'], webaccounts: ['网页账号', '用户与积分 / 网页账号'], coinlogs: ['积分变动', '用户与积分 / 积分变动'],
+        wechatrecharge: ['微信充值设置', '用户与积分 / 微信充值设置'],
         notifications: ['通知中心', '用户与积分 / 通知中心'], feedbacks: ['意见反馈', '用户与积分 / 意见反馈'], envvars: ['系统变量', '协议与接入 / 系统变量'],
         activities: ['活动配置', '青龙与活动 / 青龙活动配置'], actauth: ['青龙活动授权', '青龙与活动 / 青龙活动授权'], actstats: ['活动人数统计', '青龙与活动 / 活动人数统计'],
         wxdevices: ['微信协议管理', '协议与接入 / 微信协议管理'],
@@ -3595,6 +3680,7 @@ function switchPage(page) {
     const loaders = {
         dashboard: loadDashboard, jdcookies: () => loadJdCookies(1), users: () => loadUsers(1), webaccounts: () => loadWebAccounts(1),
         coinlogs: function() { loadClientSourceStats(); },
+        wechatrecharge: function() { loadWechatRechargeAdmin(); loadWechatRechargeAnalytics(); },
         notifications: () => loadNotifications(1), feedbacks: () => loadFeedbacks(1), envvars: () => loadEnvVars(1), activities: loadActivities, actauth: loadActAuthList, actstats: loadActivityStats,
         wxdevices: loadWxDevices,
         yyb: function() { if (window.AdminYyb) { AdminYyb.init(); AdminYyb.loadAll(); } },
@@ -9906,6 +9992,180 @@ function fallbackCopyApiDocs(text) {
 
 function escapeJs(str) {
     return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+// ============ 微信赞赏码充值 ============
+var _wrcOrderPage = 1;
+function wrcBoolSel(id, v) { document.getElementById(id).value = v ? 'true' : 'false'; }
+function wrcGetBool(id) { return document.getElementById(id).value === 'true'; }
+function onWrcBillTypeChange() {}
+function onWrcQrModeChange() {
+    var mode = document.getElementById('wrc_qr_mode').value;
+    document.getElementById('wrc_qr_url_wrap').style.display = mode === 'url' ? '' : 'none';
+    document.getElementById('wrc_qr_upload_wrap').style.display = mode === 'upload' ? '' : 'none';
+}
+async function loadWechatRechargeAdmin() {
+    try {
+        const resp = await apiGet('/api/admin/wechat-recharge/config');
+        if (resp.code !== 0) { showToast(resp.msg || '加载失败', 'error'); return; }
+        const cfg = resp.data.config || {};
+        const stats = resp.data.stats || {};
+        wrcBoolSel('wrc_enabled', !!cfg.enabled);
+        wrcBoolSel('wrc_portal_enabled', cfg.portal_enabled !== false);
+        wrcBoolSel('wrc_bot_enabled', cfg.bot_enabled !== false);
+        document.getElementById('wrc_bill_type').value = cfg.bill_account_type === 'wx' ? 'wx' : 'yyb';
+        document.getElementById('wrc_bill_ref').value = cfg.bill_account_ref || '';
+        document.getElementById('wrc_qr_mode').value = cfg.qrcode_mode === 'upload' ? 'upload' : 'url';
+        document.getElementById('wrc_qr_url').value = cfg.qrcode_url || '';
+        document.getElementById('wrc_qr_file_hint').textContent = cfg.qrcode_file ? ('当前文件：' + cfg.qrcode_file) : '';
+        document.getElementById('wrc_tiers').value = (cfg.tiers_yuan || []).join(',');
+        document.getElementById('wrc_points_per_yuan').value = cfg.points_per_yuan || 100;
+        document.getElementById('wrc_max_concurrent').value = cfg.max_concurrent || 5;
+        document.getElementById('wrc_daily_limit').value = cfg.daily_limit || 10;
+        document.getElementById('wrc_timeout_min').value = cfg.order_timeout_minutes || 3;
+        document.getElementById('wrc_rand_min').value = cfg.random_fen_min || 1;
+        document.getElementById('wrc_rand_max').value = cfg.random_fen_max || 5;
+        document.getElementById('wrc_poll_sec').value = cfg.poll_interval_sec || 5;
+        document.getElementById('wrc_fallback_url').value = cfg.fallback_url || '';
+        document.getElementById('wrc_external_url').value = cfg.external_purchase_url || '';
+        document.getElementById('wrc_stat_today').textContent = stats.today || 0;
+        document.getElementById('wrc_stat_month').textContent = stats.month || 0;
+        document.getElementById('wrc_stat_total').textContent = stats.total || 0;
+        document.getElementById('wrc_stat_count').textContent = stats.paid_count || 0;
+        onWrcQrModeChange();
+        loadWechatRechargeOrders(1);
+    } catch (e) { showToast('加载微信充值配置失败', 'error'); }
+}
+async function saveWechatRechargeConfig() {
+    const tiersRaw = (document.getElementById('wrc_tiers').value || '').split(/[,，\s]+/).filter(Boolean);
+    const tiers = tiersRaw.map(function(x) { return parseInt(x, 10); }).filter(function(x) { return x > 0; });
+    const payload = {
+        enabled: wrcGetBool('wrc_enabled'),
+        portal_enabled: wrcGetBool('wrc_portal_enabled'),
+        bot_enabled: wrcGetBool('wrc_bot_enabled'),
+        bill_account_type: document.getElementById('wrc_bill_type').value,
+        bill_account_ref: document.getElementById('wrc_bill_ref').value.trim(),
+        qrcode_mode: document.getElementById('wrc_qr_mode').value,
+        qrcode_url: document.getElementById('wrc_qr_url').value.trim(),
+        tiers_yuan: tiers,
+        points_per_yuan: parseInt(document.getElementById('wrc_points_per_yuan').value, 10) || 100,
+        max_concurrent: parseInt(document.getElementById('wrc_max_concurrent').value, 10) || 5,
+        daily_limit: parseInt(document.getElementById('wrc_daily_limit').value, 10) || 10,
+        order_timeout_minutes: parseInt(document.getElementById('wrc_timeout_min').value, 10) || 3,
+        random_fen_min: parseInt(document.getElementById('wrc_rand_min').value, 10) || 1,
+        random_fen_max: parseInt(document.getElementById('wrc_rand_max').value, 10) || 5,
+        poll_interval_sec: parseInt(document.getElementById('wrc_poll_sec').value, 10) || 5,
+        fallback_url: document.getElementById('wrc_fallback_url').value.trim(),
+        external_purchase_url: document.getElementById('wrc_external_url').value.trim()
+    };
+    const resp = await apiPost('/api/admin/wechat-recharge/config', payload);
+    showToast(resp.msg || (resp.code === 0 ? '保存成功' : '保存失败'), resp.code === 0 ? 'success' : 'error');
+    if (resp.code === 0) loadWechatRechargeAdmin();
+}
+async function uploadWechatRechargeQR() {
+    const input = document.getElementById('wrc_qr_file');
+    if (!input.files || !input.files[0]) return;
+    const fd = new FormData();
+    fd.append('image', input.files[0]);
+    try {
+        const resp = await fetch('/api/admin/wechat-recharge/qrcode/upload', { method: 'POST', body: fd, credentials: 'include' });
+        const data = await resp.json();
+        showToast(data.msg || '上传完成', data.code === 0 ? 'success' : 'error');
+        if (data.code === 0) loadWechatRechargeAdmin();
+    } catch (e) { showToast('上传失败', 'error'); }
+}
+var _wrcStatusMap = { pending: '待支付', paid: '已支付', expired: '已过期', failed: '失败', preparing: '准备中', crediting: '入账中' };
+async function loadWechatRechargeOrders(page) {
+    if (page) _wrcOrderPage = page;
+    const qq = document.getElementById('wrc_filter_qq').value;
+    const status = document.getElementById('wrc_filter_status').value;
+    let url = '/api/admin/wechat-recharge/orders?page=' + _wrcOrderPage + '&limit=20';
+    if (qq) url += '&userNumber=' + encodeURIComponent(qq);
+    if (status) url += '&status=' + encodeURIComponent(status);
+    const resp = await apiGet(url);
+    const body = document.getElementById('wrcOrderBody');
+    if (resp.code !== 0) { body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">' + escapeHtml(resp.msg || '加载失败') + '</td></tr>'; return; }
+    const list = resp.data.list || [];
+    if (!list.length) { body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:32px;">暂无记录</td></tr>'; }
+    else {
+        body.innerHTML = list.map(function(o) {
+            const payYuan = o.requested_fen ? (o.requested_fen / 100).toFixed(2) : '-';
+            const dueYuan = (o.requested_fen && o.random_fen !== undefined) ? ((o.requested_fen + o.random_fen) / 100).toFixed(2) : '-';
+            const paidYuan = o.paid_fen ? (o.paid_fen / 100).toFixed(2) : '-';
+            return '<tr><td>' + escapeHtml((o.created_at || '').replace('T',' ').slice(0,19)) + '</td><td style="font-family:monospace;font-size:11px;">' + escapeHtml(o.order_no) + '</td><td>' + o.qq + '</td><td>' + escapeHtml(o.channel || '') + '</td><td>' + payYuan + '元</td><td>' + dueYuan + '元</td><td>' + paidYuan + '元</td><td>' + (o.points || '-') + '</td><td>' + escapeHtml(_wrcStatusMap[o.status] || o.status) + '</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(o.last_error || '') + '">' + escapeHtml(o.last_error || o.trans_id || '') + '</td></tr>';
+        }).join('');
+    }
+    renderPagination('wrcOrderPagination', _wrcOrderPage, resp.data.total || 0, 20, loadWechatRechargeOrders, 'wrc');
+}
+
+var _wrcAnalyticsDays = 30;
+var _wrcCharts = { daily: null, status: null, monthly: null, channel: null };
+function setWrcAnalyticsDays(days) {
+    _wrcAnalyticsDays = days;
+    document.querySelectorAll('.wrc-analytics-day').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.days, 10) === days);
+    });
+    loadWechatRechargeAnalytics();
+}
+function destroyWrcChart(key) {
+    if (_wrcCharts[key]) { _wrcCharts[key].destroy(); _wrcCharts[key] = null; }
+}
+async function loadWechatRechargeAnalytics() {
+    if (typeof Chart === 'undefined') return;
+    try {
+        const resp = await apiGet('/api/admin/wechat-recharge/analytics?days=' + _wrcAnalyticsDays);
+        if (resp.code !== 0) return;
+        const data = resp.data || {};
+        const summary = data.summary || {};
+        document.getElementById('wrc_chart_today').textContent = summary.today || 0;
+        document.getElementById('wrc_chart_month').textContent = summary.month || 0;
+        document.getElementById('wrc_chart_count').textContent = summary.paid_count || 0;
+        document.getElementById('wrc_chart_total').textContent = summary.total || 0;
+
+        const daily = data.daily || [];
+        destroyWrcChart('daily');
+        _wrcCharts.daily = new Chart(document.getElementById('wrcChartDaily'), {
+            type: 'line',
+            data: {
+                labels: daily.map(function(d) { return d.date.slice(5); }),
+                datasets: [{ label: '收入(元)', data: daily.map(function(d) { return d.amount; }), borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,.12)', fill: true, tension: .3 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        const byStatus = data.by_status || [];
+        destroyWrcChart('status');
+        _wrcCharts.status = new Chart(document.getElementById('wrcChartStatus'), {
+            type: 'doughnut',
+            data: {
+                labels: byStatus.map(function(s) { return s.label || s.key; }),
+                datasets: [{ data: byStatus.map(function(s) { return s.count; }), backgroundColor: ['#22c55e','#f59e0b','#94a3b8','#ef4444','#6366f1','#06b6d4'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        const monthly = data.monthly || [];
+        destroyWrcChart('monthly');
+        _wrcCharts.monthly = new Chart(document.getElementById('wrcChartMonthly'), {
+            type: 'bar',
+            data: {
+                labels: monthly.map(function(m) { return m.month; }),
+                datasets: [{ label: '收入(元)', data: monthly.map(function(m) { return m.amount; }), backgroundColor: '#1E40AF' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        const byChannel = (data.by_channel || []).filter(function(c) { return c.count > 0; });
+        destroyWrcChart('channel');
+        _wrcCharts.channel = new Chart(document.getElementById('wrcChartChannel'), {
+            type: 'pie',
+            data: {
+                labels: byChannel.map(function(c) { return c.label || c.key; }),
+                datasets: [{ data: byChannel.map(function(c) { return c.amount; }), backgroundColor: ['#3B82F6','#F59E0B','#10B981','#8B5CF6'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+    } catch (e) { console.error(e); }
 }
 
 </script>

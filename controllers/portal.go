@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1615,4 +1617,86 @@ func (c *PortalController) ProtocolProxyAreas() {
 func (c *PortalController) ProtocolProxyConfig() {
 	c.Data["json"] = map[string]interface{}{"code": 0, "data": models.PortalYybProxyConfig()}
 	c.ServeJSON()
+}
+
+// WechatRechargeConfig 门户微信充值公开配置（档位等）
+func (c *PortalController) WechatRechargeConfig() {
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": models.WechatRechargePortalPublicConfig(),
+	}
+	c.ServeJSON()
+}
+
+// WechatRechargeCreateOrder 创建微信赞赏充值订单
+func (c *PortalController) WechatRechargeCreateOrder() {
+	var req struct {
+		Fen int `json:"fen"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil || req.Fen <= 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请选择充值档位"}
+		c.ServeJSON()
+		return
+	}
+	order, err := models.CreateWechatRechargeOrder(c.PortalUserID, req.Fen, "portal")
+	if err != nil {
+		code := 1
+		msg := err.Error()
+		if errors.Is(err, models.ErrWechatRechargeBusy) {
+			msg = fmt.Sprintf("当前充值人数已满，请稍后再试（最多 %d 人同时充值）", models.GetWechatRechargeConfig().MaxConcurrent)
+		}
+		c.Data["json"] = map[string]interface{}{"code": code, "msg": msg}
+		c.ServeJSON()
+		return
+	}
+	pub := models.GetWechatRechargePublicOrder(order)
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": pub, "msg": "请务必按弹窗显示的精确金额支付，付错金额无法自动到账"}
+	c.ServeJSON()
+}
+
+// WechatRechargeOrderStatus 查询单笔充值订单
+func (c *PortalController) WechatRechargeOrderStatus() {
+	orderNo := strings.TrimSpace(c.Ctx.Input.Param(":orderNo"))
+	if orderNo == "" {
+		orderNo = strings.TrimSpace(c.GetString("orderNo"))
+	}
+	pub, err := models.GetWechatRechargeOrderForUser(orderNo, c.PortalUserID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": pub}
+	c.ServeJSON()
+}
+
+// WechatRechargeOrders 用户充值记录
+func (c *PortalController) WechatRechargeOrders() {
+	page, _ := strconv.Atoi(c.GetString("page"))
+	limit, _ := strconv.Atoi(c.GetString("limit"))
+	list, total, err := models.ListWechatRechargeOrdersForUser(c.PortalUserID, page, limit)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": map[string]interface{}{"list": list, "total": total}}
+	c.ServeJSON()
+}
+
+// WechatRechargeQRCode 受保护的收款码图片
+func (c *PortalController) WechatRechargeQRCode() {
+	orderNo := strings.TrimSpace(c.Ctx.Input.Param(":orderNo"))
+	if !models.CanReadWechatRechargeQRCode(orderNo, c.PortalUserID) {
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusForbidden)
+		return
+	}
+	data, ct, err := models.ReadWechatRechargeQRCodeBytes()
+	if err != nil {
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusNotFound)
+		return
+	}
+	c.Ctx.Output.Header("Content-Type", ct)
+	c.Ctx.Output.Header("Cache-Control", "no-store")
+	_, _ = c.Ctx.ResponseWriter.Write(data)
 }

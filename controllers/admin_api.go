@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -2817,5 +2818,94 @@ func (c *AdminApiController) KillJdTaskQueue() {
 	}
 	models.Admin().Infof("管理员停止 JD 任务 %s", req.JobID)
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "任务已停止"}
+	c.ServeJSON()
+}
+
+// ===================== 微信赞赏码充值 =====================
+
+func (c *AdminApiController) GetWechatRechargeConfig() {
+	cfg := models.GetWechatRechargeConfig()
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"config": cfg,
+			"stats":  models.GetWechatRechargeIncomeSummary(),
+			"has_active_order": models.HasActiveWechatRechargeOrder(),
+		},
+	}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) SaveWechatRechargeConfig() {
+	var req models.WechatRechargeConfig
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求格式错误"}
+		c.ServeJSON()
+		return
+	}
+	if err := models.SaveWechatRechargeConfig(req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	models.Admin().Infof("微信赞赏码充值配置已保存")
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "保存成功"}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) UploadWechatRechargeQRCode() {
+	f, h, err := c.GetFile("image")
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请选择图片文件"}
+		c.ServeJSON()
+		return
+	}
+	defer f.Close()
+	data, err := ioutil.ReadAll(io.LimitReader(f, 5<<20))
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "读取文件失败"}
+		c.ServeJSON()
+		return
+	}
+	name, err := models.SaveWechatRechargeQRCodeUpload(h.Filename, data)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "上传成功", "data": map[string]string{"file": name}}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) GetWechatRechargeOrders() {
+	userNumber, _ := strconv.Atoi(c.GetString("userNumber"))
+	page, _ := strconv.Atoi(c.GetString("page"))
+	limit, _ := strconv.Atoi(c.GetString("limit"))
+	status := c.GetString("status")
+	list, total, stats, err := models.ListWechatRechargeOrdersAdmin(userNumber, page, limit, status)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": map[string]interface{}{
+			"list":  list,
+			"total": total,
+			"stats": stats,
+			"page":  page,
+			"limit": limit,
+		},
+	}
+	c.ServeJSON()
+}
+
+func (c *AdminApiController) GetWechatRechargeAnalytics() {
+	days, _ := strconv.Atoi(c.GetString("days"))
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": models.GetWechatRechargeAnalytics(days),
+	}
 	c.ServeJSON()
 }

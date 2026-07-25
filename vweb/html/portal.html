@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1225,6 +1226,33 @@
         .task-box:hover { box-shadow: var(--card-shadow-hover); }
         .task-box h3 { font-size: 15px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
         .task-box p { color: var(--text-muted); line-height: 1.8; font-size: 12.5px; margin: 10px 0 16px; }
+        .coin-acquire-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        @media (max-width: 960px) { .coin-acquire-grid { grid-template-columns: 1fr; } }
+        .coin-acquire-card { display: flex; flex-direction: column; gap: 10px; min-height: 100%; }
+        .coin-acquire-card-head { display: flex; align-items: flex-start; gap: 10px; }
+        .coin-acquire-icon { width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: #eef2ff; color: #4f46e5; flex-shrink: 0; }
+        .coin-acquire-icon.purchase { background: #ecfeff; color: #0891b2; }
+        .coin-acquire-icon.redeem { background: #ecfdf5; color: #059669; }
+        .coin-acquire-buy-btn { width: 100%; background: linear-gradient(135deg,#0891b2,#7c3aed); cursor: pointer; transition: opacity .2s; }
+        .coin-acquire-buy-btn:hover { opacity: .92; }
+        .wxrc-tier-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .wxrc-tier-btn { min-width: 88px; padding: 10px 12px; border-radius: 10px; border: 1px solid #c7d2fe; background: linear-gradient(135deg,#eef2ff,#e0e7ff); color: #312e81; font-weight: 700; cursor: pointer; transition: opacity .2s, transform .15s; text-align: center; line-height: 1.35; }
+        .wxrc-tier-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(79,70,229,.15); }
+        .wxrc-tier-btn:disabled { opacity: .45; cursor: not-allowed; background: #f3f4f6; border-color: #e5e7eb; color: #9ca3af; transform: none; box-shadow: none; }
+        .wxrc-tier-btn .sub { display: block; font-size: 11px; font-weight: 600; opacity: .85; }
+        .wxrc-notice-box { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #92400e; line-height: 1.65; }
+        .wxrc-notice-box strong { color: #b45309; }
+        .wxrc-offline-banner { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #b91c1c; line-height: 1.6; }
+        .wxrc-muted { color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+        .wxrc-card-actions { margin-top: auto; }
+        .wxrc-pay-amount-box { background: #fef2f2; border: 2px solid #fca5a5; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+        .wxrc-pay-amount { font-size: 30px; font-weight: 800; color: #dc2626; letter-spacing: .5px; }
+        .wxrc-pay-copy { margin-top: 8px; font-size: 12px; color: #64748b; }
+        .wxrc-pay-copy button { margin-left: 8px; padding: 4px 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 12px; }
+        .wxrc-pay-steps { text-align: left; font-size: 12px; color: #475569; line-height: 1.7; margin: 12px 0; padding-left: 18px; }
+        .wxrc-pay-warn { text-align: left; background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #9a3412; line-height: 1.65; margin-top: 10px; }
+        .wxrc-pay-warn summary { cursor: pointer; font-weight: 700; }
+        .wxrc-pay-warn ul { margin: 8px 0 0 18px; }
 
         /* ===== Toast ===== */
         .toast {
@@ -2470,21 +2498,54 @@
                     </div>
                 </div>
 
-                <!-- 积分购买 & 卡密兑换（紧凑横排） -->
-                <div class="task-grid" style="margin-top:14px;">
-                    <div class="task-box">
-                        <h3>💰 积分购买</h3>
-                        <p style="margin-bottom:10px;">积分不足？前往购买页面获取更多积分。<br><span style="color:var(--amber);font-weight:700;">💡 购买后发给机器人或在下方兑换</span></p>
-                        <button class="btn" style="background:linear-gradient(135deg,#0891b2,#7c3aed);" onclick="window.open('http://180.152.5.230:8005/#/','_blank')">前往购买积分</button>
+                <!-- 积分获取：赞赏充值 / 外链购买 / 卡密兑换 -->
+                <div class="coin-acquire-section" style="margin-top:14px;">
+                    <div class="coin-acquire-head" style="margin-bottom:12px;">
+                        <h3 style="margin:0 0 4px;font-size:16px;color:var(--text-primary);">积分获取</h3>
+                        <p style="margin:0;font-size:12px;color:var(--text-muted);">三种方式任选：微信赞赏自动到账、外链购买、卡密兑换</p>
                     </div>
-                    <div class="task-box">
-                        <h3>🎟️ 卡密兑换</h3>
-                        <p style="margin-bottom:10px;">输入卡密直接兑换积分，支持普通卡密和赠送卡密。</p>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                            <input type="text" id="redeemKeyInput" placeholder="请输入卡密" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:10px;font-size:13px;outline:none;font-family:monospace;background:#f9fafb;color:#0f172a;transition:border-color 0.2s;">
-                            <button class="btn" style="background:linear-gradient(135deg,#0d9488,#0891b2);white-space:nowrap;" onclick="redeemKey()">兑换</button>
+                    <div class="task-grid coin-acquire-grid">
+                        <div class="task-box coin-acquire-card" id="wxRechargeBox">
+                            <div class="coin-acquire-card-head">
+                                <span class="coin-acquire-icon" aria-hidden="true"><i class="fas fa-qrcode"></i></span>
+                                <div>
+                                    <h3 style="margin:0;">微信赞赏充值</h3>
+                                    <p style="margin:4px 0 0;font-size:12px;color:var(--text-muted);">扫码支付 · 自动到账积分</p>
+                                </div>
+                            </div>
+                            <div id="wxRechargeOfflineBanner" class="wxrc-offline-banner" style="display:none;"></div>
+                            <div id="wxRechargeNotice" class="wxrc-notice-box" style="display:none;"></div>
+                            <div id="wxRechargeTiers" class="wxrc-tier-grid"></div>
+                            <p id="wxRechargeDisabled" class="wxrc-muted" style="display:none;">微信赞赏充值暂不可用，请使用右侧「前往购买积分」或卡密兑换。</p>
+                            <div class="wxrc-card-actions">
+                                <button type="button" class="btn outline small" onclick="openWxRechargeHistory()">充值记录</button>
+                            </div>
                         </div>
-                        <p style="margin-top:6px;font-size:11px;color:var(--text-muted);">💡 卡密格式以 XDD 或 ZSKM 开头</p>
+                        <div class="task-box coin-acquire-card">
+                            <div class="coin-acquire-card-head">
+                                <span class="coin-acquire-icon purchase" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>
+                                <div>
+                                    <h3 style="margin:0;">前往购买积分</h3>
+                                    <p style="margin:4px 0 0;font-size:12px;color:var(--text-muted);">外链商城购买卡密或积分</p>
+                                </div>
+                            </div>
+                            <p style="margin:0 0 12px;font-size:12px;color:var(--text-muted);line-height:1.6;">购买后可在本页「卡密兑换」，或按商城说明使用。适合不方便微信赞赏支付的用户。</p>
+                            <button type="button" class="btn coin-acquire-buy-btn" id="wxExternalPurchaseBtn" onclick="openExternalPurchase()">前往购买积分</button>
+                        </div>
+                        <div class="task-box coin-acquire-card">
+                            <div class="coin-acquire-card-head">
+                                <span class="coin-acquire-icon redeem" aria-hidden="true"><i class="fas fa-ticket-alt"></i></span>
+                                <div>
+                                    <h3 style="margin:0;">卡密兑换</h3>
+                                    <p style="margin:4px 0 0;font-size:12px;color:var(--text-muted);">输入卡密立即到账</p>
+                                </div>
+                            </div>
+                            <p style="margin:0 0 10px;font-size:12px;color:var(--text-muted);">支持普通卡密和赠送卡密，格式以 XDD 或 ZSKM 开头。</p>
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <input type="text" id="redeemKeyInput" placeholder="请输入卡密" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:10px;font-size:13px;outline:none;font-family:monospace;background:#f9fafb;color:#0f172a;transition:border-color 0.2s;">
+                                <button class="btn" style="background:linear-gradient(135deg,#0d9488,#0891b2);white-space:nowrap;" onclick="redeemKey()">兑换</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2517,6 +2578,49 @@
                     <button class="btn small coin-log-tab" data-source="admin" onclick="switchCoinLogSource(this,'admin')">🔧 后台及其他</button>
                 </div>
                 <div id="coinLogsBody" style="max-height:60vh;overflow-y:auto;"></div>
+            </div>
+        </div>
+
+        <!-- 微信充值支付弹窗 -->
+        <div class="modal-mask" id="wxRechargePayModal">
+            <div class="modal" style="max-width:460px;width:min(460px,100%);">
+                <div class="modal-header">
+                    <h3>微信扫码支付</h3>
+                    <button class="modal-close" onclick="closeWxRechargePayModal()">✕</button>
+                </div>
+                <div style="text-align:center;">
+                    <div id="wxRechargePayStatus" style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">请使用微信扫一扫</div>
+                    <div class="wxrc-pay-amount-box">
+                        <div style="font-size:12px;color:#991b1b;font-weight:700;margin-bottom:6px;">必须支付以下精确金额（不是档位原价）</div>
+                        <div class="wxrc-pay-amount" id="wxRechargePayAmount">--</div>
+                        <div class="wxrc-pay-copy">档位 <span id="wxRechargePayTier">--</span> 元 · 到账 <span id="wxRechargePayPoints">--</span> 积分
+                            <button type="button" onclick="copyWxRechargeAmount()">复制金额</button>
+                        </div>
+                    </div>
+                    <ol class="wxrc-pay-steps">
+                        <li>先记住/复制上方红色金额</li>
+                        <li>微信扫码后输入该精确金额（勿四舍五入）</li>
+                        <li>支付成功后本页将自动提示到账</li>
+                    </ol>
+                    <img id="wxRechargePayQR" alt="收款码" style="width:min(240px,78vw);height:auto;border-radius:12px;border:1px solid #e5e7eb;margin:0 auto 12px;display:block;">
+                    <div style="font-size:12px;color:var(--text-muted);">剩余 <span id="wxRechargePayTimer" style="font-weight:700;color:#f59e0b;">--</span></div>
+                    <div style="font-size:11px;color:#9ca3af;margin-top:8px;word-break:break-all;" id="wxRechargePayOrderNo"></div>
+                </div>
+                <details class="wxrc-pay-warn">
+                    <summary>付错金额怎么办？</summary>
+                    <ul id="wxRechargeWrongHelp"></ul>
+                </details>
+            </div>
+        </div>
+
+        <!-- 微信充值记录弹窗 -->
+        <div class="modal-mask" id="wxRechargeHistoryModal">
+            <div class="modal" style="max-width:640px;width:min(640px,100%);">
+                <div class="modal-header">
+                    <h3>📋 微信充值记录</h3>
+                    <button class="modal-close" onclick="closeWxRechargeHistory()">✕</button>
+                </div>
+                <div id="wxRechargeHistoryBody" style="max-height:60vh;overflow-y:auto;"></div>
             </div>
         </div>
 
@@ -3172,6 +3276,7 @@ async function loadDashboardData() {
         renderDashboard();
     });
     loadWxDevices().catch(function() {});
+    loadWxRechargeConfig().catch(function() {});
     if (window.YybPortal) YybPortal.loadDashboard().catch(function() {});
 }
 
@@ -4750,6 +4855,199 @@ async function runTask(type) {
     }
 }
 
+// ========== 微信赞赏码充值 ==========
+var _wxRechargeCfg = null;
+var _wxRechargePollTimer = null;
+var _wxRechargeCountdownTimer = null;
+var _wxRechargeCurrentOrder = null;
+var _wxRechargeCurrentAmount = '';
+
+function openExternalPurchase() {
+    const url = (_wxRechargeCfg && _wxRechargeCfg.external_purchase_url) || 'http://180.152.5.230:8005/#/';
+    window.open(url, '_blank');
+}
+
+async function loadWxRechargeConfig() {
+    try {
+        const resp = await request('/api/portal/wechat-recharge/config');
+        _wxRechargeCfg = resp.data || {};
+        const tiersEl = document.getElementById('wxRechargeTiers');
+        const disabledEl = document.getElementById('wxRechargeDisabled');
+        const offlineEl = document.getElementById('wxRechargeOfflineBanner');
+        const noticeEl = document.getElementById('wxRechargeNotice');
+        if (!tiersEl) return;
+
+        const purchaseBtn = document.getElementById('wxExternalPurchaseBtn');
+        if (purchaseBtn && _wxRechargeCfg.external_purchase_url) {
+            purchaseBtn.title = _wxRechargeCfg.external_purchase_url;
+        }
+
+        const canRecharge = !!_wxRechargeCfg.can_recharge;
+        const enabled = !!_wxRechargeCfg.enabled;
+
+        if (offlineEl) {
+            if (enabled && !_wxRechargeCfg.bill_account_online) {
+                offlineEl.style.display = '';
+                offlineEl.innerHTML = '<i class="fas fa-circle-exclamation"></i> ' + escapeHtml(_wxRechargeCfg.bill_account_message || _wxRechargeCfg.block_reason || '查账账号离线，暂无法发起赞赏充值');
+            } else if (enabled && _wxRechargeCfg.block_reason && !canRecharge) {
+                offlineEl.style.display = '';
+                offlineEl.innerHTML = '<i class="fas fa-circle-exclamation"></i> ' + escapeHtml(_wxRechargeCfg.block_reason);
+            } else {
+                offlineEl.style.display = 'none';
+                offlineEl.textContent = '';
+            }
+        }
+
+        if (noticeEl) {
+            const lines = (_wxRechargeCfg.payment_notice || []).slice(0, 2);
+            if (enabled && lines.length) {
+                noticeEl.style.display = '';
+                noticeEl.innerHTML = '<strong>重要：</strong>' + lines.map(escapeHtml).join('<br>');
+            } else {
+                noticeEl.style.display = 'none';
+                noticeEl.innerHTML = '';
+            }
+        }
+
+        const wrongHelp = document.getElementById('wxRechargeWrongHelp');
+        if (wrongHelp) {
+            wrongHelp.innerHTML = ((_wxRechargeCfg.wrong_payment_help) || []).map(function(line) {
+                return '<li>' + escapeHtml(line) + '</li>';
+            }).join('');
+        }
+
+        if (!enabled) {
+            tiersEl.innerHTML = '';
+            if (disabledEl) disabledEl.style.display = '';
+            return;
+        }
+        if (disabledEl) disabledEl.style.display = canRecharge ? 'none' : '';
+        const tiers = _wxRechargeCfg.tiers || [];
+        tiersEl.innerHTML = tiers.map(function(t) {
+            const disabled = canRecharge ? '' : ' disabled';
+            const title = canRecharge ? '' : escapeHtml(_wxRechargeCfg.block_reason || '暂不可用');
+            return '<button type="button" class="wxrc-tier-btn"' + disabled + ' title="' + title + '" onclick="startWxRecharge(' + t.fen + ')">' + t.yuan + '元<span class="sub">' + t.points + '积分</span></button>';
+        }).join('');
+    } catch (e) { /* 未登录或接口不可用 */ }
+}
+
+async function startWxRecharge(fen) {
+    if (_wxRechargeCfg && !_wxRechargeCfg.can_recharge) {
+        toast(_wxRechargeCfg.block_reason || '微信赞赏充值暂不可用', 'error');
+        return;
+    }
+    try {
+        const resp = await request('/api/portal/wechat-recharge/orders', {
+            method: 'POST',
+            body: JSON.stringify({ fen: fen })
+        });
+        if (resp.code !== 0) { toast(resp.msg || '创建订单失败', 'error'); return; }
+        openWxRechargePayModal(resp.data);
+    } catch (err) { toast(err.message || '创建订单失败', 'error'); }
+}
+
+function copyWxRechargeAmount() {
+    const text = _wxRechargeCurrentAmount;
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() { toast('金额已复制：' + text, 'success'); }).catch(function() { toast('复制失败，请手动输入', 'error'); });
+    } else {
+        toast('请手动输入金额：' + text, 'info');
+    }
+}
+
+function openWxRechargePayModal(order) {
+    _wxRechargeCurrentOrder = order;
+    const modal = document.getElementById('wxRechargePayModal');
+    const amount = (order.payment_fen / 100).toFixed(2);
+    _wxRechargeCurrentAmount = amount;
+    document.getElementById('wxRechargePayAmount').textContent = '¥ ' + amount;
+    document.getElementById('wxRechargePayTier').textContent = (order.requested_fen / 100).toFixed(0);
+    document.getElementById('wxRechargePayPoints').textContent = order.points || Math.round(order.requested_fen);
+    document.getElementById('wxRechargePayOrderNo').textContent = '订单号：' + order.order_no;
+    document.getElementById('wxRechargePayStatus').textContent = '等待支付… 请务必支付 ¥' + amount + '（不是档位整数金额）';
+    const qr = document.getElementById('wxRechargePayQR');
+    let qrUrl = order.qrcode_url || '';
+    if (qrUrl && qrUrl.indexOf('/api/portal/wechat-recharge/qrcode/') === 0) {
+        qrUrl += (qrUrl.indexOf('?') >= 0 ? '&' : '?') + '_t=' + Date.now();
+    }
+    qr.src = qrUrl;
+    modal.classList.add('show');
+    startWxRechargeCountdown(order.remaining_sec || 180);
+    startWxRechargePolling(order.order_no);
+}
+
+function closeWxRechargePayModal() {
+    document.getElementById('wxRechargePayModal').classList.remove('show');
+    stopWxRechargePolling();
+}
+
+function startWxRechargeCountdown(sec) {
+    stopWxRechargeCountdown();
+    let left = sec;
+    const el = document.getElementById('wxRechargePayTimer');
+    function tick() {
+        if (left < 0) { el.textContent = '已超时'; return; }
+        const m = Math.floor(left / 60);
+        const s = left % 60;
+        el.textContent = m + ':' + String(s).padStart(2, '0');
+        left--;
+    }
+    tick();
+    _wxRechargeCountdownTimer = setInterval(tick, 1000);
+}
+function stopWxRechargeCountdown() {
+    if (_wxRechargeCountdownTimer) { clearInterval(_wxRechargeCountdownTimer); _wxRechargeCountdownTimer = null; }
+}
+function stopWxRechargePolling() {
+    stopWxRechargeCountdown();
+    if (_wxRechargePollTimer) { clearInterval(_wxRechargePollTimer); _wxRechargePollTimer = null; }
+}
+function startWxRechargePolling(orderNo) {
+    stopWxRechargePolling();
+    async function poll() {
+        try {
+            const resp = await request('/api/portal/wechat-recharge/orders/' + encodeURIComponent(orderNo));
+            const o = resp.data;
+            if (!o) return;
+            if (o.status === 'paid') {
+                document.getElementById('wxRechargePayStatus').textContent = '✅ 充值成功！已到账 ' + o.points + ' 积分';
+                stopWxRechargePolling();
+                toast('充值成功，到账 ' + o.points + ' 积分', 'success');
+                loadDashboardData().catch(function() {});
+                setTimeout(closeWxRechargePayModal, 2500);
+            } else if (o.status === 'expired' || o.status === 'failed') {
+                document.getElementById('wxRechargePayStatus').textContent = '❌ 订单已结束。若已付错金额，请展开下方「付错金额怎么办」并按说明联系管理员。';
+                stopWxRechargePolling();
+            } else {
+                document.getElementById('wxRechargePayTimer').textContent = '';
+                startWxRechargeCountdown(o.remaining_sec || 0);
+            }
+        } catch (e) {}
+    }
+    poll();
+    _wxRechargePollTimer = setInterval(poll, 3000);
+}
+
+async function openWxRechargeHistory() {
+    document.getElementById('wxRechargeHistoryModal').classList.add('show');
+    const body = document.getElementById('wxRechargeHistoryBody');
+    body.innerHTML = '<div style="text-align:center;padding:24px;color:#999;">加载中…</div>';
+    try {
+        const resp = await request('/api/portal/wechat-recharge/orders?page=1&limit=30');
+        const list = (resp.data && resp.data.list) || [];
+        if (!list.length) { body.innerHTML = '<div style="text-align:center;padding:24px;color:#999;">暂无充值记录</div>'; return; }
+        const statusMap = { pending: '待支付', paid: '已支付', expired: '已过期', failed: '失败' };
+        body.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse;"><thead><tr style="background:#f3f4f6;"><th style="padding:8px;">时间</th><th>档位</th><th>应付</th><th>积分</th><th>状态</th></tr></thead><tbody>' +
+            list.map(function(o) {
+                return '<tr style="border-bottom:1px solid #eee;"><td style="padding:8px;">' + (o.created_at || '') + '</td><td>' + (o.requested_fen/100).toFixed(0) + '元</td><td style="color:#dc2626;font-weight:700;">' + (o.payment_fen/100).toFixed(2) + '元</td><td>' + (o.points || '-') + '</td><td>' + (statusMap[o.status] || o.status) + '</td></tr>';
+            }).join('') + '</tbody></table>';
+    } catch (e) { body.innerHTML = '<div style="color:#ef4444;padding:16px;">加载失败</div>'; }
+}
+function closeWxRechargeHistory() {
+    document.getElementById('wxRechargeHistoryModal').classList.remove('show');
+}
+
 async function redeemKey() {
     const input = document.getElementById('redeemKeyInput');
     const token = (input?.value || '').trim();
@@ -4838,7 +5136,7 @@ async function loadCoinLogs(source) {
             return;
         }
         const sourceClass = { web: 'src-web', app: 'src-app', wx: 'src-wx', bot: 'src-wx', admin: 'src-admin' };
-        const typeIcon = { '签到': '📅', '祈福': '🙏', '游戏': '🎮', '转账': '💸', '充值': '💰', '卡密兑换': '🎟️', '上车扣费': '🚀', '续费扣费': '🔄', '退还': '↩️', '推一推': '🤝', '助力扣费': '🫳', '任务扣费': '📋', '授权扣费': '🔑', '许愿': '⭐', '微信登录': '📱', '反馈奖励': '🎁', '管理员操作': '🔧' };
+        const typeIcon = { '签到': '📅', '祈福': '🙏', '游戏': '🎮', '转账': '💸', '充值': '💰', '微信充值': '💳', '卡密兑换': '🎟️', '上车扣费': '🚀', '续费扣费': '🔄', '退还': '↩️', '推一推': '🤝', '助力扣费': '🫳', '任务扣费': '📋', '授权扣费': '🔑', '许愿': '⭐', '微信登录': '📱', '反馈奖励': '🎁', '管理员操作': '🔧' };
         let html = '';
         for (let i = 0; i < logs.length; i++) {
             const l = logs[i];
