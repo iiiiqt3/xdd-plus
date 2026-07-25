@@ -5532,6 +5532,42 @@ final class CoinTasksViewController: BaseNativeViewController {
         ])
         stack.addArrangedSubview(actionsCard)
 
+        let wxRechargeCard = UIView()
+        wxRechargeCard.applyCardStyle()
+        let wxIcon = UIImageView()
+        wxIcon.translatesAutoresizingMaskIntoConstraints = false
+        wxIcon.image = UIImage(systemName: "qrcode")
+        wxIcon.tintColor = .systemGreen
+        wxIcon.contentMode = .scaleAspectFit
+        let wxTitle = UILabel()
+        wxTitle.text = "微信赞赏充值"
+        wxTitle.font = UIFont.systemFont(ofSize: 17, weight: .bold)
+        let wxDesc = UILabel()
+        wxDesc.text = "扫码支付，按弹窗显示的精确金额付款后自动到账"
+        wxDesc.font = UIFont.systemFont(ofSize: 13)
+        wxDesc.textColor = .secondaryLabel
+        wxDesc.numberOfLines = 0
+        let wxBtn = UIButton(type: .system)
+        wxBtn.setTitle("前往充值", for: .normal)
+        wxBtn.applyPrimaryStyle(color: .systemGreen)
+        wxBtn.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        wxBtn.addTarget(self, action: #selector(wxRechargeTapped), for: .touchUpInside)
+        let wxStack = UIStackView(arrangedSubviews: [wxIcon, wxTitle, wxDesc, wxBtn])
+        wxStack.axis = .vertical
+        wxStack.alignment = .fill
+        wxStack.spacing = 10
+        wxStack.translatesAutoresizingMaskIntoConstraints = false
+        wxIcon.widthAnchor.constraint(equalToConstant: 36).isActive = true
+        wxIcon.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        wxRechargeCard.addSubview(wxStack)
+        NSLayoutConstraint.activate([
+            wxStack.topAnchor.constraint(equalTo: wxRechargeCard.topAnchor, constant: 18),
+            wxStack.leadingAnchor.constraint(equalTo: wxRechargeCard.leadingAnchor, constant: 18),
+            wxStack.trailingAnchor.constraint(equalTo: wxRechargeCard.trailingAnchor, constant: -18),
+            wxStack.bottomAnchor.constraint(equalTo: wxRechargeCard.bottomAnchor, constant: -18)
+        ])
+        stack.addArrangedSubview(wxRechargeCard)
+
         let phoneCard = UIView()
         phoneCard.applyCardStyle()
         let phoneIcon = UIImageView()
@@ -5835,6 +5871,10 @@ final class CoinTasksViewController: BaseNativeViewController {
         navigationController?.pushViewController(vc, animated: true)
     }
 
+    @objc private func wxRechargeTapped() {
+        navigationController?.pushViewController(WechatRechargeViewController(), animated: true)
+    }
+
     @objc private func redeemTapped() {
         if isRedeeming { return }
         let token = redeemField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -5858,6 +5898,492 @@ final class CoinTasksViewController: BaseNativeViewController {
                 self.showMessage(message)
                 AppSessionStore.shared.refreshIfPossible(silent: true)
             }
+        }
+    }
+}
+
+final class WechatRechargeViewController: BaseNativeViewController {
+    private let scrollView = UIScrollView()
+    private let stack = UIStackView()
+    private let offlineBanner = UILabel()
+    private let noticeLabel = UILabel()
+    private let tiersHost = UIStackView()
+    private let disabledLabel = UILabel()
+    private let activityIndicator = UIActivityIndicatorView(style: .medium)
+
+    private var config: WechatRechargeConfig?
+    private var creating = false
+    private var pollTimer: Timer?
+    private var countdownTimer: Timer?
+    private var activeOrderNo: String?
+    private var resultShown = false
+    private var currentAmount = ""
+
+    private var payOverlay: UIView?
+    private var payAmountLabel = UILabel()
+    private var payStatusLabel = UILabel()
+    private var payTimerLabel = UILabel()
+    private var payOrderLabel = UILabel()
+    private var payQrView = UIImageView()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = "微信赞赏充值"
+        view.backgroundColor = .systemGroupedBackground
+        setupUI()
+        loadConfig()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if isMovingFromParent {
+            stopPolling()
+        }
+    }
+
+    deinit {
+        stopPolling()
+    }
+
+    private func setupUI() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        stack.axis = .vertical
+        stack.spacing = 16
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        scrollView.addSubview(stack)
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            stack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
+            stack.widthAnchor.constraint(equalTo: view.widthAnchor, constant: -32)
+        ])
+
+        let card = UIView()
+        card.applyCardStyle()
+        offlineBanner.font = .systemFont(ofSize: 12)
+        offlineBanner.textColor = .systemRed
+        offlineBanner.numberOfLines = 0
+        offlineBanner.isHidden = true
+        noticeLabel.font = .systemFont(ofSize: 12)
+        noticeLabel.textColor = .secondaryLabel
+        noticeLabel.numberOfLines = 0
+        noticeLabel.isHidden = true
+        tiersHost.axis = .vertical
+        tiersHost.spacing = 8
+        disabledLabel.font = .systemFont(ofSize: 12)
+        disabledLabel.textColor = .secondaryLabel
+        disabledLabel.numberOfLines = 0
+        disabledLabel.text = "微信赞赏充值暂不可用，请使用积分购买或卡密兑换。"
+        disabledLabel.isHidden = true
+        activityIndicator.hidesWhenStopped = true
+
+        let titleLabel = UILabel()
+        titleLabel.text = "微信赞赏充值"
+        titleLabel.font = .systemFont(ofSize: 17, weight: .bold)
+        let descLabel = UILabel()
+        descLabel.text = "扫码支付，按弹窗显示的精确金额付款后自动到账"
+        descLabel.font = .systemFont(ofSize: 13)
+        descLabel.textColor = .secondaryLabel
+        descLabel.numberOfLines = 0
+
+        let historyBtn = UIButton(type: .system)
+        historyBtn.setTitle("充值记录", for: .normal)
+        historyBtn.addTarget(self, action: #selector(showHistory), for: .touchUpInside)
+        let externalBtn = UIButton(type: .system)
+        externalBtn.setTitle("外链购买", for: .normal)
+        externalBtn.addTarget(self, action: #selector(openExternalPurchase), for: .touchUpInside)
+        let actionRow = UIStackView(arrangedSubviews: [historyBtn, externalBtn])
+        actionRow.axis = .horizontal
+        actionRow.distribution = .fillEqually
+
+        let inner = UIStackView(arrangedSubviews: [titleLabel, descLabel, offlineBanner, noticeLabel, tiersHost, disabledLabel, activityIndicator, actionRow])
+        inner.axis = .vertical
+        inner.spacing = 10
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(inner)
+        NSLayoutConstraint.activate([
+            inner.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+            inner.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            inner.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            inner.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -18)
+        ])
+        stack.addArrangedSubview(card)
+    }
+
+    private func loadConfig() {
+        activityIndicator.startAnimating()
+        PortalService.shared.fetchWechatRechargeConfig { [weak self] result in
+            guard let self = self else { return }
+            self.activityIndicator.stopAnimating()
+            switch result {
+            case .failure(let error):
+                self.handle(error)
+            case .success(let cfg):
+                self.applyConfig(cfg)
+            }
+        }
+    }
+
+    private func applyConfig(_ cfg: WechatRechargeConfig) {
+        config = cfg
+        if cfg.enabled && !cfg.billAccountOnline {
+            offlineBanner.isHidden = false
+            offlineBanner.text = cfg.billAccountMessage ?? cfg.blockReason ?? "查账账号离线，暂无法发起赞赏充值"
+        } else if cfg.enabled && !cfg.canRecharge, let reason = cfg.blockReason, !reason.isEmpty {
+            offlineBanner.isHidden = false
+            offlineBanner.text = reason
+        } else {
+            offlineBanner.isHidden = true
+        }
+
+        let notices = Array((cfg.paymentNotice ?? []).prefix(2))
+        if cfg.enabled && !notices.isEmpty {
+            noticeLabel.isHidden = false
+            noticeLabel.text = "重要：" + notices.joined(separator: "\n")
+        } else {
+            noticeLabel.isHidden = true
+        }
+
+        tiersHost.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        guard cfg.enabled else {
+            disabledLabel.isHidden = false
+            return
+        }
+        disabledLabel.isHidden = cfg.canRecharge
+
+        let tiers = cfg.tiers ?? []
+        var row: UIStackView?
+        for (index, tier) in tiers.enumerated() {
+            if index % 3 == 0 {
+                row = UIStackView()
+                row?.axis = .horizontal
+                row?.spacing = 8
+                row?.distribution = .fillEqually
+                if let row = row { tiersHost.addArrangedSubview(row) }
+            }
+            let btn = UIButton(type: .system)
+            btn.setTitle("\(tier.yuan) 元\n\(tier.points) 积分", for: .normal)
+            btn.titleLabel?.numberOfLines = 2
+            btn.titleLabel?.textAlignment = .center
+            btn.titleLabel?.font = .systemFont(ofSize: 12)
+            btn.layer.cornerRadius = 10
+            btn.layer.borderWidth = 1
+            btn.layer.borderColor = UIColor.separator.cgColor
+            btn.backgroundColor = .secondarySystemGroupedBackground
+            btn.isEnabled = cfg.canRecharge && !creating
+            btn.heightAnchor.constraint(equalToConstant: 64).isActive = true
+            btn.tag = tier.fen
+            btn.addTarget(self, action: #selector(tierTapped(_:)), for: .touchUpInside)
+            row?.addArrangedSubview(btn)
+        }
+    }
+
+    @objc private func tierTapped(_ sender: UIButton) {
+        startRecharge(fen: sender.tag)
+    }
+
+    private func startRecharge(fen: Int) {
+        if creating { return }
+        if let cfg = config, !cfg.canRecharge {
+            showMessage(cfg.blockReason ?? "微信赞赏充值暂不可用")
+            return
+        }
+        creating = true
+        setTiersLoading(true)
+        openPayOverlayLoading()
+        PortalService.shared.createWechatRechargeOrder(fen: fen) { [weak self] result in
+            guard let self = self else { return }
+            self.creating = false
+            self.setTiersLoading(false)
+            switch result {
+            case .failure(let error):
+                self.dismissPayOverlay()
+                self.handle(error)
+            case .success(let createResult):
+                if createResult.replacedPrevious {
+                    self.showMessage("上一笔未支付订单已自动取消，请按本页新金额支付")
+                }
+                if let message = createResult.message, !message.isEmpty {
+                    self.showMessage(message)
+                }
+                self.openPayOverlay(order: createResult.order)
+            }
+        }
+    }
+
+    private func setTiersLoading(_ loading: Bool) {
+        tiersHost.arrangedSubviews.forEach { row in
+            (row as? UIStackView)?.arrangedSubviews.forEach { view in
+                if let btn = view as? UIButton {
+                    btn.isEnabled = !loading && (config?.canRecharge == true)
+                    btn.alpha = loading ? 0.6 : 1
+                }
+            }
+        }
+    }
+
+    private func openPayOverlayLoading() {
+        resultShown = false
+        stopPolling()
+        showPayOverlay()
+        payAmountLabel.text = "计算中…"
+        payStatusLabel.text = "正在创建订单，请稍候…"
+        payTimerLabel.text = "--"
+        payOrderLabel.text = "订单号：创建中…"
+        payQrView.image = nil
+    }
+
+    private func openPayOverlay(order: WechatRechargeOrder) {
+        resultShown = false
+        activeOrderNo = order.orderNo
+        currentAmount = formatYuan(order.paymentFen)
+        payAmountLabel.text = "¥ \(currentAmount)"
+        payStatusLabel.text = "等待支付… 请务必支付 ¥\(currentAmount)（不是档位整数金额）"
+        payOrderLabel.text = "订单号：\(order.orderNo)"
+        loadQrCode(order)
+        startCountdown(order.remainingSec ?? 180)
+        startPolling(orderNo: order.orderNo)
+    }
+
+    private func showPayOverlay() {
+        if payOverlay != nil { return }
+        let overlay = UIView(frame: view.bounds)
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.45)
+        overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+        let panel = UIView()
+        panel.backgroundColor = .systemBackground
+        panel.layer.cornerRadius = 16
+        panel.translatesAutoresizingMaskIntoConstraints = false
+
+        payStatusLabel.font = .systemFont(ofSize: 12)
+        payStatusLabel.textColor = .secondaryLabel
+        payStatusLabel.numberOfLines = 0
+        payAmountLabel.font = .systemFont(ofSize: 28, weight: .bold)
+        payAmountLabel.textColor = .systemGreen
+        payAmountLabel.textAlignment = .center
+        payQrView.contentMode = .scaleAspectFit
+        payQrView.translatesAutoresizingMaskIntoConstraints = false
+        payTimerLabel.font = .systemFont(ofSize: 12)
+        payTimerLabel.textColor = .systemOrange
+        payTimerLabel.textAlignment = .center
+        payOrderLabel.font = .systemFont(ofSize: 10)
+        payOrderLabel.textColor = .secondaryLabel
+        payOrderLabel.textAlignment = .center
+        payOrderLabel.numberOfLines = 0
+
+        let copyBtn = UIButton(type: .system)
+        copyBtn.setTitle("复制金额", for: .normal)
+        copyBtn.addTarget(self, action: #selector(copyAmount), for: .touchUpInside)
+        let closeBtn = UIButton(type: .system)
+        closeBtn.setTitle("关闭", for: .normal)
+        closeBtn.addTarget(self, action: #selector(closePayOverlay), for: .touchUpInside)
+        let btnRow = UIStackView(arrangedSubviews: [copyBtn, closeBtn])
+        btnRow.axis = .horizontal
+        btnRow.distribution = .fillEqually
+
+        let title = UILabel()
+        title.text = "微信赞赏支付"
+        title.font = .systemFont(ofSize: 17, weight: .bold)
+        title.textAlignment = .center
+        let scanHint = UILabel()
+        scanHint.text = "请使用微信扫一扫"
+        scanHint.font = .systemFont(ofSize: 12)
+        scanHint.textColor = .secondaryLabel
+        scanHint.textAlignment = .center
+
+        let content = UIStackView(arrangedSubviews: [title, payStatusLabel, payAmountLabel, scanHint, payQrView, payTimerLabel, payOrderLabel, btnRow])
+        content.axis = .vertical
+        content.spacing = 10
+        content.translatesAutoresizingMaskIntoConstraints = false
+        panel.addSubview(content)
+        overlay.addSubview(panel)
+        view.addSubview(overlay)
+        NSLayoutConstraint.activate([
+            panel.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            panel.centerYAnchor.constraint(equalTo: overlay.centerYAnchor),
+            panel.leadingAnchor.constraint(equalTo: overlay.leadingAnchor, constant: 24),
+            panel.trailingAnchor.constraint(equalTo: overlay.trailingAnchor, constant: -24),
+            content.topAnchor.constraint(equalTo: panel.topAnchor, constant: 18),
+            content.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 18),
+            content.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -18),
+            content.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -18),
+            payQrView.heightAnchor.constraint(equalToConstant: 220)
+        ])
+        payOverlay = overlay
+    }
+
+    @objc private func closePayOverlay() {
+        if !resultShown, activeOrderNo != nil {
+            showMessage("支付窗口已关闭，系统仍会自动检测到账；重新点档位将作废本笔并生成新订单")
+        }
+        dismissPayOverlay(keepPolling: true)
+    }
+
+    private func dismissPayOverlay(keepPolling: Bool = false) {
+        payOverlay?.removeFromSuperview()
+        payOverlay = nil
+        if !keepPolling {
+            stopPolling()
+        }
+    }
+
+    @objc private func copyAmount() {
+        guard !currentAmount.isEmpty else {
+            showMessage("金额尚未生成")
+            return
+        }
+        UIPasteboard.general.string = currentAmount
+        showMessage("金额已复制：\(currentAmount)")
+    }
+
+    private func loadQrCode(_ order: WechatRechargeOrder) {
+        guard var path = order.qrcodeUrl, !path.isEmpty else { return }
+        if path.contains("/api/portal/wechat-recharge/qrcode/") {
+            path += path.contains("?") ? "&" : "?"
+            path += "_t=\(Int(Date().timeIntervalSince1970 * 1000))"
+        }
+        PortalService.shared.downloadWechatRechargeQR(pathOrUrl: path) { [weak self] result in
+            switch result {
+            case .failure:
+                self?.payStatusLabel.text = "收款码加载失败，请稍后重试"
+            case .success(let data):
+                self?.payQrView.image = UIImage(data: data)
+            }
+        }
+    }
+
+    private func startCountdown(_ sec: Int64) {
+        countdownTimer?.invalidate()
+        var left = sec
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+            if left < 0 {
+                self.payTimerLabel.text = "已超时"
+                timer.invalidate()
+                return
+            }
+            let m = left / 60
+            let s = left % 60
+            self.payTimerLabel.text = String(format: "%d:%02d", m, s)
+            left -= 1
+        }
+    }
+
+    private func startPolling(orderNo: String) {
+        stopPolling(keepCountdown: true)
+        activeOrderNo = orderNo
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            self?.pollOrder(orderNo: orderNo)
+        }
+        pollTimer?.fire()
+    }
+
+    private func pollOrder(orderNo: String) {
+        guard activeOrderNo == orderNo else { return }
+        PortalService.shared.fetchWechatRechargeOrder(orderNo: orderNo) { [weak self] result in
+            guard let self = self, case .success(let order) = result else { return }
+            self.handleOrderUpdate(order)
+        }
+    }
+
+    private func handleOrderUpdate(_ order: WechatRechargeOrder) {
+        switch order.status {
+        case "paid":
+            payStatusLabel.text = "充值成功，正在展示到账详情…"
+            stopPolling()
+            showSuccess(order)
+        case "crediting":
+            payStatusLabel.text = "支付已确认，正在入账…"
+        case "expired", "failed", "wrong_amount":
+            stopPolling()
+            if payOverlay != nil {
+                payStatusLabel.text = order.status == "expired" ? "订单已超时，未检测到入账" : "订单已结束"
+            }
+        default:
+            if let sec = order.remainingSec, sec > 0 {
+                startCountdown(sec)
+            }
+        }
+    }
+
+    private func showSuccess(_ order: WechatRechargeOrder) {
+        resultShown = true
+        dismissPayOverlay()
+        let paidYuan = order.paidFen.map { formatYuan($0) } ?? currentAmount
+        let points = order.points ?? 0
+        let message = """
+        实付金额：¥ \(paidYuan)
+        到账积分：+\(points) 积分
+        当前余额：\(order.coin.map(String.init) ?? "-") 积分
+        充值时间：\(order.paidAt ?? order.createdAt ?? "-")
+        订单号：\(order.orderNo)
+        """
+        let alert = UIAlertController(title: "充值成功", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "我知道了", style: .default))
+        present(alert, animated: true)
+        showMessage("充值成功，到账 \(points) 积分")
+        AppSessionStore.shared.refreshIfPossible(silent: true)
+    }
+
+    @objc private func showHistory() {
+        PortalService.shared.fetchWechatRechargeHistory { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .failure(let error):
+                self.handle(error)
+            case .success(let page):
+                if page.list.isEmpty {
+                    self.showMessage("暂无充值记录")
+                    return
+                }
+                let lines = page.list.prefix(20).map { order -> String in
+                    let yuan = order.paidFen.map { self.formatYuan($0) } ?? self.formatYuan(order.paymentFen)
+                    return "\(self.statusLabel(order.status)) · ¥\(yuan) · +\(order.points ?? 0)积分\n\(order.orderNo)\n\(order.paidAt ?? order.createdAt ?? "")"
+                }.joined(separator: "\n\n")
+                let alert = UIAlertController(title: "充值记录", message: lines, preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "关闭", style: .default))
+                self.present(alert, animated: true)
+            }
+        }
+    }
+
+    @objc private func openExternalPurchase() {
+        let urlString = config?.externalPurchaseUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolved = (urlString?.isEmpty == false ? urlString : nil) ?? AppEnvironment.coinPurchaseURL.absoluteString
+        guard let url = URL(string: resolved) else { return }
+        let vc = WebBrowserViewController(url: url)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func stopPolling(keepCountdown: Bool = false) {
+        pollTimer?.invalidate()
+        pollTimer = nil
+        if !keepCountdown {
+            countdownTimer?.invalidate()
+            countdownTimer = nil
+        }
+        activeOrderNo = nil
+    }
+
+    private func formatYuan(_ fen: Int) -> String {
+        String(format: "%.2f", Double(fen) / 100.0)
+    }
+
+    private func statusLabel(_ status: String) -> String {
+        switch status {
+        case "paid": return "已到账"
+        case "pending", "preparing": return "待支付"
+        case "crediting": return "入账中"
+        case "expired": return "已超时"
+        case "failed": return "已取消"
+        default: return status
         }
     }
 }

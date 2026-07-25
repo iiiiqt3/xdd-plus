@@ -200,6 +200,86 @@ struct PortalNotificationPage: Decodable {
 }
 
 
+struct WechatRechargeTier: Decodable {
+    let yuan: Int
+    let fen: Int
+    let points: Int
+}
+
+
+struct WechatRechargeConfig: Decodable {
+    let enabled: Bool
+    let canRecharge: Bool
+    let blockReason: String?
+    let billAccountOnline: Bool
+    let billAccountMessage: String?
+    let pointsPerYuan: Int?
+    let tiers: [WechatRechargeTier]?
+    let timeoutMinutes: Int?
+    let externalPurchaseUrl: String?
+    let paymentNotice: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case enabled
+        case canRecharge = "can_recharge"
+        case blockReason = "block_reason"
+        case billAccountOnline = "bill_account_online"
+        case billAccountMessage = "bill_account_message"
+        case pointsPerYuan = "points_per_yuan"
+        case tiers
+        case timeoutMinutes = "timeout_minutes"
+        case externalPurchaseUrl = "external_purchase_url"
+        case paymentNotice = "payment_notice"
+    }
+}
+
+
+struct WechatRechargeOrder: Decodable {
+    let orderNo: String
+    let requestedFen: Int
+    let paymentFen: Int
+    let paidFen: Int?
+    let points: Int?
+    let status: String
+    let createdAt: String?
+    let expiresAt: String?
+    let remainingSec: Int64?
+    let coin: Int?
+    let qrcodeUrl: String?
+    let paidAt: String?
+    let lastError: String?
+
+    enum CodingKeys: String, CodingKey {
+        case orderNo = "order_no"
+        case requestedFen = "requested_fen"
+        case paymentFen = "payment_fen"
+        case paidFen = "paid_fen"
+        case points
+        case status
+        case createdAt = "created_at"
+        case expiresAt = "expires_at"
+        case remainingSec = "remaining_sec"
+        case coin
+        case qrcodeUrl = "qrcode_url"
+        case paidAt = "paid_at"
+        case lastError = "last_error"
+    }
+}
+
+
+struct WechatRechargeHistoryPage: Decodable {
+    let list: [WechatRechargeOrder]
+    let total: Int
+}
+
+
+struct WechatRechargeCreateResult {
+    let order: WechatRechargeOrder
+    let replacedPrevious: Bool
+    let message: String?
+}
+
+
 struct SubmitFeedbackPayload: Encodable {
     let type: String
     let title: String
@@ -899,6 +979,51 @@ final class APIClient {
             let text = data.flatMap { String(data: $0, encoding: .utf8) }?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             DispatchQueue.main.async {
                 completion(.success(text))
+            }
+        }.resume()
+    }
+
+    func downloadData(
+        path: String,
+        absoluteURL: URL? = nil,
+        completion: @escaping (Result<Data, APIError>) -> Void
+    ) {
+        let url: URL?
+        if let absoluteURL = absoluteURL {
+            url = absoluteURL
+        } else {
+            url = URL(string: path, relativeTo: AppEnvironment.baseURL)
+        }
+        guard let requestURL = url else {
+            completion(.failure(APIError(message: "请求地址无效", isUnauthorized: false)))
+            return
+        }
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 30
+        PortalRequestMeta.merged(with: [:]).forEach { request.setValue($1, forHTTPHeaderField: $0) }
+
+        session.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(APIError(message: sanitizeErrorMessage(error.localizedDescription), isUnauthorized: false)))
+                }
+                return
+            }
+            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                DispatchQueue.main.async {
+                    completion(.failure(APIError(message: "图片加载失败（\(http.statusCode)）", isUnauthorized: false)))
+                }
+                return
+            }
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(APIError(message: "无响应体", isUnauthorized: false)))
+                }
+                return
+            }
+            DispatchQueue.main.async {
+                completion(.success(data))
             }
         }.resume()
     }
@@ -1961,6 +2086,62 @@ final class PortalService {
                 }
                 completion(.success(envelope.data))
             }
+        }
+    }
+
+    func fetchWechatRechargeConfig(completion: @escaping (Result<WechatRechargeConfig, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/wechat-recharge/config", completion: completion)
+    }
+
+    func createWechatRechargeOrder(fen: Int, completion: @escaping (Result<WechatRechargeCreateResult, APIError>) -> Void) {
+        let payload: [String: Any] = ["fen": fen]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestRaw(path: "/api/portal/wechat-recharge/orders", method: "POST", headers: ["Content-Type": "application/json"], body: body) { result in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let text):
+                guard let data = text.data(using: .utf8),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                    completion(.failure(APIError(message: "数据解析失败", isUnauthorized: false)))
+                    return
+                }
+                let code = json["code"] as? Int ?? -1
+                if code != 0 {
+                    let msg = json["msg"] as? String ?? "创建订单失败"
+                    completion(.failure(APIError(message: msg, isUnauthorized: code == 401 || code == 403)))
+                    return
+                }
+                guard let orderJSON = json["data"] as? [String: Any],
+                      let orderData = try? JSONSerialization.data(withJSONObject: orderJSON),
+                      let order = try? JSONDecoder().decode(WechatRechargeOrder.self, from: orderData) else {
+                    completion(.failure(APIError(message: "创建订单失败", isUnauthorized: false)))
+                    return
+                }
+                let replaced = (json["replaced_previous"] as? Bool) == true
+                let message = json["msg"] as? String
+                completion(.success(WechatRechargeCreateResult(order: order, replacedPrevious: replaced, message: message)))
+            }
+        }
+    }
+
+    func fetchWechatRechargeOrder(orderNo: String, completion: @escaping (Result<WechatRechargeOrder, APIError>) -> Void) {
+        let encoded = orderNo.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? orderNo
+        APIClient.shared.requestData(path: "/api/portal/wechat-recharge/orders/\(encoded)", completion: completion)
+    }
+
+    func fetchWechatRechargeHistory(page: Int = 1, limit: Int = 20, completion: @escaping (Result<WechatRechargeHistoryPage, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/wechat-recharge/orders?page=\(page)&limit=\(limit)", completion: completion)
+    }
+
+    func downloadWechatRechargeQR(pathOrUrl: String, completion: @escaping (Result<Data, APIError>) -> Void) {
+        if pathOrUrl.hasPrefix("http"), let url = URL(string: pathOrUrl) {
+            APIClient.shared.downloadData(path: "", absoluteURL: url, completion: completion)
+        } else {
+            APIClient.shared.downloadData(path: pathOrUrl, completion: completion)
         }
     }
 }
