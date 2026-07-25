@@ -197,6 +197,31 @@ class TasksFragment : Fragment(), MainTabResettable, InnerTabSwipeHost {
             })
         })
 
+        contentHost.addView(requireContext().cardView().apply {
+            setPadding(context.dp(14), context.dp(14), context.dp(14), context.dp(14))
+            addView(TextView(context).apply {
+                text = "微信赞赏充值"
+                setTextColor(ctx.themeColor(R.color.text_primary))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                setTypeface(typeface, Typeface.BOLD)
+            })
+            addView(ctx.captionText("扫码支付，按精确金额付款后自动到账").apply { setPadding(0, ctx.dp(4), 0, ctx.dp(10)) })
+            addView(Button(context).apply {
+                text = "前往充值"
+                setTextColor(ctx.themeColor(R.color.chip_active_text))
+                setAllCaps(false)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                background = GradientDrawable().apply {
+                    setColor(ContextCompat.getColor(context, R.color.brand_primary))
+                    cornerRadius = context.dp(8).toFloat()
+                }
+                layoutParams = LinearLayout.LayoutParams(requireContext().dp(100), requireContext().dp(38))
+                setOnClickListener {
+                    startActivity(WechatRechargeActivity.intent(requireContext()))
+                }
+            })
+        })
+
         val gridRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         gridRow.addView(makeQuickTile("积分购买", "购买积分", ContextCompat.getColor(requireContext(), R.color.brand_secondary)) {
             startActivity(WebBrowserActivity.intent(requireContext(), AppEnvironment.COIN_PURCHASE_URL, "积分购买"))

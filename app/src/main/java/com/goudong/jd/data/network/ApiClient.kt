@@ -198,6 +198,23 @@ class ApiClient(
 
     fun urlEncode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8.name())
 
+    suspend fun downloadBytes(
+        path: String,
+        absoluteUrl: String? = null,
+    ): ByteArray = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(absoluteUrl ?: AppEnvironment.BASE_URL + path.removePrefix("/"))
+            .get()
+            .apply { withClientHeaders(emptyMap()).forEach { (key, value) -> addHeader(key, value) } }
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw ApiError("图片加载失败（${response.code}）")
+            }
+            return@withContext response.body?.bytes() ?: throw ApiError("无响应体")
+        }
+    }
+
     suspend fun streamSse(
         path: String,
         onLine: (String) -> Unit,

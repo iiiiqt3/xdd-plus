@@ -425,3 +425,49 @@ data class UserInfoEnvelope(
     val data: JsonElement? = null,
     val message: String? = null,
 )
+
+data class WechatRechargeTier(
+    val yuan: Int = 0,
+    val fen: Int = 0,
+    val points: Int = 0,
+)
+
+data class WechatRechargeConfig(
+    val enabled: Boolean = false,
+    @com.google.gson.annotations.SerializedName("can_recharge") val canRecharge: Boolean = false,
+    @com.google.gson.annotations.SerializedName("block_reason") val blockReason: String? = null,
+    @com.google.gson.annotations.SerializedName("bill_account_online") val billAccountOnline: Boolean = false,
+    @com.google.gson.annotations.SerializedName("bill_account_message") val billAccountMessage: String? = null,
+    @com.google.gson.annotations.SerializedName("points_per_yuan") val pointsPerYuan: Int = 0,
+    val tiers: List<WechatRechargeTier>? = null,
+    @com.google.gson.annotations.SerializedName("timeout_minutes") val timeoutMinutes: Int = 3,
+    @com.google.gson.annotations.SerializedName("external_purchase_url") val externalPurchaseUrl: String? = null,
+    @com.google.gson.annotations.SerializedName("payment_notice") val paymentNotice: List<String>? = null,
+)
+
+data class WechatRechargeOrder(
+    @com.google.gson.annotations.SerializedName("order_no") val orderNo: String = "",
+    @com.google.gson.annotations.SerializedName("requested_fen") val requestedFen: Int = 0,
+    @com.google.gson.annotations.SerializedName("payment_fen") val paymentFen: Int = 0,
+    @com.google.gson.annotations.SerializedName("paid_fen") val paidFen: Int = 0,
+    val points: Int = 0,
+    val status: String = "",
+    @com.google.gson.annotations.SerializedName("created_at") val createdAt: String? = null,
+    @com.google.gson.annotations.SerializedName("expires_at") val expiresAt: String? = null,
+    @com.google.gson.annotations.SerializedName("remaining_sec") val remainingSec: Long = 0,
+    val coin: Int? = null,
+    @com.google.gson.annotations.SerializedName("qrcode_url") val qrcodeUrl: String? = null,
+    @com.google.gson.annotations.SerializedName("paid_at") val paidAt: String? = null,
+    @com.google.gson.annotations.SerializedName("last_error") val lastError: String? = null,
+)
+
+data class WechatRechargeHistoryPage(
+    val list: List<WechatRechargeOrder> = emptyList(),
+    val total: Long = 0,
+)
+
+data class WechatRechargeCreateResult(
+    val order: WechatRechargeOrder,
+    val replacedPrevious: Boolean,
+    val message: String?,
+)

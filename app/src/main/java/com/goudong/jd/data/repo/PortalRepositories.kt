@@ -13,6 +13,10 @@ import com.goudong.jd.data.model.PortalNotificationPage
 import com.goudong.jd.data.model.PortalWechatActionResult
 import com.goudong.jd.data.model.ResetInfoPayload
 import com.goudong.jd.data.model.SubmitFeedbackPayload
+import com.goudong.jd.data.model.WechatRechargeConfig
+import com.goudong.jd.data.model.WechatRechargeCreateResult
+import com.goudong.jd.data.model.WechatRechargeHistoryPage
+import com.goudong.jd.data.model.WechatRechargeOrder
 import com.goudong.jd.data.network.ApiClient
 import com.goudong.jd.data.session.SessionManager
 import kotlinx.coroutines.async
@@ -668,5 +672,45 @@ class PortalRepository(
         val data = envelope.data ?: return null
         if (data.isJsonNull) return null
         return apiClient.gson.fromJson(data, KuwoWithdrawTask::class.java)
+    }
+
+    suspend fun fetchWechatRechargeConfig(): WechatRechargeConfig {
+        return apiClient.requestData("/api/portal/wechat-recharge/config")
+    }
+
+    suspend fun createWechatRechargeOrder(fen: Int): WechatRechargeCreateResult {
+        val text = apiClient.requestText(
+            path = "/api/portal/wechat-recharge/orders",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = apiClient.jsonBody(mapOf("fen" to fen)),
+        )
+        val json = apiClient.gson.fromJson(text, com.google.gson.JsonObject::class.java)
+        val code = json?.get("code")?.asInt ?: -1
+        if (code != 0) {
+            throw ApiError(json?.get("msg")?.asString ?: "创建订单失败")
+        }
+        val data = json.getAsJsonObject("data")
+            ?: throw ApiError("创建订单失败")
+        val order = apiClient.gson.fromJson(data, WechatRechargeOrder::class.java)
+        val replaced = json.has("replaced_previous") && json.get("replaced_previous").asBoolean
+        return WechatRechargeCreateResult(order, replaced, json.get("msg")?.asString)
+    }
+
+    suspend fun fetchWechatRechargeOrder(orderNo: String): WechatRechargeOrder {
+        val encoded = apiClient.urlEncode(orderNo)
+        return apiClient.requestData("/api/portal/wechat-recharge/orders/$encoded")
+    }
+
+    suspend fun fetchWechatRechargeHistory(page: Int = 1, limit: Int = 20): WechatRechargeHistoryPage {
+        return apiClient.requestData("/api/portal/wechat-recharge/orders?page=$page&limit=$limit")
+    }
+
+    suspend fun downloadWechatRechargeQR(pathOrUrl: String): ByteArray {
+        return if (pathOrUrl.startsWith("http")) {
+            apiClient.downloadBytes(path = "", absoluteUrl = pathOrUrl)
+        } else {
+            apiClient.downloadBytes(path = pathOrUrl)
+        }
     }
 }
