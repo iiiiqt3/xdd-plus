@@ -1638,7 +1638,7 @@ func (c *PortalController) WechatRechargeCreateOrder() {
 		c.ServeJSON()
 		return
 	}
-	order, err := models.CreateWechatRechargeOrder(c.PortalUserID, req.Fen, "portal")
+	order, replacedPrevious, err := models.CreateWechatRechargeOrder(c.PortalUserID, req.Fen, "portal")
 	if err != nil {
 		code := 1
 		msg := err.Error()
@@ -1650,7 +1650,15 @@ func (c *PortalController) WechatRechargeCreateOrder() {
 		return
 	}
 	pub := models.GetWechatRechargePublicOrder(order)
-	c.Data["json"] = map[string]interface{}{"code": 0, "data": pub, "msg": "请务必按弹窗显示的精确金额支付，付错金额无法自动到账"}
+	resp := map[string]interface{}{
+		"code": 0,
+		"data": pub,
+		"msg":  "请务必按弹窗显示的精确金额支付，付错金额无法自动到账",
+	}
+	if replacedPrevious {
+		resp["replaced_previous"] = true
+	}
+	c.Data["json"] = resp
 	c.ServeJSON()
 }
 

@@ -882,38 +882,41 @@ func round2(v float64) float64 {
 	return float64(int(v*100+0.5)) / 100
 }
 
-// CreateWechatRechargeOrder 创建充值订单（门户/机器人/App 共用）
-func CreateWechatRechargeOrder(qq, requestedFen int, channel string) (WechatRechargeOrder, error) {
+const wechatRechargeCancelReasonReplaced = "用户重新发起充值，订单已自动取消"
+
+// CreateWechatRechargeOrder 创建充值订单（门户/机器人/App 共用）。
+// 同一用户再次发起时，会自动取消其未完成的旧订单，避免多笔待支付订单互相干扰。
+func CreateWechatRechargeOrder(qq, requestedFen int, channel string) (WechatRechargeOrder, bool, error) {
 	cfg := GetWechatRechargeConfig()
 	if !cfg.Enabled {
-		return WechatRechargeOrder{}, errors.New("微信充值功能未开启")
+		return WechatRechargeOrder{}, false, errors.New("微信充值功能未开启")
 	}
 	if qq <= 0 {
-		return WechatRechargeOrder{}, errors.New("用户信息无效")
+		return WechatRechargeOrder{}, false, errors.New("用户信息无效")
 	}
 	channel = strings.TrimSpace(channel)
 	if channel == "" {
 		channel = "portal"
 	}
 	if channel == "portal" && !cfg.PortalEnabled {
-		return WechatRechargeOrder{}, errors.New("网页充值暂未开放")
+		return WechatRechargeOrder{}, false, errors.New("网页充值暂未开放")
 	}
 	if channel == "bot" && !cfg.BotEnabled {
-		return WechatRechargeOrder{}, errors.New("机器人充值暂未开放")
+		return WechatRechargeOrder{}, false, errors.New("机器人充值暂未开放")
 	}
 	if !wechatRechargeTierAllowed(requestedFen) {
-		return WechatRechargeOrder{}, errors.New("充值档位无效")
+		return WechatRechargeOrder{}, false, errors.New("充值档位无效")
 	}
 	if channel == "portal" {
 		if err := wechatRechargeEnsureQRReady(cfg); err != nil {
-			return WechatRechargeOrder{}, err
+			return WechatRechargeOrder{}, false, err
 		}
 	} else {
 		if online, reason := WechatRechargeBillAccountStatus(cfg); !online {
-			return WechatRechargeOrder{}, errors.New(reason)
+			return WechatRechargeOrder{}, false, errors.New(reason)
 		}
 		if err := wechatRechargeEnsureQRReady(cfg); err != nil {
-			return WechatRechargeOrder{}, err
+			return WechatRechargeOrder{}, false, err
 		}
 	}
 
@@ -929,7 +932,15 @@ func CreateWechatRechargeOrder(qq, requestedFen int, channel string) (WechatRech
 	}
 
 	wechatRechargeCreateMu.Lock()
+	var replacedPrevious bool
 	claimErr := db.Transaction(func(tx *gorm.DB) error {
+		cancelled, err := cancelWechatRechargePendingOrdersTx(tx, qq, now, wechatRechargeCancelReasonReplaced)
+		if err != nil {
+			return err
+		}
+		if cancelled > 0 {
+			replacedPrevious = true
+		}
 		dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 		dayEnd := dayStart.AddDate(0, 0, 1)
 		var dailyActivated int64
@@ -960,7 +971,7 @@ func CreateWechatRechargeOrder(qq, requestedFen int, channel string) (WechatRech
 	})
 	wechatRechargeCreateMu.Unlock()
 	if claimErr != nil {
-		return WechatRechargeOrder{}, claimErr
+		return WechatRechargeOrder{}, false, claimErr
 	}
 
 	readyAt := time.Now()
@@ -972,17 +983,28 @@ func CreateWechatRechargeOrder(qq, requestedFen int, channel string) (WechatRech
 		"activated_at": readyAt,
 	})
 	if result.Error != nil {
-		return WechatRechargeOrder{}, result.Error
+		return WechatRechargeOrder{}, replacedPrevious, result.Error
 	}
 	if result.RowsAffected != 1 {
 		_ = markWechatRechargeFailed(order.ID, "微信充值预检超时")
-		return WechatRechargeOrder{}, errors.New("微信充值订单已超时，请重新发起")
+		return WechatRechargeOrder{}, replacedPrevious, errors.New("微信充值订单已超时，请重新发起")
 	}
 	order.Status = "pending"
 	order.ExpiresAt = expiresAt
 	order.ActivatedAt = &readyAt
 	go ensureWechatRechargeOrderSession(order.ID, cfg)
-	return order, nil
+	return order, replacedPrevious, nil
+}
+
+func cancelWechatRechargePendingOrdersTx(tx *gorm.DB, qq int, now time.Time, reason string) (int64, error) {
+	result := tx.Model(&WechatRechargeOrder{}).
+		Where("qq = ? AND status IN ? AND expires_at > ?", qq, []string{"preparing", "pending"}, now.Add(-wechatRechargeGrace)).
+		Updates(map[string]interface{}{
+			"status":      "failed",
+			"session_key": "",
+			"last_error":  truncateWechatRechargeError(reason),
+		})
+	return result.RowsAffected, result.Error
 }
 
 func ensureWechatRechargeOrderSession(orderID uint64, cfg WechatRechargeConfig) {
@@ -1832,7 +1854,7 @@ func HandleBotWechatRechargeTier(sender *Sender, tierIndex int) {
 		return
 	}
 	requestedFen := cfg.TiersYuan[tierIndex-1] * 100
-	order, err := CreateWechatRechargeOrder(sender.UserID, requestedFen, "bot")
+	order, _, err := CreateWechatRechargeOrder(sender.UserID, requestedFen, "bot")
 	if err != nil {
 		if errors.Is(err, ErrWechatRechargeDailyLimit) {
 			sender.Reply(err.Error() + "：\n" + WechatRechargeFallbackURL())

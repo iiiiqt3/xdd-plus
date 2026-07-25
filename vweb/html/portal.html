@@ -5091,6 +5091,9 @@ async function startWxRecharge(fen) {
             return;
         }
         openWxRechargePayModal(resp.data);
+        if (resp.replaced_previous) {
+            toast('上一笔未支付订单已自动取消，请按本页新金额支付', 'info', 5000);
+        }
     } catch (err) {
         closeWxRechargePayModal();
         toast(err.message || '创建订单失败', 'error');
@@ -5158,6 +5161,9 @@ function openWxRechargePayModal(order) {
 function closeWxRechargePayModal() {
     document.getElementById('wxRechargePayModal').classList.remove('show');
     stopWxRechargeCountdown();
+    if (_wxRechargeActiveOrderNo && !_wxRechargeResultShown) {
+        toast('支付窗口已关闭，系统仍会自动检测到账；重新点档位将作废本笔并生成新订单', 'info', 5000);
+    }
 }
 
 function closeWxRechargePayModalAndPolling() {
@@ -5219,6 +5225,8 @@ function handleWxRechargeOrderUpdate(o) {
         stopWxRechargePolling();
         if (o.last_error && o.last_error.indexOf('付款金额') >= 0) {
             showWxRechargeWrongPaymentModal(o);
+        } else if (o.last_error && o.last_error.indexOf('自动取消') >= 0) {
+            return;
         }
         return;
     }
