@@ -1634,7 +1634,10 @@ func processWechatRechargeOrder(order *WechatRechargeOrder, cfg WechatRechargeCo
 		if record.Balance == targetFen {
 			continue
 		}
-		if record.Balance != order.RequestedFen {
+		if !wechatRechargeIsLikelyWrongPayment(*order, record) {
+			continue
+		}
+		if wechatRechargeOtherPendingOrderOwnsAmount(record.Balance, order.ID) {
 			continue
 		}
 		if wechatRechargeReceiptUsed(record.TransID) {
@@ -1691,8 +1694,39 @@ func wechatRechargeRecordInWindow(order WechatRechargeOrder, record wechatBillRe
 	return true
 }
 
+// wechatRechargeIsLikelyWrongPayment 判断账单是否像本订单的付错金额（非精确应付）。
+func wechatRechargeIsLikelyWrongPayment(order WechatRechargeOrder, record wechatBillRecord) bool {
+	target := wechatRechargeTargetFen(order)
+	paid := record.Balance
+	if paid <= 0 || paid == target {
+		return false
+	}
+	if paid == order.RequestedFen {
+		return true
+	}
+	if paid > target && paid < order.RequestedFen {
+		return true
+	}
+	return false
+}
+
+// wechatRechargeOtherPendingOrderOwnsAmount 避免把其他用户/其他待支付订单的正确金额误判为付错。
+func wechatRechargeOtherPendingOrderOwnsAmount(paidFen int, excludeOrderID uint64) bool {
+	var orders []WechatRechargeOrder
+	now := time.Now()
+	if err := db.Where("id <> ? AND status = ? AND expires_at > ?", excludeOrderID, "pending", now.Add(-wechatRechargeGrace)).Find(&orders).Error; err != nil {
+		return false
+	}
+	for _, item := range orders {
+		if wechatRechargeTargetFen(item) == paidFen {
+			return true
+		}
+	}
+	return false
+}
+
 func markWechatRechargeWrongPayment(order WechatRechargeOrder, record wechatBillRecord) {
-	reason := fmt.Sprintf("用户付款金额不正确（实付 %.2f 元，应付 %.2f 元）", float64(record.Balance)/100, float64(wechatRechargeTargetFen(order))/100)
+	reason := fmt.Sprintf("付款金额不正确（实付 %.2f 元，应付 %.2f 元）", float64(record.Balance)/100, float64(wechatRechargeTargetFen(order))/100)
 	result := db.Model(&WechatRechargeOrder{}).
 		Where("id = ? AND status = ?", order.ID, "pending").
 		Updates(map[string]interface{}{

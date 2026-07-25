@@ -4996,7 +4996,18 @@ function showWxRechargeWrongPaymentModal(order) {
     const expectYuan = order.payment_fen > 0 ? formatWxRechargeYuan(order.payment_fen) : _wxRechargeCurrentAmount;
     showWxRechargeResultModal('error', '付款金额失败', '系统检测到付款金额与订单不符，无法自动到账，请联系管理员处理', [
         { label: '应付金额', value: '¥ ' + expectYuan },
-        { label: '实付金额', value: paidYuan === '-' ? '-' : ('¥ ' + paidYuan) },
+        { label: '实付金额', value: paidYuan === '-' ? '（未能识别具体金额）' : ('¥ ' + paidYuan) },
+        { label: '订单号', value: order.order_no || '-' },
+        { label: '下单时间', value: order.created_at || '-' }
+    ]);
+}
+
+function showWxRechargeExpiredModal(order) {
+    document.getElementById('wxRechargePayModal').classList.remove('show');
+    stopWxRechargeCountdown();
+    const expectYuan = order.payment_fen > 0 ? formatWxRechargeYuan(order.payment_fen) : _wxRechargeCurrentAmount;
+    showWxRechargeResultModal('error', '订单已超时', '未检测到成功支付。若您已付款但未到账，可能是金额不正确（勿付档位整数），请联系管理员并提供截图', [
+        { label: '应付金额', value: '¥ ' + expectYuan },
         { label: '订单号', value: order.order_no || '-' },
         { label: '下单时间', value: order.created_at || '-' }
     ]);
@@ -5218,7 +5229,19 @@ function handleWxRechargeOrderUpdate(o) {
         showWxRechargeWrongPaymentModal(o);
         return;
     }
-    if (o.status === 'expired' || o.status === 'failed') {
+    if (o.status === 'expired') {
+        if (document.getElementById('wxRechargePayStatus')) {
+            document.getElementById('wxRechargePayStatus').textContent = '订单已超时';
+        }
+        stopWxRechargePolling();
+        if (o.paid_fen > 0 || (o.last_error && (o.last_error.indexOf('不正确') >= 0 || o.last_error.indexOf('付款金额') >= 0))) {
+            showWxRechargeWrongPaymentModal(o);
+        } else {
+            showWxRechargeExpiredModal(o);
+        }
+        return;
+    }
+    if (o.status === 'failed') {
         if (document.getElementById('wxRechargePayStatus')) {
             document.getElementById('wxRechargePayStatus').textContent = '订单已结束';
         }
