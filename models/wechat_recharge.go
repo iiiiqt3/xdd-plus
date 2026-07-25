@@ -42,6 +42,14 @@ var (
 		AccountKey string
 		SessionKey string
 	}
+	wechatRechargeBillStatusCache struct {
+		sync.RWMutex
+		AccountKey string
+		Online     bool
+		Reason     string
+		CheckedAt  time.Time
+	}
+	wechatRechargeBillStatusCacheTTL = 60 * time.Second
 )
 
 // WechatRechargeConfig 微信赞赏码充值配置（写入 conf/config.yaml 的 wechat_recharge 段）
@@ -517,8 +525,55 @@ func WechatRechargeExternalPurchaseURL() string {
 	return strings.TrimSpace(GetWechatRechargeConfig().ExternalPurchaseURL)
 }
 
-// WechatRechargeBillAccountStatus 检测查账账号是否在线（应用宝 / 微信协议）
+// WechatRechargeBillAccountStatus 检测查账账号是否在线（应用宝 / 微信协议，带短时缓存）
 func WechatRechargeBillAccountStatus(cfg WechatRechargeConfig) (online bool, reason string) {
+	accountKey := wechatRechargeBillAccountStatusKey(cfg)
+	if cached, ok := getCachedWechatRechargeBillStatus(accountKey); ok {
+		return cached.online, cached.reason
+	}
+	online, reason = wechatRechargeBillAccountStatusLive(cfg)
+	cacheWechatRechargeBillStatus(accountKey, online, reason)
+	return online, reason
+}
+
+func wechatRechargeBillAccountStatusKey(cfg WechatRechargeConfig) string {
+	return strings.TrimSpace(cfg.BillAccountType) + ":" + strings.TrimSpace(cfg.BillAccountRef)
+}
+
+func getCachedWechatRechargeBillStatus(accountKey string) (struct {
+	online bool
+	reason string
+}, bool) {
+	wechatRechargeBillStatusCache.RLock()
+	defer wechatRechargeBillStatusCache.RUnlock()
+	if wechatRechargeBillStatusCache.AccountKey != accountKey {
+		return struct {
+			online bool
+			reason string
+		}{}, false
+	}
+	if time.Since(wechatRechargeBillStatusCache.CheckedAt) > wechatRechargeBillStatusCacheTTL {
+		return struct {
+			online bool
+			reason string
+		}{}, false
+	}
+	return struct {
+		online bool
+		reason string
+	}{wechatRechargeBillStatusCache.Online, wechatRechargeBillStatusCache.Reason}, true
+}
+
+func cacheWechatRechargeBillStatus(accountKey string, online bool, reason string) {
+	wechatRechargeBillStatusCache.Lock()
+	defer wechatRechargeBillStatusCache.Unlock()
+	wechatRechargeBillStatusCache.AccountKey = accountKey
+	wechatRechargeBillStatusCache.Online = online
+	wechatRechargeBillStatusCache.Reason = reason
+	wechatRechargeBillStatusCache.CheckedAt = time.Now()
+}
+
+func wechatRechargeBillAccountStatusLive(cfg WechatRechargeConfig) (online bool, reason string) {
 	ref := strings.TrimSpace(cfg.BillAccountRef)
 	if ref == "" {
 		return false, "后台尚未配置查账账号"
@@ -849,11 +904,17 @@ func CreateWechatRechargeOrder(qq, requestedFen int, channel string) (WechatRech
 	if !wechatRechargeTierAllowed(requestedFen) {
 		return WechatRechargeOrder{}, errors.New("充值档位无效")
 	}
-	if online, reason := WechatRechargeBillAccountStatus(cfg); !online {
-		return WechatRechargeOrder{}, errors.New(reason)
-	}
-	if err := wechatRechargeEnsureQRReady(cfg); err != nil {
-		return WechatRechargeOrder{}, err
+	if channel == "portal" {
+		if err := wechatRechargeEnsureQRReady(cfg); err != nil {
+			return WechatRechargeOrder{}, err
+		}
+	} else {
+		if online, reason := WechatRechargeBillAccountStatus(cfg); !online {
+			return WechatRechargeOrder{}, errors.New(reason)
+		}
+		if err := wechatRechargeEnsureQRReady(cfg); err != nil {
+			return WechatRechargeOrder{}, err
+		}
 	}
 
 	now := time.Now()

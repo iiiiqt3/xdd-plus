@@ -1268,6 +1268,8 @@
         .wxrc-pay-copy { margin-top: 8px; font-size: 12px; color: #64748b; }
         .wxrc-pay-copy button { margin-left: 8px; padding: 4px 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 12px; transition: background .2s; }
         .wxrc-pay-copy button:hover { background: #f8fafc; }
+        .wxrc-pay-qr-loading { opacity: .35; filter: grayscale(.2); }
+        .wxrc-pay-amount.is-loading { color: #94a3b8; font-size: 22px; }
         .wxrc-pay-steps { text-align: left; font-size: 12px; color: #475569; line-height: 1.7; margin: 12px 0; padding-left: 18px; }
         .wxrc-pay-warn { text-align: left; background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #9a3412; line-height: 1.65; margin-top: 10px; }
         .wxrc-pay-warn summary { cursor: pointer; font-weight: 700; }
@@ -5047,17 +5049,20 @@ async function startWxRecharge(fen) {
     }
     _wxRechargeCreating = true;
     setWxRechargeTiersLoading(true, fen);
+    openWxRechargePayModalLoading(fen);
     try {
         const resp = await request('/api/portal/wechat-recharge/orders', {
             method: 'POST',
             body: JSON.stringify({ fen: fen })
         });
         if (resp.code !== 0) {
+            closeWxRechargePayModal();
             toast(resp.msg || '创建订单失败', 'error');
             return;
         }
         openWxRechargePayModal(resp.data);
     } catch (err) {
+        closeWxRechargePayModal();
         toast(err.message || '创建订单失败', 'error');
     } finally {
         _wxRechargeCreating = false;
@@ -5075,18 +5080,40 @@ function copyWxRechargeAmount() {
     }
 }
 
+function openWxRechargePayModalLoading(fen) {
+    _wxRechargeResultShown = false;
+    stopWxRechargePolling();
+    const tier = ((_wxRechargeCfg && _wxRechargeCfg.tiers) || []).find(function(t) { return t.fen === fen; });
+    const modal = document.getElementById('wxRechargePayModal');
+    _wxRechargeCurrentAmount = '';
+    document.getElementById('wxRechargePayAmount').textContent = '计算中…';
+    document.getElementById('wxRechargePayAmount').classList.add('is-loading');
+    document.getElementById('wxRechargePayTier').textContent = tier ? tier.yuan : (fen / 100).toFixed(0);
+    document.getElementById('wxRechargePayPoints').textContent = tier ? tier.points : Math.round(fen);
+    document.getElementById('wxRechargePayOrderNo').textContent = '订单号：创建中…';
+    document.getElementById('wxRechargePayStatus').textContent = '正在创建订单，请稍候…';
+    document.getElementById('wxRechargePayTimer').textContent = '--';
+    const qr = document.getElementById('wxRechargePayQR');
+    qr.removeAttribute('src');
+    qr.classList.add('wxrc-pay-qr-loading');
+    modal.classList.add('show');
+}
+
 function openWxRechargePayModal(order) {
     _wxRechargeCurrentOrder = order;
     _wxRechargeResultShown = false;
     const modal = document.getElementById('wxRechargePayModal');
     const amount = formatWxRechargeYuan(order.payment_fen);
     _wxRechargeCurrentAmount = amount;
-    document.getElementById('wxRechargePayAmount').textContent = '¥ ' + amount;
+    const amountEl = document.getElementById('wxRechargePayAmount');
+    amountEl.textContent = '¥ ' + amount;
+    amountEl.classList.remove('is-loading');
     document.getElementById('wxRechargePayTier').textContent = (order.requested_fen / 100).toFixed(0);
     document.getElementById('wxRechargePayPoints').textContent = order.points || Math.round(order.requested_fen);
     document.getElementById('wxRechargePayOrderNo').textContent = '订单号：' + order.order_no;
     document.getElementById('wxRechargePayStatus').textContent = '等待支付… 请务必支付 ¥' + amount + '（不是档位整数金额）';
     const qr = document.getElementById('wxRechargePayQR');
+    qr.classList.remove('wxrc-pay-qr-loading');
     let qrUrl = order.qrcode_url || '';
     if (qrUrl && qrUrl.indexOf('/api/portal/wechat-recharge/qrcode/') === 0) {
         qrUrl += (qrUrl.indexOf('?') >= 0 ? '&' : '?') + '_t=' + Date.now();
