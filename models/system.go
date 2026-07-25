@@ -96,7 +96,9 @@ func SaveSysConfig(config SystemConfig) string {
 		Name:  "sysconfig",
 		Value: jsonStr,
 	}
-	ExportEnv(env1)
+	if err := ExportEnv(env1); err != nil {
+		return "保存失败: " + err.Error()
+	}
 	ListConfig()
 	return "保存成功"
 }
@@ -126,7 +128,7 @@ func updateUsers() {
 		env := &Env{}
 		env.Name = "14.6"
 		env.Value = "true"
-		ExportEnv(env)
+		_ = ExportEnv(env)
 
 		JdCookie{}.Push("升级成功，已完成用户结构改造")
 	}

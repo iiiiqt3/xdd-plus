@@ -22,10 +22,11 @@ import (
 )
 
 const (
-	wechatRechargeConfigEnv   = "wechat_recharge_config"
-	wechatTallybookAppID      = "wx7c86e0c731b9b8ef"
-	wechatRechargeGrace       = 15 * time.Second
-	wechatRechargeDir         = "conf/wechat_recharge"
+	wechatRechargeConfigEnv  = "wechat_recharge_config"
+	wechatRechargeConfigFile = "config.json"
+	wechatTallybookAppID     = "wx7c86e0c731b9b8ef"
+	wechatRechargeGrace        = 15 * time.Second
+	wechatRechargeDir          = "conf/wechat_recharge"
 )
 
 var (
@@ -218,10 +219,56 @@ func normalizeWechatRechargeConfig(cfg WechatRechargeConfig) WechatRechargeConfi
 	return cfg
 }
 
+func wechatRechargeConfigFilePath() string {
+	return filepath.Join(ExecPath, wechatRechargeDir, wechatRechargeConfigFile)
+}
+
+func readWechatRechargeConfigRaw() string {
+	if data, err := os.ReadFile(wechatRechargeConfigFilePath()); err == nil {
+		if raw := strings.TrimSpace(string(data)); raw != "" {
+			return raw
+		}
+	}
+	return strings.TrimSpace(GetEnv(wechatRechargeConfigEnv))
+}
+
+func writeWechatRechargeConfigRaw(raw string) error {
+	dir := filepath.Join(ExecPath, wechatRechargeDir)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("创建配置目录失败: %w", err)
+	}
+	path := wechatRechargeConfigFilePath()
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte(raw), 0644); err != nil {
+		return fmt.Errorf("写入配置失败: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("保存配置失败: %w", err)
+	}
+	return nil
+}
+
+func migrateWechatRechargeConfigFromEnv() {
+	path := wechatRechargeConfigFilePath()
+	if data, err := os.ReadFile(path); err == nil && strings.TrimSpace(string(data)) != "" {
+		return
+	}
+	raw := strings.TrimSpace(GetEnv(wechatRechargeConfigEnv))
+	if raw == "" {
+		return
+	}
+	if err := writeWechatRechargeConfigRaw(raw); err != nil {
+		Warn("[微信充值] 迁移 env 配置到文件失败: %v", err)
+		return
+	}
+	Info("[微信充值] 已将 env 配置迁移到 %s", path)
+}
+
 func GetWechatRechargeConfig() WechatRechargeConfig {
 	wechatRechargeCfgMu.RLock()
 	defer wechatRechargeCfgMu.RUnlock()
-	raw := strings.TrimSpace(GetEnv(wechatRechargeConfigEnv))
+	raw := readWechatRechargeConfigRaw()
 	if raw == "" {
 		return defaultWechatRechargeConfig()
 	}
@@ -256,7 +303,12 @@ func SaveWechatRechargeConfig(cfg WechatRechargeConfig) error {
 	if err != nil {
 		return err
 	}
-	ExportEnv(&Env{Name: wechatRechargeConfigEnv, Value: string(raw), Note: "微信赞赏码充值配置"})
+	if err := writeWechatRechargeConfigRaw(string(raw)); err != nil {
+		return err
+	}
+	if err := ExportEnv(&Env{Name: wechatRechargeConfigEnv, Value: string(raw), Note: "微信赞赏码充值配置"}); err != nil {
+		Warn("[微信充值] 同步 env 配置失败（文件已保存）: %v", err)
+	}
 	wechatRechargeCfgMu.Lock()
 	wechatRechargeCfgMu.Unlock()
 	return nil
@@ -556,6 +608,7 @@ func wechatRechargeTierAllowed(fen int) bool {
 
 func InitWechatRecharge() {
 	_ = os.MkdirAll(WechatRechargeQRCodeDir(), 0755)
+	migrateWechatRechargeConfigFromEnv()
 	StartWechatRechargeWorker()
 }
 

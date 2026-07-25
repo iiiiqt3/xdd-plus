@@ -530,7 +530,7 @@ func main() {
 	// 启动后延迟发送启动通知
 	go func() {
 		time.Sleep(time.Second * 4)
-		(&models.JdCookie{}).Push(fmt.Sprintf("小滴滴已启动，版本号:%s", models.Config.Version))
+		(&models.JdCookie{}).Push(fmt.Sprintf("大师曼已启动，版本号:%s", models.Config.Version))
 
 	}()
 

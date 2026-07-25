@@ -40,7 +40,7 @@ func Daemon() {
     if err != nil {
         panic(err)
     }
-    Info("小滴滴运行于后台模式")
+    Info("大师曼运行于后台模式")
     os.Exit(0)
 }
 

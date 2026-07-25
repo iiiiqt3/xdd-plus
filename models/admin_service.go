@@ -877,7 +877,7 @@ func SaveJdConfigForAdmin(req map[string]interface{}) string {
 	}
 
 	if saveWxgid != "" {
-		ExportEnv(&Env{Name: "WxGroupID", Value: saveWxgid})
+		_ = ExportEnv(&Env{Name: "WxGroupID", Value: saveWxgid})
 		Config.WXGroupID = saveWxgid
 	}
 

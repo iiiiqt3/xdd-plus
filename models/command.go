@@ -303,7 +303,7 @@ var codeSignals = []CodeSignal{
 		Handle: func(sender *Sender) interface{} {
 			if sender.Type == "wxg" { // 如果是群聊消息
 				if sender.IsAdmin { // 如果是管理员
-					ExportEnv(&Env{
+					_ = ExportEnv(&Env{
 						Name:  "InviteWxGroupID",
 						Value: sender.WxGroupId,
 					})
@@ -340,7 +340,7 @@ var codeSignals = []CodeSignal{
 			}
 			if sender.Type == "wxg" { // 如果是群聊消息
 				if sender.IsAdmin { // 如果是管理员
-					ExportEnv(&Env{
+					_ = ExportEnv(&Env{
 						Name:  "InviteWxGroupID",
 						Value: sender.WxGroupId,
 					})
@@ -401,7 +401,7 @@ var codeSignals = []CodeSignal{
 						Name:  "WxGroupID",
 						Value: env + "," + sender.WxGroupId,
 					}
-					ExportEnv(env1)
+					_ = ExportEnv(env1)
 					initWX()
 					return "监听成功"
 				}
@@ -425,7 +425,7 @@ var codeSignals = []CodeSignal{
 						Name:  "WxGroupID",
 						Value: replace,
 					}
-					ExportEnv(env1)
+					_ = ExportEnv(env1)
 					initWX()
 					return "取消监听成功"
 				}
@@ -2740,7 +2740,7 @@ var codeSignals = []CodeSignal{
 			} else {
 				return "???"
 			}
-			ExportEnv(env)
+			_ = ExportEnv(env)
 			if strings.EqualFold(env.Name, "jd_zdjr_activityId") {
 				runTask(&Task{Path: "jd_zdjr_activityId.js", Envs: []Env{
 					{Name: "jd_zdjr_activityId", Value: env.Value},
@@ -3058,7 +3058,7 @@ var codeSignals = []CodeSignal{
 				Name:  "AutoAgree",
 				Value: "1",
 			}
-			ExportEnv(env)
+			_ = ExportEnv(env)
 			sender.Reply("操作成功")
 			return nil
 		},
@@ -3083,7 +3083,7 @@ var codeSignals = []CodeSignal{
 				Name:  "Autocollection",
 				Value: "1",
 			}
-			ExportEnv(env)
+			_ = ExportEnv(env)
 			sender.Reply("操作成功")
 			return nil
 		},
@@ -3110,7 +3110,7 @@ var codeSignals = []CodeSignal{
 				Name:  "AgreeMsg",
 				Value: ctt,
 			}
-			ExportEnv(env)
+			_ = ExportEnv(env)
 			sender.Reply("操作成功")
 			return nil
 		},
@@ -3343,7 +3343,7 @@ var codeSignals = []CodeSignal{
 				Name:  "Welcome",
 				Value: ctt,
 			}
-			ExportEnv(env)
+			_ = ExportEnv(env)
 			sender.Reply("操作成功")
 			return nil
 		},

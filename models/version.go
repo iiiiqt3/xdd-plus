@@ -166,8 +166,8 @@ func initVersion() {
 		return
 	}
 	if hasUpdate {
-		Info("小滴滴检测到新版本")
-		(&JdCookie{}).Push("小滴滴检测到新版本")
+		Info("大师曼检测到新版本")
+		(&JdCookie{}).Push("大师曼检测到新版本")
 	}
 }
 
@@ -182,8 +182,8 @@ func GetNewVersion() {
 		}
 		if hasUpdate {
 			notify = false
-			Info("小滴滴检测到新版本")
-			(&JdCookie{}).Push("小滴滴检测到新版本")
+			Info("大师曼检测到新版本")
+			(&JdCookie{}).Push("大师曼检测到新版本")
 		}
 	}
 }
@@ -197,7 +197,7 @@ func Update(sender *Sender) error {
 		Warn("版本检查失败，跳过比对直接更新: %v", checkErr)
 		sender.Reply("版本检查失败，直接尝试拉取更新...")
 	} else if !hasUpdate {
-		return errors.New("小滴滴已是最新版啦")
+		return errors.New("大师曼已是最新版啦")
 	}
 
 	if err := ensureGitRepo(); err != nil {
