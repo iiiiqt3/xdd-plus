@@ -1280,7 +1280,7 @@ func renewWechatRechargeSession(cfg WechatRechargeConfig) (string, error) {
 	if ref == "" {
 		return "", errors.New("后台尚未配置查账账号")
 	}
-	wxcode, err := ProtocolGetWxAppCode(ref, wechatTallybookAppID)
+	wxcode, err := ProtocolGetWxAppCodeForBillAccount(cfg.BillAccountType, ref, wechatTallybookAppID)
 	if err != nil {
 		return "", err
 	}

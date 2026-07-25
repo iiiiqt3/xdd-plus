@@ -155,6 +155,40 @@ func ProtocolGetWxAppCode(ref, appID string) (code string, err error) {
 	return protocolGetWxCodeViaWechat(ref, appID)
 }
 
+// ProtocolGetWxAppCodeForBillAccount 按微信充值后台配置的查账类型取 code。
+// billType=yyb 时仅走应用宝，不回落微信协议（避免多余的微信在线检测）。
+func ProtocolGetWxAppCodeForBillAccount(billType, ref, appID string) (string, error) {
+	ref = strings.TrimSpace(ref)
+	appID = strings.TrimSpace(appID)
+	if ref == "" {
+		return "", fmt.Errorf("缺少账号标识")
+	}
+	if appID == "" {
+		appID = WxJdAppID
+	}
+	billType = strings.ToLower(strings.TrimSpace(billType))
+	if billType == "wx" {
+		Yyb().Infof("[微信充值查账] getCode → 微信协议 wxid=%s appid=%s", protocolRefShort(ref), appID)
+		return protocolGetWxCodeViaWechat(ref, appID)
+	}
+	route := ResolveProtocolRoute(ref)
+	if route.Backend != "yyb" {
+		route.Backend = "yyb"
+		route.OpenID = ref
+		route.DirectYYB = true
+	}
+	data, err := protocolYybGetCodeWithRetry(route, appID)
+	if err != nil {
+		Yyb().Warnf("[微信充值查账] getCode → 应用宝 失败 %s appid=%s err=%v", route.LogSummary(), appID, err)
+		return "", friendlyProtocolErr(err)
+	}
+	if c := extractCompatCode(data); c != "" {
+		Yyb().Infof("[微信充值查账] getCode → 应用宝 成功 %s appid=%s", route.LogSummary(), appID)
+		return c, nil
+	}
+	return "", fmt.Errorf("应用宝未返回 code")
+}
+
 // ProtocolGetWxAppPhone 统一取小程序手机号（授权 code / 手机号列表）
 func ProtocolGetWxAppPhone(ref, appID string) (map[string]interface{}, error) {
 	ref = strings.TrimSpace(ref)
