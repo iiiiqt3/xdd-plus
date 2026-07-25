@@ -195,6 +195,7 @@ type Yaml struct {
 	Title                 string
 	PortalPublicURL       string      `yaml:"portal_public_url"` // 门户/上传资源公网地址，用于QQ/微信群推送图片
 	Jpush                 JpushConfig `yaml:"jpush"`
+	WechatRecharge        WechatRechargeConfig `yaml:"wechat_recharge"`
 }
 
 var Balance = "balance"
@@ -429,6 +430,7 @@ func ReloadConfig() error {
 	}
 	configMutex.Unlock()
 
+	refreshWechatRechargeYAMLFlag()
 	runConfigReloadHooks()
 
 	Info("配置已热更新成功")

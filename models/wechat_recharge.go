@@ -22,11 +22,11 @@ import (
 )
 
 const (
-	wechatRechargeConfigEnv  = "wechat_recharge_config"
-	wechatRechargeConfigFile = "config.json"
-	wechatTallybookAppID     = "wx7c86e0c731b9b8ef"
-	wechatRechargeGrace        = 15 * time.Second
-	wechatRechargeDir          = "conf/wechat_recharge"
+	wechatRechargeConfigEnv = "wechat_recharge_config"
+	wechatTallybookAppID    = "wx7c86e0c731b9b8ef"
+	wechatRechargeGrace       = 15 * time.Second
+	wechatRechargeDir         = "conf/wechat_recharge"
+	wechatRechargeConfigFile  = "config.json" // 旧版独立配置文件，仅用于迁移
 )
 
 var (
@@ -36,7 +36,7 @@ var (
 
 	wechatRechargeOnce     sync.Once
 	wechatRechargeCreateMu sync.Mutex
-	wechatRechargeCfgMu    sync.RWMutex
+	wechatRechargeYAMLConfigured bool
 	wechatRechargeSessionCache struct {
 		sync.RWMutex
 		AccountKey string
@@ -44,26 +44,26 @@ var (
 	}
 )
 
-// WechatRechargeConfig 微信赞赏码充值后台配置（存 env 表 JSON）
+// WechatRechargeConfig 微信赞赏码充值配置（写入 conf/config.yaml 的 wechat_recharge 段）
 type WechatRechargeConfig struct {
-	Enabled             bool   `json:"enabled"`
-	PortalEnabled       bool   `json:"portal_enabled"`
-	BotEnabled          bool   `json:"bot_enabled"`
-	BillAccountType     string `json:"bill_account_type"` // yyb | wx
-	BillAccountRef      string `json:"bill_account_ref"`
-	QRCodeMode          string `json:"qrcode_mode"` // url | upload
-	QRCodeURL           string `json:"qrcode_url"`
-	QRCodeFile          string `json:"qrcode_file"`
-	FallbackURL         string `json:"fallback_url"`
-	ExternalPurchaseURL string `json:"external_purchase_url"`
-	TiersYuan           []int  `json:"tiers_yuan"`
-	PointsPerYuan       int    `json:"points_per_yuan"`
-	MaxConcurrent       int    `json:"max_concurrent"`
-	DailyLimit          int    `json:"daily_limit"`
-	OrderTimeoutMinutes int    `json:"order_timeout_minutes"`
-	RandomFenMin        int    `json:"random_fen_min"`
-	RandomFenMax        int    `json:"random_fen_max"`
-	PollIntervalSec     int    `json:"poll_interval_sec"`
+	Enabled             bool   `json:"enabled" yaml:"enabled"`
+	PortalEnabled       bool   `json:"portal_enabled" yaml:"portal_enabled"`
+	BotEnabled          bool   `json:"bot_enabled" yaml:"bot_enabled"`
+	BillAccountType     string `json:"bill_account_type" yaml:"bill_account_type"` // yyb | wx
+	BillAccountRef      string `json:"bill_account_ref" yaml:"bill_account_ref"`
+	QRCodeMode          string `json:"qrcode_mode" yaml:"qrcode_mode"` // url | upload
+	QRCodeURL           string `json:"qrcode_url" yaml:"qrcode_url"`
+	QRCodeFile          string `json:"qrcode_file" yaml:"qrcode_file"`
+	FallbackURL         string `json:"fallback_url" yaml:"fallback_url"`
+	ExternalPurchaseURL string `json:"external_purchase_url" yaml:"external_purchase_url"`
+	TiersYuan           []int  `json:"tiers_yuan" yaml:"tiers_yuan"`
+	PointsPerYuan       int    `json:"points_per_yuan" yaml:"points_per_yuan"`
+	MaxConcurrent       int    `json:"max_concurrent" yaml:"max_concurrent"`
+	DailyLimit          int    `json:"daily_limit" yaml:"daily_limit"`
+	OrderTimeoutMinutes int    `json:"order_timeout_minutes" yaml:"order_timeout_minutes"`
+	RandomFenMin        int    `json:"random_fen_min" yaml:"random_fen_min"`
+	RandomFenMax        int    `json:"random_fen_max" yaml:"random_fen_max"`
+	PollIntervalSec     int    `json:"poll_interval_sec" yaml:"poll_interval_sec"`
 }
 
 // WechatRechargeOrder 微信赞赏充值订单
@@ -223,60 +223,185 @@ func wechatRechargeConfigFilePath() string {
 	return filepath.Join(ExecPath, wechatRechargeDir, wechatRechargeConfigFile)
 }
 
-func readWechatRechargeConfigRaw() string {
-	if data, err := os.ReadFile(wechatRechargeConfigFilePath()); err == nil {
-		if raw := strings.TrimSpace(string(data)); raw != "" {
-			return raw
-		}
-	}
-	return strings.TrimSpace(GetEnv(wechatRechargeConfigEnv))
+func configYAMLPath() string {
+	return filepath.Join(ExecPath, "conf", "config.yaml")
 }
 
-func writeWechatRechargeConfigRaw(raw string) error {
-	dir := filepath.Join(ExecPath, wechatRechargeDir)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("创建配置目录失败: %w", err)
+func wechatYAMLString(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return `""`
 	}
-	path := wechatRechargeConfigFilePath()
+	return strconv.Quote(strings.TrimSpace(s))
+}
+
+func formatWechatRechargeTiersYAML(tiers []int) string {
+	parts := make([]string, 0, len(tiers))
+	for _, y := range tiers {
+		parts = append(parts, strconv.Itoa(y))
+	}
+	return "[" + strings.Join(parts, ", ") + "]"
+}
+
+func formatWechatRechargeYAMLBlock(cfg WechatRechargeConfig) []string {
+	return []string{
+		"# 微信赞赏码充值（门户 / 机器人 / App 共用，后台「微信赞赏充值」保存后写入）",
+		"wechat_recharge:",
+		"  enabled: " + strconv.FormatBool(cfg.Enabled) + " # 总开关",
+		"  portal_enabled: " + strconv.FormatBool(cfg.PortalEnabled) + " # 网页充值开关",
+		"  bot_enabled: " + strconv.FormatBool(cfg.BotEnabled) + " # 机器人充值开关",
+		"  bill_account_type: " + wechatYAMLString(cfg.BillAccountType) + " # 查账账号类型：yyb 应用宝 | wx 微信协议",
+		"  bill_account_ref: " + wechatYAMLString(cfg.BillAccountRef) + " # 查账账号标识（应用宝 openid/ref，微信协议 wxid）",
+		"  qrcode_mode: " + wechatYAMLString(cfg.QRCodeMode) + " # 收款码方式：url 图片链接 | upload 上传图片",
+		"  qrcode_url: " + wechatYAMLString(cfg.QRCodeURL) + " # 收款二维码链接（qrcode_mode=url 时填写）",
+		"  qrcode_file: " + wechatYAMLString(cfg.QRCodeFile) + " # 上传的收款码文件名（存于 conf/wechat_recharge/）",
+		"  tiers_yuan: " + formatWechatRechargeTiersYAML(cfg.TiersYuan) + " # 充值档位（元）",
+		"  points_per_yuan: " + strconv.Itoa(cfg.PointsPerYuan) + " # 积分比例（每 1 元兑换积分数）",
+		"  max_concurrent: " + strconv.Itoa(cfg.MaxConcurrent) + " # 同时充值人数上限",
+		"  daily_limit: " + strconv.Itoa(cfg.DailyLimit) + " # 每用户每日充值次数",
+		"  order_timeout_minutes: " + strconv.Itoa(cfg.OrderTimeoutMinutes) + " # 订单超时（分钟）",
+		"  random_fen_min: " + strconv.Itoa(cfg.RandomFenMin) + " # 随机减分最小值（分，1 分=0.01 元）",
+		"  random_fen_max: " + strconv.Itoa(cfg.RandomFenMax) + " # 随机减分最大值（分）",
+		"  poll_interval_sec: " + strconv.Itoa(cfg.PollIntervalSec) + " # 账单轮询间隔（秒）",
+		"  external_purchase_url: " + wechatYAMLString(cfg.ExternalPurchaseURL) + " # 门户「前往购买积分」外链",
+		"  fallback_url: " + wechatYAMLString(cfg.FallbackURL) + " # 失败兜底链接（发卡网等）",
+	}
+}
+
+func findWechatRechargeSectionRange(lines []string) (start, end int) {
+	start = -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "wechat_recharge:") {
+			start = i
+			if i > 0 {
+				prev := strings.TrimSpace(lines[i-1])
+				if strings.HasPrefix(prev, "#") && strings.Contains(prev, "微信赞赏") {
+					start = i - 1
+				}
+			}
+			break
+		}
+	}
+	if start < 0 {
+		return -1, -1
+	}
+	end = len(lines)
+	for i := start + 1; i < len(lines); i++ {
+		line := lines[i]
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") && strings.Contains(trimmed, ":") {
+			end = i
+			break
+		}
+	}
+	return start, end
+}
+
+func configYAMLHasWechatRechargeSection(data []byte) bool {
+	return strings.Contains(string(data), "wechat_recharge:")
+}
+
+func loadLegacyWechatRechargeConfig() (WechatRechargeConfig, bool) {
+	if data, err := os.ReadFile(wechatRechargeConfigFilePath()); err == nil {
+		if raw := strings.TrimSpace(string(data)); raw != "" {
+			var cfg WechatRechargeConfig
+			if json.Unmarshal([]byte(raw), &cfg) == nil {
+				return normalizeWechatRechargeConfig(cfg), true
+			}
+		}
+	}
+	raw := strings.TrimSpace(GetEnv(wechatRechargeConfigEnv))
+	if raw == "" {
+		return WechatRechargeConfig{}, false
+	}
+	var cfg WechatRechargeConfig
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		return WechatRechargeConfig{}, false
+	}
+	return normalizeWechatRechargeConfig(cfg), true
+}
+
+func saveWechatRechargeConfigToYAML(cfg WechatRechargeConfig) error {
+	path := configYAMLPath()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("读取 config.yaml 失败: %w", err)
+	}
+	lines := strings.Split(string(data), "\n")
+	block := formatWechatRechargeYAMLBlock(cfg)
+	start, end := findWechatRechargeSectionRange(lines)
+	var newLines []string
+	if start >= 0 {
+		newLines = append(newLines, lines[:start]...)
+		newLines = append(newLines, block...)
+		newLines = append(newLines, lines[end:]...)
+	} else {
+		newLines = append(newLines, lines...)
+		if len(newLines) > 0 && strings.TrimSpace(newLines[len(newLines)-1]) != "" {
+			newLines = append(newLines, "")
+		}
+		newLines = append(newLines, block...)
+	}
+	content := strings.Join(newLines, "\n")
+	if !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(raw), 0644); err != nil {
-		return fmt.Errorf("写入配置失败: %w", err)
+	if err := os.WriteFile(tmp, []byte(content), 0644); err != nil {
+		return fmt.Errorf("写入 config.yaml 失败: %w", err)
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		_ = os.Remove(tmp)
-		return fmt.Errorf("保存配置失败: %w", err)
+		return fmt.Errorf("保存 config.yaml 失败: %w", err)
 	}
 	return nil
 }
 
-func migrateWechatRechargeConfigFromEnv() {
-	path := wechatRechargeConfigFilePath()
-	if data, err := os.ReadFile(path); err == nil && strings.TrimSpace(string(data)) != "" {
+func migrateWechatRechargeConfigToYAML() {
+	data, err := os.ReadFile(configYAMLPath())
+	if err != nil {
 		return
 	}
-	raw := strings.TrimSpace(GetEnv(wechatRechargeConfigEnv))
-	if raw == "" {
+	if configYAMLHasWechatRechargeSection(data) {
 		return
 	}
-	if err := writeWechatRechargeConfigRaw(raw); err != nil {
-		Warn("[微信充值] 迁移 env 配置到文件失败: %v", err)
+	cfg, ok := loadLegacyWechatRechargeConfig()
+	if !ok {
 		return
 	}
-	Info("[微信充值] 已将 env 配置迁移到 %s", path)
+	if err := saveWechatRechargeConfigToYAML(cfg); err != nil {
+		Warn("[微信充值] 迁移旧配置到 config.yaml 失败: %v", err)
+		return
+	}
+	if err := ReloadConfig(); err != nil {
+		Warn("[微信充值] 迁移后热更新失败: %v", err)
+	}
+	refreshWechatRechargeYAMLFlag()
+	Info("[微信充值] 已将旧配置迁移到 conf/config.yaml 的 wechat_recharge 段")
+}
+
+func refreshWechatRechargeYAMLFlag() {
+	data, err := os.ReadFile(configYAMLPath())
+	if err != nil {
+		wechatRechargeYAMLConfigured = false
+		return
+	}
+	wechatRechargeYAMLConfigured = configYAMLHasWechatRechargeSection(data)
 }
 
 func GetWechatRechargeConfig() WechatRechargeConfig {
-	wechatRechargeCfgMu.RLock()
-	defer wechatRechargeCfgMu.RUnlock()
-	raw := readWechatRechargeConfigRaw()
-	if raw == "" {
+	if !wechatRechargeYAMLConfigured {
+		if legacy, ok := loadLegacyWechatRechargeConfig(); ok {
+			return legacy
+		}
 		return defaultWechatRechargeConfig()
 	}
-	var cfg WechatRechargeConfig
-	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
-		Warn("[微信充值] 配置解析失败，使用默认值: %v", err)
-		return defaultWechatRechargeConfig()
-	}
+	configMutex.RLock()
+	cfg := Config.WechatRecharge
+	configMutex.RUnlock()
 	return normalizeWechatRechargeConfig(cfg)
 }
 
@@ -299,18 +424,17 @@ func SaveWechatRechargeConfig(cfg WechatRechargeConfig) error {
 			}
 		}
 	}
-	raw, err := json.Marshal(cfg)
-	if err != nil {
+	if err := saveWechatRechargeConfigToYAML(cfg); err != nil {
 		return err
 	}
-	if err := writeWechatRechargeConfigRaw(string(raw)); err != nil {
-		return err
+	if err := ReloadConfig(); err != nil {
+		Warn("[微信充值] 配置已写入 config.yaml，热更新失败（重启后生效）: %v", err)
+	} else {
+		configMutex.Lock()
+		Config.WechatRecharge = normalizeWechatRechargeConfig(cfg)
+		configMutex.Unlock()
 	}
-	if err := ExportEnv(&Env{Name: wechatRechargeConfigEnv, Value: string(raw), Note: "微信赞赏码充值配置"}); err != nil {
-		Warn("[微信充值] 同步 env 配置失败（文件已保存）: %v", err)
-	}
-	wechatRechargeCfgMu.Lock()
-	wechatRechargeCfgMu.Unlock()
+	refreshWechatRechargeYAMLFlag()
 	return nil
 }
 
@@ -608,7 +732,8 @@ func wechatRechargeTierAllowed(fen int) bool {
 
 func InitWechatRecharge() {
 	_ = os.MkdirAll(WechatRechargeQRCodeDir(), 0755)
-	migrateWechatRechargeConfigFromEnv()
+	refreshWechatRechargeYAMLFlag()
+	migrateWechatRechargeConfigToYAML()
 	StartWechatRechargeWorker()
 }
 
