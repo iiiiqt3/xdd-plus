@@ -1274,6 +1274,7 @@
         .wxrc-pay-warn { text-align: left; background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #9a3412; line-height: 1.65; margin-top: 10px; }
         .wxrc-pay-warn summary { cursor: pointer; font-weight: 700; }
         .wxrc-pay-warn ul { margin: 8px 0 0 18px; }
+        .wxrc-result-modal { z-index: 9100; }
         .wxrc-result-modal .modal { max-width: 420px; }
         .wxrc-result-icon { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 26px; }
         .wxrc-result-icon.success { background: #dcfce7; color: #16a34a; }
@@ -4911,6 +4912,32 @@ var _wxRechargeCurrentAmount = '';
 var _wxRechargeCreating = false;
 var _wxRechargePollIntervalMs = 2000;
 var _wxRechargeResultShown = false;
+var _wxRechargeActiveOrderNo = '';
+
+function mountWxRechargeModals() {
+    ['wxRechargePayModal', 'wxRechargeResultModal', 'wxRechargeHistoryModal', 'coinLogsModal'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el && el.parentElement !== document.body) {
+            document.body.appendChild(el);
+        }
+    });
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mountWxRechargeModals);
+} else {
+    mountWxRechargeModals();
+}
+
+async function fetchWxRechargeOrder(orderNo) {
+    const resp = await fetch('/api/portal/wechat-recharge/orders/' + encodeURIComponent(orderNo), {
+        headers: { 'X-Request-Source': 'web', 'X-Client-Platform': 'web' }
+    });
+    const data = await resp.json();
+    if (!data || data.code !== 0) {
+        throw new Error((data && data.msg) || '查询订单失败');
+    }
+    return data.data;
+}
 
 function setWxRechargeTiersLoading(loading, activeFen) {
     const tiersEl = document.getElementById('wxRechargeTiers');
@@ -4948,7 +4975,6 @@ function closeWxRechargeResultModal() {
 }
 
 function showWxRechargeSuccessModal(order) {
-    closeWxRechargePayModal();
     const paidYuan = order.paid_fen > 0 ? formatWxRechargeYuan(order.paid_fen) : _wxRechargeCurrentAmount;
     showWxRechargeResultModal('success', '充值成功', '积分已自动到账，请核对以下信息', [
         { label: '实付金额', value: '¥ ' + paidYuan, highlight: true },
@@ -4957,11 +4983,15 @@ function showWxRechargeSuccessModal(order) {
         { label: '充值时间', value: order.paid_at || order.created_at || '-' },
         { label: '订单号', value: order.order_no || '-' }
     ]);
+    document.getElementById('wxRechargePayModal').classList.remove('show');
+    stopWxRechargeCountdown();
+    toast('充值成功，到账 ' + (order.points || 0) + ' 积分', 'success', 6000);
     loadDashboardData().catch(function() {});
 }
 
 function showWxRechargeWrongPaymentModal(order) {
-    closeWxRechargePayModal();
+    document.getElementById('wxRechargePayModal').classList.remove('show');
+    stopWxRechargeCountdown();
     const paidYuan = order.paid_fen > 0 ? formatWxRechargeYuan(order.paid_fen) : '-';
     const expectYuan = order.payment_fen > 0 ? formatWxRechargeYuan(order.payment_fen) : _wxRechargeCurrentAmount;
     showWxRechargeResultModal('error', '付款金额失败', '系统检测到付款金额与订单不符，无法自动到账，请联系管理员处理', [
@@ -5102,6 +5132,7 @@ function openWxRechargePayModalLoading(fen) {
 function openWxRechargePayModal(order) {
     _wxRechargeCurrentOrder = order;
     _wxRechargeResultShown = false;
+    _wxRechargeActiveOrderNo = order.order_no || '';
     const modal = document.getElementById('wxRechargePayModal');
     const amount = formatWxRechargeYuan(order.payment_fen);
     _wxRechargeCurrentAmount = amount;
@@ -5126,10 +5157,12 @@ function openWxRechargePayModal(order) {
 
 function closeWxRechargePayModal() {
     document.getElementById('wxRechargePayModal').classList.remove('show');
+    stopWxRechargeCountdown();
+}
+
+function closeWxRechargePayModalAndPolling() {
+    closeWxRechargePayModal();
     stopWxRechargePolling();
-    if (!_wxRechargeResultShown) {
-        stopWxRechargeCountdown();
-    }
 }
 
 function startWxRechargeCountdown(sec) {
@@ -5150,38 +5183,60 @@ function stopWxRechargeCountdown() {
     if (_wxRechargeCountdownTimer) { clearInterval(_wxRechargeCountdownTimer); _wxRechargeCountdownTimer = null; }
 }
 function stopWxRechargePolling() {
-    stopWxRechargeCountdown();
     if (_wxRechargePollTimer) { clearInterval(_wxRechargePollTimer); _wxRechargePollTimer = null; }
+    _wxRechargeActiveOrderNo = '';
+    stopWxRechargeCountdown();
 }
+
+function handleWxRechargeOrderUpdate(o) {
+    if (!o) return;
+    if (o.status === 'paid') {
+        if (document.getElementById('wxRechargePayStatus')) {
+            document.getElementById('wxRechargePayStatus').textContent = '充值成功，正在展示到账详情…';
+        }
+        stopWxRechargePolling();
+        showWxRechargeSuccessModal(o);
+        return;
+    }
+    if (o.status === 'crediting') {
+        if (document.getElementById('wxRechargePayStatus')) {
+            document.getElementById('wxRechargePayStatus').textContent = '支付已确认，正在入账…';
+        }
+        return;
+    }
+    if (o.status === 'wrong_amount') {
+        if (document.getElementById('wxRechargePayStatus')) {
+            document.getElementById('wxRechargePayStatus').textContent = '付款金额不正确，请查看提示';
+        }
+        stopWxRechargePolling();
+        showWxRechargeWrongPaymentModal(o);
+        return;
+    }
+    if (o.status === 'expired' || o.status === 'failed') {
+        if (document.getElementById('wxRechargePayStatus')) {
+            document.getElementById('wxRechargePayStatus').textContent = '订单已结束';
+        }
+        stopWxRechargePolling();
+        if (o.last_error && o.last_error.indexOf('付款金额') >= 0) {
+            showWxRechargeWrongPaymentModal(o);
+        }
+        return;
+    }
+    if (o.remaining_sec != null && document.getElementById('wxRechargePayModal').classList.contains('show')) {
+        startWxRechargeCountdown(o.remaining_sec);
+    }
+}
+
 function startWxRechargePolling(orderNo) {
     stopWxRechargePolling();
+    _wxRechargeActiveOrderNo = orderNo;
     let polling = false;
     async function poll() {
-        if (polling) return;
+        if (polling || !_wxRechargeActiveOrderNo) return;
         polling = true;
         try {
-            const resp = await request('/api/portal/wechat-recharge/orders/' + encodeURIComponent(orderNo));
-            const o = resp.data;
-            if (!o) return;
-            if (o.status === 'paid') {
-                document.getElementById('wxRechargePayStatus').textContent = '充值成功，正在展示到账详情…';
-                stopWxRechargePolling();
-                showWxRechargeSuccessModal(o);
-            } else if (o.status === 'wrong_amount') {
-                document.getElementById('wxRechargePayStatus').textContent = '付款金额不正确，请查看提示';
-                stopWxRechargePolling();
-                showWxRechargeWrongPaymentModal(o);
-            } else if (o.status === 'expired' || o.status === 'failed') {
-                document.getElementById('wxRechargePayStatus').textContent = '订单已结束';
-                stopWxRechargePolling();
-                if (o.last_error && o.last_error.indexOf('付款金额') >= 0) {
-                    showWxRechargeWrongPaymentModal(o);
-                }
-            } else {
-                if (o.remaining_sec != null) {
-                    startWxRechargeCountdown(o.remaining_sec);
-                }
-            }
+            const o = await fetchWxRechargeOrder(orderNo);
+            handleWxRechargeOrderUpdate(o);
         } catch (e) { /* 轮询失败静默重试 */ }
         finally { polling = false; }
     }
