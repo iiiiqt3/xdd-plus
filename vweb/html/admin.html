@@ -10095,8 +10095,8 @@ function onWrcQrModeChange() {
 }
 async function loadWechatRechargeAdmin() {
     try {
-        const resp = await apiGet('/api/admin/wechat-recharge/config');
-        if (resp.code !== 0) { showToast(resp.msg || '加载失败', 'error'); return; }
+        const resp = await api.get('/api/admin/wechat-recharge/config');
+        if (resp.code !== 0) { toast(resp.msg || '加载失败', 'error'); return; }
         const cfg = resp.data.config || {};
         wrcBoolSel('wrc_enabled', !!cfg.enabled);
         wrcBoolSel('wrc_portal_enabled', cfg.portal_enabled !== false);
@@ -10117,7 +10117,7 @@ async function loadWechatRechargeAdmin() {
         document.getElementById('wrc_fallback_url').value = cfg.fallback_url || '';
         document.getElementById('wrc_external_url').value = cfg.external_purchase_url || '';
         onWrcQrModeChange();
-    } catch (e) { showToast('加载微信充值配置失败', 'error'); }
+    } catch (e) { toast('加载微信充值配置失败', 'error'); }
 }
 async function saveWechatRechargeConfig() {
     const tiersRaw = (document.getElementById('wrc_tiers').value || '').split(/[,，\s]+/).filter(Boolean);
@@ -10141,11 +10141,15 @@ async function saveWechatRechargeConfig() {
         fallback_url: document.getElementById('wrc_fallback_url').value.trim(),
         external_purchase_url: document.getElementById('wrc_external_url').value.trim()
     };
-    const resp = await apiPost('/api/admin/wechat-recharge/config', payload);
-    showToast(resp.msg || (resp.code === 0 ? '保存成功' : '保存失败'), resp.code === 0 ? 'success' : 'error');
-    if (resp.code === 0) {
-        loadWechatRechargeAdmin();
-        if (_wrcActiveTab === 'stats') loadWechatRechargeAnalytics();
+    try {
+        const resp = await api.post('/api/admin/wechat-recharge/config', payload);
+        toast(resp.msg || (resp.code === 0 ? '保存成功' : '保存失败'), resp.code === 0 ? 'success' : 'error');
+        if (resp.code === 0) {
+            loadWechatRechargeAdmin();
+            if (_wrcActiveTab === 'stats') loadWechatRechargeAnalytics();
+        }
+    } catch (e) {
+        toast('保存失败：' + (e && e.message ? e.message : '网络错误'), 'error');
     }
 }
 async function uploadWechatRechargeQR() {
@@ -10156,9 +10160,9 @@ async function uploadWechatRechargeQR() {
     try {
         const resp = await fetch('/api/admin/wechat-recharge/qrcode/upload', { method: 'POST', body: fd, credentials: 'include' });
         const data = await resp.json();
-        showToast(data.msg || '上传完成', data.code === 0 ? 'success' : 'error');
+        toast(data.msg || '上传完成', data.code === 0 ? 'success' : 'error');
         if (data.code === 0) loadWechatRechargeAdmin();
-    } catch (e) { showToast('上传失败', 'error'); }
+    } catch (e) { toast('上传失败', 'error'); }
 }
 var _wrcStatusMap = { pending: '待支付', paid: '已支付', expired: '已过期', failed: '失败', preparing: '准备中', crediting: '入账中' };
 async function loadWechatRechargeOrders(page) {
@@ -10168,20 +10172,25 @@ async function loadWechatRechargeOrders(page) {
     let url = '/api/admin/wechat-recharge/orders?page=' + _wrcOrderPage + '&limit=20';
     if (qq) url += '&userNumber=' + encodeURIComponent(qq);
     if (status) url += '&status=' + encodeURIComponent(status);
-    const resp = await apiGet(url);
-    const body = document.getElementById('wrcOrderBody');
-    if (resp.code !== 0) { body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">' + escapeHtml(resp.msg || '加载失败') + '</td></tr>'; return; }
-    const list = resp.data.list || [];
-    if (!list.length) { body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:32px;">暂无记录</td></tr>'; }
-    else {
-        body.innerHTML = list.map(function(o) {
-            const payYuan = o.requested_fen ? (o.requested_fen / 100).toFixed(2) : '-';
-            const dueYuan = (o.requested_fen && o.random_fen !== undefined) ? ((o.requested_fen + o.random_fen) / 100).toFixed(2) : '-';
-            const paidYuan = o.paid_fen ? (o.paid_fen / 100).toFixed(2) : '-';
-            return '<tr><td>' + escapeHtml((o.created_at || '').replace('T',' ').slice(0,19)) + '</td><td style="font-family:monospace;font-size:11px;">' + escapeHtml(o.order_no) + '</td><td>' + o.qq + '</td><td>' + escapeHtml(o.channel || '') + '</td><td>' + payYuan + '元</td><td>' + dueYuan + '元</td><td>' + paidYuan + '元</td><td>' + (o.points || '-') + '</td><td>' + escapeHtml(_wrcStatusMap[o.status] || o.status) + '</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(o.last_error || '') + '">' + escapeHtml(o.last_error || o.trans_id || '') + '</td></tr>';
-        }).join('');
+    try {
+        const resp = await api.get(url);
+        const body = document.getElementById('wrcOrderBody');
+        if (resp.code !== 0) { body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">' + escapeHtml(resp.msg || '加载失败') + '</td></tr>'; return; }
+        const list = resp.data.list || [];
+        if (!list.length) { body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:32px;">暂无记录</td></tr>'; }
+        else {
+            body.innerHTML = list.map(function(o) {
+                const payYuan = o.requested_fen ? (o.requested_fen / 100).toFixed(2) : '-';
+                const dueYuan = (o.requested_fen && o.random_fen !== undefined) ? ((o.requested_fen + o.random_fen) / 100).toFixed(2) : '-';
+                const paidYuan = o.paid_fen ? (o.paid_fen / 100).toFixed(2) : '-';
+                return '<tr><td>' + escapeHtml((o.created_at || '').replace('T',' ').slice(0,19)) + '</td><td style="font-family:monospace;font-size:11px;">' + escapeHtml(o.order_no) + '</td><td>' + o.qq + '</td><td>' + escapeHtml(o.channel || '') + '</td><td>' + payYuan + '元</td><td>' + dueYuan + '元</td><td>' + paidYuan + '元</td><td>' + (o.points || '-') + '</td><td>' + escapeHtml(_wrcStatusMap[o.status] || o.status) + '</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;" title="' + escapeHtml(o.last_error || '') + '">' + escapeHtml(o.last_error || o.trans_id || '') + '</td></tr>';
+            }).join('');
+        }
+        renderPagination('wrcOrderPagination', _wrcOrderPage, resp.data.total || 0, 20, loadWechatRechargeOrders, 'wrc');
+    } catch (e) {
+        var body = document.getElementById('wrcOrderBody');
+        if (body) body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">加载失败</td></tr>';
     }
-    renderPagination('wrcOrderPagination', _wrcOrderPage, resp.data.total || 0, 20, loadWechatRechargeOrders, 'wrc');
 }
 
 var _wrcAnalyticsDays = 30;
@@ -10199,7 +10208,7 @@ function destroyWrcChart(key) {
 async function loadWechatRechargeAnalytics() {
     if (typeof Chart === 'undefined') return;
     try {
-        const resp = await apiGet('/api/admin/wechat-recharge/analytics?days=' + _wrcAnalyticsDays);
+        const resp = await api.get('/api/admin/wechat-recharge/analytics?days=' + _wrcAnalyticsDays);
         if (resp.code !== 0) return;
         const data = resp.data || {};
         const summary = data.summary || {};
