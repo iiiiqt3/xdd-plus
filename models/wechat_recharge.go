@@ -1579,8 +1579,8 @@ func creditWechatRechargeOrder(order WechatRechargeOrder, record wechatBillRecor
 			return err
 		}
 		result := tx.Model(&User{}).Where("number = ?", current.QQ).Updates(map[string]interface{}{
-			"coin":         gorm.Expr("coin + ?", points),
-			"total_earned": gorm.Expr("total_earned + ?", points),
+			"coin":      gorm.Expr("coin + ?", points),
+			"active_at": paidAt,
 		})
 		if result.Error != nil {
 			return result.Error
