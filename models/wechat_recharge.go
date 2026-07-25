@@ -267,37 +267,57 @@ func formatWechatRechargeYAMLBlock(cfg WechatRechargeConfig) []string {
 	}
 }
 
-func findWechatRechargeSectionRange(lines []string) (start, end int) {
-	start = -1
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "wechat_recharge:") {
-			start = i
-			if i > 0 {
-				prev := strings.TrimSpace(lines[i-1])
-				if strings.HasPrefix(prev, "#") && strings.Contains(prev, "微信赞赏") {
-					start = i - 1
-				}
-			}
-			break
-		}
+func isYAMLTopLevelKeyLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+		return false
 	}
-	if start < 0 {
-		return -1, -1
+	if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
+		return false
 	}
-	end = len(lines)
-	for i := start + 1; i < len(lines); i++ {
-		line := lines[i]
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+	return strings.Contains(trimmed, ":")
+}
+
+func isWechatRechargeSectionStart(lines []string, i int) bool {
+	if i < 0 || i >= len(lines) {
+		return false
+	}
+	trimmed := strings.TrimSpace(lines[i])
+	if strings.HasPrefix(trimmed, "wechat_recharge:") {
+		return true
+	}
+	if strings.HasPrefix(trimmed, "#") && strings.Contains(trimmed, "微信赞赏") && i+1 < len(lines) {
+		return strings.HasPrefix(strings.TrimSpace(lines[i+1]), "wechat_recharge:")
+	}
+	return false
+}
+
+// stripAllWechatRechargeSections 移除 config.yaml 中所有 wechat_recharge 配置块（含重复段）
+func stripAllWechatRechargeSections(lines []string) []string {
+	out := make([]string, 0, len(lines))
+	for i := 0; i < len(lines); {
+		if !isWechatRechargeSectionStart(lines, i) {
+			out = append(out, lines[i])
+			i++
 			continue
 		}
-		if !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") && strings.Contains(trimmed, ":") {
-			end = i
-			break
+		if strings.HasPrefix(strings.TrimSpace(lines[i]), "#") {
+			i++
+		}
+		if i < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i]), "wechat_recharge:") {
+			i++
+		}
+		for i < len(lines) {
+			if isYAMLTopLevelKeyLine(lines[i]) {
+				break
+			}
+			i++
 		}
 	}
-	return start, end
+	for len(out) > 0 && strings.TrimSpace(out[len(out)-1]) == "" {
+		out = out[:len(out)-1]
+	}
+	return out
 }
 
 func configYAMLHasWechatRechargeSection(data []byte) bool {
@@ -332,20 +352,12 @@ func saveWechatRechargeConfigToYAML(cfg WechatRechargeConfig) error {
 	}
 	lines := strings.Split(string(data), "\n")
 	block := formatWechatRechargeYAMLBlock(cfg)
-	start, end := findWechatRechargeSectionRange(lines)
-	var newLines []string
-	if start >= 0 {
-		newLines = append(newLines, lines[:start]...)
-		newLines = append(newLines, block...)
-		newLines = append(newLines, lines[end:]...)
-	} else {
-		newLines = append(newLines, lines...)
-		if len(newLines) > 0 && strings.TrimSpace(newLines[len(newLines)-1]) != "" {
-			newLines = append(newLines, "")
-		}
-		newLines = append(newLines, block...)
+	lines = stripAllWechatRechargeSections(lines)
+	if len(lines) > 0 {
+		lines = append(lines, "")
 	}
-	content := strings.Join(newLines, "\n")
+	lines = append(lines, block...)
+	content := strings.Join(lines, "\n")
 	if !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
