@@ -108,6 +108,8 @@ type WechatRechargePublicOrder struct {
 	RemainingSec int64  `json:"remaining_sec"`
 	Coin         int    `json:"coin,omitempty"`
 	QRCodeURL    string `json:"qrcode_url,omitempty"`
+	PaidAt       string `json:"paid_at,omitempty"`
+	LastError    string `json:"last_error,omitempty"`
 }
 
 // WechatRechargeIncomeSummary 收益汇总
@@ -900,17 +902,9 @@ func CreateWechatRechargeOrder(qq, requestedFen int, channel string) (WechatRech
 		return WechatRechargeOrder{}, claimErr
 	}
 
-	session, err := prepareWechatRechargeSession(cfg)
-	if err != nil {
-		_ = markWechatRechargeFailed(order.ID, err.Error())
-		notifyWechatRechargeAdmin("微信充值预检失败", order, err.Error())
-		return WechatRechargeOrder{}, fmt.Errorf("微信账单能力预检失败：%w", err)
-	}
-	order.SessionKey = session
 	readyAt := time.Now()
 	expiresAt := readyAt.Add(wechatRechargeTTL())
 	result := db.Model(&WechatRechargeOrder{}).Where("id = ? AND status = ? AND expires_at > ?", order.ID, "preparing", readyAt).Updates(map[string]interface{}{
-		"session_key":  session,
 		"status":       "pending",
 		"last_error":   "",
 		"expires_at":   expiresAt,
@@ -923,11 +917,26 @@ func CreateWechatRechargeOrder(qq, requestedFen int, channel string) (WechatRech
 		_ = markWechatRechargeFailed(order.ID, "微信充值预检超时")
 		return WechatRechargeOrder{}, errors.New("微信充值订单已超时，请重新发起")
 	}
-	order.SessionKey = session
 	order.Status = "pending"
 	order.ExpiresAt = expiresAt
 	order.ActivatedAt = &readyAt
+	go ensureWechatRechargeOrderSession(order.ID, cfg)
 	return order, nil
+}
+
+func ensureWechatRechargeOrderSession(orderID uint64, cfg WechatRechargeConfig) {
+	session, err := prepareWechatRechargeSession(cfg)
+	if err != nil {
+		_ = markWechatRechargeFailed(orderID, err.Error())
+		var order WechatRechargeOrder
+		if db.First(&order, orderID).Error == nil {
+			notifyWechatRechargeAdmin("微信充值预检失败", order, err.Error())
+		}
+		return
+	}
+	_ = db.Model(&WechatRechargeOrder{}).
+		Where("id = ? AND status = ?", orderID, "pending").
+		Update("session_key", session).Error
 }
 
 func markWechatRechargeFailed(id uint64, reason string) error {
@@ -1118,6 +1127,10 @@ func publicWechatRechargeOrder(order WechatRechargeOrder) WechatRechargePublicOr
 	} else if order.Status == "pending" {
 		pub.Points = wechatRechargePointsForFen(order.RequestedFen, GetWechatRechargeConfig())
 	}
+	if order.PaidAt != nil {
+		pub.PaidAt = order.PaidAt.Format("2006-01-02 15:04:05")
+	}
+	pub.LastError = strings.TrimSpace(order.LastError)
 	return pub
 }
 
@@ -1470,8 +1483,25 @@ func processWechatRechargeOrders() {
 }
 
 func processWechatRechargeOrder(order *WechatRechargeOrder, cfg WechatRechargeConfig) {
-	if order == nil || strings.TrimSpace(order.SessionKey) == "" {
+	if order == nil {
 		return
+	}
+	if strings.TrimSpace(order.SessionKey) == "" {
+		accountKey := wechatRechargeBillAccountKey(cfg)
+		session := getCachedWechatRechargeSession(accountKey)
+		if session == "" {
+			var err error
+			session, err = prepareWechatRechargeSession(cfg)
+			if err != nil {
+				return
+			}
+		}
+		if err := db.Model(&WechatRechargeOrder{}).
+			Where("id = ? AND status = ? AND (session_key = '' OR session_key IS NULL)", order.ID, "pending").
+			Update("session_key", session).Error; err != nil {
+			return
+		}
+		order.SessionKey = session
 	}
 	pollNow := time.Now()
 	records, renewedSession, err := queryWechatRechargeBillsAt(order.SessionKey, pollNow)
@@ -1513,6 +1543,23 @@ func processWechatRechargeOrder(order *WechatRechargeOrder, cfg WechatRechargeCo
 	}
 	updates["last_error"] = ""
 	_ = db.Model(&WechatRechargeOrder{}).Where("id = ? AND status = ?", order.ID, "pending").Updates(updates).Error
+	targetFen := wechatRechargeTargetFen(*order)
+	for _, record := range records {
+		if !wechatRechargeRecordInWindow(*order, record) {
+			continue
+		}
+		if record.Balance == targetFen {
+			continue
+		}
+		if record.Balance != order.RequestedFen {
+			continue
+		}
+		if wechatRechargeReceiptUsed(record.TransID) {
+			continue
+		}
+		markWechatRechargeWrongPayment(*order, record)
+		return
+	}
 	for _, record := range records {
 		if !wechatRechargeRecordMatches(*order, record) {
 			continue
@@ -1541,6 +1588,16 @@ func wechatRechargeRecordMatches(order WechatRechargeOrder, record wechatBillRec
 	if _, ok := wechatRechargePointsForPayment(order, record.Balance); !ok {
 		return false
 	}
+	return wechatRechargeRecordInWindow(order, record)
+}
+
+func wechatRechargeRecordInWindow(order WechatRechargeOrder, record wechatBillRecord) bool {
+	if record.BillType != 2 || record.TransID == "" || record.Balance <= 0 {
+		return false
+	}
+	if !strings.Contains(record.Remark, "二维码收款") && !strings.Contains(record.Remark, "赞赏") {
+		return false
+	}
 	visibleAt := order.CreatedAt
 	if order.ActivatedAt != nil {
 		visibleAt = *order.ActivatedAt
@@ -1548,10 +1605,24 @@ func wechatRechargeRecordMatches(order WechatRechargeOrder, record wechatBillRec
 	if record.BillTime < visibleAt.Unix() || record.BillTime > order.ExpiresAt.Unix() {
 		return false
 	}
-	if !strings.Contains(record.Remark, "二维码收款") && !strings.Contains(record.Remark, "赞赏") {
-		return false
-	}
 	return true
+}
+
+func markWechatRechargeWrongPayment(order WechatRechargeOrder, record wechatBillRecord) {
+	reason := fmt.Sprintf("用户付款金额不正确（实付 %.2f 元，应付 %.2f 元）", float64(record.Balance)/100, float64(wechatRechargeTargetFen(order))/100)
+	result := db.Model(&WechatRechargeOrder{}).
+		Where("id = ? AND status = ?", order.ID, "pending").
+		Updates(map[string]interface{}{
+			"status":      "wrong_amount",
+			"paid_fen":    record.Balance,
+			"trans_id":    record.TransID,
+			"session_key": "",
+			"last_error":  truncateWechatRechargeError(reason),
+		})
+	if result.Error != nil || result.RowsAffected != 1 {
+		return
+	}
+	notifyWechatRechargeAdmin("微信充值付错金额", order, reason)
 }
 
 func wechatRechargeReceiptUsed(transID string) bool {
@@ -1640,6 +1711,33 @@ func truncateWechatRechargeError(value string) string {
 	return value
 }
 
+func formatBotWechatRechargeOrderMessage(order WechatRechargeOrder, requestedFen, points int) string {
+	payYuan := float64(wechatRechargeTargetFen(order)) / 100
+	tierYuan := requestedFen / 100
+	timeoutMin := GetWechatRechargeConfig().OrderTimeoutMinutes
+	if timeoutMin <= 0 {
+		timeoutMin = 3
+	}
+	var b strings.Builder
+	b.WriteString("━━━━━━━━━━━━━━━━\n")
+	b.WriteString("  微信赞赏充值\n")
+	b.WriteString("━━━━━━━━━━━━━━━━\n\n")
+	b.WriteString("【支付说明 · 必读】\n")
+	b.WriteString("系统已生成精确应付金额，请勿支付档位原价。\n\n")
+	fmt.Fprintf(&b, "💰 应付金额：%.2f 元\n", payYuan)
+	fmt.Fprintf(&b, "   （不是 %d 元整）\n\n", tierYuan)
+	fmt.Fprintf(&b, "🎁 到账积分：%d 积分\n\n", points)
+	b.WriteString("【订单信息】\n")
+	fmt.Fprintf(&b, "📋 订单号：%s\n", order.OrderNo)
+	fmt.Fprintf(&b, "⏱ 支付时限：请在 %d 分钟内完成\n\n", timeoutMin)
+	b.WriteString("【注意事项】\n")
+	fmt.Fprintf(&b, "⚠️ 1. 必须按上方「应付金额」精确支付\n")
+	fmt.Fprintf(&b, "   2. 付错金额（如支付 %d 元整）无法自动到账\n", tierYuan)
+	b.WriteString("   3. 若付错，请联系管理员并提供支付截图\n\n")
+	b.WriteString("👇 收款二维码见下图")
+	return b.String()
+}
+
 // HandleBotWechatRechargeTier 机器人选定档位后创建订单并发送二维码
 func HandleBotWechatRechargeTier(sender *Sender, tierIndex int) {
 	cfg := GetWechatRechargeConfig()
@@ -1672,7 +1770,7 @@ func HandleBotWechatRechargeTier(sender *Sender, tierIndex int) {
 		return
 	}
 	points := wechatRechargePointsForFen(requestedFen, cfg)
-	sender.Reply(fmt.Sprintf("【重要】必须支付精确金额：%.2f 元（不是 %d 元整）\n到账积分：%d\n\n付错金额无法自动到账！订单号：%s\n若付错请联系管理员并提供截图。\n\n下面是收款二维码：", float64(wechatRechargeTargetFen(order))/100, requestedFen/100, points, order.OrderNo))
+	sender.Reply(formatBotWechatRechargeOrderMessage(order, requestedFen, points))
 	sender.SendImg(image)
 }
 

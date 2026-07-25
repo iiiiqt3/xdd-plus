@@ -1235,24 +1235,56 @@
         .coin-acquire-icon.redeem { background: #ecfdf5; color: #059669; }
         .coin-acquire-buy-btn { width: 100%; background: linear-gradient(135deg,#0891b2,#7c3aed); cursor: pointer; transition: opacity .2s; }
         .coin-acquire-buy-btn:hover { opacity: .92; }
-        .wxrc-tier-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-        .wxrc-tier-btn { min-width: 88px; padding: 10px 12px; border-radius: 10px; border: 1px solid #c7d2fe; background: linear-gradient(135deg,#eef2ff,#e0e7ff); color: #312e81; font-weight: 700; cursor: pointer; transition: opacity .2s, transform .15s; text-align: center; line-height: 1.35; }
-        .wxrc-tier-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(79,70,229,.15); }
-        .wxrc-tier-btn:disabled { opacity: .45; cursor: not-allowed; background: #f3f4f6; border-color: #e5e7eb; color: #9ca3af; transform: none; box-shadow: none; }
-        .wxrc-tier-btn .sub { display: block; font-size: 11px; font-weight: 600; opacity: .85; }
-        .wxrc-notice-box { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #92400e; line-height: 1.65; }
-        .wxrc-notice-box strong { color: #b45309; }
+        .wxrc-tier-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 4px; }
+        @media (max-width: 520px) { .wxrc-tier-grid { grid-template-columns: 1fr; } }
+        .wxrc-tier-btn {
+            position: relative; min-height: 72px; padding: 12px 10px; border-radius: 12px;
+            border: 1px solid #e2e8f0; background: #fff; color: #0f172a;
+            font-weight: 700; cursor: pointer; transition: border-color .2s, box-shadow .2s, background .2s;
+            text-align: center; line-height: 1.35; box-shadow: 0 1px 2px rgba(15,23,42,.04);
+        }
+        .wxrc-tier-btn:hover:not(:disabled) { border-color: #a5b4fc; box-shadow: 0 6px 16px rgba(79,70,229,.12); background: #fafaff; }
+        .wxrc-tier-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .wxrc-tier-btn.is-loading { pointer-events: none; color: transparent; }
+        .wxrc-tier-btn.is-loading::after {
+            content: ''; position: absolute; inset: 0; margin: auto; width: 22px; height: 22px;
+            border: 2px solid #c7d2fe; border-top-color: #4f46e5; border-radius: 50%;
+            animation: wxrc-spin .7s linear infinite;
+        }
+        @keyframes wxrc-spin { to { transform: rotate(360deg); } }
+        .wxrc-tier-btn .yuan { display: block; font-size: 18px; letter-spacing: .2px; }
+        .wxrc-tier-btn .sub { display: block; margin-top: 4px; font-size: 11px; font-weight: 600; color: #64748b; }
+        .wxrc-notice-box {
+            background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3px solid #6366f1;
+            border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #475569; line-height: 1.65;
+        }
+        .wxrc-notice-box strong { color: #4338ca; font-weight: 700; }
         .wxrc-offline-banner { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #b91c1c; line-height: 1.6; }
         .wxrc-muted { color: var(--text-muted); font-size: 12px; line-height: 1.6; }
-        .wxrc-card-actions { margin-top: auto; }
-        .wxrc-pay-amount-box { background: #fef2f2; border: 2px solid #fca5a5; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
-        .wxrc-pay-amount { font-size: 30px; font-weight: 800; color: #dc2626; letter-spacing: .5px; }
+        .wxrc-card-actions { margin-top: auto; display: flex; justify-content: center; padding-top: 4px; }
+        .wxrc-card-actions .btn { min-width: 120px; }
+        .wxrc-pay-amount-box { background: linear-gradient(180deg,#fff5f5,#fff); border: 1px solid #fecaca; border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+        .wxrc-pay-amount { font-size: 32px; font-weight: 800; color: #dc2626; letter-spacing: .5px; }
         .wxrc-pay-copy { margin-top: 8px; font-size: 12px; color: #64748b; }
-        .wxrc-pay-copy button { margin-left: 8px; padding: 4px 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 12px; }
+        .wxrc-pay-copy button { margin-left: 8px; padding: 4px 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 12px; transition: background .2s; }
+        .wxrc-pay-copy button:hover { background: #f8fafc; }
         .wxrc-pay-steps { text-align: left; font-size: 12px; color: #475569; line-height: 1.7; margin: 12px 0; padding-left: 18px; }
         .wxrc-pay-warn { text-align: left; background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #9a3412; line-height: 1.65; margin-top: 10px; }
         .wxrc-pay-warn summary { cursor: pointer; font-weight: 700; }
         .wxrc-pay-warn ul { margin: 8px 0 0 18px; }
+        .wxrc-result-modal .modal { max-width: 420px; }
+        .wxrc-result-icon { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 26px; }
+        .wxrc-result-icon.success { background: #dcfce7; color: #16a34a; }
+        .wxrc-result-icon.error { background: #fee2e2; color: #dc2626; }
+        .wxrc-result-title { text-align: center; font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+        .wxrc-result-sub { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 16px; line-height: 1.5; }
+        .wxrc-result-kv { display: grid; gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
+        .wxrc-result-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; line-height: 1.5; }
+        .wxrc-result-row span:first-child { color: #64748b; flex-shrink: 0; }
+        .wxrc-result-row span:last-child { color: #0f172a; font-weight: 600; text-align: right; word-break: break-all; }
+        .wxrc-result-row.highlight span:last-child { color: #16a34a; font-size: 15px; }
+        .wxrc-result-actions { display: flex; justify-content: center; }
+        .wxrc-result-actions .btn { min-width: 140px; }
 
         /* ===== Toast ===== */
         .toast {
@@ -2610,6 +2642,19 @@
                     <summary>付错金额怎么办？</summary>
                     <ul id="wxRechargeWrongHelp"></ul>
                 </details>
+            </div>
+        </div>
+
+        <!-- 微信充值成功/失败结果弹窗 -->
+        <div class="modal-mask wxrc-result-modal" id="wxRechargeResultModal">
+            <div class="modal">
+                <div id="wxRechargeResultIcon" class="wxrc-result-icon success" aria-hidden="true"><i class="fas fa-circle-check"></i></div>
+                <div id="wxRechargeResultTitle" class="wxrc-result-title">充值成功</div>
+                <div id="wxRechargeResultSub" class="wxrc-result-sub"></div>
+                <div id="wxRechargeResultBody" class="wxrc-result-kv"></div>
+                <div class="wxrc-result-actions">
+                    <button type="button" class="btn" id="wxRechargeResultCloseBtn" onclick="closeWxRechargeResultModal()">我知道了</button>
+                </div>
             </div>
         </div>
 
@@ -4861,6 +4906,69 @@ var _wxRechargePollTimer = null;
 var _wxRechargeCountdownTimer = null;
 var _wxRechargeCurrentOrder = null;
 var _wxRechargeCurrentAmount = '';
+var _wxRechargeCreating = false;
+var _wxRechargePollIntervalMs = 2000;
+var _wxRechargeResultShown = false;
+
+function setWxRechargeTiersLoading(loading, activeFen) {
+    const tiersEl = document.getElementById('wxRechargeTiers');
+    if (!tiersEl) return;
+    tiersEl.querySelectorAll('.wxrc-tier-btn').forEach(function(btn) {
+        const fen = parseInt(btn.getAttribute('data-fen') || '0', 10);
+        btn.disabled = loading || !(_wxRechargeCfg && _wxRechargeCfg.can_recharge);
+        btn.classList.toggle('is-loading', loading && fen === activeFen);
+    });
+}
+
+function formatWxRechargeYuan(fen) {
+    return (fen / 100).toFixed(2);
+}
+
+function showWxRechargeResultModal(type, title, sub, rows) {
+    _wxRechargeResultShown = true;
+    const modal = document.getElementById('wxRechargeResultModal');
+    const icon = document.getElementById('wxRechargeResultIcon');
+    const isSuccess = type === 'success';
+    icon.className = 'wxrc-result-icon ' + (isSuccess ? 'success' : 'error');
+    icon.innerHTML = isSuccess ? '<i class="fas fa-circle-check"></i>' : '<i class="fas fa-circle-xmark"></i>';
+    document.getElementById('wxRechargeResultTitle').textContent = title;
+    document.getElementById('wxRechargeResultSub').textContent = sub || '';
+    document.getElementById('wxRechargeResultBody').innerHTML = (rows || []).map(function(row) {
+        const cls = row.highlight ? 'wxrc-result-row highlight' : 'wxrc-result-row';
+        return '<div class="' + cls + '"><span>' + escapeHtml(row.label) + '</span><span>' + escapeHtml(row.value) + '</span></div>';
+    }).join('');
+    modal.classList.add('show');
+}
+
+function closeWxRechargeResultModal() {
+    document.getElementById('wxRechargeResultModal').classList.remove('show');
+    _wxRechargeResultShown = false;
+}
+
+function showWxRechargeSuccessModal(order) {
+    closeWxRechargePayModal();
+    const paidYuan = order.paid_fen > 0 ? formatWxRechargeYuan(order.paid_fen) : _wxRechargeCurrentAmount;
+    showWxRechargeResultModal('success', '充值成功', '积分已自动到账，请核对以下信息', [
+        { label: '实付金额', value: '¥ ' + paidYuan, highlight: true },
+        { label: '到账积分', value: '+' + (order.points || 0) + ' 积分', highlight: true },
+        { label: '当前余额', value: (order.coin != null ? order.coin : '-') + ' 积分' },
+        { label: '充值时间', value: order.paid_at || order.created_at || '-' },
+        { label: '订单号', value: order.order_no || '-' }
+    ]);
+    loadDashboardData().catch(function() {});
+}
+
+function showWxRechargeWrongPaymentModal(order) {
+    closeWxRechargePayModal();
+    const paidYuan = order.paid_fen > 0 ? formatWxRechargeYuan(order.paid_fen) : '-';
+    const expectYuan = order.payment_fen > 0 ? formatWxRechargeYuan(order.payment_fen) : _wxRechargeCurrentAmount;
+    showWxRechargeResultModal('error', '付款金额失败', '系统检测到付款金额与订单不符，无法自动到账，请联系管理员处理', [
+        { label: '应付金额', value: '¥ ' + expectYuan },
+        { label: '实付金额', value: paidYuan === '-' ? '-' : ('¥ ' + paidYuan) },
+        { label: '订单号', value: order.order_no || '-' },
+        { label: '下单时间', value: order.created_at || '-' }
+    ]);
+}
 
 function openExternalPurchase() {
     const url = (_wxRechargeCfg && _wxRechargeCfg.external_purchase_url) || 'http://180.152.5.230:8005/#/';
@@ -4926,24 +5034,35 @@ async function loadWxRechargeConfig() {
         tiersEl.innerHTML = tiers.map(function(t) {
             const disabled = canRecharge ? '' : ' disabled';
             const title = canRecharge ? '' : escapeHtml(_wxRechargeCfg.block_reason || '暂不可用');
-            return '<button type="button" class="wxrc-tier-btn"' + disabled + ' title="' + title + '" onclick="startWxRecharge(' + t.fen + ')">' + t.yuan + '元<span class="sub">' + t.points + '积分</span></button>';
+            return '<button type="button" class="wxrc-tier-btn" data-fen="' + t.fen + '"' + disabled + ' title="' + title + '" onclick="startWxRecharge(' + t.fen + ')"><span class="yuan">' + t.yuan + ' 元</span><span class="sub">' + t.points + ' 积分</span></button>';
         }).join('');
     } catch (e) { /* 未登录或接口不可用 */ }
 }
 
 async function startWxRecharge(fen) {
+    if (_wxRechargeCreating) return;
     if (_wxRechargeCfg && !_wxRechargeCfg.can_recharge) {
         toast(_wxRechargeCfg.block_reason || '微信赞赏充值暂不可用', 'error');
         return;
     }
+    _wxRechargeCreating = true;
+    setWxRechargeTiersLoading(true, fen);
     try {
         const resp = await request('/api/portal/wechat-recharge/orders', {
             method: 'POST',
             body: JSON.stringify({ fen: fen })
         });
-        if (resp.code !== 0) { toast(resp.msg || '创建订单失败', 'error'); return; }
+        if (resp.code !== 0) {
+            toast(resp.msg || '创建订单失败', 'error');
+            return;
+        }
         openWxRechargePayModal(resp.data);
-    } catch (err) { toast(err.message || '创建订单失败', 'error'); }
+    } catch (err) {
+        toast(err.message || '创建订单失败', 'error');
+    } finally {
+        _wxRechargeCreating = false;
+        setWxRechargeTiersLoading(false, 0);
+    }
 }
 
 function copyWxRechargeAmount() {
@@ -4958,8 +5077,9 @@ function copyWxRechargeAmount() {
 
 function openWxRechargePayModal(order) {
     _wxRechargeCurrentOrder = order;
+    _wxRechargeResultShown = false;
     const modal = document.getElementById('wxRechargePayModal');
-    const amount = (order.payment_fen / 100).toFixed(2);
+    const amount = formatWxRechargeYuan(order.payment_fen);
     _wxRechargeCurrentAmount = amount;
     document.getElementById('wxRechargePayAmount').textContent = '¥ ' + amount;
     document.getElementById('wxRechargePayTier').textContent = (order.requested_fen / 100).toFixed(0);
@@ -4980,6 +5100,9 @@ function openWxRechargePayModal(order) {
 function closeWxRechargePayModal() {
     document.getElementById('wxRechargePayModal').classList.remove('show');
     stopWxRechargePolling();
+    if (!_wxRechargeResultShown) {
+        stopWxRechargeCountdown();
+    }
 }
 
 function startWxRechargeCountdown(sec) {
@@ -5005,28 +5128,38 @@ function stopWxRechargePolling() {
 }
 function startWxRechargePolling(orderNo) {
     stopWxRechargePolling();
+    let polling = false;
     async function poll() {
+        if (polling) return;
+        polling = true;
         try {
             const resp = await request('/api/portal/wechat-recharge/orders/' + encodeURIComponent(orderNo));
             const o = resp.data;
             if (!o) return;
             if (o.status === 'paid') {
-                document.getElementById('wxRechargePayStatus').textContent = '✅ 充值成功！已到账 ' + o.points + ' 积分';
+                document.getElementById('wxRechargePayStatus').textContent = '充值成功，正在展示到账详情…';
                 stopWxRechargePolling();
-                toast('充值成功，到账 ' + o.points + ' 积分', 'success');
-                loadDashboardData().catch(function() {});
-                setTimeout(closeWxRechargePayModal, 2500);
+                showWxRechargeSuccessModal(o);
+            } else if (o.status === 'wrong_amount') {
+                document.getElementById('wxRechargePayStatus').textContent = '付款金额不正确，请查看提示';
+                stopWxRechargePolling();
+                showWxRechargeWrongPaymentModal(o);
             } else if (o.status === 'expired' || o.status === 'failed') {
-                document.getElementById('wxRechargePayStatus').textContent = '❌ 订单已结束。若已付错金额，请展开下方「付错金额怎么办」并按说明联系管理员。';
+                document.getElementById('wxRechargePayStatus').textContent = '订单已结束';
                 stopWxRechargePolling();
+                if (o.last_error && o.last_error.indexOf('付款金额') >= 0) {
+                    showWxRechargeWrongPaymentModal(o);
+                }
             } else {
-                document.getElementById('wxRechargePayTimer').textContent = '';
-                startWxRechargeCountdown(o.remaining_sec || 0);
+                if (o.remaining_sec != null) {
+                    startWxRechargeCountdown(o.remaining_sec);
+                }
             }
-        } catch (e) {}
+        } catch (e) { /* 轮询失败静默重试 */ }
+        finally { polling = false; }
     }
     poll();
-    _wxRechargePollTimer = setInterval(poll, 3000);
+    _wxRechargePollTimer = setInterval(poll, _wxRechargePollIntervalMs);
 }
 
 async function openWxRechargeHistory() {
@@ -5037,7 +5170,7 @@ async function openWxRechargeHistory() {
         const resp = await request('/api/portal/wechat-recharge/orders?page=1&limit=30');
         const list = (resp.data && resp.data.list) || [];
         if (!list.length) { body.innerHTML = '<div style="text-align:center;padding:24px;color:#999;">暂无充值记录</div>'; return; }
-        const statusMap = { pending: '待支付', paid: '已支付', expired: '已过期', failed: '失败' };
+        const statusMap = { pending: '待支付', paid: '已支付', expired: '已过期', failed: '失败', wrong_amount: '金额错误' };
         body.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse;"><thead><tr style="background:#f3f4f6;"><th style="padding:8px;">时间</th><th>档位</th><th>应付</th><th>积分</th><th>状态</th></tr></thead><tbody>' +
             list.map(function(o) {
                 return '<tr style="border-bottom:1px solid #eee;"><td style="padding:8px;">' + (o.created_at || '') + '</td><td>' + (o.requested_fen/100).toFixed(0) + '元</td><td style="color:#dc2626;font-weight:700;">' + (o.payment_fen/100).toFixed(2) + '元</td><td>' + (o.points || '-') + '</td><td>' + (statusMap[o.status] || o.status) + '</td></tr>';
