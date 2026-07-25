@@ -898,8 +898,8 @@ func CreateWechatRechargeOrder(qq, requestedFen int, channel string) (WechatRech
 	if channel == "" {
 		channel = "portal"
 	}
-	if channel == "portal" && !cfg.PortalEnabled {
-		return WechatRechargeOrder{}, false, errors.New("网页充值暂未开放")
+	if (channel == "portal" || channel == "app") && !cfg.PortalEnabled {
+		return WechatRechargeOrder{}, false, errors.New("微信赞赏充值暂未开放")
 	}
 	if channel == "bot" && !cfg.BotEnabled {
 		return WechatRechargeOrder{}, false, errors.New("机器人充值暂未开放")
@@ -907,7 +907,7 @@ func CreateWechatRechargeOrder(qq, requestedFen int, channel string) (WechatRech
 	if !wechatRechargeTierAllowed(requestedFen) {
 		return WechatRechargeOrder{}, false, errors.New("充值档位无效")
 	}
-	if channel == "portal" {
+	if channel == "portal" || channel == "app" {
 		if err := wechatRechargeEnsureQRReady(cfg); err != nil {
 			return WechatRechargeOrder{}, false, err
 		}

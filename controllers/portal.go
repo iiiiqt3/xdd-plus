@@ -1619,6 +1619,16 @@ func (c *PortalController) ProtocolProxyConfig() {
 	c.ServeJSON()
 }
 
+func (c *PortalController) wechatRechargeChannel() string {
+	ctx := c.clientContext()
+	if ctx.Source == models.ClientSourceApp ||
+		ctx.Platform == models.ClientPlatformIOS ||
+		ctx.Platform == models.ClientPlatformAndroid {
+		return "app"
+	}
+	return "portal"
+}
+
 // WechatRechargeConfig 门户微信充值公开配置（档位等）
 func (c *PortalController) WechatRechargeConfig() {
 	c.Data["json"] = map[string]interface{}{
@@ -1638,7 +1648,7 @@ func (c *PortalController) WechatRechargeCreateOrder() {
 		c.ServeJSON()
 		return
 	}
-	order, replacedPrevious, err := models.CreateWechatRechargeOrder(c.PortalUserID, req.Fen, "portal")
+	order, replacedPrevious, err := models.CreateWechatRechargeOrder(c.PortalUserID, req.Fen, c.wechatRechargeChannel())
 	if err != nil {
 		code := 1
 		msg := err.Error()
