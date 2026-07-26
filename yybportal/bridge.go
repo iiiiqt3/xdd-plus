@@ -225,6 +225,22 @@ func isUserBoundOpenID(userNumber int, openid string) bool {
 	return ok
 }
 
+// isKnownYybAccount 与 bindAccount 一致：库内已有 open_id 或 yyb_account_id 视为续登账号。
+func isKnownYybAccount(userNumber int, openid string, yybAccountID int64) bool {
+	openid = strings.TrimSpace(openid)
+	if openid != "" {
+		if _, ok := findBindingIncludingDeleted(userNumber, openid); ok {
+			return true
+		}
+	}
+	if yybAccountID > 0 {
+		if _, ok := findBindingByYybIDUnscoped(userNumber, yybAccountID); ok {
+			return true
+		}
+	}
+	return false
+}
+
 func dedupeBindings(rows []PortalYybBinding) []PortalYybBinding {
 	if len(rows) <= 1 {
 		return rows

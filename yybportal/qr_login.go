@@ -2,7 +2,6 @@ package yybportal
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/cdle/xdd/models"
@@ -45,35 +44,25 @@ func portalPollScanLogin(sessionID string, userNumber int) (map[string]interface
 	return yyb.PollPortalScanLogin(sessionID, userNumber)
 }
 
-// resolveYybScanCharge 确认时实时计算是否扣费：
-// - 库内已有 OpenID 续登录 → 不扣
-// - 新 OpenID 且库内数 < 在线微信数 → 不扣（含掉线账号占名额）
-// - 新 OpenID 且名额已满 → 扣费
-func resolveYybScanCharge(userNumber int, openid string) (cost int, needCharge bool) {
-	openid = strings.TrimSpace(openid)
-	if openid != "" && isUserBoundOpenID(userNumber, openid) {
-		return 0, false
+// resolveYybScanCharge 确认时实时计算是否扣费（需在 StoreScanAccount 之后调用，以便使用 yyb_account_id）：
+// - 库内已有 open_id / yyb_account_id → 续登，不扣
+// - 新账号且库内数 < 在线微信数 → 不扣（含掉线账号占名额）
+// - 新账号且名额已满 → 扣费
+func resolveYybScanCharge(userNumber int, openid string, yybAccountID int64) (cost int, needCharge bool, chargeKind string) {
+	if isKnownYybAccount(userNumber, openid, yybAccountID) {
+		return 0, false, "relogin"
 	}
 	cost, free, _ := models.CalcYybScanLoginCost(userNumber)
 	if free || cost <= 0 {
-		return 0, false
+		return 0, false, "free_slot"
 	}
-	return cost, true
+	return cost, true, "new_account"
 }
 
 func portalConfirmScanLogin(sessionID string, userNumber int, clientCtx models.ClientContext) (map[string]interface{}, error) {
 	loginBuffer, creds, proxyMeta, _, _, err := yyb.FinishPortalScanLogin(sessionID, userNumber)
 	if err != nil {
 		return nil, err
-	}
-
-	openid := strings.TrimSpace(creds.OpenID)
-	alreadyBound := openid != "" && isUserBoundOpenID(userNumber, openid)
-	cost, needCharge := resolveYybScanCharge(userNumber, openid)
-	if needCharge {
-		if err := ensureCoin(userNumber, cost); err != nil {
-			return nil, err
-		}
 	}
 
 	a, err := svc()
@@ -86,23 +75,34 @@ func portalConfirmScanLogin(sessionID string, userNumber int, clientCtx models.C
 		return nil, err
 	}
 
-	costCharged := 0
+	openid := strings.TrimSpace(acc.OpenID)
+	alreadyBound := isKnownYybAccount(userNumber, openid, acc.ID)
+	cost, needCharge, chargeKind := resolveYybScanCharge(userNumber, openid, acc.ID)
 	if needCharge {
-		nick := ""
-		if acc.Nickname != nil {
-			nick = *acc.Nickname
-		}
-		if err := deductCoin(userNumber, cost, clientCtx, fmt.Sprintf("应用宝扫码登录 %s", nick)); err != nil {
+		if err := ensureCoin(userNumber, cost); err != nil {
 			return nil, err
 		}
-		models.RecordClientSourceEvent(userNumber, "yyb_scan_login", clientCtx)
-		costCharged = cost
 	}
 
 	binding, err := bindAccount(userNumber, acc, "alive")
 	if err != nil {
 		return nil, err
 	}
+
+	costCharged := 0
+	if needCharge {
+		nick := ""
+		if acc.Nickname != nil {
+			nick = *acc.Nickname
+		}
+		remark := formatYybScanCoinRemark(chargeKind, nick, openid, acc.ID)
+		if err := deductCoin(userNumber, cost, clientCtx, remark); err != nil {
+			return nil, err
+		}
+		models.RecordClientSourceEvent(userNumber, "yyb_scan_login", clientCtx)
+		costCharged = cost
+	}
+
 	view := toPortalView(ctx, *binding, a)
 	return map[string]interface{}{
 		"account":      view,

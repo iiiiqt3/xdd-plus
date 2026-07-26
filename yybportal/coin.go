@@ -53,6 +53,30 @@ func ensureCoinForScanQR(userNumber, cost int) error {
 	return nil
 }
 
+func formatYybScanCoinRemark(chargeKind, nick, openid string, yybAccountID int64) string {
+	kindLabel := map[string]string{
+		"new_account": "新增",
+		"relogin":     "续登",
+		"free_slot":   "名额免费",
+	}[chargeKind]
+	if kindLabel == "" {
+		kindLabel = chargeKind
+	}
+	nick = strings.TrimSpace(nick)
+	if nick == "" {
+		nick = "未知"
+	}
+	remark := fmt.Sprintf("应用宝扫码登录 [%s] %s", kindLabel, nick)
+	openid = strings.TrimSpace(openid)
+	if openid != "" {
+		remark += " openid=" + openid
+	}
+	if yybAccountID > 0 {
+		remark += fmt.Sprintf(" yyb_id=%d", yybAccountID)
+	}
+	return remark
+}
+
 func deductCoin(userNumber, cost int, clientCtx models.ClientContext, remark string) error {
 	if cost <= 0 {
 		return nil
