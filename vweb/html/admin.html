@@ -6,7 +6,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -15,7 +15,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #333; -webkit-text-size-adjust: 100%; }
+        :root { --admin-topbar-height: 56px; }
         /* ===== 浅色侧边栏（温暖灰蓝） ===== */
         .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: #e8eaef; backdrop-filter: blur(24px) saturate(120%); -webkit-backdrop-filter: blur(24px) saturate(120%); color: #333; z-index: 100; overflow-y: auto; border-right: 1px solid rgba(0,0,0,0.08); }
         .sidebar-header { padding: 20px 20px; border-bottom: 1px solid rgba(0,0,0,0.06); }
@@ -77,12 +78,12 @@
             box-sizing: border-box;
         }
         .card { background: #fff; border-radius: 10px; padding: 16px 16px 0 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: visible; border: 1px solid rgba(0,0,0,0.04); }
-        .card-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 12px 0; border-bottom: 1px solid #f0f0f0; position: sticky; top: 56px; z-index: 45; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 12px 0; border-bottom: 1px solid #f0f0f0; position: sticky; top: var(--admin-topbar-height, 56px); z-index: 45; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         .card-title { font-size: 16px; font-weight: 600; color: #1a1a2e; display: flex; align-items: center; gap: 8px; }
         .card-title i { color: #409eff; }
         /* 系统配置分区跳转导航 */
         #page-sysconfig .sysconfig-sticky {
-            position: sticky; top: 56px; z-index: 46; background: #fff;
+            position: sticky; top: var(--admin-topbar-height, 56px); z-index: 46; background: #fff;
             margin: 0 -16px; padding: 0 16px 10px; border-bottom: 1px solid #f0f0f0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
@@ -92,20 +93,22 @@
         .sysconfig-toc {
             display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch;
             padding: 2px 0 4px; scrollbar-width: thin;
+            overscroll-behavior-x: contain; touch-action: pan-x;
         }
         .sysconfig-toc::-webkit-scrollbar { height: 4px; }
         .sysconfig-toc::-webkit-scrollbar-thumb { background: #dcdfe6; border-radius: 4px; }
         .sysconfig-toc-btn {
             flex: 0 0 auto; border: 1px solid #e4e7ed; background: #f5f7fa; color: #606266;
             border-radius: 16px; padding: 5px 12px; font-size: 12px; line-height: 1.4; cursor: pointer;
-            white-space: nowrap; transition: all .15s ease;
+            white-space: nowrap; transition: all .15s ease; touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         .sysconfig-toc-btn:hover { color: #409eff; border-color: #b3d8ff; background: #ecf5ff; }
         .sysconfig-toc-btn.active {
             color: #fff; background: #409eff; border-color: #409eff; font-weight: 600;
             box-shadow: 0 2px 6px rgba(64,158,255,0.28);
         }
-        #page-sysconfig .config-section { scroll-margin-top: 130px; }
+        #page-sysconfig .config-section { scroll-margin-top: calc(var(--admin-topbar-height, 56px) + 88px); }
         .yyb-stats-grid {
             display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 16px; margin-bottom: 16px;
@@ -200,7 +203,7 @@
         .btn-info:hover { background: #a6a9ad; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
         .btn-xs { padding: 2px 6px; font-size: 11px; border-radius: 3px; line-height: 1.4; }
-        .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; position: sticky; top: 56px; z-index: 45; background: #fff; padding: 8px 0; margin-bottom: 0; border-bottom: 1px solid #f0f0f0; }
+        .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; position: sticky; top: var(--admin-topbar-height, 56px); z-index: 45; background: #fff; padding: 8px 0; margin-bottom: 0; border-bottom: 1px solid #f0f0f0; }
         .toolbar .search-box { flex-shrink: 0; }
         .toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         .search-box { display: flex; gap: 8px; align-items: center; }
@@ -944,10 +947,78 @@
             }
             #page-jdmanualtasks code { word-break: break-all; white-space: normal; font-size: 10px !important; }
             #page-jdmanualtasks .toolbar-actions { width: 100%; }
+
+            /* 系统配置：移动端分区导航与吸顶栏 */
+            #page-sysconfig .sysconfig-sticky {
+                margin: 0 -12px;
+                padding: 0 12px 10px;
+            }
+            #page-sysconfig .sysconfig-sticky .card-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            #page-sysconfig .sysconfig-sticky .card-header .btn {
+                width: 100%;
+                justify-content: center;
+                min-height: 40px;
+            }
+            .sysconfig-toc-btn {
+                padding: 8px 14px;
+                font-size: 13px;
+                min-height: 36px;
+            }
+            #page-sysconfig .config-section { scroll-margin-top: calc(var(--admin-topbar-height, 56px) + 120px); }
+            .config-section-title { flex-wrap: wrap; gap: 6px; }
+            .config-section-title .tag { margin-left: 0 !important; }
+
+            /* 微信赞赏充值 Tab */
+            #page-wechatrecharge .wrc-tabs,
+            #page-wechatrecharge .tab-container {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior-x: contain;
+            }
+            .wrc-hero-top { flex-direction: column; align-items: stretch; }
+            .wrc-settings-toolbar { flex-direction: column; align-items: stretch; }
+            .wrc-stats-head { flex-direction: column; align-items: stretch; }
+
+            /* Markdown 编辑器 */
+            .md-body { flex-direction: column; }
+            .md-preview { border-left: none; border-top: 1px solid #ebeef5; max-height: none; }
+            .md-toolbar { gap: 4px; }
+
+            /* 应用宝协议 */
+            .ayyb-tab-bar { flex-direction: column; align-items: stretch; }
+            .ayyb-tab-group { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .ayyb-notify-inline { justify-content: flex-start; width: 100%; }
+            #ayyb-notifyStatus { max-width: 100%; white-space: normal; }
+
+            /* 活动人数统计 */
+            #page-actstats #actStatsSummary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+            /* 定时任务操作按钮 */
+            .cron-actions-grid { grid-template-columns: repeat(2, 1fr); }
+
+            /* 日志 Tab */
+            .log-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+            .log-tab { flex: 0 0 auto; white-space: nowrap; }
+
+            /* API 文档 */
+            .apidocs-toolbar { flex-direction: column; align-items: stretch; }
+            .apidocs-toolbar select { width: 100%; }
+
+            /* 顶部安全区 */
+            .top-bar { padding-top: max(10px, env(safe-area-inset-top)); }
+            .content-area { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+
+            /* 全局按钮触控 */
+            .btn, .tab-btn, .nav-item, .nav-sub-item, .log-tab, .ayyb-tab { touch-action: manipulation; }
         }
 
         @media (max-width: 480px) {
-            .top-bar { padding: 8px 10px; }
+            .top-bar { padding: 8px 10px; padding-top: max(8px, env(safe-area-inset-top)); }
             .top-bar h1 { font-size: 15px; }
             .content-area { padding: 8px; }
             .card { padding: 10px 10px 0 10px; border-radius: 8px; }
@@ -960,6 +1031,9 @@
             .activity-card { padding: 10px 12px; }
             .activity-card-header { flex-direction: column; gap: 8px; }
             .stat-info h3 { font-size: 18px; }
+            #page-actstats #actStatsSummary { grid-template-columns: 1fr !important; }
+            .yyb-stats-grid { grid-template-columns: 1fr !important; }
+            .sysconfig-toc-btn { font-size: 12px; padding: 7px 12px; }
         }
         /* ===== Markdown编辑器 ===== */
         .md-editor { border: 1px solid #dcdfe6; border-radius: 6px; overflow: hidden; background: #fff; }
@@ -3421,6 +3495,12 @@ function isMobile() {
     return window.innerWidth <= 768;
 }
 
+function updateAdminTopbarHeight() {
+    var tb = document.querySelector('.top-bar');
+    if (!tb) return;
+    document.documentElement.style.setProperty('--admin-topbar-height', tb.offsetHeight + 'px');
+}
+
 function toggleAllCheck(cls, checked) {
     document.querySelectorAll('.' + cls).forEach(function(cb) { cb.checked = checked; });
 }
@@ -3769,6 +3849,7 @@ function switchPage(page) {
         apidocs: initApiDocsPage,
     };
     if (loaders[page]) loaders[page]();
+    updateAdminTopbarHeight();
 }
 
 function loadContainers() {
@@ -7572,6 +7653,7 @@ var _sysConfigTocItems = [
 ];
 var _sysConfigSpyBound = false;
 var _sysConfigJumping = false;
+var _sysConfigSpyRaf = 0;
 
 function renderSysConfigToc(activeId) {
     var toc = document.getElementById('sysConfigToc');
@@ -7588,20 +7670,26 @@ function jumpSysConfigSection(id) {
     var el = document.getElementById(id);
     if (!el) return;
     _sysConfigJumping = true;
-    setSysConfigTocActive(id);
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setTimeout(function() { _sysConfigJumping = false; }, 700);
+    setSysConfigTocActive(id, true);
+    el.scrollIntoView({ behavior: isMobile() ? 'auto' : 'smooth', block: 'start' });
+    setTimeout(function() { _sysConfigJumping = false; }, isMobile() ? 120 : 700);
 }
 
-function setSysConfigTocActive(id) {
+function setSysConfigTocActive(id, scrollTocBtn) {
     var toc = document.getElementById('sysConfigToc');
     if (!toc) return;
     var btns = toc.querySelectorAll('.sysconfig-toc-btn');
     btns.forEach(function(btn) {
         var on = btn.getAttribute('data-target') === id;
         btn.classList.toggle('active', on);
-        if (on) {
-            try { btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (_) {}
+        if (on && scrollTocBtn) {
+            try {
+                var tocRect = toc.getBoundingClientRect();
+                var btnRect = btn.getBoundingClientRect();
+                if (btnRect.left < tocRect.left || btnRect.right > tocRect.right) {
+                    toc.scrollLeft += (btnRect.left + btnRect.width / 2) - (tocRect.left + tocRect.width / 2);
+                }
+            } catch (_) {}
         }
     });
 }
@@ -7611,15 +7699,19 @@ function bindSysConfigScrollSpy() {
     _sysConfigSpyBound = true;
     window.addEventListener('scroll', function() {
         if (currentPage !== 'sysconfig' || _sysConfigJumping) return;
-        var sticky = document.querySelector('#page-sysconfig .sysconfig-sticky');
-        var offset = (sticky ? sticky.getBoundingClientRect().bottom : 120) + 8;
-        var current = _sysConfigTocItems[0] && _sysConfigTocItems[0].id;
-        for (var i = 0; i < _sysConfigTocItems.length; i++) {
-            var el = document.getElementById(_sysConfigTocItems[i].id);
-            if (!el) continue;
-            if (el.getBoundingClientRect().top <= offset) current = _sysConfigTocItems[i].id;
-        }
-        if (current) setSysConfigTocActive(current);
+        if (_sysConfigSpyRaf) cancelAnimationFrame(_sysConfigSpyRaf);
+        _sysConfigSpyRaf = requestAnimationFrame(function() {
+            _sysConfigSpyRaf = 0;
+            var sticky = document.querySelector('#page-sysconfig .sysconfig-sticky');
+            var offset = (sticky ? sticky.getBoundingClientRect().bottom : 120) + 8;
+            var current = _sysConfigTocItems[0] && _sysConfigTocItems[0].id;
+            for (var i = 0; i < _sysConfigTocItems.length; i++) {
+                var el = document.getElementById(_sysConfigTocItems[i].id);
+                if (!el) continue;
+                if (el.getBoundingClientRect().top <= offset) current = _sysConfigTocItems[i].id;
+            }
+            if (current) setSysConfigTocActive(current, false);
+        });
     }, { passive: true });
 }
 
@@ -7972,6 +8064,7 @@ window._pageSizeChange = function(key, size) {
 
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', () => {
+    updateAdminTopbarHeight();
     initNavMenu();
     if (window.AdminYyb) {
         AdminYyb.init();
@@ -7981,7 +8074,10 @@ document.addEventListener('DOMContentLoaded', () => {
     var pageQ = new URLSearchParams(location.search).get('page');
     if (pageQ) switchPage(pageQ);
 });
-window.addEventListener('resize', function() { if (!isMobile()) closeSidebar(); });
+window.addEventListener('resize', function() {
+    updateAdminTopbarHeight();
+    if (!isMobile()) closeSidebar();
+});
 
 // ============ 列宽拖拽调整 + localStorage缓存 ============
 function initResizableColumns() {
