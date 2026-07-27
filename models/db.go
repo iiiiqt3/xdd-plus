@@ -387,6 +387,7 @@ func migrateActivityProjectColumns() {
 		return
 	}
 	DB().Infof("[数据库迁移] activity_project 已添加 admin_grant_days 列")
+}
 
 // isNumeric 判断字符串是否为纯数字（用于识别旧版连续编号格式的 activity_id）
 func isNumeric(s string) bool {
