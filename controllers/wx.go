@@ -428,7 +428,6 @@ func AgreeFriendVerify(args interface{}) {
 			}
 		}
 	case "qx":
-		req := httplib.Post(models.Config.Wx.Url + "DaenWxHook/httpapi/?wxid=" + models.Config.Wx.Robotid)
 		agree := &QxAgreeFriend{
 			Type: "Q0017",
 			Data: struct {
@@ -441,12 +440,11 @@ func AgreeFriendVerify(args interface{}) {
 				V4:    arg["v4"],
 			},
 		}
-		random := browser.Random()
-		req.Header("User-Agent", random)
-		marshal, _ := json.Marshal(agree)
-		req.Body(string(marshal))
-		s, _ := req.Bytes()
-		val, _ := jsonparser.GetString(s, "msg")
+		resp, err := models.QxPostHook(agree)
+		if err != nil {
+			break
+		}
+		val, _ := jsonparser.GetString([]byte(resp), "msg")
 		if val == "现在可以开始聊天" {
 			welcome := models.GetEnv("Welcome")
 			if welcome != "" {
