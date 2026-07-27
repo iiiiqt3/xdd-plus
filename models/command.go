@@ -4461,7 +4461,7 @@ func QxInviteGroup(uid string, gid string) {
 	UserLog().Infof("开始执行QxInviteGroup，uid: ", uid, " gid: ", gid)
 
 	// 组装请求 URL
-	url := models.QxHttpAPIURL()
+	url := qxHttpAPIURL()
 	UserLog().Infof("请求的URL: ", url)
 
 	// 组装请求体

@@ -19,6 +19,40 @@ func InitChan() {
 	go WriteMsg(msgchan)
 }
 
+// qxBaseURL 千寻 HTTP 根地址（去掉尾部斜杠）
+func qxBaseURL() string {
+	return strings.TrimRight(strings.TrimSpace(Config.Wx.Url), "/")
+}
+
+func qxHttpAPIURL() string {
+	return fmt.Sprintf("%s/DaenWxHook/httpapi/?wxid=%s", qxBaseURL(), Config.Wx.Robotid)
+}
+
+func qxPostHook(body interface{}) (string, error) {
+	url := qxHttpAPIURL()
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+	req := httplib.Post(url)
+	req.Header("Content-Type", "application/json")
+	req.Header("User-Agent", browser.Random())
+	req.Body(string(raw))
+	Bot().Infof("[qx] POST %s body=%s", url, string(raw))
+	resp, err := req.String()
+	if err != nil {
+		Bot().Errorf("[qx] 请求失败: %v", err)
+		return "", err
+	}
+	Bot().Infof("[qx] resp=%s", resp)
+	return resp, nil
+}
+
+// QxPostHook 供 controllers 调用千寻 DaenWxHook
+func QxPostHook(body interface{}) (string, error) {
+	return qxPostHook(body)
+}
+
 type QQMessage struct {
 	Action string `json:"action"`
 	QQMsg  struct {
