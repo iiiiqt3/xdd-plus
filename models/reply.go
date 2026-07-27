@@ -250,36 +250,14 @@ func SendWxGroupMsg(uid string, gid string, msg string) {
 		s, _ := req.String()
 		Bot().Infof(s)
 	case "qx":
-		nickname := GetWxNickname(uid)
-		if nickname == "" {
-			nickname = uid
-		}
-		atMsg := fmt.Sprintf("@%s %s", nickname, msg)
-		type QXAtMsg struct {
-			API       int    `json:"api"`
-			ToWxid    string `json:"towxid"`
-			AtWxid    string `json:"atwxid"`
-			Content   string `json:"content"`
-		}
-
-		reply := &QXAtMsg{
-			API:     9,
-			ToWxid:  gid,
-			AtWxid:  uid,
-			Content: atMsg,
-		}
-		marshal, _ := json.Marshal(reply)
-		req := httplib.Post(qxBaseURL())
-		req.Header("Content-Type", "application/json")
-		req.Header("User-Agent", browser.Random())
-		req.Body(string(marshal))
-		Bot().Infof("[qx] POST %s body=%s", qxBaseURL(), string(marshal))
-		s, err := req.String()
-		if err != nil {
-			Bot().Errorf("[qx] 群@请求失败: %v", err)
-			return
-		}
-		Bot().Infof("[qx] 群@响应: %s", s)
+		msg = strings.ReplaceAll(msg, "\n", "\r")
+		_, _ = qxPostHook(map[string]interface{}{
+			"type": "Q0001",
+			"data": map[string]string{
+				"wxid": gid,
+				"msg":  msg,
+			},
+		})
 	case "wechat08":
 		Wechat08SendGroupAt(uid, gid, msg)
 	default:
@@ -393,6 +371,17 @@ func TransferRequest(toWxid string, transferid string, money string) error {
 func SendWxGroupMsg2(gid string, msg string) {
 	if Config.Wx.Model == "wechat08" {
 		Wechat08SendGroupMsg(gid, msg)
+		return
+	}
+	if Config.Wx.Model == "qx" {
+		msg = strings.ReplaceAll(msg, "\n", "\r")
+		_, _ = qxPostHook(map[string]interface{}{
+			"type": "Q0001",
+			"data": map[string]string{
+				"wxid": gid,
+				"msg":  msg,
+			},
+		})
 		return
 	}
 
