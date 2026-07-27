@@ -36,6 +36,7 @@ type ActivityProject struct {
 	MinDays            *int       `gorm:"column:min_days"`
 	NeedCoin           int        `gorm:"column:need_coin;default:0"`
 	GrantExpireDate    string     `gorm:"column:grant_expire_date;size:10"`
+	AdminGrantDays     int        `gorm:"column:admin_grant_days;default:0"` // 后台赠送天数（删号不退积分）
 	CreatedAt          time.Time  `gorm:"column:created_at"`
 	UpdatedAt          time.Time  `gorm:"column:updated_at"`
 	DeletedAt          *time.Time `gorm:"column:deleted_at;index"`
@@ -155,7 +156,19 @@ func CalcPaidRemainingDays(project *ActivityProject) int {
 		}
 	}
 
-	paidDays := totalRemaining - grantedRemaining
+	adminGrant := project.AdminGrantDays
+	if adminGrant < 0 {
+		adminGrant = 0
+	}
+	if adminGrant > int(totalRemaining) {
+		adminGrant = int(totalRemaining)
+	}
+	nonRefundable := grantedRemaining + float64(adminGrant)
+	if nonRefundable > totalRemaining {
+		nonRefundable = totalRemaining
+	}
+
+	paidDays := totalRemaining - nonRefundable
 	if paidDays < 0 {
 		paidDays = 0
 	}

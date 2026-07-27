@@ -67,6 +67,7 @@ func initDB() {
 	}
 
 	createActivityProjectTable()
+	migrateActivityProjectColumns()
 
 	keys = make(map[string]bool)
 	pins = make(map[string]bool)
@@ -349,6 +350,7 @@ CREATE TABLE activity_project (
 	monthly_coin INT NOT NULL DEFAULT 0,
 	need_coin INT NOT NULL DEFAULT 0,
 	grant_expire_date VARCHAR(10) NOT NULL DEFAULT '',
+	admin_grant_days INT NOT NULL DEFAULT 0,
 	created_at DATETIME,
 	updated_at DATETIME,
 	deleted_at DATETIME,
@@ -368,6 +370,23 @@ CREATE TABLE activity_project (
 	}
 	DB().Infof("[数据库迁移] activity_project 表创建成功")
 }
+
+func migrateActivityProjectColumns() {
+	if db == nil {
+		return
+	}
+	var count int64
+	if err := db.Raw(`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'activity_project' AND column_name = 'admin_grant_days'`).Scan(&count).Error; err != nil {
+		return
+	}
+	if count > 0 {
+		return
+	}
+	if err := db.Exec(`ALTER TABLE activity_project ADD COLUMN admin_grant_days INT NOT NULL DEFAULT 0`).Error; err != nil {
+		DB().Infof("[数据库迁移] activity_project 添加 admin_grant_days 失败: %v", err)
+		return
+	}
+	DB().Infof("[数据库迁移] activity_project 已添加 admin_grant_days 列")
 
 // isNumeric 判断字符串是否为纯数字（用于识别旧版连续编号格式的 activity_id）
 func isNumeric(s string) bool {

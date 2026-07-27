@@ -4294,12 +4294,18 @@ async function deleteProject(activityId, remarks, activityName, btn) {
     let refundTip = '';
     const calcPaidDays = () => {
         let total = item.daysLeft || 0;
-        if (!item.grantExpireDate || item.needCoin > 0) return total;
-        const now = new Date();
-        const grantDate = new Date(item.grantExpireDate + 'T23:59:59');
-        const grantRemain = (grantDate - now) / (1000 * 60 * 60 * 24);
-        const granted = grantRemain > 0 ? Math.ceil(grantRemain) : 0;
-        const paid = total - granted;
+        if (item.needCoin > 0) return 0;
+        let grantPrefix = 0;
+        if (item.grantExpireDate) {
+            const now = new Date();
+            const grantDate = new Date(item.grantExpireDate + 'T23:59:59');
+            const grantRemain = (grantDate - now) / (1000 * 60 * 60 * 24);
+            if (grantRemain > 1) grantPrefix = Math.ceil(grantRemain) - 1;
+            else if (grantRemain > 0) grantPrefix = 0;
+        }
+        const adminGrant = Math.min(item.adminGrantDays || 0, total);
+        const nonRefundable = Math.min(total, grantPrefix + adminGrant);
+        const paid = total - nonRefundable;
         return paid > 0 ? paid : 0;
     };
     if (item && item.isDailyDeduct && item.dailyCoin > 0 && item.daysLeft > 0) {

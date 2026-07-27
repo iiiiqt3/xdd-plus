@@ -3386,8 +3386,20 @@ func BatchUpdateActivityAuth(activityID, direction string, days int, envIDs []in
 		var newDate time.Time
 		if direction == "add" {
 			newDate = oldDate.AddDate(0, 0, days)
+			project.AdminGrantDays += days
 		} else {
 			newDate = oldDate.AddDate(0, 0, -days)
+			sub := days
+			if project.AdminGrantDays > 0 {
+				if project.AdminGrantDays >= sub {
+					project.AdminGrantDays -= sub
+					sub = 0
+				} else {
+					sub -= project.AdminGrantDays
+					project.AdminGrantDays = 0
+				}
+			}
+			_ = sub // 剩余扣减体现在到期日缩短，对应用户付费部分
 		}
 
 		newDateStr := newDate.Format(DateLayout)

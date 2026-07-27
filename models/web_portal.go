@@ -32,6 +32,7 @@ type PortalProjectItem struct {
 	DailyCoin       int                   `json:"dailyCoin"`
 	NeedCoin        int                   `json:"needCoin"`
 	GrantExpireDate string                `json:"grantExpireDate"`
+	AdminGrantDays  int                   `json:"adminGrantDays"`
 	BizStatus       string                `json:"bizStatus"`
 	BizStatusText   string                `json:"bizStatusText"`
 	DaysLeft        int                   `json:"daysLeft"`
@@ -470,6 +471,7 @@ func GetPortalProjects(userNumber int) ([]PortalProjectItem, error) {
 			DailyCoin:       cfg.DailyCoin,
 			NeedCoin:        dbProj.NeedCoin,
 			GrantExpireDate: dbProj.GrantExpireDate,
+			AdminGrantDays:  dbProj.AdminGrantDays,
 			BizStatus:       bizStatus,
 			BizStatusText:   bizStatusText,
 			DaysLeft:        daysLeft,
