@@ -160,6 +160,14 @@
         .btn:active { transform: translateY(0); }
         .btn.secondary { background: var(--card); color: var(--text-secondary); border: none; box-shadow: none; }
         .btn.secondary:hover { background: #f1f5f9; box-shadow: var(--card-shadow); }
+        .btn.query {
+            background: var(--cyan-light); color: var(--cyan);
+            border: 1.5px solid rgba(8,145,178,0.35); box-shadow: none;
+        }
+        .btn.query:hover {
+            background: #cffafe; border-color: var(--cyan);
+            box-shadow: 0 1px 4px rgba(8,145,178,0.18); transform: none;
+        }
         .btn.outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); box-shadow: none; }
         .btn.outline:hover { background: rgba(79,70,229,0.06); box-shadow: none; transform: none; }
         .btn.small { padding: 6px 14px; min-height: 32px; font-size: 12px; border-radius: 6px; }
@@ -3865,7 +3873,7 @@ function renderProjects() {
                 <td data-label="状态统计">${summary}</td>
                 <td>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <button class="btn small secondary" onclick="queryGroupIncome('${escapeJs(group.activityId)}','${escapeJs(group.activityName)}')">查询</button>
+                        <button class="btn small query" onclick="queryGroupIncome('${escapeJs(group.activityId)}','${escapeJs(group.activityName)}')">查询</button>
                         <button class="btn small" id="toggle-btn-${escapeAttr(group.key)}" onclick="toggleGroupDetail('${escapeJs(group.key)}')">展开账号</button>
                     </div>
                     <div style="margin-top:6px;font-size:11px;color:var(--cyan);font-weight:700;">▼ 展开可修改/续费/删除账号</div>
@@ -3889,7 +3897,7 @@ function renderProjects() {
 
 function renderDetailActions(item) {
     const actions = [];
-    actions.push(`<button class="btn small secondary" onclick="queryIncome('${escapeJs(item.activityId)}','${escapeJs(item.remark)}','${escapeJs(item.displayName || item.activityName)}')">查询收入</button>`);
+    actions.push(`<button class="btn small query" onclick="queryIncome('${escapeJs(item.activityId)}','${escapeJs(item.remark)}','${escapeJs(item.displayName || item.activityName)}')">查询收入</button>`);
     if (canRenewProject(item)) {
         actions.push(`<button class="btn small" onclick="renewProject('${escapeJs(item.activityId)}','${escapeJs(item.remark)}')">续费</button>`);
     }
