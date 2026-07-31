@@ -440,7 +440,11 @@ func main() {
 
 	// ===================== 静态文件服务（上传的图片/视频） =====================
 	web.Get("/uploads/*", func(ctx *context.Context) {
-		filePath := ctx.Input.Param(":filepath")
+		// Beego 的 * 通配符参数名为 :splat，不是 :filepath
+		filePath := ctx.Input.Param(":splat")
+		if filePath == "" {
+			filePath = ctx.Input.Param(":filepath")
+		}
 		absPath, ok := models.ResolveUploadAbsPath(filePath)
 		if !ok {
 			ctx.Output.SetStatus(403)
