@@ -219,6 +219,19 @@ final class NotificationListViewController: BaseNativeViewController {
                 self?.handle(error)
             case .success(let page):
                 self?.notifications = page.list
+                let access = PortalAccessStore.shared.current
+                let locked = (access?.allowed == false) && page.list.isEmpty
+                if locked {
+                    self?.tableView.backgroundView = EmptyStateView(
+                        icon: "lock.fill",
+                        title: "暂未开放通知中心",
+                        desc: access?.message ?? "通知中心需积分达到 1000 或有效按月项目后开放"
+                    )
+                } else if page.list.isEmpty {
+                    self?.tableView.backgroundView = EmptyStateView(icon: "bell.slash", title: "暂无通知", desc: "暂时没有任何通知消息")
+                } else {
+                    self?.tableView.backgroundView = nil
+                }
                 self?.tableView.reloadData()
                 if page.unread > 0 {
                     self?.title = "消息通知(\(page.unread)条未读)"
@@ -233,11 +246,6 @@ final class NotificationListViewController: BaseNativeViewController {
 
 extension NotificationListViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if notifications.isEmpty {
-            tableView.backgroundView = EmptyStateView(icon: "bell.slash", title: "暂无通知", desc: "暂时没有任何通知消息")
-        } else {
-            tableView.backgroundView = nil
-        }
         return notifications.count
     }
 
@@ -372,13 +380,15 @@ final class NotificationDetailViewController: UIViewController {
 }
 
 
-final class FeedbackViewController: BaseNativeViewController, UITextFieldDelegate {
+final class FeedbackViewController: BaseNativeViewController, UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     private let typeLabel = UILabel()
     private let titleField = UITextField()
     private let contentTextView = UITextView()
     private let contactField = UITextField()
+    private let attachStack = UIStackView()
     private var selectedType = ""
     private var isSubmitting = false
+    private var attachmentURLs: [String] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -427,6 +437,14 @@ final class FeedbackViewController: BaseNativeViewController, UITextFieldDelegat
         contactField.applyAppInputStyle(placeholder: "联系方式（选填，QQ或微信）")
         contactField.heightAnchor.constraint(equalToConstant: 44).isActive = true
 
+        attachStack.axis = .vertical
+        attachStack.spacing = 8
+        let attachBtn = UIButton(type: .system)
+        attachBtn.setTitle("添加截图/视频（最多6个）", for: .normal)
+        attachBtn.contentHorizontalAlignment = .left
+        attachBtn.addTarget(self, action: #selector(addAttachment), for: .touchUpInside)
+        attachStack.addArrangedSubview(attachBtn)
+
         let submitBtn = UIButton(type: .system)
         submitBtn.setTitle("提交反馈", for: .normal)
         submitBtn.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
@@ -442,7 +460,7 @@ final class FeedbackViewController: BaseNativeViewController, UITextFieldDelegat
         tipLabel.textColor = .secondaryLabel
         tipLabel.numberOfLines = 0
 
-        [typeLabel, titleField, contentTextView, contactField, submitBtn, tipLabel].forEach {
+        [typeLabel, titleField, contentTextView, contactField, attachStack, submitBtn, tipLabel].forEach {
             stack.addArrangedSubview($0)
         }
 
@@ -466,6 +484,50 @@ final class FeedbackViewController: BaseNativeViewController, UITextFieldDelegat
         present(alert, animated: true)
     }
 
+    @objc private func addAttachment() {
+        if attachmentURLs.count >= 6 { showMessage("最多上传6个附件"); return }
+        let picker = UIImagePickerController()
+        picker.delegate = self
+        picker.mediaTypes = ["public.image", "public.movie"]
+        picker.videoMaximumDuration = 120
+        present(picker, animated: true)
+    }
+
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        picker.dismiss(animated: true)
+        if attachmentURLs.count >= 6 { return }
+        let isVideo = (info[.mediaType] as? String) == "public.movie"
+        let filename = isVideo ? "video_\(Int(Date().timeIntervalSince1970)).mp4" : "image_\(Int(Date().timeIntervalSince1970)).jpg"
+        let mime = isVideo ? "video/mp4" : "image/jpeg"
+        var uploadData: Data?
+        if isVideo, let url = info[.mediaURL] as? URL {
+            uploadData = try? Data(contentsOf: url)
+        } else if let image = info[.originalImage] as? UIImage {
+            uploadData = image.jpegData(compressionQuality: 0.85)
+        }
+        guard let data = uploadData else { showMessage("无法读取文件"); return }
+        showMessage("正在上传...")
+        PortalService.shared.uploadFeedbackFile(data: data, filename: filename, mimeType: mime) { [weak self] result in
+            switch result {
+            case .failure(let error): self?.handle(error)
+            case .success(let url):
+                self?.attachmentURLs.append(url)
+                self?.refreshAttachmentPreview()
+            }
+        }
+    }
+
+    private func refreshAttachmentPreview() {
+        attachStack.arrangedSubviews.dropFirst().forEach { $0.removeFromSuperview() }
+        for url in attachmentURLs {
+            let label = UILabel()
+            label.font = .systemFont(ofSize: 12)
+            label.textColor = .secondaryLabel
+            label.text = "✓ 已上传: \(URL(string: url)?.lastPathComponent ?? url)"
+            attachStack.addArrangedSubview(label)
+        }
+    }
+
     @objc private func submitTapped() {
         guard !isSubmitting else { return }
         if selectedType.isEmpty { showMessage("请先选择反馈类型"); return }
@@ -475,7 +537,7 @@ final class FeedbackViewController: BaseNativeViewController, UITextFieldDelegat
         if title.isEmpty { showMessage("请输入主题"); return }
         if content.isEmpty { showMessage("请输入详细内容"); return }
         isSubmitting = true
-        PortalService.shared.submitFeedback(type: selectedType, title: title, content: content, contact: contact) { [weak self] result in
+        PortalService.shared.submitFeedback(type: selectedType, title: title, content: content, contact: contact, attachments: attachmentURLs) { [weak self] result in
             self?.isSubmitting = false
             switch result {
             case .failure(let error): self?.handle(error)

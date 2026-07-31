@@ -1263,7 +1263,14 @@ final class HomeDashboardViewController: BaseNativeViewController {
             view.removeFromSuperview()
         }
         if let notifRow = existingViews.last, let label = notifRow.viewWithTag(1001) as? UILabel {
-            if page.unread > 0 {
+            let access = PortalAccessStore.shared.current
+            let locked = (access?.allowed == false) && page.list.isEmpty
+            if locked {
+                label.text = access?.message ?? "通知中心需积分达到 1000 或有效按月项目后开放"
+                label.textColor = .secondaryLabel
+                label.font = UIFont.systemFont(ofSize: 12)
+                label.numberOfLines = 0
+            } else if page.unread > 0 {
                 label.text = "未读通知：\(page.unread)条"
                 label.textColor = .systemBlue
                 label.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
@@ -2000,6 +2007,14 @@ final class ActivitiesListViewController: UITableViewController {
                 (self.parent as? BaseNativeViewController)?.handle(error)
             case .success(let activities):
                 self.activities = activities
+                let access = PortalAccessStore.shared.current
+                let locked = (access?.allowed == false) && activities.isEmpty
+                if locked {
+                    let msg = access?.message ?? "活动中心和通知中心需积分达到 1000，或拥有有效的按月付费项目后开放"
+                    self.tableView.backgroundView = EmptyStateView(icon: "lock.fill", title: "暂未开放活动中心", desc: msg)
+                } else {
+                    self.tableView.backgroundView = nil
+                }
                 self.tableView.reloadData()
                 self.refreshControl?.endRefreshing()
             }

@@ -148,6 +148,34 @@ struct APIEnvelope<T: Decodable>: Decodable {
     let data: T?
 }
 
+struct PortalAccessInfo: Decodable {
+    let allowed: Bool
+    let coin: Int?
+    let requiredCoin: Int?
+    let gapCoin: Int?
+    let message: String?
+}
+
+struct PortalAPIResponse<T: Decodable>: Decodable {
+    let code: Int
+    let msg: String?
+    let data: T?
+    let portalAccess: PortalAccessInfo?
+}
+
+final class PortalAccessStore {
+    static let shared = PortalAccessStore()
+    private(set) var current: PortalAccessInfo?
+    func update(_ info: PortalAccessInfo?) {
+        current = info
+        NotificationCenter.default.post(name: .portalAccessDidChange, object: nil)
+    }
+}
+
+extension Notification.Name {
+    static let portalAccessDidChange = Notification.Name("portalAccessDidChange")
+}
+
 
 struct PortalDashboard: Decodable {
     let number: Int
@@ -1566,7 +1594,7 @@ final class PortalService {
     }
 
     func fetchActivities(completion: @escaping (Result<[PortalActivity], APIError>) -> Void) {
-        APIClient.shared.requestData(path: "/api/portal/activities", completion: completion)
+        requestPortalData(path: "/api/portal/activities", completion: completion)
     }
 
     func fetchProjects(completion: @escaping (Result<[PortalProject], APIError>) -> Void) {
@@ -1687,12 +1715,17 @@ final class PortalService {
             let total: Int
             let unread: Int
         }
-        APIClient.shared.requestData(path: path) { (result: Result<NotificationsData, APIError>) in
+        requestPortalEnvelope(path: path) { (result: Result<PortalAPIResponse<NotificationsData>, APIError>) in
             switch result {
             case .failure(let error):
                 completion(.failure(error))
-            case .success(let data):
-                completion(.success(PortalNotificationPage(list: data.list, total: data.total, unread: data.unread)))
+            case .success(let envelope):
+                if envelope.code == 0, let data = envelope.data {
+                    PortalAccessStore.shared.update(envelope.portalAccess)
+                    completion(.success(PortalNotificationPage(list: data.list, total: data.total, unread: data.unread)))
+                } else {
+                    completion(.failure(APIError(message: envelope.msg ?? "请求失败", isUnauthorized: envelope.code == 401 || envelope.code == 403)))
+                }
             }
         }
     }
@@ -1701,9 +1734,48 @@ final class PortalService {
         APIClient.shared.requestData(path: "/api/portal/notification?id=\(id)", completion: completion)
     }
 
-    func submitFeedback(type: String, title: String, content: String, contact: String, completion: @escaping (Result<String, APIError>) -> Void) {
-        let payload: [String: Any] = ["type": type, "title": title, "content": content, "contact": contact]
+    func submitFeedback(type: String, title: String, content: String, contact: String, attachments: [String] = [], completion: @escaping (Result<String, APIError>) -> Void) {
+        let payload: [String: Any] = ["type": type, "title": title, "content": content, "contact": contact, "attachments": attachments]
         requestMessageJSON(path: "/api/portal/feedback", payload: payload, completion: completion)
+    }
+
+    func uploadFeedbackFile(data: Data, filename: String, mimeType: String, completion: @escaping (Result<String, APIError>) -> Void) {
+        guard let url = URL(string: "/api/portal/feedback/upload", relativeTo: AppEnvironment.baseURL) else {
+            completion(.failure(APIError(message: "请求地址无效", isUnauthorized: false)))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 120
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        PortalRequestMeta.merged(with: [:]).forEach { request.setValue($1, forHTTPHeaderField: $0) }
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+        URLSession.shared.dataTask(with: request) { data, _, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure(APIError(message: sanitizeErrorMessage(error.localizedDescription), isUnauthorized: false)))
+                    return
+                }
+                guard let data = data,
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let code = json["code"] as? Int else {
+                    completion(.failure(APIError(message: "上传失败", isUnauthorized: false)))
+                    return
+                }
+                if code == 0, let payload = json["data"] as? [String: Any], let fileURL = payload["url"] as? String {
+                    completion(.success(fileURL))
+                } else {
+                    completion(.failure(APIError(message: (json["msg"] as? String) ?? "上传失败", isUnauthorized: false)))
+                }
+            }
+        }.resume()
     }
 
     func verifySession(completion: @escaping (Result<Void, APIError>) -> Void) {
@@ -1718,7 +1790,55 @@ final class PortalService {
     }
 
     func fetchDashboard(completion: @escaping (Result<PortalDashboard, APIError>) -> Void) {
-        APIClient.shared.requestData(path: "/api/portal/dashboard", completion: completion)
+        requestPortalData(path: "/api/portal/dashboard", completion: completion)
+    }
+
+    private func requestPortalData<T: Decodable>(path: String, completion: @escaping (Result<T, APIError>) -> Void) {
+        requestPortalEnvelope(path: path) { (result: Result<PortalAPIResponse<T>, APIError>) in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let envelope):
+                if envelope.code == 0, let data = envelope.data {
+                    PortalAccessStore.shared.update(envelope.portalAccess)
+                    completion(.success(data))
+                } else {
+                    let message = envelope.msg ?? "请求失败"
+                    let unauthorized = (envelope.code == 401 || envelope.code == 403)
+                    completion(.failure(APIError(message: message, isUnauthorized: unauthorized)))
+                }
+            }
+        }
+    }
+
+    private func requestPortalEnvelope<T: Decodable>(path: String, method: String = "GET", headers: [String: String] = [:], body: Data? = nil, completion: @escaping (Result<PortalAPIResponse<T>, APIError>) -> Void) {
+        guard let url = URL(string: path, relativeTo: AppEnvironment.baseURL) else {
+            completion(.failure(APIError(message: "请求地址无效", isUnauthorized: false)))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.httpBody = body
+        request.timeoutInterval = 30
+        PortalRequestMeta.merged(with: headers).forEach { request.setValue($1, forHTTPHeaderField: $0) }
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure(APIError(message: sanitizeErrorMessage(error.localizedDescription), isUnauthorized: false)))
+                    return
+                }
+                guard let data = data else {
+                    completion(.failure(APIError(message: "服务器无响应", isUnauthorized: false)))
+                    return
+                }
+                do {
+                    let envelope = try JSONDecoder().decode(PortalAPIResponse<T>.self, from: data)
+                    completion(.success(envelope))
+                } catch {
+                    completion(.failure(APIError(message: String(data: data, encoding: .utf8) ?? "解析失败", isUnauthorized: false)))
+                }
+            }
+        }.resume()
     }
 
     func performWechatActionForDevice(path: String, wxid: String, completion: @escaping (Result<PortalWechatActionResult, APIError>) -> Void) {
