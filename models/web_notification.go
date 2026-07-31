@@ -57,6 +57,7 @@ type WebNotification struct {
 	ReadCount   int       `json:"readCount"`
 	DisplayType string    `gorm:"size:16;index;default:normal" json:"displayType"`
 	IsTop       bool      `gorm:"index;default:false" json:"isTop"`
+	VisibleToAll bool     `gorm:"index;default:true" json:"visibleToAll"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
@@ -84,6 +85,7 @@ type AdminNotificationItem struct {
 	ReadCount   int       `json:"readCount"`
 	DisplayType string    `json:"displayType"`
 	IsTop       bool      `json:"isTop"`
+	VisibleToAll bool     `json:"visibleToAll"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
@@ -231,7 +233,7 @@ func normalizeNotifyDisplayType(displayType string) string {
 	}
 }
 
-func CreateAdminWebNotification(title, content, category, displayType string, isTop bool) (*WebNotification, error) {
+func CreateAdminWebNotification(title, content, category, displayType string, isTop, visibleToAll bool) (*WebNotification, error) {
 	title = strings.TrimSpace(title)
 	content = strings.TrimSpace(content)
 	if title == "" {
@@ -241,14 +243,15 @@ func CreateAdminWebNotification(title, content, category, displayType string, is
 		return nil, fmt.Errorf("详细内容不能为空")
 	}
 	n := &WebNotification{
-		Title:       title,
-		Content:     content,
-		Category:    normalizeNoticeCategory(category),
-		Source:      NotifySourceAdmin,
-		Channels:    "web,app",
-		TargetScope: "all",
-		DisplayType: normalizeNotifyDisplayType(displayType),
-		IsTop:       isTop,
+		Title:        title,
+		Content:      content,
+		Category:     normalizeNoticeCategory(category),
+		Source:       NotifySourceAdmin,
+		Channels:     "web,app",
+		TargetScope:  "all",
+		DisplayType:  normalizeNotifyDisplayType(displayType),
+		IsTop:        isTop,
+		VisibleToAll: visibleToAll,
 	}
 	if err := db.Create(n).Error; err != nil {
 		return nil, err
@@ -258,11 +261,15 @@ func CreateAdminWebNotification(title, content, category, displayType string, is
 }
 
 // portalNotificationQuery 通知中心仅展示管理员全体公告（持久通知）
-func portalNotificationQuery(userNumber int) *gorm.DB {
-	return db.Model(&WebNotification{}).Where(
+func portalNotificationQuery(userNumber int, hasAccess bool) *gorm.DB {
+	q := db.Model(&WebNotification{}).Where(
 		"target_scope = ? AND source = ?",
 		TargetScopeAll, NotifySourceAdmin,
 	)
+	if !hasAccess {
+		q = q.Where("visible_to_all = ?", true)
+	}
+	return q
 }
 
 // CreateSystemWebNotification 系统瞬时提示：仅 App 极光推送，不写库（机器人等渠道由调用方自行处理）
@@ -388,7 +395,7 @@ func GetAdminNotifications(search string, category string, page, limit int) ([]A
 		items = append(items, AdminNotificationItem{
 			ID: n.ID, Title: n.Title, Content: n.Content, Category: n.Category, Source: n.Source,
 			Channels: n.Channels, TargetScope: n.TargetScope, TargetUser: n.TargetUser,
-			ClickCount: n.ClickCount, ReadCount: n.ReadCount, DisplayType: normalizeNotifyDisplayType(n.DisplayType), IsTop: n.IsTop, CreatedAt: n.CreatedAt,
+			ClickCount: n.ClickCount, ReadCount: n.ReadCount, DisplayType: normalizeNotifyDisplayType(n.DisplayType), IsTop: n.IsTop, VisibleToAll: n.VisibleToAll, CreatedAt: n.CreatedAt,
 		})
 	}
 	return items, total
@@ -401,7 +408,9 @@ func GetPortalNotifications(userNumber int, category string, page, limit int) ([
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	q := portalNotificationQuery(userNumber)
+	coin := GetCoin(userNumber)
+	hasAccess := CanAccessPortalContent(userNumber, coin)
+	q := portalNotificationQuery(userNumber, hasAccess)
 	if strings.TrimSpace(category) != "" && category != "全部" {
 		q = q.Where("category = ?", category)
 	}
@@ -430,18 +439,20 @@ func GetPortalNotifications(userNumber int, category string, page, limit int) ([
 		})
 	}
 	var unread int64
-	portalNotificationQuery(userNumber).
+	portalNotificationQuery(userNumber, hasAccess).
 		Where("id NOT IN (?)", db.Model(&WebNotificationRead{}).Select("notification_id").Where("user_number = ?", userNumber)).
 		Count(&unread)
 	return items, total, unread
 }
 
 func GetPortalNotificationCounts(userNumber int) (int64, int64) {
-	base := portalNotificationQuery(userNumber)
+	coin := GetCoin(userNumber)
+	hasAccess := CanAccessPortalContent(userNumber, coin)
+	base := portalNotificationQuery(userNumber, hasAccess)
 	var total int64
 	base.Count(&total)
 	var unread int64
-	portalNotificationQuery(userNumber).
+	portalNotificationQuery(userNumber, hasAccess).
 		Where("id NOT IN (?)", db.Model(&WebNotificationRead{}).Select("notification_id").Where("user_number = ?", userNumber)).
 		Count(&unread)
 	return total, unread
@@ -456,7 +467,7 @@ func GetPortalNotificationUnreadStats(userNumber int) NotifyUnreadStats {
 		ByCategory: map[string]int64{},
 	}
 	var rows []WebNotification
-	portalNotificationQuery(userNumber).
+	portalNotificationQuery(userNumber, CanAccessPortalContent(userNumber, GetCoin(userNumber))).
 		Select("source, category").
 		Where("id NOT IN (?)", db.Model(&WebNotificationRead{}).Select("notification_id").Where("user_number = ?", userNumber)).
 		Find(&rows)
@@ -489,7 +500,7 @@ func DeleteAdminNotifications(ids []int) error {
 	return deleteNotificationsByIDs(cleanIDs)
 }
 
-func UpdateAdminNotification(id int, title, content, category, displayType string, isTop bool) error {
+func UpdateAdminNotification(id int, title, content, category, displayType string, isTop, visibleToAll bool) error {
 	if id <= 0 {
 		return fmt.Errorf("通知ID无效")
 	}
@@ -502,11 +513,12 @@ func UpdateAdminNotification(id int, title, content, category, displayType strin
 		return fmt.Errorf("详细内容不能为空")
 	}
 	res := db.Model(&WebNotification{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"title":        title,
-		"content":      content,
-		"category":     normalizeNoticeCategory(category),
-		"display_type": normalizeNotifyDisplayType(displayType),
-		"is_top":       isTop,
+		"title":          title,
+		"content":        content,
+		"category":       normalizeNoticeCategory(category),
+		"display_type":   normalizeNotifyDisplayType(displayType),
+		"is_top":         isTop,
+		"visible_to_all": visibleToAll,
 	})
 	if res.Error != nil {
 		return res.Error
@@ -518,16 +530,20 @@ func UpdateAdminNotification(id int, title, content, category, displayType strin
 }
 
 func GetPortalNotificationPreview(userNumber, id int) (*PortalNotificationItem, error) {
+	coin := GetCoin(userNumber)
+	hasAccess := CanAccessPortalContent(userNumber, coin)
 	var n WebNotification
-	if err := portalNotificationQuery(userNumber).Where("id = ?", id).First(&n).Error; err != nil {
+	if err := portalNotificationQuery(userNumber, hasAccess).Where("id = ?", id).First(&n).Error; err != nil {
 		return nil, fmt.Errorf("通知不存在或无权限查看")
 	}
 	return &PortalNotificationItem{ID: n.ID, Title: n.Title, Content: n.Content, Category: n.Category, Source: n.Source, Channels: n.Channels, DisplayType: normalizeNotifyDisplayType(n.DisplayType), IsTop: n.IsTop, CreatedAt: n.CreatedAt}, nil
 }
 
 func GetPortalNotificationDetail(userNumber, id int) (*PortalNotificationItem, error) {
+	coin := GetCoin(userNumber)
+	hasAccess := CanAccessPortalContent(userNumber, coin)
 	var n WebNotification
-	if err := portalNotificationQuery(userNumber).Where("id = ?", id).First(&n).Error; err != nil {
+	if err := portalNotificationQuery(userNumber, hasAccess).Where("id = ?", id).First(&n).Error; err != nil {
 		return nil, fmt.Errorf("通知不存在或无权限查看")
 	}
 	n.ClickCount++

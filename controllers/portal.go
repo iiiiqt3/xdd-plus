@@ -61,7 +61,11 @@ func (c *PortalController) Dashboard() {
 		c.ServeJSON()
 		return
 	}
-	c.Data["json"] = map[string]interface{}{"code": 0, "data": data}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"data": data,
+		"portalAccess": models.BuildPortalAccessInfo(c.PortalUserID, models.GetCoin(c.PortalUserID)),
+	}
 	c.ServeJSON()
 }
 
@@ -101,7 +105,17 @@ func (c *PortalController) Profile() {
 
 // Activities 获取门户活动列表
 func (c *PortalController) Activities() {
-	c.Data["json"] = map[string]interface{}{"code": 0, "data": models.GetPortalActivities()}
+	access := models.BuildPortalAccessInfo(c.PortalUserID, models.GetCoin(c.PortalUserID))
+	data := models.GetPortalActivitiesForUser(c.PortalUserID)
+	resp := map[string]interface{}{
+		"code": 0,
+		"data": data,
+		"portalAccess": access,
+	}
+	if !access.Allowed {
+		resp["msg"] = access.Message
+	}
+	c.Data["json"] = resp
 	c.ServeJSON()
 }
 
@@ -119,6 +133,12 @@ func (c *PortalController) Projects() {
 
 // CreateProject 创建新项目，选择活动并配置参数
 func (c *PortalController) CreateProject() {
+	access := models.BuildPortalAccessInfo(c.PortalUserID, models.GetCoin(c.PortalUserID))
+	if !access.Allowed {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": access.Message}
+		c.ServeJSON()
+		return
+	}
 	var req struct {
 		ActivityID string            `json:"activityId"`
 		Inputs     map[string]string `json:"inputs"`
@@ -612,7 +632,8 @@ func (c *PortalController) Notifications() {
 		}
 	}
 	unreadStats := models.GetPortalNotificationUnreadStats(c.PortalUserID)
-	c.Data["json"] = map[string]interface{}{
+	access := models.BuildPortalAccessInfo(c.PortalUserID, models.GetCoin(c.PortalUserID))
+	resp := map[string]interface{}{
 		"code": 0,
 		"data": map[string]interface{}{
 			"list":        list,
@@ -620,7 +641,12 @@ func (c *PortalController) Notifications() {
 			"unread":      unread,
 			"unreadStats": unreadStats,
 		},
+		"portalAccess": access,
 	}
+	if !access.Allowed && len(list) == 0 {
+		resp["msg"] = access.Message
+	}
+	c.Data["json"] = resp
 	c.ServeJSON()
 }
 

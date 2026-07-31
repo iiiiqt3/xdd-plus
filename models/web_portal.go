@@ -170,6 +170,9 @@ func buildPortalDashboard(profile *PortalProfile) (*PortalDashboard, error) {
 
 	notificationTotal, notificationUnread := GetPortalNotificationCounts(userNumber)
 	availableCount := CountPortalAvailableActivities()
+	if !CanAccessPortalContent(userNumber, profile.User.Coin) {
+		availableCount = 0
+	}
 
 	projects, _ := GetPortalProjects(userNumber)
 	projectCount, joinedCount, activeCount, expiringCount, expiredCount := countPortalProjectStatsFromList(projects)
@@ -319,6 +322,13 @@ func hasPrayedToday(userNumber int) bool {
 	today := time.Now().Format("2006-01-02")
 	db.Model(&PortalPrayRecord{}).Where("user_number = ? AND pray_date = ?", userNumber, today).Count(&count)
 	return count > 0
+}
+
+func GetPortalActivitiesForUser(userNumber int) []PortalActivityItem {
+	if !CanAccessPortalContent(userNumber, GetCoin(userNumber)) {
+		return []PortalActivityItem{}
+	}
+	return GetPortalActivities()
 }
 
 func GetPortalActivities() []PortalActivityItem {

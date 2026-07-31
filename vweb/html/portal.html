@@ -3112,6 +3112,7 @@ var state = {
     popupShownIds: new Set(),
     notifySource: '全部',
     notifyCategory: '全部',
+    portalAccess: null,
     wxStatus: null,
     wxDevices: [],
     currentProjectTab: 'active',
@@ -3347,6 +3348,7 @@ async function loadProjectData() {
 async function loadActivitiesData() {
     const activities = await request('/api/portal/activities?_=' + Date.now());
     state.activities = activities.data || [];
+    state.portalAccess = activities.portalAccess || state.portalAccess;
     renderActivities();
 }
 
@@ -3360,6 +3362,7 @@ async function loadNotificationsData(page) {
     state.notificationTotal = data.total || 0;
     state.notificationUnread = data.unread || 0;
     state.notificationUnreadStats = data.unreadStats || { bySource: {}, byCategory: {} };
+    state.portalAccess = resp.portalAccess || state.portalAccess;
     renderNotifications();
     renderDashboardNotices();
 }
@@ -3396,7 +3399,10 @@ function renderNotifications() {
     updateNotificationBadges();
     const list = (state.notifications || []).slice().sort((a, b) => Number(!!b.isTop) - Number(!!a.isTop));
     if (!list.length) {
-        box.innerHTML = '<div class="notify-empty">当前筛选下暂无通知。</div>';
+        const locked = (state.portalAccess || {}).allowed === false;
+        box.innerHTML = locked
+            ? `<div class="notify-empty" style="line-height:1.8;text-align:left;">🔒 ${escapeHtml(portalAccessLockMessage())}</div>`
+            : '<div class="notify-empty">当前筛选下暂无通知。</div>';
         renderNotifyPagination();
         return;
     }
@@ -3441,7 +3447,10 @@ function renderDashboardNotices() {
         .slice(0, 6);
     if (!important.length) {
         box.style.animation = 'none';
-        box.innerHTML = '<div class="dash-notice-empty">暂无新的重要通知，后续提醒会在这里滚动展示。</div>';
+        const locked = (state.portalAccess || {}).allowed === false;
+        box.innerHTML = locked
+            ? `<div class="dash-notice-empty">🔒 ${escapeHtml(portalAccessLockMessage())}</div>`
+            : '<div class="dash-notice-empty">暂无新的重要通知，后续提醒会在这里滚动展示。</div>';
         return;
     }
     const list = important.length === 1 ? important : important.concat(important);
@@ -3555,6 +3564,7 @@ async function initialLoad() {
         ]);
         state.dashboard = dashboard.data;
         state.profile = profile.data;
+        state.portalAccess = dashboard.portalAccess || state.portalAccess;
         renderDashboard();
         loadNotificationsData(1).catch(err => toast(err.message || '加载通知失败', 'error'));
         loadWxDevices().catch(function() {});
@@ -3943,8 +3953,18 @@ function toggleGroupDetail(groupKey) {
     }
 }
 
+function portalAccessLockMessage() {
+    const access = state.portalAccess || {};
+    return access.message || '活动中心和通知中心需积分达到 1000，或拥有有效的按月付费项目后开放';
+}
+
 function renderActivities() {
     const box = document.getElementById('activitiesBox');
+    const access = state.portalAccess || {};
+    if (access.allowed === false && !(state.activities || []).length) {
+        box.innerHTML = `<div class="empty" style="padding:28px 18px;line-height:1.8;text-align:left;">🔒 ${escapeHtml(portalAccessLockMessage())}<br><span class="muted" style="font-size:12px;">可通过充值、卡密兑换等方式获取积分。</span></div>`;
+        return;
+    }
     const keyword = (state.activitySearch || '').trim().toLowerCase();
     const category = state.activityCategoryFilter || '';
     let list = state.activities || [];

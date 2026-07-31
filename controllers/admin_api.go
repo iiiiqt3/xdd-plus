@@ -299,13 +299,14 @@ func (c *AdminApiController) GetNotifications() {
 
 func (c *AdminApiController) SendNotification() {
 	var req struct {
-		Title       string `json:"title"`
-		Content     string `json:"content"`
-		Category    string `json:"category"`
-		DisplayType string `json:"displayType"`
-		IsTop       bool   `json:"isTop"`
-		PushToQQ    bool   `json:"pushToQQ"`
-		PushToWX    bool   `json:"pushToWX"`
+		Title        string `json:"title"`
+		Content      string `json:"content"`
+		Category     string `json:"category"`
+		DisplayType  string `json:"displayType"`
+		IsTop        bool   `json:"isTop"`
+		VisibleToAll bool   `json:"visibleToAll"`
+		PushToQQ     bool   `json:"pushToQQ"`
+		PushToWX     bool   `json:"pushToWX"`
 	}
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
 	req.Title = strings.TrimSpace(req.Title)
@@ -320,9 +321,9 @@ func (c *AdminApiController) SendNotification() {
 		c.ServeJSON()
 		return
 	}
-	title, content, category, displayType, isTop := req.Title, req.Content, req.Category, req.DisplayType, req.IsTop
+	title, content, category, displayType, isTop, visibleToAll := req.Title, req.Content, req.Category, req.DisplayType, req.IsTop, req.VisibleToAll
 	go func() {
-		if _, err := models.CreateAdminWebNotification(title, content, category, displayType, isTop); err != nil {
+		if _, err := models.CreateAdminWebNotification(title, content, category, displayType, isTop, visibleToAll); err != nil {
 			models.Admin().Errorf("后台发送管理员通知失败: %v", err)
 		}
 		if req.PushToQQ || req.PushToWX {
@@ -365,19 +366,20 @@ func (c *AdminApiController) BatchDeleteNotifications() {
 
 func (c *AdminApiController) UpdateNotification() {
 	var req struct {
-		ID          int    `json:"id"`
-		Title       string `json:"title"`
-		Content     string `json:"content"`
-		Category    string `json:"category"`
-		DisplayType string `json:"displayType"`
-		IsTop       bool   `json:"isTop"`
+		ID           int    `json:"id"`
+		Title        string `json:"title"`
+		Content      string `json:"content"`
+		Category     string `json:"category"`
+		DisplayType  string `json:"displayType"`
+		IsTop        bool   `json:"isTop"`
+		VisibleToAll bool   `json:"visibleToAll"`
 	}
 	json.Unmarshal(c.Ctx.Input.RequestBody, &req)
 	if req.ID <= 0 {
 		idStr := c.Ctx.Input.Param(":id")
 		req.ID, _ = strconv.Atoi(idStr)
 	}
-	if err := models.UpdateAdminNotification(req.ID, req.Title, req.Content, req.Category, req.DisplayType, req.IsTop); err != nil {
+	if err := models.UpdateAdminNotification(req.ID, req.Title, req.Content, req.Category, req.DisplayType, req.IsTop, req.VisibleToAll); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return

@@ -248,8 +248,19 @@ func DispatchJPushNotification(n *WebNotification) {
 		}()
 	default:
 		go func() {
-			if err := jpushSendToAll(title, body, extras); err != nil {
-				Warn("[极光推送] 全体推送失败 id=%d: %v", n.ID, err)
+			if n.VisibleToAll {
+				if err := jpushSendToAll(title, body, extras); err != nil {
+					Warn("[极光推送] 全体推送失败 id=%d: %v", n.ID, err)
+				}
+				return
+			}
+			for _, userNumber := range ListPortalAccessUserNumbers() {
+				num := userNumber
+				go func() {
+					if err := jpushSendToUser(num, title, body, extras); err != nil {
+						Warn("[极光推送] 定向推送失败 user=%d id=%d: %v", num, n.ID, err)
+					}
+				}()
 			}
 		}()
 	}
