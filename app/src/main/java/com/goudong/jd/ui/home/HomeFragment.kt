@@ -24,6 +24,7 @@ import com.goudong.jd.AppServices
 import com.goudong.jd.MainActivity
 import com.goudong.jd.R
 import com.goudong.jd.data.model.ApiError
+import com.goudong.jd.data.model.PortalAccessStore
 import com.goudong.jd.data.model.PortalHomeSnapshot
 import com.goudong.jd.data.model.PortalNotification
 import com.goudong.jd.data.model.PortalProtocolBinding
@@ -618,7 +619,13 @@ class HomeFragment : Fragment(), MainTabResettable {
 
     private fun addNoNotificationHint() {
         val ctx = requireContext()
-        notificationSection.addView(ctx.captionText("暂无新通知").apply {
+        val access = PortalAccessStore.current
+        val text = if (access != null && !access.allowed) {
+            "🔒 ${access.message ?: "活动中心和通知中心需积分达到 ${access.requiredCoin} 或开通按月付费项目后可见"}"
+        } else {
+            "暂无新通知"
+        }
+        notificationSection.addView(ctx.captionText(text).apply {
             setPadding(0, ctx.dp(4), 0, 0)
             gravity = Gravity.CENTER
         })

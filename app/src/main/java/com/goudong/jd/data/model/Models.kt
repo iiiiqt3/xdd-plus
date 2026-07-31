@@ -16,7 +16,21 @@ data class ApiEnvelope<T>(
     val code: Int = -1,
     val msg: String? = null,
     val data: T? = null,
+    val portalAccess: PortalAccessInfo? = null,
 )
+
+data class PortalAccessInfo(
+    val allowed: Boolean = true,
+    val coin: Int = 0,
+    val requiredCoin: Int = 1000,
+    val gapCoin: Int = 0,
+    val message: String? = null,
+)
+
+object PortalAccessStore {
+    @Volatile
+    var current: PortalAccessInfo? = null
+}
 
 data class ApiError(
     override val message: String,
@@ -239,6 +253,7 @@ data class SubmitFeedbackPayload(
     val title: String,
     val content: String,
     val contact: String = "",
+    val attachments: List<String> = emptyList(),
 )
 
 data class PortalJdAccount(

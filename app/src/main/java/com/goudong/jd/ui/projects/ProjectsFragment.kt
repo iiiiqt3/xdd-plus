@@ -441,8 +441,15 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             }
             matchCategory && matchSearch
         }
-        if (filtered.isEmpty()) contentRoot.addView(emptyCard("暂无可用活动"))
-        else filtered.forEach { contentRoot.addView(activityCard(it)) }
+        if (filtered.isEmpty()) {
+            val access = com.goudong.jd.data.model.PortalAccessStore.current
+            val lockMsg = if (access != null && !access.allowed) {
+                "🔒 ${access.message ?: "活动中心和通知中心需积分达到 ${access.requiredCoin} 或开通按月付费项目后可见"}"
+            } else {
+                "暂无可用活动"
+            }
+            contentRoot.addView(emptyCard(lockMsg))
+        } else filtered.forEach { contentRoot.addView(activityCard(it)) }
     }
 
     private fun loadProjects(forceRefresh: Boolean, generation: Int = tabLoadGeneration) {

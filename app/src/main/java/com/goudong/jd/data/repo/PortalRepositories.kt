@@ -6,6 +6,7 @@ import com.goudong.jd.data.model.ApiError
 import com.goudong.jd.data.model.KuwoCredentials
 import com.goudong.jd.data.model.KuwoScheduleResult
 import com.goudong.jd.data.model.KuwoWithdrawTask
+import com.goudong.jd.data.model.PortalAccessStore
 import com.goudong.jd.data.model.PortalDashboard
 import com.goudong.jd.data.model.PortalHomePayload
 import com.goudong.jd.data.model.PortalHomeSnapshot
@@ -132,7 +133,14 @@ class PortalRepository(
     }
 
     suspend fun fetchDashboard(): PortalDashboard {
-        return apiClient.requestData<PortalDashboard>("/api/portal/dashboard")
+        val text = apiClient.requestText(path = "/api/portal/dashboard")
+        val envelope = apiClient.parseEnvelope<PortalDashboard>(text)
+        PortalAccessStore.current = envelope.portalAccess ?: PortalAccessStore.current
+        if (envelope.code == 0 && envelope.data != null) {
+            return envelope.data
+        }
+        val message = envelope.msg ?: "请求失败"
+        throw ApiError(message, envelope.code == 401 || envelope.code == 403)
     }
 
     suspend fun fetchHomeSnapshot(): PortalHomeSnapshot = coroutineScope {
@@ -158,7 +166,13 @@ class PortalRepository(
 
     suspend fun fetchActivities(): List<com.goudong.jd.data.model.PortalActivity> {
         val text = apiClient.requestText(path = "/api/portal/activities")
-        return apiClient.parseListEnvelope(text, com.goudong.jd.data.model.PortalActivity::class.java)
+        val envelope = apiClient.parseEnvelope<List<com.goudong.jd.data.model.PortalActivity>>(text)
+        PortalAccessStore.current = envelope.portalAccess
+        if (envelope.code == 0 && envelope.data != null) {
+            return envelope.data
+        }
+        val message = envelope.msg ?: "请求失败"
+        throw ApiError(message, envelope.code == 401 || envelope.code == 403)
     }
 
     suspend fun fetchProjects(): List<com.goudong.jd.data.model.PortalProject> {
@@ -288,8 +302,15 @@ class PortalRepository(
     }
 
     suspend fun fetchNotifications(includeContent: Boolean = false): PortalNotificationPage {
-        val includeParam = if (includeContent) "&includeContent=1" else ""
-        return apiClient.requestData("/api/portal/notifications?${includeParam}")
+        val includeParam = if (includeContent) "includeContent=1&" else ""
+        val text = apiClient.requestText(path = "/api/portal/notifications?${includeParam}limit=100")
+        val envelope = apiClient.parseEnvelope<PortalNotificationPage>(text)
+        PortalAccessStore.current = envelope.portalAccess ?: PortalAccessStore.current
+        if (envelope.code == 0 && envelope.data != null) {
+            return envelope.data
+        }
+        val message = envelope.msg ?: "请求失败"
+        throw ApiError(message, envelope.code == 401 || envelope.code == 403)
     }
 
     suspend fun markNotificationRead(notificationId: Int): com.goudong.jd.data.model.PortalNotification {
@@ -330,8 +351,13 @@ class PortalRepository(
                 "title" to payload.title,
                 "content" to payload.content,
                 "contact" to payload.contact,
+                "attachments" to payload.attachments,
             )),
         )
+    }
+
+    suspend fun uploadFeedbackFile(uri: android.net.Uri, fileName: String, mimeType: String, contentResolver: android.content.ContentResolver): String {
+        return apiClient.uploadFeedbackFile(contentResolver, uri, fileName, mimeType)
     }
 
     suspend fun fetchJdAccounts(): List<com.goudong.jd.data.model.PortalJdAccount> {

@@ -17,6 +17,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.goudong.jd.AppServices
 import com.goudong.jd.R
 import com.goudong.jd.data.model.ApiError
+import com.goudong.jd.data.model.PortalAccessStore
 import com.goudong.jd.data.model.PortalNotification
 import com.goudong.jd.ui.common.alert
 import com.goudong.jd.ui.common.bodyText
@@ -81,7 +82,13 @@ class NotificationListActivity : AppCompatActivity() {
                         android.util.Log.d("NotificationList", "总数量: ${page.list.size}, 未读数: ${page.unread}")
 
                         if (page.list.isEmpty()) {
-                            contentRoot.addView(emptyCard("暂无通知"))
+                            val access = PortalAccessStore.current
+                            val lockMsg = if (access != null && !access.allowed) {
+                                "🔒 ${access.message ?: "活动中心和通知中心需积分达到 ${access.requiredCoin} 或开通按月付费项目后可见"}"
+                            } else {
+                                "暂无通知"
+                            }
+                            contentRoot.addView(emptyCard(lockMsg))
                         } else {
                             page.list.forEachIndexed { index, item ->
                                 android.util.Log.d("NotificationList", "通知[$index]: id=${item.id}, title=${item.title}, isRead=${item.isRead}")

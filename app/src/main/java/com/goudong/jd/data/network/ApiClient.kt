@@ -157,6 +157,32 @@ class ApiClient(
         }
     }
 
+    suspend fun uploadFeedbackFile(
+        contentResolver: android.content.ContentResolver,
+        uri: android.net.Uri,
+        fileName: String,
+        mimeType: String,
+    ): String = withContext(Dispatchers.IO) {
+        val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            ?: throw ApiError("无法读取文件")
+        val mediaType = mimeType.ifBlank { "application/octet-stream" }.toMediaType()
+        val body = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("file", fileName, bytes.toRequestBody(mediaType))
+            .build()
+        val text = requestText(
+            path = "/api/portal/feedback/upload",
+            method = "POST",
+            body = body,
+        )
+        data class UploadData(val url: String)
+        val envelope = parseEnvelope<UploadData>(text)
+        if (envelope.code == 0 && !envelope.data?.url.isNullOrBlank()) {
+            return@withContext envelope.data!!.url
+        }
+        throw ApiError(envelope.msg ?: "上传失败")
+    }
+
     inline fun <reified T> parseListEnvelope(text: String, clazz: Class<T>): List<T> {
         return try {
             val jsonElement = gson.fromJson(text, com.google.gson.JsonObject::class.java)

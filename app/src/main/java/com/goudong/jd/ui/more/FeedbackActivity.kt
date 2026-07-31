@@ -1,12 +1,15 @@
 package com.goudong.jd.ui.more
 
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.util.TypedValue
 import android.view.Gravity
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -30,7 +33,14 @@ class FeedbackActivity : AppCompatActivity() {
     private lateinit var titleInput: EditText
     private lateinit var contentInput: EditText
     private lateinit var contactInput: EditText
+    private lateinit var attachmentsContainer: LinearLayout
+    private val attachmentUrls = mutableListOf<String>()
     private var submitting = false
+    private var uploading = false
+
+    private val pickMediaLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { uploadAttachment(it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,6 +115,36 @@ class FeedbackActivity : AppCompatActivity() {
         }
         root.addView(contentInput)
 
+        root.addView(captionText("截图/视频（选填，最多6个，图片≤10MB，视频≤50MB）").apply {
+            setPadding(0, dp(4), 0, dp(4))
+        })
+        attachmentsContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(8) }
+        }
+        root.addView(attachmentsContainer)
+
+        root.addView(TextView(this).apply {
+            text = "+ 添加截图或视频"
+            setTextColor(themeColor(R.color.brand_primary))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.parseColor("#EFF6FF"))
+                cornerRadius = dp(10).toFloat()
+                setStroke(dp(1), themeColor(R.color.brand_primary))
+            }
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(16) }
+            setOnClickListener { pickAttachment() }
+        })
+
         root.addView(captionText("联系方式（选填，方便我们联系你）").apply {
             setPadding(0, dp(4), 0, dp(4))
         })
@@ -168,6 +208,90 @@ class FeedbackActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun pickAttachment() {
+        if (uploading) {
+            alert("正在上传，请稍候")
+            return
+        }
+        if (attachmentUrls.size >= 6) {
+            alert("最多上传 6 个附件")
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("选择附件类型")
+            .setItems(arrayOf("图片", "视频")) { _, which ->
+                val mime = if (which == 0) "image/*" else "video/*"
+                pickMediaLauncher.launch(mime)
+            }
+            .show()
+    }
+
+    private fun uploadAttachment(uri: Uri) {
+        if (uploading) return
+        if (attachmentUrls.size >= 6) {
+            alert("最多上传 6 个附件")
+            return
+        }
+        val mimeType = contentResolver.getType(uri) ?: "application/octet-stream"
+        if (!mimeType.startsWith("image/") && !mimeType.startsWith("video/")) {
+            alert("仅支持图片或视频")
+            return
+        }
+        val fileName = queryDisplayName(uri) ?: "upload_${System.currentTimeMillis()}"
+        uploading = true
+        lifecycleScope.launch {
+            runCatching {
+                AppServices.portalRepository.uploadFeedbackFile(uri, fileName, mimeType, contentResolver)
+            }
+                .onSuccess { url ->
+                    attachmentUrls.add(url)
+                    refreshAttachmentList()
+                }
+                .onFailure { error ->
+                    if (error is com.goudong.jd.data.model.ApiError && error.unauthorized) {
+                        handlePortalError(error)
+                    } else {
+                        alert(com.goudong.jd.ui.common.sanitizeErrorMessage(error.message), "上传失败")
+                    }
+                }
+            uploading = false
+        }
+    }
+
+    private fun queryDisplayName(uri: Uri): String? {
+        return contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
+    }
+
+    private fun refreshAttachmentList() {
+        attachmentsContainer.removeAllViews()
+        attachmentUrls.forEachIndexed { index, url ->
+            val name = url.substringAfterLast('/')
+            attachmentsContainer.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(4), 0, dp(4))
+                addView(TextView(this@FeedbackActivity).apply {
+                    text = "📎 $name"
+                    setTextColor(themeColor(R.color.text_primary))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                })
+                addView(TextView(this@FeedbackActivity).apply {
+                    text = "删除"
+                    setTextColor(Color.parseColor("#EF4444"))
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                    setPadding(dp(8), 0, 0, 0)
+                    setOnClickListener {
+                        attachmentUrls.removeAt(index)
+                        refreshAttachmentList()
+                    }
+                })
+            })
+        }
+    }
+
     private fun submitFeedback() {
         if (submitting) return
         if (selectedType.isEmpty()) {
@@ -188,6 +312,10 @@ class FeedbackActivity : AppCompatActivity() {
             contentInput.requestFocus()
             return
         }
+        if (uploading) {
+            alert("附件上传中，请稍候")
+            return
+        }
 
         submitting = true
         lifecycleScope.launch {
@@ -198,6 +326,7 @@ class FeedbackActivity : AppCompatActivity() {
                         title = title,
                         content = content,
                         contact = contact,
+                        attachments = attachmentUrls.toList(),
                     )
                 )
             }
