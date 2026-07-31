@@ -2087,6 +2087,11 @@
                 <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">联系方式（选填）</label>
                 <input type="text" id="feedbackContact" placeholder="QQ或微信等，方便管理员联系你" style="width:100%;padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;box-sizing:border-box;" />
             </div>
+            <div>
+                <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">截图/视频（选填，最多6个）</label>
+                <input type="file" id="feedbackFiles" accept="image/*,video/mp4,video/webm,video/quicktime" multiple style="width:100%;font-size:13px;" onchange="handleFeedbackFileSelect(this, 'feedbackAttachPreview')">
+                <div id="feedbackAttachPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+            </div>
         </div>
         <div style="margin-top:10px;padding:8px 12px;border-radius:8px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);font-size:12px;color:var(--green);line-height:1.6;">
             🎁 <strong>积分奖励：</strong>提交有效活动投稿或高质量建议，审核通过后可获得积分奖励！
@@ -2425,6 +2430,11 @@
                     <div>
                         <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">联系方式（选填）</label>
                         <input type="text" id="feedbackContactPage" placeholder="QQ或微信等，方便管理员联系你处理反馈" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;box-sizing:border-box;" />
+                    </div>
+                    <div>
+                        <label class="muted" style="font-size:12px;margin-bottom:6px;display:block;">截图/视频（选填，最多6个）</label>
+                        <input type="file" id="feedbackFilesPage" accept="image/*,video/mp4,video/webm,video/quicktime" multiple style="width:100%;font-size:13px;" onchange="handleFeedbackFileSelect(this, 'feedbackAttachPreviewPage')">
+                        <div id="feedbackAttachPreviewPage" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
                     </div>
                     <div style="padding:8px 12px;border-radius:8px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);font-size:12px;color:var(--green);line-height:1.6;">
                         🎁 <strong>积分奖励：</strong>提交有效活动投稿或高质量建议，审核通过后可获得积分奖励！
@@ -3113,6 +3123,7 @@ var state = {
     notifySource: '全部',
     notifyCategory: '全部',
     portalAccess: null,
+    feedbackAttachments: [],
     wxStatus: null,
     wxDevices: [],
     currentProjectTab: 'active',
@@ -4844,6 +4855,61 @@ function closeFeedbackModal() {
     document.getElementById('feedbackModalMask').classList.remove('show');
 }
 
+function renderFeedbackAttachPreview(containerId) {
+    const box = document.getElementById(containerId);
+    if (!box) return;
+    const urls = state.feedbackAttachments || [];
+    if (!urls.length) { box.innerHTML = ''; return; }
+    box.innerHTML = urls.map(function(url, idx) {
+        const ext = (url.split('.').pop() || '').toLowerCase().split('?')[0];
+        const media = ['mp4','webm','mov','avi'].indexOf(ext) >= 0
+            ? '<video src="' + escapeAttr(url) + '" controls style="width:100px;height:72px;object-fit:cover;border-radius:8px;background:#000;"></video>'
+            : '<img src="' + escapeAttr(url) + '" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--glass-border);">';
+        return '<div style="position:relative;">' + media + '<button type="button" onclick="removeFeedbackAttachment(' + idx + ',\'' + containerId + '\')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:12px;cursor:pointer;">×</button></div>';
+    }).join('');
+}
+
+function removeFeedbackAttachment(index, previewId) {
+    state.feedbackAttachments.splice(index, 1);
+    renderFeedbackAttachPreview(previewId);
+}
+
+async function handleFeedbackFileSelect(input, previewId) {
+    if (!input || !input.files || !input.files.length) return;
+    const remain = 6 - (state.feedbackAttachments || []).length;
+    if (remain <= 0) { toast('最多上传6个附件', 'error'); input.value = ''; return; }
+    const files = Array.from(input.files).slice(0, remain);
+    for (const file of files) {
+        const fd = new FormData();
+        fd.append('file', file);
+        try {
+            const resp = await fetch('/api/portal/feedback/upload', { method: 'POST', body: fd, credentials: 'same-origin' });
+            const res = await resp.json();
+            if (res.code === 0 && res.data && res.data.url) {
+                state.feedbackAttachments.push(res.data.url);
+            } else {
+                toast(res.msg || '上传失败', 'error');
+            }
+        } catch (e) {
+            toast('上传失败', 'error');
+        }
+    }
+    input.value = '';
+    renderFeedbackAttachPreview(previewId);
+}
+
+function resetFeedbackForm(clearPage) {
+    state.feedbackAttachments = [];
+    renderFeedbackAttachPreview('feedbackAttachPreview');
+    renderFeedbackAttachPreview('feedbackAttachPreviewPage');
+    if (clearPage) {
+        document.getElementById('feedbackTypePage').value = '';
+        document.getElementById('feedbackTitlePage').value = '';
+        document.getElementById('feedbackContentPage').value = '';
+        document.getElementById('feedbackContactPage').value = '';
+    }
+}
+
 async function submitFeedback() {
     const type = document.getElementById('feedbackType').value;
     const title = (document.getElementById('feedbackTitle').value || '').trim();
@@ -4862,10 +4928,11 @@ async function submitFeedback() {
         const resp = await request('/api/portal/feedback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type, title, content, contact })
+            body: JSON.stringify({ type, title, content, contact, attachments: state.feedbackAttachments || [] })
         });
         toast(resp.msg || '提交成功，感谢你的反馈！', 'success');
         closeFeedbackModal();
+        resetFeedbackForm(false);
     } catch (err) {
         toast(err.message || '提交失败，请稍后重试', 'error');
     } finally {
@@ -4892,9 +4959,10 @@ async function submitFeedbackFromPage() {
         const resp = await request('/api/portal/feedback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type, title, content, contact })
+            body: JSON.stringify({ type, title, content, contact, attachments: state.feedbackAttachments || [] })
         });
         toast(resp.msg || '提交成功，感谢你的反馈！', 'success');
+        resetFeedbackForm(true);
         document.getElementById('feedbackTitlePage').value = '';
         document.getElementById('feedbackContentPage').value = '';
         document.getElementById('feedbackContactPage').value = '';

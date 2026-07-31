@@ -1,11 +1,28 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
+
+const (
+	feedbackUploadMaxImage = 10 * 1024 * 1024
+	feedbackUploadMaxVideo = 50 * 1024 * 1024
+	feedbackUploadMaxFiles = 6
+)
+
+var feedbackImageExt = map[string]bool{
+	".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true, ".bmp": true,
+}
+var feedbackVideoExt = map[string]bool{
+	".mp4": true, ".webm": true, ".mov": true, ".avi": true,
+}
 
 type AppFeedback struct {
 	ID             int        `gorm:"primaryKey" json:"id"`
@@ -14,6 +31,7 @@ type AppFeedback struct {
 	Title          string     `gorm:"size:160;index" json:"title"`
 	Content        string     `gorm:"type:text" json:"content"`
 	Contact        string     `gorm:"size:120" json:"contact"`
+	Attachments    string     `gorm:"type:text" json:"attachments"` // JSON 数组：/uploads/file/...
 	Source         string     `gorm:"size:32;index" json:"source"`
 	ClientPlatform string     `gorm:"size:16" json:"clientPlatform"`
 	Status         string     `gorm:"size:24;index;default:new" json:"status"`
@@ -28,8 +46,9 @@ type AppFeedback struct {
 // AppFeedbackView API 输出（含来源展示标签）
 type AppFeedbackView struct {
 	AppFeedback
-	SourceLabel  string `json:"sourceLabel"`
-	SourceTagCls string `json:"sourceTagCls"`
+	SourceLabel    string   `json:"sourceLabel"`
+	SourceTagCls   string   `json:"sourceTagCls"`
+	AttachmentList []string `json:"attachmentList"`
 }
 
 func ToAppFeedbackView(item AppFeedback) AppFeedbackView {
@@ -40,9 +59,10 @@ func ToAppFeedbackView(item AppFeedback) AppFeedbackView {
 		ctx = NormalizeStoredSource(item.Source)
 	}
 	return AppFeedbackView{
-		AppFeedback:  item,
-		SourceLabel:  ctx.AdminLabel(),
-		SourceTagCls: ctx.AdminTagClass(),
+		AppFeedback:    item,
+		SourceLabel:    ctx.AdminLabel(),
+		SourceTagCls:   ctx.AdminTagClass(),
+		AttachmentList: ParseFeedbackAttachments(item.Attachments),
 	}
 }
 
@@ -62,7 +82,7 @@ func normalizeFeedbackType(value string) string {
 	}
 }
 
-func CreateAppFeedback(userID int, feedbackType string, title string, content string, contact string, ctx ClientContext) error {
+func CreateAppFeedback(userID int, feedbackType string, title string, content string, contact string, attachments []string, ctx ClientContext) error {
 	title = strings.TrimSpace(title)
 	content = strings.TrimSpace(content)
 	contact = strings.TrimSpace(contact)
@@ -70,12 +90,17 @@ func CreateAppFeedback(userID int, feedbackType string, title string, content st
 	if title == "" {
 		title = "未填写主题"
 	}
+	validAttachments, err := ValidateFeedbackAttachments(userID, attachments)
+	if err != nil {
+		return err
+	}
 	item := AppFeedback{
 		UserID:         userID,
 		Type:           normalizeFeedbackType(feedbackType),
 		Title:          title,
 		Content:        content,
 		Contact:        contact,
+		Attachments:    EncodeFeedbackAttachments(validAttachments),
 		Source:         ctx.FilterKey(),
 		ClientPlatform: ctx.Platform,
 		Status:         "new",
@@ -329,4 +354,109 @@ func BatchRewardAppFeedbacks(ids []int, rewardCoin int, handler string) (int, er
 		count++
 	}
 	return count, nil
+}
+
+// SaveFeedbackUpload 保存用户投稿附件到 uploads/file/{userNumber}/
+func SaveFeedbackUpload(userNumber int, filename string, data []byte) (string, error) {
+	if userNumber <= 0 {
+		return "", fmt.Errorf("无效用户")
+	}
+	ext := strings.ToLower(filepath.Ext(strings.TrimSpace(filename)))
+	if !feedbackImageExt[ext] && !feedbackVideoExt[ext] {
+		return "", fmt.Errorf("仅支持图片(jpg/png/gif/webp)或视频(mp4/webm/mov)")
+	}
+	maxSize := feedbackUploadMaxImage
+	if feedbackVideoExt[ext] {
+		maxSize = feedbackUploadMaxVideo
+	}
+	if len(data) == 0 || len(data) > maxSize {
+		if feedbackVideoExt[ext] {
+			return "", fmt.Errorf("视频大小不能超过50MB")
+		}
+		return "", fmt.Errorf("图片大小不能超过10MB")
+	}
+	dir := filepath.Join(ExecPath, "uploads", "file", fmt.Sprintf("%d", userNumber))
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", fmt.Errorf("创建目录失败")
+	}
+	saveName := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+	savePath := filepath.Join(dir, saveName)
+	if err := ioutil.WriteFile(savePath, data, 0644); err != nil {
+		return "", fmt.Errorf("保存失败")
+	}
+	return fmt.Sprintf("/uploads/file/%d/%s", userNumber, saveName), nil
+}
+
+func ParseFeedbackAttachments(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return nil
+	}
+	var urls []string
+	if err := json.Unmarshal([]byte(raw), &urls); err != nil {
+		return nil
+	}
+	out := make([]string, 0, len(urls))
+	for _, u := range urls {
+		u = strings.TrimSpace(u)
+		if u != "" {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+func EncodeFeedbackAttachments(urls []string) string {
+	clean := make([]string, 0, len(urls))
+	seen := map[string]bool{}
+	for _, u := range urls {
+		u = strings.TrimSpace(u)
+		if u == "" || seen[u] {
+			continue
+		}
+		if !strings.HasPrefix(u, "/uploads/file/") {
+			continue
+		}
+		if _, ok := ResolveUploadAbsPath(u); !ok {
+			continue
+		}
+		seen[u] = true
+		clean = append(clean, u)
+		if len(clean) >= feedbackUploadMaxFiles {
+			break
+		}
+	}
+	if len(clean) == 0 {
+		return ""
+	}
+	b, _ := json.Marshal(clean)
+	return string(b)
+}
+
+func ValidateFeedbackAttachments(userNumber int, urls []string) ([]string, error) {
+	if len(urls) > feedbackUploadMaxFiles {
+		return nil, fmt.Errorf("最多上传%d个附件", feedbackUploadMaxFiles)
+	}
+	out := make([]string, 0, len(urls))
+	seen := map[string]bool{}
+	prefix := fmt.Sprintf("/uploads/file/%d/", userNumber)
+	for _, u := range urls {
+		u = strings.TrimSpace(u)
+		if u == "" || seen[u] {
+			continue
+		}
+		if !strings.HasPrefix(u, prefix) {
+			return nil, fmt.Errorf("附件路径无效")
+		}
+		abs, ok := ResolveUploadAbsPath(u)
+		if !ok {
+			return nil, fmt.Errorf("附件不存在或无权使用")
+		}
+		if st, err := os.Stat(abs); err != nil || st.IsDir() {
+			return nil, fmt.Errorf("附件不存在")
+		}
+		seen[u] = true
+		out = append(out, u)
+	}
+	return out, nil
 }

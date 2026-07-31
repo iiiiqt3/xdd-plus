@@ -1911,6 +1911,7 @@
                     <input type="hidden" id="feedbackOriginalStatus" value="">
                     <div id="feedbackAlreadyProcessedTip" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:8px;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.15);font-size:12px;color:var(--amber);line-height:1.6;">⚠️ 此反馈已处理过，再次编辑保存不会重复通知用户</div>
                     <div id="feedbackDetailContent" style="padding:12px 14px;border:1px solid #ebeef5;border-radius:12px;background:#fafcff;color:#303133;font-size:13px;line-height:1.8;margin-bottom:14px;white-space:pre-wrap;">请选择反馈</div>
+                    <div id="feedbackDetailAttachments" style="display:none;margin-bottom:14px;padding:12px;border:1px dashed #dcdfe6;border-radius:12px;background:#fff;"></div>
                     <div class="form-item"><label>处理状态</label><select id="feedbackProcessStatus"><option value="">请选择状态</option><option value="processed">已处理</option><option value="new">重新打开</option><option value="ignored">不采纳</option></select></div>
                     <div class="form-item"><label>回复内容</label><textarea id="feedbackReply" rows="5" placeholder="请输入回复内容，用户会在通知中心收到"></textarea></div>
                     <div class="form-item"><label>奖励积分</label><input type="number" id="feedbackRewardCoin" min="0" value="0" placeholder="不奖励填写 0"></div>
@@ -4445,6 +4446,26 @@ async function openFeedbackDetail(id) {
             detailLines.push('已奖励积分：' + (f.rewardCoin || 0));
         }
         document.getElementById('feedbackDetailContent').textContent = detailLines.join('\n');
+        var attachBox = document.getElementById('feedbackDetailAttachments');
+        var attachments = f.attachmentList || [];
+        if (!attachments.length && f.attachments) {
+            try { attachments = JSON.parse(f.attachments); } catch(e) { attachments = []; }
+        }
+        if (attachBox) {
+            if (!attachments.length) {
+                attachBox.style.display = 'none';
+                attachBox.innerHTML = '';
+            } else {
+                attachBox.style.display = 'block';
+                attachBox.innerHTML = '<div style="font-size:12px;font-weight:600;color:#606266;margin-bottom:8px;">用户上传附件（' + attachments.length + '）</div><div style="display:flex;flex-wrap:wrap;gap:10px;">' + attachments.map(function(url) {
+                    var ext = (url.split('.').pop() || '').toLowerCase().split('?')[0];
+                    if (['mp4','webm','mov','avi'].indexOf(ext) >= 0) {
+                        return '<video src="' + escapeAttr(url) + '" controls style="max-width:220px;max-height:160px;border-radius:8px;background:#000;"></video>';
+                    }
+                    return '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener"><img src="' + escapeAttr(url) + '" style="max-width:160px;max-height:120px;object-fit:cover;border-radius:8px;border:1px solid #ebeef5;"></a>';
+                }).join('') + '</div>';
+            }
+        }
         document.getElementById('feedbackDetailModal').classList.remove('hidden');
     } catch(e) {
         toast('加载反馈详情失败: ' + e.message, 'error');

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -487,10 +488,11 @@ func (c *PortalController) WxLogout() {
 // SubmitFeedback 提交用户反馈
 func (c *PortalController) SubmitFeedback() {
 	var req struct {
-		Type    string `json:"type"`
-		Title   string `json:"title"`
-		Content string `json:"content"`
-		Contact string `json:"contact"`
+		Type        string   `json:"type"`
+		Title       string   `json:"title"`
+		Content     string   `json:"content"`
+		Contact     string   `json:"contact"`
+		Attachments []string `json:"attachments"`
 	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
@@ -510,12 +512,46 @@ func (c *PortalController) SubmitFeedback() {
 		c.ServeJSON()
 		return
 	}
-	if err := models.CreateAppFeedback(c.PortalUserID, req.Type, title, content, contact, c.ClientCtx); err != nil {
+	if err := models.CreateAppFeedback(c.PortalUserID, req.Type, title, content, contact, req.Attachments, c.ClientCtx); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
 	c.Data["json"] = map[string]interface{}{"code": 0, "msg": "提交成功，管理员会在后台处理"}
+	c.ServeJSON()
+}
+
+// UploadFeedbackFile 上传投稿截图/视频
+func (c *PortalController) UploadFeedbackFile() {
+	if c.PortalAccount == nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "登录状态失效，请重新登录"}
+		c.ServeJSON()
+		return
+	}
+	f, h, err := c.GetFile("file")
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请选择文件"}
+		c.ServeJSON()
+		return
+	}
+	defer f.Close()
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "读取文件失败"}
+		c.ServeJSON()
+		return
+	}
+	url, err := models.SaveFeedbackUpload(c.PortalUserID, h.Filename, data)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  "上传成功",
+		"data": map[string]interface{}{"url": url},
+	}
 	c.ServeJSON()
 }
 

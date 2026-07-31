@@ -224,6 +224,7 @@ func main() {
 	web.Router("/api/portal/push/register", &controllers.PortalController{}, "post:PushRegister")
 	web.Router("/api/portal/push/unregister", &controllers.PortalController{}, "post:PushUnregister")
 	web.Router("/api/portal/feedback", &controllers.PortalController{}, "post:SubmitFeedback")
+	web.Router("/api/portal/feedback/upload", &controllers.PortalController{}, "post:UploadFeedbackFile")
 	web.Router("/api/portal/coin-logs", &controllers.PortalController{}, "get:CoinLogs")
 	web.Router("/api/portal/wechat-recharge/config", &controllers.PortalController{}, "get:WechatRechargeConfig")
 	web.Router("/api/portal/wechat-recharge/orders", &controllers.PortalController{}, "get:WechatRechargeOrders;post:WechatRechargeCreateOrder")
@@ -501,6 +502,7 @@ func main() {
 	// uploads 仅走上方带路径校验的 web.Get，避免 StaticDir 与穿越风险
 	uploadsDir := filepath.Join(models.ExecPath, "uploads")
 	os.MkdirAll(filepath.Join(uploadsDir, "guide"), 0755)
+	os.MkdirAll(filepath.Join(uploadsDir, "file"), 0755)
 	if jsDir := vweb.AssetDir("js"); jsDir != "" {
 		web.BConfig.WebConfig.StaticDir["/vweb/js"] = jsDir
 	}
