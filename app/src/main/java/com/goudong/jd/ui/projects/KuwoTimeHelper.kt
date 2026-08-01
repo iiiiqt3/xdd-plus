@@ -44,6 +44,7 @@ object KuwoTimeHelper {
 
     fun getNextWithdrawInfo(): NextWithdrawInfo {
         val bj = getBeijingTime()
+        var bestNext: NextWithdrawInfo? = null
         for (h in withdrawHours) {
             val diffMin = minutesUntilHour(h, bj.hour, bj.min)
             if (diffMin > 0 && diffMin <= 4) {
@@ -52,15 +53,15 @@ object KuwoTimeHelper {
             if (diffMin == 0) {
                 return NextWithdrawInfo(h, inWindow = true, diffMin = 0)
             }
-        }
-        for (h in withdrawHours) {
-            val diffMin = minutesUntilHour(h, bj.hour, bj.min)
-            if (diffMin > 4) {
-                return NextWithdrawInfo(h, inWindow = false, diffMin = diffMin)
+            if (bestNext == null || diffMin < bestNext!!.diffMin) {
+                bestNext = NextWithdrawInfo(h, inWindow = false, diffMin = diffMin)
             }
         }
-        val nextDayMin = minutesUntilHour(withdrawHours.first(), bj.hour, bj.min)
-        return NextWithdrawInfo(withdrawHours.first(), inWindow = false, diffMin = nextDayMin)
+        return bestNext ?: NextWithdrawInfo(
+            withdrawHours.first(),
+            inWindow = false,
+            diffMin = minutesUntilHour(withdrawHours.first(), bj.hour, bj.min),
+        )
     }
 
     fun formatClock(h: Int, m: Int, s: Int): String =

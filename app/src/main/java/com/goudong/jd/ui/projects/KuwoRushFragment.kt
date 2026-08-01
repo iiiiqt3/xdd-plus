@@ -12,6 +12,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.AdapterView
@@ -61,6 +62,7 @@ class KuwoRushFragment : Fragment() {
     private var countdownText: TextView? = null
     private var logText: TextView? = null
     private var quotaGroup: RadioGroup? = null
+    private var useProxyCheck: CheckBox? = null
 
     private var kuwoAuthorized = false
     private var kuwoAccounts: List<Pair<String, String>> = emptyList()
@@ -264,6 +266,18 @@ class KuwoRushFragment : Fragment() {
                 }
             }
             addView(quotaGroup)
+
+            useProxyCheck = CheckBox(ctx).apply {
+                text = "启用代理抢兑"
+                isChecked = prefs().getBoolean("use_proxy", true)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setTextColor(requireContext().themeColor(R.color.text_primary))
+                setPadding(0, ctx.dp(10), 0, 0)
+                setOnCheckedChangeListener { _, checked ->
+                    prefs().edit().putBoolean("use_proxy", checked).apply()
+                }
+            }
+            addView(useProxyCheck)
 
             addView(LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
@@ -585,6 +599,8 @@ class KuwoRushFragment : Fragment() {
         }
     }
 
+    private fun useKuwoProxy(): Boolean = useProxyCheck?.isChecked != false
+
     private fun clearActiveState() {
         monitorJob?.cancel()
         countdownJob?.cancel()
@@ -650,7 +666,7 @@ class KuwoRushFragment : Fragment() {
         if (info.inWindow && info.diffMin > 0 && info.diffMin <= 4) {
             appendLog("🎯 提交定时抢兑任务，后端将在 ${KuwoTimeHelper.formatHour(info.hour)} 自动执行（3轮错峰）")
             setWithdrawUiLocked(true, allowSmsEdit = true)
-            saveKuwoState(phone, password, smsCode, selectedQuotaId, info.hour, null, false)
+            saveKuwoState(phone, password, smsCode, selectedQuotaId, info.hour, null, false, useKuwoProxy())
             scheduleOnBackend(phone, password, smsCode, selectedQuotaId, info.hour, info, immediate = false)
             return
         }
@@ -672,7 +688,9 @@ class KuwoRushFragment : Fragment() {
         withdrawSubmitting = true
         lifecycleScope.launch {
             runCatching {
-                AppServices.portalRepository.scheduleKuwoWithdraw(phone, password, quotaId, smsCode, targetHour, immediate)
+                AppServices.portalRepository.scheduleKuwoWithdraw(
+                    phone, password, quotaId, smsCode, targetHour, immediate, useKuwoProxy(),
+                )
             }.onSuccess { result ->
                 val taskId = result.taskId
                 if (taskId.isNullOrBlank()) {
@@ -705,6 +723,7 @@ class KuwoRushFragment : Fragment() {
         smsEditHint?.visibility = if (locked && allowSmsEdit) View.VISIBLE else View.GONE
         phoneInput?.isEnabled = !locked
         passwordInput?.isEnabled = !locked
+        useProxyCheck?.isEnabled = !locked
         smsInput?.isEnabled = !locked || allowSmsEdit
     }
 
@@ -862,12 +881,14 @@ class KuwoRushFragment : Fragment() {
         targetHour: Int?,
         taskId: String?,
         immediate: Boolean,
+        useProxy: Boolean = useKuwoProxy(),
     ) {
         val json = JSONObject().apply {
             put("phone", phone)
             put("password", password)
             put("smsCode", smsCode)
             put("quotaId", quotaId)
+            put("useProxy", useProxy)
             if (targetHour != null) put("targetHour", targetHour)
             if (taskId != null) put("taskId", taskId)
             put("immediate", immediate)
@@ -927,6 +948,9 @@ class KuwoRushFragment : Fragment() {
                 }
                 val quotaId = json.optString("quotaId", "30002")
                 selectedQuotaId = quotaId
+                if (json.has("useProxy")) {
+                    useProxyCheck?.isChecked = json.optBoolean("useProxy", true)
+                }
                 quotaGroup?.let { group ->
                     for (i in 0 until group.childCount) {
                         val rb = group.getChildAt(i) as? RadioButton ?: continue

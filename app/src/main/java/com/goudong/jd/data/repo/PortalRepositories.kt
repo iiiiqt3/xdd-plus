@@ -660,12 +660,14 @@ class PortalRepository(
         smsCode: String,
         targetHour: Int?,
         immediate: Boolean,
+        useProxy: Boolean = true,
     ): KuwoScheduleResult {
         val payload = mutableMapOf<String, Any>(
             "sessions" to listOf(mapOf("phone" to phone, "password" to password)),
             "quotaId" to quotaId,
             "smsCode" to smsCode,
             "immediate" to immediate,
+            "useProxy" to useProxy,
         )
         if (!immediate && targetHour != null) {
             payload["targetHour"] = targetHour
