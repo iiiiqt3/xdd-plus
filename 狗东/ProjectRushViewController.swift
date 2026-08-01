@@ -50,6 +50,7 @@ enum KuwoTimeHelper {
 
     static func getNextWithdrawInfo() -> NextWithdrawInfo {
         let bj = getBeijingTime()
+        var bestNext: NextWithdrawInfo?
         for h in withdrawHours {
             let diffMin = minutesUntilHour(h, hour: bj.hour, min: bj.min)
             if diffMin > 0 && diffMin <= 4 {
@@ -58,15 +59,19 @@ enum KuwoTimeHelper {
             if diffMin == 0 {
                 return NextWithdrawInfo(hour: h, inWindow: true, diffMin: 0)
             }
-        }
-        for h in withdrawHours {
-            let diffMin = minutesUntilHour(h, hour: bj.hour, min: bj.min)
-            if diffMin > 4 {
-                return NextWithdrawInfo(hour: h, inWindow: false, diffMin: diffMin)
+            if bestNext == nil || diffMin < bestNext!.diffMin {
+                bestNext = NextWithdrawInfo(hour: h, inWindow: false, diffMin: diffMin)
             }
         }
-        let nextDayMin = minutesUntilHour(withdrawHours[0], hour: bj.hour, min: bj.min)
-        return NextWithdrawInfo(hour: withdrawHours[0], inWindow: false, diffMin: nextDayMin)
+        if let bestNext = bestNext {
+            return bestNext
+        }
+        let fallbackHour = withdrawHours[0]
+        return NextWithdrawInfo(
+            hour: fallbackHour,
+            inWindow: false,
+            diffMin: minutesUntilHour(fallbackHour, hour: bj.hour, min: bj.min)
+        )
     }
 
     static func formatClock(_ h: Int, _ m: Int, _ s: Int) -> String {
@@ -98,6 +103,7 @@ final class KuwoRushViewController: BaseNativeViewController {
     private let countdownLabel = UILabel()
     private let logTextView = UITextView()
     private let quotaStack = UIStackView()
+    private let useProxySwitch = UISwitch()
 
     private var kuwoAuthorized = false
     private var kuwoAccounts: [(phone: String, password: String)] = []
@@ -284,6 +290,21 @@ final class KuwoRushViewController: BaseNativeViewController {
         refreshQuotaButtons()
         card.addArrangedSubview(quotaStack)
 
+        let proxyRow = UIStackView()
+        proxyRow.axis = .horizontal
+        proxyRow.alignment = .center
+        proxyRow.spacing = 8
+        let proxyLabel = UILabel()
+        proxyLabel.text = "启用代理抢兑"
+        proxyLabel.font = .systemFont(ofSize: 13)
+        useProxySwitch.isOn = prefs().object(forKey: "kuwo_use_proxy") as? Bool ?? true
+        useProxySwitch.onTintColor = .systemIndigo
+        useProxySwitch.addTarget(self, action: #selector(useProxySwitchChanged), for: .valueChanged)
+        proxyRow.addArrangedSubview(proxyLabel)
+        proxyRow.addArrangedSubview(UIView())
+        proxyRow.addArrangedSubview(useProxySwitch)
+        card.addArrangedSubview(proxyRow)
+
         let timeBox = UIStackView()
         timeBox.axis = .vertical
         timeBox.spacing = 4
@@ -420,6 +441,14 @@ final class KuwoRushViewController: BaseNativeViewController {
             child.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -insets.bottom),
         ])
         return box
+    }
+
+    @objc private func useProxySwitchChanged() {
+        prefs().set(useProxySwitch.isOn, forKey: "kuwo_use_proxy")
+    }
+
+    private func useKuwoProxy() -> Bool {
+        useProxySwitch.isOn
     }
 
     private func selectQuota(index: Int) {
@@ -662,7 +691,7 @@ final class KuwoRushViewController: BaseNativeViewController {
         if info.inWindow && info.diffMin > 0 && info.diffMin <= 4 {
             appendLog("🎯 提交定时抢兑任务，后端将在 \(KuwoTimeHelper.formatHour(info.hour)) 自动执行（3轮错峰）")
             setWithdrawUiLocked(true, allowSmsEdit: true)
-            saveKuwoState(phone: phone, password: password, smsCode: smsCode, quotaId: selectedQuotaId, targetHour: info.hour, taskId: nil, immediate: false)
+            saveKuwoState(phone: phone, password: password, smsCode: smsCode, quotaId: selectedQuotaId, targetHour: info.hour, taskId: nil, immediate: false, useProxy: useKuwoProxy())
             scheduleOnBackend(phone: phone, password: password, smsCode: smsCode, quotaId: selectedQuotaId, targetHour: info.hour, info: info, immediate: false)
             return
         }
@@ -674,7 +703,7 @@ final class KuwoRushViewController: BaseNativeViewController {
     private func scheduleOnBackend(phone: String, password: String, smsCode: String, quotaId: String, targetHour: Int?, info: KuwoTimeHelper.NextWithdrawInfo?, immediate: Bool) {
         guard !withdrawSubmitting else { return }
         withdrawSubmitting = true
-        PortalService.shared.scheduleKuwoWithdraw(phone: phone, password: password, quotaId: quotaId, smsCode: smsCode, targetHour: targetHour, immediate: immediate) { [weak self] result in
+        PortalService.shared.scheduleKuwoWithdraw(phone: phone, password: password, quotaId: quotaId, smsCode: smsCode, targetHour: targetHour, immediate: immediate, useProxy: useKuwoProxy()) { [weak self] result in
             guard let self = self else { return }
             self.withdrawSubmitting = false
             switch result {
@@ -708,6 +737,7 @@ final class KuwoRushViewController: BaseNativeViewController {
         smsEditHint.isHidden = !(locked && allowSmsEdit)
         phoneField.isEnabled = !locked
         passwordField.isEnabled = !locked
+        useProxySwitch.isEnabled = !locked
         smsField.isEnabled = !locked || allowSmsEdit
     }
 
@@ -842,10 +872,10 @@ final class KuwoRushViewController: BaseNativeViewController {
         }
     }
 
-    private func saveKuwoState(phone: String, password: String, smsCode: String, quotaId: String, targetHour: Int?, taskId: String?, immediate: Bool) {
+    private func saveKuwoState(phone: String, password: String, smsCode: String, quotaId: String, targetHour: Int?, taskId: String?, immediate: Bool, useProxy: Bool = true) {
         var dict: [String: Any] = [
             "phone": phone, "password": password, "smsCode": smsCode, "quotaId": quotaId,
-            "immediate": immediate, "savedAt": Date().timeIntervalSince1970,
+            "immediate": immediate, "useProxy": useProxy, "savedAt": Date().timeIntervalSince1970,
         ]
         if let targetHour = targetHour { dict["targetHour"] = targetHour }
         if let taskId = taskId { dict["taskId"] = taskId }
@@ -899,6 +929,10 @@ final class KuwoRushViewController: BaseNativeViewController {
             }
             let quotaId = dict["quotaId"] as? String ?? "30002"
             self.selectedQuotaId = quotaId
+            if let useProxy = dict["useProxy"] as? Bool {
+                self.useProxySwitch.isOn = useProxy
+                self.prefs().set(useProxy, forKey: "kuwo_use_proxy")
+            }
             self.refreshQuotaButtons()
             self.appendLog("🔄 检测到进行中的抢兑任务，已恢复监控")
             self.taskLogIndex = task.logs?.count ?? 0

@@ -2167,12 +2167,13 @@ final class PortalService {
         requestMessageJSON(path: "/api/portal/kuwo/send-sms", payload: ["phone": phone, "password": password], completion: completion)
     }
 
-    func scheduleKuwoWithdraw(phone: String, password: String, quotaId: String, smsCode: String, targetHour: Int?, immediate: Bool, completion: @escaping (Result<KuwoScheduleResult, APIError>) -> Void) {
+    func scheduleKuwoWithdraw(phone: String, password: String, quotaId: String, smsCode: String, targetHour: Int?, immediate: Bool, useProxy: Bool = true, completion: @escaping (Result<KuwoScheduleResult, APIError>) -> Void) {
         var payload: [String: Any] = [
             "sessions": [["phone": phone, "password": password]],
             "quotaId": quotaId,
             "smsCode": smsCode,
             "immediate": immediate,
+            "useProxy": useProxy,
         ]
         if !immediate, let targetHour = targetHour {
             payload["targetHour"] = targetHour
