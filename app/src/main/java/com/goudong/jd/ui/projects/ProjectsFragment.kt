@@ -41,7 +41,8 @@ import com.goudong.jd.ui.common.captionText
 import com.goudong.jd.ui.common.dp
 import com.goudong.jd.ui.common.formatScanCostPreview
 import com.goudong.jd.ui.common.formatYybConfirmMessage
-import com.goudong.jd.ui.common.formatYybScanCostNote
+import com.goudong.jd.ui.common.formatYybScanNotes
+import com.goudong.jd.ui.common.formatYybScanRegionHint
 import com.goudong.jd.ui.common.handlePortalError
 import com.goudong.jd.ui.common.heroCard
 import com.goudong.jd.ui.common.inputField
@@ -1577,9 +1578,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
             orientation = LinearLayout.VERTICAL
             setPadding(ctx.dp(8), ctx.dp(4), ctx.dp(8), 0)
         }
-        val hint = cfg.proxyBypassRegionName?.takeIf { it.isNotBlank() }?.let {
-            "「$it」等地区免代理直连；其他地区请选择与你所在地一致的省/市。异地登录可能只有1天有效期。"
-        } ?: "请选择与你当前所在地一致的省/市。异地登录可能只有1天有效期。"
+        val hint = formatYybScanRegionHint(cfg.proxyBypassRegionName, null)
         dialogView.addView(ctx.bodyText(hint).apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             setPadding(0, 0, 0, ctx.dp(10))
@@ -1603,7 +1602,8 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         var cities = emptyList<Pair<String, String>>()
         lifecycleScope.launch {
             val quota = runCatching { AppServices.portalRepository.fetchProtocolBindQuota() }.getOrNull()
-            applyScanCostLabel(scanCostLabel, quota?.scanLoginCost, quota?.scanCostHint)
+            val regionQrHint = quota?.scanRegionQrHint
+            applyScanCostLabel(scanCostLabel, quota?.scanLoginCost, quota?.scanCostHint, regionQrHint)
             val packId = cfg.proxyDefaultPackid.orEmpty()
             provinces = parseProxyAreaList(
                 runCatching { AppServices.portalRepository.fetchProtocolProxyAreas(packId = packId) }.getOrNull()
@@ -1677,7 +1677,8 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
                         sessionId,
                         data.imageBase64,
                         cost = data.scanLoginCost,
-                        hint = data.scanCostHint
+                        hint = data.scanCostHint,
+                        regionQrHint = data.scanRegionQrHint,
                     )
                 }
                 .onFailure {
@@ -1689,15 +1690,15 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }
     }
 
-    private fun applyScanCostLabel(label: TextView, cost: Int?, hint: String?) {
-        val preview = formatScanCostPreview(cost, hint)
-        if (preview.text.isBlank()) {
+    private fun applyScanCostLabel(label: TextView, cost: Int?, hint: String?, regionQrHint: String? = null) {
+        val note = formatYybScanNotes(cost, hint, regionQrHint)
+        if (note.isNullOrBlank()) {
             label.visibility = View.GONE
             return
         }
         label.visibility = View.VISIBLE
-        label.text = preview.text
-        val isFree = preview.isFree
+        label.text = note
+        val isFree = formatScanCostPreview(cost, hint).isFree
         label.setTextColor(if (isFree) Color.parseColor("#16A34A") else Color.parseColor("#D97706"))
         label.setTypeface(label.typeface, Typeface.BOLD)
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -1710,7 +1711,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         }.start()
     }
 
-    private fun showYybQrDialog(sessionId: String, base64: String, cost: Int?, hint: String?) {
+    private fun showYybQrDialog(sessionId: String, base64: String, cost: Int?, hint: String?, regionQrHint: String? = null) {
         yybPolling = true
         val ctx = requireContext()
         val dialogView = LinearLayout(ctx).apply {
@@ -1725,7 +1726,7 @@ class ProjectsFragment : Fragment(), InnerTabSwipeHost, MainTabResettable {
         decodeQrImage(base64)?.let { qrImage.setImageBitmap(it) }
         dialogView.addView(qrImage)
 
-        formatYybScanCostNote(cost, hint)?.let { note ->
+        formatYybScanNotes(cost, hint, regionQrHint)?.let { note ->
             val preview = formatScanCostPreview(cost, hint)
             dialogView.addView(TextView(ctx).apply {
                 text = note

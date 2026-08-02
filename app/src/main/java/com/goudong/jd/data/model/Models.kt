@@ -319,6 +319,8 @@ data class PortalProtocolBindQuota(
     val freeSlots: Int = 0,
     val scanLoginCost: Int? = null,
     val scanCostHint: String? = null,
+    val scanRegionHint: String? = null,
+    val scanRegionQrHint: String? = null,
 )
 
 data class PortalProxyConfig(
@@ -354,6 +356,8 @@ data class PortalYybQrCreateResult(
     val imageBase64: String? = null,
     val scanLoginCost: Int? = null,
     val scanCostHint: String? = null,
+    val scanRegionHint: String? = null,
+    val scanRegionQrHint: String? = null,
 )
 
 data class PortalYybQrPollResult(
