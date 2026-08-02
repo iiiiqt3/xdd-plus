@@ -575,27 +575,39 @@
         if (!quota) return null;
         const cost = Number(quota.scanLoginCost);
         const hint = String(quota.scanCostHint || '').trim();
+        const regionQrHint = String(quota.scanRegionQrHint || '').trim() ||
+            '若微信提示「异地登录」，说明地区不匹配，有效期可能仅 1 天，请重新选择与你所在地一致的省/市。';
+        let costText = '';
+        let isFree = true;
         if (hint) {
             if (Number.isFinite(cost) && cost > 0 && /续登免费/.test(hint)) {
-                return { text: hint, free: false };
+                costText = hint;
+                isFree = false;
+            } else if (Number.isFinite(cost) && cost === 0) {
+                costText = hint;
+                isFree = true;
+            } else if (Number.isFinite(cost) && cost > 0) {
+                costText = hint;
+                isFree = false;
+            } else {
+                costText = hint;
+                isFree = true;
             }
-            if (Number.isFinite(cost) && cost === 0) {
-                return { text: hint, free: true };
-            }
-            if (Number.isFinite(cost) && cost > 0) {
-                return { text: hint, free: false };
-            }
-            return { text: hint, free: true };
-        }
-        if (Number.isFinite(cost) && cost > 0) {
+        } else if (Number.isFinite(cost) && cost > 0) {
             const yybN = Number(quota.yybAccounts);
             if (Number.isFinite(yybN) && yybN > 0) {
-                return { text: '已有账号续登免费；新增账号将扣除 ' + cost + ' 积分', free: false };
+                costText = '已有账号续登免费；新增账号将扣除 ' + cost + ' 积分';
+            } else {
+                costText = '本次扫码将扣除 ' + cost + ' 积分';
             }
-            return { text: '本次扫码将扣除 ' + cost + ' 积分', free: false };
+            isFree = false;
+        } else if (Number.isFinite(cost) && cost === 0) {
+            costText = '本次扫码免费，不扣除积分';
+            isFree = true;
         }
-        if (Number.isFinite(cost) && cost === 0) return { text: '本次扫码免费，不扣除积分', free: true };
-        return null;
+        if (!costText && !regionQrHint) return null;
+        const text = [costText, regionQrHint].filter(Boolean).join('\n\n');
+        return { text: text, free: isFree };
     }
 
     async function updateRegionScanCostPreview() {
@@ -739,19 +751,34 @@
             const costEl = $('yyb-qrCost');
             const cost = Number(data.scanLoginCost);
             const costHint = String(data.scanCostHint || '').trim();
+            const regionQrHint = String(data.scanRegionQrHint || '').trim();
             if (costEl) {
-                if (costHint) {
+                const preview = formatRegionScanCost({
+                    scanLoginCost: Number.isFinite(cost) ? cost : undefined,
+                    scanCostHint: costHint,
+                    scanRegionQrHint: regionQrHint,
+                    yybAccounts: 1,
+                });
+                if (preview && preview.text) {
+                    costEl.style.display = 'block';
+                    costEl.className = 'yyb-region-scan-cost ' + (preview.free ? 'free' : 'paid');
+                    costEl.textContent = preview.text;
+                } else if (costHint) {
                     costEl.style.display = 'block';
                     costEl.className = 'yyb-region-scan-cost ' + (Number.isFinite(cost) && cost > 0 ? 'paid' : 'free');
-                    costEl.textContent = costHint;
+                    costEl.textContent = [costHint, regionQrHint].filter(Boolean).join('\n\n');
                 } else if (Number.isFinite(cost) && cost > 0) {
                     costEl.style.display = 'block';
                     costEl.className = 'yyb-region-scan-cost paid';
-                    costEl.textContent = '本次扫码将扣除 ' + cost + ' 积分';
+                    costEl.textContent = ['本次扫码将扣除 ' + cost + ' 积分', regionQrHint].filter(Boolean).join('\n\n');
                 } else if (Number.isFinite(cost) && cost === 0) {
                     costEl.style.display = 'block';
                     costEl.className = 'yyb-region-scan-cost free';
-                    costEl.textContent = '本次扫码免费，不扣除积分';
+                    costEl.textContent = ['本次扫码免费，不扣除积分', regionQrHint].filter(Boolean).join('\n\n');
+                } else if (regionQrHint) {
+                    costEl.style.display = 'block';
+                    costEl.className = 'yyb-region-scan-cost';
+                    costEl.textContent = regionQrHint;
                 } else {
                     costEl.style.display = 'none';
                     costEl.textContent = '';

@@ -709,7 +709,7 @@
         }
         .wx-intro-box[open] summary .intro-expand-hint { display: none; }
         .yyb-region-scan-cost {
-            margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; line-height: 1.5;
+            margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; line-height: 1.5; white-space: pre-line;
         }
         .yyb-region-scan-cost.free { background: rgba(34,197,94,.12); color: #16a34a; }
         .yyb-region-scan-cost.paid { background: rgba(245,158,11,.12); color: #d97706; }
@@ -2028,7 +2028,7 @@
 
         <div id="yyb-scanRegionStep">
             <div class="yyb-scan-region-hint">
-                请选择你<strong>当前所在地</strong>进行登录，避免异地登录触发风控。选择与所在地一致的地区，扫码成功后有效期为 <strong>30 天</strong>；若归属地与实际位置不一致，有效期可能缩短至 <strong>1 天</strong>。
+                请选择你<strong>实际所在地</strong>的省/市登录。地区正确时有效期约 <strong>30 天</strong>；若微信提示「异地登录」，有效期可能仅 <strong>1 天</strong>。
             </div>
             <div id="yyb-proxyRegionRow" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
                 <div>
@@ -2040,7 +2040,7 @@
                     <select id="yyb-proxyCity" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:8px;background:var(--glass-bg);color:var(--text);"></select>
                 </div>
             </div>
-            <p class="muted" id="yyb-proxyHint" style="font-size:12px;margin:0 0 10px;line-height:1.65;">请选择与你当前所在地一致的省/市。</p>
+            <p class="muted" id="yyb-proxyHint" style="font-size:12px;margin:0 0 10px;line-height:1.65;">请务必选择与你实际所在地一致的省/市。</p>
             <p class="muted" id="yyb-proxyConfigWarn" style="display:none;font-size:12px;margin:0 0 10px;line-height:1.6;color:#d97706;">后台 51 代理未就绪：流量白名单需填写 UID + packid=12；账号密码模式需填写账号与密码；并确认服务器 IP 已在 51 后台加白。</p>
             <p id="yyb-regionScanCost" class="yyb-region-scan-cost" style="display:none;"></p>
             <div class="yyb-scan-region-actions">

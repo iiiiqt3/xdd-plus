@@ -147,6 +147,25 @@ func YybFreeSlotsForNewLogin(userNumber int) int {
 	return free
 }
 
+// YybScanRegionHint 扫码登录地区提示（门户/App/网页共用）
+func YybScanRegionHint() string {
+	return "请务必选择与你实际所在地一致的省/市。地区正确时有效期约 30 天；若微信提示「异地登录」，有效期可能仅 1 天。"
+}
+
+// YybScanRegionQrHint 与积分说明并列展示的短提醒（扫码页/积分预览区）
+func YybScanRegionQrHint() string {
+	return "若微信提示「异地登录」，说明地区不匹配，有效期可能仅 1 天，请重新选择与你所在地一致的省/市。"
+}
+
+// YybScanRegionHintWithBypass 带免代理地区前缀的地区提示
+func YybScanRegionHintWithBypass(bypassRegionName string) string {
+	base := YybScanRegionHint()
+	if name := strings.TrimSpace(bypassRegionName); name != "" {
+		return fmt.Sprintf("「%s」等地区可免代理直连；%s", name, base)
+	}
+	return base
+}
+
 // CalcYybScanLoginCost 新 OpenID 扫码费用：库内应用宝数（含掉线）未达在线微信数则免费。
 // 已有 OpenID 续登在确认阶段另判免费，此处 hint 会提示「续登免费 / 新增才扣」。
 func CalcYybScanLoginCost(userNumber int) (cost int, free bool, hint string) {

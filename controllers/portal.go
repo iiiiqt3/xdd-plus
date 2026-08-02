@@ -1608,12 +1608,14 @@ func (c *PortalController) ProtocolBindQuota() {
 	c.Data["json"] = map[string]interface{}{
 		"code": 0,
 		"data": map[string]interface{}{
-			"onlineWxSlots": online,
-			"yybAccounts":   yybAccounts,
-			"boundPairs":    dualBound,
-			"freeSlots":     free,
-			"scanLoginCost": cost,
-			"scanCostHint":  hint,
+			"onlineWxSlots":  online,
+			"yybAccounts":    yybAccounts,
+			"boundPairs":     dualBound,
+			"freeSlots":      free,
+			"scanLoginCost":  cost,
+			"scanCostHint":   hint,
+			"scanRegionHint":   models.YybScanRegionHint(),
+			"scanRegionQrHint": models.YybScanRegionQrHint(),
 		},
 	}
 	c.ServeJSON()

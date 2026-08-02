@@ -96,11 +96,13 @@ func PortalCreateQR(userNumber int, proxyOpt models.YybProxyLoginOption) (map[st
 		return nil, err
 	}
 	out := map[string]any{
-		"sessionId":     sessionID,
-		"status":        "pending",
-		"imageBase64":   strings.TrimPrefix(imageB64, "data:image/jpeg;base64,"),
-		"scanLoginCost": cost,
-		"scanCostHint":  hint,
+		"sessionId":      sessionID,
+		"status":         "pending",
+		"imageBase64":    strings.TrimPrefix(imageB64, "data:image/jpeg;base64,"),
+		"scanLoginCost":  cost,
+		"scanCostHint":   hint,
+		"scanRegionHint":   models.YybScanRegionHint(),
+		"scanRegionQrHint": models.YybScanRegionQrHint(),
 	}
 	if meta != nil {
 		out["proxyMeta"] = meta
