@@ -4499,8 +4499,8 @@ final class YybProtocolViewController: BaseNativeViewController {
         present(alert, animated: true)
     }
 
-    private static func yybScanCostNote(cost: Int?, hint: String?) -> String? {
-        formatYybScanCostNote(cost: cost, hint: hint)
+    private static func yybScanCostNote(cost: Int?, hint: String?, regionQrHint: String? = nil) -> String? {
+        formatYybScanCostNote(cost: cost, hint: hint, regionQrHint: regionQrHint)
     }
 
     private func startScan() {
@@ -4544,13 +4544,17 @@ final class YybProtocolViewController: BaseNativeViewController {
                         }
                     let quota = try? quotaResult.get()
                     let costPreview = formatScanCostPreview(cost: quota?.scanLoginCost, hint: quota?.scanCostHint)
-                    var message = {
-                        if let bypass = config.proxyBypassRegionName, !bypass.isEmpty {
-                            return "「\(bypass)」等地区免代理直连；其他地区请选择与你所在地一致的省/市。异地登录可能只有1天有效期。"
-                        }
-                        return "请选择与你当前所在地一致的省/市。异地登录可能只有1天有效期。"
-                    }()
-                    if !costPreview.text.isEmpty {
+                    var message = formatYybScanRegionHint(
+                        bypassRegionName: config.proxyBypassRegionName,
+                        regionHint: quota?.scanRegionHint
+                    )
+                    if let notes = formatYybScanNotes(
+                        cost: quota?.scanLoginCost,
+                        hint: quota?.scanCostHint,
+                        regionQrHint: quota?.scanRegionQrHint
+                    ), !notes.isEmpty {
+                        message += "\n\n" + notes
+                    } else if !costPreview.text.isEmpty {
                         message += "\n\n" + costPreview.text
                     }
                     let sheet = UIAlertController(title: "选择登录地区", message: message, preferredStyle: .actionSheet)
@@ -4612,7 +4616,11 @@ final class YybProtocolViewController: BaseNativeViewController {
                     let vc = WechatQRCodeViewController(
                         base64String: image,
                         message: "请使用微信扫码确认登录",
-                        costNote: Self.yybScanCostNote(cost: data.scanLoginCost, hint: data.scanCostHint)
+                        costNote: Self.yybScanCostNote(
+                            cost: data.scanLoginCost,
+                            hint: data.scanCostHint,
+                            regionQrHint: data.scanRegionQrHint
+                        )
                     ) { [weak self] in
                         self?.scanning = false
                         self?.pollTimer?.invalidate()

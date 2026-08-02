@@ -410,6 +410,8 @@ struct PortalProtocolBindQuota: Decodable {
     let freeSlots: Int?
     let scanLoginCost: Int?
     let scanCostHint: String?
+    let scanRegionHint: String?
+    let scanRegionQrHint: String?
 }
 
 struct PortalProxyConfig: Decodable {
@@ -466,6 +468,8 @@ struct PortalYybQrCreateResult: Decodable {
     let imageBase64: String?
     let scanLoginCost: Int?
     let scanCostHint: String?
+    let scanRegionHint: String?
+    let scanRegionQrHint: String?
 }
 
 struct PortalYybQrPollResult: Decodable {
@@ -1299,6 +1303,18 @@ func parseProxyAreaRows(_ data: [String: Any]?) -> [(code: String, name: String)
 }
 
 func formatScanCostPreview(cost: Int?, hint: String?) -> (text: String, isFree: Bool) {
+    let trimmed = (hint ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmed.isEmpty {
+        let isFree: Bool
+        if let cost, cost == 0 {
+            isFree = true
+        } else if let cost, cost > 0 {
+            isFree = false
+        } else {
+            isFree = trimmed.contains("免费") && !trimmed.contains("扣除")
+        }
+        return (trimmed, isFree)
+    }
     if let cost, cost > 0 {
         return ("本次扫码将扣除 \(cost) 积分", false)
     }
@@ -1308,9 +1324,30 @@ func formatScanCostPreview(cost: Int?, hint: String?) -> (text: String, isFree: 
     return ("", true)
 }
 
-func formatYybScanCostNote(cost: Int?, hint: String?) -> String? {
-    let preview = formatScanCostPreview(cost: cost, hint: hint)
-    return preview.text.isEmpty ? nil : preview.text
+func formatYybScanNotes(cost: Int?, hint: String?, regionQrHint: String?) -> String? {
+    let costText = formatScanCostPreview(cost: cost, hint: hint).text.trimmingCharacters(in: .whitespacesAndNewlines)
+    let fallback = "若微信提示「异地登录」，说明地区不匹配，有效期可能仅 1 天，请重新选择与你所在地一致的省/市。"
+    let regionText = (regionQrHint ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    let regionBody = regionText.isEmpty ? fallback : regionText
+    if !costText.isEmpty && !regionBody.isEmpty {
+        return "\(costText)\n\n\(regionBody)"
+    }
+    if !costText.isEmpty { return costText }
+    if !regionBody.isEmpty { return regionBody }
+    return nil
+}
+
+func formatYybScanRegionHint(bypassRegionName: String?, regionHint: String?) -> String {
+    let base = (regionHint ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    let fallback = "请务必选择与你实际所在地一致的省/市。地区正确时有效期约 30 天；若微信提示「异地登录」，有效期可能仅 1 天。"
+    let body = base.isEmpty ? fallback : base
+    let bypass = (bypassRegionName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    if bypass.isEmpty { return body }
+    return "「\(bypass)」等地区可免代理直连；\(body)"
+}
+
+func formatYybScanCostNote(cost: Int?, hint: String?, regionQrHint: String? = nil) -> String? {
+    formatYybScanNotes(cost: cost, hint: hint, regionQrHint: regionQrHint)
 }
 
 func formatYybConfirmMessage(alreadyBound: Bool, cost: Int) -> String {
