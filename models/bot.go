@@ -480,12 +480,12 @@ var handleMessage = func(msgs ...interface{}) interface{} {
 						msgChan := make(chan string)
 						ckList[sender.UserID] = msgChan
 
-						sender.Reply("请输入需要助力的次数，每天最大助力次数为11（当天超过11次会火爆）：")
+						sender.Reply("请输入需要助力的次数，每天最大助力次数为35：")
 
 						zl_NUM_Str := <-msgChan
 
 						zl_NUM, err := strconv.Atoi(zl_NUM_Str)
-						if err != nil || zl_NUM <= 0 || zl_NUM > 11 {
+						if err != nil || zl_NUM <= 0 || zl_NUM > 35 {
 							sender.Reply("输入的次数不符合要求，请重新执行指令输入正确的次数，当前已退出程序")
 							return
 						}
