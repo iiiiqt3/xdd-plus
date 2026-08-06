@@ -250,6 +250,18 @@
         return '上次检测：' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
     }
 
+    function renderRemarkLine(acc) {
+        const remark = String(acc.remark || '').trim();
+        const key = accountKey(acc);
+        const text = remark || '未设置，点击编辑';
+        const cls = remark ? 'yyb-remark-text' : 'yyb-remark-text empty';
+        return `<div class="yyb-acc-remark-line">
+            <span class="yyb-meta-label">备注</span>
+            <span class="${cls}" title="${attrEsc(remark || '点击右侧按钮设置备注')}">${esc(text)}</span>
+            <button type="button" class="yyb-remark-edit-btn" data-yyb-remark-key="${attrEsc(key)}" title="设置备注">编辑</button>
+        </div>`;
+    }
+
     function renderAccountCard(acc) {
         const rawOpenid = String(acc.openid || '');
         const openid = esc(rawOpenid);
@@ -265,10 +277,10 @@
                         <div class="yyb-acc-name" title="${attrEsc(title)}">${esc(title)}</div>
                         ${subtitle ? `<div class="yyb-acc-subtitle" title="${attrEsc(subtitle)}">${esc(subtitle)}</div>` : ''}
                     </div>
-                    <button type="button" class="yyb-remark-edit-btn" data-yyb-remark-key="${attrEsc(key)}" title="设置备注">备注</button>
+                    ${statusTag(acc.status)}
                 </div>
-                ${statusTag(acc.status)}
             </div>
+            ${renderRemarkLine(acc)}
             ${renderUinLine(acc)}
             ${renderProxyCityLine(acc)}
             <div class="yyb-acc-openid-line">
@@ -305,7 +317,7 @@
         startExpiryTicker();
         grid.querySelectorAll('.yyb-acc-card').forEach(card => {
             card.onclick = (e) => {
-                if (e.target.closest('.yyb-copy-btn') || e.target.closest('.proto-card-unbind-btn') || e.target.closest('.yyb-remark-edit-btn')) return;
+                if (e.target.closest('.yyb-copy-btn') || e.target.closest('.proto-card-unbind-btn') || e.target.closest('.yyb-remark-edit-btn') || e.target.closest('.yyb-acc-remark-line')) return;
                 state.selectedKey = card.dataset.key;
                 syncSelected();
             };
@@ -885,7 +897,17 @@
         if ($('yyb-proxyProvince')) $('yyb-proxyProvince').onchange = () => { void loadProxyCities(); };
         if ($('yyb-qrCloseBtn')) $('yyb-qrCloseBtn').onclick = closeQr;
         document.addEventListener('click', function (e) {
+            const remarkLine = e.target.closest('.yyb-acc-remark-line');
             const btn = e.target.closest('.yyb-remark-edit-btn');
+            if (remarkLine && !btn) {
+                const card = remarkLine.closest('.yyb-acc-card');
+                if (card && card.dataset.key) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void editRemark(card.dataset.key);
+                    return;
+                }
+            }
             if (!btn || !btn.dataset.yybRemarkKey) return;
             e.preventDefault();
             e.stopPropagation();

@@ -1739,6 +1739,13 @@
         .yyb-acc-name-wrap { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
         .yyb-acc-name { font-size: 14px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
         .yyb-acc-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .yyb-acc-remark-line { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 8px; }
+        .yyb-remark-text {
+            flex: 1; min-width: 0; margin: 0; padding: 7px 10px; border-radius: 8px;
+            background: #fffbeb; border: 1px solid #fde68a; font-size: 12px; line-height: 1.4;
+            color: #92400e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+        }
+        .yyb-remark-text.empty { color: #94a3b8; background: #f8fafc; border-color: #e2e8f0; font-style: italic; }
         .yyb-remark-edit-btn {
             border: 1px solid #e2e8f0; border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 600;
             cursor: pointer; background: #fff; color: #64748b; flex-shrink: 0; line-height: 1.2;
@@ -3091,7 +3098,7 @@
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_bind.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_activity.js?v=3"></script>
-<script src="/vweb/js/portal_yyb.js?v=20"></script>
+<script src="/vweb/js/portal_yyb.js?v=21"></script>
 <script>
 async function getSignatureHeaders(path) {
     try {
