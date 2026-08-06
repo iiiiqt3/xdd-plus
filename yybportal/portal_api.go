@@ -292,6 +292,27 @@ func PortalResyncAccount(userNumber int, ref string) (PortalAccountView, error) 
 	return toPortalView(context.Background(), *b, a), nil
 }
 
+// PortalUpdateRemark 更新门户用户对应用宝账号的备注
+func PortalUpdateRemark(userNumber int, ref, remark string) (PortalAccountView, error) {
+	remark = strings.TrimSpace(remark)
+	if len(remark) > 64 {
+		return PortalAccountView{}, fmt.Errorf("备注最多 64 个字符")
+	}
+	b, err := resolveBinding(userNumber, ref)
+	if err != nil {
+		return PortalAccountView{}, err
+	}
+	if err := db().Model(&PortalYybBinding{}).Where("id = ?", b.ID).Update("remark", remark).Error; err != nil {
+		return PortalAccountView{}, err
+	}
+	b.Remark = remark
+	a, err := svc()
+	if err != nil {
+		return PortalAccountView{}, err
+	}
+	return toPortalView(context.Background(), *b, a), nil
+}
+
 // PortalServeAvatar 输出头像
 func PortalServeAvatar(w http.ResponseWriter, r *http.Request, userNumber int, ref string) error {
 	if !Ready() {

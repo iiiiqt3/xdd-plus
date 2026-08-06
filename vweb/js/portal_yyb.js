@@ -29,6 +29,20 @@
 
     function accountName(a) { return a.nickname || a.openid || '未命名'; }
 
+    function accountTitle(a) {
+        const remark = String(a.remark || '').trim();
+        if (remark) return remark;
+        return accountName(a);
+    }
+
+    function accountSubtitle(a) {
+        const remark = String(a.remark || '').trim();
+        if (!remark) return '';
+        const nick = accountName(a);
+        if (nick && nick !== remark) return nick;
+        return '';
+    }
+
     function statusTag(s) {
         if (s === 'alive' || s === 'online') return '<span class="wx-device-badge online-badge">🟢 可用</span>';
         if (s === 'dead' || s === 'offline' || s === 'expired') return '<span class="wx-device-badge offline-badge">🔴 失效</span>';
@@ -241,10 +255,17 @@
         const openid = esc(rawOpenid);
         const isBound = global.PortalProtocolBind && global.PortalProtocolBind.hasYybBinding(rawOpenid);
         const boundBlock = global.PortalProtocolBind ? global.PortalProtocolBind.renderYybBoundBlock(rawOpenid) : '';
-        return `<div class="yyb-acc-card${isBound ? ' proto-bound' : ''}" data-key="${attrEsc(accountKey(acc))}" role="button" tabindex="0">
+        const title = accountTitle(acc);
+        const subtitle = accountSubtitle(acc);
+        const key = accountKey(acc);
+        return `<div class="yyb-acc-card${isBound ? ' proto-bound' : ''}" data-key="${attrEsc(key)}" role="button" tabindex="0">
             <div class="yyb-acc-head">
                 <div class="yyb-acc-name-wrap">
-                    <div class="yyb-acc-name">${esc(accountName(acc))}</div>
+                    <div style="min-width:0;flex:1;">
+                        <div class="yyb-acc-name" title="${attrEsc(title)}">${esc(title)}</div>
+                        ${subtitle ? `<div class="yyb-acc-subtitle" title="${attrEsc(subtitle)}">${esc(subtitle)}</div>` : ''}
+                    </div>
+                    <button type="button" class="yyb-remark-edit-btn" data-yyb-remark-key="${attrEsc(key)}" title="设置备注">备注</button>
                 </div>
                 ${statusTag(acc.status)}
             </div>
@@ -284,7 +305,7 @@
         startExpiryTicker();
         grid.querySelectorAll('.yyb-acc-card').forEach(card => {
             card.onclick = (e) => {
-                if (e.target.closest('.yyb-copy-btn') || e.target.closest('.proto-card-unbind-btn')) return;
+                if (e.target.closest('.yyb-copy-btn') || e.target.closest('.proto-card-unbind-btn') || e.target.closest('.yyb-remark-edit-btn')) return;
                 state.selectedKey = card.dataset.key;
                 syncSelected();
             };
@@ -326,9 +347,10 @@
                 return `
                 <div class="yyb-dash-item${isBound ? ' proto-bound' : ''}">
                     <div class="yyb-dash-item-head">
-                        <span class="yyb-dash-item-name">${esc(accountName(a))}</span>
+                        <span class="yyb-dash-item-name">${esc(accountTitle(a))}</span>
                         ${statusTag(a.status)}
                     </div>
+                    ${accountSubtitle(a) ? '<div class="yyb-dash-uin" style="opacity:.85;">' + esc(accountSubtitle(a)) + '</div>' : ''}
                     <div class="yyb-dash-uin">UIN: ${esc(formatUin(a) || '未获取')}</div>
                     <div class="yyb-dash-uin">代理: ${esc(formatProxyCity(a))}</div>
                     <div class="yyb-dash-openid">OpenID: ${esc(a.openid)}</div>
@@ -513,6 +535,30 @@
                 notify('账号存活状态已刷新', 'success');
             });
         } catch (e) { notify(e.message || '刷新失败', 'error'); }
+    }
+
+    async function editRemark(key) {
+        const acc = state.accounts.find(a => accountKey(a) === key);
+        if (!acc) return;
+        const current = String(acc.remark || '').trim();
+        const input = prompt('请输入备注（用于区分账号，最多64字）：', current);
+        if (input === null) return;
+        const remark = String(input).trim();
+        if (remark === current) return;
+        try {
+            const data = await request('/accounts/remark', {
+                method: 'POST',
+                body: JSON.stringify({ ref: accountRef(acc), remark }),
+            });
+            const idx = state.accounts.findIndex(a => accountKey(a) === key);
+            if (idx >= 0) state.accounts[idx] = { ...state.accounts[idx], ...data, remark: data.remark || remark };
+            renderAccounts();
+            if (global.PortalProtocolBind) global.PortalProtocolBind.setYybAccounts(state.accounts);
+            loadDashboard();
+            notify('备注已保存', 'success');
+        } catch (e) {
+            notify(e.message || '保存失败', 'error');
+        }
     }
 
     async function deleteSelected() {
@@ -838,6 +884,13 @@
         if ($('yyb-regionCancelBtn')) $('yyb-regionCancelBtn').onclick = closeQr;
         if ($('yyb-proxyProvince')) $('yyb-proxyProvince').onchange = () => { void loadProxyCities(); };
         if ($('yyb-qrCloseBtn')) $('yyb-qrCloseBtn').onclick = closeQr;
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.yyb-remark-edit-btn');
+            if (!btn || !btn.dataset.yybRemarkKey) return;
+            e.preventDefault();
+            e.stopPropagation();
+            void editRemark(btn.dataset.yybRemarkKey);
+        });
         void loadProxyConfig();
     }
 

@@ -276,6 +276,7 @@ func main() {
 	web.Router("/api/portal/yyb/accounts/delete", &controllers.PortalYybController{}, "post:DeleteAccount")
 	web.Router("/api/portal/yyb/accounts/refresh", &controllers.PortalYybController{}, "post:RefreshAccount")
 	web.Router("/api/portal/yyb/accounts/resync", &controllers.PortalYybController{}, "post:ResyncAccount")
+	web.Router("/api/portal/yyb/accounts/remark", &controllers.PortalYybController{}, "post:UpdateRemark")
 	web.Router("/api/portal/yyb/avatar", &controllers.PortalYybController{}, "get:Avatar")
 	web.Router("/api/portal/yyb/wxapp/getCode", &controllers.PortalYybController{}, "post:WxappGetCode")
 	web.Router("/api/portal/yyb/wxapp/getPhoneNumber", &controllers.PortalYybController{}, "post:WxappGetPhone")

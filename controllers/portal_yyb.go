@@ -163,6 +163,24 @@ func (c *PortalYybController) ResyncAccount() {
 	c.jsonOK(data, "同步完成")
 }
 
+// UpdateRemark 更新账号备注
+func (c *PortalYybController) UpdateRemark() {
+	var req struct {
+		Ref    string `json:"ref"`
+		Remark string `json:"remark"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil || req.Ref == "" {
+		c.jsonErr(errEmptyRef)
+		return
+	}
+	data, err := yybportal.PortalUpdateRemark(c.PortalUserID, req.Ref, req.Remark)
+	if err != nil {
+		c.jsonErr(err)
+		return
+	}
+	c.jsonOK(data, "备注已保存")
+}
+
 // Avatar 头像
 func (c *PortalYybController) Avatar() {
 	ref := c.GetString("ref")

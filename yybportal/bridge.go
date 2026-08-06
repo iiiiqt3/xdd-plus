@@ -312,6 +312,7 @@ func toPortalView(ctx context.Context, b PortalYybBinding, s *yyb.Service) Porta
 		YybAccountID: b.YybAccountID,
 		OpenID:       b.OpenID,
 		Nickname:     b.Nickname,
+		Remark:       strings.TrimSpace(b.Remark),
 		Status:       b.Status,
 		AvatarURL:    fmt.Sprintf("/api/portal/yyb/avatar?ref=%s", b.OpenID),
 		CreatedAt:    b.CreatedAt.Unix(),
