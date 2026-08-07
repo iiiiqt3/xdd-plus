@@ -82,6 +82,23 @@ type ElmWindowInfo struct {
 	Keyword     string `json:"keyword"`
 }
 
+// ElmTodaySlotProduct 今日某场次商品预览
+type ElmTodaySlotProduct struct {
+	TargetHour int              `json:"targetHour"`
+	SlotLabel  string           `json:"slotLabel"`
+	ExecuteAt  string           `json:"executeAt"`
+	Product    *ElmProductBrief `json:"product,omitempty"`
+}
+
+// ElmTodayProductsInfo 今日抢兑商品预览
+type ElmTodayProductsInfo struct {
+	IsFriday      bool                   `json:"isFriday"`
+	StarBalance   int                    `json:"starBalance"`
+	AccountRemark string                 `json:"accountRemark"`
+	Slots         []ElmTodaySlotProduct  `json:"slots"`
+	Message       string                 `json:"message"`
+}
+
 // ElmTaskLog 抢兑日志
 type ElmTaskLog struct {
 	Time    string `json:"time"`
@@ -1188,6 +1205,80 @@ func ElmGetActiveTaskByUser(userNumber int) *ElmScheduledTask {
 func init() {
 	_ = os.MkdirAll(filepath.Join(elmLogDir(), "cache"), 0755)
 	Elm().Infof("[elm] module loaded, slotAutoMatch=true rounds=%v", elmRoundLagMs)
+}
+
+// ElmGetTodayProducts 查询今日两场抢兑商品（进入页面时展示）
+func ElmGetTodayProducts(userNumber int) (*ElmTodayProductsInfo, error) {
+	bj := time.Now().In(elmBJLocation())
+	info := &ElmTodayProductsInfo{
+		IsFriday: bj.Weekday() == time.Friday,
+		Slots: []ElmTodaySlotProduct{
+			{TargetHour: 10, SlotLabel: "周五 10:00 场"},
+			{TargetHour: 15, SlotLabel: "周五 15:00 场"},
+		},
+	}
+	if info.IsFriday {
+		info.Slots[0].ExecuteAt = time.Date(bj.Year(), bj.Month(), bj.Day(), 10, 0, 0, 0, elmBJLocation()).Format("2006-01-02 15:04:05")
+		info.Slots[1].ExecuteAt = time.Date(bj.Year(), bj.Month(), bj.Day(), 15, 0, 0, 0, elmBJLocation()).Format("2006-01-02 15:04:05")
+	} else {
+		info.Slots[0].ExecuteAt = "每周五 10:00"
+		info.Slots[1].ExecuteAt = "每周五 15:00"
+	}
+	if ok, msg := CheckElmAuth(userNumber); !ok {
+		info.Message = msg
+		return info, nil
+	}
+	accounts, err := GetAllElmAccounts(userNumber)
+	if err != nil {
+		return nil, err
+	}
+	if len(accounts) == 0 {
+		info.Message = "暂无已上车账号"
+		return info, nil
+	}
+	var lastErr error
+	for _, acc := range accounts {
+		prepared, err := elmPrepareAccount("today_preview_"+fmt.Sprint(userNumber), acc)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		home, err := prepared.client.homepage()
+		if err != nil || !elmIsSuccess(home) {
+			if err != nil {
+				lastErr = err
+			} else {
+				lastErr = fmt.Errorf("商城查询失败: %s", elmFirstRet(home))
+			}
+			continue
+		}
+		products := elmProducts(home)
+		info.StarBalance = elmStarBalance(home)
+		info.AccountRemark = acc.Remark
+		for i := range info.Slots {
+			if p := elmSelectProductForSlot(products, info.Slots[i].TargetHour, ""); p != nil {
+				b := elmProductBrief(p)
+				info.Slots[i].Product = &b
+			}
+		}
+		found := 0
+		for _, s := range info.Slots {
+			if s.Product != nil {
+				found++
+			}
+		}
+		if found > 0 {
+			info.Message = "已加载今日商城商品"
+			return info, nil
+		}
+		lastErr = fmt.Errorf("商城暂无匹配场次商品")
+	}
+	if lastErr != nil {
+		info.Message = lastErr.Error()
+	} else {
+		info.Message = "未能加载商品信息"
+	}
+	return info, nil
 }
 
 // ElmPreviewProduct 预览当前商品（供前端展示）

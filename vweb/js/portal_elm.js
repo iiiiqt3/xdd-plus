@@ -70,12 +70,61 @@
         }).join('');
     }
 
+    function renderTodayProducts(data, win) {
+        const box = $('elmProductInfo');
+        if (!box) return;
+        if (!data) {
+            box.innerHTML = '<div class="muted">加载商品信息中…</div>';
+            return;
+        }
+        if (!state.authorized) {
+            box.innerHTML = '<div class="muted">上车饿了么(协议)活动后可查看今日抢兑商品</div>';
+            return;
+        }
+        const star = data.starBalance >= 0 ? data.starBalance : '--';
+        const slots = Array.isArray(data.slots) ? data.slots : [];
+        const currentHour = win && win.canStart && win.executeAt
+            ? parseInt(String(win.executeAt).slice(11, 13), 10)
+            : 0;
+        let html = `<div style="font-size:13px;line-height:1.8;color:var(--text-muted);margin-bottom:10px;">
+            <div>💎 幸运星余额：<strong style="color:#f59e0b;">${esc(star)}</strong>${data.accountRemark ? ' · 查询账号：' + esc(data.accountRemark) : ''}</div>
+            <div>${esc(data.message || '')}</div>
+        </div>`;
+        if (!slots.length) {
+            html += '<div class="muted">暂无场次商品信息</div>';
+            box.innerHTML = html;
+            return;
+        }
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;">';
+        slots.forEach(function (slot) {
+            const active = currentHour === slot.targetHour;
+            const border = active ? '2px solid #6366f1' : '1px solid var(--glass-border)';
+            const bg = active ? 'rgba(99,102,241,0.06)' : 'var(--bg-secondary)';
+            const p = slot.product;
+            html += `<div style="padding:12px 14px;border-radius:10px;border:${border};background:${bg};">
+                <div style="font-weight:700;color:var(--text);margin-bottom:6px;">${active ? '🎯 当前场次 · ' : ''}${esc(slot.slotLabel)}</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">执行时间：${esc(slot.executeAt || '-')}</div>`;
+            if (p) {
+                html += `<div style="font-weight:600;color:var(--text);margin-bottom:4px;">${esc(p.title)}</div>
+                    <div style="font-size:12px;line-height:1.7;color:var(--text-muted);">
+                        <div>所需幸运星：<strong style="color:#f59e0b;">${esc(p.cost)}</strong></div>
+                        <div>状态：${esc(p.status)}</div>
+                    </div>`;
+            } else {
+                html += '<div class="muted" style="font-size:12px;">暂未识别到该场次商品</div>';
+            }
+            html += '</div>';
+        });
+        html += '</div>';
+        box.innerHTML = html;
+    }
+
     function renderProduct(task) {
         const box = $('elmProductInfo');
         if (!box) return;
         const p = task && task.product;
         if (!p) {
-            box.innerHTML = '<div class="muted">点击「参与抢兑」后将显示目标商品、所需幸运星与执行时间</div>';
+            box.innerHTML = '<div class="muted">加载今日商品中…</div>';
             return;
         }
         box.innerHTML = `<div style="font-weight:700;color:var(--text);margin-bottom:6px;">🎯 ${esc(p.title)}</div>
@@ -195,6 +244,22 @@
         }, 1000);
     }
 
+    async function loadTodayProducts(win) {
+        if (!state.authorized) {
+            renderTodayProducts(null, win);
+            return;
+        }
+        try {
+            const data = await api('/today-products');
+            if (!state.activeTaskId) renderTodayProducts(data, win);
+        } catch (e) {
+            const box = $('elmProductInfo');
+            if (box && !state.activeTaskId) {
+                box.innerHTML = `<div class="muted">商品加载失败：${esc(e.message || '未知错误')}</div>`;
+            }
+        }
+    }
+
     async function loadPanel() {
         try {
             const auth = await api('/check-auth');
@@ -217,6 +282,9 @@
                 elmClearLogs();
                 applyTask(active);
                 monitorTask(active.id);
+            } else {
+                state.activeTaskId = null;
+                void loadTodayProducts(win);
             }
         } catch (e) {
             toast(e.message || '加载失败', 'error');

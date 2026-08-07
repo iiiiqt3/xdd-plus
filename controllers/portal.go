@@ -1551,6 +1551,24 @@ func (c *PortalController) ElmGetWindow() {
 	c.ServeJSON()
 }
 
+// ElmGetTodayProducts 今日两场抢兑商品预览
+func (c *PortalController) ElmGetTodayProducts() {
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	data, err := models.ElmGetTodayProducts(profile.User.Number)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": "ok"}
+	c.ServeJSON()
+}
+
 // ElmScheduleExchange 创建抢兑任务
 func (c *PortalController) ElmScheduleExchange() {
 	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
