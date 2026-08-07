@@ -266,6 +266,12 @@ func main() {
 	web.Router("/api/portal/kuwo/schedule-withdraw", &controllers.PortalController{}, "post:KuwoScheduleWithdraw")
 	web.Router("/api/portal/kuwo/update-sms-code", &controllers.PortalController{}, "post:KuwoUpdateSmsCode")
 	web.Router("/api/portal/kuwo/withdraw-status", &controllers.PortalController{}, "get:KuwoGetWithdrawStatus")
+	// ===================== 饿了么抢兑 API =====================
+	web.Router("/api/portal/elm/check-auth", &controllers.PortalController{}, "get:ElmCheckAuth")
+	web.Router("/api/portal/elm/accounts", &controllers.PortalController{}, "get:ElmGetAccounts")
+	web.Router("/api/portal/elm/window", &controllers.PortalController{}, "get:ElmGetWindow")
+	web.Router("/api/portal/elm/schedule", &controllers.PortalController{}, "post:ElmScheduleExchange")
+	web.Router("/api/portal/elm/status", &controllers.PortalController{}, "get:ElmGetExchangeStatus")
 	// ===================== 应用宝门户 =====================
 	web.Router("/portal/yyb", &controllers.PortalYybController{}, "get:Index")
 	web.Router("/api/portal/yyb/status", &controllers.PortalYybController{}, "get:Status")

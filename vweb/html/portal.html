@@ -2140,6 +2140,7 @@
             <div class="menu-group-title">辅助类</div>
             <div class="menu">
                 <button data-panel="kuwo">🎵 酷我提现</button>
+                <button data-panel="elm">🍜 饿了么抢兑</button>
             </div>
         </div>
         <div class="menu-group">
@@ -2414,6 +2415,51 @@
                         <button onclick="kuwoClearLogs()" style="padding:4px 12px;border:1px solid var(--glass-border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;">清空</button>
                     </div>
                     <div id="kuwoLogContent" style="background:var(--bg-secondary);border-radius:10px;padding:14px;min-height:160px;max-height:480px;overflow-y:auto;font-family:'JetBrains Mono','Fira Code',monospace;font-size:12px;line-height:1.75;color:var(--text-muted);white-space:pre-wrap;word-break:break-all;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 饿了么抢兑 ===== -->
+        <section class="panel" id="panel-elm">
+            <div class="section">
+                <div class="section-header"><h3>🍜 饿了么抢兑</h3><span class="muted">淘宝闪购幸运星兑换，每周五 10:00 / 15:00 场</span></div>
+                <div id="elmAuthHint" class="kuwo-auth-hint" style="display:none;padding:12px 16px;border-radius:10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#dc2626;font-size:13px;font-weight:600;margin-bottom:16px;"></div>
+                <div class="card" style="margin-bottom:16px;">
+                    <div id="elmTimeInfo" style="padding:12px 16px;border-radius:10px;background:var(--glass-bg);border:1px solid var(--glass-border);font-size:13px;line-height:1.8;color:var(--text);margin-bottom:14px;">
+                        <div>🕐 当前时间：<b id="elmNowTime">--</b></div>
+                        <div>⏰ 当前场次：<b id="elmNextSlot">--</b></div>
+                        <div id="elmWindowHint" style="font-weight:600;color:var(--primary);"></div>
+                    </div>
+                    <div style="padding:12px 16px;border-radius:10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.18);font-size:12px;line-height:1.75;color:#92400e;margin-bottom:14px;">
+                        <div style="font-weight:700;margin-bottom:4px;">💡 抢兑说明</div>
+                        <div>• 仅<strong>每周五</strong>开放：09:30-09:55 报名 → 10:00 执行；14:30-14:55 报名 → 15:00 执行</div>
+                        <div>• 账号来自已上车的 <strong>饿了么(协议)</strong> 活动（env: elmck，支持 wxid / yyb:openid）</div>
+                        <div>• 点击参与后将<strong>预先缓存 CK</strong>，到点直接提交，全用户并发不排队</div>
+                        <div>• 默认目标商品关键词：<strong>奶茶免单卡</strong></div>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label class="muted" style="font-size:12px;margin-bottom:8px;display:block;">选择抢兑账号</label>
+                        <div id="elmAccountList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;"></div>
+                    </div>
+                    <div id="elmProductInfo" class="muted" style="padding:12px 14px;border-radius:10px;background:var(--bg-secondary);border:1px solid var(--glass-border);margin-bottom:14px;line-height:1.7;">点击「参与抢兑」后将显示目标商品、所需幸运星与执行时间</div>
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <button id="elmStartBtn" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:14px;font-weight:700;cursor:pointer;">参与抢兑</button>
+                        <div id="elmCountdown" style="display:none;padding:10px 24px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:white;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;"></div>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom:16px;">
+                    <h4 style="margin:0 0 10px;font-size:14px;">抢兑结果</h4>
+                    <div id="elmResultBox" class="muted" style="font-size:13px;line-height:1.7;">暂无结果</div>
+                </div>
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div>
+                            <h4 style="margin:0;font-size:14px;color:var(--text);">执行日志</h4>
+                            <div class="muted" style="font-size:11px;margin-top:4px;">实时同步 CK 缓存、预检、三轮错峰抢兑过程（日志目录 logs/elm）</div>
+                        </div>
+                        <button id="elmClearLogBtn" style="padding:4px 12px;border:1px solid var(--glass-border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;">清空</button>
+                    </div>
+                    <div id="elmLogContent" style="background:var(--bg-secondary);border-radius:10px;padding:14px;min-height:160px;max-height:480px;overflow-y:auto;font-family:'JetBrains Mono','Fira Code',monospace;font-size:12px;line-height:1.75;color:var(--text-muted);white-space:pre-wrap;word-break:break-all;"></div>
                 </div>
             </div>
         </section>
@@ -3098,6 +3144,7 @@
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_bind.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_activity.js?v=3"></script>
+<script src="/vweb/js/portal_elm.js?v=1"></script>
 <script src="/vweb/js/portal_yyb.js?v=21"></script>
 <script>
 async function getSignatureHeaders(path) {
@@ -3305,7 +3352,9 @@ function syncPanelTitle(panel) {
         protocol: '🔐 协议登录',
         wx: '🔐 协议登录',
         yyb: '🔐 协议登录',
-        feedback: '📝 投稿与反馈'
+        feedback: '📝 投稿与反馈',
+        kuwo: '🎵 酷我提现',
+        elm: '🍜 饿了么抢兑',
     };
     document.getElementById('pageTitle').textContent = titleMap[panel] || '用户中心';
 }
@@ -3571,6 +3620,7 @@ async function refreshCurrentPanel(showToast = true) {
                 else if (window.YybPortal) await YybPortal.loadPanel({ autoCheck: false });
                 break;
             case 'kuwo':       await checkKuwoAuth(); break;
+            case 'elm':        if (window.ElmPortal) await window.ElmPortal.loadPanel(); break;
             case 'dashboard':
             default:           await loadDashboardData(); break;
         }

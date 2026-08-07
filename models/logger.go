@@ -25,6 +25,7 @@ const (
 	CatUser     Category = "user"     // 微信/QQ 用户指令与消息
 	CatJD       Category = "jd"       // 京东任务、查询、CK
 	CatKuwo     Category = "kuwo"     // 酷我抢兑
+	CatElm      Category = "elm"      // 饿了么抢兑
 	CatQinglong Category = "qinglong" // 青龙 API 调用
 	CatSync     Category = "sync"     // 数据库↔青龙同步
 	CatWx       Category = "wx"       // 微信协议
@@ -62,6 +63,7 @@ func AllCategories() []CategoryMeta {
 		{Key: string(CatUser), Label: "用户指令", Desc: "用户通过机器人发送的指令与业务处理"},
 		{Key: string(CatJD), Label: "京东", Desc: "京东任务、查询、登录"},
 		{Key: string(CatKuwo), Label: "酷我", Desc: "酷我抢兑模块"},
+		{Key: string(CatElm), Label: "饿了么", Desc: "饿了么幸运星抢兑"},
 		{Key: string(CatQinglong), Label: "青龙", Desc: "青龙面板 API"},
 		{Key: string(CatSync), Label: "同步", Desc: "数据库与青龙同步服务"},
 		{Key: string(CatWx), Label: "微信协议", Desc: "微信协议设备与扫码"},
@@ -777,6 +779,7 @@ func App() *Module      { return For(CatApp) }
 func UserLog() *Module  { return For(CatUser) }
 func JD() *Module       { return For(CatJD) }
 func Kuwo() *Module     { return For(CatKuwo) }
+func Elm() *Module      { return For(CatElm) }
 func Qinglong() *Module { return For(CatQinglong) }
 func Sync() *Module     { return For(CatSync) }
 func Wx() *Module       { return For(CatWx) }

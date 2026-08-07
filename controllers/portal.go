@@ -1514,6 +1514,104 @@ func (c *PortalController) KuwoGetWithdrawStatus() {
 	c.ServeJSON()
 }
 
+// ElmCheckAuth 检查饿了么活动授权
+func (c *PortalController) ElmCheckAuth() {
+	profile := c.PortalProfile()
+	if profile == nil {
+		c.Data["json"] = map[string]interface{}{"code": 401, "msg": "未登录"}
+		c.ServeJSON()
+		return
+	}
+	authorized, msg := models.CheckElmAuth(profile.User.Number)
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": map[string]interface{}{"authorized": authorized, "msg": msg}, "msg": "ok"}
+	c.ServeJSON()
+}
+
+// ElmGetAccounts 获取已上车饿了么账号
+func (c *PortalController) ElmGetAccounts() {
+	profile := c.PortalProfile()
+	if profile == nil {
+		c.Data["json"] = map[string]interface{}{"code": 401, "msg": "未登录"}
+		c.ServeJSON()
+		return
+	}
+	accounts, err := models.GetAllElmAccounts(profile.User.Number)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": accounts, "msg": "ok"}
+	c.ServeJSON()
+}
+
+// ElmGetWindow 抢兑窗口信息
+func (c *PortalController) ElmGetWindow() {
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": models.ElmGetWindowInfo(), "msg": "ok"}
+	c.ServeJSON()
+}
+
+// ElmScheduleExchange 创建抢兑任务
+func (c *PortalController) ElmScheduleExchange() {
+	profile := c.PortalProfile()
+	if profile == nil {
+		c.Data["json"] = map[string]interface{}{"code": 401, "msg": "未登录"}
+		c.ServeJSON()
+		return
+	}
+	var req struct {
+		Refs    []string `json:"refs"`
+		Keyword string   `json:"keyword"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	task, reused, err := models.ElmScheduleExchange(profile.User.Number, req.Refs, req.Keyword)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  map[bool]string{true: "已有进行中的抢兑任务", false: "抢兑任务已创建"}[reused],
+		"data": models.ElmTaskStatusPayload(task),
+	}
+	c.ServeJSON()
+}
+
+// ElmGetExchangeStatus 查询抢兑任务状态
+func (c *PortalController) ElmGetExchangeStatus() {
+	profile := c.PortalProfile()
+	if profile == nil {
+		c.Data["json"] = map[string]interface{}{"code": 401, "msg": "未登录"}
+		c.ServeJSON()
+		return
+	}
+	taskID := strings.TrimSpace(c.Ctx.Input.Query("taskId"))
+	if taskID == "" {
+		task := models.ElmGetActiveTaskByUser(profile.User.Number)
+		if task == nil {
+			c.Data["json"] = map[string]interface{}{"code": 0, "data": nil}
+			c.ServeJSON()
+			return
+		}
+		c.Data["json"] = map[string]interface{}{"code": 0, "data": models.ElmTaskStatusPayload(task)}
+		c.ServeJSON()
+		return
+	}
+	task := models.ElmGetScheduledTask(taskID)
+	if task == nil || task.UserNumber != profile.User.Number {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "任务不存在"}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": models.ElmTaskStatusPayload(task)}
+	c.ServeJSON()
+}
+
 func kuwoTaskStatusPayload(task *models.KuwoScheduledTask) map[string]interface{} {
 	smsFatal := false
 	if len(task.Results) > 0 {
