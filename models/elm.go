@@ -30,7 +30,6 @@ const (
 	elmExchangeAPI          = "mtop.alsc.interact.playapp.reward.right.exchange"
 	elmExchangeAsac         = "alsc5KvbdX5mHl3sdv4guV"
 	elmExchangeSource       = "INTERACT_CENTER_EXCHANGE_MALL"
-	elmDefaultKeyword       = "奶茶免单卡"
 	elmPrepareBeforeSec     = 30
 	elmAttemptsPerAccount   = 15
 	elmAttemptIntervalMs    = 300
@@ -454,10 +453,49 @@ func elmProductBrief(item map[string]interface{}) ElmProductBrief {
 	}
 }
 
-func elmSelectProduct(products []map[string]interface{}, keyword string) map[string]interface{} {
+func elmProductTitle(item map[string]interface{}) string {
+	material, _ := item["materialInfo"].(map[string]interface{})
+	title := strings.TrimSpace(fmt.Sprint(material["title"]))
+	if title == "" {
+		title = strings.TrimSpace(fmt.Sprint(item["rightName"]))
+	}
+	return title
+}
+
+func elmProductStatus(item map[string]interface{}) string {
+	info, _ := item["exchangeInfo"].(map[string]interface{})
+	if info == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(info["exchangeStatus"]))
+}
+
+func elmIsSeckillProduct(status string) bool {
+	status = strings.ToUpper(strings.TrimSpace(status))
+	if status == "" {
+		return false
+	}
+	return status == "SECKILL_NOT_STARTED" || status == "AVAILABLE" || status == "CAN_EXCHANGE" || strings.Contains(status, "SECKILL")
+}
+
+func elmMatchSlotHour(title string, targetHour int) bool {
+	title = strings.TrimSpace(title)
+	if title == "" || targetHour <= 0 {
+		return false
+	}
+	h := fmt.Sprintf("%d", targetHour)
+	for _, p := range []string{h + "点", h + ":00", h + "时", fmt.Sprintf("%02d:00", targetHour)} {
+		if strings.Contains(title, p) {
+			return true
+		}
+	}
+	return false
+}
+
+func elmSelectProductByKeyword(products []map[string]interface{}, keyword string) map[string]interface{} {
 	keyword = strings.TrimSpace(keyword)
 	if keyword == "" {
-		keyword = elmDefaultKeyword
+		return nil
 	}
 	words := []string{}
 	for _, w := range regexp.MustCompile(`[|,，]`).Split(keyword, -1) {
@@ -466,12 +504,11 @@ func elmSelectProduct(products []map[string]interface{}, keyword string) map[str
 			words = append(words, w)
 		}
 	}
+	if len(words) == 0 {
+		return nil
+	}
 	for _, item := range products {
-		material, _ := item["materialInfo"].(map[string]interface{})
-		title := strings.ToLower(fmt.Sprint(material["title"]))
-		if title == "" {
-			title = strings.ToLower(fmt.Sprint(item["rightName"]))
-		}
+		title := strings.ToLower(elmProductTitle(item))
 		ok := true
 		for _, w := range words {
 			if !strings.Contains(title, w) {
@@ -481,6 +518,52 @@ func elmSelectProduct(products []map[string]interface{}, keyword string) map[str
 		}
 		if ok {
 			return item
+		}
+	}
+	return nil
+}
+
+// elmSelectProductForSlot 按当前场次自动识别商品：优先标题含 10点/15点，其次唯一秒杀商品；keyword 可选覆盖
+func elmSelectProductForSlot(products []map[string]interface{}, targetHour int, keyword string) map[string]interface{} {
+	if len(products) == 0 {
+		return nil
+	}
+	if p := elmSelectProductByKeyword(products, keyword); p != nil {
+		return p
+	}
+	if targetHour > 0 {
+		var hourMatches []map[string]interface{}
+		for _, item := range products {
+			if elmMatchSlotHour(elmProductTitle(item), targetHour) {
+				hourMatches = append(hourMatches, item)
+			}
+		}
+		if len(hourMatches) == 1 {
+			return hourMatches[0]
+		}
+		if len(hourMatches) > 1 {
+			for _, item := range hourMatches {
+				if elmIsSeckillProduct(elmProductStatus(item)) {
+					return item
+				}
+			}
+			return hourMatches[0]
+		}
+	}
+	seckill := make([]map[string]interface{}, 0, len(products))
+	for _, item := range products {
+		if elmIsSeckillProduct(elmProductStatus(item)) {
+			seckill = append(seckill, item)
+		}
+	}
+	if len(seckill) == 1 {
+		return seckill[0]
+	}
+	if len(seckill) > 1 && targetHour > 0 {
+		for _, item := range seckill {
+			if elmMatchSlotHour(elmProductTitle(item), targetHour) {
+				return item
+			}
 		}
 	}
 	return nil
@@ -688,7 +771,7 @@ func ElmGetWindowInfo() ElmWindowInfo {
 	now := time.Now().In(elmBJLocation())
 	info := ElmWindowInfo{
 		IsFriday: now.Weekday() == time.Friday,
-		Keyword:  elmDefaultKeyword,
+		Keyword:  "自动识别当前场次商品",
 	}
 	inWindow, _, executeAt, prepareAt, label := elmCurrentWindow(now)
 	info.InWindow = inWindow
@@ -803,7 +886,7 @@ func elmSleepUntil(target time.Time) {
 	}
 }
 
-func elmRefreshTarget(acc *elmReadyAccount, keyword string) (*elmReadyAccount, error) {
+func elmRefreshTarget(acc *elmReadyAccount, targetHour int, keyword string) (*elmReadyAccount, error) {
 	home, err := acc.client.homepage()
 	if err != nil || !elmIsSuccess(home) {
 		prepared, err2 := elmPrepareAccount("", acc.info)
@@ -816,9 +899,18 @@ func elmRefreshTarget(acc *elmReadyAccount, keyword string) (*elmReadyAccount, e
 	if err != nil || !elmIsSuccess(home) {
 		return nil, fmt.Errorf("商城查询失败: %s", elmFirstRet(home))
 	}
-	product := elmSelectProduct(elmProducts(home), keyword)
+	products := elmProducts(home)
+	product := elmSelectProductForSlot(products, targetHour, keyword)
 	if product == nil {
-		return nil, fmt.Errorf("未找到目标商品")
+		var names []string
+		for _, item := range products {
+			b := elmProductBrief(item)
+			names = append(names, fmt.Sprintf("[%s] %s", b.Status, b.Title))
+		}
+		if len(names) == 0 {
+			return nil, fmt.Errorf("未找到目标商品（商城暂无兑换商品）")
+		}
+		return nil, fmt.Errorf("未找到 %d 点场目标商品，当前: %s", targetHour, strings.Join(names, " | "))
 	}
 	star := elmStarBalance(home)
 	brief := elmProductBrief(product)
@@ -834,7 +926,7 @@ func elmRunExchange(acc *elmReadyAccount, task *ElmScheduledTask) ElmExchangeRes
 	res := ElmExchangeResult{Ref: acc.info.Ref, Remark: acc.info.Remark}
 	product := acc.product
 	if product == nil {
-		refreshed, err := elmRefreshTarget(acc, task.Keyword)
+		refreshed, err := elmRefreshTarget(acc, task.TargetHour, task.Keyword)
 		if err != nil || refreshed == nil || refreshed.product == nil {
 			res.Message = "未找到目标商品"
 			if err != nil {
@@ -910,7 +1002,7 @@ func elmRunScheduledTask(taskID string) {
 				task.AddLog("error", "[%s] CK 预热失败: %v", a.Remark, err)
 				return
 			}
-			refreshed, err := elmRefreshTarget(prepared, task.Keyword)
+			refreshed, err := elmRefreshTarget(prepared, task.TargetHour, task.Keyword)
 			if err != nil {
 				task.AddLog("error", "[%s] 预检失败: %v", a.Remark, err)
 				return
@@ -1018,9 +1110,6 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string) (*ElmSch
 	if len(accounts) == 0 {
 		return nil, false, fmt.Errorf("请选择至少一个已上车的账号")
 	}
-	if strings.TrimSpace(keyword) == "" {
-		keyword = elmDefaultKeyword
-	}
 
 	taskID := fmt.Sprintf("elm_%d_%d", userNumber, time.Now().UnixMilli())
 	task := &ElmScheduledTask{
@@ -1035,7 +1124,11 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string) (*ElmSch
 		Accounts:   accounts,
 	}
 	task.AddLog("info", "抢兑任务已创建：%s", label)
-	task.AddLog("info", "目标商品关键词：%s", keyword)
+	if strings.TrimSpace(keyword) != "" {
+		task.AddLog("info", "商品匹配：关键词 %s", strings.TrimSpace(keyword))
+	} else {
+		task.AddLog("info", "商品匹配：自动识别 %d 点场", targetHour)
+	}
 	task.AddLog("info", "执行时间：%s | 预检时间：%s", executeAt.Format("15:04:05"), prepareAt.Format("15:04:05"))
 	task.AddLog("info", "账号数：%d", len(accounts))
 
@@ -1051,7 +1144,7 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string) (*ElmSch
 				task.AddLog("warn", "[%s] CK 缓存失败: %v", a.Remark, err)
 				return
 			}
-			refreshed, err := elmRefreshTarget(prepared, keyword)
+			refreshed, err := elmRefreshTarget(prepared, targetHour, keyword)
 			if err != nil {
 				task.AddLog("warn", "[%s] 商品预览失败: %v", a.Remark, err)
 				return
@@ -1094,7 +1187,7 @@ func ElmGetActiveTaskByUser(userNumber int) *ElmScheduledTask {
 
 func init() {
 	_ = os.MkdirAll(filepath.Join(elmLogDir(), "cache"), 0755)
-	Elm().Infof("[elm] module loaded, keyword=%s rounds=%v", elmDefaultKeyword, elmRoundLagMs)
+	Elm().Infof("[elm] module loaded, slotAutoMatch=true rounds=%v", elmRoundLagMs)
 }
 
 // ElmPreviewProduct 预览当前商品（供前端展示）
@@ -1122,7 +1215,7 @@ func ElmPreviewProduct(userNumber int, refs []string, keyword string) (*ElmProdu
 		if err != nil || !elmIsSuccess(home) {
 			continue
 		}
-		product := elmSelectProduct(elmProducts(home), keyword)
+		product := elmSelectProductForSlot(elmProducts(home), 0, keyword)
 		if product == nil {
 			continue
 		}
