@@ -172,6 +172,39 @@ func elmTaskLogFile(taskID string) string {
 	return filepath.Join(elmLogDir(), taskID+".log")
 }
 
+func elmDailyLogFile() string {
+	return filepath.Join(elmLogDir(), fmt.Sprintf("elm_%s.log", time.Now().In(elmBJLocation()).Format("2006-01-02")))
+}
+
+func elmWriteDailyLog(logTime, level, msg string) {
+	_ = os.MkdirAll(elmLogDir(), 0755)
+	line := fmt.Sprintf("[%s] [%s] %s\n", logTime, level, msg)
+	f, err := os.OpenFile(elmDailyLogFile(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.WriteString(line)
+}
+
+// elmWriteAdminLog 写入管理员后台「饿了么」分类日志，并追加每日汇总文件 logs/elm/elm_YYYY-MM-DD.log
+func elmWriteAdminLog(level, format string, args ...interface{}) {
+	msg := format
+	if len(args) > 0 {
+		msg = fmt.Sprintf(format, args...)
+	}
+	switch strings.ToLower(strings.TrimSpace(level)) {
+	case "error":
+		Elm().Errorf("%s", msg)
+	case "warn", "warning":
+		Elm().Warnf("%s", msg)
+	default:
+		Elm().Infof("%s", msg)
+	}
+	logTime := time.Now().In(elmBJLocation()).Format("15:04:05.000")
+	go elmWriteDailyLog(logTime, level, msg)
+}
+
 func elmMd5Hex(text string) string {
 	sum := md5.Sum([]byte(text))
 	return hex.EncodeToString(sum[:])
@@ -696,26 +729,33 @@ func elmPrepareAccount(taskID string, acc ElmAccountInfo) (*elmReadyAccount, err
 			home, err := client.homepage()
 			if err == nil && elmIsSuccess(home) {
 				elmSaveCacheItem(taskID, cacheKey, elmCacheItem{Cookie: client.cookie, Remark: acc.Remark})
+				elmWriteAdminLog("info", "[CK] [%s] 使用缓存成功 ref=%s", acc.Remark, elmMaskRef(ref))
 				return &elmReadyAccount{info: acc, client: client}, nil
 			}
 		}
 	}
 	if !elmIsProtocolRef(ref) {
+		elmWriteAdminLog("error", "[CK] [%s] 纯 CK 已失效 ref=%s", acc.Remark, elmMaskRef(ref))
 		return nil, fmt.Errorf("纯 CK 已失效")
 	}
+	elmWriteAdminLog("info", "[CK] [%s] 缓存失效，走协议登录 ref=%s", acc.Remark, elmMaskRef(ref))
 	cookie, err := elmProtocolLogin(ref)
 	if err != nil {
+		elmWriteAdminLog("error", "[CK] [%s] 协议登录失败: %v", acc.Remark, err)
 		return nil, err
 	}
 	client.cookie = cookie
 	if err := client.refreshToken(); err != nil {
+		elmWriteAdminLog("error", "[CK] [%s] token 刷新失败: %v", acc.Remark, err)
 		return nil, err
 	}
 	home, err := client.homepage()
 	if err != nil || !elmIsSuccess(home) {
+		elmWriteAdminLog("error", "[CK] [%s] 登录后商城查询失败: %s", acc.Remark, elmFirstRet(home))
 		return nil, fmt.Errorf("登录后商城查询失败: %s", elmFirstRet(home))
 	}
 	elmSaveCacheItem(taskID, cacheKey, elmCacheItem{Cookie: client.cookie, Remark: acc.Remark})
+	elmWriteAdminLog("info", "[CK] [%s] 协议登录成功并已缓存", acc.Remark)
 	return &elmReadyAccount{info: acc, client: client}, nil
 }
 
@@ -741,7 +781,9 @@ func (t *ElmScheduledTask) AddLog(level, format string, args ...interface{}) {
 	t.logMu.Lock()
 	t.Logs = append(t.Logs, ElmTaskLog{Time: logTime, Level: level, Message: msg})
 	t.logMu.Unlock()
+	adminMsg := fmt.Sprintf("[task=%s user=%d] %s", t.ID, t.UserNumber, msg)
 	go func() {
+		elmWriteAdminLog(level, "%s", adminMsg)
 		_ = os.MkdirAll(elmLogDir(), 0755)
 		line := fmt.Sprintf("[%s] [%s] %s\n", logTime, level, msg)
 		f, err := os.OpenFile(elmTaskLogFile(t.ID), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -1093,7 +1135,6 @@ func elmRunScheduledTask(taskID string) {
 		}
 	}
 	task.AddLog("info", "任务结束：成功 %d / 账号 %d", successN, len(task.Accounts))
-	Elm().Infof("[elm] task=%s user=%d done success=%d total=%d", task.ID, task.UserNumber, successN, len(task.Accounts))
 }
 
 // ElmScheduleExchange 创建饿了么抢兑任务
@@ -1108,6 +1149,7 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string) (*ElmSch
 		return nil, false, fmt.Errorf("当前不在抢兑报名时段（周五 09:30-09:55 或 14:30-14:55）")
 	}
 	if existing := elmFindActiveTaskByUser(userNumber); existing != nil {
+		elmWriteAdminLog("info", "[task=%s user=%d] 复用进行中的抢兑任务", existing.ID, userNumber)
 		return existing, true, nil
 	}
 	all, err := GetAllElmAccounts(userNumber)
@@ -1204,7 +1246,7 @@ func ElmGetActiveTaskByUser(userNumber int) *ElmScheduledTask {
 
 func init() {
 	_ = os.MkdirAll(filepath.Join(elmLogDir(), "cache"), 0755)
-	Elm().Infof("[elm] module loaded, slotAutoMatch=true rounds=%v", elmRoundLagMs)
+	elmWriteAdminLog("info", "饿了么抢兑模块已加载 slotAutoMatch=true rounds=%v", elmRoundLagMs)
 }
 
 // ElmGetTodayProducts 查询今日两场抢兑商品（进入页面时展示）
@@ -1269,14 +1311,24 @@ func ElmGetTodayProducts(userNumber int) (*ElmTodayProductsInfo, error) {
 		}
 		if found > 0 {
 			info.Message = "已加载今日商城商品"
+			var titles []string
+			for _, s := range info.Slots {
+				if s.Product != nil {
+					titles = append(titles, fmt.Sprintf("%d点:%s", s.TargetHour, s.Product.Title))
+				}
+			}
+			elmWriteAdminLog("info", "[preview user=%d] 今日商品 account=%s star=%d %s",
+				userNumber, acc.Remark, info.StarBalance, strings.Join(titles, " | "))
 			return info, nil
 		}
 		lastErr = fmt.Errorf("商城暂无匹配场次商品")
 	}
 	if lastErr != nil {
 		info.Message = lastErr.Error()
+		elmWriteAdminLog("warn", "[preview user=%d] 商品加载失败: %v", userNumber, lastErr)
 	} else {
 		info.Message = "未能加载商品信息"
+		elmWriteAdminLog("warn", "[preview user=%d] 未能加载商品信息", userNumber)
 	}
 	return info, nil
 }
