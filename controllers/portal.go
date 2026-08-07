@@ -1578,15 +1578,36 @@ func (c *PortalController) ElmFetchCK() {
 		return
 	}
 	var req struct {
-		Ref string `json:"ref"`
+		Ref  string   `json:"ref"`
+		Refs []string `json:"refs"`
 	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
 		c.ServeJSON()
 		return
 	}
-	data, err := models.ElmFetchCK(profile.User.Number, req.Ref)
-	if err != nil {
+	refs := req.Refs
+	if strings.TrimSpace(req.Ref) != "" {
+		refs = append(refs, strings.TrimSpace(req.Ref))
+	}
+	if len(refs) == 0 {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请选择账号"}
+		c.ServeJSON()
+		return
+	}
+	if len(refs) == 1 {
+		data, err := models.ElmFetchCK(profile.User.Number, refs[0])
+		if err != nil {
+			c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+			c.ServeJSON()
+			return
+		}
+		c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": "ok"}
+		c.ServeJSON()
+		return
+	}
+	data, err := models.ElmFetchCKMulti(profile.User.Number, refs)
+	if err != nil && (data == nil || data.ReadyCount == 0) {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return

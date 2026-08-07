@@ -4,10 +4,11 @@
     const state = {
         authorized: false,
         accounts: [],
-        selectedRef: '',
+        selected: new Set(),
         selectedSlot: 0,
         ckReady: false,
         ckData: null,
+        ckReadyRefs: new Set(),
         activeTaskId: null,
         monitorTimer: null,
         logIndex: 0,
@@ -19,6 +20,14 @@
 
     function esc(s) {
         return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function selectedRefs() {
+        return Array.from(state.selected);
+    }
+
+    function isBatchCk(data) {
+        return !!(data && Array.isArray(data.accounts));
     }
 
     async function api(path, options) {
@@ -55,9 +64,15 @@
         state.logIndex = 0;
     }
 
+    function syncCkReady() {
+        const refs = selectedRefs();
+        state.ckReady = refs.length > 0 && refs.every(function (r) { return state.ckReadyRefs.has(r); });
+    }
+
     function resetCkState() {
         state.ckReady = false;
         state.ckData = null;
+        state.ckReadyRefs = new Set();
         state.selectedSlot = 0;
         const slotPicker = $('elmSlotPicker');
         if (slotPicker) slotPicker.style.display = 'none';
@@ -73,16 +88,17 @@
             state.activeTaskId ||
             (task && (task.status === 'pending' || task.status === 'running'))
         );
+        const hasSelection = state.selected.size > 0;
         if (stopBtn) stopBtn.style.display = running ? 'inline-block' : 'none';
         if (fetchBtn) {
-            fetchBtn.disabled = running || !state.authorized || !state.selectedRef;
+            fetchBtn.disabled = running || !state.authorized || !hasSelection;
         }
         if (startBtn) {
             startBtn.style.display = running ? 'none' : 'inline-block';
             const canStart = state.authorized
                 && state.ckReady
                 && state.selectedSlot > 0
-                && state.selectedRef
+                && hasSelection
                 && !running;
             startBtn.disabled = !canStart;
             startBtn.style.opacity = canStart ? '1' : '0.55';
@@ -98,11 +114,12 @@
             return;
         }
         box.innerHTML = state.accounts.map(function (a) {
-            const checked = state.selectedRef === a.ref ? 'checked' : '';
+            const checked = state.selected.has(a.ref) ? 'checked' : '';
+            const ckOk = state.ckReadyRefs.has(a.ref) ? ' · ✅CK' : '';
             return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);cursor:pointer;">
-                <input type="radio" name="elmAccount" data-elm-ref="${esc(a.ref)}" ${checked} onchange="ElmPortal.selectAccount(this)" style="width:16px;height:16px;accent-color:#6366f1;" />
+                <input type="checkbox" data-elm-ref="${esc(a.ref)}" ${checked} onchange="ElmPortal.toggleAccount(this)" style="width:16px;height:16px;accent-color:#6366f1;" />
                 <div style="min-width:0;flex:1;">
-                    <div style="font-weight:700;font-size:13px;color:var(--text);">${esc(a.remark || a.ref)}</div>
+                    <div style="font-weight:700;font-size:13px;color:var(--text);">${esc(a.remark || a.ref)}${ckOk}</div>
                     <div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.ref)}</div>
                 </div>
             </label>`;
@@ -116,13 +133,34 @@
             box.innerHTML = '<div class="muted">请先选择账号并点击「获取 CK」</div>';
             return;
         }
+
+        let html = '';
+        if (isBatchCk(data)) {
+            html += `<div style="font-size:13px;line-height:1.8;color:var(--text-muted);margin-bottom:10px;">
+                <div>CK 就绪：<strong>${esc(data.readyCount)}/${esc(data.totalCount)}</strong></div>
+                <div>${esc(data.message || '')}</div>
+            </div>`;
+            html += '<div style="margin-bottom:12px;">';
+            data.accounts.forEach(function (item) {
+                const icon = item.success ? '✅' : '❌';
+                html += `<div style="font-size:12px;padding:6px 0;border-bottom:1px dashed var(--glass-border);">${icon} <strong>${esc(item.remark || item.ref)}</strong> — ${esc(item.message || '')}${item.route ? ' · ' + esc(item.route) : ''}${item.success && item.starBalance >= 0 ? ' · ' + esc(item.starBalance) + '星' : ''}</div>`;
+            });
+            html += '</div>';
+            renderSlotsHtml(html, data.slots || [], box);
+            return;
+        }
+
         const star = data.starBalance >= 0 ? data.starBalance : '--';
-        const slots = Array.isArray(data.slots) ? data.slots : [];
-        let html = `<div style="font-size:13px;line-height:1.8;color:var(--text-muted);margin-bottom:10px;">
+        html += `<div style="font-size:13px;line-height:1.8;color:var(--text-muted);margin-bottom:10px;">
             <div>✅ CK 已获取 · 通道：<strong>${esc(data.route || '-')}</strong></div>
             <div>💎 幸运星余额：<strong style="color:#f59e0b;">${esc(star)}</strong> · 账号：${esc(data.remark || data.ref)}</div>
             <div>${esc(data.message || '')}</div>
         </div>`;
+        renderSlotsHtml(html, data.slots || [], box);
+    }
+
+    function renderSlotsHtml(prefix, slots, box) {
+        let html = prefix;
         if (!slots.length) {
             html += '<div class="muted">暂无场次商品信息</div>';
             box.innerHTML = html;
@@ -193,7 +231,6 @@
             hintEl.textContent = win.message || '';
             hintEl.style.color = win.canStart ? '#10b981' : 'var(--text-muted)';
         }
-        // 按钮状态由 applyTask / finishTask 维护，勿在此处重置（会与任务轮询冲突导致闪烁）
     }
 
     function flushLogs(task) {
@@ -329,14 +366,28 @@
         }
     }
 
-    function selectAccount(input) {
+    function toggleAccount(input) {
         const ref = input.getAttribute('data-elm-ref');
         if (!ref) return;
-        if (state.selectedRef !== ref) {
-            state.selectedRef = ref;
+        if (input.checked) state.selected.add(ref);
+        else {
+            state.selected.delete(ref);
+            state.ckReadyRefs.delete(ref);
+        }
+        syncCkReady();
+        renderAccounts();
+        if (!state.selected.size) {
             resetCkState();
             renderTaskView(null);
+        } else if (!state.ckReady) {
+            state.ckData = null;
+            state.selectedSlot = 0;
+            const slotPicker = $('elmSlotPicker');
+            if (slotPicker) slotPicker.style.display = 'none';
+            document.querySelectorAll('input[name="elmSlot"]').forEach(function (el) { el.checked = false; });
+            renderTaskView(null);
         }
+        updateActionButtons();
     }
 
     function selectSlot(hour) {
@@ -345,28 +396,56 @@
         updateActionButtons(null);
     }
 
+    function applyFetchResult(data) {
+        state.ckData = data;
+        state.ckReadyRefs = new Set();
+        if (isBatchCk(data)) {
+            data.accounts.forEach(function (item) {
+                if (item.success) state.ckReadyRefs.add(item.ref);
+            });
+        } else if (data && data.ref) {
+            state.ckReadyRefs.add(data.ref);
+        }
+        syncCkReady();
+        const slotPicker = $('elmSlotPicker');
+        if (slotPicker) slotPicker.style.display = state.ckReady ? 'block' : 'none';
+        renderCkProducts(data);
+        renderAccounts();
+    }
+
     async function fetchCk() {
         if (!state.authorized) { toast('请先上车饿了么活动', 'error'); return; }
-        if (!state.selectedRef) { toast('请先选择一个账号', 'error'); return; }
+        const refs = selectedRefs();
+        if (!refs.length) { toast('请至少选择一个账号', 'error'); return; }
         const btn = $('elmFetchCkBtn');
         if (btn) { btn.disabled = true; btn.textContent = '获取中…'; }
-        resetCkState();
-        state.selectedRef = state.selectedRef || '';
+        state.ckReady = false;
+        state.ckData = null;
+        state.ckReadyRefs = new Set();
+        state.selectedSlot = 0;
+        document.querySelectorAll('input[name="elmSlot"]').forEach(function (el) { el.checked = false; });
         try {
             const data = await api('/fetch-ck', {
                 method: 'POST',
-                body: JSON.stringify({ ref: state.selectedRef }),
+                body: JSON.stringify({ refs: refs }),
             });
-            state.ckReady = true;
-            state.ckData = data;
-            const slotPicker = $('elmSlotPicker');
-            if (slotPicker) slotPicker.style.display = 'block';
-            renderCkProducts(data);
-            elmLog('CK 获取成功：' + (data.remark || data.ref) + ' · ' + (data.route || ''), 'success');
-            toast('CK 获取成功，请选择场次', 'success');
+            applyFetchResult(data);
+            if (isBatchCk(data)) {
+                data.accounts.forEach(function (item) {
+                    elmLog((item.success ? 'CK 成功：' : 'CK 失败：') + (item.remark || item.ref) + ' — ' + (item.message || ''), item.success ? 'success' : 'error');
+                });
+            } else {
+                elmLog('CK 获取成功：' + (data.remark || data.ref) + ' · ' + (data.route || ''), 'success');
+            }
+            if (state.ckReady) {
+                toast(data.message || 'CK 获取成功，请选择场次', 'success');
+            } else {
+                toast(data.message || '部分账号 CK 失败，请重试', 'warn');
+            }
         } catch (e) {
             state.ckReady = false;
             state.ckData = null;
+            state.ckReadyRefs = new Set();
             const box = $('elmProductInfo');
             if (box) {
                 box.innerHTML = `<div style="color:#dc2626;font-size:13px;line-height:1.7;">
@@ -376,6 +455,7 @@
             }
             elmLog('CK 获取失败：' + (e.message || '未知错误'), 'error');
             toast(e.message || 'CK 获取失败，请重试', 'error');
+            renderAccounts();
         } finally {
             if (btn) { btn.textContent = '获取 CK'; updateActionButtons(null); }
         }
@@ -383,8 +463,9 @@
 
     async function startExchange() {
         if (!state.authorized) { toast('请先上车饿了么活动', 'error'); return; }
-        if (!state.selectedRef) { toast('请选择一个账号', 'error'); return; }
-        if (!state.ckReady) { toast('请先获取 CK', 'error'); return; }
+        const refs = selectedRefs();
+        if (!refs.length) { toast('请至少选择一个账号', 'error'); return; }
+        if (!state.ckReady) { toast('请先为全部选中账号获取 CK', 'error'); return; }
         if (!state.selectedSlot) { toast('请选择 10 点或 15 点场次', 'error'); return; }
         elmClearLogs();
         state.logIndex = 0;
@@ -393,7 +474,7 @@
             const task = await api('/schedule', {
                 method: 'POST',
                 body: JSON.stringify({
-                    ref: state.selectedRef,
+                    refs: refs,
                     targetHour: state.selectedSlot,
                     keyword: '',
                 }),
@@ -444,7 +525,7 @@
     global.ElmPortal = {
         init: init,
         loadPanel: loadPanel,
-        selectAccount: selectAccount,
+        toggleAccount: toggleAccount,
         selectSlot: selectSlot,
     };
 

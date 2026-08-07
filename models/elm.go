@@ -33,7 +33,9 @@ const (
 	elmExchangeSource       = "INTERACT_CENTER_EXCHANGE_MALL"
 	elmPrepareBeforeSec     = 30
 	elmAttemptsPerRound     = 5 // 每个时间点连打 5 次
-	elmTaskRetainDuration   = 3 * time.Hour
+	elmTaskRetainDuration   = 10 * time.Minute // 已结束任务内存保留时长
+	elmTaskPruneInterval    = 10 * time.Minute // 定时清理孤儿/过期任务
+	elmTaskStaleGrace       = 2 * time.Minute  // 超过执行时间仍未结束视为僵死
 	elmDebugNoTimeLimit     = true // 调试：跳过报名时段限制，可随时点击抢兑
 	elmDefaultLat           = "30.27415"
 	elmDefaultLng           = "120.15507"
@@ -107,6 +109,25 @@ type ElmFetchCKResult struct {
 	StarBalance   int                   `json:"starBalance"`
 	Slots         []ElmTodaySlotProduct `json:"slots"`
 	Message       string                `json:"message"`
+}
+
+// ElmFetchCKAccountResult 批量获取 CK 时单账号结果
+type ElmFetchCKAccountResult struct {
+	Ref         string `json:"ref"`
+	Remark      string `json:"remark"`
+	Route       string `json:"route,omitempty"`
+	StarBalance int    `json:"starBalance,omitempty"`
+	Success     bool   `json:"success"`
+	Message     string `json:"message"`
+}
+
+// ElmFetchCKBatchResult 批量获取 CK 结果
+type ElmFetchCKBatchResult struct {
+	Accounts   []ElmFetchCKAccountResult `json:"accounts"`
+	Slots      []ElmTodaySlotProduct     `json:"slots,omitempty"`
+	Message    string                    `json:"message"`
+	ReadyCount int                       `json:"readyCount"`
+	TotalCount int                       `json:"totalCount"`
 }
 
 // ElmTaskLog 抢兑日志
@@ -1020,18 +1041,53 @@ func elmFindActiveTaskByUser(userNumber int) *ElmScheduledTask {
 }
 
 func elmPruneOldTasks() {
-	cutoff := time.Now().Add(-elmTaskRetainDuration)
+	elmMaintainTasks()
+}
+
+// elmMaintainTasks 清理已结束任务与僵死中的 pending/running 孤儿任务
+func elmMaintainTasks() {
+	now := time.Now()
+	cutoff := now.Add(-elmTaskRetainDuration)
+	staleBefore := now.Add(-elmTaskStaleGrace)
+	var removed, stale int
 	elmScheduledTasks.Lock()
 	defer elmScheduledTasks.Unlock()
 	for id, t := range elmScheduledTasks.tasks {
 		if t == nil {
 			delete(elmScheduledTasks.tasks, id)
+			removed++
 			continue
 		}
-		if (t.Status == "completed" || t.Status == "failed") && t.CreatedAt.Before(cutoff) {
-			delete(elmScheduledTasks.tasks, id)
+		switch t.Status {
+		case "completed", "failed", "cancelled":
+			if t.CreatedAt.Before(cutoff) {
+				delete(elmScheduledTasks.tasks, id)
+				removed++
+			}
+		case "pending", "running":
+			if !t.ExecuteAt.IsZero() && t.ExecuteAt.Before(staleBefore) {
+				t.cancelled.Store(true)
+				t.Status = "failed"
+				t.AddLog("error", "任务超时未正常结束，已自动清理（孤儿任务）")
+				delete(elmScheduledTasks.tasks, id)
+				stale++
+				removed++
+			}
 		}
 	}
+	if removed > 0 {
+		elmWriteAdminLog("info", "饿了么任务维护：清理 %d 条（僵死 %d）", removed, stale)
+	}
+}
+
+func elmStartTaskMaintainer() {
+	go func() {
+		ticker := time.NewTicker(elmTaskPruneInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			elmMaintainTasks()
+		}
+	}()
 }
 
 func elmTaskJitter(userNumber int) time.Duration {
@@ -1155,6 +1211,18 @@ func elmRunExchangeOnce(acc *elmReadyAccount, task *ElmScheduledTask, round, att
 }
 
 func elmRunScheduledTask(taskID string) {
+	defer func() {
+		if r := recover(); r != nil {
+			elmScheduledTasks.RLock()
+			task := elmScheduledTasks.tasks[taskID]
+			elmScheduledTasks.RUnlock()
+			if task != nil {
+				task.Status = "failed"
+				task.AddLog("error", "任务异常退出: %v", r)
+				elmWriteAdminLog("error", "[task=%s user=%d] panic: %v", task.ID, task.UserNumber, r)
+			}
+		}
+	}()
 	elmScheduledTasks.RLock()
 	task, ok := elmScheduledTasks.tasks[taskID]
 	elmScheduledTasks.RUnlock()
@@ -1368,6 +1436,88 @@ func ElmFetchCK(userNumber int, ref string) (*ElmFetchCKResult, error) {
 	}, nil
 }
 
+// ElmFetchCKMulti 批量获取 CK（多账号）
+func ElmFetchCKMulti(userNumber int, refs []string) (*ElmFetchCKBatchResult, error) {
+	if ok, msg := CheckElmAuth(userNumber); !ok {
+		return nil, fmt.Errorf("%s", msg)
+	}
+	all, err := GetAllElmAccounts(userNumber)
+	if err != nil {
+		return nil, err
+	}
+	byRef := map[string]ElmAccountInfo{}
+	for _, a := range all {
+		byRef[a.Ref] = a
+	}
+	want := make([]string, 0, len(refs))
+	seen := map[string]bool{}
+	for _, r := range refs {
+		r = strings.TrimSpace(r)
+		if r == "" || seen[r] {
+			continue
+		}
+		seen[r] = true
+		want = append(want, r)
+	}
+	if len(want) == 0 {
+		return nil, fmt.Errorf("请至少选择一个账号")
+	}
+	out := &ElmFetchCKBatchResult{TotalCount: len(want)}
+	for _, ref := range want {
+		acc, ok := byRef[ref]
+		if !ok {
+			out.Accounts = append(out.Accounts, ElmFetchCKAccountResult{
+				Ref: ref, Success: false, Message: "账号不在已上车列表中",
+			})
+			continue
+		}
+		item := ElmFetchCKAccountResult{Ref: acc.Ref, Remark: acc.Remark}
+		route := ResolveProtocolRoute(ref)
+		item.Route = "wechat08"
+		if route.Backend == "yyb" {
+			item.Route = "应用宝"
+		}
+		prepared, err := elmPrepareAccount(elmUserCacheID(userNumber), acc)
+		if err != nil {
+			item.Success = false
+			item.Message = err.Error()
+			elmWriteAdminLog("error", "[fetch-ck user=%d] [%s] 失败: %v", userNumber, acc.Remark, err)
+			out.Accounts = append(out.Accounts, item)
+			continue
+		}
+		home, err := prepared.client.homepage()
+		if err != nil || !elmIsSuccess(home) {
+			item.Success = false
+			if err != nil {
+				item.Message = err.Error()
+			} else {
+				item.Message = elmFirstRet(home)
+			}
+			out.Accounts = append(out.Accounts, item)
+			continue
+		}
+		item.Success = true
+		item.StarBalance = elmStarBalance(home)
+		item.Message = "CK 就绪"
+		if out.Slots == nil {
+			out.Slots = elmBuildSlotProducts(home)
+		}
+		out.ReadyCount++
+		elmWriteAdminLog("info", "[fetch-ck user=%d] [%s] 成功 route=%s star=%d", userNumber, acc.Remark, item.Route, item.StarBalance)
+		out.Accounts = append(out.Accounts, item)
+	}
+	if out.ReadyCount == 0 {
+		out.Message = "全部账号 CK 获取失败，请检查后重试"
+		return out, fmt.Errorf("全部账号 CK 获取失败")
+	}
+	if out.ReadyCount < out.TotalCount {
+		out.Message = fmt.Sprintf("%d/%d 账号 CK 就绪，失败账号请重新获取", out.ReadyCount, out.TotalCount)
+	} else {
+		out.Message = fmt.Sprintf("全部 %d 个账号 CK 已就绪，请选择场次后参与抢兑", out.ReadyCount)
+	}
+	return out, nil
+}
+
 // ElmScheduleExchange 创建饿了么抢兑任务
 func ElmScheduleExchange(userNumber int, refs []string, keyword string, targetHour int) (*ElmScheduledTask, bool, error) {
 	elmPruneOldTasks()
@@ -1418,14 +1568,15 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string, targetHo
 	if len(accounts) == 0 {
 		return nil, false, fmt.Errorf("请选择已上车的账号")
 	}
-	if len(accounts) > 1 {
-		return nil, false, fmt.Errorf("请仅选择一个账号参与抢兑")
-	}
-	// 确认 CK 已缓存
 	cache := elmLoadCacheMap(elmUserCacheID(userNumber))
-	cacheKey := elmNormalizeRef(accounts[0].Ref)
-	if _, ok := cache[cacheKey]; !ok {
-		return nil, false, fmt.Errorf("请先点击「获取 CK」，成功后再参与抢兑")
+	var missing []string
+	for _, a := range accounts {
+		if _, ok := cache[elmNormalizeRef(a.Ref)]; !ok {
+			missing = append(missing, a.Remark)
+		}
+	}
+	if len(missing) > 0 {
+		return nil, false, fmt.Errorf("以下账号尚未获取 CK：%s", strings.Join(missing, "、"))
 	}
 
 	taskID := fmt.Sprintf("elm_%d_%d", userNumber, time.Now().UnixMilli())
@@ -1447,9 +1598,13 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string, targetHo
 		task.AddLog("info", "商品匹配：%d 点场", targetHour)
 	}
 	task.AddLog("info", "执行时间：%s | 预检时间：%s", executeAt.Format("15:04:05"), prepareAt.Format("15:04:05"))
-	task.AddLog("info", "账号：%s | 四轮时间点各 %d 次：整点-20/-10/0/+10ms", accounts[0].Remark, elmAttemptsPerRound)
+	var remarks []string
+	for _, a := range accounts {
+		remarks = append(remarks, a.Remark)
+	}
+	task.AddLog("info", "账号数：%d（%s）| 四轮时间点各 %d 次：整点-20/-10/0/+10ms", len(accounts), strings.Join(remarks, "、"), elmAttemptsPerRound)
 
-	// 用已缓存 CK 预览目标商品
+	// 用已缓存 CK 预览目标商品（取第一个账号）
 	if prepared, err := elmPrepareAccount(elmUserCacheID(userNumber), accounts[0]); err == nil {
 		if refreshed, err := elmRefreshTarget(prepared, targetHour, keyword); err == nil && refreshed.product != nil {
 			b := elmProductBrief(refreshed.product)
@@ -1526,7 +1681,9 @@ func elmFillTaskProductPreview(task *ElmScheduledTask, userNumber, targetHour in
 
 func init() {
 	_ = os.MkdirAll(filepath.Join(elmLogDir(), "cache"), 0755)
-	elmWriteAdminLog("info", "饿了么抢兑模块已加载 slotAutoMatch=true rounds=%v", elmRoundLagMs)
+	go elmMaintainTasks()
+	elmStartTaskMaintainer()
+	elmWriteAdminLog("info", "饿了么抢兑模块已加载 slotAutoMatch=true rounds=%v pruneEvery=%s", elmRoundLagMs, elmTaskPruneInterval)
 }
 
 // ElmGetTodayProducts 查询今日两场抢兑商品（进入页面时展示）
