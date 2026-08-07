@@ -32,10 +32,9 @@ const (
 	elmExchangeAsac         = "alsc5KvbdX5mHl3sdv4guV"
 	elmExchangeSource       = "INTERACT_CENTER_EXCHANGE_MALL"
 	elmPrepareBeforeSec     = 30
-	elmAttemptsPerAccount   = 15
-	elmAttemptIntervalMs    = 300
-	elmExchangeRounds       = 3
+	elmAttemptsPerRound     = 5 // 每个时间点连打 5 次
 	elmTaskRetainDuration   = 3 * time.Hour
+	elmDebugNoTimeLimit     = true // 调试：跳过报名时段限制，可随时点击抢兑
 	elmDefaultLat           = "30.27415"
 	elmDefaultLng           = "120.15507"
 )
@@ -43,7 +42,7 @@ const (
 var (
 	elmUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
 	elmCPNCodes  = `["PLAY_NOTICE_CPN","INTERACT_RESOURCE_CPN","MORE_MENU_CPN","STAR_MSG_CONTENT_CPN","PLAY_RESOURCE_CPN","INTERACT_CENTER_SKIN_COMPONENT","INTERACT_CENTER_BUBBLE","INTERACT_CENTER_LOTTERY"]`
-	elmRoundLagMs = []int{0, 80, 250}
+	elmRoundLagMs = []int{-20, -10, 0, 10} // 整点前20/10ms、整点、整点后10ms，各连打 elmAttemptsPerRound 次
 )
 
 var elmHTTPClient = &http.Client{
@@ -98,6 +97,16 @@ type ElmTodayProductsInfo struct {
 	AccountRemark string                 `json:"accountRemark"`
 	Slots         []ElmTodaySlotProduct  `json:"slots"`
 	Message       string                 `json:"message"`
+}
+
+// ElmFetchCKResult 手动获取 CK 后的商品预览
+type ElmFetchCKResult struct {
+	Ref           string                `json:"ref"`
+	Remark        string                `json:"remark"`
+	Route         string                `json:"route"`
+	StarBalance   int                   `json:"starBalance"`
+	Slots         []ElmTodaySlotProduct `json:"slots"`
+	Message       string                `json:"message"`
 }
 
 // ElmTaskLog 抢兑日志
@@ -787,14 +796,80 @@ func elmPrepareAccount(taskID string, acc ElmAccountInfo) (*elmReadyAccount, err
 	return &elmReadyAccount{info: acc, client: client}, nil
 }
 
-func elmRetryableExchangeError(code string) bool {
+func elmUserCacheID(userNumber int) string {
+	return fmt.Sprintf("user_%d", userNumber)
+}
+
+func elmIsSoldOutError(code, msg string) bool {
+	s := strings.ToUpper(strings.TrimSpace(code + " " + msg))
+	for _, key := range []string{
+		"STOCK_NOT_ENOUGH", "INVENTORY_NOT_ENOUGH", "SOLD_OUT", "NO_STOCK",
+		"已被抢完", "已抢完", "抢完", "库存不足", "已兑完", "库存为0",
+	} {
+		if strings.Contains(s, strings.ToUpper(key)) || strings.Contains(code+msg, key) {
+			return true
+		}
+	}
+	return false
+}
+
+func elmRetryableExchangeError(code, msg string) bool {
+	if elmIsSoldOutError(code, msg) {
+		return false
+	}
 	code = strings.ToUpper(strings.TrimSpace(code))
-	for _, key := range []string{"STOCK_NOT_ENOUGH", "INVENTORY_NOT_ENOUGH", "CAMP_CONSULT_RULE_NOT_PASS", "SECKILL_NOT_STARTED", "SYSTEM_ERROR", "BUSY"} {
+	for _, key := range []string{"CAMP_CONSULT_RULE_NOT_PASS", "SECKILL_NOT_STARTED", "SYSTEM_ERROR", "BUSY"} {
 		if strings.Contains(code, key) {
 			return true
 		}
 	}
 	return false
+}
+
+func elmResolveExecuteTime(now time.Time, targetHour int) (executeAt, prepareAt time.Time) {
+	bj := now.In(elmBJLocation())
+	executeAt = time.Date(bj.Year(), bj.Month(), bj.Day(), targetHour, 0, 0, 0, elmBJLocation())
+	if executeAt.Before(now) && elmDebugNoTimeLimit {
+		executeAt = now.Add(20 * time.Second)
+	}
+	prepareAt = executeAt.Add(-elmPrepareBeforeSec * time.Second)
+	if prepareAt.Before(now) {
+		prepareAt = now
+	}
+	return executeAt, prepareAt
+}
+
+func elmSlotLabel(targetHour int) string {
+	if targetHour == 10 {
+		return "周五 10:00 场"
+	}
+	if targetHour == 15 {
+		return "周五 15:00 场"
+	}
+	return fmt.Sprintf("周五 %d:00 场", targetHour)
+}
+
+func elmBuildSlotProducts(home map[string]interface{}) []ElmTodaySlotProduct {
+	bj := time.Now().In(elmBJLocation())
+	products := elmProducts(home)
+	slots := []ElmTodaySlotProduct{
+		{TargetHour: 10, SlotLabel: "周五 10:00 场"},
+		{TargetHour: 15, SlotLabel: "周五 15:00 场"},
+	}
+	if bj.Weekday() == time.Friday {
+		slots[0].ExecuteAt = time.Date(bj.Year(), bj.Month(), bj.Day(), 10, 0, 0, 0, elmBJLocation()).Format("2006-01-02 15:04:05")
+		slots[1].ExecuteAt = time.Date(bj.Year(), bj.Month(), bj.Day(), 15, 0, 0, 0, elmBJLocation()).Format("2006-01-02 15:04:05")
+	} else {
+		slots[0].ExecuteAt = "每周五 10:00"
+		slots[1].ExecuteAt = "每周五 15:00"
+	}
+	for i := range slots {
+		if p := elmSelectProductForSlot(products, slots[i].TargetHour, ""); p != nil {
+			b := elmProductBrief(p)
+			slots[i].Product = &b
+		}
+	}
+	return slots
 }
 
 func (t *ElmScheduledTask) AddLog(level, format string, args ...interface{}) {
@@ -868,6 +943,17 @@ func ElmGetWindowInfo() ElmWindowInfo {
 		info.ExecuteAt = executeAt.Format("2006-01-02 15:04:05")
 		info.PrepareAt = prepareAt.Format("2006-01-02 15:04:05")
 		info.Message = "当前可参与抢兑，系统将倒计时到 " + executeAt.Format("15:04:05") + " 执行"
+	} else if elmDebugNoTimeLimit {
+		info.CanStart = true
+		if info.IsFriday {
+			if now.Hour() < 15 {
+				info.ExecuteAt = time.Date(now.Year(), now.Month(), now.Day(), 15, 0, 0, 0, elmBJLocation()).Format("2006-01-02 15:04:05")
+				info.WindowLabel = "周五 15:00 场"
+			} else {
+				info.ExecuteAt = time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, elmBJLocation()).Format("2006-01-02 15:04:05")
+				info.WindowLabel = "周五 10:00 场"
+			}
+		}
 	} else if !info.IsFriday {
 		info.Message = "仅每周五开放抢兑（09:30-09:55 / 14:30-14:55 可报名）"
 	} else {
@@ -1016,7 +1102,7 @@ func elmRefreshTarget(acc *elmReadyAccount, targetHour int, keyword string) (*el
 	return acc, nil
 }
 
-func elmRunExchange(acc *elmReadyAccount, task *ElmScheduledTask) ElmExchangeResult {
+func elmRunExchangeOnce(acc *elmReadyAccount, task *ElmScheduledTask, round, attempt int) ElmExchangeResult {
 	res := ElmExchangeResult{Ref: acc.info.Ref, Remark: acc.info.Remark}
 	product := acc.product
 	if product == nil {
@@ -1032,41 +1118,39 @@ func elmRunExchange(acc *elmReadyAccount, task *ElmScheduledTask) ElmExchangeRes
 		product = acc.product
 	}
 	brief := elmProductBrief(product)
-	for attempt := 1; attempt <= elmAttemptsPerAccount; attempt++ {
-		resp, err := acc.client.exchange(product)
-		if err != nil {
-			res.Message = err.Error()
-			task.AddLog("warn", "[%s] 第%d次请求失败: %v", acc.info.Remark, attempt, err)
-			time.Sleep(time.Duration(elmAttemptIntervalMs) * time.Millisecond)
-			continue
-		}
-		data, _ := resp["data"].(map[string]interface{})
-		errorCode := fmt.Sprint(data["errorCode"])
-		errorMsg := fmt.Sprint(data["errorMsg"])
-		if errorMsg == "" {
-			errorMsg = elmFirstRet(resp)
-		}
-		if elmIsSuccess(resp) && errorCode == "" {
-			res.Success = true
-			res.Message = "兑换成功"
-			res.Product = brief.Title
-			task.AddLog("success", "🎉 [%s] 兑换成功: %s", acc.info.Remark, brief.Title)
-			return res
-		}
-		if errorCode == "UPP_SEND_PRIZE_SENDING" {
-			res.Success = true
-			res.Message = "兑换已提交，奖励发放中"
-			res.Product = brief.Title
-			task.AddLog("success", "🎉 [%s] 兑换已提交: %s", acc.info.Remark, brief.Title)
-			return res
-		}
-		res.Message = strings.TrimSpace(errorCode + " " + errorMsg)
-		task.AddLog("warn", "[%s] 第%d/%d次失败: %s", acc.info.Remark, attempt, elmAttemptsPerAccount, res.Message)
-		if !elmRetryableExchangeError(errorCode) {
-			return res
-		}
-		time.Sleep(time.Duration(elmAttemptIntervalMs) * time.Millisecond)
+	resp, err := acc.client.exchange(product)
+	if err != nil {
+		res.Message = err.Error()
+		task.AddLog("warn", "[%s] 第%d轮第%d次请求失败: %v", acc.info.Remark, round, attempt, err)
+		return res
 	}
+	data, _ := resp["data"].(map[string]interface{})
+	errorCode := fmt.Sprint(data["errorCode"])
+	errorMsg := fmt.Sprint(data["errorMsg"])
+	if errorMsg == "" {
+		errorMsg = elmFirstRet(resp)
+	}
+	if elmIsSuccess(resp) && errorCode == "" {
+		res.Success = true
+		res.Message = "兑换成功"
+		res.Product = brief.Title
+		task.AddLog("success", "🎉 [%s] 第%d轮第%d次兑换成功: %s", acc.info.Remark, round, attempt, brief.Title)
+		return res
+	}
+	if errorCode == "UPP_SEND_PRIZE_SENDING" {
+		res.Success = true
+		res.Message = "兑换已提交，奖励发放中"
+		res.Product = brief.Title
+		task.AddLog("success", "🎉 [%s] 第%d轮第%d次兑换已提交: %s", acc.info.Remark, round, attempt, brief.Title)
+		return res
+	}
+	res.Message = strings.TrimSpace(errorCode + " " + errorMsg)
+	if elmIsSoldOutError(errorCode, errorMsg) {
+		task.AddLog("info", "[%s] 第%d轮第%d次: 商品已抢完，停止该账号", acc.info.Remark, round, attempt)
+		res.Message = "兑换失败：已被抢完"
+		return res
+	}
+	task.AddLog("warn", "[%s] 第%d轮第%d次失败: %s", acc.info.Remark, round, attempt, res.Message)
 	return res
 }
 
@@ -1100,7 +1184,7 @@ func elmRunScheduledTask(taskID string) {
 		wg.Add(1)
 		go func(a ElmAccountInfo) {
 			defer wg.Done()
-			prepared, err := elmPrepareAccount(task.ID, a)
+			prepared, err := elmPrepareAccount(elmUserCacheID(task.UserNumber), a)
 			if err != nil {
 				task.AddLog("error", "[%s] CK 预热失败: %v", a.Remark, err)
 				return
@@ -1142,11 +1226,12 @@ func elmRunScheduledTask(taskID string) {
 	task.Status = "running"
 
 	successRefs := map[string]bool{}
+	stoppedRefs := map[string]bool{}
 	for roundIdx, lag := range elmRoundLagMs {
 		if task.isCancelled() {
 			break
 		}
-		fireAt := task.ExecuteAt.Add(time.Duration(lag)*time.Millisecond).Add(jitter)
+		fireAt := task.ExecuteAt.Add(time.Duration(lag) * time.Millisecond).Add(jitter)
 		if time.Now().Before(fireAt) {
 			if !elmSleepUntilWithCancel(fireAt, task) {
 				break
@@ -1155,33 +1240,57 @@ func elmRunScheduledTask(taskID string) {
 		if task.isCancelled() {
 			break
 		}
-		task.AddLog("info", "第 %d/%d 轮抢兑开始（+%dms）", roundIdx+1, len(elmRoundLagMs), lag)
+		if lag > 0 {
+			task.AddLog("info", "第 %d/%d 轮抢兑（整点+%dms × %d次）", roundIdx+1, len(elmRoundLagMs), lag, elmAttemptsPerRound)
+		} else if lag < 0 {
+			task.AddLog("info", "第 %d/%d 轮抢兑（整点%dms × %d次）", roundIdx+1, len(elmRoundLagMs), lag, elmAttemptsPerRound)
+		} else {
+			task.AddLog("info", "第 %d/%d 轮抢兑（整点 × %d次）", roundIdx+1, len(elmRoundLagMs), elmAttemptsPerRound)
+		}
 		var roundWg sync.WaitGroup
 		resultsMu := sync.Mutex{}
 		for _, acc := range ready {
 			key := elmNormalizeRef(acc.info.Ref)
-			if successRefs[key] {
+			if successRefs[key] || stoppedRefs[key] {
 				continue
 			}
 			roundWg.Add(1)
 			go func(a *elmReadyAccount) {
 				defer roundWg.Done()
-				result := elmRunExchange(a, task)
-				resultsMu.Lock()
-				defer resultsMu.Unlock()
-				if result.Success {
-					successRefs[key] = true
-				}
-				replaced := false
-				for i := range task.Results {
-					if elmNormalizeRef(task.Results[i].Ref) == key {
-						task.Results[i] = result
-						replaced = true
+				var result ElmExchangeResult
+				for attempt := 1; attempt <= elmAttemptsPerRound; attempt++ {
+					if task.isCancelled() {
 						break
 					}
-				}
-				if !replaced {
-					task.Results = append(task.Results, result)
+					resultsMu.Lock()
+					done := successRefs[key] || stoppedRefs[key]
+					resultsMu.Unlock()
+					if done {
+						break
+					}
+					result = elmRunExchangeOnce(a, task, roundIdx+1, attempt)
+					resultsMu.Lock()
+					if result.Success {
+						successRefs[key] = true
+					} else if elmIsSoldOutError("", result.Message) {
+						stoppedRefs[key] = true
+					}
+					replaced := false
+					for i := range task.Results {
+						if elmNormalizeRef(task.Results[i].Ref) == key {
+							task.Results[i] = result
+							replaced = true
+							break
+						}
+					}
+					if !replaced {
+						task.Results = append(task.Results, result)
+					}
+					shouldStop := successRefs[key] || stoppedRefs[key]
+					resultsMu.Unlock()
+					if shouldStop {
+						break
+					}
 				}
 			}(acc)
 		}
@@ -1203,15 +1312,89 @@ func elmRunScheduledTask(taskID string) {
 	task.AddLog("info", "任务结束：成功 %d / 账号 %d", successN, len(task.Accounts))
 }
 
+// ElmFetchCK 手动获取 CK 并刷新商品预览（步骤1）
+func ElmFetchCK(userNumber int, ref string) (*ElmFetchCKResult, error) {
+	if ok, msg := CheckElmAuth(userNumber); !ok {
+		return nil, fmt.Errorf("%s", msg)
+	}
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return nil, fmt.Errorf("请选择账号")
+	}
+	all, err := GetAllElmAccounts(userNumber)
+	if err != nil {
+		return nil, err
+	}
+	var acc *ElmAccountInfo
+	for i := range all {
+		if all[i].Ref == ref {
+			acc = &all[i]
+			break
+		}
+	}
+	if acc == nil {
+		return nil, fmt.Errorf("账号不在已上车列表中")
+	}
+	route := ResolveProtocolRoute(ref)
+	routeLabel := "wechat08"
+	if route.Backend == "yyb" {
+		routeLabel = "应用宝"
+	}
+	prepared, err := elmPrepareAccount(elmUserCacheID(userNumber), *acc)
+	if err != nil {
+		elmWriteAdminLog("error", "[fetch-ck user=%d] [%s] 失败: %v", userNumber, acc.Remark, err)
+		return nil, err
+	}
+	home, err := prepared.client.homepage()
+	if err != nil || !elmIsSuccess(home) {
+		msg := "商城查询失败"
+		if err != nil {
+			msg = err.Error()
+		} else {
+			msg = elmFirstRet(home)
+		}
+		return nil, fmt.Errorf("%s", msg)
+	}
+	slots := elmBuildSlotProducts(home)
+	star := elmStarBalance(home)
+	elmWriteAdminLog("info", "[fetch-ck user=%d] [%s] 成功 route=%s star=%d", userNumber, acc.Remark, routeLabel, star)
+	return &ElmFetchCKResult{
+		Ref:         acc.Ref,
+		Remark:      acc.Remark,
+		Route:       routeLabel,
+		StarBalance: star,
+		Slots:       slots,
+		Message:     "CK 获取成功，请选择场次后参与抢兑",
+	}, nil
+}
+
 // ElmScheduleExchange 创建饿了么抢兑任务
-func ElmScheduleExchange(userNumber int, refs []string, keyword string) (*ElmScheduledTask, bool, error) {
+func ElmScheduleExchange(userNumber int, refs []string, keyword string, targetHour int) (*ElmScheduledTask, bool, error) {
 	elmPruneOldTasks()
 	if ok, msg := CheckElmAuth(userNumber); !ok {
 		return nil, false, fmt.Errorf("%s", msg)
 	}
+	if targetHour != 10 && targetHour != 15 {
+		return nil, false, fmt.Errorf("请选择 10 点或 15 点场次")
+	}
 	now := time.Now().In(elmBJLocation())
-	inWindow, targetHour, executeAt, prepareAt, label := elmCurrentWindow(now)
-	if !inWindow {
+	inWindow, windowHour, _, _, _ := elmCurrentWindow(now)
+	var executeAt, prepareAt time.Time
+	var label string
+	if inWindow {
+		if targetHour != windowHour && !elmDebugNoTimeLimit {
+			return nil, false, fmt.Errorf("当前报名时段仅支持 %d 点场", windowHour)
+		}
+		executeAt = time.Date(now.Year(), now.Month(), now.Day(), targetHour, 0, 0, 0, elmBJLocation())
+		prepareAt = executeAt.Add(-elmPrepareBeforeSec * time.Second)
+		if prepareAt.Before(now) {
+			prepareAt = now
+		}
+		label = elmSlotLabel(targetHour)
+	} else if elmDebugNoTimeLimit {
+		executeAt, prepareAt = elmResolveExecuteTime(now, targetHour)
+		label = elmSlotLabel(targetHour)
+	} else {
 		return nil, false, fmt.Errorf("当前不在抢兑报名时段（周五 09:30-09:55 或 14:30-14:55）")
 	}
 	if existing := elmFindActiveTaskByUser(userNumber); existing != nil {
@@ -1228,12 +1411,21 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string) (*ElmSch
 	}
 	accounts := make([]ElmAccountInfo, 0)
 	for _, a := range all {
-		if len(selected) == 0 || selected[a.Ref] {
+		if selected[a.Ref] {
 			accounts = append(accounts, a)
 		}
 	}
 	if len(accounts) == 0 {
-		return nil, false, fmt.Errorf("请选择至少一个已上车的账号")
+		return nil, false, fmt.Errorf("请选择已上车的账号")
+	}
+	if len(accounts) > 1 {
+		return nil, false, fmt.Errorf("请仅选择一个账号参与抢兑")
+	}
+	// 确认 CK 已缓存
+	cache := elmLoadCacheMap(elmUserCacheID(userNumber))
+	cacheKey := elmNormalizeRef(accounts[0].Ref)
+	if _, ok := cache[cacheKey]; !ok {
+		return nil, false, fmt.Errorf("请先点击「获取 CK」，成功后再参与抢兑")
 	}
 
 	taskID := fmt.Sprintf("elm_%d_%d", userNumber, time.Now().UnixMilli())
@@ -1252,45 +1444,18 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string) (*ElmSch
 	if strings.TrimSpace(keyword) != "" {
 		task.AddLog("info", "商品匹配：关键词 %s", strings.TrimSpace(keyword))
 	} else {
-		task.AddLog("info", "商品匹配：自动识别 %d 点场", targetHour)
+		task.AddLog("info", "商品匹配：%d 点场", targetHour)
 	}
 	task.AddLog("info", "执行时间：%s | 预检时间：%s", executeAt.Format("15:04:05"), prepareAt.Format("15:04:05"))
-	task.AddLog("info", "账号数：%d", len(accounts))
+	task.AddLog("info", "账号：%s | 四轮时间点各 %d 次：整点-20/-10/0/+10ms", accounts[0].Remark, elmAttemptsPerRound)
 
-	// 点击抢兑时先缓存 CK，并拉取商品信息展示
-	var previewWg sync.WaitGroup
-	previewCh := make(chan *elmReadyAccount, len(accounts))
-	for _, acc := range accounts {
-		previewWg.Add(1)
-		go func(a ElmAccountInfo) {
-			defer previewWg.Done()
-			prepared, err := elmPrepareAccount(taskID, a)
-			if err != nil {
-				task.AddLog("warn", "[%s] CK 缓存失败: %v", a.Remark, err)
-				return
-			}
-			refreshed, err := elmRefreshTarget(prepared, targetHour, keyword)
-			if err != nil {
-				task.AddLog("warn", "[%s] 商品预览失败: %v", a.Remark, err)
-				return
-			}
-			previewCh <- refreshed
-		}(acc)
-	}
-	go func() {
-		previewWg.Wait()
-		close(previewCh)
-	}()
-	for item := range previewCh {
-		if task.Product == nil && item.product != nil {
-			b := elmProductBrief(item.product)
+	// 用已缓存 CK 预览目标商品
+	if prepared, err := elmPrepareAccount(elmUserCacheID(userNumber), accounts[0]); err == nil {
+		if refreshed, err := elmRefreshTarget(prepared, targetHour, keyword); err == nil && refreshed.product != nil {
+			b := elmProductBrief(refreshed.product)
 			task.Product = &b
 			task.AddLog("info", "目标商品：%s | 需要 %d 幸运星 | 状态 %s", b.Title, b.Cost, b.Status)
-			break
 		}
-	}
-	if task.Product == nil {
-		elmFillTaskProductPreview(task, userNumber, targetHour)
 	}
 
 	elmScheduledTasks.Lock()

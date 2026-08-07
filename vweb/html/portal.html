@@ -2438,12 +2438,26 @@
                         <div>• 商品<strong>自动识别</strong>：09:30-09:55 报名匹配含「10点」商品；14:30-14:55 匹配含「15点」商品</div>
                     </div>
                     <div style="margin-bottom:12px;">
-                        <label class="muted" style="font-size:12px;margin-bottom:8px;display:block;">选择抢兑账号</label>
+                        <label class="muted" style="font-size:12px;margin-bottom:8px;display:block;">选择抢兑账号（单选）</label>
                         <div id="elmAccountList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;"></div>
                     </div>
-                    <div id="elmProductInfo" class="muted" style="padding:12px 14px;border-radius:10px;background:var(--bg-secondary);border:1px solid var(--glass-border);margin-bottom:14px;line-height:1.7;">进入页面后自动加载今日两场抢兑商品</div>
+                    <div id="elmSlotPicker" style="display:none;margin-bottom:12px;">
+                        <label class="muted" style="font-size:12px;margin-bottom:8px;display:block;">选择场次</label>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                            <label id="elmSlot10Label" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);cursor:pointer;">
+                                <input type="radio" name="elmSlot" value="10" onchange="ElmPortal.selectSlot(10)" style="accent-color:#6366f1;" />
+                                <span>10:00 场</span>
+                            </label>
+                            <label id="elmSlot15Label" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);cursor:pointer;">
+                                <input type="radio" name="elmSlot" value="15" onchange="ElmPortal.selectSlot(15)" style="accent-color:#6366f1;" />
+                                <span>15:00 场</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="elmProductInfo" class="muted" style="padding:12px 14px;border-radius:10px;background:var(--bg-secondary);border:1px solid var(--glass-border);margin-bottom:14px;line-height:1.7;">请先选择账号并点击「获取 CK」</div>
                     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-                        <button id="elmStartBtn" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:14px;font-weight:700;cursor:pointer;">参与抢兑</button>
+                        <button id="elmFetchCkBtn" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-size:14px;font-weight:700;cursor:pointer;">获取 CK</button>
+                        <button id="elmStartBtn" disabled style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:14px;font-weight:700;cursor:pointer;opacity:0.55;">参与抢兑</button>
                         <button id="elmStopBtn" style="display:none;padding:10px 24px;border:none;border-radius:10px;background:#ef4444;color:white;font-size:14px;font-weight:700;cursor:pointer;">停止抢兑</button>
                         <div id="elmCountdown" style="display:none;padding:10px 24px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:white;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;"></div>
                     </div>
@@ -2456,7 +2470,7 @@
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                         <div>
                             <h4 style="margin:0;font-size:14px;color:var(--text);">执行日志</h4>
-                            <div class="muted" style="font-size:11px;margin-top:4px;">实时同步 CK 缓存、预检、三轮错峰抢兑过程（日志目录 logs/elm）</div>
+                            <div class="muted" style="font-size:11px;margin-top:4px;">实时同步 CK 获取、预检、四轮整点抢兑过程（日志目录 logs/elm）</div>
                         </div>
                         <button id="elmClearLogBtn" style="padding:4px 12px;border:1px solid var(--glass-border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;">清空</button>
                     </div>
@@ -3145,7 +3159,7 @@
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_bind.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_activity.js?v=3"></script>
-<script src="/vweb/js/portal_elm.js?v=4"></script>
+<script src="/vweb/js/portal_elm.js?v=5"></script>
 <script src="/vweb/js/portal_yyb.js?v=21"></script>
 <script>
 async function getSignatureHeaders(path) {

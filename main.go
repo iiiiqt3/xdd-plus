@@ -271,6 +271,7 @@ func main() {
 	web.Router("/api/portal/elm/accounts", &controllers.PortalController{}, "get:ElmGetAccounts")
 	web.Router("/api/portal/elm/window", &controllers.PortalController{}, "get:ElmGetWindow")
 	web.Router("/api/portal/elm/today-products", &controllers.PortalController{}, "get:ElmGetTodayProducts")
+	web.Router("/api/portal/elm/fetch-ck", &controllers.PortalController{}, "post:ElmFetchCK")
 	web.Router("/api/portal/elm/schedule", &controllers.PortalController{}, "post:ElmScheduleExchange")
 	web.Router("/api/portal/elm/cancel", &controllers.PortalController{}, "post:ElmCancelExchange")
 	web.Router("/api/portal/elm/status", &controllers.PortalController{}, "get:ElmGetExchangeStatus")

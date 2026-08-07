@@ -1569,6 +1569,32 @@ func (c *PortalController) ElmGetTodayProducts() {
 	c.ServeJSON()
 }
 
+// ElmFetchCK 手动获取 CK
+func (c *PortalController) ElmFetchCK() {
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	var req struct {
+		Ref string `json:"ref"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
+		c.ServeJSON()
+		return
+	}
+	data, err := models.ElmFetchCK(profile.User.Number, req.Ref)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{"code": 0, "data": data, "msg": "ok"}
+	c.ServeJSON()
+}
+
 // ElmScheduleExchange 创建抢兑任务
 func (c *PortalController) ElmScheduleExchange() {
 	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
@@ -1578,15 +1604,21 @@ func (c *PortalController) ElmScheduleExchange() {
 		return
 	}
 	var req struct {
-		Refs    []string `json:"refs"`
-		Keyword string   `json:"keyword"`
+		Refs       []string `json:"refs"`
+		Ref        string   `json:"ref"`
+		Keyword    string   `json:"keyword"`
+		TargetHour int      `json:"targetHour"`
 	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
 		c.ServeJSON()
 		return
 	}
-	task, reused, err := models.ElmScheduleExchange(profile.User.Number, req.Refs, req.Keyword)
+	refs := req.Refs
+	if strings.TrimSpace(req.Ref) != "" {
+		refs = []string{strings.TrimSpace(req.Ref)}
+	}
+	task, reused, err := models.ElmScheduleExchange(profile.User.Number, refs, req.Keyword, req.TargetHour)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()

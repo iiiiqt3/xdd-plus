@@ -4,12 +4,14 @@
     const state = {
         authorized: false,
         accounts: [],
-        selected: new Set(),
+        selectedRef: '',
+        selectedSlot: 0,
+        ckReady: false,
+        ckData: null,
         activeTaskId: null,
         monitorTimer: null,
         logIndex: 0,
         countdownTimer: null,
-        todayProducts: null,
         window: null,
     };
 
@@ -53,13 +55,34 @@
         state.logIndex = 0;
     }
 
-    function updateTaskButtons(task) {
+    function resetCkState() {
+        state.ckReady = false;
+        state.ckData = null;
+        state.selectedSlot = 0;
+        const slotPicker = $('elmSlotPicker');
+        if (slotPicker) slotPicker.style.display = 'none';
+        document.querySelectorAll('input[name="elmSlot"]').forEach(function (el) { el.checked = false; });
+        updateActionButtons();
+    }
+
+    function updateActionButtons(task) {
         const startBtn = $('elmStartBtn');
         const stopBtn = $('elmStopBtn');
+        const fetchBtn = $('elmFetchCkBtn');
         const running = !!(task && (task.status === 'pending' || task.status === 'running'));
         if (stopBtn) stopBtn.style.display = running ? 'inline-block' : 'none';
+        if (fetchBtn) {
+            fetchBtn.disabled = running || !state.authorized || !state.selectedRef;
+        }
         if (startBtn) {
-            startBtn.disabled = running || !state.authorized || !(state.window && state.window.canStart);
+            const canStart = state.authorized
+                && state.ckReady
+                && state.selectedSlot > 0
+                && state.selectedRef
+                && !running;
+            startBtn.disabled = !canStart;
+            startBtn.style.opacity = canStart ? '1' : '0.55';
+            startBtn.style.cursor = canStart ? 'pointer' : 'not-allowed';
         }
     }
 
@@ -71,9 +94,9 @@
             return;
         }
         box.innerHTML = state.accounts.map(function (a) {
-            const checked = state.selected.has(a.ref) ? 'checked' : '';
+            const checked = state.selectedRef === a.ref ? 'checked' : '';
             return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);cursor:pointer;">
-                <input type="checkbox" data-elm-ref="${esc(a.ref)}" ${checked} onchange="ElmPortal.toggleAccount(this)" style="width:16px;height:16px;accent-color:#6366f1;" />
+                <input type="radio" name="elmAccount" data-elm-ref="${esc(a.ref)}" ${checked} onchange="ElmPortal.selectAccount(this)" style="width:16px;height:16px;accent-color:#6366f1;" />
                 <div style="min-width:0;flex:1;">
                     <div style="font-weight:700;font-size:13px;color:var(--text);">${esc(a.remark || a.ref)}</div>
                     <div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.ref)}</div>
@@ -82,24 +105,18 @@
         }).join('');
     }
 
-    function renderTodayProducts(data, win) {
+    function renderCkProducts(data) {
         const box = $('elmProductInfo');
         if (!box) return;
         if (!data) {
-            box.innerHTML = '<div class="muted">加载商品信息中…</div>';
-            return;
-        }
-        if (!state.authorized) {
-            box.innerHTML = '<div class="muted">上车饿了么(协议)活动后可查看今日抢兑商品</div>';
+            box.innerHTML = '<div class="muted">请先选择账号并点击「获取 CK」</div>';
             return;
         }
         const star = data.starBalance >= 0 ? data.starBalance : '--';
         const slots = Array.isArray(data.slots) ? data.slots : [];
-        const currentHour = win && win.canStart && win.executeAt
-            ? parseInt(String(win.executeAt).slice(11, 13), 10)
-            : 0;
         let html = `<div style="font-size:13px;line-height:1.8;color:var(--text-muted);margin-bottom:10px;">
-            <div>💎 幸运星余额：<strong style="color:#f59e0b;">${esc(star)}</strong>${data.accountRemark ? ' · 查询账号：' + esc(data.accountRemark) : ''}</div>
+            <div>✅ CK 已获取 · 通道：<strong>${esc(data.route || '-')}</strong></div>
+            <div>💎 幸运星余额：<strong style="color:#f59e0b;">${esc(star)}</strong> · 账号：${esc(data.remark || data.ref)}</div>
             <div>${esc(data.message || '')}</div>
         </div>`;
         if (!slots.length) {
@@ -109,12 +126,12 @@
         }
         html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;">';
         slots.forEach(function (slot) {
-            const active = currentHour === slot.targetHour;
+            const active = state.selectedSlot === slot.targetHour;
             const border = active ? '2px solid #6366f1' : '1px solid var(--glass-border)';
             const bg = active ? 'rgba(99,102,241,0.06)' : 'var(--bg-secondary)';
             const p = slot.product;
             html += `<div style="padding:12px 14px;border-radius:10px;border:${border};background:${bg};">
-                <div style="font-weight:700;color:var(--text);margin-bottom:6px;">${active ? '🎯 当前场次 · ' : ''}${esc(slot.slotLabel)}</div>
+                <div style="font-weight:700;color:var(--text);margin-bottom:6px;">${active ? '🎯 已选 · ' : ''}${esc(slot.slotLabel)}</div>
                 <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">执行时间：${esc(slot.executeAt || '-')}</div>`;
             if (p) {
                 html += `<div style="font-weight:600;color:var(--text);margin-bottom:4px;">${esc(p.title)}</div>
@@ -150,12 +167,12 @@
             renderProduct(task);
             return;
         }
-        if (state.todayProducts) {
-            renderTodayProducts(state.todayProducts, state.window);
+        if (state.ckData) {
+            renderCkProducts(state.ckData);
             return;
         }
         const box = $('elmProductInfo');
-        if (box) box.innerHTML = '<div class="muted">加载商品信息中…</div>';
+        if (box) box.innerHTML = '<div class="muted">请先选择账号并点击「获取 CK」</div>';
     }
 
     function updateWindowInfo(win) {
@@ -172,10 +189,7 @@
             hintEl.textContent = win.message || '';
             hintEl.style.color = win.canStart ? '#10b981' : 'var(--text-muted)';
         }
-        const startBtn = $('elmStartBtn');
-        if (startBtn && !state.activeTaskId) {
-            startBtn.disabled = !win.canStart || !state.authorized;
-        }
+        updateActionButtons(null);
     }
 
     function flushLogs(task) {
@@ -243,8 +257,7 @@
         stopCountdown();
         state.activeTaskId = null;
         applyTask(task);
-        updateTaskButtons(null);
-        void loadTodayProducts(state.window);
+        updateActionButtons(null);
         if (toastMsg) toast(toastMsg, toastType || 'info');
     }
 
@@ -254,7 +267,7 @@
         renderTaskView(task);
         flushLogs(task);
         renderResults(task);
-        updateTaskButtons(task);
+        updateActionButtons(task);
         if (task.status === 'pending') startCountdown(task.executeAt);
         if (task.status === 'running') {
             const el = $('elmCountdown');
@@ -283,24 +296,6 @@
         }, 1000);
     }
 
-    async function loadTodayProducts(win) {
-        if (!state.authorized) {
-            renderTodayProducts(null, win);
-            return;
-        }
-        try {
-            const data = await api('/today-products');
-            state.todayProducts = data;
-            if (!state.activeTaskId) renderTodayProducts(data, win || state.window);
-            else renderTaskView({ product: null });
-        } catch (e) {
-            const box = $('elmProductInfo');
-            if (box && !state.activeTaskId) {
-                box.innerHTML = `<div class="muted">商品加载失败：${esc(e.message || '未知错误')}</div>`;
-            }
-        }
-    }
-
     async function loadPanel() {
         try {
             const auth = await api('/check-auth');
@@ -314,7 +309,7 @@
             updateWindowInfo(win);
             state.accounts = await api('/accounts') || [];
             renderAccounts();
-            await loadTodayProducts(win);
+            renderTaskView(null);
             const active = await api('/status');
             if (active && (active.status === 'pending' || active.status === 'running')) {
                 state.logIndex = 0;
@@ -323,38 +318,88 @@
                 monitorTask(active.id);
             } else {
                 state.activeTaskId = null;
-                updateTaskButtons(null);
+                updateActionButtons(null);
             }
         } catch (e) {
             toast(e.message || '加载失败', 'error');
         }
     }
 
-    function toggleAccount(input) {
+    function selectAccount(input) {
         const ref = input.getAttribute('data-elm-ref');
         if (!ref) return;
-        if (input.checked) state.selected.add(ref);
-        else state.selected.delete(ref);
+        if (state.selectedRef !== ref) {
+            state.selectedRef = ref;
+            resetCkState();
+            renderTaskView(null);
+        }
+    }
+
+    function selectSlot(hour) {
+        state.selectedSlot = hour;
+        if (state.ckData) renderCkProducts(state.ckData);
+        updateActionButtons(null);
+    }
+
+    async function fetchCk() {
+        if (!state.authorized) { toast('请先上车饿了么活动', 'error'); return; }
+        if (!state.selectedRef) { toast('请先选择一个账号', 'error'); return; }
+        const btn = $('elmFetchCkBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '获取中…'; }
+        resetCkState();
+        state.selectedRef = state.selectedRef || '';
+        try {
+            const data = await api('/fetch-ck', {
+                method: 'POST',
+                body: JSON.stringify({ ref: state.selectedRef }),
+            });
+            state.ckReady = true;
+            state.ckData = data;
+            const slotPicker = $('elmSlotPicker');
+            if (slotPicker) slotPicker.style.display = 'block';
+            renderCkProducts(data);
+            elmLog('CK 获取成功：' + (data.remark || data.ref) + ' · ' + (data.route || ''), 'success');
+            toast('CK 获取成功，请选择场次', 'success');
+        } catch (e) {
+            state.ckReady = false;
+            state.ckData = null;
+            const box = $('elmProductInfo');
+            if (box) {
+                box.innerHTML = `<div style="color:#dc2626;font-size:13px;line-height:1.7;">
+                    ❌ CK 获取失败：${esc(e.message || '未知错误')}<br>
+                    <span class="muted">请检查账号是否在线，或稍后点击「获取 CK」重试</span>
+                </div>`;
+            }
+            elmLog('CK 获取失败：' + (e.message || '未知错误'), 'error');
+            toast(e.message || 'CK 获取失败，请重试', 'error');
+        } finally {
+            if (btn) { btn.textContent = '获取 CK'; updateActionButtons(null); }
+        }
     }
 
     async function startExchange() {
         if (!state.authorized) { toast('请先上车饿了么活动', 'error'); return; }
-        const refs = Array.from(state.selected);
-        if (!refs.length) { toast('请至少选择一个账号', 'error'); return; }
+        if (!state.selectedRef) { toast('请选择一个账号', 'error'); return; }
+        if (!state.ckReady) { toast('请先获取 CK', 'error'); return; }
+        if (!state.selectedSlot) { toast('请选择 10 点或 15 点场次', 'error'); return; }
         elmClearLogs();
         state.logIndex = 0;
-        updateTaskButtons({ status: 'pending' });
+        updateActionButtons({ status: 'pending' });
         try {
             const task = await api('/schedule', {
                 method: 'POST',
-                body: JSON.stringify({ refs: refs, keyword: '' }),
+                body: JSON.stringify({
+                    ref: state.selectedRef,
+                    targetHour: state.selectedSlot,
+                    keyword: '',
+                }),
             });
             applyTask(task);
             monitorTask(task.id);
             toast('抢兑任务已创建，正在倒计时');
         } catch (e) {
             toast(e.message || '创建失败', 'error');
-            updateTaskButtons(null);
+            updateActionButtons(null);
         }
     }
 
@@ -375,6 +420,8 @@
     }
 
     function init() {
+        const fetchBtn = $('elmFetchCkBtn');
+        if (fetchBtn) fetchBtn.onclick = function () { void fetchCk(); };
         const btn = $('elmStartBtn');
         if (btn) btn.onclick = function () { void startExchange(); };
         const stopBtn = $('elmStopBtn');
@@ -393,7 +440,8 @@
     global.ElmPortal = {
         init: init,
         loadPanel: loadPanel,
-        toggleAccount: toggleAccount,
+        selectAccount: selectAccount,
+        selectSlot: selectSlot,
     };
 
     if (document.readyState === 'loading') {
