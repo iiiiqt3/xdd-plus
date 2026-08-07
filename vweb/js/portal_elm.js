@@ -272,9 +272,6 @@
             const win = await api('/window');
             updateWindowInfo(win);
             state.accounts = await api('/accounts') || [];
-            if (state.selected.size === 0) {
-                state.accounts.forEach(function (a) { state.selected.add(a.ref); });
-            }
             renderAccounts();
             const active = await api('/status');
             if (active) {
