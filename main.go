@@ -272,6 +272,7 @@ func main() {
 	web.Router("/api/portal/elm/window", &controllers.PortalController{}, "get:ElmGetWindow")
 	web.Router("/api/portal/elm/today-products", &controllers.PortalController{}, "get:ElmGetTodayProducts")
 	web.Router("/api/portal/elm/schedule", &controllers.PortalController{}, "post:ElmScheduleExchange")
+	web.Router("/api/portal/elm/cancel", &controllers.PortalController{}, "post:ElmCancelExchange")
 	web.Router("/api/portal/elm/status", &controllers.PortalController{}, "get:ElmGetExchangeStatus")
 	// ===================== 应用宝门户 =====================
 	web.Router("/portal/yyb", &controllers.PortalYybController{}, "get:Index")

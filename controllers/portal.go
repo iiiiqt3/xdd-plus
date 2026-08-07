@@ -1630,6 +1630,32 @@ func (c *PortalController) ElmGetExchangeStatus() {
 	c.ServeJSON()
 }
 
+// ElmCancelExchange 停止抢兑任务
+func (c *PortalController) ElmCancelExchange() {
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+		c.ServeJSON()
+		return
+	}
+	var req struct {
+		TaskID string `json:"taskId"`
+	}
+	_ = json.Unmarshal(c.Ctx.Input.RequestBody, &req)
+	task, err := models.ElmCancelExchange(profile.User.Number, req.TaskID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error(), "data": models.ElmTaskStatusPayload(task)}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"] = map[string]interface{}{
+		"code": 0,
+		"msg":  "任务已停止",
+		"data": models.ElmTaskStatusPayload(task),
+	}
+	c.ServeJSON()
+}
+
 func kuwoTaskStatusPayload(task *models.KuwoScheduledTask) map[string]interface{} {
 	smsFatal := false
 	if len(task.Results) > 0 {

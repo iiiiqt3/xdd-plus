@@ -9,6 +9,8 @@
         monitorTimer: null,
         logIndex: 0,
         countdownTimer: null,
+        todayProducts: null,
+        window: null,
     };
 
     function $(id) { return document.getElementById(id); }
@@ -49,6 +51,16 @@
         const el = $('elmLogContent');
         if (el) el.textContent = '';
         state.logIndex = 0;
+    }
+
+    function updateTaskButtons(task) {
+        const startBtn = $('elmStartBtn');
+        const stopBtn = $('elmStopBtn');
+        const running = !!(task && (task.status === 'pending' || task.status === 'running'));
+        if (stopBtn) stopBtn.style.display = running ? 'inline-block' : 'none';
+        if (startBtn) {
+            startBtn.disabled = running || !state.authorized || !(state.window && state.window.canStart);
+        }
     }
 
     function renderAccounts() {
@@ -121,12 +133,8 @@
 
     function renderProduct(task) {
         const box = $('elmProductInfo');
-        if (!box) return;
-        const p = task && task.product;
-        if (!p) {
-            box.innerHTML = '<div class="muted">加载今日商品中…</div>';
-            return;
-        }
+        if (!box || !task || !task.product) return;
+        const p = task.product;
         box.innerHTML = `<div style="font-weight:700;color:var(--text);margin-bottom:6px;">🎯 ${esc(p.title)}</div>
             <div style="font-size:13px;line-height:1.8;color:var(--text-muted);">
                 <div>商品 ID：<code>${esc(p.id)}</code></div>
@@ -137,7 +145,21 @@
             </div>`;
     }
 
+    function renderTaskView(task) {
+        if (task && task.product) {
+            renderProduct(task);
+            return;
+        }
+        if (state.todayProducts) {
+            renderTodayProducts(state.todayProducts, state.window);
+            return;
+        }
+        const box = $('elmProductInfo');
+        if (box) box.innerHTML = '<div class="muted">加载商品信息中…</div>';
+    }
+
     function updateWindowInfo(win) {
+        state.window = win;
         const nowEl = $('elmNowTime');
         const hintEl = $('elmWindowHint');
         const nextEl = $('elmNextSlot');
@@ -150,8 +172,10 @@
             hintEl.textContent = win.message || '';
             hintEl.style.color = win.canStart ? '#10b981' : 'var(--text-muted)';
         }
-        const btn = $('elmStartBtn');
-        if (btn) btn.disabled = !win.canStart || !state.authorized;
+        const startBtn = $('elmStartBtn');
+        if (startBtn && !state.activeTaskId) {
+            startBtn.disabled = !win.canStart || !state.authorized;
+        }
     }
 
     function flushLogs(task) {
@@ -203,28 +227,41 @@
 
     function renderResults(task) {
         const box = $('elmResultBox');
-        if (!box || !task || !Array.isArray(task.results) || !task.results.length) return;
+        if (!box) return;
+        if (!task || !Array.isArray(task.results) || !task.results.length) {
+            box.innerHTML = '<div class="muted">暂无结果</div>';
+            return;
+        }
         box.innerHTML = task.results.map(function (r) {
             const icon = r.success ? '✅' : '❌';
             return `<div style="padding:8px 0;border-bottom:1px dashed var(--glass-border);font-size:13px;">${icon} <strong>${esc(r.remark || r.ref)}</strong> — ${esc(r.message)}${r.product ? ' · ' + esc(r.product) : ''}</div>`;
         }).join('');
     }
 
+    function finishTask(task, toastMsg, toastType) {
+        stopMonitor();
+        stopCountdown();
+        state.activeTaskId = null;
+        applyTask(task);
+        updateTaskButtons(null);
+        void loadTodayProducts(state.window);
+        if (toastMsg) toast(toastMsg, toastType || 'info');
+    }
+
     function applyTask(task) {
         if (!task) return;
-        state.activeTaskId = task.id;
-        renderProduct(task);
+        state.activeTaskId = (task.status === 'pending' || task.status === 'running') ? task.id : null;
+        renderTaskView(task);
         flushLogs(task);
         renderResults(task);
+        updateTaskButtons(task);
         if (task.status === 'pending') startCountdown(task.executeAt);
         if (task.status === 'running') {
             const el = $('elmCountdown');
             if (el) { el.style.display = 'block'; el.textContent = '🚀 正在执行抢兑…'; }
         }
-        if (task.status === 'completed' || task.status === 'failed') {
+        if (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') {
             stopCountdown();
-            const btn = $('elmStartBtn');
-            if (btn) btn.disabled = false;
         }
     }
 
@@ -234,9 +271,11 @@
             try {
                 const task = await api('/status?taskId=' + encodeURIComponent(taskId));
                 applyTask(task);
-                if (task && (task.status === 'completed' || task.status === 'failed')) {
-                    stopMonitor();
-                    toast(task.status === 'completed' ? '抢兑任务已完成' : '抢兑任务失败', task.status === 'completed' ? 'success' : 'error');
+                if (task && (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled')) {
+                    const msg = task.status === 'completed' ? '抢兑任务已完成'
+                        : task.status === 'cancelled' ? '抢兑任务已停止' : '抢兑任务失败';
+                    const type = task.status === 'completed' ? 'success' : task.status === 'cancelled' ? 'info' : 'error';
+                    finishTask(task, msg, type);
                 }
             } catch (e) {
                 console.warn('elm monitor', e);
@@ -251,7 +290,9 @@
         }
         try {
             const data = await api('/today-products');
-            if (!state.activeTaskId) renderTodayProducts(data, win);
+            state.todayProducts = data;
+            if (!state.activeTaskId) renderTodayProducts(data, win || state.window);
+            else renderTaskView({ product: null });
         } catch (e) {
             const box = $('elmProductInfo');
             if (box && !state.activeTaskId) {
@@ -273,15 +314,16 @@
             updateWindowInfo(win);
             state.accounts = await api('/accounts') || [];
             renderAccounts();
+            await loadTodayProducts(win);
             const active = await api('/status');
-            if (active) {
+            if (active && (active.status === 'pending' || active.status === 'running')) {
                 state.logIndex = 0;
                 elmClearLogs();
                 applyTask(active);
                 monitorTask(active.id);
             } else {
                 state.activeTaskId = null;
-                void loadTodayProducts(win);
+                updateTaskButtons(null);
             }
         } catch (e) {
             toast(e.message || '加载失败', 'error');
@@ -299,10 +341,9 @@
         if (!state.authorized) { toast('请先上车饿了么活动', 'error'); return; }
         const refs = Array.from(state.selected);
         if (!refs.length) { toast('请至少选择一个账号', 'error'); return; }
-        const btn = $('elmStartBtn');
-        if (btn) btn.disabled = true;
         elmClearLogs();
         state.logIndex = 0;
+        updateTaskButtons({ status: 'pending' });
         try {
             const task = await api('/schedule', {
                 method: 'POST',
@@ -313,13 +354,31 @@
             toast('抢兑任务已创建，正在倒计时');
         } catch (e) {
             toast(e.message || '创建失败', 'error');
-            if (btn) btn.disabled = false;
+            updateTaskButtons(null);
+        }
+    }
+
+    async function stopExchange() {
+        const stopBtn = $('elmStopBtn');
+        if (stopBtn) stopBtn.disabled = true;
+        try {
+            const task = await api('/cancel', {
+                method: 'POST',
+                body: JSON.stringify({ taskId: state.activeTaskId || '' }),
+            });
+            finishTask(task, '抢兑任务已停止', 'info');
+        } catch (e) {
+            toast(e.message || '停止失败', 'error');
+        } finally {
+            if (stopBtn) stopBtn.disabled = false;
         }
     }
 
     function init() {
         const btn = $('elmStartBtn');
         if (btn) btn.onclick = function () { void startExchange(); };
+        const stopBtn = $('elmStopBtn');
+        if (stopBtn) stopBtn.onclick = function () { void stopExchange(); };
         const clearBtn = $('elmClearLogBtn');
         if (clearBtn) clearBtn.onclick = elmClearLogs;
         setInterval(async function () {

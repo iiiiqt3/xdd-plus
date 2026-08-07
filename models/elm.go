@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -131,6 +132,11 @@ type ElmScheduledTask struct {
 	Logs        []ElmTaskLog        `json:"logs,omitempty"`
 	logMu       sync.Mutex          `json:"-"`
 	ready       []*elmReadyAccount  `json:"-"`
+	cancelled   atomic.Bool         `json:"-"`
+}
+
+func (t *ElmScheduledTask) isCancelled() bool {
+	return t != nil && t.cancelled.Load()
 }
 
 type elmReadyAccount struct {
@@ -308,14 +314,17 @@ func (c *elmMtopClient) refreshToken() error {
 		return err
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body)
-	jar = elmCookieParse(c.cookie)
+	body, _ := io.ReadAll(resp.Body)
 	for _, ck := range resp.Cookies() {
 		jar[ck.Name] = ck.Value
 	}
 	c.cookie = elmCookieDump(jar)
 	if c.token() == "" {
-		return fmt.Errorf("mtop token 续期失败")
+		snip := strings.TrimSpace(string(body))
+		if len(snip) > 200 {
+			snip = snip[:200]
+		}
+		return fmt.Errorf("mtop token 续期失败: %s", snip)
 	}
 	return nil
 }
@@ -708,6 +717,19 @@ func elmSaveCacheItem(taskID, key string, item elmCacheItem) {
 	_ = os.WriteFile(elmCacheFile(taskID), raw, 0644)
 }
 
+func elmDeleteCacheItem(taskID, key string) {
+	if strings.TrimSpace(taskID) == "" || strings.TrimSpace(key) == "" {
+		return
+	}
+	cache := elmLoadCacheMap(taskID)
+	if _, ok := cache[key]; !ok {
+		return
+	}
+	delete(cache, key)
+	raw, _ := json.MarshalIndent(cache, "", "  ")
+	_ = os.WriteFile(elmCacheFile(taskID), raw, 0644)
+}
+
 func elmPrepareAccount(taskID string, acc ElmAccountInfo) (*elmReadyAccount, error) {
 	ref := strings.TrimSpace(acc.Ref)
 	if ref == "" {
@@ -732,6 +754,10 @@ func elmPrepareAccount(taskID string, acc ElmAccountInfo) (*elmReadyAccount, err
 				elmWriteAdminLog("info", "[CK] [%s] 使用缓存成功 ref=%s", acc.Remark, elmMaskRef(ref))
 				return &elmReadyAccount{info: acc, client: client}, nil
 			}
+		}
+		if elmIsProtocolRef(ref) {
+			elmWriteAdminLog("warn", "[CK] [%s] 缓存 CK 失效，将重新协议登录 ref=%s", acc.Remark, elmMaskRef(ref))
+			elmDeleteCacheItem(taskID, cacheKey)
 		}
 	}
 	if !elmIsProtocolRef(ref) {
@@ -928,10 +954,17 @@ func elmTaskJitter(userNumber int) time.Duration {
 }
 
 func elmSleepUntil(target time.Time) {
+	elmSleepUntilWithCancel(target, nil)
+}
+
+func elmSleepUntilWithCancel(target time.Time, task *ElmScheduledTask) bool {
 	for {
+		if task != nil && task.isCancelled() {
+			return false
+		}
 		wait := time.Until(target)
 		if wait <= 0 {
-			return
+			return true
 		}
 		step := 500 * time.Millisecond
 		if wait < 2*time.Second {
@@ -939,7 +972,7 @@ func elmSleepUntil(target time.Time) {
 		}
 		if wait < step {
 			time.Sleep(wait)
-			return
+			return task == nil || !task.isCancelled()
 		}
 		time.Sleep(step)
 	}
@@ -1047,7 +1080,16 @@ func elmRunScheduledTask(taskID string) {
 	firstFire := task.ExecuteAt.Add(time.Duration(elmRoundLagMs[0]) * time.Millisecond).Add(jitter)
 	task.AddLog("info", "后台调度已启动，目标 %s，用户错峰 %s", task.ExecuteAt.Format("15:04:05"), jitter.Round(time.Millisecond))
 
-	elmSleepUntil(task.PrepareAt)
+	if !elmSleepUntilWithCancel(task.PrepareAt, task) {
+		task.Status = "cancelled"
+		task.AddLog("warn", "任务已停止")
+		return
+	}
+	if task.isCancelled() {
+		task.Status = "cancelled"
+		task.AddLog("warn", "任务已停止")
+		return
+	}
 	task.AddLog("info", "开始预检：刷新 CK / 余额 / 商品 ID")
 	ready := make([]*elmReadyAccount, 0, len(task.Accounts))
 	var mu sync.Mutex
@@ -1074,6 +1116,11 @@ func elmRunScheduledTask(taskID string) {
 		}(acc)
 	}
 	wg.Wait()
+	if task.isCancelled() {
+		task.Status = "cancelled"
+		task.AddLog("warn", "任务已停止")
+		return
+	}
 	task.ready = ready
 	if len(ready) == 0 {
 		task.Status = "failed"
@@ -1085,14 +1132,26 @@ func elmRunScheduledTask(taskID string) {
 		task.Product = &b
 	}
 
-	elmSleepUntil(firstFire)
+	if !elmSleepUntilWithCancel(firstFire, task) || task.isCancelled() {
+		task.Status = "cancelled"
+		task.AddLog("warn", "任务已停止")
+		return
+	}
 	task.Status = "running"
 
 	successRefs := map[string]bool{}
 	for roundIdx, lag := range elmRoundLagMs {
+		if task.isCancelled() {
+			break
+		}
 		fireAt := task.ExecuteAt.Add(time.Duration(lag)*time.Millisecond).Add(jitter)
 		if time.Now().Before(fireAt) {
-			elmSleepUntil(fireAt)
+			if !elmSleepUntilWithCancel(fireAt, task) {
+				break
+			}
+		}
+		if task.isCancelled() {
+			break
 		}
 		task.AddLog("info", "第 %d/%d 轮抢兑开始（+%dms）", roundIdx+1, len(elmRoundLagMs), lag)
 		var roundWg sync.WaitGroup
@@ -1127,6 +1186,11 @@ func elmRunScheduledTask(taskID string) {
 		roundWg.Wait()
 	}
 
+	if task.isCancelled() {
+		task.Status = "cancelled"
+		task.AddLog("warn", "任务已停止")
+		return
+	}
 	task.Status = "completed"
 	successN := 0
 	for _, r := range task.Results {
@@ -1223,6 +1287,9 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string) (*ElmSch
 			break
 		}
 	}
+	if task.Product == nil {
+		elmFillTaskProductPreview(task, userNumber, targetHour)
+	}
 
 	elmScheduledTasks.Lock()
 	elmScheduledTasks.tasks[taskID] = task
@@ -1242,6 +1309,52 @@ func ElmGetScheduledTask(taskID string) *ElmScheduledTask {
 // ElmGetActiveTaskByUser 用户进行中的任务
 func ElmGetActiveTaskByUser(userNumber int) *ElmScheduledTask {
 	return elmFindActiveTaskByUser(userNumber)
+}
+
+// ElmCancelExchange 停止进行中的抢兑任务
+func ElmCancelExchange(userNumber int, taskID string) (*ElmScheduledTask, error) {
+	taskID = strings.TrimSpace(taskID)
+	if taskID == "" {
+		if t := elmFindActiveTaskByUser(userNumber); t != nil {
+			taskID = t.ID
+		}
+	}
+	if taskID == "" {
+		return nil, fmt.Errorf("没有进行中的抢兑任务")
+	}
+	elmScheduledTasks.RLock()
+	task := elmScheduledTasks.tasks[taskID]
+	elmScheduledTasks.RUnlock()
+	if task == nil || task.UserNumber != userNumber {
+		return nil, fmt.Errorf("任务不存在")
+	}
+	switch task.Status {
+	case "completed", "failed", "cancelled":
+		return task, fmt.Errorf("任务已结束")
+	}
+	task.cancelled.Store(true)
+	task.Status = "cancelled"
+	task.AddLog("warn", "用户手动停止任务")
+	elmWriteAdminLog("warn", "[task=%s user=%d] 用户手动停止任务", task.ID, userNumber)
+	return task, nil
+}
+
+func elmFillTaskProductPreview(task *ElmScheduledTask, userNumber, targetHour int) {
+	if task == nil || task.Product != nil {
+		return
+	}
+	info, err := ElmGetTodayProducts(userNumber)
+	if err != nil || info == nil {
+		return
+	}
+	for _, slot := range info.Slots {
+		if slot.TargetHour == targetHour && slot.Product != nil {
+			b := *slot.Product
+			task.Product = &b
+			task.AddLog("info", "目标商品(商城)：%s | 需要 %d 幸运星 | 状态 %s", b.Title, b.Cost, b.Status)
+			return
+		}
+	}
 }
 
 func init() {
