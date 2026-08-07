@@ -72,14 +72,17 @@ type ElmProductBrief struct {
 
 // ElmWindowInfo 当前抢兑窗口
 type ElmWindowInfo struct {
-	IsFriday    bool   `json:"isFriday"`
-	InWindow    bool   `json:"inWindow"`
-	CanStart    bool   `json:"canStart"`
-	WindowLabel string `json:"windowLabel"`
-	ExecuteAt   string `json:"executeAt"`
-	PrepareAt   string `json:"prepareAt"`
-	Message     string `json:"message"`
-	Keyword     string `json:"keyword"`
+	IsFriday        bool   `json:"isFriday"`
+	InWindow        bool   `json:"inWindow"`
+	CanStart        bool   `json:"canStart"`
+	WindowLabel     string `json:"windowLabel"`
+	ExecuteAt       string `json:"executeAt"`
+	PrepareAt       string `json:"prepareAt"`
+	Message         string `json:"message"`
+	Keyword         string `json:"keyword"`
+	TargetHour      int    `json:"targetHour"`
+	SelectableSlots []int  `json:"selectableSlots"`
+	AutoSlot        int    `json:"autoSlot"`
 }
 
 // ElmTodaySlotProduct 今日某场次商品预览
@@ -947,6 +950,27 @@ func elmCurrentWindow(now time.Time) (inWindow bool, targetHour int, executeAt, 
 	return false, 0, time.Time{}, time.Time{}, ""
 }
 
+func elmSelectableSlots(now time.Time) (slots []int, autoHour int) {
+	bj := now.In(elmBJLocation())
+	if bj.Weekday() != time.Friday {
+		return nil, 0
+	}
+	inWindow, targetHour, _, _, _ := elmCurrentWindow(now)
+	if inWindow {
+		return []int{targetHour}, targetHour
+	}
+	for _, h := range []int{10, 15} {
+		execAt := time.Date(bj.Year(), bj.Month(), bj.Day(), h, 0, 0, 0, elmBJLocation())
+		if now.Before(execAt) {
+			slots = append(slots, h)
+		}
+	}
+	if len(slots) > 0 {
+		autoHour = slots[0]
+	}
+	return slots, autoHour
+}
+
 // ElmGetWindowInfo 返回当前抢兑窗口信息
 func ElmGetWindowInfo() ElmWindowInfo {
 	now := time.Now().In(elmBJLocation())
@@ -954,9 +978,13 @@ func ElmGetWindowInfo() ElmWindowInfo {
 		IsFriday: now.Weekday() == time.Friday,
 		Keyword:  "自动识别当前场次商品",
 	}
-	inWindow, _, executeAt, prepareAt, label := elmCurrentWindow(now)
+	inWindow, targetHour, executeAt, prepareAt, label := elmCurrentWindow(now)
+	selectable, autoSlot := elmSelectableSlots(now)
 	info.InWindow = inWindow
 	info.WindowLabel = label
+	info.TargetHour = targetHour
+	info.SelectableSlots = selectable
+	info.AutoSlot = autoSlot
 	if inWindow {
 		info.CanStart = true
 		info.ExecuteAt = executeAt.Format("2006-01-02 15:04:05")
@@ -964,6 +992,8 @@ func ElmGetWindowInfo() ElmWindowInfo {
 		info.Message = "当前可参与抢兑，系统将倒计时到 " + executeAt.Format("15:04:05") + " 执行"
 	} else if !info.IsFriday {
 		info.Message = "仅每周五开放抢兑（09:30-09:58 / 14:30-14:58 可报名）"
+	} else if len(selectable) == 0 {
+		info.Message = "今日抢兑场次已结束"
 	} else {
 		info.Message = "当前不在抢兑报名时段（09:30-09:58 或 14:30-14:58）"
 	}
@@ -1504,6 +1534,17 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string, targetHo
 		return nil, false, fmt.Errorf("请选择 10 点或 15 点场次")
 	}
 	now := time.Now().In(elmBJLocation())
+	selectable, _ := elmSelectableSlots(now)
+	slotOK := false
+	for _, h := range selectable {
+		if h == targetHour {
+			slotOK = true
+			break
+		}
+	}
+	if !slotOK {
+		return nil, false, fmt.Errorf("所选场次已过期或当前不可选")
+	}
 	inWindow, windowHour, _, _, _ := elmCurrentWindow(now)
 	var executeAt, prepareAt time.Time
 	var label string

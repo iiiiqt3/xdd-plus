@@ -80,6 +80,42 @@
         updateActionButtons();
     }
 
+    function selectableSlots() {
+        const slots = state.window && state.window.selectableSlots;
+        return Array.isArray(slots) ? slots : [];
+    }
+
+    function isSlotSelectable(hour) {
+        return selectableSlots().includes(hour);
+    }
+
+    function renderSlotPicker() {
+        const slots = selectableSlots();
+        const slotSet = new Set(slots);
+        [10, 15].forEach(function (hour) {
+            const label = $('elmSlot' + hour + 'Label');
+            const input = document.querySelector('input[name="elmSlot"][value="' + hour + '"]');
+            if (!label || !input) return;
+            const ok = slotSet.has(hour);
+            input.disabled = !ok;
+            label.style.opacity = ok ? '1' : '0.42';
+            label.style.pointerEvents = ok ? 'auto' : 'none';
+            label.title = ok ? '' : '该场次已过期或当前不可选';
+            if (!ok && state.selectedSlot === hour) {
+                input.checked = false;
+                state.selectedSlot = 0;
+            }
+        });
+        const auto = state.window && state.window.autoSlot;
+        if (auto && slotSet.has(auto)) {
+            if (!state.selectedSlot || !slotSet.has(state.selectedSlot)) {
+                selectSlot(auto, true);
+            }
+        }
+        if (state.ckData) renderCkProducts(state.ckData);
+        updateActionButtons();
+    }
+
     function updateActionButtons(task) {
         const startBtn = $('elmStartBtn');
         const stopBtn = $('elmStopBtn');
@@ -170,12 +206,13 @@
         }
         html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;">';
         slots.forEach(function (slot) {
+            const selectable = isSlotSelectable(slot.targetHour);
             const active = state.selectedSlot === slot.targetHour;
-            const border = active ? '2px solid #6366f1' : '1px solid var(--glass-border)';
-            const bg = active ? 'rgba(99,102,241,0.06)' : 'var(--bg-secondary)';
+            const border = !selectable ? '1px dashed var(--glass-border)' : (active ? '2px solid #6366f1' : '1px solid var(--glass-border)');
+            const bg = !selectable ? 'var(--bg-secondary)' : (active ? 'rgba(99,102,241,0.06)' : 'var(--bg-secondary)');
             const p = slot.product;
-            html += `<div style="padding:12px 14px;border-radius:10px;border:${border};background:${bg};">
-                <div style="font-weight:700;color:var(--text);margin-bottom:6px;">${active ? '🎯 已选 · ' : ''}${esc(slot.slotLabel)}</div>
+            html += `<div style="padding:12px 14px;border-radius:10px;border:${border};background:${bg};opacity:${selectable ? '1' : '0.45'};">
+                <div style="font-weight:700;color:var(--text);margin-bottom:6px;">${!selectable ? '⏱ 已过期 · ' : (active ? '🎯 已选 · ' : '')}${esc(slot.slotLabel)}</div>
                 <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">执行时间：${esc(slot.executeAt || '-')}</div>`;
             if (p) {
                 html += `<div style="font-weight:600;color:var(--text);margin-bottom:4px;">${esc(p.title)}</div>
@@ -233,6 +270,7 @@
             hintEl.textContent = win.message || '';
             hintEl.style.color = win.canStart ? '#10b981' : 'var(--text-muted)';
         }
+        renderSlotPicker();
     }
 
     function flushLogs(task) {
@@ -392,8 +430,15 @@
         updateActionButtons();
     }
 
-    function selectSlot(hour) {
+    function selectSlot(hour, silent) {
+        if (!isSlotSelectable(hour)) {
+            if (!silent) toast('该场次已过期或当前不可选', 'warn');
+            return;
+        }
         state.selectedSlot = hour;
+        document.querySelectorAll('input[name="elmSlot"]').forEach(function (el) {
+            el.checked = Number(el.value) === hour;
+        });
         if (state.ckData) renderCkProducts(state.ckData);
         updateActionButtons(null);
     }
@@ -412,6 +457,7 @@
         const slotPicker = $('elmSlotPicker');
         if (slotPicker) slotPicker.style.display = state.ckReady ? 'block' : 'none';
         renderCkProducts(data);
+        renderSlotPicker();
         renderAccounts();
     }
 
