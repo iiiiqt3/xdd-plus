@@ -69,12 +69,16 @@
         const startBtn = $('elmStartBtn');
         const stopBtn = $('elmStopBtn');
         const fetchBtn = $('elmFetchCkBtn');
-        const running = !!(task && (task.status === 'pending' || task.status === 'running'));
+        const running = !!(
+            state.activeTaskId ||
+            (task && (task.status === 'pending' || task.status === 'running'))
+        );
         if (stopBtn) stopBtn.style.display = running ? 'inline-block' : 'none';
         if (fetchBtn) {
             fetchBtn.disabled = running || !state.authorized || !state.selectedRef;
         }
         if (startBtn) {
+            startBtn.style.display = running ? 'none' : 'inline-block';
             const canStart = state.authorized
                 && state.ckReady
                 && state.selectedSlot > 0
@@ -189,7 +193,7 @@
             hintEl.textContent = win.message || '';
             hintEl.style.color = win.canStart ? '#10b981' : 'var(--text-muted)';
         }
-        updateActionButtons(null);
+        // 按钮状态由 applyTask / finishTask 维护，勿在此处重置（会与任务轮询冲突导致闪烁）
     }
 
     function flushLogs(task) {
