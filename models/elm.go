@@ -33,9 +33,7 @@ const (
 	elmExchangeSource       = "INTERACT_CENTER_EXCHANGE_MALL"
 	elmPrepareBeforeSec     = 30
 	elmAttemptsPerRound     = 5 // 每个时间点连打 5 次
-	elmTaskRetainDuration   = 10 * time.Minute // 已结束任务内存保留时长
-	elmTaskPruneInterval    = 10 * time.Minute // 定时清理孤儿/过期任务
-	elmTaskStaleGrace       = 2 * time.Minute  // 超过执行时间仍未结束视为僵死
+	elmTaskStaleGrace       = 2 * time.Minute // 超过执行时间仍未结束视为僵死
 	elmDebugNoTimeLimit     = true // 调试：跳过报名时段限制，可随时点击抢兑
 	elmDefaultLat           = "30.27415"
 	elmDefaultLng           = "120.15507"
@@ -1030,6 +1028,7 @@ func CheckElmAuth(userNumber int) (bool, string) {
 }
 
 func elmFindActiveTaskByUser(userNumber int) *ElmScheduledTask {
+	elmMaintainTasks()
 	elmScheduledTasks.RLock()
 	defer elmScheduledTasks.RUnlock()
 	for _, t := range elmScheduledTasks.tasks {
@@ -1044,10 +1043,10 @@ func elmPruneOldTasks() {
 	elmMaintainTasks()
 }
 
-// elmMaintainTasks 清理已结束任务与僵死中的 pending/running 孤儿任务
+// elmMaintainTasks 按需清理：已结束任务立即移除；执行超时仍未结束的僵死任务标记失败并移除。
+// 仅在服务启动、创建任务、查询活跃任务、任务 goroutine 结束时触发（每天仅 10:00/15:00 两场，无需后台定时轮询）。
 func elmMaintainTasks() {
 	now := time.Now()
-	cutoff := now.Add(-elmTaskRetainDuration)
 	staleBefore := now.Add(-elmTaskStaleGrace)
 	var removed, stale int
 	elmScheduledTasks.Lock()
@@ -1060,10 +1059,8 @@ func elmMaintainTasks() {
 		}
 		switch t.Status {
 		case "completed", "failed", "cancelled":
-			if t.CreatedAt.Before(cutoff) {
-				delete(elmScheduledTasks.tasks, id)
-				removed++
-			}
+			delete(elmScheduledTasks.tasks, id)
+			removed++
 		case "pending", "running":
 			if !t.ExecuteAt.IsZero() && t.ExecuteAt.Before(staleBefore) {
 				t.cancelled.Store(true)
@@ -1078,16 +1075,6 @@ func elmMaintainTasks() {
 	if removed > 0 {
 		elmWriteAdminLog("info", "饿了么任务维护：清理 %d 条（僵死 %d）", removed, stale)
 	}
-}
-
-func elmStartTaskMaintainer() {
-	go func() {
-		ticker := time.NewTicker(elmTaskPruneInterval)
-		defer ticker.Stop()
-		for range ticker.C {
-			elmMaintainTasks()
-		}
-	}()
 }
 
 func elmTaskJitter(userNumber int) time.Duration {
@@ -1681,9 +1668,8 @@ func elmFillTaskProductPreview(task *ElmScheduledTask, userNumber, targetHour in
 
 func init() {
 	_ = os.MkdirAll(filepath.Join(elmLogDir(), "cache"), 0755)
-	go elmMaintainTasks()
-	elmStartTaskMaintainer()
-	elmWriteAdminLog("info", "饿了么抢兑模块已加载 slotAutoMatch=true rounds=%v pruneEvery=%s", elmRoundLagMs, elmTaskPruneInterval)
+	elmMaintainTasks()
+	elmWriteAdminLog("info", "饿了么抢兑模块已加载 slotAutoMatch=true rounds=%v", elmRoundLagMs)
 }
 
 // ElmGetTodayProducts 查询今日两场抢兑商品（进入页面时展示）
