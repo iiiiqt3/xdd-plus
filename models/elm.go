@@ -305,6 +305,8 @@ func (c *elmMtopClient) refreshToken() error {
 	if err != nil {
 		return err
 	}
+	req.Header.Set("content-type", "application/x-www-form-urlencoded;charset=UTF-8")
+	req.Header.Set("accept", "application/json")
 	req.Header.Set("cookie", bare)
 	req.Header.Set("origin", elmOrigin)
 	req.Header.Set("referer", elmReferer)
