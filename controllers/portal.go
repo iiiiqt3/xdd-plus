@@ -1516,9 +1516,9 @@ func (c *PortalController) KuwoGetWithdrawStatus() {
 
 // ElmCheckAuth 检查饿了么活动授权
 func (c *PortalController) ElmCheckAuth() {
-	profile := c.PortalProfile()
-	if profile == nil {
-		c.Data["json"] = map[string]interface{}{"code": 401, "msg": "未登录"}
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "data": map[string]interface{}{"authorized": false, "msg": err.Error()}, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
@@ -1529,9 +1529,9 @@ func (c *PortalController) ElmCheckAuth() {
 
 // ElmGetAccounts 获取已上车饿了么账号
 func (c *PortalController) ElmGetAccounts() {
-	profile := c.PortalProfile()
-	if profile == nil {
-		c.Data["json"] = map[string]interface{}{"code": 401, "msg": "未登录"}
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
@@ -1553,9 +1553,9 @@ func (c *PortalController) ElmGetWindow() {
 
 // ElmScheduleExchange 创建抢兑任务
 func (c *PortalController) ElmScheduleExchange() {
-	profile := c.PortalProfile()
-	if profile == nil {
-		c.Data["json"] = map[string]interface{}{"code": 401, "msg": "未登录"}
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
@@ -1584,9 +1584,9 @@ func (c *PortalController) ElmScheduleExchange() {
 
 // ElmGetExchangeStatus 查询抢兑任务状态
 func (c *PortalController) ElmGetExchangeStatus() {
-	profile := c.PortalProfile()
-	if profile == nil {
-		c.Data["json"] = map[string]interface{}{"code": 401, "msg": "未登录"}
+	profile, err := models.GetPortalProfile(c.PortalAccount.ID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
 		return
 	}
