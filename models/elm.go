@@ -718,10 +718,7 @@ func GetAllElmAccounts(userNumber int) ([]ElmAccountInfo, error) {
 			continue
 		}
 		ref := strings.TrimSpace(p.EnvValue)
-		remark := strings.TrimSpace(p.DisplayName)
-		if remark == "" {
-			remark = strings.TrimSpace(p.Remarks)
-		}
+		remark := projectRemarkAlias(p)
 		if i := strings.Index(ref, "#"); i >= 0 {
 			if remark == "" {
 				remark = strings.TrimSpace(ref[i+1:])
