@@ -99,7 +99,9 @@
                 && state.ckReady
                 && state.selectedSlot > 0
                 && hasSelection
-                && !running;
+                && !running
+                && state.window
+                && state.window.canStart;
             startBtn.disabled = !canStart;
             startBtn.style.opacity = canStart ? '1' : '0.55';
             startBtn.style.cursor = canStart ? 'pointer' : 'not-allowed';

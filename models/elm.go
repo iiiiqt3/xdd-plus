@@ -34,7 +34,7 @@ const (
 	elmPrepareBeforeSec     = 30
 	elmAttemptsPerRound     = 5 // 每个时间点连打 5 次
 	elmTaskStaleGrace       = 2 * time.Minute // 超过执行时间仍未结束视为僵死
-	elmDebugNoTimeLimit     = true // 调试：跳过报名时段限制，可随时点击抢兑
+	elmDebugNoTimeLimit     = false
 	elmDefaultLat           = "30.27415"
 	elmDefaultLng           = "120.15507"
 )
@@ -934,12 +934,12 @@ func elmCurrentWindow(now time.Time) (inWindow bool, targetHour int, executeAt, 
 		return false, 0, time.Time{}, time.Time{}, ""
 	}
 	minutes := bj.Hour()*60 + bj.Minute()
-	if minutes >= 9*60+30 && minutes < 9*60+56 {
+	if minutes >= 9*60+30 && minutes <= 9*60+58 {
 		executeAt = time.Date(bj.Year(), bj.Month(), bj.Day(), 10, 0, 0, 0, elmBJLocation())
 		prepareAt = executeAt.Add(-elmPrepareBeforeSec * time.Second)
 		return true, 10, executeAt, prepareAt, "周五 10:00 场"
 	}
-	if minutes >= 14*60+30 && minutes < 14*60+56 {
+	if minutes >= 14*60+30 && minutes <= 14*60+58 {
 		executeAt = time.Date(bj.Year(), bj.Month(), bj.Day(), 15, 0, 0, 0, elmBJLocation())
 		prepareAt = executeAt.Add(-elmPrepareBeforeSec * time.Second)
 		return true, 15, executeAt, prepareAt, "周五 15:00 场"
@@ -962,21 +962,10 @@ func ElmGetWindowInfo() ElmWindowInfo {
 		info.ExecuteAt = executeAt.Format("2006-01-02 15:04:05")
 		info.PrepareAt = prepareAt.Format("2006-01-02 15:04:05")
 		info.Message = "当前可参与抢兑，系统将倒计时到 " + executeAt.Format("15:04:05") + " 执行"
-	} else if elmDebugNoTimeLimit {
-		info.CanStart = true
-		if info.IsFriday {
-			if now.Hour() < 15 {
-				info.ExecuteAt = time.Date(now.Year(), now.Month(), now.Day(), 15, 0, 0, 0, elmBJLocation()).Format("2006-01-02 15:04:05")
-				info.WindowLabel = "周五 15:00 场"
-			} else {
-				info.ExecuteAt = time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, elmBJLocation()).Format("2006-01-02 15:04:05")
-				info.WindowLabel = "周五 10:00 场"
-			}
-		}
 	} else if !info.IsFriday {
-		info.Message = "仅每周五开放抢兑（09:30-09:55 / 14:30-14:55 可报名）"
+		info.Message = "仅每周五开放抢兑（09:30-09:58 / 14:30-14:58 可报名）"
 	} else {
-		info.Message = "当前不在抢兑报名时段（09:30-09:55 或 14:30-14:55）"
+		info.Message = "当前不在抢兑报名时段（09:30-09:58 或 14:30-14:58）"
 	}
 	return info
 }
@@ -1532,7 +1521,7 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string, targetHo
 		executeAt, prepareAt = elmResolveExecuteTime(now, targetHour)
 		label = elmSlotLabel(targetHour)
 	} else {
-		return nil, false, fmt.Errorf("当前不在抢兑报名时段（周五 09:30-09:55 或 14:30-14:55）")
+		return nil, false, fmt.Errorf("当前不在抢兑报名时段（周五 09:30-09:58 或 14:30-14:58）")
 	}
 	if existing := elmFindActiveTaskByUser(userNumber); existing != nil {
 		elmWriteAdminLog("info", "[task=%s user=%d] 复用进行中的抢兑任务", existing.ID, userNumber)
