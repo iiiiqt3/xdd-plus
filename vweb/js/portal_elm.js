@@ -108,6 +108,46 @@
         return selectableSlots().includes(hour);
     }
 
+    function parseSlotExecuteAt(raw) {
+        if (!raw) return null;
+        const s = String(raw);
+        if (s.includes('每周')) return null;
+        const t = new Date(s.replace(/-/g, '/'));
+        return isNaN(t.getTime()) ? null : t;
+    }
+
+    function bjNowDate() {
+        return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+    }
+
+    function isSlotBeforeExecute(hour, slot) {
+        const parsed = slot ? parseSlotExecuteAt(slot.executeAt) : null;
+        if (parsed) return Date.now() < parsed.getTime();
+        const win = state.window;
+        if (win && win.isFriday === false) return null;
+        const bj = bjNowDate();
+        const exec = new Date(bj);
+        exec.setHours(hour, 0, 0, 0);
+        exec.setMinutes(0, 0, 0);
+        return bj < exec;
+    }
+
+    function slotStatusPrefix(hour, slot) {
+        if (isSlotSelectable(hour)) {
+            return state.selectedSlot === hour ? '🎯 已选 · ' : '';
+        }
+        const before = isSlotBeforeExecute(hour, slot);
+        if (before === null) return '📅 非抢兑日 · ';
+        return before ? '⏳ 场次未到 · ' : '⏱ 场次已结束 · ';
+    }
+
+    function slotUnavailableHint(hour, slot) {
+        if (isSlotSelectable(hour)) return '';
+        const before = isSlotBeforeExecute(hour, slot);
+        if (before === null) return '仅每周五开放抢兑';
+        return before ? '该场次未到' : '该场次已结束';
+    }
+
     function renderSlotPicker() {
         const slots = selectableSlots();
         const slotSet = new Set(slots);
@@ -119,7 +159,7 @@
             input.disabled = !ok;
             label.style.opacity = ok ? '1' : '0.42';
             label.style.pointerEvents = ok ? 'auto' : 'none';
-            label.title = ok ? '' : '该场次已过期或当前不可选';
+            label.title = ok ? '' : slotUnavailableHint(hour, null);
             if (!ok && state.selectedSlot === hour) {
                 input.checked = false;
                 state.selectedSlot = 0;
@@ -231,7 +271,7 @@
             const bg = !selectable ? 'var(--bg-secondary)' : (active ? 'rgba(99,102,241,0.06)' : 'var(--bg-secondary)');
             const p = slot.product;
             html += `<div style="padding:12px 14px;border-radius:10px;border:${border};background:${bg};opacity:${selectable ? '1' : '0.45'};">
-                <div style="font-weight:700;color:var(--text);margin-bottom:6px;">${!selectable ? '⏱ 已过期 · ' : (active ? '🎯 已选 · ' : '')}${esc(slot.slotLabel)}</div>
+                <div style="font-weight:700;color:var(--text);margin-bottom:6px;">${slotStatusPrefix(slot.targetHour, slot)}${esc(slot.slotLabel)}</div>
                 <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">执行时间：${esc(slot.executeAt || '-')}</div>`;
             if (p) {
                 html += `<div style="font-weight:600;color:var(--text);margin-bottom:4px;">${esc(p.title)}</div>
@@ -463,7 +503,7 @@
 
     function selectSlot(hour, silent) {
         if (!isSlotSelectable(hour)) {
-            if (!silent) toast('该场次已过期或当前不可选', 'warn');
+            if (!silent) toast(slotUnavailableHint(hour, null) || '该场次当前不可选', 'warn');
             return;
         }
         state.selectedSlot = hour;

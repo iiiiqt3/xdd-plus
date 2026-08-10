@@ -950,6 +950,18 @@ func elmCurrentWindow(now time.Time) (inWindow bool, targetHour int, executeAt, 
 	return false, 0, time.Time{}, time.Time{}, ""
 }
 
+func elmSlotUnavailableReason(now time.Time, targetHour int) string {
+	bj := now.In(elmBJLocation())
+	if bj.Weekday() != time.Friday {
+		return "仅每周五开放抢兑"
+	}
+	execAt := time.Date(bj.Year(), bj.Month(), bj.Day(), targetHour, 0, 0, 0, elmBJLocation())
+	if now.Before(execAt) {
+		return "所选场次未到"
+	}
+	return "所选场次已结束"
+}
+
 func elmSelectableSlots(now time.Time) (slots []int, autoHour int) {
 	bj := now.In(elmBJLocation())
 	if bj.Weekday() != time.Friday {
@@ -1543,7 +1555,7 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string, targetHo
 		}
 	}
 	if !slotOK {
-		return nil, false, fmt.Errorf("所选场次已过期或当前不可选")
+		return nil, false, fmt.Errorf("%s", elmSlotUnavailableReason(now, targetHour))
 	}
 	inWindow, windowHour, _, _, _ := elmCurrentWindow(now)
 	var executeAt, prepareAt time.Time
