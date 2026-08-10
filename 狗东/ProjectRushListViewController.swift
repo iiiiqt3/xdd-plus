@@ -10,6 +10,7 @@ final class ProjectRushListViewController: BaseNativeViewController, UITableView
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private let items: [RushItem] = [
         RushItem(icon: "🎵", title: "酷我提现", subtitle: "定时抢兑 · 00:00 / 09:00 / 13:00 / 17:00 / 20:00"),
+        RushItem(icon: "🍜", title: "饿了么抢兑", subtitle: "每周五 10:00 / 15:00 场 · 与网页端一致"),
     ]
 
     override func viewDidLoad() {
@@ -61,7 +62,11 @@ final class ProjectRushListViewController: BaseNativeViewController, UITableView
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        navigationController?.pushViewController(KuwoRushViewController(), animated: true)
+        if indexPath.row == 0 {
+            navigationController?.pushViewController(KuwoRushViewController(), animated: true)
+        } else {
+            navigationController?.pushViewController(ElmRushViewController(), animated: true)
+        }
     }
 
     private func textIcon(_ text: String) -> UIImage? {

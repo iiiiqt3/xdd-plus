@@ -41,7 +41,9 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     private var proxyStatsStack: UIStackView?
     private var accountChipsStack: UIStackView?
     private var runningTasks: [String: String] = [:]
+    private var runningTaskNames: [String: String] = [:]
     private var logStreamers: [String: JdTaskLogStreamer] = [:]
+    private var jdLogRetryWorkItems: [String: DispatchWorkItem] = [:]
     private var taskButtonRefs: [String: UIButton] = [:]
     private var logLines: [String] = []
     private let logTextView = UITextView()
@@ -109,9 +111,11 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
+        restoreRunningTasksFromPrefs()
         if mainTab == .query { loadAccounts() }
         if mainTab == .task && !taskContentStack.arrangedSubviews.isEmpty {
             loadTaskTabData()
+            reconnectJdLogStreams()
         }
     }
 
@@ -1873,9 +1877,30 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             }
         }
         taskButtonRefs[task.id] = execBtn
-        wrap.addArrangedSubview(execBtn)
+
+        var historyBtn: UIButton!
+        historyBtn = compactButton("执行查看", color: .systemGray) { [weak self] in
+            self?.showTaskRunHistory(task: task, source: historyBtn)
+        }
+
+        let btnRow = UIStackView(arrangedSubviews: [execBtn, historyBtn])
+        btnRow.axis = .horizontal
+        btnRow.spacing = 8
+        btnRow.distribution = .fillEqually
+        wrap.addArrangedSubview(btnRow)
 
         return wrap
+    }
+
+    private func showTaskRunHistory(task: TaskDef, source: UIButton) {
+        let vc = JdTaskRunHistoryViewController(taskId: task.id, taskName: task.name)
+        let nav = UINavigationController(rootViewController: vc)
+        nav.modalPresentationStyle = .pageSheet
+        if let sheet = nav.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(nav, animated: true)
     }
 
     private func updateTaskButton(_ taskId: String) {
@@ -1911,26 +1936,76 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
                         return
                     }
                     self.runningTasks[task.id] = logId
+                    self.runningTaskNames[task.id] = task.name
+                    self.persistRunningTasks()
                     self.setButtonLoading(button, loading: false, title: "停止")
                     self.updateTaskButton(task.id)
                     self.appendLog("[\(task.name)] 任务已启动，连接日志流...")
-                    self.logStreamers[task.id]?.cancel()
-                    let streamer = PortalService.shared.streamJdTaskLogs(taskId: logId, onLine: { line in
-                        self.appendLog("[\(task.name)] \(line)")
-                    }, onDone: {
-                        self.appendLog("[\(task.name)] ✅ 任务执行完成")
-                        self.runningTasks.removeValue(forKey: task.id)
-                        self.logStreamers.removeValue(forKey: task.id)
-                        self.updateTaskButton(task.id)
-                    }, onError: { error in
-                        self.appendLog("[\(task.name)] 错误: \(error.message)")
-                        self.runningTasks.removeValue(forKey: task.id)
-                        self.logStreamers.removeValue(forKey: task.id)
-                        self.updateTaskButton(task.id)
-                    })
-                    self.logStreamers[task.id] = streamer
+                    self.startJdLogStream(task: task, logId: logId)
                 }
             }
+        }
+    }
+
+    private func startJdLogStream(task: TaskDef, logId: String) {
+        jdLogRetryWorkItems[task.id]?.cancel()
+        logStreamers[task.id]?.cancel()
+        let streamer = PortalService.shared.streamJdTaskLogs(taskId: logId, onLine: { [weak self] line in
+            self?.appendLog("[\(task.name)] \(line)")
+        }, onDone: { [weak self] in
+            guard let self = self else { return }
+            self.appendLog("[\(task.name)] ✅ 任务执行完成")
+            self.runningTasks.removeValue(forKey: task.id)
+            self.runningTaskNames.removeValue(forKey: task.id)
+            self.logStreamers.removeValue(forKey: task.id)
+            self.persistRunningTasks()
+            self.updateTaskButton(task.id)
+        }, onError: { [weak self] error in
+            guard let self = self else { return }
+            if self.runningTasks[task.id] != nil {
+                self.appendLog("[\(task.name)] 日志断开，稍后重连…")
+                self.scheduleJdLogReconnect(task: task, logId: logId)
+            } else {
+                self.appendLog("[\(task.name)] 错误: \(error.message)")
+                self.runningTasks.removeValue(forKey: task.id)
+                self.runningTaskNames.removeValue(forKey: task.id)
+                self.logStreamers.removeValue(forKey: task.id)
+                self.persistRunningTasks()
+                self.updateTaskButton(task.id)
+            }
+        })
+        logStreamers[task.id] = streamer
+    }
+
+    private func scheduleJdLogReconnect(task: TaskDef, logId: String) {
+        jdLogRetryWorkItems[task.id]?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self = self, self.runningTasks[task.id] != nil else { return }
+            self.startJdLogStream(task: task, logId: logId)
+        }
+        jdLogRetryWorkItems[task.id] = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
+    }
+
+    private func reconnectJdLogStreams() {
+        for (taskId, logId) in runningTasks {
+            guard let task = taskDefs.first(where: { $0.id == taskId }) else { continue }
+            updateTaskButton(taskId)
+            startJdLogStream(task: task, logId: logId)
+        }
+    }
+
+    private func persistRunningTasks() {
+        UserDefaults.standard.set(runningTasks, forKey: "jd_running_tasks")
+        UserDefaults.standard.set(runningTaskNames, forKey: "jd_running_task_names")
+    }
+
+    private func restoreRunningTasksFromPrefs() {
+        if let tasks = UserDefaults.standard.dictionary(forKey: "jd_running_tasks") as? [String: String] {
+            runningTasks = tasks
+        }
+        if let names = UserDefaults.standard.dictionary(forKey: "jd_running_task_names") as? [String: String] {
+            runningTaskNames = names
         }
     }
 
@@ -1944,6 +2019,8 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.runningTasks.removeValue(forKey: task.id)
+                self.runningTaskNames.removeValue(forKey: task.id)
+                self.persistRunningTasks()
                 self.setButtonLoading(button, loading: false, title: "执行")
                 self.updateTaskButton(task.id)
                 self.flashButtonSuccess(button, message: "✅ 已停止", restore: "执行")
@@ -2103,6 +2180,247 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         guard index >= 0, index < innerTabCount else { return }
         mainSegmented.selectedSegmentIndex = index
         mainSegmentChanged()
+    }
+}
+
+@available(iOS 13.0, *)
+final class JdTaskRunHistoryViewController: BaseNativeViewController {
+    private let taskId: String
+    private let taskName: String
+    private let scrollView = UIScrollView()
+    private let stack = UIStackView()
+    private let statusLabel = UILabel()
+
+    init(taskId: String, taskName: String) {
+        self.taskId = taskId
+        self.taskName = taskName
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = "执行记录 · \(taskName)"
+        view.backgroundColor = .systemGroupedBackground
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "关闭", style: .plain, target: self, action: #selector(closeTapped))
+
+        statusLabel.font = .systemFont(ofSize: 12)
+        statusLabel.textColor = .secondaryLabel
+        statusLabel.numberOfLines = 0
+        statusLabel.text = "加载中…"
+
+        stack.axis = .vertical
+        stack.spacing = 10
+        stack.isLayoutMarginsRelativeArrangement = true
+        stack.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 24, right: 16)
+
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(stack)
+        view.addSubview(statusLabel)
+        view.addSubview(scrollView)
+        NSLayoutConstraint.activate([
+            statusLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            statusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            statusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            scrollView.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 8),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+        ])
+        loadRecords()
+    }
+
+    @objc private func closeTapped() {
+        dismiss(animated: true)
+    }
+
+    private func loadRecords() {
+        PortalService.shared.fetchJdRunRecords(taskId: taskId, limit: 30) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                switch result {
+                case .failure(let error):
+                    self.statusLabel.text = "加载失败"
+                    self.handle(error)
+                case .success(let page):
+                    self.renderRecords(page.items ?? [])
+                }
+            }
+        }
+    }
+
+    private func renderRecords(_ items: [PortalJdRunRecord]) {
+        stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if items.isEmpty {
+            statusLabel.text = "该任务暂无执行记录"
+            let empty = UILabel()
+            empty.text = "暂无记录"
+            empty.textAlignment = .center
+            empty.textColor = .secondaryLabel
+            empty.font = .systemFont(ofSize: 14)
+            stack.addArrangedSubview(empty)
+            return
+        }
+        statusLabel.text = "共 \(items.count) 条记录，点击查看详细日志"
+        items.forEach { item in
+            stack.addArrangedSubview(buildRecordCard(item))
+        }
+    }
+
+    private func buildRecordCard(_ item: PortalJdRunRecord) -> UIView {
+        let trigger = item.trigger == "auto" ? "自动" : "手动"
+        let status = item.status ?? "-"
+        let card = UIStackView()
+        card.axis = .vertical
+        card.spacing = 6
+        card.isLayoutMarginsRelativeArrangement = true
+        card.layoutMargins = UIEdgeInsets(top: 14, left: 14, bottom: 14, right: 14)
+        card.applyCardStyle(cornerRadius: 14)
+        card.addArrangedSubview(metaRow("时间", item.startedAt ?? "-", bold: true))
+        card.addArrangedSubview(metaRow("方式", trigger))
+        card.addArrangedSubview(metaRow("状态", status, bold: true))
+        if let msg = item.message, !msg.isEmpty {
+            card.addArrangedSubview(metaRow("摘要", msg))
+        }
+        let hint = UILabel()
+        hint.text = "查看日志 ›"
+        hint.font = .systemFont(ofSize: 12.5, weight: .semibold)
+        hint.textColor = .systemBlue
+        hint.textAlignment = .right
+        card.addArrangedSubview(hint)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(recordTapped(_:)))
+        card.isUserInteractionEnabled = true
+        card.tag = Int(item.id ?? 0)
+        card.accessibilityLabel = item.startedAt
+        objc_setAssociatedObject(card, &AssociatedKeys.record, item, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        card.addGestureRecognizer(tap)
+        return card
+    }
+
+    private func metaRow(_ label: String, _ value: String, bold: Bool = false) -> UIStackView {
+        let row = UIStackView()
+        row.axis = .horizontal
+        row.spacing = 8
+        row.alignment = .top
+        let key = UILabel()
+        key.text = label
+        key.font = .systemFont(ofSize: 12)
+        key.textColor = .secondaryLabel
+        key.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        let val = UILabel()
+        val.text = value
+        val.font = bold ? .systemFont(ofSize: 13, weight: .semibold) : .systemFont(ofSize: 13)
+        val.numberOfLines = 0
+        row.addArrangedSubview(key)
+        row.addArrangedSubview(val)
+        return row
+    }
+
+    @objc private func recordTapped(_ gesture: UITapGestureRecognizer) {
+        guard let card = gesture.view,
+              let item = objc_getAssociatedObject(card, &AssociatedKeys.record) as? PortalJdRunRecord,
+              let recordId = item.id else { return }
+        let trigger = item.trigger == "auto" ? "自动" : "手动"
+        let logVC = JdTaskRunLogViewController(
+            recordId: recordId,
+            taskName: taskName,
+            startedAt: item.startedAt,
+            trigger: trigger,
+            status: item.status,
+            message: item.message
+        )
+        navigationController?.pushViewController(logVC, animated: true)
+    }
+
+    private enum AssociatedKeys {
+        static var record = "jd_run_record"
+    }
+}
+
+@available(iOS 13.0, *)
+final class JdTaskRunLogViewController: BaseNativeViewController {
+    private let recordId: Int64
+    private let taskName: String
+    private let startedAt: String?
+    private let trigger: String
+    private let status: String?
+    private let message: String?
+    private let metaLabel = UILabel()
+    private let logView = UITextView()
+
+    init(recordId: Int64, taskName: String, startedAt: String?, trigger: String, status: String?, message: String?) {
+        self.recordId = recordId
+        self.taskName = taskName
+        self.startedAt = startedAt
+        self.trigger = trigger
+        self.status = status
+        self.message = message
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = "执行日志 #\(recordId)"
+        view.backgroundColor = .systemGroupedBackground
+
+        metaLabel.font = .systemFont(ofSize: 12.5)
+        metaLabel.textColor = .secondaryLabel
+        metaLabel.numberOfLines = 0
+        var meta = "任务：\(taskName)\n时间：\(startedAt ?? "-")\n方式：\(trigger) · 状态：\(status ?? "-")"
+        if let message = message, !message.isEmpty { meta += "\n摘要：\(message)" }
+        metaLabel.text = meta
+
+        logView.isEditable = false
+        logView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        logView.backgroundColor = .secondarySystemBackground
+        logView.layer.cornerRadius = 10
+        logView.text = "加载中…"
+
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "复制", style: .plain, target: self, action: #selector(copyLog))
+
+        let stack = UIStackView(arrangedSubviews: [metaLabel, logView])
+        stack.axis = .vertical
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            stack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+            logView.heightAnchor.constraint(greaterThanOrEqualToConstant: 280),
+        ])
+        loadLog()
+    }
+
+    @objc private func copyLog() {
+        UIPasteboard.general.string = logView.text
+        showMessage("已复制")
+    }
+
+    private func loadLog() {
+        PortalService.shared.fetchJdRunLog(id: recordId) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                switch result {
+                case .failure(let error):
+                    self.logView.text = "加载失败：\(error.message)"
+                    self.handle(error)
+                case .success(let data):
+                    self.logView.text = data.content?.isEmpty == false ? data.content : "(空)"
+                }
+            }
+        }
     }
 }
 

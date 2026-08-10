@@ -88,8 +88,10 @@ final class KuwoRushViewController: BaseNativeViewController {
     private let contentStack = UIStackView()
 
     private let authHint = UILabel()
-    private let accountSelectWrap = UIStackView()
-    private let accountSelectButton = UIButton(type: .system)
+    private let accountCheckboxStack = UIStackView()
+    private let singleAccountFieldsWrap = UIStackView()
+    private let multiSmsWrap = UIStackView()
+    private let multiSmsStack = UIStackView()
     private let phoneField = UITextField()
     private let passwordField = UITextField()
     private let smsField = UITextField()
@@ -107,7 +109,9 @@ final class KuwoRushViewController: BaseNativeViewController {
 
     private var kuwoAuthorized = false
     private var kuwoAccounts: [(phone: String, password: String)] = []
-    private var selectedAccountIndex = 0
+    private var selectedAccountIndices = Set<Int>()
+    private var accountToggleButtons: [UIButton] = []
+    private var multiSmsFields: [String: UITextField] = [:]
     private var selectedQuotaId = "30002"
     private var activeTaskId: String?
     private var withdrawSubmitting = false
@@ -210,28 +214,21 @@ final class KuwoRushViewController: BaseNativeViewController {
         tip.numberOfLines = 0
         card.addArrangedSubview(tip)
 
-        accountSelectWrap.axis = .vertical
-        accountSelectWrap.spacing = 4
-        accountSelectWrap.isHidden = true
+        accountCheckboxStack.axis = .vertical
+        accountCheckboxStack.spacing = 6
+        accountCheckboxStack.isHidden = true
         let accountLabel = UILabel()
-        accountLabel.text = "选择抢兑账号"
+        accountLabel.text = "选择抢兑账号（可多选）"
         accountLabel.font = .systemFont(ofSize: 11.5)
         accountLabel.textColor = .secondaryLabel
-        accountSelectButton.contentHorizontalAlignment = .left
-        accountSelectButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
-        accountSelectButton.backgroundColor = UIColor.secondarySystemGroupedBackground
-        accountSelectButton.layer.cornerRadius = 10
-        accountSelectButton.layer.borderWidth = 1
-        accountSelectButton.layer.borderColor = UIColor.systemGray4.cgColor
-        accountSelectButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
-        bindAction(accountSelectButton) { [weak self] in self?.showAccountPicker() }
-        accountSelectWrap.addArrangedSubview(accountLabel)
-        accountSelectWrap.addArrangedSubview(accountSelectButton)
-        card.addArrangedSubview(accountSelectWrap)
+        card.addArrangedSubview(accountLabel)
+        card.addArrangedSubview(accountCheckboxStack)
 
-        card.addArrangedSubview(fieldBlock(label: "手机号", field: phoneField, secure: false, readonly: true))
-        card.addArrangedSubview(fieldBlock(label: "密码", field: passwordField, secure: true, readonly: true))
-        card.addArrangedSubview(fieldBlock(label: "短信验证码", field: smsField, secure: false, readonly: false))
+        singleAccountFieldsWrap.axis = .vertical
+        singleAccountFieldsWrap.spacing = 10
+        singleAccountFieldsWrap.addArrangedSubview(fieldBlock(label: "手机号", field: phoneField, secure: false, readonly: true))
+        singleAccountFieldsWrap.addArrangedSubview(fieldBlock(label: "密码", field: passwordField, secure: true, readonly: true))
+        singleAccountFieldsWrap.addArrangedSubview(fieldBlock(label: "短信验证码", field: smsField, secure: false, readonly: false))
 
         let smsRow = UIStackView()
         smsRow.axis = .horizontal
@@ -250,7 +247,30 @@ final class KuwoRushViewController: BaseNativeViewController {
         smsStatus.numberOfLines = 2
         smsRow.addArrangedSubview(sendBtn)
         smsRow.addArrangedSubview(smsStatus)
-        card.addArrangedSubview(smsRow)
+        singleAccountFieldsWrap.addArrangedSubview(smsRow)
+        card.addArrangedSubview(singleAccountFieldsWrap)
+
+        multiSmsWrap.axis = .vertical
+        multiSmsWrap.spacing = 8
+        multiSmsWrap.isHidden = true
+        let multiLabel = UILabel()
+        multiLabel.text = "各账号验证码"
+        multiLabel.font = .systemFont(ofSize: 11.5)
+        multiLabel.textColor = .secondaryLabel
+        multiSmsWrap.addArrangedSubview(multiLabel)
+        multiSmsStack.axis = .vertical
+        multiSmsStack.spacing = 8
+        multiSmsWrap.addArrangedSubview(multiSmsStack)
+        let multiSendBtn = UIButton(type: .system)
+        multiSendBtn.setTitle("批量发送验证码", for: .normal)
+        multiSendBtn.titleLabel?.font = .systemFont(ofSize: 12, weight: .bold)
+        multiSendBtn.backgroundColor = .systemBlue
+        multiSendBtn.setTitleColor(.white, for: .normal)
+        multiSendBtn.layer.cornerRadius = 8
+        multiSendBtn.contentEdgeInsets = UIEdgeInsets(top: 8, left: 14, bottom: 8, right: 14)
+        bindAction(multiSendBtn) { [weak self] in self?.sendSms() }
+        multiSmsWrap.addArrangedSubview(multiSendBtn)
+        card.addArrangedSubview(multiSmsWrap)
         return card
     }
 
@@ -520,9 +540,11 @@ final class KuwoRushViewController: BaseNativeViewController {
             switch result {
             case .failure:
                 self.kuwoAccounts = []
-                self.accountSelectWrap.isHidden = true
+                self.selectedAccountIndices.removeAll()
+                self.accountCheckboxStack.isHidden = true
                 self.phoneField.text = ""
                 self.passwordField.text = ""
+                self.updateSmsUiMode()
             case .success(let cred):
                 self.applyKuwoCredentials(cred)
             }
@@ -546,68 +568,124 @@ final class KuwoRushViewController: BaseNativeViewController {
         return [(phone, cred.password ?? "")]
     }
 
+    private func getSelectedAccounts() -> [(phone: String, password: String)] {
+        selectedAccountIndices.sorted().compactMap { idx in
+            guard idx >= 0, idx < kuwoAccounts.count else { return nil }
+            return kuwoAccounts[idx]
+        }
+    }
+
+    private func renderAccountCheckboxes() {
+        accountCheckboxStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        accountToggleButtons.removeAll()
+        guard !kuwoAccounts.isEmpty else {
+            accountCheckboxStack.isHidden = true
+            return
+        }
+        accountCheckboxStack.isHidden = false
+        if selectedAccountIndices.isEmpty {
+            selectedAccountIndices.insert(0)
+        }
+        for (idx, acc) in kuwoAccounts.enumerated() {
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.spacing = 8
+            row.alignment = .center
+            let btn = UIButton(type: .system)
+            btn.contentHorizontalAlignment = .left
+            btn.titleLabel?.font = .systemFont(ofSize: 13, weight: .medium)
+            btn.tag = idx
+            updateAccountToggleButton(btn, phone: acc.phone, selected: selectedAccountIndices.contains(idx))
+            bindAction(btn) { [weak self] in
+                guard let self = self else { return }
+                let index = btn.tag
+                if self.selectedAccountIndices.contains(index) {
+                    self.selectedAccountIndices.remove(index)
+                } else {
+                    self.selectedAccountIndices.insert(index)
+                }
+                self.updateAccountToggleButton(btn, phone: self.kuwoAccounts[index].phone, selected: self.selectedAccountIndices.contains(index))
+                self.updateSmsUiMode()
+            }
+            accountToggleButtons.append(btn)
+            row.addArrangedSubview(btn)
+            accountCheckboxStack.addArrangedSubview(row)
+        }
+    }
+
+    private func updateAccountToggleButton(_ btn: UIButton, phone: String, selected: Bool) {
+        let icon = selected ? "☑" : "☐"
+        btn.setTitle("\(icon) \(maskPhone(phone))", for: .normal)
+        btn.setTitleColor(selected ? .systemIndigo : .label, for: .normal)
+    }
+
+    private func updateSmsUiMode() {
+        let selected = getSelectedAccounts()
+        let multi = selected.count > 1
+        singleAccountFieldsWrap.isHidden = multi || selected.isEmpty
+        multiSmsWrap.isHidden = !multi
+        if selected.count == 1 {
+            phoneField.text = selected[0].phone
+            passwordField.text = selected[0].password
+        }
+        if multi {
+            multiSmsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+            multiSmsFields.removeAll()
+            selected.forEach { acc in
+                let wrap = UIStackView()
+                wrap.axis = .vertical
+                wrap.spacing = 4
+                let lbl = UILabel()
+                lbl.text = maskPhone(acc.phone)
+                lbl.font = .systemFont(ofSize: 11.5)
+                lbl.textColor = .secondaryLabel
+                let field = UITextField()
+                field.borderStyle = .roundedRect
+                field.placeholder = "验证码"
+                field.font = .systemFont(ofSize: 14)
+                multiSmsFields[acc.phone] = field
+                wrap.addArrangedSubview(lbl)
+                wrap.addArrangedSubview(field)
+                multiSmsStack.addArrangedSubview(wrap)
+            }
+        }
+    }
+
+    private func collectSessionPayload() -> [(phone: String, password: String, smsCode: String)] {
+        let selected = getSelectedAccounts()
+        guard !selected.isEmpty else { return [] }
+        let multi = selected.count > 1
+        let globalSms = smsField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return selected.map { acc in
+            let smsCode: String
+            if multi {
+                smsCode = multiSmsFields[acc.phone]?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            } else {
+                smsCode = globalSms
+            }
+            return (phone: acc.phone, password: acc.password, smsCode: smsCode)
+        }
+    }
+
     private func applyKuwoCredentials(_ cred: KuwoCredentials) {
         let previousPhone = phoneField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         kuwoAccounts = resolveKuwoAccounts(cred)
         if !previousPhone.isEmpty, let matched = kuwoAccounts.firstIndex(where: { $0.phone == previousPhone }) {
-            selectedAccountIndex = matched
+            selectedAccountIndices = [matched]
         }
-        refreshAccountSelector()
+        if selectedAccountIndices.isEmpty, !kuwoAccounts.isEmpty {
+            selectedAccountIndices.insert(0)
+        }
+        renderAccountCheckboxes()
+        updateSmsUiMode()
+        let primaryPhone = getSelectedAccounts().first?.phone ?? cred.phone ?? ""
         guard !kuwoAccounts.isEmpty else {
             phoneField.text = cred.phone
             passwordField.text = cred.password
             restoreKuwoState(phone: cred.phone ?? "")
             return
         }
-        let index = min(max(selectedAccountIndex, 0), kuwoAccounts.count - 1)
-        selectedAccountIndex = index
-        let acc = kuwoAccounts[index]
-        phoneField.text = acc.phone
-        passwordField.text = acc.password
-        restoreKuwoState(phone: acc.phone)
-    }
-
-    private func refreshAccountSelector() {
-        guard kuwoAccounts.count > 1 else {
-            accountSelectWrap.isHidden = true
-            selectedAccountIndex = 0
-            return
-        }
-        accountSelectWrap.isHidden = false
-        let index = min(max(selectedAccountIndex, 0), kuwoAccounts.count - 1)
-        selectedAccountIndex = index
-        accountSelectButton.setTitle("当前：\(maskPhone(kuwoAccounts[index].phone)) ▾", for: .normal)
-    }
-
-    private func showAccountPicker() {
-        guard kuwoAccounts.count > 1 else { return }
-        let alert = UIAlertController(title: "选择抢兑账号", message: nil, preferredStyle: .actionSheet)
-        for (idx, acc) in kuwoAccounts.enumerated() {
-            let title = maskPhone(acc.phone) + (idx == selectedAccountIndex ? " ✓" : "")
-            alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
-                self?.switchAccount(to: idx)
-            })
-        }
-        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
-        if let popover = alert.popoverPresentationController {
-            popover.sourceView = accountSelectButton
-            popover.sourceRect = accountSelectButton.bounds
-        }
-        present(alert, animated: true)
-    }
-
-    private func switchAccount(to index: Int) {
-        guard index >= 0, index < kuwoAccounts.count else { return }
-        selectedAccountIndex = index
-        clearActiveState()
-        restoreWithdrawUi()
-        let acc = kuwoAccounts[index]
-        phoneField.text = acc.phone
-        passwordField.text = acc.password
-        smsField.text = ""
-        smsStatus.text = ""
-        smsStatus.textColor = .secondaryLabel
-        refreshAccountSelector()
+        restoreKuwoState(phone: primaryPhone)
     }
 
     private func startClock() {
@@ -619,7 +697,6 @@ final class KuwoRushViewController: BaseNativeViewController {
 
     private func stopTimers() {
         clockTimer?.invalidate()
-        monitorTimer?.invalidate()
         countdownTimer?.invalidate()
     }
 
@@ -652,28 +729,56 @@ final class KuwoRushViewController: BaseNativeViewController {
 
     private func sendSms() {
         guard kuwoAuthorized else { showMessage("酷我活动授权已到期，请前往我的项目续费"); return }
-        let phone = phoneField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let password = passwordField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !phone.isEmpty, !password.isEmpty else { showMessage("未读取到酷我账号，请先在项目中上车"); return }
+        let sessions = getSelectedAccounts()
+        guard !sessions.isEmpty else { showMessage("请至少选择一个账号"); return }
         clearActiveState()
         restoreWithdrawUi()
         smsField.text = ""
+        multiSmsFields.values.forEach { $0.text = "" }
         smsStatus.text = "正在登录并发送验证码..."
         appendLog("正在登录酷我账号...")
-        PortalService.shared.sendKuwoSms(phone: phone, password: password) { [weak self] result in
-            guard let self = self else { return }
-            switch result {
-            case .failure(let error):
-                self.smsStatus.text = "❌ \(error.message)"
-                self.smsStatus.textColor = .systemRed
-                self.appendLog("发送失败: \(error.message)")
-                self.handle(error)
-            case .success:
-                let masked = phone.count >= 11 ? String(phone.prefix(3)) + "****" + String(phone.suffix(4)) : phone
-                self.smsStatus.text = "✅ 已发送至 \(masked)"
-                self.smsStatus.textColor = .systemGreen
-                self.appendLog("验证码已发送，请输入验证码")
-                self.showMessage("验证码已发送")
+        if sessions.count == 1 {
+            let acc = sessions[0]
+            PortalService.shared.sendKuwoSms(phone: acc.phone, password: acc.password) { [weak self] result in
+                guard let self = self else { return }
+                switch result {
+                case .failure(let error):
+                    self.smsStatus.text = "❌ \(error.message)"
+                    self.smsStatus.textColor = .systemRed
+                    self.appendLog("发送失败: \(error.message)")
+                    self.handle(error)
+                case .success:
+                    self.smsStatus.text = "✅ 已发送至 \(self.maskPhone(acc.phone))"
+                    self.smsStatus.textColor = .systemGreen
+                    self.appendLog("验证码已发送，请输入验证码")
+                    self.showMessage("验证码已发送")
+                }
+            }
+        } else {
+            PortalService.shared.sendKuwoSmsBatch(sessions: sessions.map { ($0.phone, $0.password) }) { [weak self] result in
+                guard let self = self else { return }
+                switch result {
+                case .failure(let error):
+                    self.smsStatus.text = "❌ \(error.message)"
+                    self.smsStatus.textColor = .systemRed
+                    self.appendLog("批量发送失败: \(error.message)")
+                    self.handle(error)
+                case .success(let batch):
+                    let lines = batch.accounts ?? []
+                    let ok = lines.filter { $0.success == true }.count
+                    let fail = lines.count - ok
+                    self.smsStatus.text = "✅ 成功 \(ok) / 失败 \(fail)"
+                    self.smsStatus.textColor = .systemGreen
+                    lines.forEach { item in
+                        let phone = item.phone ?? "?"
+                        if item.success == true {
+                            self.appendLog("[\(self.maskPhone(phone))] 验证码已发送")
+                        } else {
+                            self.appendLog("[\(self.maskPhone(phone))] 发送失败: \(item.message ?? "未知错误")")
+                        }
+                    }
+                    self.showMessage("批量发送完成：成功 \(ok)，失败 \(fail)")
+                }
             }
         }
     }
@@ -681,29 +786,28 @@ final class KuwoRushViewController: BaseNativeViewController {
     private func startWithdraw() {
         guard kuwoAuthorized else { showMessage("酷我活动授权已到期，请前往我的项目续费"); return }
         guard !withdrawSubmitting else { showMessage("任务提交中，请稍候"); return }
-        let phone = phoneField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let password = passwordField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let smsCode = smsField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !phone.isEmpty, !password.isEmpty else { showMessage("未读取到酷我账号"); return }
-        guard !smsCode.isEmpty else { showMessage("请输入验证码"); return }
-
+        let sessions = collectSessionPayload()
+        guard !sessions.isEmpty else { showMessage("请至少选择一个账号"); return }
+        guard sessions.allSatisfy({ !$0.smsCode.isEmpty }) else { showMessage("请为每个账号输入验证码"); return }
+        let primary = sessions[0]
+        let fallbackSms = primary.smsCode
         let info = KuwoTimeHelper.getNextWithdrawInfo()
         if info.inWindow && info.diffMin > 0 && info.diffMin <= 4 {
             appendLog("🎯 提交定时抢兑任务，后端将在 \(KuwoTimeHelper.formatHour(info.hour)) 自动执行（3轮错峰）")
             setWithdrawUiLocked(true, allowSmsEdit: true)
-            saveKuwoState(phone: phone, password: password, smsCode: smsCode, quotaId: selectedQuotaId, targetHour: info.hour, taskId: nil, immediate: false, useProxy: useKuwoProxy())
-            scheduleOnBackend(phone: phone, password: password, smsCode: smsCode, quotaId: selectedQuotaId, targetHour: info.hour, info: info, immediate: false)
+            saveKuwoState(phone: primary.phone, password: primary.password, smsCode: fallbackSms, quotaId: selectedQuotaId, targetHour: info.hour, taskId: nil, immediate: false, useProxy: useKuwoProxy())
+            scheduleOnBackend(sessions: sessions, fallbackSms: fallbackSms, quotaId: selectedQuotaId, targetHour: info.hour, info: info, immediate: false)
             return
         }
         appendLog("⚡ 立即提交抢兑...")
         setWithdrawUiLocked(true)
-        scheduleOnBackend(phone: phone, password: password, smsCode: smsCode, quotaId: selectedQuotaId, targetHour: nil, info: nil, immediate: true)
+        scheduleOnBackend(sessions: sessions, fallbackSms: fallbackSms, quotaId: selectedQuotaId, targetHour: nil, info: nil, immediate: true)
     }
 
-    private func scheduleOnBackend(phone: String, password: String, smsCode: String, quotaId: String, targetHour: Int?, info: KuwoTimeHelper.NextWithdrawInfo?, immediate: Bool) {
+    private func scheduleOnBackend(sessions: [(phone: String, password: String, smsCode: String)], fallbackSms: String, quotaId: String, targetHour: Int?, info: KuwoTimeHelper.NextWithdrawInfo?, immediate: Bool) {
         guard !withdrawSubmitting else { return }
         withdrawSubmitting = true
-        PortalService.shared.scheduleKuwoWithdraw(phone: phone, password: password, quotaId: quotaId, smsCode: smsCode, targetHour: targetHour, immediate: immediate, useProxy: useKuwoProxy()) { [weak self] result in
+        PortalService.shared.scheduleKuwoWithdrawSessions(sessions: sessions, quotaId: quotaId, fallbackSmsCode: fallbackSms, targetHour: targetHour, immediate: immediate, useProxy: useKuwoProxy()) { [weak self] result in
             guard let self = self else { return }
             self.withdrawSubmitting = false
             switch result {
@@ -738,7 +842,9 @@ final class KuwoRushViewController: BaseNativeViewController {
         phoneField.isEnabled = !locked
         passwordField.isEnabled = !locked
         useProxySwitch.isEnabled = !locked
+        accountToggleButtons.forEach { $0.isEnabled = !locked }
         smsField.isEnabled = !locked || allowSmsEdit
+        multiSmsFields.values.forEach { $0.isEnabled = !locked || allowSmsEdit }
     }
 
     private func restoreWithdrawUi() {
@@ -949,6 +1055,599 @@ final class KuwoRushViewController: BaseNativeViewController {
                     self.appendLog("🔄 倒计时已结束，等待后端执行结果…")
                 }
             }
+        }
+    }
+
+    private func bindAction(_ button: UIButton, _ action: @escaping () -> Void) {
+        let wrapper = ActionWrapper(action)
+        objc_setAssociatedObject(button, &ActionWrapper.key, wrapper, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        button.addTarget(wrapper, action: #selector(ActionWrapper.invoke), for: .touchUpInside)
+    }
+}
+
+final class ElmRushViewController: BaseNativeViewController {
+    private let scrollView = UIScrollView()
+    private let contentStack = UIStackView()
+    private let authHint = UILabel()
+    private let windowLabel = UILabel()
+    private let accountStack = UIStackView()
+    private let productStack = UIStackView()
+    private let slotSegment = UISegmentedControl(items: ["10:00 场", "15:00 场"])
+    private let fetchButton = UIButton(type: .system)
+    private let startButton = UIButton(type: .system)
+    private let stopButton = UIButton(type: .system)
+    private let countdownLabel = UILabel()
+    private let logView = UITextView()
+
+    private var elmAuthorized = false
+    private var accounts: [ElmAccount] = []
+    private var selectedRefs = Set<String>()
+    private var ckReadyRefs = Set<String>()
+    private var selectedSlot = 0
+    private var windowInfo: ElmWindowInfo?
+    private var ckData: ElmCkFetchResult?
+    private var activeTaskId: String?
+    private var taskLogIndex = 0
+    private var monitorTimer: Timer?
+    private var countdownTimer: Timer?
+    private var clockTimer: Timer?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        navigationItem.largeTitleDisplayMode = .never
+        view.backgroundColor = .systemGroupedBackground
+        setupUI()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+        restoreLogs()
+        loadPage()
+        startClock()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        clockTimer?.invalidate()
+        countdownTimer?.invalidate()
+    }
+
+    private func setupUI() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        contentStack.axis = .vertical
+        contentStack.spacing = 12
+        contentStack.isLayoutMarginsRelativeArrangement = true
+        contentStack.layoutMargins = UIEdgeInsets(top: 8, left: 16, bottom: 24, right: 16)
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(contentStack)
+        view.addSubview(scrollView)
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            contentStack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentStack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentStack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentStack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+        ])
+
+        let subtitle = UILabel()
+        subtitle.text = "每周五 10:00 / 15:00 场，与网页端逻辑一致"
+        subtitle.font = .systemFont(ofSize: 12)
+        subtitle.textColor = .secondaryLabel
+        contentStack.addArrangedSubview(subtitle)
+
+        authHint.font = .systemFont(ofSize: 12.5, weight: .semibold)
+        authHint.textColor = .systemRed
+        authHint.numberOfLines = 0
+        authHint.isHidden = true
+        contentStack.addArrangedSubview(authHint)
+
+        let card = UIStackView()
+        card.axis = .vertical
+        card.spacing = 10
+        card.isLayoutMarginsRelativeArrangement = true
+        card.layoutMargins = UIEdgeInsets(top: 14, left: 14, bottom: 14, right: 14)
+        card.applyCardStyle(cornerRadius: 14)
+
+        windowLabel.font = .systemFont(ofSize: 12.5)
+        windowLabel.numberOfLines = 0
+        card.addArrangedSubview(windowLabel)
+
+        let accountTitle = UILabel()
+        accountTitle.text = "选择账号（可多选）"
+        accountTitle.font = .systemFont(ofSize: 11.5)
+        accountTitle.textColor = .secondaryLabel
+        card.addArrangedSubview(accountTitle)
+
+        accountStack.axis = .vertical
+        accountStack.spacing = 6
+        card.addArrangedSubview(accountStack)
+
+        let slotTitle = UILabel()
+        slotTitle.text = "选择场次"
+        slotTitle.font = .systemFont(ofSize: 11.5)
+        slotTitle.textColor = .secondaryLabel
+        card.addArrangedSubview(slotTitle)
+
+        slotSegment.selectedSegmentIndex = UISegmentedControl.noSegment
+        slotSegment.addTarget(self, action: #selector(slotChanged), for: .valueChanged)
+        card.addArrangedSubview(slotSegment)
+
+        productStack.axis = .vertical
+        productStack.spacing = 6
+        card.addArrangedSubview(productStack)
+        renderCkProducts(nil)
+
+        stylePrimary(fetchButton, title: "获取 CK", color: .systemGreen)
+        stylePrimary(startButton, title: "参与抢兑", color: .systemIndigo)
+        stylePrimary(stopButton, title: "停止", color: .systemRed)
+        stopButton.isHidden = true
+        bindAction(fetchButton) { [weak self] in self?.fetchCk() }
+        bindAction(startButton) { [weak self] in self?.startExchange() }
+        bindAction(stopButton) { [weak self] in self?.stopExchange() }
+
+        let btnRow = UIStackView(arrangedSubviews: [fetchButton, startButton, stopButton])
+        btnRow.axis = .horizontal
+        btnRow.spacing = 8
+        btnRow.distribution = .fillEqually
+        card.addArrangedSubview(btnRow)
+
+        countdownLabel.font = .systemFont(ofSize: 14, weight: .bold)
+        countdownLabel.textColor = .white
+        countdownLabel.textAlignment = .center
+        countdownLabel.isHidden = true
+        countdownLabel.backgroundColor = .systemOrange
+        countdownLabel.layer.cornerRadius = 10
+        countdownLabel.clipsToBounds = true
+        card.addArrangedSubview(countdownLabel)
+
+        contentStack.addArrangedSubview(card)
+
+        let logCard = UIStackView()
+        logCard.axis = .vertical
+        logCard.spacing = 8
+        logCard.isLayoutMarginsRelativeArrangement = true
+        logCard.layoutMargins = UIEdgeInsets(top: 14, left: 14, bottom: 14, right: 14)
+        logCard.applyCardStyle(cornerRadius: 14)
+
+        let logHeader = UIStackView()
+        logHeader.axis = .horizontal
+        let logTitle = UILabel()
+        logTitle.text = "执行日志"
+        logTitle.font = .systemFont(ofSize: 14, weight: .bold)
+        let clearBtn = UIButton(type: .system)
+        clearBtn.setTitle("清空", for: .normal)
+        clearBtn.titleLabel?.font = .systemFont(ofSize: 12)
+        bindAction(clearBtn) { [weak self] in self?.clearLogs() }
+        logHeader.addArrangedSubview(logTitle)
+        logHeader.addArrangedSubview(UIView())
+        logHeader.addArrangedSubview(clearBtn)
+        logCard.addArrangedSubview(logHeader)
+
+        logView.isEditable = false
+        logView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        logView.backgroundColor = .secondarySystemBackground
+        logView.layer.cornerRadius = 10
+        logView.heightAnchor.constraint(equalToConstant: 220).isActive = true
+        logCard.addArrangedSubview(logView)
+        contentStack.addArrangedSubview(logCard)
+    }
+
+    private func stylePrimary(_ button: UIButton, title: String, color: UIColor) {
+        button.setTitle(title, for: .normal)
+        button.setTitleColor(.white, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .bold)
+        button.backgroundColor = color
+        button.layer.cornerRadius = 10
+        button.heightAnchor.constraint(equalToConstant: 42).isActive = true
+    }
+
+    @objc private func slotChanged() {
+        selectedSlot = slotSegment.selectedSegmentIndex == 0 ? 10 : (slotSegment.selectedSegmentIndex == 1 ? 15 : 0)
+        if let data = ckData { renderCkProducts(data) }
+        updateButtons()
+    }
+
+    private func isSlotSelectable(_ hour: Int) -> Bool {
+        windowInfo?.selectableSlots?.contains(hour) == true
+    }
+
+    private func isSlotBeforeExecute(_ slot: ElmSlotProduct) -> Bool? {
+        let executeAt = slot.executeAt ?? ""
+        if executeAt.contains("每周") { return nil }
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "zh_CN")
+        fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
+        fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        if let parsed = fmt.date(from: executeAt) {
+            return parsed.timeIntervalSinceNow > 0
+        }
+        var cal = Calendar.current
+        cal.timeZone = TimeZone(identifier: "Asia/Shanghai") ?? .current
+        let hour = slot.targetHour ?? 0
+        var exec = cal.dateComponents([.year, .month, .day], from: Date())
+        exec.hour = hour
+        exec.minute = 0
+        exec.second = 0
+        guard let execDate = cal.date(from: exec) else { return true }
+        return Date() < execDate
+    }
+
+    private func slotStatusPrefix(_ slot: ElmSlotProduct) -> String {
+        let hour = slot.targetHour ?? 0
+        if isSlotSelectable(hour) {
+            return selectedSlot == hour ? "🎯 已选 · " : ""
+        }
+        switch isSlotBeforeExecute(slot) {
+        case nil: return "📅 非抢兑日 · "
+        case true?: return "⏳ 场次未到 · "
+        default: return "⏱ 场次已结束 · "
+        }
+    }
+
+    private func resetCkState() {
+        ckData = nil
+        ckReadyRefs.removeAll()
+        selectedSlot = 0
+        slotSegment.selectedSegmentIndex = UISegmentedControl.noSegment
+        renderCkProducts(nil)
+        updateButtons()
+    }
+
+    private func syncCkReadyFromData() {
+        let refs = selectedRefs
+        ckReadyRefs = Set(
+            ckData?.accounts
+                .filter { ($0.success ?? false) && refs.contains($0.ref ?? "") }
+                .compactMap { $0.ref } ?? []
+        )
+    }
+
+    private func renderCkProducts(_ data: ElmCkFetchResult?) {
+        productStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        guard let data = data else {
+            productStack.addArrangedSubview(captionLabel("请先选择账号并点击「获取 CK」"))
+            return
+        }
+
+        let readyAccounts = data.accounts.filter { $0.success == true }
+        let isSingle = data.accounts.count == 1 && readyAccounts.count == 1
+
+        if isSingle, let acc = readyAccounts.first {
+            productStack.addArrangedSubview(captionLabel("✅ CK 已获取 · 通道：\(acc.route ?? "-")"))
+            let star = (acc.starBalance ?? -1) >= 0 ? "\(acc.starBalance ?? 0)" : "--"
+            let starLabel = captionLabel("💎 幸运星余额：\(star) · 账号：\(acc.remark ?? acc.ref ?? "")")
+            starLabel.textColor = .systemOrange
+            productStack.addArrangedSubview(starLabel)
+            if let msg = data.message, !msg.isEmpty {
+                productStack.addArrangedSubview(captionLabel(msg))
+            }
+        } else {
+            let total = data.totalCount > 0 ? data.totalCount : data.accounts.count
+            let summary = captionLabel("CK 就绪：\(data.readyCount)/\(total)")
+            summary.font = .systemFont(ofSize: 12.5, weight: .semibold)
+            productStack.addArrangedSubview(summary)
+            if let msg = data.message, !msg.isEmpty {
+                productStack.addArrangedSubview(captionLabel(msg))
+            }
+            for item in data.accounts {
+                let icon = (item.success ?? false) ? "✅" : "❌"
+                var extra = ""
+                if let route = item.route { extra += " · \(route)" }
+                if (item.success ?? false), (item.starBalance ?? -1) >= 0 { extra += " · \(item.starBalance ?? 0)星" }
+                productStack.addArrangedSubview(captionLabel("\(icon) \(item.remark ?? item.ref ?? "") — \(item.message ?? "")\(extra)"))
+            }
+        }
+
+        if data.slots.isEmpty {
+            productStack.addArrangedSubview(captionLabel("暂无场次商品信息"))
+            return
+        }
+        for slot in data.slots {
+            productStack.addArrangedSubview(buildSlotCard(slot))
+        }
+    }
+
+    private func buildSlotCard(_ slot: ElmSlotProduct) -> UIView {
+        let hour = slot.targetHour ?? 0
+        let selectable = isSlotSelectable(hour)
+        let active = selectedSlot == hour
+        let prefix = slotStatusPrefix(slot)
+        let card = UIStackView()
+        card.axis = .vertical
+        card.spacing = 4
+        card.isLayoutMarginsRelativeArrangement = true
+        card.layoutMargins = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+        card.applyCardStyle(cornerRadius: 10)
+        card.alpha = selectable ? 1 : 0.45
+        if active {
+            card.layer.borderWidth = 2
+            card.layer.borderColor = UIColor.systemIndigo.cgColor
+        }
+
+        let title = captionLabel("\(prefix)\(slot.slotLabel ?? "\(hour):00 场")")
+        title.font = .systemFont(ofSize: 13, weight: .semibold)
+        title.textColor = .label
+        card.addArrangedSubview(title)
+        card.addArrangedSubview(captionLabel("执行时间：\(slot.executeAt ?? "-")"))
+
+        if let p = slot.product {
+            let name = captionLabel(p.title ?? "")
+            name.font = .systemFont(ofSize: 12.5, weight: .semibold)
+            name.textColor = .label
+            card.addArrangedSubview(name)
+            card.addArrangedSubview(captionLabel("所需幸运星：\(p.cost ?? 0) · 状态：\(p.status ?? "")"))
+        } else {
+            card.addArrangedSubview(captionLabel("暂未识别到该场次商品"))
+        }
+        return card
+    }
+
+    private func prefs() -> UserDefaults { UserDefaults.standard }
+
+    private func appendLog(_ msg: String) {
+        let ts = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        let line = "[\(ts)] \(msg)\n"
+        logView.text = (logView.text ?? "") + line
+        prefs().set(logView.text, forKey: "elm_rush_log")
+    }
+
+    private func restoreLogs() {
+        logView.text = prefs().string(forKey: "elm_rush_log") ?? ""
+    }
+
+    private func clearLogs() {
+        logView.text = ""
+        taskLogIndex = 0
+        prefs().removeObject(forKey: "elm_rush_log")
+    }
+
+    private func flushTaskLogs(_ logs: [ElmTaskLog]?) {
+        guard let logs = logs, logs.count > taskLogIndex else { return }
+        for i in taskLogIndex..<logs.count {
+            let entry = logs[i]
+            let icon = entry.level == "success" ? "✅" : (entry.level == "error" ? "❌" : (entry.level == "warn" ? "⚠️" : "•"))
+            let prefix = entry.time.map { "\($0) " } ?? ""
+            appendLog("\(prefix)\(icon) \(entry.message ?? "")")
+        }
+        taskLogIndex = logs.count
+    }
+
+    private func loadPage() {
+        PortalService.shared.checkElmAuth { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .failure(let error):
+                self.handle(error)
+            case .success(let pair):
+                self.elmAuthorized = pair.0
+                self.authHint.isHidden = pair.0
+                if !pair.0 { self.authHint.text = pair.1.isEmpty ? "请先上车饿了么活动" : pair.1 }
+            }
+        }
+        PortalService.shared.fetchElmAccounts { [weak self] result in
+            guard let self = self else { return }
+            if case .success(let list) = result {
+                self.accounts = list
+                self.renderAccounts()
+            }
+        }
+        refreshWindow()
+        resumeActiveTask()
+    }
+
+    private func startClock() {
+        clockTimer?.invalidate()
+        clockTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.refreshWindow()
+        }
+    }
+
+    private func refreshWindow() {
+        PortalService.shared.fetchElmWindow { [weak self] result in
+            guard let self = self, case .success(let info) = result else { return }
+            self.windowInfo = info
+            let slots = info.selectableSlots?.map { "\($0):00" }.joined(separator: " / ") ?? "--"
+            self.windowLabel.text = "当前场次：\(slots)\n\(info.message ?? "")"
+            let slotSet = Set(info.selectableSlots ?? [])
+            self.slotSegment.setEnabled(slotSet.contains(10), forSegmentAt: 0)
+            self.slotSegment.setEnabled(slotSet.contains(15), forSegmentAt: 1)
+            if self.selectedSlot > 0 && !slotSet.contains(self.selectedSlot) {
+                self.selectedSlot = 0
+                self.slotSegment.selectedSegmentIndex = UISegmentedControl.noSegment
+            }
+            if let auto = info.autoSlot, self.selectedSlot == 0, slotSet.contains(auto) {
+                self.selectedSlot = auto
+                self.slotSegment.selectedSegmentIndex = auto == 10 ? 0 : 1
+            }
+            if let data = self.ckData { self.renderCkProducts(data) }
+            self.updateButtons()
+        }
+    }
+
+    private func renderAccounts() {
+        accountStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if accounts.isEmpty {
+            accountStack.addArrangedSubview(captionLabel("暂无饿了么账号，请先在项目中上车"))
+            return
+        }
+        if selectedRefs.isEmpty {
+            accounts.first(where: { !($0.ref ?? "").isEmpty })?.ref.map { selectedRefs.insert($0) }
+        }
+        for acc in accounts {
+            guard let ref = acc.ref, !ref.isEmpty else { continue }
+            let cb = UISwitch()
+            cb.isOn = selectedRefs.contains(ref)
+            cb.addAction(UIAction { [weak self] _ in
+                guard let self = self else { return }
+                if cb.isOn { self.selectedRefs.insert(ref) } else {
+                    self.selectedRefs.remove(ref)
+                    self.ckReadyRefs.remove(ref)
+                }
+                if self.selectedRefs.isEmpty {
+                    self.resetCkState()
+                } else {
+                    self.syncCkReadyFromData()
+                    self.updateButtons()
+                }
+            }, for: .valueChanged)
+            let row = UIStackView(arrangedSubviews: [captionLabel("\(acc.remark ?? ref) (\(acc.route ?? "协议"))"), cb])
+            row.axis = .horizontal
+            row.distribution = .equalSpacing
+            accountStack.addArrangedSubview(row)
+        }
+        updateButtons()
+    }
+
+    private func captionLabel(_ text: String) -> UILabel {
+        let label = UILabel()
+        label.text = text
+        label.font = .systemFont(ofSize: 12.5)
+        return label
+    }
+
+    private func updateButtons() {
+        let running = !(activeTaskId?.isEmpty ?? true)
+        fetchButton.isEnabled = elmAuthorized && !selectedRefs.isEmpty && !running
+        fetchButton.alpha = fetchButton.isEnabled ? 1 : 0.5
+        let canStart = elmAuthorized && !selectedRefs.isEmpty && selectedRefs.isSubset(of: ckReadyRefs) && selectedSlot > 0 && (windowInfo?.canStart ?? false) && !running
+        startButton.isHidden = running
+        startButton.isEnabled = canStart
+        startButton.alpha = canStart ? 1 : 0.5
+        stopButton.isHidden = !running
+    }
+
+    private func fetchCk() {
+        let refs = Array(selectedRefs)
+        guard !refs.isEmpty else { showMessage("请至少选择一个账号"); return }
+        appendLog("开始获取 CK…")
+        PortalService.shared.fetchElmCk(refs: refs) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .failure(let error):
+                self.appendLog("CK 失败: \(error.message)")
+                self.handle(error)
+            case .success(let data):
+                self.ckData = data
+                self.syncCkReadyFromData()
+                self.renderCkProducts(data)
+                let total = data.totalCount > 0 ? data.totalCount : refs.count
+                self.appendLog("CK 完成：\(data.readyCount)/\(total)")
+                for acc in data.accounts {
+                    let icon = (acc.success ?? false) ? "✅" : "❌"
+                    self.appendLog("\(icon) CK \(acc.remark ?? acc.ref ?? "")：\(acc.message ?? "")")
+                }
+                self.refreshWindow()
+                self.updateButtons()
+            }
+        }
+    }
+
+    private func startExchange() {
+        guard elmAuthorized else { showMessage("请先上车饿了么活动"); return }
+        guard selectedSlot > 0 else { showMessage("请选择场次"); return }
+        let refs = Array(selectedRefs)
+        appendLog("创建抢兑任务…")
+        PortalService.shared.scheduleElmExchange(refs: refs, targetHour: selectedSlot) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .failure(let error):
+                self.appendLog("创建失败: \(error.message)")
+                self.handle(error)
+            case .success(let task):
+                self.activeTaskId = task.id
+                self.taskLogIndex = 0
+                self.appendLog("任务已创建：\(task.id ?? "")")
+                self.applyTask(task)
+                self.monitorTask(taskId: task.id ?? "")
+            }
+        }
+    }
+
+    private func stopExchange() {
+        guard let taskId = activeTaskId else { return }
+        PortalService.shared.cancelElmExchange(taskId: taskId) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .failure(let error):
+                self.handle(error)
+            case .success:
+                self.appendLog("任务已停止")
+                self.finishTask(nil)
+            }
+        }
+    }
+
+    private func monitorTask(taskId: String) {
+        monitorTimer?.invalidate()
+        monitorTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+            PortalService.shared.fetchElmExchangeStatus(taskId: taskId) { result in
+                guard case .success(let task) = result, let task = task else { return }
+                self.applyTask(task)
+                if task.status == "completed" || task.status == "failed" || task.status == "cancelled" {
+                    timer.invalidate()
+                    self.finishTask(task)
+                }
+            }
+        }
+    }
+
+    private func applyTask(_ task: ElmExchangeTask) {
+        flushTaskLogs(task.logs)
+        updateButtons()
+        if task.status == "pending" { startCountdown(executeAt: task.executeAt) }
+        if task.status == "running" {
+            countdownLabel.isHidden = false
+            countdownLabel.text = "🚀 正在执行抢兑…"
+        }
+    }
+
+    private func finishTask(_ task: ElmExchangeTask?) {
+        monitorTimer?.invalidate()
+        countdownTimer?.invalidate()
+        activeTaskId = nil
+        countdownLabel.isHidden = true
+        if let task = task { applyTask(task) }
+        updateButtons()
+    }
+
+    private func resumeActiveTask() {
+        PortalService.shared.fetchElmExchangeStatus(taskId: nil) { [weak self] result in
+            guard let self = self, case .success(let task) = result, let task = task else { return }
+            if task.status == "pending" || task.status == "running" {
+                self.activeTaskId = task.id
+                self.appendLog("🔄 恢复进行中的任务")
+                self.flushTaskLogs(task.logs)
+                self.applyTask(task)
+                self.monitorTask(taskId: task.id ?? "")
+            }
+        }
+    }
+
+    private func startCountdown(executeAt: String?) {
+        countdownTimer?.invalidate()
+        guard let executeAt = executeAt else { return }
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        guard let target = fmt.date(from: executeAt) else { return }
+        countdownLabel.isHidden = false
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+            let remain = target.timeIntervalSinceNow
+            if remain <= 0 {
+                self.countdownLabel.text = "🚀 正在执行抢兑…"
+                timer.invalidate()
+                return
+            }
+            let h = Int(remain) / 3600
+            let m = (Int(remain) % 3600) / 60
+            let s = Int(remain) % 60
+            self.countdownLabel.text = String(format: "⏱ 倒计时 %02d:%02d:%02d", h, m, s)
         }
     }
 

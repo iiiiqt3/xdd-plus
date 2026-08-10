@@ -502,6 +502,26 @@ struct PortalJdProxyStatus: Decodable {
     let proxyReady: Bool?
 }
 
+struct PortalJdRunRecord: Decodable {
+    let id: Int64?
+    let taskId: String?
+    let taskName: String?
+    let trigger: String?
+    let status: String?
+    let message: String?
+    let startedAt: String?
+    let finishedAt: String?
+}
+
+struct PortalJdRunHistoryPage: Decodable {
+    let items: [PortalJdRunRecord]?
+    let total: Int?
+}
+
+struct PortalJdRunLogContent: Decodable {
+    let content: String?
+}
+
 struct KuwoAccountInfo: Decodable {
     let phone: String?
     let password: String?
@@ -539,6 +559,106 @@ struct KuwoWithdrawTask: Decodable {
     let smsFatal: Bool?
     let smsEditable: Bool?
     let logs: [KuwoTaskLog]?
+}
+
+struct KuwoSmsSendResult: Decodable {
+    let phone: String?
+    let success: Bool?
+    let message: String?
+}
+
+struct KuwoSmsBatchResult: Decodable {
+    let accounts: [KuwoSmsSendResult]?
+}
+
+struct ElmAccount: Decodable {
+    let ref: String?
+    let remark: String?
+    let route: String?
+}
+
+struct ElmWindowInfo: Decodable {
+    let canStart: Bool?
+    let selectableSlots: [Int]?
+    let autoSlot: Int?
+    let targetHour: Int?
+    let message: String?
+}
+
+struct ElmCkAccountResult: Decodable {
+    let ref: String?
+    let remark: String?
+    let route: String?
+    let starBalance: Int?
+    let success: Bool?
+    let message: String?
+}
+
+struct ElmProductBrief: Decodable {
+    let title: String?
+    let id: String?
+    let cost: Int?
+    let status: String?
+}
+
+struct ElmSlotProduct: Decodable {
+    let targetHour: Int?
+    let slotLabel: String?
+    let executeAt: String?
+    let product: ElmProductBrief?
+}
+
+struct ElmCkSingleResult: Decodable {
+    let ref: String?
+    let remark: String?
+    let route: String?
+    let starBalance: Int?
+    let slots: [ElmSlotProduct]?
+    let message: String?
+}
+
+struct ElmCkBatchResult: Decodable {
+    let accounts: [ElmCkAccountResult]?
+    let slots: [ElmSlotProduct]?
+    let readyCount: Int?
+    let totalCount: Int?
+    let message: String?
+}
+
+struct ElmCkFetchResult {
+    let accounts: [ElmCkAccountResult]
+    let slots: [ElmSlotProduct]
+    let readyCount: Int
+    let totalCount: Int
+    let message: String?
+}
+
+struct ElmTaskLog: Decodable {
+    let time: String?
+    let level: String?
+    let message: String?
+}
+
+struct ElmExchangeResult: Decodable {
+    let ref: String?
+    let remark: String?
+    let success: Bool?
+    let message: String?
+    let product: String?
+}
+
+struct ElmExchangeTask: Decodable {
+    let id: String?
+    let status: String?
+    let executeAt: String?
+    let targetHour: Int?
+    let logs: [ElmTaskLog]?
+    let results: [ElmExchangeResult]?
+}
+
+struct ElmAuthPayload: Decodable {
+    let authorized: Bool?
+    let msg: String?
 }
 
 
@@ -2156,6 +2276,19 @@ final class PortalService {
         return streamer
     }
 
+    func fetchJdRunRecords(taskId: String? = nil, limit: Int = 20, completion: @escaping (Result<PortalJdRunHistoryPage, APIError>) -> Void) {
+        var path = "/api/portal/jd/auto/runs?limit=\(limit)"
+        if let taskId = taskId, !taskId.isEmpty {
+            let encoded = taskId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? taskId
+            path += "&taskId=\(encoded)"
+        }
+        APIClient.shared.requestData(path: path, completion: completion)
+    }
+
+    func fetchJdRunLog(id: Int64, completion: @escaping (Result<PortalJdRunLogContent, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/jd/auto/runs/log?id=\(id)", completion: completion)
+    }
+
     func checkKuwoAuth(completion: @escaping (Result<(Bool, String), APIError>) -> Void) {
         struct KuwoAuthResponse: Decodable {
             let code: Int
@@ -2204,11 +2337,53 @@ final class PortalService {
         requestMessageJSON(path: "/api/portal/kuwo/send-sms", payload: ["phone": phone, "password": password], completion: completion)
     }
 
+    func sendKuwoSmsBatch(sessions: [(phone: String, password: String)], completion: @escaping (Result<KuwoSmsBatchResult, APIError>) -> Void) {
+        let payload: [String: Any] = [
+            "sessions": sessions.map { ["phone": $0.phone, "password": $0.password] },
+        ]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestEnvelope(path: "/api/portal/kuwo/send-sms", method: "POST", headers: ["Content-Type": "application/json"], body: body) { (result: Result<APIEnvelope<KuwoSmsBatchResult>, APIError>) in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let envelope):
+                if envelope.code != 0 {
+                    completion(.failure(APIError(message: envelope.msg ?? "发送验证码失败", isUnauthorized: false)))
+                    return
+                }
+                completion(.success(envelope.data ?? KuwoSmsBatchResult(accounts: nil)))
+            }
+        }
+    }
+
     func scheduleKuwoWithdraw(phone: String, password: String, quotaId: String, smsCode: String, targetHour: Int?, immediate: Bool, useProxy: Bool = true, completion: @escaping (Result<KuwoScheduleResult, APIError>) -> Void) {
+        scheduleKuwoWithdrawSessions(
+            sessions: [(phone: phone, password: password, smsCode: smsCode)],
+            quotaId: quotaId,
+            fallbackSmsCode: smsCode,
+            targetHour: targetHour,
+            immediate: immediate,
+            useProxy: useProxy,
+            completion: completion
+        )
+    }
+
+    func scheduleKuwoWithdrawSessions(
+        sessions: [(phone: String, password: String, smsCode: String)],
+        quotaId: String,
+        fallbackSmsCode: String,
+        targetHour: Int?,
+        immediate: Bool,
+        useProxy: Bool = true,
+        completion: @escaping (Result<KuwoScheduleResult, APIError>) -> Void
+    ) {
         var payload: [String: Any] = [
-            "sessions": [["phone": phone, "password": password]],
+            "sessions": sessions.map { ["phone": $0.phone, "password": $0.password, "smsCode": $0.smsCode] },
             "quotaId": quotaId,
-            "smsCode": smsCode,
+            "smsCode": fallbackSmsCode,
             "immediate": immediate,
             "useProxy": useProxy,
         ]
@@ -2234,6 +2409,134 @@ final class PortalService {
             path += "?phone=\(phone.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? phone)"
         }
         APIClient.shared.requestEnvelope(path: path) { (result: Result<APIEnvelope<KuwoWithdrawTask>, APIError>) in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let envelope):
+                if envelope.code != 0 {
+                    completion(.failure(APIError(message: envelope.msg ?? "查询任务失败", isUnauthorized: false)))
+                    return
+                }
+                completion(.success(envelope.data))
+            }
+        }
+    }
+
+    func checkElmAuth(completion: @escaping (Result<(Bool, String), APIError>) -> Void) {
+        APIClient.shared.requestEnvelope(path: "/api/portal/elm/check-auth") { (result: Result<APIEnvelope<ElmAuthPayload>, APIError>) in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let envelope):
+                if envelope.code != 0 {
+                    completion(.failure(APIError(message: envelope.msg ?? "检查授权失败", isUnauthorized: false)))
+                    return
+                }
+                completion(.success((envelope.data?.authorized ?? false, envelope.data?.msg ?? "")))
+            }
+        }
+    }
+
+    func fetchElmAccounts(completion: @escaping (Result<[ElmAccount], APIError>) -> Void) {
+        APIClient.shared.requestEnvelope(path: "/api/portal/elm/accounts") { (result: Result<APIEnvelope<[ElmAccount]>, APIError>) in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let envelope):
+                if envelope.code != 0 {
+                    completion(.failure(APIError(message: envelope.msg ?? "获取账号失败", isUnauthorized: false)))
+                    return
+                }
+                completion(.success(envelope.data ?? []))
+            }
+        }
+    }
+
+    func fetchElmWindow(completion: @escaping (Result<ElmWindowInfo, APIError>) -> Void) {
+        APIClient.shared.requestData(path: "/api/portal/elm/window", completion: completion)
+    }
+
+    func fetchElmCk(refs: [String], completion: @escaping (Result<ElmCkFetchResult, APIError>) -> Void) {
+        guard let body = try? JSONSerialization.data(withJSONObject: ["refs": refs]) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestRaw(path: "/api/portal/elm/fetch-ck", method: "POST", headers: ["Content-Type": "application/json"], body: body) { result in
+            switch result {
+            case .failure(let error):
+                completion(.failure(error))
+            case .success(let text):
+                guard let raw = text.data(using: .utf8),
+                      let obj = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
+                    completion(.failure(APIError(message: "数据解析失败", isUnauthorized: false)))
+                    return
+                }
+                let code = obj["code"] as? Int ?? -1
+                if code != 0 {
+                    completion(.failure(APIError(message: (obj["msg"] as? String) ?? "获取 CK 失败", isUnauthorized: code == 401 || code == 403)))
+                    return
+                }
+                guard let data = obj["data"] as? [String: Any] else {
+                    completion(.failure(APIError(message: "获取 CK 失败", isUnauthorized: false)))
+                    return
+                }
+                completion(.success(PortalService.parseElmCkFetchResult(data)))
+            }
+        }
+    }
+
+    private static func parseElmCkFetchResult(_ data: [String: Any]) -> ElmCkFetchResult {
+        let decoder = JSONDecoder()
+        if data["accounts"] != nil,
+           let json = try? JSONSerialization.data(withJSONObject: data),
+           let batch = try? decoder.decode(ElmCkBatchResult.self, from: json) {
+            return ElmCkFetchResult(
+                accounts: batch.accounts ?? [],
+                slots: batch.slots ?? [],
+                readyCount: batch.readyCount ?? 0,
+                totalCount: batch.totalCount ?? (batch.accounts?.count ?? 0),
+                message: batch.message
+            )
+        }
+        if let json = try? JSONSerialization.data(withJSONObject: data),
+           let single = try? decoder.decode(ElmCkSingleResult.self, from: json) {
+            let account = ElmCkAccountResult(
+                ref: single.ref,
+                remark: single.remark,
+                route: single.route,
+                starBalance: single.starBalance,
+                success: true,
+                message: single.message ?? "CK 就绪"
+            )
+            return ElmCkFetchResult(
+                accounts: [account],
+                slots: single.slots ?? [],
+                readyCount: 1,
+                totalCount: 1,
+                message: single.message
+            )
+        }
+        return ElmCkFetchResult(accounts: [], slots: [], readyCount: 0, totalCount: 0, message: nil)
+    }
+
+    func scheduleElmExchange(refs: [String], targetHour: Int, completion: @escaping (Result<ElmExchangeTask, APIError>) -> Void) {
+        guard let body = try? JSONSerialization.data(withJSONObject: ["refs": refs, "targetHour": targetHour, "keyword": ""]) else {
+            completion(.failure(APIError(message: "请求参数错误", isUnauthorized: false)))
+            return
+        }
+        APIClient.shared.requestData(path: "/api/portal/elm/schedule", method: "POST", headers: ["Content-Type": "application/json"], body: body, completion: completion)
+    }
+
+    func cancelElmExchange(taskId: String, completion: @escaping (Result<String, APIError>) -> Void) {
+        requestMessageJSON(path: "/api/portal/elm/cancel", payload: ["taskId": taskId], completion: completion)
+    }
+
+    func fetchElmExchangeStatus(taskId: String? = nil, completion: @escaping (Result<ElmExchangeTask?, APIError>) -> Void) {
+        var path = "/api/portal/elm/status"
+        if let taskId = taskId, !taskId.isEmpty {
+            path += "?taskId=\(taskId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? taskId)"
+        }
+        APIClient.shared.requestEnvelope(path: path) { (result: Result<APIEnvelope<ElmExchangeTask>, APIError>) in
             switch result {
             case .failure(let error):
                 completion(.failure(error))
