@@ -6021,8 +6021,12 @@ async function viewJdRunLog(id) {
         var logBox = document.getElementById('jdTaskLog');
         if (logBox) {
             logBox.innerHTML = '';
-            appendJdTaskLog('===== 历史执行日志 #' + id + ' =====');
-            appendJdTaskLog(resp.data.content || '(空)');
+            var taskLabel = '历史#' + id;
+            addJdTaskLog(taskLabel, '===== 历史执行日志 #' + id + ' =====');
+            var content = String(resp.data && resp.data.content ? resp.data.content : '(空)');
+            content.split('\n').forEach(function(line) {
+                if (line.length) addJdTaskLog(taskLabel, line);
+            });
         }
     } catch (err) {
         toast(err.message || '读取日志失败', 'error');
