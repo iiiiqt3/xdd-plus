@@ -763,7 +763,7 @@ func FinishPortalJdRunRecord(runRecordID int64, status, message string) {
 	})
 }
 
-func ListPortalJdRunRecords(userNumber int, page, limit int) ([]PortalJdRunRecord, int64, error) {
+func ListPortalJdRunRecords(userNumber int, page, limit int, taskID string) ([]PortalJdRunRecord, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -772,6 +772,9 @@ func ListPortalJdRunRecords(userNumber int, page, limit int) ([]PortalJdRunRecor
 	}
 	since := time.Now().AddDate(0, 0, -jdManualLogRetainDays)
 	q := db.Model(&PortalJdRunRecord{}).Where("user_number = ? AND started_at >= ?", userNumber, since)
+	if strings.TrimSpace(taskID) != "" {
+		q = q.Where("task_id = ?", strings.TrimSpace(taskID))
+	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err

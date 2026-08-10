@@ -1,6 +1,9 @@
 (function (global) {
     'use strict';
 
+    const ELM_LOG_KEY = 'elm_log_content';
+    const ELM_TASK_KEY = 'elm_active_task_id';
+
     const state = {
         authorized: false,
         accounts: [],
@@ -56,12 +59,28 @@
         const line = `[${new Date().toLocaleTimeString('zh-CN', { hour12: false })}] ${prefix}${msg}\n`;
         el.textContent += line;
         el.scrollTop = el.scrollHeight;
+        try { localStorage.setItem(ELM_LOG_KEY, el.textContent); } catch (_) {}
+    }
+
+    function elmRestoreLogs() {
+        try {
+            const saved = localStorage.getItem(ELM_LOG_KEY);
+            const el = $('elmLogContent');
+            if (saved && el) {
+                el.textContent = saved;
+                el.scrollTop = el.scrollHeight;
+            }
+        } catch (_) {}
     }
 
     function elmClearLogs() {
         const el = $('elmLogContent');
         if (el) el.textContent = '';
         state.logIndex = 0;
+        try {
+            localStorage.removeItem(ELM_LOG_KEY);
+            localStorage.removeItem(ELM_TASK_KEY);
+        } catch (_) {}
     }
 
     function syncCkReady() {
@@ -337,6 +356,7 @@
         stopMonitor();
         stopCountdown();
         state.activeTaskId = null;
+        try { localStorage.removeItem(ELM_TASK_KEY); } catch (_) {}
         applyTask(task);
         updateActionButtons(null);
         if (toastMsg) toast(toastMsg, toastType || 'info');
@@ -360,8 +380,11 @@
     }
 
     function monitorTask(taskId) {
+        if (state.monitorTimer && state.activeTaskId === taskId) return;
         stopMonitor();
-        state.monitorTimer = setInterval(async function () {
+        try { localStorage.setItem(ELM_TASK_KEY, taskId); } catch (_) {}
+        state.activeTaskId = taskId;
+        async function pollOnce() {
             try {
                 const task = await api('/status?taskId=' + encodeURIComponent(taskId));
                 applyTask(task);
@@ -374,11 +397,14 @@
             } catch (e) {
                 console.warn('elm monitor', e);
             }
-        }, 1000);
+        }
+        pollOnce();
+        state.monitorTimer = setInterval(pollOnce, 1000);
     }
 
     async function loadPanel() {
         try {
+            elmRestoreLogs();
             const auth = await api('/check-auth');
             state.authorized = !!auth.authorized;
             const hint = $('elmAuthHint');
@@ -390,16 +416,21 @@
             updateWindowInfo(win);
             state.accounts = await api('/accounts') || [];
             renderAccounts();
-            renderTaskView(null);
             const active = await api('/status');
             if (active && (active.status === 'pending' || active.status === 'running')) {
-                state.logIndex = 0;
-                elmClearLogs();
+                if (state.activeTaskId !== active.id) {
+                    state.logIndex = 0;
+                }
                 applyTask(active);
-                monitorTask(active.id);
+                if (!state.monitorTimer || state.activeTaskId !== active.id) {
+                    monitorTask(active.id);
+                }
             } else {
-                state.activeTaskId = null;
-                updateActionButtons(null);
+                renderTaskView(active);
+                if (!active || (active.status !== 'pending' && active.status !== 'running')) {
+                    state.activeTaskId = null;
+                    updateActionButtons(null);
+                }
             }
         } catch (e) {
             toast(e.message || '加载失败', 'error');
@@ -561,6 +592,13 @@
         if (stopBtn) stopBtn.onclick = function () { void stopExchange(); };
         const clearBtn = $('elmClearLogBtn');
         if (clearBtn) clearBtn.onclick = elmClearLogs;
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible' && state.activeTaskId) {
+                api('/status?taskId=' + encodeURIComponent(state.activeTaskId)).then(function (task) {
+                    applyTask(task);
+                }).catch(function () {});
+            }
+        });
         setInterval(async function () {
             if (!$('panel-elm') || !$('panel-elm').classList.contains('active')) return;
             try {

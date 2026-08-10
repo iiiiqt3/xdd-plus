@@ -2324,13 +2324,12 @@
                     <div style="padding:8px 12px;border-radius:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.12);font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.6;">
                         账号密码自动读取自您上车的<b>「酷我音乐」</b>活动中填写的信息，如需修改请前往「项目中心」更新。
                     </div>
-                    <!-- 多账号下拉选择 -->
-                    <div id="kuwoAccountSelectWrap" style="display:none;margin-bottom:12px;">
-                        <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">选择抢兑账号</label>
-                        <select id="kuwoAccountSelect" onchange="kuwoSwitchAccount()" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;cursor:pointer;">
-                        </select>
+                    <!-- 多账号选择 -->
+                    <div style="margin-bottom:12px;">
+                        <label class="muted" style="font-size:12px;margin-bottom:8px;display:block;">选择抢兑账号（可多选）</label>
+                        <div id="kuwoAccountList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;"></div>
                     </div>
-                    <div class="form-grid">
+                    <div id="kuwoSingleAccountFields" class="form-grid" style="display:none;">
                         <div>
                             <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">手机号</label>
                             <input type="text" id="kuwoPhone" readonly placeholder="自动读取中..." style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(128,128,128,0.06);color:var(--text-muted);font-size:14px;outline:none;cursor:not-allowed;" />
@@ -2340,16 +2339,26 @@
                             <input type="password" id="kuwoPassword" readonly placeholder="自动读取中..." style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(128,128,128,0.06);color:var(--text-muted);font-size:14px;outline:none;cursor:not-allowed;" />
                         </div>
                     </div>
-                    <div class="form-grid" style="margin-top:12px;">
-                        <div>
-                            <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">短信验证码</label>
-                            <input type="text" id="kuwoSmsCode" placeholder="输入短信验证码" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;" />
+                    <div id="kuwoSmsSection" style="margin-top:12px;">
+                        <div id="kuwoSingleSmsWrap" class="form-grid">
+                            <div>
+                                <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">短信验证码</label>
+                                <input type="text" id="kuwoSmsCode" placeholder="输入短信验证码" style="width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:14px;outline:none;" />
+                            </div>
+                            <div>
+                                <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">获取验证码</label>
+                                <div style="display:flex;gap:8px;align-items:center;">
+                                    <button onclick="kuwoSendSms()" id="kuwoSendSmsBtn" style="padding:10px 16px;border:none;border-radius:10px;background:#3b82f6;color:white;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">发送验证码</button>
+                                    <span id="kuwoSmsStatus" style="font-size:12px;color:var(--text-muted);"></span>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label class="muted" style="font-size:12px;margin-bottom:4px;display:block;">获取验证码</label>
-                            <div style="display:flex;gap:8px;align-items:center;">
-                                <button onclick="kuwoSendSms()" id="kuwoSendSmsBtn" style="padding:10px 16px;border:none;border-radius:10px;background:#3b82f6;color:white;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">发送验证码</button>
-                                <span id="kuwoSmsStatus" style="font-size:12px;color:var(--text-muted);"></span>
+                        <div id="kuwoMultiSmsWrap" style="display:none;margin-top:4px;">
+                            <label class="muted" style="font-size:12px;margin-bottom:8px;display:block;">各账号验证码（发送后填写）</label>
+                            <div id="kuwoMultiSmsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;"></div>
+                            <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <button onclick="kuwoSendSms()" id="kuwoSendSmsBtnMulti" style="padding:10px 16px;border:none;border-radius:10px;background:#3b82f6;color:white;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">批量发送验证码</button>
+                                <span id="kuwoSmsStatusMulti" style="font-size:12px;color:var(--text-muted);"></span>
                             </div>
                         </div>
                     </div>
@@ -3159,7 +3168,7 @@
 <script src="/vweb/js/clipboard.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_bind.js?v=4"></script>
 <script src="/vweb/js/portal_protocol_activity.js?v=3"></script>
-<script src="/vweb/js/portal_elm.js?v=9"></script>
+<script src="/vweb/js/portal_elm.js?v=10"></script>
 <script src="/vweb/js/portal_yyb.js?v=21"></script>
 <script>
 async function getSignatureHeaders(path) {
@@ -5639,6 +5648,96 @@ var jdTaskSearchQuery = '';
 var jdProxyStatus = null;
 var jdAutoConfig = null;
 var jdAutoSaveTimer = null;
+var jdRunHistoryTaskId = '';
+const JD_RUNNING_KEY = 'jd_running_tasks';
+const JD_LOG_KEY = 'jd_task_log_html';
+const JD_RUNNING_META_KEY = 'jd_running_meta';
+var jdRunningMeta = {};
+var jdSseReconnectTimers = {};
+
+function persistJdTaskSession() {
+    try {
+        sessionStorage.setItem(JD_RUNNING_KEY, JSON.stringify(runningTasks || {}));
+        sessionStorage.setItem(JD_RUNNING_META_KEY, JSON.stringify(jdRunningMeta || {}));
+        var logBox = document.getElementById('jdTaskLog');
+        if (logBox) sessionStorage.setItem(JD_LOG_KEY, logBox.innerHTML);
+    } catch (e) {}
+}
+
+function restoreJdTaskSession() {
+    try {
+        var saved = sessionStorage.getItem(JD_RUNNING_KEY);
+        if (saved) runningTasks = JSON.parse(saved) || {};
+        var metaSaved = sessionStorage.getItem(JD_RUNNING_META_KEY);
+        if (metaSaved) jdRunningMeta = JSON.parse(metaSaved) || {};
+        var logHtml = sessionStorage.getItem(JD_LOG_KEY);
+        var logBox = document.getElementById('jdTaskLog');
+        if (logHtml && logBox) {
+            logBox.innerHTML = logHtml;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+    } catch (e) {
+        runningTasks = runningTasks || {};
+        jdRunningMeta = jdRunningMeta || {};
+    }
+}
+
+function clearJdSseReconnect(taskType) {
+    if (jdSseReconnectTimers[taskType]) {
+        clearTimeout(jdSseReconnectTimers[taskType]);
+        delete jdSseReconnectTimers[taskType];
+    }
+}
+
+function scheduleJdSseReconnect(taskType, taskName, silent) {
+    if (!runningTasks[taskType]) return;
+    clearJdSseReconnect(taskType);
+    var delay = document.visibilityState === 'visible' ? 1200 : 12000;
+    jdSseReconnectTimers[taskType] = setTimeout(function() {
+        if (!runningTasks[taskType]) return;
+        if (document.visibilityState === 'hidden') {
+            scheduleJdSseReconnect(taskType, taskName, true);
+            return;
+        }
+        if (!silent) addJdTaskLog(taskName, '正在重新连接日志…');
+        connectJdTaskSSE(runningTasks[taskType], taskName, taskType, true);
+    }, delay);
+}
+
+async function syncJdFinishedTask(taskTypeId, taskName) {
+    try {
+        var resp = await request('/api/portal/jd/auto/runs?taskId=' + encodeURIComponent(taskTypeId) + '&limit=1');
+        var items = (resp.data && resp.data.items) ? resp.data.items : [];
+        var latest = items[0];
+        if (!latest) {
+            addJdTaskLog(taskName, '任务已结束（无执行记录）');
+            resetTaskBtn(taskTypeId);
+            return;
+        }
+        if (latest.status === 'running') {
+            scheduleJdSseReconnect(taskTypeId, taskName, false);
+            return;
+        }
+        var ok = latest.status === 'success';
+        addJdTaskLog(taskName, ok ? '✅ 任务已在后台执行完成' : ('任务结束: ' + (latest.message || latest.status)), !ok);
+        resetTaskBtn(taskTypeId);
+    } catch (e) {
+        scheduleJdSseReconnect(taskTypeId, taskName, false);
+    }
+}
+
+function reconnectJdRunningTasks() {
+    restoreJdTaskSession();
+    Object.keys(runningTasks || {}).forEach(function(taskTypeId) {
+        var sseTaskId = runningTasks[taskTypeId];
+        if (!sseTaskId) return;
+        var meta = jdRunningMeta[taskTypeId] || {};
+        var task = (jdTasksCache || []).find(function(t) { return t.id === taskTypeId; });
+        var taskName = meta.taskName || (task ? task.name : taskTypeId);
+        restoreRunningTaskBtns();
+        connectJdTaskSSE(sseTaskId, taskName, taskTypeId, true);
+    });
+}
 
 async function loadJdTasks() {
     var listBody = document.getElementById('jdTaskListBody');
@@ -5673,6 +5772,7 @@ async function loadJdTasks() {
         updateJdAutoSectionVisibility();
     }
     renderJdTaskList();
+    reconnectJdRunningTasks();
 }
 
 async function loadJdAutoConfig() {
@@ -5865,25 +5965,34 @@ async function toggleJdRunHistory() {
     if (!panel) return;
     var show = !panel.classList.contains('show');
     panel.classList.toggle('show', show);
-    if (show) await loadJdRunHistory();
+    if (show) {
+        jdRunHistoryTaskId = '';
+        var titleEl = document.querySelector('#jdRunHistoryPanel .jd-run-history-head span');
+        if (titleEl) titleEl.textContent = '全部执行记录';
+        await loadJdRunHistory('');
+    }
 }
 
-async function loadJdRunHistory() {
+async function loadJdRunHistory(taskId) {
+    if (taskId === undefined) taskId = jdRunHistoryTaskId || '';
     var body = document.getElementById('jdRunHistoryBody');
     if (!body) return;
     body.innerHTML = '<div style="padding:12px;color:var(--text-muted);">加载中…</div>';
     try {
-        var resp = await request('/api/portal/jd/auto/runs?limit=30');
+        var url = '/api/portal/jd/auto/runs?limit=30';
+        if (taskId) url += '&taskId=' + encodeURIComponent(taskId);
+        var resp = await request(url);
         var items = (resp.data && resp.data.items) ? resp.data.items : [];
         if (!items.length) {
-            body.innerHTML = '<div style="padding:12px;color:var(--text-muted);">暂无执行记录</div>';
+            body.innerHTML = '<div style="padding:12px;color:var(--text-muted);">' + (taskId ? '该任务暂无执行记录' : '暂无执行记录') + '</div>';
             return;
         }
         body.innerHTML = items.map(function(it) {
             var stCls = 'jd-run-status-' + (it.status || 'running');
             var trigger = it.trigger === 'auto' ? '自动' : '手动';
+            var errHint = it.message ? (' · ' + escapeHtml(it.message)) : '';
             return '<div class="jd-run-history-row">' +
-                '<div><div>' + escapeHtml(it.taskName || it.taskId) + '</div><div class="meta">' + escapeHtml(it.startedAt) + ' · ' + trigger + '</div></div>' +
+                '<div><div>' + escapeHtml(it.taskName || it.taskId) + '</div><div class="meta">' + escapeHtml(it.startedAt) + ' · ' + trigger + errHint + '</div></div>' +
                 '<span class="' + stCls + '">' + escapeHtml(it.status || '-') + '</span>' +
                 '<button type="button" class="btn secondary small" onclick="viewJdRunLog(' + it.id + ')">日志</button>' +
                 '</div>';
@@ -5891,6 +6000,15 @@ async function loadJdRunHistory() {
     } catch (err) {
         body.innerHTML = '<div style="padding:12px;color:#dc2626;">加载失败</div>';
     }
+}
+
+async function viewJdTaskRuns(taskId, taskName) {
+    jdRunHistoryTaskId = taskId || '';
+    var panel = document.getElementById('jdRunHistoryPanel');
+    if (panel) panel.classList.add('show');
+    var titleEl = document.querySelector('#jdRunHistoryPanel .jd-run-history-head span');
+    if (titleEl) titleEl.textContent = taskName ? ('执行记录 · ' + taskName) : '执行记录';
+    await loadJdRunHistory(taskId);
 }
 
 async function viewJdRunLog(id) {
@@ -6147,6 +6265,7 @@ function renderJdTaskList() {
         }
         html += '<td class="col-action">';
         html += '<button class="btn primary" id="taskBtn_' + safeId + '" data-task-id="' + safeId + '" data-task-name="' + safeName + '" onclick="executeJdTask(this.dataset.taskId, this.dataset.taskName)">执行</button>';
+        html += ' <button class="btn secondary small" onclick="viewJdTaskRuns(\'' + safeId.replace(/'/g, "\\'") + '\', \'' + safeName.replace(/'/g, "\\'") + '\')">执行查看</button>';
         html += '</td></tr>';
     });
     listBody.innerHTML = html;
@@ -6224,6 +6343,8 @@ async function executeJdTask(taskId, taskName) {
         if (resp.code === 0 && resp.data && resp.data.taskId) {
             addJdTaskLog(taskName, '任务已启动，正在连接日志流...');
             runningTasks[taskId] = resp.data.taskId;
+            jdRunningMeta[taskId] = { sseTaskId: resp.data.taskId, taskName: taskName };
+            persistJdTaskSession();
             connectJdTaskSSE(resp.data.taskId, taskName, taskId);
         } else {
             addJdTaskLog(taskName, '任务启动失败: ' + (resp.msg || '未知错误'), true);
@@ -6257,24 +6378,26 @@ function resetTaskBtn(taskId) {
         btn.textContent = '执行';
     }
     delete runningTasks[taskId];
+    delete jdRunningMeta[taskId];
+    clearJdSseReconnect(taskId);
+    persistJdTaskSession();
 }
 
 var currentTaskType = null;
 
-function connectJdTaskSSE(taskId, taskName, taskType) {
+function connectJdTaskSSE(taskId, taskName, taskType, isReconnect) {
     currentTaskType = taskType;
-    // 关闭之前的连接
+    clearJdSseReconnect(taskType);
     if (jdTaskSSE) {
         jdTaskSSE.close();
         jdTaskSSE = null;
     }
-    
+
     var url = '/api/portal/jd/task/logs?taskId=' + encodeURIComponent(taskId);
     jdTaskSSE = new EventSource(url);
-    
+
     jdTaskSSE.onmessage = function(event) {
         var data = event.data;
-        // 检查是否是完成标记
         if (data.indexOf('=====DONE=====') === 0) {
             addJdTaskLog(taskName, data.replace('=====', '').trim());
             addJdTaskLog(taskName, '✅ 任务执行完成', false, true);
@@ -6285,53 +6408,56 @@ function connectJdTaskSSE(taskId, taskName, taskType) {
         }
         addJdTaskLog(taskName, data);
     };
-    
+
     jdTaskSSE.addEventListener('done', function(event) {
         addJdTaskLog(taskName, '✅ 任务执行完成', false, true);
         jdTaskSSE.close();
         jdTaskSSE = null;
         resetTaskBtn(currentTaskType);
     });
-    
+
     jdTaskSSE.addEventListener('error', function(event) {
         if (event.data) {
-            addJdTaskLog(taskName, '错误: ' + event.data, true);
+            addJdTaskLog(taskName, event.data, true);
+            if (event.data.indexOf('任务不存在') >= 0 || event.data.indexOf('已结束') >= 0) {
+                void syncJdFinishedTask(taskType, taskName);
+            }
         }
-        jdTaskSSE.close();
-        jdTaskSSE = null;
-        resetTaskBtn(currentTaskType);
     });
-    
+
     jdTaskSSE.onerror = function() {
-        addJdTaskLog(taskName, '日志连接断开', true);
-        jdTaskSSE.close();
-        jdTaskSSE = null;
-        resetTaskBtn(currentTaskType);
+        if (jdTaskSSE) {
+            jdTaskSSE.close();
+            jdTaskSSE = null;
+        }
+        if (runningTasks[taskType]) {
+            scheduleJdSseReconnect(taskType, taskName, isReconnect);
+        }
     };
 }
 
 function addJdTaskLog(taskName, content, isError) {
     var logBox = document.getElementById('jdTaskLog');
     if (!logBox) return;
-    
-    // 如果是空状态，清空
+
     if (logBox.querySelector('div[style*="text-align:center"]')) {
         logBox.innerHTML = '';
     }
-    
+
     var now = new Date();
-    var timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
-                  now.getMinutes().toString().padStart(2, '0') + ':' + 
+    var timeStr = now.getHours().toString().padStart(2, '0') + ':' +
+                  now.getMinutes().toString().padStart(2, '0') + ':' +
                   now.getSeconds().toString().padStart(2, '0');
-    
+
     var line = document.createElement('div');
     line.className = 'log-line';
     line.innerHTML = '<span class="log-time">[' + timeStr + ']</span>' +
                      '<span class="log-task">[' + taskName + ']</span>' +
                      '<span class="' + (isError ? 'log-error' : 'log-content') + '">' + escapeHtml(content) + '</span>';
-    
+
     logBox.appendChild(line);
     logBox.scrollTop = logBox.scrollHeight;
+    persistJdTaskSession();
 }
 
 function clearJdTaskLogs() {
@@ -6795,6 +6921,89 @@ let kuwoTaskMonitor = null;
 let kuwoTaskLogIndex = 0;
 let kuwoWithdrawSubmitting = false;
 let kuwoActiveTaskId = null;
+let kuwoSelectedAccounts = new Set();
+
+function kuwoMaskPhone(phone) {
+    phone = String(phone || '');
+    return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+}
+
+function kuwoRenderAccountList() {
+    const box = document.getElementById('kuwoAccountList');
+    const accounts = window._kuwoAccounts || [];
+    if (!box) return;
+    if (!accounts.length) {
+        box.innerHTML = '<div class="muted" style="font-size:12px;">暂无账号，请先在项目中心上车酷我音乐</div>';
+        return;
+    }
+    box.innerHTML = accounts.map(function(acc, i) {
+        const checked = kuwoSelectedAccounts.has(i) ? 'checked' : '';
+        return '<label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);cursor:pointer;">' +
+            '<input type="checkbox" data-kuwo-idx="' + i + '" ' + checked + ' onchange="kuwoToggleAccount(this)" style="accent-color:#6366f1;" />' +
+            '<span style="font-size:13px;">' + kuwoMaskPhone(acc.phone) + '</span></label>';
+    }).join('');
+    if (kuwoSelectedAccounts.size === 0 && accounts.length) {
+        kuwoSelectedAccounts.add(0);
+        kuwoRenderAccountList();
+    }
+    kuwoUpdateSmsUiMode();
+}
+
+function kuwoToggleAccount(input) {
+    const idx = parseInt(input.getAttribute('data-kuwo-idx'), 10);
+    if (isNaN(idx)) return;
+    if (input.checked) kuwoSelectedAccounts.add(idx);
+    else kuwoSelectedAccounts.delete(idx);
+    kuwoUpdateSmsUiMode();
+}
+
+function kuwoGetSelectedAccounts() {
+    const accounts = window._kuwoAccounts || [];
+    return Array.from(kuwoSelectedAccounts).sort(function(a, b) { return a - b; }).map(function(i) {
+        return accounts[i];
+    }).filter(Boolean);
+}
+
+function kuwoUpdateSmsUiMode() {
+    const selected = kuwoGetSelectedAccounts();
+    const multi = selected.length > 1;
+    const singleWrap = document.getElementById('kuwoSingleSmsWrap');
+    const multiWrap = document.getElementById('kuwoMultiSmsWrap');
+    const singleFields = document.getElementById('kuwoSingleAccountFields');
+    if (singleWrap) singleWrap.style.display = multi ? 'none' : '';
+    if (multiWrap) multiWrap.style.display = multi ? 'block' : 'none';
+    if (singleFields) singleFields.style.display = (selected.length === 1) ? 'grid' : 'none';
+    if (selected.length === 1) {
+        const phoneInput = document.getElementById('kuwoPhone');
+        const pwdInput = document.getElementById('kuwoPassword');
+        if (phoneInput) phoneInput.value = selected[0].phone || '';
+        if (pwdInput) pwdInput.value = selected[0].password || '';
+    }
+    if (multi) {
+        const list = document.getElementById('kuwoMultiSmsList');
+        if (list) {
+            list.innerHTML = selected.map(function(acc) {
+                const phone = acc.phone || '';
+                return '<div><label class="muted" style="font-size:11px;display:block;margin-bottom:4px;">' + kuwoMaskPhone(phone) + '</label>' +
+                    '<input type="text" class="kuwo-multi-sms" data-phone="' + phone + '" placeholder="验证码" style="width:100%;padding:9px 12px;border:1px solid var(--glass-border);border-radius:10px;background:var(--glass-bg);color:var(--text);font-size:13px;" /></div>';
+            }).join('');
+        }
+    }
+}
+
+function kuwoCollectSessionPayload() {
+    const selected = kuwoGetSelectedAccounts();
+    const multi = selected.length > 1;
+    const globalSms = (document.getElementById('kuwoSmsCode') || {}).value?.trim() || '';
+    return selected.map(function(acc) {
+        let smsCode = globalSms;
+        if (multi) {
+            const input = document.querySelector('.kuwo-multi-sms[data-phone="' + acc.phone + '"]');
+            smsCode = input ? input.value.trim() : '';
+        }
+        return { phone: acc.phone, password: acc.password, smsCode: smsCode };
+    });
+}
 
 function kuwoClearActiveState() {
     kuwoStopTaskMonitor();
@@ -6814,6 +7023,7 @@ function kuwoSetWithdrawLocked(locked, allowSmsEdit) {
     if (updateBtn) updateBtn.style.display = (locked && allowSmsEdit) ? '' : 'none';
     if (hint) hint.style.display = (locked && allowSmsEdit) ? 'block' : 'none';
     document.querySelectorAll('#kuwoPhone, #kuwoPassword').forEach(el => { if (el) el.disabled = locked; });
+    document.querySelectorAll('.kuwo-multi-sms').forEach(el => { el.disabled = locked && !allowSmsEdit; });
     const smsInput = document.getElementById('kuwoSmsCode');
     if (smsInput) smsInput.disabled = locked && !allowSmsEdit;
 }
@@ -7035,7 +7245,7 @@ async function kuwoRestoreState() {
 
         kuwoLog('🔄 检测到进行中的抢兑任务，已恢复监控');
         if (task.logs && Array.isArray(task.logs)) {
-            kuwoTaskLogIndex = task.logs.length;
+            kuwoFlushTaskLogs(task.logs);
         } else {
             kuwoResetTaskLogCursor();
         }
@@ -7074,48 +7284,48 @@ async function checkKuwoAuth() {
         const res = await request('/api/portal/kuwo/check-auth');
         kuwoAuthorized = res.authorized;
         const sendBtn = document.getElementById('kuwoSendSmsBtn');
+        const sendBtnMulti = document.getElementById('kuwoSendSmsBtnMulti');
         const withdrawBtn = document.getElementById('kuwoWithdrawBtn');
         const hint = document.getElementById('kuwoAuthHint');
+        const setBtn = function(btn, on) {
+            if (!btn) return;
+            btn.disabled = !on;
+            btn.style.opacity = on ? '1' : '0.4';
+            btn.style.cursor = on ? 'pointer' : 'not-allowed';
+        };
         if (res.authorized) {
-            if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = '1'; sendBtn.style.cursor = 'pointer'; }
-            if (withdrawBtn) { withdrawBtn.disabled = false; withdrawBtn.style.opacity = '1'; withdrawBtn.style.cursor = 'pointer'; }
+            setBtn(sendBtn, true);
+            setBtn(sendBtnMulti, true);
+            setBtn(withdrawBtn, true);
             if (hint) hint.style.display = 'none';
-            // 自动填充活动提交的账号密码（支持多账号下拉）
             try {
                 const cred = await request('/api/portal/kuwo/credentials');
                 if (cred.data) {
-                    const phoneInput = document.getElementById('kuwoPhone');
-                    const pwdInput = document.getElementById('kuwoPassword');
-                    if (phoneInput) phoneInput.value = cred.data.phone || '';
-                    if (pwdInput) pwdInput.value = cred.data.password || '';
-                    // 多账号下拉
                     const accounts = cred.data.accounts || [];
-                    const wrap = document.getElementById('kuwoAccountSelectWrap');
-                    const select = document.getElementById('kuwoAccountSelect');
-                    if (wrap && select && accounts.length > 1) {
+                    if (accounts.length) {
                         window._kuwoAccounts = accounts;
-                        select.innerHTML = '';
-                        accounts.forEach((a, i) => {
-                            const opt = document.createElement('option');
-                            opt.value = i;
-                            opt.textContent = a.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
-                            select.appendChild(opt);
-                        });
-                        wrap.style.display = 'block';
+                        kuwoRenderAccountList();
+                    } else if (cred.data.phone) {
+                        window._kuwoAccounts = [{ phone: cred.data.phone, password: cred.data.password || '' }];
+                        kuwoSelectedAccounts = new Set([0]);
+                        kuwoRenderAccountList();
                     }
                 }
             } catch (e) { console.log('自动填充酷我账号失败:', e); }
         } else {
-            if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.4'; sendBtn.style.cursor = 'not-allowed'; }
-            if (withdrawBtn) { withdrawBtn.disabled = true; withdrawBtn.style.opacity = '0.4'; withdrawBtn.style.cursor = 'not-allowed'; }
+            setBtn(sendBtn, false);
+            setBtn(sendBtnMulti, false);
+            setBtn(withdrawBtn, false);
             if (hint) { hint.style.display = 'block'; hint.textContent = res.msg || '酷我活动授权已到期，请前往项目中心续费后再使用'; }
         }
     } catch (e) {
         console.error('checkKuwoAuth error:', e);
     }
-    // 恢复倒计时状态和日志
     kuwoRestoreLogs();
     kuwoRestoreState();
+    if (kuwoActiveTaskId && !kuwoTaskMonitor) {
+        kuwoMonitorTask(kuwoActiveTaskId, false);
+    }
 }
 
 function kuwoLog(msg) {
@@ -7218,6 +7428,16 @@ function kuwoUpdateTimeDisplay() {
 // 启动时间显示更新
 setInterval(kuwoUpdateTimeDisplay, 1000);
 setTimeout(kuwoUpdateTimeDisplay, 500);
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+        if (kuwoActiveTaskId && !kuwoTaskMonitor) {
+            kuwoMonitorTask(kuwoActiveTaskId, false);
+        }
+        if (Object.keys(runningTasks || {}).length) {
+            reconnectJdRunningTasks();
+        }
+    }
+});
 
 // 单选按钮高亮
 document.querySelectorAll('input[name="kuwoQuota"]').forEach(radio => {
@@ -7233,58 +7453,59 @@ setTimeout(() => {
     if (checked) checked.dispatchEvent(new Event('change'));
 }, 100);
 
-// 多账号切换
-function kuwoSwitchAccount() {
-    const select = document.getElementById('kuwoAccountSelect');
-    const accounts = window._kuwoAccounts || [];
-    if (!select || accounts.length === 0) return;
-    const idx = parseInt(select.value) || 0;
-    const acc = accounts[idx];
-    if (!acc) return;
-    kuwoClearActiveState();
-    const phoneInput = document.getElementById('kuwoPhone');
-    const pwdInput = document.getElementById('kuwoPassword');
-    const smsInput = document.getElementById('kuwoSmsCode');
-    if (phoneInput) phoneInput.value = acc.phone;
-    if (pwdInput) pwdInput.value = acc.password;
-    if (smsInput) smsInput.value = '';
-    kuwoSetWithdrawLocked(false, false);
-}
+// 多账号切换（已改为 checkbox 多选）
+function kuwoSwitchAccount() {}
 
 async function kuwoSendSms() {
     if (!kuwoAuthorized) { toast('酷我活动授权已到期，请前往项目中心续费后再使用', 'error'); return; }
-    const phone = document.getElementById('kuwoPhone').value.trim();
-    const password = document.getElementById('kuwoPassword').value.trim();
-    if (!phone || !password) { toast('请填写手机号和密码', 'error'); return; }
-    const btn = document.getElementById('kuwoSendSmsBtn');
-    const status = document.getElementById('kuwoSmsStatus');
-    btn.disabled = true;
-    btn.textContent = '发送中...';
-    status.textContent = '正在登录并发送验证码...';
-    status.style.color = '';
-    kuwoLog('正在登录酷我账号...');
-    kuwoClearActiveState();
-    const smsInput = document.getElementById('kuwoSmsCode');
-    if (smsInput) smsInput.value = '';
+    const selected = kuwoGetSelectedAccounts();
+    if (!selected.length) { toast('请至少选择一个账号', 'error'); return; }
+    const multi = selected.length > 1;
+    const btn = document.getElementById(multi ? 'kuwoSendSmsBtnMulti' : 'kuwoSendSmsBtn');
+    const status = document.getElementById(multi ? 'kuwoSmsStatusMulti' : 'kuwoSmsStatus');
+    if (btn) { btn.disabled = true; btn.textContent = multi ? '批量发送中...' : '发送中...'; }
+    if (status) { status.textContent = '正在登录并发送验证码...'; status.style.color = ''; }
+    kuwoLog('正在向 ' + selected.length + ' 个账号发送验证码...');
+    if (selected.length === 1) {
+        const smsInput = document.getElementById('kuwoSmsCode');
+        if (smsInput) smsInput.value = '';
+    } else {
+        document.querySelectorAll('.kuwo-multi-sms').forEach(function(el) { el.value = ''; });
+    }
     try {
         const data = await request('/api/portal/kuwo/send-sms', {
             method: 'POST',
-            body: JSON.stringify({ phone, password })
+            body: JSON.stringify({
+                sessions: selected.map(function(a) { return { phone: a.phone, password: a.password }; })
+            })
         });
-        kuwoSessionData = data.data;
         try { localStorage.setItem(KUWO_SMS_SESSION_KEY, String(Date.now())); } catch (e) {}
-        status.textContent = '✅ 已发送至 ' + phone.substring(0, 3) + '****' + phone.substring(7);
-        status.style.color = '#10b981';
-        kuwoLog('验证码已发送，请输入验证码');
-        toast('验证码已发送');
+        const accounts = (data.data && data.data.accounts) ? data.data.accounts : [];
+        if (accounts.length) {
+            accounts.forEach(function(item) {
+                kuwoLog((item.success ? '✅ ' : '❌ ') + kuwoMaskPhone(item.phone) + '：' + (item.message || ''));
+            });
+            const ok = accounts.filter(function(a) { return a.success; }).length;
+            if (status) {
+                status.textContent = '✅ 成功 ' + ok + '/' + accounts.length;
+                status.style.color = ok ? '#10b981' : '#ef4444';
+            }
+            toast('验证码发送完成 ' + ok + '/' + accounts.length);
+        } else if (data.data) {
+            kuwoSessionData = data.data;
+            if (status) {
+                status.textContent = '✅ 已发送至 ' + kuwoMaskPhone(selected[0].phone);
+                status.style.color = '#10b981';
+            }
+            kuwoLog('验证码已发送，请输入验证码');
+            toast('验证码已发送');
+        }
     } catch (err) {
-        status.textContent = '❌ ' + err.message;
-        status.style.color = '#ef4444';
+        if (status) { status.textContent = '❌ ' + err.message; status.style.color = '#ef4444'; }
         kuwoLog('发送失败: ' + err.message);
         toast(err.message, 'error');
     } finally {
-        btn.disabled = false;
-        btn.textContent = '发送验证码';
+        if (btn) { btn.disabled = false; btn.textContent = multi ? '批量发送验证码' : '发送验证码'; }
     }
 }
 
@@ -7330,50 +7551,51 @@ async function kuwoUpdateSmsCode() {
 function kuwoStartWithdraw() {
     if (!kuwoAuthorized) { toast('酷我活动授权已到期，请前往项目中心续费后再使用', 'error'); return; }
     if (kuwoWithdrawSubmitting) { toast('任务提交中，请稍候', 'info'); return; }
-    const phone = document.getElementById('kuwoPhone').value.trim();
-    const password = document.getElementById('kuwoPassword').value.trim();
-    const smsCode = document.getElementById('kuwoSmsCode').value.trim();
+    const sessions = kuwoCollectSessionPayload();
+    if (!sessions.length) { toast('请至少选择一个账号', 'error'); return; }
+    for (let i = 0; i < sessions.length; i++) {
+        if (!sessions[i].smsCode) {
+            toast('请为每个选中账号填写验证码', 'error');
+            return;
+        }
+    }
     const quotaId = kuwoGetSelectedQuota();
     const useProxy = kuwoUseProxyEnabled();
-
-    if (!phone || !password) { toast('请填写手机号和密码', 'error'); return; }
-    if (!smsCode) { toast('请输入验证码', 'error'); return; }
-
     const info = kuwoGetNextWithdrawInfo();
+    const primary = sessions[0];
 
-    // 在4分钟窗口内且还没到点 → 后端定时 + 前端倒计时
     if (info.inWindow === true && info.diffMin > 0 && info.diffMin <= 4) {
-        kuwoLog('🎯 提交定时抢兑任务，后端将在 ' + String(info.hour).padStart(2,'0') + ':00 自动执行（整点后3轮错峰）');
+        kuwoLog('🎯 提交定时抢兑任务（' + sessions.length + ' 个账号），后端将在 ' + String(info.hour).padStart(2,'0') + ':00 自动执行');
         kuwoSetWithdrawLocked(true, true);
-        // 持久化倒计时状态
         try {
             localStorage.setItem(KUWO_STATE_KEY, JSON.stringify({
-                phone, password, smsCode, quotaId,
+                phones: sessions.map(function(s) { return s.phone; }),
+                phone: primary.phone,
+                password: primary.password,
+                smsCode: primary.smsCode,
+                quotaId,
                 useProxy,
                 targetHour: info.hour,
                 savedAt: Date.now()
             }));
         } catch (e) {}
-        // 调后端定时接口
-        scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, info.hour, info, false, useProxy);
+        scheduleWithdrawOnBackend(sessions, quotaId, primary.smsCode, info.hour, info, false, useProxy);
         return;
     }
 
-    // 非抢兑窗口 → 立即执行
-    kuwoLog('⚡ 立即提交抢兑...');
+    kuwoLog('⚡ 立即提交抢兑（' + sessions.length + ' 个账号）...');
     kuwoSetWithdrawLocked(true, false);
-    scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, null, null, true, useProxy);
+    scheduleWithdrawOnBackend(sessions, quotaId, primary.smsCode, null, null, true, useProxy);
 }
 
-// 调后端定时/立即抢兑接口
-async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targetHour, info, immediate, useProxy) {
+async function scheduleWithdrawOnBackend(sessions, quotaId, smsCode, targetHour, info, immediate, useProxy) {
     if (kuwoWithdrawSubmitting) return;
     kuwoWithdrawSubmitting = true;
     const withdrawBtn = document.getElementById('kuwoWithdrawBtn');
     if (withdrawBtn) withdrawBtn.disabled = true;
     try {
         const body = {
-            sessions: [{ phone, password }],
+            sessions: sessions,
             quotaId, smsCode,
             immediate: !!immediate,
             useProxy: useProxy !== false
@@ -7390,12 +7612,11 @@ async function scheduleWithdrawOnBackend(phone, password, smsCode, quotaId, targ
             const reused = !!data.data.reused;
             kuwoActiveTaskId = taskId;
             kuwoLog((reused ? '♻️ 复用已有任务' : '✅ 任务已提交') + '，ID: ' + taskId);
-            kuwoResetTaskLogCursor();
+            if (!reused) kuwoResetTaskLogCursor();
             kuwoMonitorTask(taskId, !!immediate);
-            // 保存taskId到localStorage
             try {
                 const saved = localStorage.getItem(KUWO_STATE_KEY);
-                const state = saved ? JSON.parse(saved) : { phone, password, smsCode, quotaId };
+                const state = saved ? JSON.parse(saved) : { phone: sessions[0].phone, quotaId };
                 state.useProxy = useProxy !== false;
                 state.taskId = taskId;
                 state.immediate = !!immediate;

@@ -974,7 +974,8 @@ func (c *PortalController) JdAutoConfigSave() {
 func (c *PortalController) JdAutoRuns() {
 	page, _ := c.GetInt("page", 1)
 	limit, _ := c.GetInt("limit", 20)
-	rows, total, err := models.ListPortalJdRunRecords(c.PortalUserID, page, limit)
+	taskID := strings.TrimSpace(c.GetString("taskId"))
+	rows, total, err := models.ListPortalJdRunRecords(c.PortalUserID, page, limit, taskID)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
 		c.ServeJSON()
@@ -1226,34 +1227,81 @@ func (c *PortalController) KuwoLogin() {
 	c.ServeJSON()
 }
 
-// KuwoSendSms 发送酷我提现短信验证码
+// KuwoSendSms 发送酷我提现短信验证码（支持单账号或 sessions 批量）
 func (c *PortalController) KuwoSendSms() {
 	var req struct {
 		Phone    string `json:"phone"`
 		Password string `json:"password"`
+		Sessions []struct {
+			Phone    string `json:"phone"`
+			Password string `json:"password"`
+		} `json:"sessions"`
 	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "请求数据格式错误"}
 		c.ServeJSON()
 		return
 	}
+
+	type smsResult struct {
+		Phone          string `json:"phone"`
+		Success        bool   `json:"success"`
+		Message        string `json:"message"`
+		EncryptedPhone string `json:"encryptedPhone,omitempty"`
+		LoginUID       string `json:"loginUid,omitempty"`
+		LoginSID       string `json:"loginSid,omitempty"`
+	}
+
+	sendOne := func(phone, password string) smsResult {
+		phone = strings.TrimSpace(phone)
+		password = strings.TrimSpace(password)
+		if phone == "" || password == "" {
+			return smsResult{Phone: phone, Success: false, Message: "手机号和密码不能为空"}
+		}
+		session, err := models.KuwoLogin(phone, password)
+		if err != nil {
+			return smsResult{Phone: phone, Success: false, Message: err.Error()}
+		}
+		models.KuwoCacheSession(phone, session)
+		if err := models.KuwoSendSms(session); err != nil {
+			return smsResult{Phone: phone, Success: false, Message: err.Error()}
+		}
+		return smsResult{
+			Phone:          session.Phone,
+			Success:        true,
+			Message:        "验证码已发送",
+			EncryptedPhone: session.EncryptedPhone,
+			LoginUID:       session.LoginUid,
+			LoginSID:       session.LoginSid,
+		}
+	}
+
+	if len(req.Sessions) > 0 {
+		results := make([]smsResult, 0, len(req.Sessions))
+		okCount := 0
+		for _, s := range req.Sessions {
+			r := sendOne(s.Phone, s.Password)
+			if r.Success {
+				okCount++
+			}
+			results = append(results, r)
+		}
+		c.RecordPortalEvent(models.SourceEventKuwoSms)
+		msg := fmt.Sprintf("已向 %d/%d 个账号发送验证码", okCount, len(results))
+		c.Data["json"] = map[string]interface{}{
+			"code": 0,
+			"msg":  msg,
+			"data": map[string]interface{}{"accounts": results},
+		}
+		c.ServeJSON()
+		return
+	}
+
 	phone := strings.TrimSpace(req.Phone)
 	password := strings.TrimSpace(req.Password)
-	if phone == "" || password == "" {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "手机号和密码不能为空"}
-		c.ServeJSON()
-		return
-	}
-	session, err := models.KuwoLogin(phone, password)
-	if err != nil {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
-		c.ServeJSON()
-		return
-	}
-	// 缓存session，到点抢兑时直接用，避免重新登录
-	models.KuwoCacheSession(phone, session)
-	if err := models.KuwoSendSms(session); err != nil {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": err.Error()}
+	r := sendOne(phone, password)
+	if !r.Success {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": r.Message}
 		c.ServeJSON()
 		return
 	}
@@ -1262,10 +1310,10 @@ func (c *PortalController) KuwoSendSms() {
 		"code": 0,
 		"msg":  "验证码已发送",
 		"data": map[string]string{
-			"phone":          session.Phone,
-			"encryptedPhone": session.EncryptedPhone,
-			"loginUid":       session.LoginUid,
-			"loginSid":       session.LoginSid,
+			"phone":          r.Phone,
+			"encryptedPhone": r.EncryptedPhone,
+			"loginUid":       r.LoginUID,
+			"loginSid":       r.LoginSID,
 		},
 	}
 	c.ServeJSON()
@@ -1277,6 +1325,7 @@ func (c *PortalController) KuwoWithdraw() {
 		Sessions []struct {
 			Phone         string `json:"phone"`
 			Password      string `json:"password"`
+			SmsCode       string `json:"smsCode"`
 			EncryptedPhone string `json:"encryptedPhone"`
 			LoginUID      string `json:"loginUid"`
 			LoginSID      string `json:"loginSid"`
@@ -1301,11 +1350,6 @@ func (c *PortalController) KuwoWithdraw() {
 	if quotaId == "" {
 		quotaId = "30002"
 	}
-	if smsCode == "" {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "验证码不能为空"}
-		c.ServeJSON()
-		return
-	}
 	useProxy := true
 	if req.UseProxy != nil {
 		useProxy = *req.UseProxy
@@ -1313,10 +1357,28 @@ func (c *PortalController) KuwoWithdraw() {
 
 	accounts := make([]*models.KuwoAccountInput, 0, len(req.Sessions))
 	for _, s := range req.Sessions {
+		code := strings.TrimSpace(s.SmsCode)
+		if code == "" {
+			code = smsCode
+		}
 		accounts = append(accounts, &models.KuwoAccountInput{
 			Phone:    strings.TrimSpace(s.Phone),
 			Password: strings.TrimSpace(s.Password),
+			SmsCode:  code,
 		})
+	}
+	if smsCode == "" {
+		for _, acc := range accounts {
+			if strings.TrimSpace(acc.SmsCode) != "" {
+				smsCode = acc.SmsCode
+				break
+			}
+		}
+	}
+	if smsCode == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "验证码不能为空"}
+		c.ServeJSON()
+		return
 	}
 	sessions := models.KuwoBuildSessionsFromRequest(accounts)
 	if len(sessions) == 0 {
@@ -1361,6 +1423,7 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 		Sessions []struct {
 			Phone          string `json:"phone"`
 			Password       string `json:"password"`
+			SmsCode        string `json:"smsCode"`
 			EncryptedPhone string `json:"encryptedPhone"`
 			LoginUID       string `json:"loginUid"`
 			LoginSID       string `json:"loginSid"`
@@ -1386,11 +1449,6 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 	if quotaId == "" {
 		quotaId = "30002"
 	}
-	if smsCode == "" {
-		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "验证码不能为空"}
-		c.ServeJSON()
-		return
-	}
 	if !req.Immediate {
 		if req.TargetHour < 0 || req.TargetHour > 23 {
 			c.Data["json"] = map[string]interface{}{"code": 1, "msg": "无效的目标小时"}
@@ -1405,10 +1463,28 @@ func (c *PortalController) KuwoScheduleWithdraw() {
 
 	accounts := make([]*models.KuwoAccountInput, 0, len(req.Sessions))
 	for _, s := range req.Sessions {
+		code := strings.TrimSpace(s.SmsCode)
+		if code == "" {
+			code = smsCode
+		}
 		accounts = append(accounts, &models.KuwoAccountInput{
 			Phone:    strings.TrimSpace(s.Phone),
 			Password: strings.TrimSpace(s.Password),
+			SmsCode:  code,
 		})
+	}
+	if smsCode == "" {
+		for _, acc := range accounts {
+			if strings.TrimSpace(acc.SmsCode) != "" {
+				smsCode = acc.SmsCode
+				break
+			}
+		}
+	}
+	if smsCode == "" {
+		c.Data["json"] = map[string]interface{}{"code": 1, "msg": "验证码不能为空"}
+		c.ServeJSON()
+		return
 	}
 
 	task, reused := models.KuwoScheduleWithdraw(accounts, quotaId, smsCode, req.TargetHour, req.Immediate, useProxy)

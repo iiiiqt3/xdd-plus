@@ -143,12 +143,21 @@ type KuwoSession struct {
 	LoginSid       string
 	Phone          string
 	EncryptedPhone string
+	SmsCode        string
 }
 
 // KuwoAccountInput 抢兑账号（含密码，到点可重新登录刷新 session）
 type KuwoAccountInput struct {
 	Phone    string
 	Password string
+	SmsCode  string
+}
+
+func kuwoSessionSmsCode(session *KuwoSession, fallback string) string {
+	if session != nil && strings.TrimSpace(session.SmsCode) != "" {
+		return strings.TrimSpace(session.SmsCode)
+	}
+	return strings.TrimSpace(fallback)
 }
 
 // kuwoSessionCache 登录session缓存，避免到点时重新登录浪费时间
@@ -380,8 +389,13 @@ func kuwoEnsureSessions(accounts []*KuwoAccountInput) []*KuwoSession {
 		if acc == nil || acc.Phone == "" {
 			continue
 		}
+		smsCode := strings.TrimSpace(acc.SmsCode)
 		if cached := KuwoGetCachedSession(acc.Phone); cached != nil && cached.LoginUid != "" {
-			sessions = append(sessions, cached)
+			sess := *cached
+			if smsCode != "" {
+				sess.SmsCode = smsCode
+			}
+			sessions = append(sessions, &sess)
 			continue
 		}
 		if acc.Password != "" {
@@ -389,6 +403,9 @@ func kuwoEnsureSessions(accounts []*KuwoAccountInput) []*KuwoSession {
 			if err != nil {
 				Kuwo().Infof("[kuwo] 刷新登录失败 phone=%s: %v\n", acc.Phone, err)
 				continue
+			}
+			if smsCode != "" {
+				sess.SmsCode = smsCode
 			}
 			KuwoCacheSession(acc.Phone, sess)
 			sessions = append(sessions, sess)
@@ -717,7 +734,7 @@ func KuwoConcurrentWithdrawRetry(sessions []*KuwoSession, quotaId, smsCode strin
 							attemptProxy = fresh
 						}
 					}
-					msg, err := KuwoExecuteWithdraw(s, quotaId, smsCode, attemptProxy)
+					msg, err := KuwoExecuteWithdraw(s, quotaId, kuwoSessionSmsCode(s, smsCode), attemptProxy)
 					ch <- attemptResult{msg: msg, err: err, index: attempt}
 					if task != nil {
 						attemptNo := attempt + 1
@@ -793,7 +810,7 @@ func KuwoBurstWithdraw(sessions []*KuwoSession, quotaID, smsCode string, task *K
 func KuwoSingleWithdraw(sessions []*KuwoSession, quotaID, smsCode string, proxy *kuwoWithdrawProxy) []KuwoWithdrawResult {
 	results := make([]KuwoWithdrawResult, len(sessions))
 	for i, s := range sessions {
-		msg, err := KuwoExecuteWithdraw(s, quotaID, smsCode, proxy)
+		msg, err := KuwoExecuteWithdraw(s, quotaID, kuwoSessionSmsCode(s, smsCode), proxy)
 		results[i] = KuwoWithdrawResult{
 			UID:     s.LoginUid,
 			Phone:   s.Phone,
