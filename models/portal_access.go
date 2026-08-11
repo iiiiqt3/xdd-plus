@@ -2,7 +2,15 @@ package models
 
 import "strconv"
 
-const PortalMinCoinForAccess = 1000
+const defaultPortalMinCoinForAccess = 1000
+
+// GetPortalMinCoinForAccess 门户活动中心/通知中心可见所需最低积分（系统配置，默认 1000）
+func GetPortalMinCoinForAccess() int {
+	if sysConfig.PortalMinCoinForAccess > 0 {
+		return sysConfig.PortalMinCoinForAccess
+	}
+	return defaultPortalMinCoinForAccess
+}
 
 // PortalAccessInfo 门户受限内容访问状态（供网页/App 可选读取）
 type PortalAccessInfo struct {
@@ -14,21 +22,22 @@ type PortalAccessInfo struct {
 }
 
 func BuildPortalAccessInfo(userNumber int, coin int) PortalAccessInfo {
+	required := GetPortalMinCoinForAccess()
 	info := PortalAccessInfo{
 		Coin:         coin,
-		RequiredCoin: PortalMinCoinForAccess,
+		RequiredCoin: required,
 	}
-	if coin >= PortalMinCoinForAccess {
+	if coin >= required {
 		info.GapCoin = 0
 	} else {
-		info.GapCoin = PortalMinCoinForAccess - coin
+		info.GapCoin = required - coin
 	}
 	if CanAccessPortalContent(userNumber, coin) {
 		info.Allowed = true
 		return info
 	}
 	info.Allowed = false
-	info.Message = "活动中心和通知中心需积分达到 1000，或拥有有效的按月付费项目后开放"
+	info.Message = "活动中心和通知中心需积分达到 " + strconv.Itoa(required) + "，或拥有有效的按月付费项目后开放"
 	if info.GapCoin > 0 {
 		info.Message += "（当前 " + strconv.Itoa(info.Coin) + "，还差 " + strconv.Itoa(info.GapCoin) + "）"
 	}
@@ -36,7 +45,7 @@ func BuildPortalAccessInfo(userNumber int, coin int) PortalAccessInfo {
 }
 
 func CanAccessPortalContent(userNumber int, coin int) bool {
-	if coin >= PortalMinCoinForAccess {
+	if coin >= GetPortalMinCoinForAccess() {
 		return true
 	}
 	return HasValidMonthlyProject(userNumber)
@@ -58,11 +67,12 @@ func HasValidMonthlyProject(userNumber int) bool {
 
 // ListPortalAccessUserNumbers 返回可查看受限门户内容的用户编号（用于定向极光推送）
 func ListPortalAccessUserNumbers() []int {
+	required := GetPortalMinCoinForAccess()
 	seen := map[int]bool{}
 	out := make([]int, 0, 64)
 
 	var richUsers []User
-	db.Where("coin >= ?", PortalMinCoinForAccess).Select("number").Find(&richUsers)
+	db.Where("coin >= ?", required).Select("number").Find(&richUsers)
 	for _, u := range richUsers {
 		if u.Number > 0 && !seen[u.Number] {
 			seen[u.Number] = true

@@ -4062,7 +4062,8 @@ function toggleGroupDetail(groupKey) {
 
 function portalAccessLockMessage() {
     const access = state.portalAccess || {};
-    return access.message || '活动中心和通知中心需积分达到 1000，或拥有有效的按月付费项目后开放';
+    const required = access.requiredCoin || 1000;
+    return access.message || ('活动中心和通知中心需积分达到 ' + required + '，或拥有有效的按月付费项目后开放');
 }
 
 function renderActivities() {

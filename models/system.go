@@ -52,6 +52,8 @@ type SystemConfig struct {
 	JdTaskProxyRenum       string `json:"JdTaskProxyRenum"`
 	JdTaskProxyRedelay     string `json:"JdTaskProxyRedelay"`
 	JdTaskProxyMonthlyCoin int    `json:"JdTaskProxyMonthlyCoin"`
+	// PortalMinCoinForAccess 门户活动中心/通知中心可见所需最低积分（0 或未填时默认 1000）
+	PortalMinCoinForAccess int `json:"PortalMinCoinForAccess"`
 }
 
 func initSysConfig() {
