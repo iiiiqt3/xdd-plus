@@ -1096,6 +1096,11 @@
             border-radius: 10px; overflow: hidden; background: var(--glass-bg);
         }
         .jd-run-history-panel.show { display: block; }
+        #jdRunHistoryPanelHome .jd-run-history-panel { margin-bottom: 12px; }
+        .jd-run-history-inline-row .jd-run-history-panel {
+            margin: 0; border-radius: 0 0 10px 10px; border-top: none;
+        }
+        .jd-run-history-inline-cell { padding: 0 0 8px !important; vertical-align: top; }
         .jd-run-history-head {
             display: flex; align-items: center; justify-content: space-between;
             padding: 8px 12px; border-bottom: 1px solid var(--glass-border);
@@ -1201,6 +1206,8 @@
             .jd-task-table .col-name { grid-column: 1; }
             .jd-task-table .col-coin { display: none; }
             .jd-task-table .col-action { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+            .jd-run-history-inline-row { display: block; }
+            .jd-run-history-inline-cell { display: block; padding: 0 !important; }
         }
 
         .wx-empty-state {
@@ -2967,12 +2974,14 @@
                                         <span class="jd-auto-preview-empty">勾选任务后在此显示紧凑排期</span>
                                     </div>
                                 </div>
-                                <div class="jd-run-history-panel" id="jdRunHistoryPanel">
-                                    <div class="jd-run-history-head">
-                                        <span>近 3 天执行记录</span>
-                                        <button type="button" class="btn secondary small" onclick="toggleJdRunHistory()">收起</button>
+                                <div id="jdRunHistoryPanelHome">
+                                    <div class="jd-run-history-panel" id="jdRunHistoryPanel">
+                                        <div class="jd-run-history-head">
+                                            <span>近 3 天执行记录</span>
+                                            <button type="button" class="btn secondary small" onclick="closeJdRunHistoryPanel()">收起</button>
+                                        </div>
+                                        <div class="jd-run-history-body" id="jdRunHistoryBody"></div>
                                     </div>
-                                    <div class="jd-run-history-body" id="jdRunHistoryBody"></div>
                                 </div>
                                 <div id="jdTaskListWrap">
                                     <table class="jd-task-table">
@@ -5960,16 +5969,54 @@ function renderJdAutoPreview() {
     el.innerHTML = '<span class="jd-auto-preview-count">' + preview.length + ' 个</span><div class="jd-auto-preview-chips">' + chips + '</div>';
 }
 
+function getJdRunHistoryColSpan() {
+    var autoActive = !!(jdProxyStatus && jdProxyStatus.active);
+    return autoActive ? 6 : 4;
+}
+
+function ensureJdRunHistoryPanelHome() {
+    var panel = document.getElementById('jdRunHistoryPanel');
+    var home = document.getElementById('jdRunHistoryPanelHome');
+    if (panel && home && panel.parentElement !== home) {
+        panel.classList.remove('show');
+        home.appendChild(panel);
+    }
+    document.querySelectorAll('.jd-run-history-inline-row').forEach(function(row) { row.remove(); });
+}
+
+function closeJdRunHistoryPanel() {
+    ensureJdRunHistoryPanelHome();
+}
+
+function mountJdRunHistoryPanelInline(afterRow) {
+    var panel = document.getElementById('jdRunHistoryPanel');
+    if (!panel || !afterRow) return null;
+    ensureJdRunHistoryPanelHome();
+    var wrap = document.createElement('tr');
+    wrap.className = 'jd-run-history-inline-row';
+    wrap.setAttribute('data-task-id', afterRow.getAttribute('data-task-id') || '');
+    var td = document.createElement('td');
+    td.colSpan = getJdRunHistoryColSpan();
+    td.className = 'jd-run-history-inline-cell';
+    wrap.appendChild(td);
+    afterRow.insertAdjacentElement('afterend', wrap);
+    td.appendChild(panel);
+    panel.classList.add('show');
+    return wrap;
+}
+
 async function toggleJdRunHistory() {
     var panel = document.getElementById('jdRunHistoryPanel');
     if (!panel) return;
+    ensureJdRunHistoryPanelHome();
     var show = !panel.classList.contains('show');
     panel.classList.toggle('show', show);
     if (show) {
         jdRunHistoryTaskId = '';
-        var titleEl = document.querySelector('#jdRunHistoryPanel .jd-run-history-head span');
+        var titleEl = panel.querySelector('.jd-run-history-head span');
         if (titleEl) titleEl.textContent = '全部执行记录';
         await loadJdRunHistory('');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 }
 
@@ -6002,13 +6049,34 @@ async function loadJdRunHistory(taskId) {
     }
 }
 
-async function viewJdTaskRuns(taskId, taskName) {
+async function viewJdTaskRuns(taskId, taskName, btnEl) {
     jdRunHistoryTaskId = taskId || '';
     var panel = document.getElementById('jdRunHistoryPanel');
-    if (panel) panel.classList.add('show');
-    var titleEl = document.querySelector('#jdRunHistoryPanel .jd-run-history-head span');
+    if (!panel) return;
+
+    var row = (btnEl && btnEl.closest) ? btnEl.closest('tr') : null;
+    if (!row && taskId) {
+        row = document.querySelector('#jdTaskListBody tr[data-task-id="' + CSS.escape(taskId) + '"]');
+    }
+
+    var inlineNext = row && row.nextElementSibling;
+    if (inlineNext && inlineNext.classList.contains('jd-run-history-inline-row') &&
+        inlineNext.getAttribute('data-task-id') === taskId && panel.classList.contains('show')) {
+        closeJdRunHistoryPanel();
+        return;
+    }
+
+    if (row) {
+        mountJdRunHistoryPanelInline(row);
+    } else {
+        ensureJdRunHistoryPanelHome();
+        panel.classList.add('show');
+    }
+
+    var titleEl = panel.querySelector('.jd-run-history-head span');
     if (titleEl) titleEl.textContent = taskName ? ('执行记录 · ' + taskName) : '执行记录';
     await loadJdRunHistory(taskId);
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 async function viewJdRunLog(id) {
@@ -6241,6 +6309,7 @@ function getFilteredJdTasks() {
 function renderJdTaskList() {
     var listBody = document.getElementById('jdTaskListBody');
     if (!listBody) return;
+    ensureJdRunHistoryPanelHome();
 
     var tasks = getFilteredJdTasks();
     var autoActive = !!(jdProxyStatus && jdProxyStatus.active);
@@ -6269,7 +6338,7 @@ function renderJdTaskList() {
         }
         html += '<td class="col-action">';
         html += '<button class="btn primary" id="taskBtn_' + safeId + '" data-task-id="' + safeId + '" data-task-name="' + safeName + '" onclick="executeJdTask(this.dataset.taskId, this.dataset.taskName)">执行</button>';
-        html += ' <button class="btn secondary small" onclick="viewJdTaskRuns(\'' + safeId.replace(/'/g, "\\'") + '\', \'' + safeName.replace(/'/g, "\\'") + '\')">执行查看</button>';
+        html += ' <button class="btn secondary small" onclick="viewJdTaskRuns(\'' + safeId.replace(/'/g, "\\'") + '\', \'' + safeName.replace(/'/g, "\\'") + '\', this)">执行查看</button>';
         html += '</td></tr>';
     });
     listBody.innerHTML = html;
