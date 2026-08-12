@@ -754,7 +754,7 @@ function sleep(ms) {
  */
 async function recognize_captcha(image_base64) {
   try {
-    const ocr_url = 'https://ddddocr.linzixuan.work/classification';
+    const ocr_url = 'http://180.152.5.230:7676/classification';
     if (image_base64.includes(',')) {
       image_base64 = image_base64.split(',')[1];
     }

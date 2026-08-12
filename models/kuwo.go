@@ -29,7 +29,7 @@ const (
 	kuwoAESIV       = "aWNoWW9vWCtNYjFnUmV0UA=="
 	kuwoUserAgent   = "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro Build/AP4A.250405.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/136.0.7103.60 Mobile Safari/537.36/ kuwopage"
 	kuwoCapURL      = "http://www.kuwo.cn/api/common/captcha/getcode"
-	kuwoOCRURL      = "https://ddddocr.linzixuan.work/classification"
+	kuwoOCRURL      = "http://180.152.5.230:7676/classification"
 	kuwoLoginURL    = "https://wapi.kuwo.cn/api/www/login/loginByKw"
 	kuwoSmsURL      = "https://integralapi.kuwo.cn/api/v1/online/sign/v1/userBindPhone"
 	kuwoWithdrawURL = "https://integralapi.kuwo.cn/api/v1/online/sign/v1/getWithdraw"
