@@ -28,9 +28,9 @@ const (
 	kuwoAESKey      = "eXNpVmtMSkhIbnZNV0NIcQ=="
 	kuwoAESIV       = "aWNoWW9vWCtNYjFnUmV0UA=="
 	kuwoUserAgent   = "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro Build/AP4A.250405.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/136.0.7103.60 Mobile Safari/537.36/ kuwopage"
-	kuwoCapURL      = "http://www.kuwo.cn/api/common/captcha/getcode"
-	kuwoOCRURL      = "http://180.152.5.230:7676/classification"
-	kuwoLoginURL    = "https://wapi.kuwo.cn/api/www/login/loginByKw"
+	kuwoCapURL           = "http://www.kuwo.cn/api/common/captcha/getcode"
+	defaultKuwoOCRURL    = "http://127.0.0.1:7676/classification"
+	kuwoLoginURL         = "https://wapi.kuwo.cn/api/www/login/loginByKw"
 	kuwoSmsURL      = "https://integralapi.kuwo.cn/api/v1/online/sign/v1/userBindPhone"
 	kuwoWithdrawURL = "https://integralapi.kuwo.cn/api/v1/online/sign/v1/getWithdraw"
 
@@ -62,6 +62,101 @@ var kuwoHTTPClient = &http.Client{
 		IdleConnTimeout:     90 * time.Second,
 		ForceAttemptHTTP2:   true,
 	},
+}
+
+var kuwoOCRHTTPClient = &http.Client{
+	Timeout: 45 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        8,
+		MaxIdleConnsPerHost: 4,
+		IdleConnTimeout:     60 * time.Second,
+		ForceAttemptHTTP2:   false,
+	},
+}
+
+// GetKuwoOCRURL 酷我验证码 OCR 地址（系统配置可覆盖）
+func GetKuwoOCRURL() string {
+	if u := strings.TrimSpace(sysConfig.KuwoOCRURL); u != "" {
+		return u
+	}
+	return defaultKuwoOCRURL
+}
+
+func kuwoOCRURLs() []string {
+	primary := GetKuwoOCRURL()
+	seen := map[string]bool{}
+	out := make([]string, 0, 3)
+	add := func(u string) {
+		u = strings.TrimSpace(u)
+		if u == "" || seen[u] {
+			return
+		}
+		seen[u] = true
+		out = append(out, u)
+	}
+	add(primary)
+	if strings.Contains(primary, "180.152.5.230:7676") {
+		add("http://127.0.0.1:7676/classification")
+	}
+	if primary != defaultKuwoOCRURL {
+		add(defaultKuwoOCRURL)
+	}
+	return out
+}
+
+func kuwoDoOCRRequest(req *http.Request) ([]byte, int, error) {
+	resp, err := kuwoOCRHTTPClient.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	return kuwoReadResponseBody(resp)
+}
+
+func kuwoRecognizeCaptcha(imgStr string) (string, error) {
+	payload, err := json.Marshal(map[string]string{"image": imgStr})
+	if err != nil {
+		return "", err
+	}
+	var lastErr error
+	for _, ocrURL := range kuwoOCRURLs() {
+		for attempt := 0; attempt < 2; attempt++ {
+			req, err := http.NewRequest("POST", ocrURL, bytes.NewReader(payload))
+			if err != nil {
+				lastErr = err
+				continue
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+			ocrBody, status, err := kuwoDoOCRRequest(req)
+			if err != nil {
+				lastErr = fmt.Errorf("%s: %w", ocrURL, err)
+				Kuwo().Warnf("[kuwo] ocr failed url=%s attempt=%d: %v", ocrURL, attempt+1, err)
+				time.Sleep(300 * time.Millisecond)
+				continue
+			}
+			var ocrResp struct {
+				Result string `json:"result"`
+			}
+			if err := json.Unmarshal(ocrBody, &ocrResp); err != nil {
+				text := strings.TrimSpace(string(ocrBody))
+				if text != "" {
+					return text, nil
+				}
+				lastErr = fmt.Errorf("%s: parse ocr response: %w", ocrURL, err)
+				continue
+			}
+			text := strings.TrimSpace(ocrResp.Result)
+			if text != "" {
+				return text, nil
+			}
+			lastErr = fmt.Errorf("%s: empty ocr result (status=%d)", ocrURL, status)
+		}
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("ocr failed")
+	}
+	return "", lastErr
 }
 
 // kuwoWithdrawProxy 仅抢兑提现请求使用（与京东共用动态代理 API）
@@ -514,26 +609,11 @@ func kuwoGetCaptcha() (imgBase64 string, token string, err error) {
 		imgStr = imgStr[idx+1:]
 	}
 
-	ocrPayload, _ := json.Marshal(map[string]string{"image": imgStr})
-	ocrReq, err := http.NewRequest("POST", kuwoOCRURL, bytes.NewReader(ocrPayload))
+	captchaCode, err := kuwoRecognizeCaptcha(imgStr)
 	if err != nil {
 		return "", "", err
 	}
-	ocrReq.Header.Set("Content-Type", "application/json")
-	ocrReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-
-	ocrBody, _, err := kuwoDoRequest(ocrReq)
-	if err != nil {
-		return "", "", err
-	}
-
-	var ocrResp struct {
-		Result string `json:"result"`
-	}
-	if err := json.Unmarshal(ocrBody, &ocrResp); err != nil {
-		return strings.TrimSpace(string(ocrBody)), capResp.Data.Token, nil
-	}
-	return strings.TrimSpace(ocrResp.Result), capResp.Data.Token, nil
+	return captchaCode, capResp.Data.Token, nil
 }
 
 // KuwoLogin performs the full login flow: captcha -> OCR -> login（直连）
