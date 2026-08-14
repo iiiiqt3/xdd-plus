@@ -1612,7 +1612,22 @@ final class ElmRushViewController: BaseNativeViewController {
         countdownTimer?.invalidate()
         activeTaskId = nil
         countdownLabel.isHidden = true
-        if let task = task { applyTask(task) }
+        if let task = task {
+            applyTask(task)
+            if let results = task.results, !results.isEmpty {
+                let ok = results.filter { $0.success == true }.count
+                appendLog("—— 结果：成功 \(ok) / \(results.count) ——")
+                for r in results {
+                    let icon = r.success == true ? "✅" : "❌"
+                    let name = r.remark ?? r.ref ?? ""
+                    var line = "\(icon) \(name) — \(r.message ?? "")"
+                    if let product = r.product, !product.isEmpty, !(r.message ?? "").contains(product) {
+                        line += " · \(product)"
+                    }
+                    appendLog(line)
+                }
+            }
+        }
         updateButtons()
     }
 
