@@ -39,12 +39,14 @@ const (
 	elmDebugNoTimeLimit     = false
 	elmDefaultLat           = "30.27415"
 	elmDefaultLng           = "120.15507"
+	elmPrizeQueryWallet     = "wallet" // 免单券：myprize + EAT_FREE_2026
+	elmPrizeQueryMall       = "mall"   // 实物：商城首页兑换状态 + 幸运星扣减
 )
 
 var (
 	elmUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
 	elmCPNCodes  = `["PLAY_NOTICE_CPN","INTERACT_RESOURCE_CPN","MORE_MENU_CPN","STAR_MSG_CONTENT_CPN","PLAY_RESOURCE_CPN","INTERACT_CENTER_SKIN_COMPONENT","INTERACT_CENTER_BUBBLE","INTERACT_CENTER_LOTTERY"]`
-	elmRoundLagMs = []int{-20, -10, 0, 10} // 整点前20/10ms、整点、整点后10ms，各连打 elmAttemptsPerRound 次
+	elmRoundLagMs = []int{-20, 0} // 两轮：整点前20ms、整点，各连打 elmAttemptsPerRound 次
 )
 
 var elmHTTPClient = &http.Client{
@@ -301,6 +303,43 @@ func elmAsMap(v interface{}) map[string]interface{} {
 	return m
 }
 
+func elmAsInt(v interface{}) int {
+	switch n := v.(type) {
+	case int:
+		return n
+	case int64:
+		return int(n)
+	case float64:
+		return int(n)
+	case json.Number:
+		i, _ := n.Int64()
+		return int(i)
+	default:
+		s := elmText(v)
+		if s == "" {
+			return 0
+		}
+		var f float64
+		fmt.Sscan(s, &f)
+		return int(f)
+	}
+}
+
+func elmRoundPlanText() string {
+	parts := make([]string, 0, len(elmRoundLagMs))
+	for _, lag := range elmRoundLagMs {
+		switch {
+		case lag > 0:
+			parts = append(parts, fmt.Sprintf("+%dms", lag))
+		case lag < 0:
+			parts = append(parts, fmt.Sprintf("%dms", lag))
+		default:
+			parts = append(parts, "整点")
+		}
+	}
+	return fmt.Sprintf("%d轮时间点各 %d 次：%s", len(elmRoundLagMs), elmAttemptsPerRound, strings.Join(parts, "/"))
+}
+
 func elmMaskRef(ref string) string {
 	ref = strings.TrimSpace(ref)
 	if len(ref) <= 10 {
@@ -495,6 +534,7 @@ type elmPrizeKind struct {
 	Name     string
 	Keywords []string
 	Tag      string
+	Query    string
 	LogStart string
 	LogFail  string
 	LogHit   string
@@ -506,17 +546,18 @@ func elmPrizeKindByHour(targetHour int) elmPrizeKind {
 		return elmPrizeKind{
 			Name:     "纸巾",
 			Keywords: []string{"纸巾", "抽纸", "面巾纸", "纸品"},
-			Tag:      "",
-			LogStart: "开始核对纸巾奖品",
-			LogFail:  "纸巾查询失败",
+			Query:    elmPrizeQueryMall,
+			LogStart: "开始核对商城兑换（纸巾，非免单券）",
+			LogFail:  "商城兑换查询失败",
 			LogHit:   "纸巾核对",
-			LogMiss:  "未查到纸巾奖品",
+			LogMiss:  "未查到商城兑换记录",
 		}
 	}
 	return elmPrizeKind{
 		Name:     "免单卡",
 		Keywords: []string{"免单卡", "免单"},
 		Tag:      elmPrizeActivityTag,
+		Query:    elmPrizeQueryWallet,
 		LogStart: "开始核对免单持卡",
 		LogFail:  "免单持卡查询失败",
 		LogHit:   "持卡核对",
@@ -647,6 +688,121 @@ func elmParsePrizes(resp map[string]interface{}, kind elmPrizeKind) string {
 		parts = append(parts, fmt.Sprintf("%sx%d", p.label, p.count))
 	}
 	return strings.Join(parts, "、")
+}
+
+func elmFindMallProduct(products []map[string]interface{}, acc *elmReadyAccount, kind elmPrizeKind, task *ElmScheduledTask) map[string]interface{} {
+	wantID := ""
+	if acc != nil && acc.product != nil {
+		wantID = elmText(acc.product["exchangeId"])
+	}
+	if wantID == "" && task != nil && task.Product != nil {
+		wantID = strings.TrimSpace(task.Product.ID)
+	}
+	if wantID != "" {
+		for _, p := range products {
+			if elmText(p["exchangeId"]) == wantID {
+				return p
+			}
+		}
+	}
+	for _, p := range products {
+		if elmPrizeTitleMatches(elmProductTitle(p), kind.Keywords) {
+			return p
+		}
+	}
+	return nil
+}
+
+func elmProductUserExchanged(item map[string]interface{}) bool {
+	if item == nil {
+		return false
+	}
+	info := elmAsMap(item["exchangeInfo"])
+	status := strings.ToUpper(elmText(info["exchangeStatus"]))
+	if strings.Contains(status, "EXCHANGE_LIMIT") || strings.Contains(status, "ALREADY") ||
+		(strings.Contains(status, "EXCHANGED") && !strings.Contains(status, "SECKILL")) {
+		return true
+	}
+	for _, key := range []string{"userExchangedNum", "userExchangeCount", "userExchangedCount", "exchangedCount", "exchangeTimes", "userLimitUsed"} {
+		if elmAsInt(info[key]) > 0 {
+			return true
+		}
+	}
+	btn := elmText(info["buttonText"]) + elmText(item["buttonText"]) + elmText(info["btnText"])
+	return strings.Contains(btn, "已兑换") || strings.Contains(btn, "已抢到") || strings.Contains(btn, "已领取")
+}
+
+func elmQueryMallPrize(acc *elmReadyAccount, kind elmPrizeKind, task *ElmScheduledTask) (string, error) {
+	if acc == nil || acc.client == nil {
+		return "", fmt.Errorf("账号未预检")
+	}
+	home, err := acc.client.homepage()
+	if err != nil {
+		return "", err
+	}
+	if !elmIsSuccess(home) {
+		return "", fmt.Errorf("%s", elmFirstRet(home))
+	}
+	product := elmFindMallProduct(elmProducts(home), acc, kind, task)
+	title := ""
+	cost := 0
+	if product != nil {
+		brief := elmProductBrief(product)
+		title = brief.Title
+		cost = brief.Cost
+	} else if acc.product != nil {
+		brief := elmProductBrief(acc.product)
+		title = brief.Title
+		cost = brief.Cost
+	} else if task != nil && task.Product != nil {
+		title = task.Product.Title
+		cost = task.Product.Cost
+	}
+	starNow := elmStarBalance(home)
+	starBefore := 0
+	if acc != nil {
+		starBefore = acc.star
+	}
+	starDropped := starBefore > 0 && starNow >= 0 && starNow < starBefore
+	costHit := cost > 0 && starDropped && (starBefore-starNow) >= cost
+	userHit := elmProductUserExchanged(product)
+	if !starDropped && !userHit {
+		return "", nil
+	}
+	label := strings.TrimSpace(title)
+	if label == "" {
+		label = kind.Name
+	}
+	parts := []string{label + "x1"}
+	if starDropped {
+		delta := starBefore - starNow
+		if costHit {
+			parts = append(parts, fmt.Sprintf("已扣%d星", delta))
+		} else {
+			parts = append(parts, fmt.Sprintf("幸运星 %d→%d", starBefore, starNow))
+		}
+	}
+	if userHit && !starDropped {
+		parts = append(parts, "商城显示已兑换")
+	}
+	return strings.Join(parts, " · "), nil
+}
+
+func elmQueryAccountPrize(acc *elmReadyAccount, kind elmPrizeKind, task *ElmScheduledTask) (string, error) {
+	if kind.Query == elmPrizeQueryMall {
+		return elmQueryMallPrize(acc, kind, task)
+	}
+	if acc == nil || acc.client == nil {
+		return "", fmt.Errorf("账号未预检")
+	}
+	resp, err := acc.client.queryPrizeWallet(kind.Tag)
+	if err != nil {
+		return "", err
+	}
+	if !elmIsSuccess(resp) {
+		return "", fmt.Errorf("%s", elmFirstRet(resp))
+	}
+	return elmParsePrizes(resp, kind), nil
 }
 
 func elmProducts(home map[string]interface{}) []map[string]interface{} {
@@ -1619,16 +1775,11 @@ func elmFinalizeExchangeResults(task *ElmScheduledTask) {
 			wg.Add(1)
 			go func(a *elmReadyAccount) {
 				defer wg.Done()
-				resp, err := a.client.queryPrizeWallet(kind.Tag)
+				cards, err := elmQueryAccountPrize(a, kind, task)
 				if err != nil {
 					task.AddLog("warn", "[%s] %s: %v", a.info.Remark, kind.LogFail, err)
 					return
 				}
-				if !elmIsSuccess(resp) {
-					task.AddLog("warn", "[%s] %s: %s", a.info.Remark, kind.LogFail, elmFirstRet(resp))
-					return
-				}
-				cards := elmParsePrizes(resp, kind)
 				mu.Lock()
 				cardMap[elmNormalizeRef(a.info.Ref)] = cards
 				mu.Unlock()
@@ -1647,7 +1798,7 @@ func elmFinalizeExchangeResults(task *ElmScheduledTask) {
 		cards := strings.TrimSpace(cardMap[key])
 		if !task.Results[i].Success && cards != "" {
 			task.Results[i].Success = true
-			task.Results[i].Message = "持卡核对已抢到：" + cards
+			task.Results[i].Message = "核对已抢到：" + cards
 		} else if task.Results[i].Success && cards != "" && !strings.Contains(task.Results[i].Message, cards) {
 			task.Results[i].Message = strings.TrimSpace(task.Results[i].Message + " · " + cards)
 		}
@@ -1919,7 +2070,7 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string, targetHo
 	for _, a := range accounts {
 		remarks = append(remarks, a.Remark)
 	}
-	task.AddLog("info", "账号数：%d（%s）| 四轮时间点各 %d 次：整点-20/-10/0/+10ms", len(accounts), strings.Join(remarks, "、"), elmAttemptsPerRound)
+	task.AddLog("info", "账号数：%d（%s）| %s", len(accounts), strings.Join(remarks, "、"), elmRoundPlanText())
 
 	// 用已缓存 CK 预览目标商品（取第一个账号）
 	if prepared, err := elmPrepareAccount(elmUserCacheID(userNumber), accounts[0]); err == nil {
