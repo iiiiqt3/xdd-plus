@@ -4,12 +4,17 @@ import "strconv"
 
 const defaultPortalMinCoinForAccess = 1000
 
-// GetPortalMinCoinForAccess 门户活动中心/通知中心可见所需最低积分（系统配置，默认 1000）
+// GetPortalMinCoinForAccess 门户活动中心/通知中心可见所需最低积分。
+// 未配置时默认 1000；明确填 0 表示不限制，所有登录用户可见。
 func GetPortalMinCoinForAccess() int {
-	if sysConfig.PortalMinCoinForAccess > 0 {
-		return sysConfig.PortalMinCoinForAccess
+	if sysConfig.PortalMinCoinForAccess == nil {
+		return defaultPortalMinCoinForAccess
 	}
-	return defaultPortalMinCoinForAccess
+	v := *sysConfig.PortalMinCoinForAccess
+	if v < 0 {
+		return defaultPortalMinCoinForAccess
+	}
+	return v
 }
 
 // PortalAccessInfo 门户受限内容访问状态（供网页/App 可选读取）

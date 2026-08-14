@@ -1820,7 +1820,7 @@
                             <label class="switch"><input type="checkbox" id="notifyIsTop"><span class="slider"></span></label>
                         </div>
                         <div class="notify-top-toggle">
-                            <div><strong>对所有人可见</strong><span>勾选后低积分用户也能在通知中心/仪表盘看到；不勾选则仅积分≥1000或有有效按月项目的用户可见</span></div>
+                            <div><strong>对所有人可见</strong><span>勾选后低积分用户也能在通知中心/仪表盘看到；不勾选则仅达到积分门槛或有有效按月项目的用户可见</span></div>
                             <label class="switch"><input type="checkbox" id="notifyVisibleToAll"><span class="slider"></span></label>
                         </div>
                         <div style="margin-top:12px;padding:10px;background:#f0f9eb;border:1px solid #e1f3d8;border-radius:6px;">
@@ -2178,7 +2178,7 @@
                         <label class="switch"><input type="checkbox" id="notifyEditIsTop"><span class="slider"></span></label>
                     </div>
                     <div class="notify-top-toggle" style="margin-bottom:14px;">
-                        <div><strong>对所有人可见</strong><span>不勾选时仅积分≥1000或有有效按月项目的用户可见</span></div>
+                        <div><strong>对所有人可见</strong><span>不勾选时仅达到积分门槛或有有效按月项目的用户可见</span></div>
                         <label class="switch"><input type="checkbox" id="notifyEditVisibleToAll"><span class="slider"></span></label>
                     </div>
                     <div class="form-item" style="margin-bottom:14px;"><label>主题</label><input id="notifyEditTitle" maxlength="120"></div>
@@ -7807,10 +7807,10 @@ async function loadSysConfig() {
             <div class="config-section" id="syscfg-activity">
                 <div class="config-section-title"><i class="fas fa-gift"></i> 活动设置 <span class="tag tag-info" style="font-size:11px;">门户活动中心 / 通知中心可见门槛</span></div>
                 <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#0369a1;line-height:1.75;">
-                    用户积分达到下方门槛，或拥有<strong>未过期的按月付费项目</strong>时，可在网页/App 查看「活动中心」与「通知中心」。修改后即时生效，无需重启服务或 App 发版。
+                    用户积分达到下方门槛，或拥有<strong>未过期的按月付费项目</strong>时，可在网页/App 查看「活动中心」与「通知中心」。<strong>填 0 表示不限制，所有登录用户可见</strong>。修改后即时生效，无需重启服务或 App 发版。
                 </div>
                 <div class="form-grid">
-                    <div class="form-item"><label>积分可见门槛 <span class="tip">默认 1000</span></label><input type="number" id="sys_PortalMinCoinForAccess" min="1" value="${sys.PortalMinCoinForAccess > 0 ? sys.PortalMinCoinForAccess : 1000}" placeholder="1000"></div>
+                    <div class="form-item"><label>积分可见门槛 <span class="tip">0=不限制，默认 1000</span></label><input type="number" id="sys_PortalMinCoinForAccess" min="0" value="${sys.PortalMinCoinForAccess == null || sys.PortalMinCoinForAccess === '' ? 1000 : sys.PortalMinCoinForAccess}" placeholder="1000"></div>
                     <div class="form-item full"><label>酷我验证码 OCR 地址 <span class="tip">ddddocr /classification</span></label><input type="text" id="sys_KuwoOCRURL" value="${v(sys.KuwoOCRURL) || 'http://127.0.0.1:7676/classification'}" placeholder="http://127.0.0.1:7676/classification"></div>
                 </div>
                 <div style="font-size:12px;color:#64748b;line-height:1.65;margin-top:-4px;">OCR 与后端同机部署时请用 <code>127.0.0.1</code>，走公网 IP 可能回连超时；保存后立即生效。</div>
@@ -8064,7 +8064,7 @@ async function saveSysConfig() {
             JdTaskProxyRenum: String((document.getElementById('sys_JdTaskProxyRenum')||{}).value || '10'),
             JdTaskProxyRedelay: String((document.getElementById('sys_JdTaskProxyRedelay')||{}).value || '2'),
             JdTaskProxyMonthlyCoin: parseInt((document.getElementById('sys_JdTaskProxyMonthlyCoin')||{}).value, 10) || 0,
-            PortalMinCoinForAccess: parseInt((document.getElementById('sys_PortalMinCoinForAccess')||{}).value, 10) || 1000,
+            PortalMinCoinForAccess: (() => { const raw = parseInt((document.getElementById('sys_PortalMinCoinForAccess')||{}).value, 10); return Number.isFinite(raw) && raw >= 0 ? raw : 1000; })(),
             KuwoOCRURL: String((document.getElementById('sys_KuwoOCRURL')||{}).value || '').trim() || 'http://127.0.0.1:7676/classification',
         };
         const sysRes = await api.post('/api/admin/sysconfig/save', sysData);
