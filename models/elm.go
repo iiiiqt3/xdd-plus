@@ -479,11 +479,11 @@ func (c *elmMtopClient) exchange(product map[string]interface{}) (map[string]int
 	return c.request(elmExchangeAPI, body, "POST", map[string]string{"asac": elmExchangeAsac}, true)
 }
 
-func (c *elmMtopClient) queryPrizeWallet() (map[string]interface{}, error) {
+func (c *elmMtopClient) queryPrizeWallet(activityTag string) (map[string]interface{}, error) {
 	body := map[string]interface{}{
 		"lastId":        "",
 		"pageSize":      50,
-		"activityTag":   elmPrizeActivityTag,
+		"activityTag":   activityTag,
 		"rightSubTypes": "[]",
 		"latitude":      elmDefaultLat,
 		"longitude":     elmDefaultLng,
@@ -491,7 +491,89 @@ func (c *elmMtopClient) queryPrizeWallet() (map[string]interface{}, error) {
 	return c.request(elmPrizeWalletAPI, body, "POST", nil, true)
 }
 
-func elmParseFreeCards(resp map[string]interface{}) string {
+type elmPrizeKind struct {
+	Name     string
+	Keywords []string
+	Tag      string
+	LogStart string
+	LogFail  string
+	LogHit   string
+	LogMiss  string
+}
+
+func elmPrizeKindByHour(targetHour int) elmPrizeKind {
+	if targetHour == 15 {
+		return elmPrizeKind{
+			Name:     "纸巾",
+			Keywords: []string{"纸巾", "抽纸", "面巾纸", "纸品"},
+			Tag:      "",
+			LogStart: "开始核对纸巾奖品",
+			LogFail:  "纸巾查询失败",
+			LogHit:   "纸巾核对",
+			LogMiss:  "未查到纸巾奖品",
+		}
+	}
+	return elmPrizeKind{
+		Name:     "免单卡",
+		Keywords: []string{"免单卡", "免单"},
+		Tag:      elmPrizeActivityTag,
+		LogStart: "开始核对免单持卡",
+		LogFail:  "免单持卡查询失败",
+		LogHit:   "持卡核对",
+		LogMiss:  "未查到可用免单卡",
+	}
+}
+
+func elmPrizeKindForTask(task *ElmScheduledTask) elmPrizeKind {
+	kind := elmPrizeKindByHour(0)
+	if task != nil {
+		kind = elmPrizeKindByHour(task.TargetHour)
+	}
+	title := ""
+	if task != nil && task.Product != nil {
+		title = task.Product.Title
+	}
+	if title == "" && task != nil {
+		for _, a := range task.ready {
+			if a != nil && a.product != nil {
+				title = elmProductTitle(a.product)
+				if title != "" {
+					break
+				}
+			}
+		}
+	}
+	if title == "" {
+		return kind
+	}
+	tissue := elmPrizeKindByHour(15)
+	card := elmPrizeKindByHour(10)
+	for _, k := range tissue.Keywords {
+		if strings.Contains(title, k) {
+			return tissue
+		}
+	}
+	for _, k := range card.Keywords {
+		if strings.Contains(title, k) {
+			return card
+		}
+	}
+	return kind
+}
+
+func elmPrizeTitleMatches(title string, keywords []string) bool {
+	if title == "" || len(keywords) == 0 {
+		return false
+	}
+	for _, k := range keywords {
+		if k != "" && strings.Contains(title, k) {
+			return true
+		}
+	}
+	return false
+}
+
+func elmParsePrizes(resp map[string]interface{}, kind elmPrizeKind) string {
 	if resp == nil {
 		return ""
 	}
@@ -501,11 +583,11 @@ func elmParseFreeCards(resp map[string]interface{}) string {
 		result = elmAsMap(outer["data"])
 	}
 	raw, _ := result["rightSendDTOs"].([]interface{})
-	type card struct {
-		amount string
-		count  int
+	type prize struct {
+		label string
+		count int
 	}
-	cards := make([]card, 0)
+	items := make([]prize, 0)
 	titleRe := regexp.MustCompile(`(\d+(?:\.\d+)?)\s*元`)
 	for _, item := range raw {
 		m := elmAsMap(item)
@@ -523,37 +605,46 @@ func elmParseFreeCards(resp map[string]interface{}) string {
 		if title == "" {
 			title = elmText(m["rightName"])
 		}
-		if !strings.Contains(title, "免单卡") {
+		if !elmPrizeTitleMatches(title, kind.Keywords) {
 			continue
 		}
-		discount := elmAsMap(m["discountInfo"])
-		amount := strings.TrimRight(strings.TrimRight(elmText(discount["reductionYuan"]), "0"), ".")
-		if amount == "" || amount == "0" {
-			if mm := titleRe.FindStringSubmatch(title); len(mm) > 1 {
-				amount = mm[1]
+		label := ""
+		if kind.Name == "免单卡" {
+			discount := elmAsMap(m["discountInfo"])
+			amount := strings.TrimRight(strings.TrimRight(elmText(discount["reductionYuan"]), "0"), ".")
+			if amount == "" || amount == "0" {
+				if mm := titleRe.FindStringSubmatch(title); len(mm) > 1 {
+					amount = mm[1]
+				}
+			}
+			if amount == "" {
+				continue
+			}
+			label = fmt.Sprintf("免单卡%s元", amount)
+		} else {
+			label = strings.TrimSpace(title)
+			if label == "" {
+				label = kind.Name
 			}
 		}
-		if amount == "" {
-			continue
-		}
 		found := false
-		for i := range cards {
-			if cards[i].amount == amount {
-				cards[i].count++
+		for i := range items {
+			if items[i].label == label {
+				items[i].count++
 				found = true
 				break
 			}
 		}
 		if !found {
-			cards = append(cards, card{amount: amount, count: 1})
+			items = append(items, prize{label: label, count: 1})
 		}
 	}
-	if len(cards) == 0 {
+	if len(items) == 0 {
 		return ""
 	}
-	parts := make([]string, 0, len(cards))
-	for _, c := range cards {
-		parts = append(parts, fmt.Sprintf("免单卡%s元x%d", c.amount, c.count))
+	parts := make([]string, 0, len(items))
+	for _, p := range items {
+		parts = append(parts, fmt.Sprintf("%sx%d", p.label, p.count))
 	}
 	return strings.Join(parts, "、")
 }
@@ -1518,32 +1609,33 @@ func elmRunScheduledTask(taskID string) {
 }
 
 func elmFinalizeExchangeResults(task *ElmScheduledTask) {
+	kind := elmPrizeKindForTask(task)
 	cardMap := map[string]string{}
 	if len(task.ready) > 0 {
-		task.AddLog("info", "开始核对免单持卡")
+		task.AddLog("info", kind.LogStart)
 		var wg sync.WaitGroup
 		var mu sync.Mutex
 		for _, acc := range task.ready {
 			wg.Add(1)
 			go func(a *elmReadyAccount) {
 				defer wg.Done()
-				resp, err := a.client.queryPrizeWallet()
+				resp, err := a.client.queryPrizeWallet(kind.Tag)
 				if err != nil {
-					task.AddLog("warn", "[%s] 免单持卡查询失败: %v", a.info.Remark, err)
+					task.AddLog("warn", "[%s] %s: %v", a.info.Remark, kind.LogFail, err)
 					return
 				}
 				if !elmIsSuccess(resp) {
-					task.AddLog("warn", "[%s] 免单持卡查询失败: %s", a.info.Remark, elmFirstRet(resp))
+					task.AddLog("warn", "[%s] %s: %s", a.info.Remark, kind.LogFail, elmFirstRet(resp))
 					return
 				}
-				cards := elmParseFreeCards(resp)
+				cards := elmParsePrizes(resp, kind)
 				mu.Lock()
 				cardMap[elmNormalizeRef(a.info.Ref)] = cards
 				mu.Unlock()
 				if cards != "" {
-					task.AddLog("success", "[%s] 持卡核对: %s", a.info.Remark, cards)
+					task.AddLog("success", "[%s] %s: %s", a.info.Remark, kind.LogHit, cards)
 				} else {
-					task.AddLog("info", "[%s] 持卡核对: 未查到可用免单卡", a.info.Remark)
+					task.AddLog("info", "[%s] %s: %s", a.info.Remark, kind.LogHit, kind.LogMiss)
 				}
 			}(acc)
 		}
@@ -1819,7 +1911,8 @@ func ElmScheduleExchange(userNumber int, refs []string, keyword string, targetHo
 	if strings.TrimSpace(keyword) != "" {
 		task.AddLog("info", "商品匹配：关键词 %s", strings.TrimSpace(keyword))
 	} else {
-		task.AddLog("info", "商品匹配：%d 点场", targetHour)
+		kind := elmPrizeKindByHour(targetHour)
+		task.AddLog("info", "商品匹配：%d 点场（%s）", targetHour, kind.Name)
 	}
 	task.AddLog("info", "执行时间：%s | 预检时间：%s", executeAt.Format("15:04:05"), prepareAt.Format("15:04:05"))
 	var remarks []string
