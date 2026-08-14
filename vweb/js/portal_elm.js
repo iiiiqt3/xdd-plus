@@ -386,7 +386,9 @@
             box.innerHTML = '<div class="muted">暂无结果</div>';
             return;
         }
-        box.innerHTML = task.results.map(function (r) {
+        const ok = task.results.filter(function (r) { return r && r.success; }).length;
+        const head = `<div style="padding:8px 0 10px;font-size:14px;font-weight:600;">结果：成功 ${ok} / ${task.results.length}</div>`;
+        box.innerHTML = head + task.results.map(function (r) {
             const icon = r.success ? '✅' : '❌';
             return `<div style="padding:8px 0;border-bottom:1px dashed var(--glass-border);font-size:13px;">${icon} <strong>${esc(r.remark || r.ref)}</strong> — ${esc(r.message)}${r.product ? ' · ' + esc(r.product) : ''}</div>`;
         }).join('');
@@ -429,7 +431,11 @@
                 const task = await api('/status?taskId=' + encodeURIComponent(taskId));
                 applyTask(task);
                 if (task && (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled')) {
-                    const msg = task.status === 'completed' ? '抢兑任务已完成'
+                    const results = Array.isArray(task.results) ? task.results : [];
+                    const ok = results.filter(function (r) { return r && r.success; }).length;
+                    const total = (Array.isArray(task.accounts) && task.accounts.length) ? task.accounts.length : results.length;
+                    const msg = task.status === 'completed'
+                        ? ('抢兑完成：成功 ' + ok + ' / ' + (total || ok))
                         : task.status === 'cancelled' ? '抢兑任务已停止' : '抢兑任务失败';
                     const type = task.status === 'completed' ? 'success' : task.status === 'cancelled' ? 'info' : 'error';
                     finishTask(task, msg, type);

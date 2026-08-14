@@ -31,6 +31,8 @@ const (
 	elmExchangeAPI          = "mtop.alsc.interact.playapp.reward.right.exchange"
 	elmExchangeAsac         = "alsc5KvbdX5mHl3sdv4guV"
 	elmExchangeSource       = "INTERACT_CENTER_EXCHANGE_MALL"
+	elmPrizeWalletAPI       = "mtop.alsc.upp.market.myprize.query"
+	elmPrizeActivityTag     = "EAT_FREE_2026"
 	elmPrepareBeforeSec     = 30
 	elmAttemptsPerRound     = 5 // 每个时间点连打 5 次
 	elmTaskStaleGrace       = 2 * time.Minute // 超过执行时间仍未结束视为僵死
@@ -283,6 +285,22 @@ func elmIsSuccess(data map[string]interface{}) bool {
 	return strings.HasPrefix(elmFirstRet(data), "SUCCESS")
 }
 
+func elmText(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	s := strings.TrimSpace(fmt.Sprint(v))
+	if s == "" || s == "<nil>" {
+		return ""
+	}
+	return s
+}
+
+func elmAsMap(v interface{}) map[string]interface{} {
+	m, _ := v.(map[string]interface{})
+	return m
+}
+
 func elmMaskRef(ref string) string {
 	ref = strings.TrimSpace(ref)
 	if len(ref) <= 10 {
@@ -459,6 +477,85 @@ func (c *elmMtopClient) exchange(product map[string]interface{}) (map[string]int
 		"longitude":            elmDefaultLng,
 	}
 	return c.request(elmExchangeAPI, body, "POST", map[string]string{"asac": elmExchangeAsac}, true)
+}
+
+func (c *elmMtopClient) queryPrizeWallet() (map[string]interface{}, error) {
+	body := map[string]interface{}{
+		"lastId":        "",
+		"pageSize":      50,
+		"activityTag":   elmPrizeActivityTag,
+		"rightSubTypes": "[]",
+		"latitude":      elmDefaultLat,
+		"longitude":     elmDefaultLng,
+	}
+	return c.request(elmPrizeWalletAPI, body, "POST", nil, true)
+}
+
+func elmParseFreeCards(resp map[string]interface{}) string {
+	if resp == nil {
+		return ""
+	}
+	outer := elmAsMap(resp["data"])
+	result := elmAsMap(outer["result"])
+	if result == nil {
+		result = elmAsMap(outer["data"])
+	}
+	raw, _ := result["rightSendDTOs"].([]interface{})
+	type card struct {
+		amount string
+		count  int
+	}
+	cards := make([]card, 0)
+	titleRe := regexp.MustCompile(`(\d+(?:\.\d+)?)\s*元`)
+	for _, item := range raw {
+		m := elmAsMap(item)
+		if m == nil {
+			continue
+		}
+		ext := elmAsMap(m["extInfo"])
+		status := strings.ToUpper(elmText(ext["USER_STATUS"]))
+		switch status {
+		case "USED", "TIME_OUT", "LOCKED", "INVALID", "DELETED":
+			continue
+		}
+		mat := elmAsMap(m["materialInfo"])
+		title := elmText(mat["title"])
+		if title == "" {
+			title = elmText(m["rightName"])
+		}
+		if !strings.Contains(title, "免单卡") {
+			continue
+		}
+		discount := elmAsMap(m["discountInfo"])
+		amount := strings.TrimRight(strings.TrimRight(elmText(discount["reductionYuan"]), "0"), ".")
+		if amount == "" || amount == "0" {
+			if mm := titleRe.FindStringSubmatch(title); len(mm) > 1 {
+				amount = mm[1]
+			}
+		}
+		if amount == "" {
+			continue
+		}
+		found := false
+		for i := range cards {
+			if cards[i].amount == amount {
+				cards[i].count++
+				found = true
+				break
+			}
+		}
+		if !found {
+			cards = append(cards, card{amount: amount, count: 1})
+		}
+	}
+	if len(cards) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(cards))
+	for _, c := range cards {
+		parts = append(parts, fmt.Sprintf("免单卡%s元x%d", c.amount, c.count))
+	}
+	return strings.Join(parts, "、")
 }
 
 func elmProducts(home map[string]interface{}) []map[string]interface{} {
@@ -835,8 +932,26 @@ func elmIsSoldOutError(code, msg string) bool {
 	return false
 }
 
+func elmIsAlreadyExchanged(code, msg string) bool {
+	s := strings.ToUpper(strings.TrimSpace(code + " " + msg))
+	for _, key := range []string{
+		"EXCHANGE_FREQUENCY_OVER_LIMIT",
+		"FREQUENCY_OVER_LIMIT",
+		"兑换次数已达上限",
+		"已达上限",
+		"已经兑换",
+		"已兑换过",
+		"重复兑换",
+	} {
+		if strings.Contains(s, strings.ToUpper(key)) || strings.Contains(code+msg, key) {
+			return true
+		}
+	}
+	return false
+}
+
 func elmRetryableExchangeError(code, msg string) bool {
-	if elmIsSoldOutError(code, msg) {
+	if elmIsSoldOutError(code, msg) || elmIsAlreadyExchanged(code, msg) {
 		return false
 	}
 	code = strings.ToUpper(strings.TrimSpace(code))
@@ -1199,8 +1314,8 @@ func elmRunExchangeOnce(acc *elmReadyAccount, task *ElmScheduledTask, round, att
 		return res
 	}
 	data, _ := resp["data"].(map[string]interface{})
-	errorCode := fmt.Sprint(data["errorCode"])
-	errorMsg := fmt.Sprint(data["errorMsg"])
+	errorCode := elmText(data["errorCode"])
+	errorMsg := elmText(data["errorMsg"])
 	if errorMsg == "" {
 		errorMsg = elmFirstRet(resp)
 	}
@@ -1208,17 +1323,27 @@ func elmRunExchangeOnce(acc *elmReadyAccount, task *ElmScheduledTask, round, att
 		res.Success = true
 		res.Message = "兑换成功"
 		res.Product = brief.Title
-		task.AddLog("success", "🎉 [%s] 第%d轮第%d次兑换成功: %s", acc.info.Remark, round, attempt, brief.Title)
+		task.AddLog("success", "[%s] 第%d轮第%d次兑换成功: %s", acc.info.Remark, round, attempt, brief.Title)
 		return res
 	}
 	if errorCode == "UPP_SEND_PRIZE_SENDING" {
 		res.Success = true
 		res.Message = "兑换已提交，奖励发放中"
 		res.Product = brief.Title
-		task.AddLog("success", "🎉 [%s] 第%d轮第%d次兑换已提交: %s", acc.info.Remark, round, attempt, brief.Title)
+		task.AddLog("success", "[%s] 第%d轮第%d次兑换已提交: %s", acc.info.Remark, round, attempt, brief.Title)
+		return res
+	}
+	if elmIsAlreadyExchanged(errorCode, errorMsg) {
+		res.Success = true
+		res.Message = "兑换次数已达上限（已抢到）"
+		res.Product = brief.Title
+		task.AddLog("success", "[%s] 第%d轮第%d次: 兑换次数已达上限，视为已抢到", acc.info.Remark, round, attempt)
 		return res
 	}
 	res.Message = strings.TrimSpace(errorCode + " " + errorMsg)
+	if res.Message == "" {
+		res.Message = "未知响应"
+	}
 	if elmIsSoldOutError(errorCode, errorMsg) {
 		task.AddLog("info", "[%s] 第%d轮第%d次: 商品已抢完，停止该账号", acc.info.Remark, round, attempt)
 		res.Message = "兑换失败：已被抢完"
@@ -1358,7 +1483,7 @@ func elmRunScheduledTask(taskID string) {
 					resultsMu.Lock()
 					if result.Success {
 						successRefs[key] = true
-					} else if elmIsSoldOutError("", result.Message) {
+					} else if elmIsSoldOutError("", result.Message) || elmIsAlreadyExchanged("", result.Message) {
 						stoppedRefs[key] = true
 					}
 					replaced := false
@@ -1389,13 +1514,83 @@ func elmRunScheduledTask(taskID string) {
 		return
 	}
 	task.Status = "completed"
-	successN := 0
+	elmFinalizeExchangeResults(task)
+}
+
+func elmFinalizeExchangeResults(task *ElmScheduledTask) {
+	cardMap := map[string]string{}
+	if len(task.ready) > 0 {
+		task.AddLog("info", "开始核对免单持卡")
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+		for _, acc := range task.ready {
+			wg.Add(1)
+			go func(a *elmReadyAccount) {
+				defer wg.Done()
+				resp, err := a.client.queryPrizeWallet()
+				if err != nil {
+					task.AddLog("warn", "[%s] 免单持卡查询失败: %v", a.info.Remark, err)
+					return
+				}
+				if !elmIsSuccess(resp) {
+					task.AddLog("warn", "[%s] 免单持卡查询失败: %s", a.info.Remark, elmFirstRet(resp))
+					return
+				}
+				cards := elmParseFreeCards(resp)
+				mu.Lock()
+				cardMap[elmNormalizeRef(a.info.Ref)] = cards
+				mu.Unlock()
+				if cards != "" {
+					task.AddLog("success", "[%s] 持卡核对: %s", a.info.Remark, cards)
+				} else {
+					task.AddLog("info", "[%s] 持卡核对: 未查到可用免单卡", a.info.Remark)
+				}
+			}(acc)
+		}
+		wg.Wait()
+	}
+
+	for i := range task.Results {
+		key := elmNormalizeRef(task.Results[i].Ref)
+		cards := strings.TrimSpace(cardMap[key])
+		if !task.Results[i].Success && cards != "" {
+			task.Results[i].Success = true
+			task.Results[i].Message = "持卡核对已抢到：" + cards
+		} else if task.Results[i].Success && cards != "" && !strings.Contains(task.Results[i].Message, cards) {
+			task.Results[i].Message = strings.TrimSpace(task.Results[i].Message + " · " + cards)
+		}
+	}
+
+	resultByRef := map[string]ElmExchangeResult{}
 	for _, r := range task.Results {
-		if r.Success {
+		resultByRef[elmNormalizeRef(r.Ref)] = r
+	}
+	successN := 0
+	for _, acc := range task.Accounts {
+		key := elmNormalizeRef(acc.Ref)
+		r, ok := resultByRef[key]
+		if ok && r.Success {
 			successN++
 		}
 	}
 	task.AddLog("info", "任务结束：成功 %d / 账号 %d", successN, len(task.Accounts))
+	for _, acc := range task.Accounts {
+		key := elmNormalizeRef(acc.Ref)
+		r, ok := resultByRef[key]
+		if !ok {
+			task.AddLog("error", "[%s] 无兑换结果", acc.Remark)
+			continue
+		}
+		msg := r.Message
+		if cards := strings.TrimSpace(cardMap[key]); cards != "" && !strings.Contains(msg, cards) {
+			msg = strings.TrimSpace(msg + " · " + cards)
+		}
+		if r.Success {
+			task.AddLog("success", "[%s] %s", acc.Remark, msg)
+		} else {
+			task.AddLog("error", "[%s] %s", acc.Remark, msg)
+		}
+	}
 }
 
 // ElmFetchCK 手动获取 CK 并刷新商品预览（步骤1）
