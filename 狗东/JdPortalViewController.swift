@@ -1896,9 +1896,11 @@ final class JdPortalViewController: BaseNativeViewController, UITextFieldDelegat
         let vc = JdTaskRunHistoryViewController(taskId: task.id, taskName: task.name)
         let nav = UINavigationController(rootViewController: vc)
         nav.modalPresentationStyle = .pageSheet
-        if let sheet = nav.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
-            sheet.prefersGrabberVisible = true
+        if #available(iOS 15.0, *) {
+            if let sheet = nav.sheetPresentationController {
+                sheet.detents = [.medium(), .large()]
+                sheet.prefersGrabberVisible = true
+            }
         }
         present(nav, animated: true)
     }
