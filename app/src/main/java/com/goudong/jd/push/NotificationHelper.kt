@@ -7,12 +7,14 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.goudong.jd.MainActivity
 import com.goudong.jd.R
 import com.goudong.jd.data.model.PortalNotification
 
 object NotificationHelper {
+    private const val TAG = "NotificationHelper"
     const val CHANNEL_ID = "admin_push_channel"
     private const val CHANNEL_NAME = "狗东通知"
     private const val CHANNEL_DESC = "接收系统通知、活动提醒与掉线提醒"
@@ -20,25 +22,31 @@ object NotificationHelper {
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH,
-            ).apply {
-                description = CHANNEL_DESC
-                enableLights(true)
-                enableVibration(true)
-                setShowBadge(true)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            runCatching {
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply {
+                    description = CHANNEL_DESC
+                    enableLights(true)
+                    enableVibration(true)
+                    setShowBadge(true)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                }
+                notificationManager(context).createNotificationChannel(channel)
+            }.onFailure { error ->
+                Log.w(TAG, "createNotificationChannel failed: ${error.message}")
             }
-            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
         }
     }
 
     fun showPushMessage(context: Context, title: String, body: String, notificationId: Int) {
+        if (!PushManager.hasNotificationPermission(context)) {
+            Log.d(TAG, "skip showPushMessage: POST_NOTIFICATIONS not granted")
+            return
+        }
         createNotificationChannel(context)
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val detailIntent = buildTapIntent(context, notificationId, openList = false)
         val pendingIntent = PendingIntent.getActivity(
             context,
@@ -58,14 +66,17 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
-        manager.notify(notificationId.coerceAtLeast(1) + 20000, notification)
+        notifySafely(context, notificationId.coerceAtLeast(1) + 20000, notification)
     }
 
     fun showUnreadSummaryNotification(context: Context, unreadCount: Int, latestNotifications: List<PortalNotification>) {
         if (unreadCount <= 0) return
+        if (!PushManager.hasNotificationPermission(context)) {
+            Log.d(TAG, "skip showUnreadSummaryNotification: POST_NOTIFICATIONS not granted")
+            return
+        }
 
         createNotificationChannel(context)
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         val intent = buildTapIntent(context, notificationId = 0, openList = true)
 
@@ -126,7 +137,7 @@ object NotificationHelper {
             builder.setNumber(unreadCount)
         }
 
-        manager.notify(NOTIFICATION_ID, builder.build())
+        notifySafely(context, NOTIFICATION_ID, builder.build())
     }
 
     private fun buildTapIntent(context: Context, notificationId: Int, openList: Boolean): Intent {
@@ -141,7 +152,23 @@ object NotificationHelper {
     }
 
     fun cancelAll(context: Context) {
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.cancelAll()
+        runCatching {
+            notificationManager(context).cancelAll()
+        }.onFailure { error ->
+            Log.w(TAG, "cancelAll failed: ${error.message}")
+        }
+    }
+
+    private fun notificationManager(context: Context): NotificationManager {
+        return context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    }
+
+    private fun notifySafely(context: Context, id: Int, notification: Notification) {
+        if (!PushManager.hasNotificationPermission(context)) return
+        runCatching {
+            notificationManager(context).notify(id, notification)
+        }.onFailure { error ->
+            Log.w(TAG, "notify($id) failed: ${error.message}")
+        }
     }
 }

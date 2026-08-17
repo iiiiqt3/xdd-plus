@@ -88,12 +88,14 @@ object ForegroundPushNotifier {
     private fun refreshBanner(context: Context) {
         if (!isAppInForeground || pending.isEmpty()) return
         val activity = topActivity
-        if (activity != null && !activity.isFinishing) {
+        if (activity != null && !activity.isFinishing && !activity.isDestroyed) {
             InAppPushBanner.showSummary(activity, pendingList())
             NotificationBadgeRefresher.refresh()
-        } else {
-            val latest = pendingList().last()
-            NotificationHelper.showPushMessage(context, latest.title, latest.body, latest.notificationId)
+            return
         }
+        // Activity 切换间隙（小米 HyperOS 常见）：无权限时禁止 fallback 到系统 notify，避免 SecurityException 闪退
+        if (!PushManager.hasNotificationPermission(context)) return
+        val latest = pendingList().last()
+        NotificationHelper.showPushMessage(context, latest.title, latest.body, latest.notificationId)
     }
 }
