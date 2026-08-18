@@ -20,8 +20,8 @@ const (
 	yyb51ShortLivedProxyExtractTime  = 3
 	yyb51TrafficProxyExtractTime     = 2
 	yyb51ShortLivedProxyTTL         = 5 * time.Minute
-	yyb51CountAPIBase                = "http://bapi.51daili.com/getapi2"
-	yyb51TrafficAPIBase              = "http://capi.51daili.com/traffic/getip"
+	yyb51CountAPIBase                = "https://bapi.51daili.com/getapi2"
+	yyb51TrafficAPIBase              = "https://capi.51daili.com/traffic/getip"
 )
 
 // YybProxyAreaRequest 门户/后台加载 51 代理省市区
@@ -112,8 +112,25 @@ func yyb51IsTrafficPlan(plan, apiBase, packID string) bool {
 	return strings.TrimSpace(packID) == "12"
 }
 
+func yyb51ForceHTTPS(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return raw
+	}
+	host := strings.ToLower(u.Hostname())
+	if strings.HasSuffix(host, "51daili.com") && (u.Scheme == "" || strings.EqualFold(u.Scheme, "http")) {
+		u.Scheme = "https"
+		return u.String()
+	}
+	return raw
+}
+
 func yyb51ResolveAPIBase(apiBase, plan, packID string) string {
-	if apiBase = strings.TrimSpace(apiBase); apiBase != "" {
+	if apiBase = yyb51ForceHTTPS(apiBase); apiBase != "" {
 		return apiBase
 	}
 	if yyb51IsTrafficPlan(plan, "", packID) {
@@ -123,12 +140,15 @@ func yyb51ResolveAPIBase(apiBase, plan, packID string) string {
 }
 
 func yyb51ParseAPIEndpoint(apiBase string) (*url.URL, error) {
-	u, err := url.Parse(strings.TrimSpace(apiBase))
+	u, err := url.Parse(yyb51ForceHTTPS(apiBase))
 	if err != nil {
 		return nil, err
 	}
 	u.RawQuery = ""
 	u.Fragment = ""
+	if strings.HasSuffix(strings.ToLower(u.Hostname()), "51daili.com") && (u.Scheme == "" || strings.EqualFold(u.Scheme, "http")) {
+		u.Scheme = "https"
+	}
 	return u, nil
 }
 
