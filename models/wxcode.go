@@ -1325,7 +1325,7 @@ func CheckWxOfflineAndNotifyWithChannels(channels NotifyChannels, wxIDs []string
 		}
 
 		if WxOfflineNotifySkippedByDualBind(wxid) {
-			Wx().Infof("微信掉线检测：%s (%s) 已双绑应用宝，跳过微信掉线推送", info.Nickname, wxid)
+			Wx().Infof("微信掉线检测：%s (%s) 已登录应用宝，跳过微信掉线推送", info.Nickname, wxid)
 			continue
 		}
 

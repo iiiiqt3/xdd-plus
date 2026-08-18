@@ -109,10 +109,43 @@ func FindProtocolBindingByOpenID(openid string) (*PortalProtocolBinding, error) 
 	return &row, nil
 }
 
-// WxOfflineNotifySkippedByDualBind 微信 wxid 已双绑应用宝时跳过微信掉线推送（由应用宝存活检测统一通知）
+// WxOfflineNotifySkippedByDualBind 已双绑应用宝，或同一用户已登录应用宝时，跳过微信掉线推送（由应用宝存活检测统一通知）
 func WxOfflineNotifySkippedByDualBind(wxid string) bool {
-	b, err := FindProtocolBindingByWx(wxid)
-	return err == nil && b != nil
+	wxid = strings.TrimSpace(wxid)
+	if wxid == "" {
+		return false
+	}
+	if b, err := FindProtocolBindingByWx(wxid); err == nil && b != nil {
+		return true
+	}
+	for _, userNumber := range listUserNumbersOwningWxid(wxid) {
+		if CountPortalYybBindings(userNumber) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func listUserNumbersOwningWxid(wxid string) []int {
+	seen := map[int]bool{}
+	out := make([]int, 0, 2)
+	add := func(n int) {
+		if n > 0 && !seen[n] {
+			seen[n] = true
+			out = append(out, n)
+		}
+	}
+	var users []User
+	db.Where("wxid = ?", wxid).Select("number").Find(&users)
+	for _, u := range users {
+		add(u.Number)
+	}
+	var devices []PortalWxDevice
+	db.Where("wxid = ?", wxid).Select("user_number").Find(&devices)
+	for _, d := range devices {
+		add(d.UserNumber)
+	}
+	return out
 }
 
 func ListProtocolBindings(userNumber int) ([]PortalProtocolBinding, error) {
