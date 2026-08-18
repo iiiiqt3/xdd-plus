@@ -239,11 +239,17 @@ func protocolGetPhoneViaWechat(wxid, appID string) (map[string]interface{}, erro
 }
 
 func protocolGetWxCodeViaWechat(wxid, appID string) (string, error) {
-	if strings.TrimSpace(wxid) == "" {
+	wxid = strings.TrimSpace(wxid)
+	wxid = strings.TrimPrefix(wxid, "wx:")
+	if wxid == "" {
 		return "", fmt.Errorf("缺少微信ID")
 	}
+	appID = strings.TrimSpace(appID)
+	if appID == "" {
+		appID = WxJdAppID
+	}
 	base := getWxJdServerForDevice(wxid)
-	return wxJdGetWxCodeFromURL(base, wxid)
+	return wxJdGetWxCodeFromURL(base, wxid, appID)
 }
 
 // ProtocolCallWxFunction 统一云函数 / operate

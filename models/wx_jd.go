@@ -120,14 +120,18 @@ func wxJdPostToURL(baseURL string, paths []string, body interface{}, timeout int
 
 func wxJdGetWxCode(wxid string) (string, error) {
 	server := getWxJdServerForDevice(wxid)
-	return wxJdGetWxCodeFromURL(server, wxid)
+	return wxJdGetWxCodeFromURL(server, wxid, WxJdAppID)
 }
 
-func wxJdGetWxCodeFromURL(baseURL string, wxid string) (string, error) {
+func wxJdGetWxCodeFromURL(baseURL string, wxid string, appID string) (string, error) {
+	appID = strings.TrimSpace(appID)
+	if appID == "" {
+		appID = WxJdAppID
+	}
 	data, err := wxJdPostToURL(
 		baseURL,
 		[]string{"/api/v1/wx/app/get/code", "/wx/app/get/code"},
-		map[string]string{"wxid": wxid, "appid": WxJdAppID},
+		map[string]string{"wxid": wxid, "appid": appID},
 		15,
 	)
 	if err != nil {
