@@ -233,7 +233,7 @@ func normalizeNotifyDisplayType(displayType string) string {
 	}
 }
 
-func CreateAdminWebNotification(title, content, category, displayType string, isTop, visibleToAll bool) (*WebNotification, error) {
+func CreateAdminWebNotification(title, content, category, displayType string, isTop bool) (*WebNotification, error) {
 	title = strings.TrimSpace(title)
 	content = strings.TrimSpace(content)
 	if title == "" {
@@ -243,15 +243,14 @@ func CreateAdminWebNotification(title, content, category, displayType string, is
 		return nil, fmt.Errorf("详细内容不能为空")
 	}
 	n := &WebNotification{
-		Title:        title,
-		Content:      content,
-		Category:     normalizeNoticeCategory(category),
-		Source:       NotifySourceAdmin,
-		Channels:     "web,app",
-		TargetScope:  "all",
-		DisplayType:  normalizeNotifyDisplayType(displayType),
-		IsTop:        isTop,
-		VisibleToAll: visibleToAll,
+		Title:       title,
+		Content:     content,
+		Category:    normalizeNoticeCategory(category),
+		Source:      NotifySourceAdmin,
+		Channels:    "web,app",
+		TargetScope: "all",
+		DisplayType: normalizeNotifyDisplayType(displayType),
+		IsTop:       isTop,
 	}
 	if err := db.Create(n).Error; err != nil {
 		return nil, err
@@ -267,7 +266,7 @@ func portalNotificationQuery(userNumber int, hasAccess bool) *gorm.DB {
 		TargetScopeAll, NotifySourceAdmin,
 	)
 	if !hasAccess {
-		q = q.Where("visible_to_all = ?", true)
+		q = q.Where("1 = 0")
 	}
 	return q
 }
@@ -500,7 +499,7 @@ func DeleteAdminNotifications(ids []int) error {
 	return deleteNotificationsByIDs(cleanIDs)
 }
 
-func UpdateAdminNotification(id int, title, content, category, displayType string, isTop, visibleToAll bool) error {
+func UpdateAdminNotification(id int, title, content, category, displayType string, isTop bool) error {
 	if id <= 0 {
 		return fmt.Errorf("通知ID无效")
 	}
@@ -513,12 +512,11 @@ func UpdateAdminNotification(id int, title, content, category, displayType strin
 		return fmt.Errorf("详细内容不能为空")
 	}
 	res := db.Model(&WebNotification{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"title":          title,
-		"content":        content,
-		"category":       normalizeNoticeCategory(category),
-		"display_type":   normalizeNotifyDisplayType(displayType),
-		"is_top":         isTop,
-		"visible_to_all": visibleToAll,
+		"title":        title,
+		"content":      content,
+		"category":     normalizeNoticeCategory(category),
+		"display_type": normalizeNotifyDisplayType(displayType),
+		"is_top":       isTop,
 	})
 	if res.Error != nil {
 		return res.Error

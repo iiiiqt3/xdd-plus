@@ -1819,10 +1819,6 @@
                             <div><strong>置顶通知</strong><span>开启后管理员列表和用户通知区域都会优先显示</span></div>
                             <label class="switch"><input type="checkbox" id="notifyIsTop"><span class="slider"></span></label>
                         </div>
-                        <div class="notify-top-toggle">
-                            <div><strong>对所有人可见</strong><span>勾选后低积分用户也能在通知中心/仪表盘看到；不勾选则仅达到积分门槛或有有效按月项目的用户可见</span></div>
-                            <label class="switch"><input type="checkbox" id="notifyVisibleToAll"><span class="slider"></span></label>
-                        </div>
                         <div style="margin-top:12px;padding:10px;background:#f0f9eb;border:1px solid #e1f3d8;border-radius:6px;">
                             <div style="font-size:12px;font-weight:600;color:#67c23a;margin-bottom:8px;"><i class="fas fa-bullhorn"></i> 推送到群聊（可选）</div>
                             <label class="wx-protocol-checkbox" title="推送到活动设置中的QQ群"><input type="checkbox" id="notifyPushQQ"> QQ群</label>
@@ -1857,7 +1853,7 @@
                 </div>
                 <div class="table-wrap">
                     <table class="data-table">
-                        <thead><tr><th style="min-width:36px;width:36px;"><input type="checkbox" id="notifyCheckAll" onchange="toggleAllNotifyCheck(this.checked)"></th><th style="min-width:50px;">ID</th><th style="min-width:220px;">主题</th><th style="min-width:70px;">分类</th><th style="min-width:80px;">类型</th><th style="min-width:70px;">置顶</th><th style="min-width:80px;">可见范围</th><th style="min-width:90px;">来源</th><th style="min-width:90px;">渠道</th><th style="min-width:80px;">点击次数</th><th style="min-width:80px;">查阅人数</th><th style="min-width:150px;">发送时间</th><th style="min-width:130px;">操作</th></tr></thead>
+                        <thead><tr><th style="min-width:36px;width:36px;"><input type="checkbox" id="notifyCheckAll" onchange="toggleAllNotifyCheck(this.checked)"></th><th style="min-width:50px;">ID</th><th style="min-width:220px;">主题</th><th style="min-width:70px;">分类</th><th style="min-width:80px;">类型</th><th style="min-width:70px;">置顶</th><th style="min-width:90px;">来源</th><th style="min-width:90px;">渠道</th><th style="min-width:80px;">点击次数</th><th style="min-width:80px;">查阅人数</th><th style="min-width:150px;">发送时间</th><th style="min-width:130px;">操作</th></tr></thead>
                         <tbody id="notifyTableBody"></tbody>
                     </table>
                 </div>
@@ -1958,7 +1954,6 @@
                     <div class="toolbar-actions">
                         <button class="btn btn-success btn-sm" onclick="showActivityEditor()"><i class="fas fa-plus"></i> 新增活动</button>
                         <label class="wx-protocol-checkbox" style="margin-left:8px;" title="推送到网页/APP"><input type="checkbox" id="pushChannelWebApp" checked> 网页/APP</label>
-                        <label class="wx-protocol-checkbox" style="margin-left:4px;" title="勾选后低积分用户也能看到活动通知"><input type="checkbox" id="pushChannelVisibleToAll"> 对所有人可见</label>
                         <label class="wx-protocol-checkbox" style="margin-left:4px;" title="推送到QQ群/微信群"><input type="checkbox" id="pushChannelQQWx"> QQ群/微信群</label>
                         <button class="btn btn-warning btn-sm" onclick="pushSelectedActivities()"><i class="fas fa-paper-plane"></i> 推送活动</button>
                         <button class="btn btn-danger btn-sm" onclick="batchDeleteActivities()"><i class="fas fa-trash"></i> 批量删除</button>
@@ -2176,10 +2171,6 @@
                     <div class="notify-top-toggle" style="margin-bottom:14px;">
                         <div><strong>置顶通知</strong><span>开启后用户后台也会优先展示</span></div>
                         <label class="switch"><input type="checkbox" id="notifyEditIsTop"><span class="slider"></span></label>
-                    </div>
-                    <div class="notify-top-toggle" style="margin-bottom:14px;">
-                        <div><strong>对所有人可见</strong><span>不勾选时仅达到积分门槛或有有效按月项目的用户可见</span></div>
-                        <label class="switch"><input type="checkbox" id="notifyEditVisibleToAll"><span class="slider"></span></label>
                     </div>
                     <div class="form-item" style="margin-bottom:14px;"><label>主题</label><input id="notifyEditTitle" maxlength="120"></div>
                     <div class="form-item"><label>详细内容</label><textarea id="notifyEditContent" rows="7"></textarea></div>
@@ -2968,9 +2959,6 @@
             <div style="display:flex;align-items:center;gap:12px;">
                 <label id="actNotifyLabel" style="display:none;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:normal;color:#e6a23c;white-space:nowrap;padding:6px 12px;background:#fdf6ec;border:1px solid #faecd8;border-radius:6px;">
                     <input type="checkbox" id="actNotifyWebApp"> APP/网页通知用户
-                </label>
-                <label id="actNotifyVisibleAllLabel" style="display:none;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:normal;color:#67c23a;white-space:nowrap;padding:6px 12px;background:#f0f9eb;border:1px solid #e1f3d8;border-radius:6px;" title="勾选后低积分用户也能看到该活动通知">
-                    <input type="checkbox" id="actNotifyVisibleToAll"> 对所有人可见
                 </label>
                 <label id="actNotifyQQWxLabel" style="display:none;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:normal;color:#409eff;white-space:nowrap;padding:6px 12px;background:#ecf5ff;border:1px solid #d9ecff;border-radius:6px;">
                     <input type="checkbox" id="actNotifyQQWx"> QQ群/微信群通知
@@ -4153,7 +4141,6 @@ async function loadNotifications(page) {
                     '<td><span class="tag tag-primary">' + escapeHtml(n.category || '-') + '</span></td>' +
                     '<td><span class="tag ' + (n.displayType === 'popup' ? 'tag-warning' : 'tag-info') + '">' + formatNotifyDisplayType(n.displayType) + '</span></td>' +
                     '<td>' + (n.isTop ? '<span class="tag tag-warning">是</span>' : '<span class="tag tag-info">否</span>') + '</td>' +
-                    '<td>' + (n.visibleToAll ? '<span class="tag tag-success">全员</span>' : '<span class="tag tag-info">受限</span>') + '</td>' +
                     '<td>' + escapeHtml(n.source || '-') + '</td>' +
                     '<td>' + escapeHtml(formatNotifyChannels(n.channels || '')) + '</td>' +
                     '<td style="font-weight:700;color:#409eff;">' + (n.clickCount || 0) + '</td>' +
@@ -4189,7 +4176,6 @@ async function sendNotification() {
     const category = document.getElementById('notifyCategory').value;
     const displayType = document.getElementById('notifyDisplayType').value;
     const isTop = document.getElementById('notifyIsTop').checked;
-    const visibleToAll = document.getElementById('notifyVisibleToAll').checked;
     const sendBtn = document.getElementById('notifySendBtn');
     if (!title) { toast('请输入主题', 'error'); return; }
     if (!content) { toast('请输入详细内容', 'error'); return; }
@@ -4197,13 +4183,12 @@ async function sendNotification() {
     if (sendBtn && sendBtn.disabled) return;
     try {
         if (sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中'; }
-        const res = await api.post('/api/admin/notifications/send', { title: title, content: content, category: category, displayType: displayType, isTop: isTop, visibleToAll: visibleToAll, pushToQQ: document.getElementById('notifyPushQQ').checked, pushToWX: document.getElementById('notifyPushWX').checked });
+        const res = await api.post('/api/admin/notifications/send', { title: title, content: content, category: category, displayType: displayType, isTop: isTop, pushToQQ: document.getElementById('notifyPushQQ').checked, pushToWX: document.getElementById('notifyPushWX').checked });
         toast(res.msg || '发送请求已提交', res.code === 0 ? 'success' : 'error');
         if (res.code !== 0) return;
         document.getElementById('notifyTitle').value = '';
         document.getElementById('notifyContent').value = '';
         document.getElementById('notifyIsTop').checked = false;
-        document.getElementById('notifyVisibleToAll').checked = false;
         document.getElementById('notifyPushQQ').checked = false;
         document.getElementById('notifyPushWX').checked = false;
         notifyPage = 1;
@@ -4252,7 +4237,6 @@ function openNotifyEditModal(id) {
     document.getElementById('notifyEditCategory').value = item.category || '通知';
     document.getElementById('notifyEditDisplayType').value = item.displayType || 'normal';
     document.getElementById('notifyEditIsTop').checked = !!item.isTop;
-    document.getElementById('notifyEditVisibleToAll').checked = item.visibleToAll !== false;
     document.getElementById('notifyEditTitle').value = item.title || '';
     document.getElementById('notifyEditContent').value = item.content || '';
     document.getElementById('notifyEditModal').classList.remove('hidden');
@@ -4269,11 +4253,10 @@ async function submitNotifyEdit() {
     const category = document.getElementById('notifyEditCategory').value;
     const displayType = document.getElementById('notifyEditDisplayType').value;
     const isTop = document.getElementById('notifyEditIsTop').checked;
-    const visibleToAll = document.getElementById('notifyEditVisibleToAll').checked;
     if (!title) { toast('请输入主题', 'error'); return; }
     if (!content) { toast('请输入详细内容', 'error'); return; }
     try {
-        const res = await api.put('/api/admin/notifications/' + encodeURIComponent(id), { id: id, title: title, content: content, category: category, displayType: displayType, isTop: isTop, visibleToAll: visibleToAll });
+        const res = await api.put('/api/admin/notifications/' + encodeURIComponent(id), { id: id, title: title, content: content, category: category, displayType: displayType, isTop: isTop });
         toast(res.msg || '修改成功', 'success');
         closeNotifyEditModal();
         loadNotifications();
@@ -6698,8 +6681,6 @@ function showActivityEditor(idx) {
     updateQueryScriptHint();
     document.getElementById('actNotifyWebApp').checked = false;
     document.getElementById('actNotifyLabel').style.display = isNew ? '' : 'none';
-    document.getElementById('actNotifyVisibleToAll').checked = false;
-    document.getElementById('actNotifyVisibleAllLabel').style.display = isNew ? '' : 'none';
     document.getElementById('actNotifyQQWx').checked = false;
     document.getElementById('actNotifyQQWxLabel').style.display = isNew ? '' : 'none';
     const fields = JSON.parse(JSON.stringify(act._inputFields || []));
@@ -7133,7 +7114,7 @@ async function saveActivity() {
                 const notifyWebApp = document.getElementById('actNotifyWebApp').checked;
                 const notifyQQWx = document.getElementById('actNotifyQQWx').checked;
                 const guide = document.getElementById('actFormGuide').value;
-                if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, monthlyVal, monthlyCoin, dailyCoin, document.getElementById('actNotifyVisibleToAll').checked); }
+                if (notifyWebApp) { sendActivityNotify(name, guide, false, needCoin, monthlyVal, monthlyCoin, dailyCoin); }
                 if (notifyQQWx) { sendActivityToGroups(name, guide, needCoin, monthlyVal, monthlyCoin, dailyCoin, true, true); }
             }
         }
@@ -7144,7 +7125,7 @@ async function saveActivity() {
     }
 }
 function editActivity(idx) { showActivityEditor(idx); }
-async function sendActivityNotify(activityName, activityGuide, silent, needCoin, billingMode, monthlyCoin, dailyCoin, visibleToAll) {
+async function sendActivityNotify(activityName, activityGuide, silent, needCoin, billingMode, monthlyCoin, dailyCoin) {
     const title = '🎉 新活动上线 - ' + activityName;
     var content = activityName;
     if (activityGuide && activityGuide.trim()) {
@@ -7172,8 +7153,7 @@ async function sendActivityNotify(activityName, activityGuide, silent, needCoin,
             content: content,
             category: '活动相关',
             displayType: 'normal',
-            isTop: false,
-            visibleToAll: !!visibleToAll
+            isTop: false
         });
         if (!silent) toast('活动通知已发送', 'success');
     } catch (e) {
@@ -9053,7 +9033,6 @@ async function pushSelectedActivities() {
     var ids = getActSelectedIds();
     if (ids.length === 0) { toast('请先勾选要推送的活动', 'info'); return; }
     var pushWebApp = (document.getElementById('pushChannelWebApp')||{}).checked || false;
-    var pushVisibleToAll = (document.getElementById('pushChannelVisibleToAll')||{}).checked || false;
     var pushQQWx = (document.getElementById('pushChannelQQWx')||{}).checked || false;
     if (!pushWebApp && !pushQQWx) { toast('已完成，未选择推送渠道不进行推送', 'success'); return; }
     var channels = [];
@@ -9072,7 +9051,7 @@ async function pushSelectedActivities() {
             var actMonthlyCoin = parseInt(act['每月积分']) || 0;
             var actDailyCoin = parseInt(act['每天积分']) || 0;
             if (pushWebApp) {
-                await sendActivityNotify(act['名称'] || '', act['玩法和说明'] || '', true, actNeedCoin, actBillingMode, actMonthlyCoin, actDailyCoin, pushVisibleToAll);
+                await sendActivityNotify(act['名称'] || '', act['玩法和说明'] || '', true, actNeedCoin, actBillingMode, actMonthlyCoin, actDailyCoin);
             }
             if (pushQQWx) {
                 await sendActivityToGroups(act['名称'] || '', act['玩法和说明'] || '', actNeedCoin, actBillingMode, actMonthlyCoin, actDailyCoin, true, true);
