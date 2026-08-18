@@ -324,14 +324,14 @@ var codeSignals = []CodeSignal{
 					}
 				}
 			} else { // 如果不是微信群聊或私聊消息
-				sender.Reply("请添加微信机器人：Shi0718-c 后，在回复 拉群，加入群聊 ")
+				sender.Reply("请添加微信机器人：Shi0718-c 后，再回复 拉群 / 进群 / 入群，加入群聊 ")
 				return nil
 			}
 		},
 	},
 
 	{
-		Command: []string{"拉群"},
+		Command: []string{"拉群", "进群", "入群"},
 		Handle: func(sender *Sender) interface{} {
 			// 确定用户ID和类型
 
@@ -369,7 +369,7 @@ var codeSignals = []CodeSignal{
 					}
 				}
 			} else { // 如果不是微信群聊或私聊消息
-				sender.Reply("请添加微信机器人：Shi0718-c 后，在回复 拉群，加入群聊")
+				sender.Reply("请添加微信机器人：Shi0718-c 后，再回复 拉群 / 进群 / 入群，加入群聊")
 				return nil
 			}
 		},
@@ -1502,7 +1502,7 @@ var codeSignals = []CodeSignal{
 				sender.Reply("请对QQ机器人发送指令，得到绑定码，把绑定码发给微信机器人，打通QQ、微信 ，app客户端，三端查询和积分打卡系统")
 				return nil
 			} else {
-				sender.Reply("请复制发送给Wx机器人完成绑定，微信机器人号：Shi0718-c ，添加后可回复 拉群 入群加入微信群聊，绑定后打通QQ、微信 ，app客户端，三端查询和积分打卡系统")
+				sender.Reply("请复制发送给Wx机器人完成绑定，微信机器人号：Shi0718-c ，添加后可回复 拉群 / 进群 / 入群 加入微信群聊，绑定后打通QQ、微信 ，app客户端，三端查询和积分打卡系统")
 				sender.Reply("友情提醒：绑定后数据将以QQ机器人为准，如果原本微信用户还有积分，请先使用微信机器人【转账】功能，将微信积分转移到QQ上面，否则绑定后微信积分丢失")
 			}
 			return makeWxId(sender.UserID, "DXWX"+getMd5String1(strconv.Itoa(sender.UserID)))
