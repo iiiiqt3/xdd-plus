@@ -54,8 +54,6 @@ type SystemConfig struct {
 	JdTaskProxyMonthlyCoin int    `json:"JdTaskProxyMonthlyCoin"`
 	// PortalMinCoinForAccess 门户活动中心/通知中心可见所需最低积分（nil 未配置时默认 1000；0 表示不限制）
 	PortalMinCoinForAccess *int `json:"PortalMinCoinForAccess"`
-	// KuwoOCRURL 酷我图形验证码 OCR 服务地址（空则默认 http://127.0.0.1:7676/classification）
-	KuwoOCRURL string `json:"KuwoOCRURL"`
 }
 
 func initSysConfig() {

@@ -7811,9 +7811,7 @@ async function loadSysConfig() {
                 </div>
                 <div class="form-grid">
                     <div class="form-item"><label>积分可见门槛 <span class="tip">0=不限制，默认 1000</span></label><input type="number" id="sys_PortalMinCoinForAccess" min="0" value="${sys.PortalMinCoinForAccess == null || sys.PortalMinCoinForAccess === '' ? 1000 : sys.PortalMinCoinForAccess}" placeholder="1000"></div>
-                    <div class="form-item full"><label>酷我验证码 OCR 地址 <span class="tip">ddddocr /classification</span></label><input type="text" id="sys_KuwoOCRURL" value="${v(sys.KuwoOCRURL) || 'http://127.0.0.1:7676/classification'}" placeholder="http://127.0.0.1:7676/classification"></div>
                 </div>
-                <div style="font-size:12px;color:#64748b;line-height:1.65;margin-top:-4px;">OCR 与后端同机部署时请用 <code>127.0.0.1</code>，走公网 IP 可能回连超时；保存后立即生效。</div>
             </div>
             <div class="config-section" id="syscfg-switches">
                 <div class="config-section-title"><i class="fas fa-toggle-on"></i> 功能开关</div>
@@ -8065,7 +8063,6 @@ async function saveSysConfig() {
             JdTaskProxyRedelay: String((document.getElementById('sys_JdTaskProxyRedelay')||{}).value || '2'),
             JdTaskProxyMonthlyCoin: parseInt((document.getElementById('sys_JdTaskProxyMonthlyCoin')||{}).value, 10) || 0,
             PortalMinCoinForAccess: (() => { const raw = parseInt((document.getElementById('sys_PortalMinCoinForAccess')||{}).value, 10); return Number.isFinite(raw) && raw >= 0 ? raw : 1000; })(),
-            KuwoOCRURL: String((document.getElementById('sys_KuwoOCRURL')||{}).value || '').trim() || 'http://127.0.0.1:7676/classification',
         };
         const sysRes = await api.post('/api/admin/sysconfig/save', sysData);
         toast(sysRes.msg || '保存成功', sysRes.code === 0 ? 'success' : 'error');
