@@ -5186,7 +5186,7 @@ async function triggerNotifyDelete() {
     var channels = getCheckedNotifyChannels('expiredNotifyChannel');
     var channelText = formatNotifyChannels(channels.join(','));
     var targetText = ids.length > 0 ? '已选择 ' + ids.length + ' 个活动' : '所有活动';
-    if (!confirm('确认手动触发过期CK通知/删除检查？\n\n目标范围：' + targetText + '\n当前逻辑：\n- 过期30天：发送提醒\n- 过期31天及以上：提示用户并删除青龙变量\n- 通知渠道：' + channelText + '\n\n此操作在后台异步执行，不会阻塞页面。')) return;
+    if (!confirm('确认手动触发过期CK通知/删除检查？\n\n目标范围：' + targetText + '\n当前逻辑：\n- 过期14天：发送提醒\n- 过期15天及以上：提示用户并删除青龙变量\n- 通知渠道：' + channelText + '\n\n此操作在后台异步执行，不会阻塞页面。')) return;
     try {
         const res = await api.post('/api/admin/notify-delete-expired', { channels: channels, activityIds: ids });
         toast(res.msg || '已触发', 'success');

@@ -116,15 +116,21 @@ func CheckRemarksExpired(remarks string) (bool, string) {
 	return false, date.Format(DateLayout)
 }
 
-// ===================== 过期30天通知+删除逻辑 =====================
+const (
+	expiredNotifyDays = 14 // 过期第14天提醒明天删除
+	expiredDeleteDays = 15 // 过期第15天起删除
+)
+
+// ===================== 过期15天通知+删除逻辑 =====================
 // 规则：
 // - 授权到期日次日0点，CK 被 DisableExpiredCKs 禁用（已有逻辑）
-// - 过期第30天：通知用户即将删除CK
-// - 过期第31天及以上：执行删除并通知用户
-// 示例：5月1号过期 → 5/2禁用 → 5/31通知即将删除 → 6/1执行删除
+// - 过期第14天：通知用户即将删除CK
+// - 过期第15天及以上：执行删除并通知用户
+// 示例：5月1号过期 → 5/2禁用 → 5/16通知即将删除 → 5/17执行删除
 //
 // 安全保护：
 // - 删除前验证 DB 仍为禁用状态（Status!=0），防止误删已续费账号
+// - 活动已禁用时仍执行禁用/删除，但不向用户推送（机器人/App/网页）
 
 func NotifyDeleteExpiredCKs(sender *Sender) {
 	NotifyDeleteExpiredCKsWithChannels(sender, NotifyChannels{Web: false, App: false, Robot: true}, nil)
@@ -167,6 +173,7 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 		if cfg == nil {
 			continue
 		}
+		notifyUser := cfg.Enabled
 
 		expireDate, _ := time.Parse(DateLayout, project.ExpireDate)
 		expireThreshold := time.Date(
@@ -186,36 +193,41 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 		}
 		userID := fmt.Sprintf("%d", project.UserNumber)
 
-		if expiredDays == 30 {
-			msg := fmt.Sprintf(
-				"🔴【授权过期删除提醒】\n"+
-					"活动：%s\n"+
-					"账号备注：%s\n"+
-					"到期日期：%s\n"+
-					"已过期：%d 天\n\n"+
-					"⚠️ 您的CK已被禁用超过30天，将在明天自动删除！\n"+
-					"如需保留，请尽快发送【记录授权】续费，删除后无法恢复！",
-				project.ActivityName, accountAlias,
-				expireDate.Format(DateLayout), expiredDays)
-			TaskLog().Infof(">>> 过期删除通知 -> 用户:[%s] 账号:[%s] 活动:[%s] 过期[%d天]",
-				userID, accountAlias, project.ActivityName, expiredDays)
-			if userID != "" {
-				if channels.Robot {
-					PushByQQ(userID, msg)
-					notifyCount++
-					if notifyCount >= 2 {
-						delay := 3 + rand.Intn(3)
-						time.Sleep(time.Duration(delay) * time.Second)
+		if expiredDays == expiredNotifyDays {
+			if !notifyUser {
+				TaskLog().Infof(">>> 跳过过期删除通知（活动已禁用） -> 账号:[%s] 活动:[%s] 过期[%d天]",
+					accountAlias, project.ActivityName, expiredDays)
+			} else {
+				msg := fmt.Sprintf(
+					"🔴【授权过期删除提醒】\n"+
+						"活动：%s\n"+
+						"账号备注：%s\n"+
+						"到期日期：%s\n"+
+						"已过期：%d 天\n\n"+
+						"⚠️ 您的CK已被禁用超过15天，将在明天自动删除！\n"+
+						"如需保留，请尽快发送【记录授权】续费，删除后无法恢复！",
+					project.ActivityName, accountAlias,
+					expireDate.Format(DateLayout), expiredDays)
+				TaskLog().Infof(">>> 过期删除通知 -> 用户:[%s] 账号:[%s] 活动:[%s] 过期[%d天]",
+					userID, accountAlias, project.ActivityName, expiredDays)
+				if userID != "" {
+					if channels.Robot {
+						PushByQQ(userID, msg)
+						notifyCount++
+						if notifyCount >= 2 {
+							delay := 3 + rand.Intn(3)
+							time.Sleep(time.Duration(delay) * time.Second)
+						}
+					}
+					if userNumber, err := strconv.Atoi(userID); err == nil {
+						CreateSystemWebNotification("授权过期删除提醒", msg, NotifyCategoryAuth, NotifySourceAuth, userNumber, channels)
 					}
 				}
-				if userNumber, err := strconv.Atoi(userID); err == nil {
-					CreateSystemWebNotification("授权过期删除提醒", msg, NotifyCategoryAuth, NotifySourceAuth, userNumber, channels)
-				}
+				totalNotified++
 			}
-			totalNotified++
 		}
 
-		if expiredDays >= 31 {
+		if expiredDays >= expiredDeleteDays {
 			fresh, freshErr := GetActivityProjectByID(project.ID)
 			if freshErr != nil || fresh == nil {
 				Error("删除前查询项目失败 ID=%d: %v", project.ID, freshErr)
@@ -230,7 +242,7 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 				continue
 			}
 
-			TaskLog().Infof(">>> 过期CK超过30天，准备删除 -> 账号:[%s] 活动:[%s] DB ID:[%d] 过期[%d天]",
+			TaskLog().Infof(">>> 过期CK超过15天，准备删除 -> 账号:[%s] 活动:[%s] DB ID:[%d] 过期[%d天]",
 				accountAlias, project.ActivityName, project.ID, expiredDays)
 
 			if err := DeleteProjectWithQinglongSync(project.ID); err != nil {
@@ -239,14 +251,17 @@ func NotifyDeleteExpiredCKsWithChannels(sender *Sender, channels NotifyChannels,
 				totalDeleted++
 			}
 
-			if userID != "" {
+			if !notifyUser {
+				TaskLog().Infof(">>> 跳过过期删除完成通知（活动已禁用） -> 账号:[%s] 活动:[%s]",
+					accountAlias, project.ActivityName)
+			} else if userID != "" {
 				delMsg := fmt.Sprintf(
 					"📦【授权过期删除提醒】\n"+
 						"活动：%s\n"+
 						"账号备注：%s\n"+
 						"到期日期：%s\n"+
 						"已过期：%d 天\n\n"+
-						"您的CK已过期超过30天，系统已直接删除。如需继续使用请重新发送【记录授权】续费。",
+						"您的CK已过期超过15天，系统已直接删除。如需继续使用请重新发送【记录授权】续费。",
 					project.ActivityName, accountAlias, expireDate.Format(DateLayout), expiredDays)
 				if channels.Robot {
 					PushByQQ(userID, delMsg)
@@ -393,6 +408,11 @@ func CheckExpiringCKs(expireThresholdDays int, sender *Sender) {
 	for _, project := range expiringProjects {
 		cfg := getActivityByID(project.ActivityID)
 		if cfg == nil {
+			continue
+		}
+		if !cfg.Enabled {
+			TaskLog().Infof(">>> 跳过即将过期推送（活动已禁用） -> 账号:[%s] 活动:[%s]",
+				project.RemarkAlias, project.ActivityName)
 			continue
 		}
 
